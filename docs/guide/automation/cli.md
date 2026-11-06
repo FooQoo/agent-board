@@ -45,7 +45,7 @@ agboard --project "My project" mv 1 doing --actor ai --reason "Start implementat
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
 
-Moves and non-Pending state changes accept an optional `--reason` of up to 10,000 Unicode characters. A missing or blank reason is generated from the current state. These operations add history by themselves; do not add a second entry for the same change. Questions and answers have their own limit of 2,000 characters.
+Moves and non-Pending state changes accept an optional `--reason` of up to 10,000 Unicode characters. A missing or blank reason is generated from the current state. These operations add history by themselves; do not add a second entry for the same change. A question can be up to 5,000 characters, and an answer note up to 2,000 characters.
 
 Record meaningful progress that does not change the column or state:
 

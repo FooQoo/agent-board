@@ -8,25 +8,44 @@ A decision is a question an agent asks when it cannot continue without you. This
 
 ## How you notice a question
 
-A task with a question is **Pending** and shows the question and an answer form right on the task, in Todo or Doing. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+A task with a question is **Pending**. In Todo or Doing, its card shows an **Answer the question** button. The button reads **Continue answering** when you have typed something and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
 
 ## Answer in the browser
 
-Choose one of the offered options, write a note, or do both, then send the answer. The answer is recorded, and the agent state becomes Idle in the task's current column. The agent reads your response before it decides how to resume.
+Select **Answer the question** on the card to open the answer dialog. The question is on the left, and your answer is on the right. Choose one of the offered options, write a note, or do both, then select **Send**. The answer is recorded, and the agent state becomes Idle in the task's current column. The agent reads your response before it decides how to resume.
 
-![A Pending task with its question, two options, and a free-text answer field](../../images/guide/question.png){.screenshot}
+On a window narrower than 900 px, the question and the answer stack in one column.
 
-The task shows the question, the options, and a text field for a note. Your answer stays available to the agent, and a concise reason is saved to the history.
+![The answer dialog, with the question on the left and the options and note on the right](../../images/guide/question.png){.screenshot}
 
-- On the PC board you can still open the task's details and drag it while the answer form is in use.
-- Moving the task to Done clears whatever you typed in the answer field.
-- A question has no expiry. It stays open until it is answered, or until moving the task withdraws it or the agent replaces it.
+The answer is saved to the task's history. The question and each part of your answer appear as separate blocks there.
+
+- **Close** the dialog at any time with the close button, Escape, or a click outside it. Closing never asks for confirmation, and your input stays. Select **Continue answering** on the card to return to it.
+- Your input is kept while the page stays open. Reloading the page clears it.
+- Moving the task to Done clears whatever you typed.
+- A question has no expiry. It stays open until it is answered, or until moving or archiving the task withdraws it.
+
+### If the question changes
+
+If the agent asks a new question while the dialog is open, the dialog shows **The question has changed. Review it and answer again.** The options you chose are cleared, so choose again. Your note stays.
+
+### If the question is withdrawn
+
+Moving the task to another column, or archiving it, withdraws the question. The dialog then shows **This question was withdrawn. You can no longer answer it.** It keeps the question and your input so you can read them, but **Send** and **Clear** are hidden, and only **Close** remains.
+
+### If sending fails
+
+The dialog keeps your input and shows **Could not save. Try again.** Try again from the dialog.
 
 ## Answer on your phone
 
-On the mobile monitor, a Pending task shows the same answer form. Tap the task to open its Body, Conditions, History, and Epic drawer, and swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
+On the mobile monitor, a Pending task shows the same **Answer the question** button. Tap it to open the answer sheet, which slides up from the bottom. The question comes first, then your answer. **Send** stays at the bottom, so it is in reach as you scroll.
+
+Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
 
 ![Mobile bottom drawer with Body, Conditions, History, and Epic tabs](../../images/mobile.png){.screenshot .screenshot--narrow}
+
+If you close the sheet with an unsent answer, and the question is then withdrawn or the task leaves the board, the monitor lists that answer under **Unsent answers**. Nothing is sent from it. Select **Discard answer draft** to remove it.
 
 ## How an agent asks
 
@@ -38,14 +57,14 @@ sequenceDiagram
     participant B as Board
     participant U as User
     A->>B: state pending with question and choices
-    Note over B: Task is Pending and shows the answer form
+    Note over B: Task is Pending and shows an answer button
     U->>B: Choose an option and/or write a note
     Note over B: Answer saved to history, state becomes Idle
     A->>B: Read the response and history
     A->>B: state running with a reason
 ```
 
-An AI-owned task can ask in Todo or Doing, but it must be in Doing to become Running. The agent skill asks with two to ten choices. The CLI accepts a question and zero to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
+An AI-owned task can ask in Todo or Doing, but it must be in Doing to become Running. The agent skill asks with two to ten choices. The CLI accepts a question and two to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
 
 ```json
 {
@@ -70,6 +89,12 @@ cat question.json | agboard --project "My project" state 1 pending --actor ai --
 ```
 
 `choices` takes 2 to 10 options; a request with fewer than 2 or more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
+
+The question is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. The answer note takes up to 2,000 characters.
+
+### Replace a question
+
+A Pending task keeps its question. Running `state pending` again on that task does not replace the question. To ask something else, withdraw the current question first by moving the task to another column, which clears the request. Then ask the new question.
 
 ### Ask and wait for the answer
 

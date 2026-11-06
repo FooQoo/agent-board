@@ -52,7 +52,7 @@ The columns mean:
 | Doing | Work in progress. AI-owned tasks also show an agent state. |
 | Done | Completed work. |
 
-AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give on the task (see [Decisions](./decisions)). Moving a task to another column resets the agent state to Idle and withdraws an open question. Every change and its reason stay in the history.
+AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give from the card's **Answer the question** button (see [Decisions](./decisions)). Moving a task to another column resets the agent state to Idle and withdraws an open question. Every change and its reason stay in the history.
 
 ## Change a task
 
