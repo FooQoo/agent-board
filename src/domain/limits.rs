@@ -11,7 +11,7 @@ pub const MAX_CHOICES: usize = 10;
 pub const MAX_CHOICE_ID_CHARS: usize = 64;
 pub const MAX_CHOICE_LABEL_CHARS: usize = 200;
 /// A question, and a free-text answer, of at most this many characters.
-pub const MAX_QUESTION_CHARS: usize = 2_000;
+pub const MAX_QUESTION_CHARS: usize = 5_000;
 pub const MAX_ANSWER_TEXT_CHARS: usize = 2_000;
 
 pub fn validate_attachment(

@@ -43,7 +43,7 @@ fn first_defect_error(defects: Vec<Defect>, file: &str) -> Result<(), AgboardErr
 }
 
 /// Normalize line endings (CRLF to LF), trim the outer whitespace, and require
-/// 1 to 2,000 characters. This is the rule of a decision request's question.
+/// 1 to 5,000 characters. This is the rule of a decision request's question.
 pub fn normalize_question(text: &str) -> Result<String, AgboardError> {
     let normalized = text.replace("\r\n", "\n");
     let trimmed = normalized.trim();
@@ -51,7 +51,7 @@ pub fn normalize_question(text: &str) -> Result<String, AgboardError> {
     if count == 0 || count > MAX_QUESTION_CHARS {
         return Err(AgboardError::InvalidValue {
             field: "question".into(),
-            reason: "Questions must be 1 to 2000 characters.".into(),
+            reason: "Questions must be 1 to 5000 characters.".into(),
         });
     }
     Ok(trimmed.to_string())

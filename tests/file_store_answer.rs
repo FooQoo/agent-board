@@ -500,7 +500,7 @@ fn the_choices_and_the_question_are_limited() {
         ("Proceed?".into(), vec![choice("a b", "one")]),
         ("Proceed?".into(), vec![choice("ok", "")]),
         ("   ".into(), Vec::new()),
-        ("q".repeat(2_001), Vec::new()),
+        ("q".repeat(5_001), Vec::new()),
     ];
     for (question, choices) in bad_cases {
         let err = fx
@@ -510,6 +510,119 @@ fn the_choices_and_the_question_are_limited() {
         assert!(matches!(err, AgboardError::InvalidValue { .. }), "{err:?}");
     }
     assert_eq!(fx.bytes(id), before);
+}
+
+#[test]
+fn a_question_is_limited_to_5000_characters_with_a_matching_message() {
+    let fx = fixture();
+    let id = fx.working_task();
+    let err = fx
+        .store
+        .request_decision(
+            &fx.project,
+            id,
+            Actor::Ai,
+            &"q".repeat(5_001),
+            proceed_choices(),
+            later(),
+        )
+        .unwrap_err();
+    match err {
+        AgboardError::InvalidValue { field, reason } => {
+            assert_eq!(field, "question");
+            assert_eq!(reason, "Questions must be 1 to 5000 characters.");
+        }
+        other => panic!("expected InvalidValue, got {other:?}"),
+    }
+
+    let asked = fx
+        .store
+        .request_decision(
+            &fx.project,
+            id,
+            Actor::Ai,
+            &"q".repeat(5_000),
+            proceed_choices(),
+            later(),
+        )
+        .unwrap();
+    assert_eq!(asked.value.pending_reason.unwrap().chars().count(), 5_000);
+}
+
+/// The longest stored history reason is 10,000 characters (`validate_work_reason`).
+const HISTORY_REASON_MAX: usize = 10_000;
+
+#[test]
+fn a_maximal_question_and_answer_fit_in_the_history_limit() {
+    let fx = fixture();
+    let id = fx.working_task();
+    // Ten choices, each with a 64-character ID and a 200-character label.
+    let choices: Vec<Choice> = (0..10)
+        .map(|i| Choice {
+            id: format!("{i:02}{}", "i".repeat(62)),
+            label: "界".repeat(200),
+        })
+        .collect();
+    let chosen = choices[0].id.clone();
+    let question = "問".repeat(5_000);
+    let asked = fx
+        .store
+        .request_decision(&fx.project, id, Actor::Ai, &question, choices, later())
+        .unwrap();
+    let request = asked.value.pending_request_id.clone().unwrap();
+
+    let task = fx
+        .store
+        .answer_request(
+            &fx.project,
+            id,
+            &request,
+            answer(Some(&chosen), Some(&"答".repeat(2_000))),
+            later(),
+        )
+        .unwrap();
+    assert_eq!(task.agent_status, RunState::Idle);
+
+    // Both the request and the answer are history events; each must fit.
+    let history = fx.history(id);
+    let events = history.as_array().unwrap();
+    let request_event = events
+        .iter()
+        .find(|event| {
+            event["reason"]
+                .as_str()
+                .unwrap()
+                .contains("Requested decision")
+        })
+        .expect("the request is in history");
+    let answer_event = events
+        .iter()
+        .find(|event| {
+            event["reason"]
+                .as_str()
+                .unwrap()
+                .contains("Answered decision")
+        })
+        .expect("the answer is in history");
+    for event in [request_event, answer_event] {
+        let reason = event["reason"].as_str().unwrap();
+        assert!(
+            reason.chars().count() <= HISTORY_REASON_MAX,
+            "{} characters",
+            reason.chars().count()
+        );
+    }
+
+    // The saved task reads back idle, with the full 2,000-character answer kept.
+    let reopened = FileStore::open(&fx.shared).task(&fx.project, id).unwrap();
+    assert_eq!(reopened.agent_status, RunState::Idle);
+    let metadata: serde_json::Value = serde_json::from_slice(&fx.bytes(id)).unwrap();
+    let stored = metadata["requestAnswers"]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap();
+    assert_eq!(stored["text"].as_str().unwrap().chars().count(), 2_000);
 }
 
 #[test]
