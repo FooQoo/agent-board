@@ -72,15 +72,6 @@ export function MonitorTask({
             onClick={() => onOpenDetail?.(item, 'epic')}
           />
         )}
-        {pending && task.pendingRequestId !== null && answerController && (
-          <div className="monitor-card__request">
-            <DecisionAnswerButton
-              continuing={answerController.hasDraft(item.projectId, task.id)}
-              taskId={task.id}
-              onClick={() => onOpenAnswer?.(item)}
-            />
-          </div>
-        )}
       </TaskCardContent>
       <span className="monitor-card__meta">
         <span>{item.projectName}</span>
@@ -92,6 +83,15 @@ export function MonitorTask({
               : formatShort(task.agentStatusChangedAt)}
         </span>
       </span>
+      {pending && task.pendingRequestId !== null && answerController && (
+        <div className="monitor-card__request">
+          <DecisionAnswerButton
+            continuing={answerController.hasDraft(item.projectId, task.id)}
+            taskId={task.id}
+            onClick={() => onOpenAnswer?.(item)}
+          />
+        </div>
+      )}
     </article>
   );
 }

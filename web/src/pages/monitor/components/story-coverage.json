@@ -177,6 +177,20 @@
               "id": "pages-monitor-components-monitorgallery--data-problems",
               "states": ["readable task rows retained with data problems"],
               "interaction": false
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--answer",
+              "states": [
+                "decision request",
+                "answer button under the meta row and a divider",
+                "button height"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--answer-continuing",
+              "states": ["input kept", "continue answering button", "dark theme"],
+              "interaction": true
             }
           ]
         }

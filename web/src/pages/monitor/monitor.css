@@ -220,6 +220,12 @@ body {
 }
 .monitor-card__request {
   min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--r-pend-bd);
+}
+/* The button sits under a divider and 6px above the card's lower edge, as in the approved mock. */
+.monitor-card:has(.monitor-card__request) {
+  padding-bottom: 6px;
 }
 .monitor-card__reason {
   display: -webkit-box;
