@@ -15,6 +15,8 @@ export function Drawer({
   identity,
   title,
   label,
+  initialFocusSelector,
+  className,
   children,
 }: {
   open: boolean;
@@ -22,6 +24,10 @@ export function Drawer({
   identity: string;
   title: string;
   label?: ReactNode;
+  /** What gets the focus when the sheet opens; the handle unless a sheet says otherwise. */
+  initialFocusSelector?: string;
+  /** Extra class on the sheet, for a sheet that sets its own height. */
+  className?: string;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -47,10 +53,21 @@ export function Drawer({
         />
         <DialogPrimitive.Content
           ref={popup}
-          className="mobile-drawer"
+          className={className === undefined ? 'mobile-drawer' : `mobile-drawer ${className}`}
           data-slot="drawer-popup"
           data-swipe-direction="down"
           aria-describedby={undefined}
+          onOpenAutoFocus={(event) => {
+            const target =
+              initialFocusSelector === undefined
+                ? null
+                : event.currentTarget instanceof HTMLElement
+                  ? event.currentTarget.querySelector<HTMLElement>(initialFocusSelector)
+                  : null;
+            if (target === null) return;
+            event.preventDefault();
+            target.focus({ preventScroll: true });
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             returnFocus.current?.focus();

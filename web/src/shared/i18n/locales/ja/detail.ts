@@ -49,6 +49,18 @@ export const detailJa = {
     cancel: 'キャンセル',
     changed: '判断依頼が変わりました。最新のボードを確認してください。',
   },
+  answer: {
+    open: '質問に回答する',
+    continue: '回答を続ける',
+    heading: 'あなたの回答',
+    note: 'メモ',
+    notePlaceholder: '補足があれば書く…',
+    guide: '選択肢を選ぶか、メモだけでも回答できます。',
+    clear: '入力をクリア',
+    close: '閉じる',
+    changed: '質問が新しくなりました。内容を確認して、もう一度回答してください。',
+    withdrawn: 'この質問は取り下げられました。回答は送れません。',
+  },
   delete: {
     buttonLabel: 'タスクを削除',
     confirm:
