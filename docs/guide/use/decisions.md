@@ -90,7 +90,7 @@ cat question.json | agboard --project "My project" state 1 pending --actor ai --
 
 `choices` takes 2 to 10 options; a request with fewer than 2 or more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
 
-The question is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. The answer note takes up to 2,000 characters.
+The question is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. Images from `http` or `https` addresses are shown too. The answer note takes up to 2,000 characters.
 
 ### Replace a question
 
