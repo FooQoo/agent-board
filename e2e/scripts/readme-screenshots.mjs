@@ -65,7 +65,7 @@ try {
       await settle(page);
       await page.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
       // Closing keeps the picked choice as a draft, so the card then offers "Continue answering".
-      await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
+      await sheet.getByRole('button', { name: locale === 'ja' ? '回答を閉じる' : 'Close the answer', exact: true }).click();
       await expect(sheet).toHaveCount(0);
       await page.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
       await expect(page.getByRole('tab')).toHaveCount(4);

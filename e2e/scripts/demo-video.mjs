@@ -235,7 +235,8 @@ async function record(browser, locale, tmp) {
     await page.waitForTimeout(300);
     await choice.click();
     await page.waitForTimeout(1100);
-    const send = dialog.getByRole('button', { name: 'Send', exact: true });
+    // The button names come from the app's translations, so the Japanese run finds 送信.
+    const send = dialog.getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true });
     await expect(send).toBeEnabled();
     await moveTo(page, send);
     await page.waitForTimeout(400);
