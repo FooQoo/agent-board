@@ -36,18 +36,9 @@ export const detailEn = {
     epicDescription: 'Agents cannot change this epic. Once you finalize it, they can.',
   },
   request: {
-    title: 'The agent is waiting for your answer',
-    showMore: 'Show more',
-    label: 'Your answer',
-    placeholder: 'Write your answer…',
-    choices: 'Choices',
-    guideChoice: 'Choose an option, or answer in your own words.',
     saveHint: 'Saved to the history. The coordinator reviews it and resumes the work.',
-    resumed: 'Saved. The coordinator resumes the work.',
     send: 'Send',
     sending: 'Sending…',
-    retry: 'Retry',
-    cancel: 'Cancel',
     changed: 'This request has changed. Review the latest board.',
   },
   answer: {

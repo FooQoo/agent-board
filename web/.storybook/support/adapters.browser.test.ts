@@ -144,7 +144,7 @@ describe('copies of product values', () => {
   });
 });
 
-describe('answer writer fake (DecisionRequestForm contract)', () => {
+describe('answer writer fake', () => {
   it('records the project, task and input of each write, and answers with the given result', async () => {
     const { writer, calls } = createFakeAnswerWriter(async () => ({ requestId: 'req-1' }) as never);
     const result = await writer(PROJECT.id, 4, { choiceId: 'a', body: 'Answer text' } as never);

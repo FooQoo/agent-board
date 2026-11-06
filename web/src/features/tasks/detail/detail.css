@@ -1,9 +1,80 @@
 /*
- * The detail column: the draft banner, the decision request with its answer form, the tabs with
+ * The detail column: the draft banner, the tabs with
  * their toolbar, and the tab content. Colors are the r-* tokens of theme.css, so every theme works.
  */
 
-/* Shared banners and answer form styles are in decision-request.css. */
+/* ---- Draft banner and shared banner parts ---- */
+
+.detail__draft {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.detail__banner-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.detail__banner-head svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.detail__banner-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--r-text);
+  overflow-wrap: anywhere;
+}
+
+/* The banner buttons take their size from the Button `size` prop. */
+.detail-btn {
+  align-self: flex-start;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.detail-btn--sm {
+  align-self: auto;
+}
+
+.detail-btn--quiet {
+  font-weight: 400;
+  color: var(--r-text2);
+}
+
+.detail-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.detail__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--r-danger);
+}
+
+.detail__error svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
 
 /* ---- Tabs and toolbar ---- */
 

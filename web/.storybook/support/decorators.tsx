@@ -11,7 +11,6 @@ import {
   type Theme,
   type ThemeStorage,
 } from '../../src/shared/theme';
-import decisionRequestCss from '../../src/features/tasks/answer/decision-request.css?inline';
 import modalCss from '../../src/shared/styles/modal.css?inline';
 import monitorCss from '../../src/pages/monitor/monitor.css?inline';
 
@@ -37,7 +36,7 @@ export const STORY_WIDTHS: Record<StoryWidth, number> = {
 };
 
 /** The monitor's own stylesheets. They are injected only in a monitor frame, and removed after it. */
-export const MONITOR_STYLESHEETS = [modalCss, decisionRequestCss, monitorCss];
+export const MONITOR_STYLESHEETS = [modalCss, monitorCss];
 
 /** Storage that keeps the value in memory, so a Story never writes to the browser's storage. */
 export function createMemoryStorage(): ThemeStorage {

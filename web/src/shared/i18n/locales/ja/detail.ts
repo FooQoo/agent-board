@@ -35,18 +35,9 @@ export const detailJa = {
     epicDescription: 'AIはこのエピックを変更できません。確定すると、AIが変更できます。',
   },
   request: {
-    title: 'AIが回答を待っています',
-    showMore: '続きを読む',
-    label: '回答',
-    placeholder: '回答を書く…',
-    choices: '選択肢',
-    guideChoice: '選択肢を選ぶか、自由記述で回答できます。',
     saveHint: '回答は履歴に保存されます。調整役が確認して作業を再開します。',
-    resumed: '回答を保存しました。調整役が作業を再開します。',
     send: '送信',
     sending: '送信中…',
-    retry: '再試行',
-    cancel: 'キャンセル',
     changed: '判断依頼が変わりました。最新のボードを確認してください。',
   },
   answer: {

@@ -175,12 +175,9 @@ const bytes = (folder: string, names: string[]) =>
 // Budgets for the scripts a page needs before its first screen, a little above their size today.
 // Raise one only with a reason: the first load is what a phone waits for on every new build.
 // The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
-// The board's budget is 708 KB: the Docs entry (its header button and the dialog's preload hooks) takes about 1.3 KB over the 700 KB it had before the Docs,
-// the condition checkboxes of the details (the save and the undo on failure, with their strings) about 1.2 KB more,
-// the preview's strings (all languages load with the page) about 1.9 KB more,
-// and the preview's entrances (the toolbar button, the epic tab's heading, the stream subscription the previews follow) net of the removed Make draft button about 0.9 KB more.
-// and the answer dialog's strings (all languages load with the page; the old answer form's strings stay until it is removed) about 0.8 KB more.
-const FIRST_LOAD_BUDGET = { board: 708_000, monitor: 520_000 };
+// The board's budget is 700 KB: the Docs entry, the condition checkboxes of the details, the preview's strings and entrances,
+// and the answer dialog's strings (all languages load with the page) fit in the room that removing the old answer form left.
+const FIRST_LOAD_BUDGET = { board: 700_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 // The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
 const VIRTUAL_CHUNK_BUDGET = 40_000;
