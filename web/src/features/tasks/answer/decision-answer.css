@@ -191,7 +191,7 @@
 }
 
 .decision-answer__note.decision-answer__note:disabled {
-  background: var(--r-lane);
+  background: var(--r-surface);
   color: var(--r-muted);
   opacity: 1;
 }
@@ -316,18 +316,91 @@
   height: 14px;
 }
 
-/* A stopped answer (sending, withdrawn) is dimmed; the notice keeps its color. */
-.decision-answer[data-disabled="true"] .decision-answer__heading,
-.decision-answer[data-disabled="true"] .decision-answer__choice,
-.decision-answer[data-disabled="true"] .decision-answer__label {
-  opacity: 0.55;
-}
-
+/* A stopped answer (sending, withdrawn): the options are dimmed, the note keeps its field. */
 .decision-answer[data-disabled="true"] .decision-answer__choice {
+  opacity: 0.7;
   cursor: default;
 }
 
 .decision-answer__choice [role="radio"] svg {
   fill: var(--r-accent);
   color: var(--r-accent);
+}
+
+/* ---- The question's text sizes, as in the design (only inside the answer) ---- */
+
+.decision-question .md {
+  --md-leading: 1.7;
+  --md-gap: 12px;
+}
+
+.decision-question .md--wide h2 {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.decision-question .md th,
+.decision-question .md td {
+  padding: 7px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.decision-question .md pre,
+.decision-question .md pre code {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.decision-question .md pre {
+  padding: 10px 12px;
+}
+
+.decision-sheet .decision-question .md {
+  --md-leading: 1.6;
+  --md-gap: 10px;
+}
+
+.decision-sheet .decision-question .md--wide h2 {
+  font-size: 15px;
+}
+
+.decision-sheet .decision-question .md th,
+.decision-sheet .decision-question .md td {
+  padding: 6px 10px;
+}
+
+/* ---- The dialog: the close X stays readable while sending; narrow, the buttons are 120px ---- */
+
+.decision-dialog .editor__close:disabled {
+  opacity: 0.8;
+}
+
+@container decision-dialog (max-width: 851px) {
+  .decision-dialog .dialog-actions > button {
+    min-width: 120px;
+  }
+}
+
+/* ---- The sheet's top, as in the design (the monitor detail's sheet is not touched) ---- */
+
+.mobile-drawer.decision-sheet-popup .mobile-drawer__handle {
+  height: 28px;
+}
+
+.mobile-drawer.decision-sheet-popup .mobile-drawer__header {
+  align-items: center;
+  padding: 4px 4px 12px 16px;
+}
+
+.mobile-drawer.decision-sheet-popup .mobile-drawer__heading {
+  gap: 2px;
+}
+
+.mobile-drawer.decision-sheet-popup .mobile-drawer__identity {
+  line-height: 1.6;
+}
+
+.mobile-drawer.decision-sheet-popup .mobile-drawer__title {
+  line-height: 1.6;
 }

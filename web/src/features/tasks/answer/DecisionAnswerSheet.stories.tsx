@@ -33,7 +33,7 @@ function Harness({ initial, onSubmit, onRetry, onOpenChange }: HarnessProps) {
       }}
       identity="#11"
       title={sample.title}
-      question={sample.question}
+      question={sample.sheetQuestion}
       choices={sample.choices}
       resolveAttachment={resolveSampleAttachment}
       onSubmit={onSubmit}
@@ -60,14 +60,16 @@ const NOTE_EN = 'I want to keep it until v3 ships. The CLI fix can wait until ne
 
 /** The question, then the answer; Send is pinned below and waits for an input. */
 export const Normal: Story = {
+  args: { initial: { choiceId: 'keep' } },
   play: async ({ args }) => {
     await expect(await page().findByRole('dialog', { name: 'API refactor' })).toBeInTheDocument();
     await expect(page().getByText('#11')).toBeInTheDocument();
     await expect(await page().findByRole('table')).toBeInTheDocument();
     await waitFor(() => expect(page().getAllByRole('radio')[0]).toHaveFocus());
-    await expect(page().getByRole('button', { name: 'Send' })).toBeDisabled();
-    await userEvent.click(page().getByRole('radio', { name: /Allow the breaking change/ }));
+    await expect(page().getByRole('radio', { name: /Keep compatibility/ })).toBeChecked();
     await expect(page().getByRole('button', { name: 'Send' })).toBeEnabled();
+    await userEvent.click(page().getByRole('radio', { name: /Allow the breaking change/ }));
+    await expect(page().getByRole('radio', { name: /Allow the breaking change/ })).toBeChecked();
     await userEvent.click(page().getByRole('button', { name: 'Send' }));
     await expect(args.onSubmit).toHaveBeenCalledTimes(1);
   },
@@ -79,6 +81,15 @@ export const InputAndFailed: Story = {
     initial: { choiceId: 'keep', note: true, phase: 'failed' },
   },
   play: async ({ args }) => {
+    // The answer field is below the question: scroll to it once the picture has its size.
+    const picture = await page().findByRole('img');
+    await waitFor(() => expect((picture as HTMLImageElement).complete).toBe(true));
+    const dialog = page().getByRole('dialog');
+    const panel = dialog.querySelector<HTMLElement>('.decision-panel');
+    const answer = dialog.querySelector<HTMLElement>('.decision-panel__answer');
+    if (panel !== null && answer !== null) {
+      panel.scrollTop = answer.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+    }
     await expect(await page().findByRole('alert')).toHaveTextContent('Could not save. Try again.');
     await expect(page().getByRole('textbox', { name: 'Note' })).toHaveValue(NOTE_EN);
     await userEvent.click(page().getByRole('button', { name: 'Retry' }));

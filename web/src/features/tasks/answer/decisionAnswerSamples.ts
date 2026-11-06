@@ -6,6 +6,8 @@ export interface DecisionAnswerSample {
   title: string;
   question: string;
   longQuestion: string;
+  /** The shorter question of the sheet's design. */
+  sheetQuestion: string;
   choices: { id: string; label: string }[];
   note: string;
   failure: string;
@@ -38,6 +40,15 @@ GET /api/v2/tasks
 
 互換を残すと、v3 まで 2 つの応答の形を保守します。移行期間を設ける場合は 2 週間を想定しています。`,
   longQuestion: '',
+  sheetQuestion: `## 破壊的変更の扱い
+
+v2 の応答から items を外すと、既存の連携が止まります。どこまで互換を残すかを決めてください。
+
+| 利用元 | 呼び出し |
+| --- | --- |
+| CLI | 1 日 240 回 |
+
+![ボードの画面](attachment:${ATTACHMENT_ID})`,
   choices: [
     { id: 'keep', label: '互換性を維持する（推奨）' },
     { id: 'allow', label: '破壊的変更を許可する' },
@@ -67,6 +78,15 @@ GET /api/v2/tasks
 
 Keeping compatibility means maintaining two response shapes until v3. A migration period would be about two weeks.`,
   longQuestion: '',
+  sheetQuestion: `## How to handle the breaking change
+
+Removing items from the v2 response stops the existing integrations. Decide how much compatibility to keep.
+
+| Caller | Calls |
+| --- | --- |
+| CLI | 240 a day |
+
+![The board](attachment:${ATTACHMENT_ID})`,
   choices: [
     { id: 'keep', label: 'Keep compatibility (recommended)' },
     { id: 'allow', label: 'Allow the breaking change' },

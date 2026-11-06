@@ -42,7 +42,7 @@ export function DecisionAnswerDialog({
       taskId={taskId}
       returnFocusSelector={returnFocusSelector ?? decisionAnswerButtonSelector(taskId)}
       title={title}
-      badge={<StateChip kind="pending" />}
+      badge={view.notice === 'withdrawn' ? null : <StateChip kind="pending" />}
       variant="edit"
       dirty={false}
       saving={sending}
