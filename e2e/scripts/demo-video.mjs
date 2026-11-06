@@ -217,24 +217,31 @@ async function record(browser, locale, tmp) {
     run('state', String(heroId), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({
       question: text.question, choices: text.choices.map(([id, label]) => ({ id, label })),
     }));
-    const answer = page.locator(`.card__answer[data-task-id="${heroId}"]`);
-    await expect(answer.getByText(text.question, { exact: true })).toBeVisible();
+    const answerButton = page.locator(`[data-decision-answer][data-task-id="${heroId}"]`);
+    await expect(answerButton).toBeVisible();
     await page.waitForTimeout(3200);
 
     // 3. The user answers in the browser.
     await caption(page, text.captions[2]);
     await page.waitForTimeout(1200);
-    const choice = answer.getByRole('radio').first();
+    await moveTo(page, answerButton);
+    await page.waitForTimeout(300);
+    await answerButton.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(text.question, { exact: true })).toBeVisible();
+    await page.waitForTimeout(900);
+    const choice = dialog.getByRole('radio').first();
     await moveTo(page, choice);
     await page.waitForTimeout(300);
     await choice.click();
     await page.waitForTimeout(1100);
-    const send = answer.locator('button[type="submit"]');
+    const send = dialog.getByRole('button', { name: 'Send', exact: true });
     await expect(send).toBeEnabled();
     await moveTo(page, send);
     await page.waitForTimeout(400);
     await send.click();
-    await expect(answer).toHaveCount(0);
+    await expect(dialog).toBeHidden();
+    await expect(answerButton).toHaveCount(0);
     await page.mouse.move(size.width - 40, size.height - 120, { steps: 20 });
     await page.waitForTimeout(1500);
 

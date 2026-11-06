@@ -38,7 +38,9 @@ try {
       const task = page.getByRole('button', { name: /^#3(?!\d)/ });
       await task.click();
       await expect(page.getByRole('tab')).toHaveCount(4);
-      await expect(page.locator('.card__answer').getByText(text.question, { exact: true })).toBeVisible();
+      // The waiting card shows only its answer button; the question is read in the answer dialog.
+      const answerLabel = locale === 'ja' ? '質問に回答する' : 'Answer the question';
+      await expect(page.locator('[data-decision-answer][data-task-id="3"]')).toHaveText(answerLabel);
       await expect(page.locator('.detail-view .detail__request')).toHaveCount(0);
       await settle(page);
       await page.screenshot({ path: path.join(output, `board${suffix}.png`) });
@@ -54,13 +56,17 @@ try {
       await page.setViewportSize({ width: 390, height: 844 });
       await server.open(page, `${remote}/monitor/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
-      // The question on that card, with the first choice picked and not yet sent.
+      // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
       const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
-      await waiting.getByText(text.choices[0], { exact: true }).click();
-      // Show the whole card, down to the button that sends the answer.
-      await waiting.evaluate((card) => card.scrollIntoView({ block: 'end' }));
+      await waiting.getByRole('button', { name: answerLabel, exact: true }).click();
+      const sheet = page.getByRole('dialog', { name: text.titles[2], exact: true });
+      await expect(sheet.getByText(text.question, { exact: true })).toBeVisible();
+      await sheet.getByRole('radio', { name: text.choices[0], exact: true }).click();
       await settle(page);
       await page.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
+      // Closing keeps the picked choice as a draft, so the card then offers "Continue answering".
+      await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
+      await expect(sheet).toHaveCount(0);
       await page.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
       await expect(page.getByRole('tab')).toHaveCount(4);
       await page.getByRole('tab', { name: text.tab, exact: true }).click();
