@@ -122,11 +122,11 @@ fn choices_are_limited_to_ten_unique_ascii_ids_with_short_labels() {
 }
 
 #[test]
-fn a_question_is_one_to_two_thousand_characters_after_trimming() {
+fn a_question_is_one_to_five_thousand_characters_after_trimming() {
     assert_eq!(normalize_question("  a \r\n b ").unwrap(), "a \n b");
     assert!(normalize_question("   ").is_err());
-    assert!(normalize_question(&"q".repeat(2_000)).is_ok());
-    assert!(normalize_question(&"q".repeat(2_001)).is_err());
+    assert!(normalize_question(&"q".repeat(5_000)).is_ok());
+    assert!(normalize_question(&"q".repeat(5_001)).is_err());
 }
 
 #[test]

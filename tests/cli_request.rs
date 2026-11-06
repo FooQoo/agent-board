@@ -445,18 +445,18 @@ fn a_request_file_is_checked_against_the_limits() {
     refused(json!({"question": "q", "choices": choices(11, 1)}));
     refused(json!({"question": "q", "choices": choices(1, 201)}));
     refused(json!({"question": "   ", "choices": []}));
-    refused(json!({"question": "x".repeat(2001)}));
+    refused(json!({"question": "x".repeat(5001)}));
     refused(
         json!({"question": "q", "choices": [{"id": "a", "label": "A"}, {"id": "a", "label": "B"}]}),
     );
     refused(json!({"question": "q", "choices": [{"id": "a".repeat(65), "label": "A"}]}));
     refused(json!({"question": "q", "choices": [{"id": "a b", "label": "A"}]}));
 
-    // The edges are allowed: 10 choices, 200-character labels, a 2,000-character question.
+    // The edges are allowed: 10 choices, 200-character labels, a 5,000-character question.
     let file = request_file(
         home.path(),
         "edge.json",
-        &json!({"question": "q".repeat(2000), "choices": choices(10, 200)}),
+        &json!({"question": "q".repeat(5000), "choices": choices(10, 200)}),
     );
     let (code, _, err) = agboard(
         home.path(),
