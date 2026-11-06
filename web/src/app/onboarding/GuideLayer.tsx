@@ -84,14 +84,14 @@ export function GuideLayer({
   eligible,
   tasks,
   answers,
-  syncedAt,
+  onAnswer,
   onAnswerChanged,
 }: {
   projectId: ProjectId | null;
   eligible: boolean;
   tasks: TaskSummary[];
   answers: TaskAnswerController;
-  syncedAt: Date | null;
+  onAnswer: (taskId: number) => void;
   onAnswerChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -128,8 +128,7 @@ export function GuideLayer({
       onSelect={noop}
       projectId={projectId ?? undefined}
       answers={answers}
-      syncedAt={syncedAt}
-      onAnswerChanged={onAnswerChanged}
+      onAnswer={onAnswer}
     />
   ));
 

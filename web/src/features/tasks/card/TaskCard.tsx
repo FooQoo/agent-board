@@ -7,8 +7,7 @@ import { GripVerticalIcon } from 'lucide-react';
 import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { StatusLabel } from '../status/StatusLabel';
 import { useSortable } from '@dnd-kit/react/sortable';
-import { DecisionRequestForm } from '../answer/DecisionRequestForm';
-import { noOperations } from '../../../shared/lib/operations/operations';
+import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
 import type { TaskAnswerController } from '../answer/model/useTaskAnswers';
 import type { ProjectId } from '../../../shared/api/contracts';
 import './card-answer.css';
@@ -23,8 +22,8 @@ export interface TaskCardProps {
   renderEpic?: (epic: EpicRef) => ReactNode;
   projectId?: ProjectId;
   answers?: TaskAnswerController;
-  syncedAt?: Date | null;
-  onAnswerChanged?: () => void;
+  /** Opens the answer dialog of the card; the dialog lives above the board. */
+  onAnswer?: (taskId: number) => void;
 }
 
 export interface TaskCardViewProps {
@@ -150,14 +149,13 @@ export function TaskCard({
   renderEpic,
   projectId,
   answers,
-  syncedAt = null,
-  onAnswerChanged,
+  onAnswer,
 }: TaskCardProps) {
   const { t } = useTranslation();
   const showsState = stateLabel(task, t) !== null;
   const pending = showsState && task.agentStatus === 'pending';
   const showInlineAnswer = Boolean(
-    projectId && answers && pending && task.pendingRequestId !== null,
+    projectId && answers && onAnswer && pending && task.pendingRequestId !== null,
   );
   const { ref, isDragging } = useSortable({
     id: `card-${task.id}`,
@@ -175,20 +173,12 @@ export function TaskCard({
       renderEpic={renderEpic}
       showPendingReason={!showInlineAnswer}
     >
-      {projectId && answers && showInlineAnswer && (
-        <div className="card__answer" data-task-id={task.id}>
-          <DecisionRequestForm
-            projectId={projectId}
-            task={task}
-            operations={noOperations}
-            stateStore={answers.stateStore}
-            writeAnswer={answers.writeAnswer}
-            disabled={answers.wasAnswered(projectId, task.id, task.pendingRequestId)}
-            onChanged={onAnswerChanged}
-            onAnswered={(result) =>
-              task.pendingRequestId &&
-              answers.onAnswered(projectId, task.id, task.pendingRequestId, result, syncedAt)
-            }
+      {projectId && answers && onAnswer && showInlineAnswer && (
+        <div className="card__answer">
+          <DecisionAnswerButton
+            taskId={task.id}
+            continuing={answers.hasDraft(projectId, task.id)}
+            onClick={() => onAnswer(task.id)}
           />
         </div>
       )}

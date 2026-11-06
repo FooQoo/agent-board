@@ -3,6 +3,21 @@
   "owner": "U2",
   "files": [
     {
+      "file": "features/tasks/answer/DecisionAnswerDialogContainer.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerDialogContainer",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerdialogcontainer--open",
+              "states": ["question and options drawn from the card"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "features/tasks/answer/DecisionRequestFormView.tsx",
       "exports": [
         {

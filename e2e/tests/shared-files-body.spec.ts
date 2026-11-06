@@ -6,6 +6,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
+import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -19,8 +20,6 @@ interface ShownTask extends TaskJson {
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const body = (dialog: Locator) => dialog.getByRole('textbox', { name: 'Description (Markdown)' });
-const request = (page: Page, id: number) =>
-  page.locator(`.card__answer[data-task-id="${id}"]`).getByRole('region', { name: 'The agent is waiting for your answer' });
 
 function show(id: number): ShownTask {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
@@ -123,51 +122,42 @@ test('a decision request is answered with a choice only, with text only, or with
   // A choice alone.
   askWithChoices(16, 'Which way?', choices);
   await readBoardAfterReset(page);
-  await task(page, 16).click();
-  const answer = request(page, 16);
-  await expect(answer.getByRole('radiogroup', { name: 'Choices' })).toBeVisible();
-  const send = answer.getByRole('button', { name: 'Send', exact: true });
+  const answer = await openAnswer(page, 16);
+  await expect(answer.getByRole('radiogroup')).toBeVisible();
+  await expect(answer).toContainText('Which way?');
+  const send = answerSend(page);
   await expect(send).toBeDisabled();
   await answer.getByRole('radio', { name: 'Proceed' }).check();
   await expect(send).toBeEnabled();
   await send.click();
-  await expect(request(page, 16)).toHaveCount(0);
+  await expect(answer).toBeHidden();
+  await expect(answerButton(page, 16)).toHaveCount(0);
   expect(show(16)).toMatchObject({ agentStatus: 'idle' });
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
 
-  // Text alone, with no choice.
-  // The open drawer holds the stream's updates back; the new request shows once it is closed.
+  // Text alone, with no choice. No drawer is open, so the new request shows on the card on its own.
   askText(16, 'What name?');
-  await closeForUpdates(
-    () => details(page).getByRole('button', { name: 'Close details' }).click(),
-    () => expect(request(page, 16)).toContainText('What name?', { timeout: 1_000 }),
-  );
-  await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Keep the old name.');
-  await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page, 16)).toHaveCount(0);
+  await expect(answerButton(page, 16)).toBeVisible({ timeout: 15_000 });
+  await sendAnswer(page, 16, { text: 'Keep the old name.' });
   expectHistoryNote(show(16).history.at(-1), ['What name?', 'Keep the old name.']);
   expect(show(16).history.at(-1)).not.toHaveProperty('choiceId');
 
   // A choice and a note together.
-  // Nothing is open now, so the new request arrives on its own.
   askWithChoices(16, 'Which way now?', choices);
-  await expect(request(page, 16).getByRole('radio', { name: 'Stop' })).toBeVisible({ timeout: 15_000 });
-  await request(page, 16).getByRole('radio', { name: 'Stop' }).check();
-  await request(page, 16).getByRole('textbox', { name: 'Your answer' }).fill('Stop after the backup.');
-  await request(page, 16).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page, 16)).toHaveCount(0);
+  await expect(answerButton(page, 16)).toBeVisible({ timeout: 15_000 });
+  await sendAnswer(page, 16, { choice: 'Stop', text: 'Stop after the backup.' });
   expectHistoryNote(show(16).history.at(-1), ['Which way now?', 'Stop', 'Stop after the backup.']);
 });
 
 test('an answer with nothing chosen and nothing typed cannot be sent', async ({ page }) => {
   askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
-  await task(page, 15).click();
-  const send = request(page, 15).getByRole('button', { name: 'Send', exact: true });
+  const dialog = await openAnswer(page, 15);
+  const send = answerSend(page);
   await expect(send).toBeDisabled();
-  await request(page, 15).getByRole('textbox', { name: 'Your answer' }).fill('   ');
+  await answerNote(page).fill('   ');
   await expect(send).toBeDisabled();
-  await request(page, 15).getByRole('radio', { name: 'Yes' }).check();
+  await dialog.getByRole('radio', { name: 'Yes' }).check();
   await expect(send).toBeEnabled();
 });
 

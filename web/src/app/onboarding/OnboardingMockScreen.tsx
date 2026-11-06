@@ -1,6 +1,6 @@
 import '../../shared/i18n/onboarding-strings';
 import { useTranslation } from 'react-i18next';
-import { DecisionRequestFormView } from '../../features/tasks/answer/DecisionRequestFormView';
+import { DecisionAnswerButton } from '../../features/tasks/answer/DecisionAnswerButton';
 import { TaskCardView } from '../../features/tasks/card/TaskCard';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
@@ -28,28 +28,12 @@ const TARGET_RUNNING: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 
 const TARGET_PENDING: SpotlightRect = { x: 326, y: 126, width: 268, height: 496 };
 const TARGET_RESUMED: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 };
 
-/** The sample answer form inside the pending card, with the controls of the approved mock. */
-function SampleAnswerForm() {
+/** The answer button of the pending card, as the board shows it. */
+function SampleAnswerButton() {
   return (
-    <DecisionRequestFormView
-      question={pendingSample.pendingReason}
-      choices={pendingSample.pendingChoices}
-      model={{
-        choiceId: null,
-        text: '',
-        questionExpanded: true,
-        phase: 'editing',
-        message: null,
-        tooLong: false,
-        sendable: false,
-        disabled: false,
-      }}
-      onChoiceChange={noop}
-      onTextChange={noop}
-      onExpandQuestion={noop}
-      onClear={noop}
-      onSubmit={noop}
-    />
+    <div className="card__answer">
+      <DecisionAnswerButton taskId={pendingSample.id} continuing={false} onClick={noop} />
+    </div>
   );
 }
 
@@ -153,7 +137,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                 showPendingReason={false}
                 onSelect={noop}
               >
-                <SampleAnswerForm />
+                <SampleAnswerButton />
               </TaskCardView>,
             ]}
             done={[<TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />]}
@@ -171,7 +155,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                     showPendingReason={false}
                     onSelect={noop}
                   >
-                    <SampleAnswerForm />
+                    <SampleAnswerButton />
                   </TaskCardView>,
                 ]}
               />

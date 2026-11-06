@@ -19,8 +19,7 @@ export interface LaneProps {
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
   answers?: TaskAnswerController;
-  syncedAt?: Date | null;
-  onAnswerChanged?: () => void;
+  onAnswer?: (taskId: number) => void;
 }
 
 export function Lane({
@@ -32,8 +31,7 @@ export function Lane({
   onOpenEpic,
   projectId,
   answers,
-  syncedAt,
-  onAnswerChanged,
+  onAnswer,
 }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
@@ -69,8 +67,7 @@ export function Lane({
               renderEpic={renderEpic}
               projectId={projectId}
               answers={answers}
-              syncedAt={syncedAt}
-              onAnswerChanged={onAnswerChanged}
+              onAnswer={onAnswer}
             />
           ))}
         </div>

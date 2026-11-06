@@ -1,6 +1,11 @@
 import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { actionDialog, bulkArchiveDialog, docsDialog } from './dialogs/lazyDialogs';
+import {
+  actionDialog,
+  bulkArchiveDialog,
+  decisionAnswerDialog,
+  docsDialog,
+} from './dialogs/lazyDialogs';
 import type { AppDialogsProps } from './contracts';
 
 export function AppDialogs({
@@ -18,6 +23,7 @@ export function AppDialogs({
   const dialog = session.dialog;
   const operation = session.operation;
   const bulkArchive = session.bulkArchive;
+  const answerTarget = model.answerTarget;
 
   return (
     <>
@@ -40,6 +46,21 @@ export function AppDialogs({
             loadEpic={model.loadEpic}
             isTaskListed={model.isTaskListed}
             onChanged={() => model.refreshProject(operation.projectId)}
+          />
+        </Suspense>
+      ) : null}
+      {answerTarget !== null ? (
+        <Suspense fallback={null}>
+          <decisionAnswerDialog.Component
+            key={`${answerTarget.projectId}:${answerTarget.taskId}`}
+            projectId={answerTarget.projectId}
+            taskId={answerTarget.taskId}
+            task={tasks.find((task) => task.id === answerTarget.taskId) ?? null}
+            answers={model.answerSession}
+            operations={model.operations}
+            syncedAt={board.lastSyncedAt}
+            onAnswerChanged={() => model.refreshProject(answerTarget.projectId)}
+            onClose={model.closeAnswer}
           />
         </Suspense>
       ) : null}

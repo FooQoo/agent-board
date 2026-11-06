@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
 import { closeForUpdates, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
+import { openAnswer, sendAnswer } from '../helpers/answer';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -123,7 +124,10 @@ test('agboard state updates the run state and reason without reloading', async (
   agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a review')]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
-  await expect(doing.locator('.card__answer[data-task-id="13"]')).toContainText('Waiting for a review');
+  // The card offers the button only; the question is read in the dialog.
+  await expect(doing.getByText('Waiting for a review')).toHaveCount(0);
+  await expect(await openAnswer(page, 13)).toContainText('Waiting for a review');
+  await page.keyboard.press('Escape');
 
   agboardOk(mainProject, ['state', '13', 'idle']);
   await expect(doing.getByRole('button', { name: /^#13 AI Idle Check the board display / })).toBeVisible();
@@ -216,12 +220,10 @@ test('a user answer returns a pending task to idle and records the full answer i
     if (!dot || !reasonBox) throw new Error('history step has no box');
     expect(Math.abs(dot.y + dot.height / 2 - (reasonBox.y + lineHeight / 2))).toBeLessThan(1);
   }
-  // The request stays read-only in details; the response is entered on the card with no dialog.
+  // The request stays read-only in details; the response is entered in the card's answer dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
-  const answer = task(page, 12).locator('..').locator('.card__answer');
-  await answer.getByRole('textbox', { name: 'Your answer' }).fill(fullAnswer);
-  await answer.getByRole('button', { name: 'Send', exact: true }).click();
+  await sendAnswer(page, 12, { text: fullAnswer });
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);

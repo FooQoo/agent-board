@@ -4,6 +4,7 @@ import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, ty
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
+import { answerButton, answerNote, answerSend, openAnswer } from '../helpers/answer';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -17,8 +18,6 @@ interface ShownTask extends TaskJson {
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
-const request = (page: Page, id = 12) =>
-  page.locator(`.card__answer[data-task-id="${id}"]`);
 
 function show(id: number): ShownTask {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
@@ -132,59 +131,65 @@ test('a title or body over the limit cannot be added', async ({ page }) => {
   await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
 });
 
-// ------------------------------------------------------------------ Answering in place
+// ------------------------------------------------------------------ Answering in the dialog
 
-test('a waiting task answers in place while details stay independently available', async ({ page }) => {
+test('a waiting card opens its answer in a dialog; the input stays on the card when the dialog is closed', async ({ page }) => {
   await task(page, 12).click();
   const panel = details(page);
-  // The answer is shown and typed on the card only; the details do not repeat the request.
+  // The card shows only the button; the question and the form are in the dialog, and the details do not repeat them.
   await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
-  await expect(request(page).getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+  await expect(answerButton(page)).toHaveText('Answer the question');
+  await expect(page.getByRole('textbox', { name: 'Note' })).toHaveCount(0);
   await panel.getByRole('tab', { name: /^History/ }).click();
 
-  // The detail history remains readable while the answer stays on the card.
-  const answerBox = request(page).getByRole('textbox', { name: 'Your answer' });
-  const send = request(page).getByRole('button', { name: 'Send', exact: true });
+  const dialog = await openAnswer(page);
+  const send = answerSend(page);
+  const note = answerNote(page);
+  await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
   await expect(send).toBeDisabled();
-  await answerBox.fill('   ');
+  await note.fill('   ');
   await expect(send).toBeDisabled();
-  await answerBox.fill('Keep the current name.\nDo not migrate.');
-  await expect(panel.getByRole('tabpanel').getByRole('listitem').first()).toContainText('Waiting for confirmation');
-  await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
+  await note.fill('Keep the current name.\nDo not migrate.');
+  await expect(send).toBeEnabled();
 
-  // Dragging the card within its lane is still allowed while its answer is being edited.
-  const source = await page
-    .locator('.card__answer[data-task-id="12"]')
-    .locator('..')
-    .locator('.grip')
-    .boundingBox();
+  // Closing needs no confirmation: the input stays and the card offers to continue.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(answerButton(page)).toHaveText('Continue answering');
+  await expect(answerButton(page)).toBeFocused();
+  // The detail history remains readable while the answer is kept.
+  await expect(panel.getByRole('tabpanel').getByRole('listitem').first()).toContainText('Waiting for confirmation');
+
+  // Dragging the card within its lane is allowed while an answer is kept.
+  const source = await answerButton(page).locator('xpath=ancestor::div[contains(@class,"card__item")]').locator('.grip').boundingBox();
   const target = await task(page, 13).boundingBox();
   if (!source || !target) throw new Error('Could not measure the pending task drag.');
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
   await page.mouse.down();
-  await page.mouse.move(source.x + source.width / 2 + 20, source.y + source.height / 2 + 8, {
-    steps: 4,
-  });
+  await page.mouse.move(source.x + source.width / 2 + 20, source.y + source.height / 2 + 8, { steps: 4 });
   await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 });
   await page.mouse.up();
-  await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
+  await expect(answerButton(page)).toHaveText('Continue answering');
 
-  // Selecting another card opens its details without clearing this draft.
+  // Selecting another card opens its details without clearing the kept input.
   await task(page, 13).click();
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Check the board display');
-  await expect(answerBox).toHaveValue('Keep the current name.\nDo not migrate.');
   await task(page, 12).click();
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Restore a board from JSON');
+  await openAnswer(page);
+  await expect(note).toHaveValue('Keep the current name.\nDo not migrate.');
 
-  // Cancel clears the typed text; the request is still waiting and the form stays on the card.
-  await request(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(answerBox).toHaveValue('');
+  // Clear removes the input and is offered only while there is input; the request is still waiting.
+  await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(note).toHaveValue('');
+  await expect(dialog.getByRole('button', { name: 'Clear', exact: true })).toHaveCount(0);
   expect(show(12).agentStatus).toBe('pending');
-  await answerBox.fill('Keep the current name.\nDo not migrate.');
+  await note.fill('Keep the current name.\nDo not migrate.');
   await send.click();
 
-  // The card is Idle, the request is gone, and the answer is in the detail history.
-  await expect(request(page)).toHaveCount(0);
+  // The dialog closes, the card is Idle without a button, and the answer is in the detail history.
+  await expect(dialog).toBeHidden();
+  await expect(answerButton(page)).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   const newest = panel.getByRole('tabpanel').getByRole('listitem').first();
@@ -195,10 +200,9 @@ test('a waiting task answers in place while details stay independently available
   expectHistoryNote(stored.history.at(-1), ['Waiting for confirmation on how to replace a board.', 'Keep the current name.\nDo not migrate.']);
 });
 
-test('while it is sent the form cannot be sent twice or cancelled; a failure keeps the answer and can be retried', async ({
+test('while it is sent the dialog cannot be sent twice or closed; a failure keeps the answer and can be retried', async ({
   page,
 }) => {
-  await task(page, 12).click();
   let mode: 'fail' | 'hold' | 'pass' = 'fail';
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -213,26 +217,26 @@ test('while it is sent the form cannot be sent twice or cancelled; a failure kee
     if (mode === 'hold') await gate;
     return route.fallback();
   });
-  const box = request(page).getByRole('textbox', { name: 'Your answer' });
+  const dialog = await openAnswer(page);
+  const box = answerNote(page);
   await box.fill('My answer.');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
+  await answerSend(page).click();
 
-  // Failed: the text and the form stay, the error is announced, and nothing changed.
-  await expect(request(page).getByRole('alert')).toHaveText('Could not save. Try again.');
+  // Failed: the text and the dialog stay, the error is announced, and nothing changed.
+  await expect(dialog.getByRole('alert')).toContainText('Could not save. Try again.');
   await expect(box).toHaveValue('My answer.');
   expect(show(12).agentStatus).toBe('pending');
 
-  // Retried while the server is slow: the form is locked and sends once.
+  // Retried while the server is slow: the dialog is locked and sends once.
   mode = 'hold';
-  await request(page).getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(request(page).getByRole('button', { name: 'Sending…' })).toBeDisabled();
-  await expect(request(page).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Sending…' })).toBeDisabled();
   await expect(box).toBeDisabled();
   await page.keyboard.press('Escape');
-  await expect(box).toBeVisible();
+  await expect(dialog).toBeVisible();
   expect(posts).toBe(2);
   release();
-  await expect(request(page)).toHaveCount(0);
+  await expect(dialog).toBeHidden();
   expect(posts).toBe(2);
   expect(show(12)).toMatchObject({ agentStatus: 'idle' });
   expectHistoryNote(show(12).history.at(-1), ['Waiting for confirmation on how to replace a board.', 'My answer.']);
@@ -246,11 +250,12 @@ function askAgain(reason: string): void {
   agboardOk(mainProject, ['state', '12', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(reason)]);
 }
 
-test('when the agent asks something else while an answer is typed, the page says so, keeps the text, and sends it for the new request only after an edit', async ({
+test('when the agent asks something else while the dialog is open, it shows the new question, keeps the text, and sends it for the new request only after an edit', async ({
   page,
 }) => {
-  await task(page, 12).click();
-  const box = request(page).getByRole('textbox', { name: 'Your answer' });
+  const dialog = await openAnswer(page);
+  const box = answerNote(page);
+  await dialog.getByRole('radio').first().check();
   await box.fill('An answer to the old question.');
   const oldRequest = show(12).pendingRequestId;
 
@@ -262,71 +267,58 @@ test('when the agent asks something else while an answer is typed, the page says
   await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
 
-  // The open details hold the stream's updates back; once they are closed, the board is read. The new question
-  // is shown on the card, the old answer is kept but cannot be sent as it is.
-  await closeForUpdates(
-    () => details(page).getByRole('button', { name: 'Close details' }).click(),
-    () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }),
-  );
-  await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
+  // The open dialog holds no updates back: the left side shows the new question, the chosen option is cleared, the text stays.
+  await expect(dialog).toContainText('A different question now.');
+  await expect(dialog).toContainText('The question has changed. Review it and answer again.');
+  await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(0);
   await expect(box).toHaveValue('An answer to the old question.');
-  await expect(request(page).getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+  await expect(answerSend(page)).toBeDisabled();
   expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 
   // Editing the text again confirms it is meant for the new question; then it is sent.
   await box.fill('An answer to the new question.');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page)).toHaveCount(0);
+  await answerSend(page).click();
+  await expect(dialog).toBeHidden();
   expectHistoryNote(show(12).history.at(-1), ['A different question now.', 'An answer to the new question.']);
 });
 
 test('an answer sent from a page that missed the new request is refused by the server and not saved', async ({ page }) => {
-  await task(page, 12).click();
-  const box = request(page).getByRole('textbox', { name: 'Your answer' });
+  const dialog = await openAnswer(page);
+  const box = answerNote(page);
   await box.fill('An answer to the old question.');
 
   // This page cannot refresh its board, so it still shows the old request when the agent asks again.
   await page.route('**/api/projects/*/summary', (route) => route.abort());
   askAgain('A different question now.');
-  await expect(request(page)).toContainText('Waiting for confirmation on how to replace a board.');
+  await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
   const answered = page.waitForResponse((response) => response.url().endsWith('/tasks/12/answer'));
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
+  await answerSend(page).click();
   expect((await answered).status()).toBe(409);
-  await expect(request(page).getByRole('alert')).toHaveText('This request has changed. Review the latest board.');
+  await expect(dialog).toContainText('The question has changed. Review it and answer again.');
   await expect(box).toHaveValue('An answer to the old question.');
   // Nothing was saved: still waiting, now with the new question.
   expect(show(12)).toMatchObject({ agentStatus: 'pending', pendingReason: 'A different question now.' });
   expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 
-  // Once the board can be read, the new question appears.
+  // Once the board can be read, the new question appears and the text is kept.
   await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
-  await closeForUpdates(
-    () => details(page).getByRole('button', { name: 'Close details' }).click(),
-    () => expect(request(page)).toContainText('A different question now.', { timeout: 1_500 }),
-  );
+  await expect(dialog).toContainText('A different question now.');
   await expect(box).toHaveValue('An answer to the old question.');
 });
 
-test('a long reason is cut at four lines, and Show more reads all of it', async ({ page }) => {
+test('a long question does not grow the card; the dialog reads all of it', async ({ page }) => {
   const lines = Array.from({ length: 14 }, (_, index) => `Line ${index + 1} of a long question about the release plan.`);
   agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(lines.join('\n'))]);
-  // The card shows the question as soon as the page hears of it; details opened earlier would hold that back.
-  const reason = request(page, 13).locator('p', { hasText: 'Line 1 of a long question' });
-  await expect(reason).toBeVisible();
-  await task(page, 13).click();
-  const lineHeight = await reason.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
-  expect((await reason.boundingBox())!.height).toBeLessThanOrEqual(lineHeight * 4 + 2);
-  const more = request(page, 13).getByRole('button', { name: 'Show more' });
-  await expect(more).toBeVisible();
-  await more.click();
-  await expect(more).toHaveCount(0);
-  expect((await reason.boundingBox())!.height).toBeGreaterThan(lineHeight * 10);
-  await expect(reason).toContainText('Line 14 of a long question about the release plan.');
-  // The answer form is still there after reading it all.
-  await expect(request(page, 13).getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+  await expect(answerButton(page, 13)).toBeVisible();
+  // The card shows no question text, so its height does not follow the question.
+  await expect(page.getByText('Line 1 of a long question')).toHaveCount(0);
+  const card = answerButton(page, 13).locator('xpath=ancestor::div[contains(@class,"card__item")]');
+  expect((await card.boundingBox())!.height).toBeLessThan(200);
 
-  // A short reason has no Show more.
-  await task(page, 12).click();
-  await expect(request(page).getByRole('button', { name: 'Show more' })).toHaveCount(0);
+  const dialog = await openAnswer(page, 13);
+  await expect(dialog).toContainText('Line 1 of a long question about the release plan.');
+  await expect(dialog).toContainText('Line 14 of a long question about the release plan.');
+  await expect(answerNote(page)).toBeVisible();
+  await expect(answerSend(page)).toBeVisible();
 });

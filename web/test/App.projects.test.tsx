@@ -55,6 +55,8 @@ afterEach(() => {
 
 const urlOf = (id: string) => `?project=${id}`;
 const switcher = (name: string) => screen.getByRole('button', { name });
+const answerButtonOf = (taskId: number) =>
+  document.querySelector(`[data-decision-answer][data-task-id="${taskId}"]`) as HTMLElement;
 const taskButton = (title: string) => screen.getByRole('button', { name: new RegExp(title) });
 const writes = () =>
   fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST' || init?.method === 'DELETE');
@@ -731,7 +733,7 @@ describe('switching while a form is open', () => {
     await screen.findByText('Eight in knowledge');
   });
 
-  it('sends an answer to the project where the answer form was opened, with that task number', async () => {
+  it('sends an answer to the project where the answer dialog was opened, with that task number', async () => {
     const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
     expect(pendingA).toBeTruthy();
     backend.boards[PROJECT_B.id] = boardOf(
@@ -741,18 +743,20 @@ describe('switching while a form is open', () => {
     );
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(taskButton(pendingA?.title ?? ''));
-    expect(screen.queryByRole('dialog')).toBeNull();
-    await userEvent.type(screen.getByRole('textbox', { name: 'Your answer' }), 'Go ahead');
+    await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Go ahead');
+    // Typing in the open dialog holds the project, as the lease does.
     expect(
-      (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: 'agent-board', hidden: true }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
 
     app.navigate(urlOf(PROJECT_B.id));
     await act(async () => {});
-    expect(
-      (screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).value,
-    ).toBe('Go ahead');
+    expect((screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement).value).toBe(
+      'Go ahead',
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await screen.findByText('Same number elsewhere');
@@ -763,6 +767,38 @@ describe('switching while a form is open', () => {
       requestId: pendingA?.pendingRequestId,
       text: 'Go ahead',
     });
+  });
+
+  it('lets the project switch once the answer dialog is closed, and keeps the input for the card', async () => {
+    const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
+    expect(pendingA).toBeTruthy();
+    backend.boards[PROJECT_B.id] = boardOf(
+      PROJECT_B,
+      [makeTask({ id: pendingA?.id ?? 12, title: 'Same number elsewhere' })],
+      2,
+    );
+    const app = renderApp(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Go ahead');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(answerButtonOf(pendingA?.id ?? 0).textContent).toBe('Continue answering');
+    expect(
+      (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+
+    app.navigate(urlOf(PROJECT_B.id));
+    await screen.findByText('Same number elsewhere');
+    expect(writes()).toHaveLength(0);
+    app.navigate(urlOf(PROJECT_A.id));
+    await screen.findByRole('region', { name: 'Todo' });
+    expect(answerButtonOf(pendingA?.id ?? 0).textContent).toBe('Continue answering');
+    await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
+    expect(
+      (await screen.findByRole('textbox', { name: 'Note' })) as HTMLTextAreaElement,
+    ).toHaveProperty('value', 'Go ahead');
   });
 
   it('keeps the project and the confirmation open while an archive confirmation is open, and archives in that project', async () => {

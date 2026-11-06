@@ -89,8 +89,9 @@ describe('Task', () => {
     expect(container.querySelector('.card--pending')).not.toBeNull();
   });
 
-  it('shows the pending answer on the task without turning form clicks into task selection', async () => {
+  it('shows only the answer button on the pending task and keeps its click from selecting the task', async () => {
     const onSelect = vi.fn();
+    const onAnswer = vi.fn();
     const { result } = renderHook(() => useTaskAnswers(vi.fn(), vi.fn()));
     const task = makeTask({
       id: 41,
@@ -107,13 +108,15 @@ describe('Task', () => {
         onSelect={onSelect}
         projectId="project-1"
         answers={result.current}
+        onAnswer={onAnswer}
       />,
     );
 
-    const answer = screen.getByRole('textbox', { name: 'Your answer' });
-    await userEvent.click(answer);
+    expect(screen.queryByText('Choose a direction')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Answer the question' }));
+    expect(onAnswer).toHaveBeenCalledWith(41);
     expect(onSelect).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
 
     const taskButton = container.querySelector('.card');
     if (!taskButton) throw new Error('task button is missing');

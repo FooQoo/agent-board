@@ -6,6 +6,7 @@ import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboa
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
+import { answerButton, sendAnswer } from '../helpers/answer';
 
 // Opening a task reads its text, conditions, log and epic once, so every tab shows at once. A status
 // change reads the Summary and the history again but not the text. The drawer holds the stream back
@@ -14,7 +15,6 @@ import { putDraft } from '../helpers/drafts';
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
-const request = (page: Page, id = 12) => page.locator(`.card__answer[data-task-id="${id}"]`);
 
 interface Seen {
   path: string;
@@ -144,10 +144,9 @@ test('the drawer holds updates while it is open and for 3 seconds after; a save 
   await expect(task(page, 14).getByText('Draft', { exact: true })).toHaveCount(0, { timeout: 2_000 });
 
   // An answer shows at once, too: the request is gone and the card is idle.
-  await expect(request(page)).toBeVisible();
-  await request(page).getByRole('textbox', { name: 'Your answer' }).fill('Keep the current name.');
-  await request(page).getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(request(page)).toHaveCount(0, { timeout: 2_000 });
+  await expect(answerButton(page)).toBeVisible();
+  await sendAnswer(page, 12, { text: 'Keep the current name.' });
+  await expect(answerButton(page)).toHaveCount(0, { timeout: 2_000 });
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle / })).toBeVisible({ timeout: 2_000 });
 
   // A change from the CLI made now is held until the drawer has been closed for 3 seconds.

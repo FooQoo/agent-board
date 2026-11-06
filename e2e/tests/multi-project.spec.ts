@@ -19,6 +19,7 @@ import {
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog } from '../helpers/ui';
+import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
@@ -33,8 +34,6 @@ const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status')
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
-/** The inline answer form for a pending card; its accessible labels follow the selected language. */
-const request = (page: Page, id: number) => page.locator(`.card__answer[data-task-id="${id}"]`);
 /**
  * The project switcher, the first button in the header. An open menu or dialog hides the page behind it
  * from the accessibility tree, so it is found by CSS, which works in every state.
@@ -191,7 +190,10 @@ test.describe('two projects with the same task numbers', () => {
     await expect(page).toHaveTitle('Alpha - Agent Board');
     await expect(task(page, 1)).toHaveText(/Alpha: draft the release notes/);
     await expect(task(page, 2)).toHaveText(/Alpha: choose the license/);
-    await expect(task(page, 2).locator('..')).toContainText('Which license should Alpha use?');
+    // The card offers the button; the question is read in the dialog.
+    await expect(await openAnswer(page, 2)).toContainText('Which license should Alpha use?');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('contentinfo')).toContainText('3 tasks');
     await task(page, 2).click();
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
@@ -202,10 +204,8 @@ test.describe('two projects with the same task numbers', () => {
     const fresh = nextTaskId('Alpha', home);
 
     // Answer the pending request in Alpha with the board's own dialog.
-    const answer = request(page, 2);
-    await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license.');
-    await answer.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(answer).toHaveCount(0);
+    await sendAnswer(page, 2, { text: 'Use the MIT license.' });
+    await expect(answerButton(page, 2)).toHaveCount(0);
     await expect(task(page, 2)).toContainText('Idle');
     await expect(details(page).getByRole('listitem').first()).toContainText('Use the MIT license.');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
@@ -236,7 +236,10 @@ test.describe('two projects with the same task numbers', () => {
     await choose(page, 'Beta');
     await expect(switcher(page)).toHaveText('Beta');
     await expect(task(page, 1)).toHaveText(/Beta: benchmark the importer/);
-    await expect(task(page, 2).locator('..')).toContainText('Which database should Beta use?');
+    // The card offers the button; the question is read in the dialog.
+    await expect(await openAnswer(page, 2)).toContainText('Which database should Beta use?');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(task(page, 3)).toContainText('Beta: refactor the parser');
     await expect(page.getByRole('contentinfo')).toContainText('3 tasks');
     await expect(page.getByText('Alpha:')).toHaveCount(0);
@@ -247,10 +250,8 @@ test.describe('two projects with the same task numbers', () => {
 
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
-    const betaAnswer = request(page, 2);
-    await betaAnswer.getByRole('textbox', { name: 'Your answer' }).fill('Use plain files.');
-    await betaAnswer.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(betaAnswer).toHaveCount(0);
+    await sendAnswer(page, 2, { text: 'Use plain files.' });
+    await expect(answerButton(page, 2)).toHaveCount(0);
     await expect(task(page, 2)).toContainText('Idle');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
     expect(listTasks('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
@@ -391,11 +392,13 @@ test.describe('two projects with the same task numbers', () => {
         };
       } else if (kind === 'answer') {
         await task(page, 2).click();
-        const dialog = request(page, 2);
-        // Typed text holds the project in place; Cancel clears it and frees the menu.
-        await dialog.getByRole('textbox', { name: 'Your answer' }).fill('Typed in the form.');
+        const dialog = await openAnswer(page, 2);
+        // Typed text in the open dialog holds the project in place; Clear drops it and frees the menu.
+        await answerNote(page).fill('Typed in the form.');
         close = async () => {
-          await dialog.getByRole('button', { name: 'Cancel' }).click();
+          await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
+          await page.keyboard.press('Escape');
+          await expect(dialog).toBeHidden();
         };
       } else {
         await task(page, 3).click();
@@ -414,6 +417,27 @@ test.describe('two projects with the same task numbers', () => {
       await expect.poll(() => projectParam(page)).toBe(beta);
     });
   }
+
+  test('a closed answer dialog keeps its input without holding the project; the input is there when it is opened again', async ({
+    page,
+  }) => {
+    await open(page, alpha);
+    const dialog = await openAnswer(page, 2);
+    await answerNote(page).fill('Kept while closed.');
+    await expect(switcherBehindDialog(page)).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(answerButton(page, 2)).toHaveText('Continue answering');
+    // Closing frees the menu even though the input stays.
+    await expect(switcher(page)).toBeEnabled();
+    await choose(page, 'Beta');
+    await expect.poll(() => projectParam(page)).toBe(beta);
+    await choose(page, 'Alpha');
+    await expect.poll(() => projectParam(page)).toBe(alpha);
+    await expect(answerButton(page, 2)).toHaveText('Continue answering');
+    await openAnswer(page, 2);
+    await expect(answerNote(page)).toHaveValue('Kept while closed.');
+  });
 
   test('back and forward during a form are applied after it is done, and the form writes to the project it started in', async ({
     page,
@@ -501,21 +525,22 @@ test.describe('two projects with the same task numbers', () => {
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
     await task(page, 2).click();
-    const answer = request(page, 2);
-    await answer.getByRole('textbox', { name: 'Your answer' }).fill('Beta answer.');
+    const answer = await openAnswer(page, 2);
+    await answerNote(page).fill('Beta answer.');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
-    await expect(switcher(page)).toHaveText('Beta');
-    await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('Beta answer.');
-    await expect(answer.getByRole('button', { name: 'Send', exact: true })).toBeEnabled();
+    await expect(switcherBehindDialog(page)).toHaveText('Beta');
+    await expect(answerNote(page)).toHaveValue('Beta answer.');
+    await expect(answerSend(page)).toBeEnabled();
     const answerResponse = page.waitForResponse((response) =>
       response.url().includes(`/api/projects/${beta}/tasks/2/answer`),
     );
-    await answer.getByRole('button', { name: 'Send', exact: true }).click();
+    await answerSend(page).click();
     expect((await answerResponse).status()).toBe(200);
+    await expect(answer).toBeHidden();
     await expect(switcher(page)).toHaveText('Alpha');
-    // Alpha has its own pending #2, so an ID-only locator now resolves to Alpha's answer form.
-    await expect(request(page, 2)).toBeVisible();
+    // Alpha has its own pending #2, so an ID-only locator now resolves to Alpha's answer button.
+    await expect(answerButton(page, 2)).toBeVisible();
     expect(listTasks('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
     expect(listTasks('Alpha', home).find(({ id }) => id === 2)?.agentStatus).toBe('pending');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
@@ -645,10 +670,8 @@ test.describe('two projects with the same task numbers', () => {
       // The person answers the request of Alpha's card #2 on the page.
       await open(page, alpha);
       await task(page, 2).click();
-      const answer = request(page, 2);
-      await answer.getByRole('textbox', { name: 'Your answer' }).fill('Use the MIT license, please.');
-      await answer.getByRole('button', { name: 'Send', exact: true }).click();
-      await expect(answer).toHaveCount(0);
+      await sendAnswer(page, 2, { text: 'Use the MIT license, please.' });
+      await expect(answerButton(page, 2)).toHaveCount(0);
 
       expect(await ended).toBe(0);
       const received = JSON.parse(out) as {
@@ -856,13 +879,15 @@ test.describe('two projects with the same task numbers', () => {
     // The answer, in Japanese and typed in place, for Beta's own request.
     await task(page, 2).click();
     const japanesePanel = page.getByRole('complementary', { name: 'タスクの詳細' });
-    // The answer form is part of the request, open at once; no dialog opens.
+    // The card shows the answer button; the answer opens in a dialog.
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    const japaneseAnswer = request(page, 2);
-    await expect(japaneseAnswer.getByRole('textbox', { name: '回答' })).toBeVisible();
-    await japaneseAnswer.getByRole('textbox', { name: '回答' }).fill('Typed then cleared.');
-    await japaneseAnswer.getByRole('button', { name: 'キャンセル', exact: true }).click();
-    await expect(japaneseAnswer.getByRole('textbox', { name: '回答' })).toHaveValue('');
+    await expect(answerButton(page, 2)).toHaveText('質問に回答する');
+    const japaneseAnswer = await openAnswer(page, 2);
+    await japaneseAnswer.getByRole('textbox', { name: 'メモ' }).fill('Typed then cleared.');
+    await japaneseAnswer.getByRole('button', { name: '入力をクリア', exact: true }).click();
+    await expect(japaneseAnswer.getByRole('textbox', { name: 'メモ' })).toHaveValue('');
+    await page.keyboard.press('Escape');
+    await expect(japaneseAnswer).toBeHidden();
 
     // The detail width a person chose belongs to the screen, not to the project.
     const panel = page.getByRole('complementary', { name: 'タスクの詳細' });

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { agboardOk, mainProject, nextTaskId, projectId, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
+import { answerButton, answerDialog, openAnswer } from '../helpers/answer';
 
 test.beforeEach(() => resetPreferences());
 
@@ -63,10 +64,11 @@ for (const { locale, theme, height } of [
     await waitForSync(page);
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
-    const answer = page.locator(`.card__answer[data-task-id="${id}"]`);
-    const item = answer.locator('..');
-    await expect(answer).toContainText(question);
-    await expect(item.getByText(question, { exact: true })).toHaveCount(1);
+    const answer = answerButton(page, id);
+    const item = answer.locator('xpath=ancestor::div[contains(@class,"card__item")]');
+    // The card shows the button only; a long question never makes the card grow.
+    await expect(answer).toBeVisible();
+    await expect(page.getByText(question, { exact: true })).toHaveCount(0);
     await item.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath('pending-lane.png') });
 
@@ -84,19 +86,18 @@ for (const { locale, theme, height } of [
     expect(geometry.clipped).toBeLessThanOrEqual(1);
     expect(geometry.childOverflow).toBeLessThanOrEqual(1);
     expect(geometry.laneScrolls).toBe(true);
-    const more = answer.locator('.detail__more');
-    if (await more.isVisible()) await more.click();
-    const reason = answer.locator('.detail__reason');
-    await reason.scrollIntoViewIfNeeded();
-    await expect(reason).toBeInViewport({ ratio: 1 });
+    if (height === 900) await item.screenshot({ path: testInfo.outputPath('pending-card.png') });
+
+    // The dialog reads the whole question and keeps the answer in view.
+    const dialog = await openAnswer(page, id);
+    await expect(dialog.getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
-    const send = answer.getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true });
-    await send.scrollIntoViewIfNeeded();
+    const send = answerDialog(page).getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true });
     await expect(send).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-answer.png') });
-    if (height === 900) await item.screenshot({ path: testInfo.outputPath('pending-card.png') });
-    await answer.getByText('この計画を承認する', { exact: true }).click();
-    await answer.getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true }).click();
+    await dialog.getByText('この計画を承認する', { exact: true }).click();
+    await send.click();
+    await expect(dialog).toBeHidden();
     await expect(answer).toHaveCount(0);
     const result = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
     expect(result.agentStatus).toBe('idle');
