@@ -267,10 +267,6 @@ ol {
   background: var(--r-lane);
 }
 
-.lane:has(.lane-header__archive) {
-  gap: 14px;
-}
-
 .lane-header {
   display: flex;
   align-items: center;
@@ -292,6 +288,8 @@ ol {
 }
 
 .lane-header__archive {
+  /* Overlap the header padding so the button does not make the Done header taller than the others. */
+  margin-block: calc((19px - var(--btn-s-icon)) / 2);
   margin-left: auto;
   display: inline-flex;
   align-items: center;
