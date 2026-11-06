@@ -370,6 +370,18 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await expect(epicDialog).toHaveCount(0);
   await expect.poll(() => epic().name).toBe('Preview epic, saved');
   expect(epic().isDraft).toBe(false);
+
+  // Cmd+S and Ctrl+S save an epic as the Save button does.
+  for (const [keys, text] of [['Meta+s', 'Saved with Cmd+S'], ['Control+s', 'Saved with Ctrl+S']]) {
+    await page.getByRole('button', { name: 'Edit epic' }).click();
+    await expect(epicDialog).toBeVisible();
+    await name.fill(text);
+    await expect(epicDialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await page.keyboard.press(keys);
+    await expect(epicDialog).toHaveCount(0);
+    await expect.poll(() => epic().name).toBe(text);
+    expect(epic().isDraft).toBe(false);
+  }
 });
 
 test('PM-4 a task opened from the archive is read-only and never becomes a draft', async ({ page }) => {
