@@ -209,7 +209,7 @@ test('a user answer returns a pending task to idle and records the full answer i
   await expect(panel.locator('.history__step .dot').first()).not.toHaveAttribute('data-column');
   await expect(panel.locator('.history__step .dot').first()).toHaveAttribute('data-tone', 'idle');
   await expect(panel.locator('.history__step .dot').first()).toHaveCSS('background-color', 'rgb(133, 144, 161)');
-  await expect(panel.locator('.history__reason').first()).toHaveCSS('color', 'rgb(27, 36, 48)');
+  await expect(panel.locator('.history__reason .md').first()).toHaveCSS('color', 'rgb(86, 98, 116)');
   await expect(panel.locator('.history__at').first()).toHaveCSS('color', 'rgb(86, 98, 116)');
   expect(await panel.locator('.history__step').first().evaluate((step) => getComputedStyle(step, '::before').backgroundColor)).toBe('rgb(225, 229, 235)');
   // Each dot is centered on the first line of its reason, not on the time above it or below the text.

@@ -109,7 +109,7 @@ export function MonitorDrawerPanels({
             inert={tab !== 'history'}
             className="monitor-drawer__panel"
           >
-            {drawn('history') && <TaskHistoryTab item={item} />}
+            {drawn('history') && <TaskHistoryTab item={item} resolvers={resolvers} />}
           </div>
           <div
             role="tabpanel"

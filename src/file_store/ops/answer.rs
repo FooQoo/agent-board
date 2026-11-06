@@ -119,24 +119,25 @@ impl FileStore {
             .ok_or(AgboardError::RequestChanged)?
             .question
             .clone();
+        // History is drawn as Markdown, so the question and each answer stand as their own blocks.
         let english = format!(
-            "Answered decision: {question}.{}{}",
+            "Answered decision:\n\n{question}{}{}",
             choice_label
                 .as_ref()
-                .map(|label| format!(" Selected: {label}."))
+                .map(|label| format!("\n\nSelected: {label}"))
                 .unwrap_or_default(),
             text.as_ref()
-                .map(|text| format!(" Answer: {text}"))
+                .map(|text| format!("\n\nAnswer: {text}"))
                 .unwrap_or_default()
         );
         let japanese = format!(
-            "判断依頼に回答しました: {question}。{}{}",
+            "判断依頼に回答しました:\n\n{question}{}{}",
             choice_label
                 .as_ref()
-                .map(|label| format!(" 選択: {label}。 "))
+                .map(|label| format!("\n\n選択: {label}"))
                 .unwrap_or_default(),
             text.as_ref()
-                .map(|text| format!(" 回答: {text}"))
+                .map(|text| format!("\n\n回答: {text}"))
                 .unwrap_or_default()
         );
         let reason = self

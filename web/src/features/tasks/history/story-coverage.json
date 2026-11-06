@@ -25,6 +25,11 @@
           "id": "task-history-historytimeline--long-reason",
           "states": ["long reason wraps"],
           "interaction": false
+        },
+        {
+          "id": "task-history-historytimeline--markdown-reason",
+          "states": ["heading, table, code, and image in a reason"],
+          "interaction": true
         }
       ]
     }

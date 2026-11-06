@@ -297,6 +297,37 @@ fn an_answer_with_a_choice_and_a_note_stores_both() {
 }
 
 #[test]
+fn a_markdown_question_stays_a_block_of_its_own_in_history() {
+    let fx = fixture();
+    let id = fx.working_task();
+    let question = "## Database\n\n| Name | Size |\n| --- | --- |\n| main | 1 GB |";
+    let request = fx.two_choice_request(id, question);
+    fx.store
+        .answer_request(
+            &fx.project,
+            id,
+            &request,
+            answer(Some("proceed"), Some("Keep it.")),
+            later(),
+        )
+        .unwrap();
+
+    let history = fx.history(id);
+    let events = history.as_array().unwrap();
+    let reasons: Vec<&str> = events
+        .iter()
+        .rev()
+        .take(2)
+        .map(|event| event["reason"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        reasons[0],
+        format!("Answered decision:\n\n{question}\n\nSelected: Proceed\n\nAnswer: Keep it.")
+    );
+    assert!(reasons[1].starts_with(&format!("Requested decision:\n\n{question}\n\nOptions: ")));
+}
+
+#[test]
 fn an_empty_answer_is_refused_and_changes_nothing() {
     let fx = fixture();
     let id = fx.working_task();

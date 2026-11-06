@@ -242,8 +242,9 @@ impl FileStore {
                 .map(|choice| format!("{}: {}", choice.id, choice.label))
                 .collect::<Vec<_>>()
                 .join("; ");
-            let english = format!("Requested decision: {reason} Options: {options}");
-            let japanese = format!("判断を依頼しました: {reason} 選択肢: {options}");
+            // History is drawn as Markdown, so the question stands as its own block.
+            let english = format!("Requested decision:\n\n{reason}\n\nOptions: {options}");
+            let japanese = format!("判断を依頼しました:\n\n{reason}\n\n選択肢: {options}");
             language.text(&english, &japanese).to_owned()
         } else {
             reason.to_owned()

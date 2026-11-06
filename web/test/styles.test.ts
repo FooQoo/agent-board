@@ -83,8 +83,8 @@ describe('app.css', () => {
     expect(css).not.toMatch(/\.icon-button\s*\{/);
   });
 
-  it('keeps the history reason line breaks and stops the spinner for reduced motion', () => {
-    expect(css).toMatch(/\.history__reason\s*\{[^}]*white-space:\s*pre-wrap/);
+  it('keeps the line breaks of a plain history reason and stops the spinner for reduced motion', () => {
+    expect(css).toMatch(/\.history__plain\s*\{[^}]*white-space:\s*pre-wrap/);
     expect(css).toMatch(
       /prefers-reduced-motion:\s*reduce\)\s*\{[^}]*\.spinner[^}]*animation:\s*none/,
     );

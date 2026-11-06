@@ -654,9 +654,9 @@ ol {
 /* ---- History timeline ---- */
 
 .history {
-  /* The dots sit on the middle of the first line of each reason: the time line (18px), the gap (8px), and half of the reason line (10px). */
+  /* The dots sit on the middle of the first line of each reason: the time line (18px), the gap (8px), and half of the reason line (12.25px). */
   --history-gap: 24px;
-  --history-dot-center: 36px;
+  --history-dot-center: 38.25px;
   display: flex;
   flex-direction: column;
   gap: var(--history-gap);
@@ -728,10 +728,16 @@ ol {
   color: var(--r-text2);
 }
 
+/* A reason is drawn as the task body is, so its first line has the body's size. */
 .history__reason {
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--r-text);
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.history__plain {
+  margin: 0;
+  color: var(--r-text2);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

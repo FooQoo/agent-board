@@ -105,7 +105,7 @@ fn a_request_with_two_choices_is_saved_in_task_history() {
         agent_event["reason"]
             .as_str()
             .unwrap()
-            .starts_with("Requested decision: Which database?")
+            .starts_with("Requested decision:\n\nWhich database?")
     );
     assert_eq!(agent_event.as_object().unwrap().len(), 2);
 }
@@ -142,7 +142,7 @@ fn answering_with_a_choice_only_returns_the_task_to_idle_and_keeps_the_choice_in
         answer["reason"]
             .as_str()
             .unwrap()
-            .contains("Selected: Revise the plan.")
+            .contains("Selected: Revise the plan")
     );
 }
 
@@ -235,7 +235,7 @@ fn answering_with_a_choice_and_a_note_keeps_both() {
         answer["reason"]
             .as_str()
             .unwrap()
-            .contains("Selected: Proceed as planned.")
+            .contains("Selected: Proceed as planned")
     );
     assert!(
         answer["reason"]

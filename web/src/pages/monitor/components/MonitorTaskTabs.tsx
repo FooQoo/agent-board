@@ -69,11 +69,21 @@ export function TaskAcceptanceTab({
 }
 
 /** The history tab. */
-export function TaskHistoryTab({ item }: TabProps) {
+export function TaskHistoryTab({
+  item,
+  resolvers,
+}: TabProps & { resolvers: MonitorReadResolvers }) {
   const detail = useTaskDetail(item.projectId, item.task.id);
   return (
     <MonitorSection snapshot={detail.history} onRetry={() => void detail.refresh()}>
-      {(history) => <HistoryTimeline events={history.items} />}
+      {(history) => (
+        <HistoryTimeline
+          events={history.items}
+          resolveAttachment={attachmentResolver((id) =>
+            resolvers.attachmentUrl(item.projectId, item.task.id, id),
+          )}
+        />
+      )}
     </MonitorSection>
   );
 }

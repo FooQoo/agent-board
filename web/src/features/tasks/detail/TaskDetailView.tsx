@@ -186,7 +186,7 @@ export function TaskDetailView({
       >
         {tab === 'history' && (
           <DetailSectionView snapshot={history} onRetry={() => onRetryHistory?.()}>
-            {(data) => <HistoryTimeline events={data.items} />}
+            {(data) => <HistoryTimeline events={data.items} resolveAttachment={attachmentUrl} />}
           </DetailSectionView>
         )}
       </div>
