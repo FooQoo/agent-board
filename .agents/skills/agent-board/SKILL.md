@@ -13,7 +13,7 @@ How the board is used:
 - An **epic** is a management unit that groups tasks and sets their order. Its `EPIC.md` states the goal, the scope, the completion conditions, and how the work proceeds. A task's `epicId` is the only record of its membership.
 - A **task** is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Task operations append automatically; agents also append meaningful work progress automatically. Keep task plans and concise acceptance verification results in the body; never keep a chronological execution log there or duplicate history in `task.json`. Attach images when visual proof is useful. `EPIC.md` has no history.
+- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`. Every entry has exactly `at` (timestamp) and `reason` (content). Task operations append automatically; agents also append meaningful work progress automatically. Keep task plans and concise acceptance verification results in the body; never keep a chronological execution log there or duplicate history in `task.json`. A reason is Markdown, drawn like the task body, so it can hold tables, code, and images. Attach images when visual proof is useful. `EPIC.md` has no history.
 
 ## Language of board content
 
@@ -141,13 +141,13 @@ Lane and run-state operations already append their own history. Do not add a sec
    agboard --project "<name>" state <id> running --actor ai --reason "<what you are doing now>"
    ```
 
-3. **Work and record.** Use `history add` for meaningful work progress that does not change the lane or run state. Keep the current task plan and concise verification results, including the commit or version verified, in the body. Attach images with `attachment add <id> --file <path> --actor ai` when visual proof is useful.
+3. **Work and record.** Use `history add` for meaningful work progress that does not change the lane or run state. Keep the current task plan and concise verification results, including the commit or version verified, in the body. Attach images with `attachment add <id> --file <path> --actor ai` when visual proof is useful. To show one in a history reason, write the path that command prints as a Markdown image (see [references/file-format.md](references/file-format.md)), and pass a reason with several lines through `--reason-file`.
 4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its concise result in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI task automatically. Do not manually move a task to Done during the normal work loop. If the task does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
 5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
 6. **Finish or interrupt.** Automatic completion removes the task from progress. Done tasks are read-only for agents: do not edit their task files, append history or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
 7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the EPIC.md body and record the outcome there. Skip this step for `BUG` and `ENHANCEMENT`: their bodies stay fixed and the classification epics stay open. The app does not manage epic acceptance frontmatter or epic history.
 
-Keep history reasons concise and useful. Record concise verification results in the TASK body; use image attachments for visual proof. Do not store full test logs on the board.
+Keep history reasons concise and useful. Use Markdown in a reason when it makes the evidence easier to read. Record concise verification results in the TASK body; use image attachments for visual proof. Do not store full test logs on the board.
 
 ## 7. Ask the user a decision
 

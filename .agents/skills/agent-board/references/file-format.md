@@ -39,7 +39,7 @@ history:
     reason: "Verified the setup guide links and recorded the result in the task body."
 ```
 
-`at` must be a UTC string in the exact `YYYY-MM-DDTHH:MM:SSZ` format, with whole seconds and uppercase `Z`. Timezone offsets (including `+00:00`) and fractional seconds are rejected. `reason` is concise content (up to 10,000 Unicode characters, including surrounding whitespace). A supplied nonblank reason is preserved verbatim; questions and answer text retain their separate 2,000-character limits. Entries have no ID, kind, actor, or transition fields. API and CLI responses return history in this same two-field shape. Question and answer lookup data is separate from history.
+`at` must be a UTC string in the exact `YYYY-MM-DDTHH:MM:SSZ` format, with whole seconds and uppercase `Z`. Timezone offsets (including `+00:00`) and fractional seconds are rejected. `reason` is concise content (up to 10,000 Unicode characters, including surrounding whitespace). A supplied nonblank reason is preserved verbatim; questions and answer text retain their separate 2,000-character limits. A reason is Markdown: the board draws it like a task body, with headings, tables, code, links, and images. An image attached to the same task uses the body's reference, `![caption](assets/<attachment-id>.<ext>)`. Entries have no ID, kind, actor, or transition fields. API and CLI responses return history in this same two-field shape. Question and answer lookup data is separate from history.
 
 Agent Board appends history automatically for task operations, including UI or CLI lane and state changes, questions and answers, and archive or restore actions. Missing or blank reasons generate wording from the current state. The browser's reason field is optional.
 
@@ -50,7 +50,7 @@ agboard --project "<name>" history add <id> --reason "<actual work and verificat
 agboard --project "<name>" history add <id> --reason-file <path>
 ```
 
-The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
+Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
 
 Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation. Read history in the board or with `show`/`snapshot`.
 
