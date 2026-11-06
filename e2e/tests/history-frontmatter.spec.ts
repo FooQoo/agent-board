@@ -182,14 +182,18 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await page.setViewportSize({ width: 375, height: 812 });
 	await serve.open(page, `${serve.phoneOrigin}/monitor/?project=${pid}`);
 	const article = page.getByRole('article', { name: new RegExp(`Pending history answer`) });
-	await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toBeVisible();
-	await article.getByRole('radio', { name: 'Plan B' }).check();
-	await article.getByRole('textbox', { name: 'Your answer' }).fill('Ship the stable release.');
+	// The card holds only the button; the answer is given in the sheet.
+	await article.getByRole('button', { name: 'Answer the question' }).click();
+	const sheet = page.getByRole('dialog', { name: /Pending history answer/ });
+	await expect(sheet.getByText('Which release should ship?')).toBeVisible();
+	await sheet.getByRole('radio', { name: 'Plan B' }).click();
+	await sheet.getByRole('textbox').fill('Ship the stable release.');
 	const answerRequest = page.waitForResponse((response) =>
 		response.url().includes(`/tasks/${id}/answer`) && response.request().method() === 'POST');
-	await article.getByRole('button', { name: 'Send', exact: true }).click();
+	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
 	expect((await answerRequest).status()).toBe(200);
-	await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
+	await expect(sheet).toHaveCount(0);
+	await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
 
 	const waited = await waiting.result;
 	expect(waited.code, waited.stderr).toBe(0);

@@ -198,13 +198,13 @@ test('the editor is not loaded on the first screen, and assets that are not regi
   // The first screen loads the content-named app bundle and its style only.
   expect(loaded.some((name) => /^app-[\w-]+\.js$/.test(name))).toBe(true);
   expect(loaded.some((name) => /^app-[\w-]+\.css$/.test(name))).toBe(true);
-  // The editor, the diagram engines (one chunk per diagram kind, plus its layout and graph code) wait for their use.
-  expect(loaded.filter((name) => /RichMarkdownEditor|Diagram|cytoscape|elk|katex|codemirror/i.test(name)), loaded.join(' ')).toEqual([]);
+  // The editor itself (its small wrapper may load with the preloaded dialogs) and the diagram engines (one chunk per diagram kind, plus its layout and graph code) wait for their use.
+  expect(loaded.filter((name) => /RichMarkdownEditor\.impl|Diagram|cytoscape|elk|katex|codemirror/i.test(name)), loaded.join(' ')).toEqual([]);
 
   // Opening the add dialog loads the editor chunk, which the first screen did not need.
   const create = await openManualCreateDialog(page);
   await expect(create.getByRole('textbox', { name: 'Description (Markdown)' })).toBeVisible();
-  await expect.poll(() => loaded.some((name) => /RichMarkdownEditor/.test(name))).toBe(true);
+  await expect.poll(() => loaded.some((name) => /RichMarkdownEditor\.impl/.test(name))).toBe(true);
 
   // A name that is not registered is a 404.
   const missing = await page.request.get(`${mainOrigin}/assets/not-registered-${Date.now()}.js`);
