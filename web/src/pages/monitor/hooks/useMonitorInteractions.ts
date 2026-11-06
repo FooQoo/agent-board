@@ -40,6 +40,9 @@ export function useMonitorInteractions({
         state.tasksWithSavedAnswers(tasks, snapshotIsFresh),
       wasAnswered: (projectId, taskId, requestId) =>
         state.wasAnswered(projectId, taskId, requestId),
+      setAnswerOpen: (projectId, taskId, open) => state.setAnswerOpen(projectId, taskId, open),
+      hasDraft: (projectId, taskId) => state.hasDraft(projectId, taskId),
+      hasAnyDraft: () => state.hasAnyDraft(),
       locked: state.locked,
     }),
     [state, writeAnswer, state.locked],
