@@ -44,6 +44,21 @@
               "interaction": true
             },
             {
+              "id": "task-card-taskcard--pending-with-answer",
+              "states": [
+                "decision request",
+                "answer button only",
+                "no question text",
+                "button height"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-card-taskcard--pending-continuing",
+              "states": ["decision request", "input kept", "continue answering button"],
+              "interaction": true
+            },
+            {
               "id": "task-card-taskcard--from-summary",
               "states": ["card from the Summary", "no body", "two of four conditions"],
               "interaction": true

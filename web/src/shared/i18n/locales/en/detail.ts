@@ -59,6 +59,8 @@ export const detailEn = {
     guide: 'Choose an option, or answer with a note alone.',
     clear: 'Clear',
     close: 'Close',
+    sheetClose: 'Close the answer',
+    sheetDismiss: 'Swipe down to close the answer',
     changed: 'The question has changed. Review it and answer again.',
     withdrawn: 'This question was withdrawn. You can no longer answer it.',
   },

@@ -206,4 +206,29 @@ describe('script size', () => {
       expect(large.filter((name) => first.has(name) && name !== entry())).toEqual([]);
     });
   }
+  it('does not ship the editor stylesheet in the monitor CSS', () => {
+    expect(read('monitor/dependency-graph.json')).not.toMatch(/styles\/editor\.css|\.cm-/);
+    const cssName = files('monitor').find((name) => /^monitor-.+\.css$/.test(name));
+    expect(cssName).toBeDefined();
+    const css = read(`monitor/${cssName}`);
+    const sheet = (path: string) => readFileSync(resolve('src', path), 'utf8');
+    const classes = (text: string) => new Set(text.match(/\.[a-zA-Z][\w-]*/g) ?? []);
+    // The classes only editor.css defines: none of the stylesheets the monitor imports has them.
+    const shared = [
+      'shared/styles/tokens.css',
+      'shared/styles/app.css',
+      'shared/styles/ui.css',
+      'shared/styles/modal.css',
+      'shared/styles/theme.css',
+      'features/tasks/answer/decision-answer.css',
+      'pages/monitor/monitor.css',
+    ].map((path) => classes(sheet(path)));
+    const editorOnly = [...classes(sheet('shared/styles/editor.css'))].filter(
+      (name) => !shared.some((known) => known.has(name)),
+    );
+    expect(editorOnly.length).toBeGreaterThan(10);
+    const shipped = classes(css);
+    expect(editorOnly.filter((name) => shipped.has(name))).toEqual([]);
+    expect(css).not.toContain('.cm-editor');
+  });
 });

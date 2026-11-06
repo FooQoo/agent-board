@@ -253,7 +253,7 @@ describe('MonitorProject', () => {
     );
     await user.type(await screen.findByRole('textbox'), 'Go with A');
     expect(reloads.at(-1)).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Close details' }));
+    await user.click(screen.getByRole('button', { name: 'Close the answer' }));
     await tick(500);
     expect(reloads.at(-1)).toBe(true);
   });

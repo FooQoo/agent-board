@@ -218,7 +218,7 @@ describe('monitor answer sheet', () => {
     await user.click(openButton(todoCard()));
     const dialog = await sheet('Todo decision');
     await user.type(within(dialog).getByRole('textbox'), 'Half written');
-    await user.click(within(dialog).getByRole('button', { name: 'Close details' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Close the answer' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     expect(openButton(todoCard()).textContent).toBe('Continue answering');
@@ -343,7 +343,7 @@ describe('monitor answer sheet', () => {
     act(() => setLiveView(withdrawn));
     await within(dialog).findByText(/This question was withdrawn/);
     expect(screen.queryByRole('alert')).toBeNull();
-    await user.click(within(dialog).getByRole('button', { name: 'Close details' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Close the answer' }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('left behind'));
   });
 });

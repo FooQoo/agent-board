@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
 import type { TaskSummary } from '../../../shared/api/contracts';
+import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
 import { TaskCardContent, TaskCardView } from './TaskCard';
 
 const meta = {
@@ -108,6 +109,44 @@ export const PendingWithEpic: Story = {
     await userEvent.click(epicButton);
     await expect(args.onSelect).not.toHaveBeenCalled();
   },
+};
+
+/** A card with a decision request: the button replaces the question, as the board's TaskCard draws it. */
+const answerCard = (continuing: boolean): Story['args'] => ({
+  task: makeTask({
+    id: 11,
+    title: 'API refactor',
+    agentStatus: 'pending',
+    pendingReason: 'How much compatibility should v2 keep?',
+    pendingRequestId: 'request-11',
+    pendingChoices: [
+      { id: 'keep', label: 'Keep compatibility' },
+      { id: 'break', label: 'Allow the breaking change' },
+    ],
+  }),
+  showPendingReason: false,
+  children: (
+    <div className="card__answer">
+      <DecisionAnswerButton taskId={11} continuing={continuing} onClick={fn()} />
+    </div>
+  ),
+});
+export const PendingWithAnswer: Story = {
+  args: answerCard(false),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'Answer the question' })).toBeInTheDocument();
+    await expect(canvas.queryByText('How much compatibility should v2 keep?')).toBeNull();
+    const button = canvas.getByRole('button', { name: 'Answer the question' });
+    await expect(button.getBoundingClientRect().height).toBe(34);
+  },
+};
+export const PendingContinuing: Story = {
+  args: answerCard(true),
+  play: async ({ canvasElement }) =>
+    expect(
+      within(canvasElement).getByRole('button', { name: 'Continue answering' }),
+    ).toBeInTheDocument(),
 };
 
 const contentMeta = {

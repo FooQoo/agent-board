@@ -302,6 +302,8 @@
 
 .decision-answer-button {
   width: 100%;
+  height: 34px;
+  gap: 6px;
   border-radius: 8px;
   font-weight: 600;
 }

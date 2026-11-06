@@ -15,6 +15,8 @@ export function Drawer({
   identity,
   title,
   label,
+  closeLabel,
+  dismissLabel,
   initialFocusSelector,
   className,
   children,
@@ -24,6 +26,10 @@ export function Drawer({
   identity: string;
   title: string;
   label?: ReactNode;
+  /** The close button's name; the details wording unless a sheet gives its own. */
+  closeLabel?: string;
+  /** The handle's name, for the swipe-down dismiss. */
+  dismissLabel?: string;
   /** What gets the focus when the sheet opens; the handle unless a sheet says otherwise. */
   initialFocusSelector?: string;
   /** Extra class on the sheet, for a sheet that sets its own height. */
@@ -79,7 +85,7 @@ export function Drawer({
               <button
                 type="button"
                 className="mobile-drawer__handle"
-                aria-label={t('monitor.drawer.dismiss')}
+                aria-label={dismissLabel ?? t('monitor.drawer.dismiss')}
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowDown') {
                     event.preventDefault();
@@ -99,7 +105,7 @@ export function Drawer({
                 </div>
                 <DialogPrimitive.Close
                   className="mobile-drawer__close"
-                  aria-label={t('detail.close')}
+                  aria-label={closeLabel ?? t('detail.close')}
                 >
                   <XIcon className="mobile-drawer__close-icon" aria-hidden="true" />
                 </DialogPrimitive.Close>

@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { expect, request as playwrightRequest, test } from '@playwright/test';
 import { agboard } from '../helpers/agboard';
 import {
@@ -115,7 +118,7 @@ test('the phone answers the current question from the sheet, and the answer reac
 
   // Closing without sending keeps the input, and the card then says to continue.
   await sheet.getByRole('textbox').fill('Reviewed on the phone.');
-  await sheet.getByRole('button', { name: 'Close details', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
   await expect(sheet).toHaveCount(0);
   await expect(article.getByRole('button', { name: 'Continue answering' })).toBeVisible();
 
@@ -137,6 +140,30 @@ test('the phone answers the current question from the sheet, and the answer reac
   expect(task.pendingRequestId).toBeNull();
   expect(task.agentStatus).toBe('idle');
   expect(task.history.at(-1)?.reason).toContain('Reviewed on the phone.');
+});
+
+test('an image attached to the task shows in the sheet from the monitor attachment route', async ({ page }) => {
+  const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
+  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start review'], home);
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const file = path.join(mkdtempSync(path.join(os.tmpdir(), 'agboard-question-image-')), 'question.png');
+  writeFileSync(file, png);
+  const attachment: string = json(['attachment', 'add', String(id), '--file', file, '--actor', 'ai']).attachment.id;
+  const question = `Which one?\n\n![the picture](attachment:${attachment})`;
+  const st = agboard('Alpha', ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({ question, choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }] })], home);
+  expect(st.code, st.stderr).toBe(0);
+
+  await entrance.open(page, monitorUrl());
+  await page.getByRole('article', { name: /Alpha image question/ }).getByRole('button', { name: 'Answer the question' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Alpha image question' });
+  const image = sheet.getByRole('img', { name: 'the picture' });
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('src', new RegExp(`/monitor/api/projects/${alpha}/tasks/${id}/attachments/${attachment}$`));
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
 test('nothing is read or answered without a session, and a replaced tunnel needs a new passcode', async ({ page }) => {

@@ -15,7 +15,3 @@
 .card__item:has(.card__answer) .card {
   padding-bottom: 6px;
 }
-
-.card__answer .decision-answer-button {
-  height: 34px;
-}

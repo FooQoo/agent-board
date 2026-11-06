@@ -58,6 +58,8 @@ export const detailJa = {
     guide: '選択肢を選ぶか、メモだけでも回答できます。',
     clear: '入力をクリア',
     close: '閉じる',
+    sheetClose: '回答を閉じる',
+    sheetDismiss: '下にスワイプして回答を閉じる',
     changed: '質問が新しくなりました。内容を確認して、もう一度回答してください。',
     withdrawn: 'この質問は取り下げられました。回答は送れません。',
   },

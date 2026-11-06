@@ -37,6 +37,8 @@ export function DecisionAnswerSheet({
       }}
       identity={identity}
       title={title}
+      closeLabel={t('answer.sheetClose')}
+      dismissLabel={t('answer.sheetDismiss')}
       className="decision-sheet-popup"
       initialFocusSelector='[role="radio"], textarea'
     >
