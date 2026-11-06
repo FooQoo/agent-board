@@ -14,28 +14,51 @@ const item = (
 });
 
 describe('useMonitorInteractions', () => {
-  it('keeps draft leases across form unmounts and holds the scope until the draft is cleared', () => {
+  it('locks the scope only while an answer with input is open or sending, and keeps the draft after closing', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const key = `${PROJECT_A.id}:3:r1` as const;
-    const operations = result.current.operationsFor(PROJECT_A.id, 3, 'r1');
-    let operationId = 0;
     act(() => {
       result.current.stateStore.getSnapshot(key);
       result.current.stateStore.update(key, (state) => ({ ...state, text: 'Keep this answer' }));
+    });
+    expect(result.current.locked).toBe(false);
+    expect(result.current.hasDraft(PROJECT_A.id, 3)).toBe(true);
+    expect(result.current.hasAnyDraft()).toBe(true);
+
+    act(() => result.current.setAnswerOpen(PROJECT_A.id, 3, true));
+    expect(result.current.locked).toBe(true);
+
+    act(() => result.current.setAnswerOpen(PROJECT_A.id, 3, false));
+    expect(result.current.locked).toBe(false);
+    expect(result.current.stateStore.getSnapshot(key)?.text).toBe('Keep this answer');
+    expect(result.current.hasDraft(PROJECT_A.id, 3)).toBe(true);
+    expect(result.current.hasDraft(PROJECT_A.id, 4)).toBe(false);
+    expect(result.current.hasAnyDraft()).toBe(true);
+
+    act(() => result.current.stateStore.update(key, (state) => ({ ...state, text: '' })));
+    expect(result.current.hasAnyDraft()).toBe(false);
+  });
+
+  it('does not lock an open answer without input', () => {
+    const { result } = renderHook(() => useMonitorInteractions());
+    act(() => result.current.setAnswerOpen(PROJECT_A.id, 3, true));
+    expect(result.current.locked).toBe(false);
+  });
+
+  it('holds the scope for the send operation and releases it when the send ends', () => {
+    const { result } = renderHook(() => useMonitorInteractions());
+    const operations = result.current.operationsFor(PROJECT_A.id, 3, 'r1');
+    let operationId = 0;
+    act(() => {
       operationId = operations.begin('answer', PROJECT_A.id);
-      operations.end(operationId); // Simulates the card form leaving the tree during refresh.
     });
     expect(result.current.locked).toBe(true);
-    expect(result.current.stateStore.getSnapshot(key)?.text).toBe('Keep this answer');
     let reusedId = 0;
     act(() => {
       reusedId = result.current.operationsFor(PROJECT_A.id, 3, 'r1').begin('answer', PROJECT_A.id);
     });
     expect(reusedId).toBe(operationId);
-    act(() => {
-      result.current.stateStore.update(key, (state) => ({ ...state, text: '' }));
-      operations.end(operationId);
-    });
+    act(() => operations.end(operationId));
     expect(result.current.locked).toBe(false);
   });
 
@@ -107,7 +130,7 @@ describe('useMonitorInteractions', () => {
 });
 
 describe('stale monitor answer drafts', () => {
-  it('keeps an orphaned draft visible and locked until the user discards it', () => {
+  it('keeps an orphaned draft visible and counted as a draft until the user discards it', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const key = `${PROJECT_A.id}:3:r1` as const;
     act(() => {
@@ -122,9 +145,9 @@ describe('stale monitor answer drafts', () => {
     expect(drafts).toEqual([
       { key, projectName: '—', taskId: 3, text: 'Retain me', choiceId: 'approve' },
     ]);
-    expect(result.current.locked).toBe(true);
+    expect(result.current.hasAnyDraft()).toBe(true);
     act(() => result.current.clearOrphanDraft(key));
-    expect(result.current.locked).toBe(false);
+    expect(result.current.hasAnyDraft()).toBe(false);
     expect(result.current.orphanDrafts([])).toEqual([]);
   });
 

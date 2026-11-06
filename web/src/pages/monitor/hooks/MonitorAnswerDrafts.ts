@@ -58,6 +58,8 @@ export class MonitorAnswerDrafts {
   readonly saved = new Map<string, SavedAnswer>();
   readonly staleRequests = new Set<string>();
   readonly projectNames = new Map<ProjectId, string>();
+  /** `projectId:taskId:` of every task whose answer sheet is open. */
+  readonly openTasks = new Set<string>();
   private nextOperationId = 0;
 
   constructor(private readonly notify: (key?: AnswerFormKey) => void) {}
@@ -109,8 +111,38 @@ export class MonitorAnswerDrafts {
     },
   };
 
+  /**
+   * The monitor must not refresh under an answer that is open with input or being sent.
+   * A closed answer keeps its draft without holding anything.
+   */
   get locked(): boolean {
-    return [...this.entries.values()].some(({ state }) => hasInput(state)) || this.leases.size > 0;
+    if (this.leases.size > 0) return true;
+    return [...this.entries.entries()].some(([key, { state }]) => {
+      if (state.phase === 'sending') return true;
+      const [projectId, taskIdText] = key.split(':');
+      return hasInput(state) && this.openTasks.has(taskPrefix(projectId ?? '', Number(taskIdText)));
+    });
+  }
+
+  setAnswerOpen(projectId: ProjectId, taskId: number, open: boolean): void {
+    const prefix = taskPrefix(projectId, taskId);
+    if (open === this.openTasks.has(prefix)) return;
+    if (open) this.openTasks.add(prefix);
+    else this.openTasks.delete(prefix);
+    this.notify();
+  }
+
+  /** True while any request of the task still has unsent input. */
+  hasDraft(projectId: ProjectId, taskId: number): boolean {
+    const prefix = taskPrefix(projectId, taskId);
+    return [...this.entries.entries()].some(
+      ([key, entry]) => key.startsWith(prefix) && hasInput(entry.state),
+    );
+  }
+
+  /** True while any task has unsent input; a build reload waits for it to clear. */
+  hasAnyDraft(): boolean {
+    return [...this.entries.values()].some(({ state }) => hasInput(state));
   }
 
   operationsFor(projectId: ProjectId, taskId: number, requestId: string | null): OperationControls {
@@ -140,7 +172,7 @@ export class MonitorAnswerDrafts {
       },
       end: (id: number) => {
         const lease = this.leases.get(key);
-        if (!lease || lease.id !== id || hasInput(this.entries.get(key)?.state)) return;
+        if (!lease || lease.id !== id) return;
         this.leases.delete(key);
         this.notify();
       },

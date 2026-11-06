@@ -43,7 +43,14 @@ const hasInput = (state: AnswerFormState | undefined) =>
   state !== undefined &&
   (state.choiceId !== null || state.text !== '' || state.phase === 'sending');
 
-/** PC answer drafts and post-save snapshots belong to a project/card/request tuple. */
+const hasUnsentInput = (state: AnswerFormState | undefined) =>
+  state !== undefined && (state.choiceId !== null || state.text !== '');
+
+/**
+ * PC answer drafts and post-save snapshots belong to a project/card/request tuple.
+ * A draft survives closing the answer; the lease that blocks a project switch is held
+ * only while the answer is open with input, or while a send is in flight.
+ */
 export function useTaskAnswers(
   onLeaseChange: AnswerLeaseChange,
   write: AnswerWriter = answerRequest,
@@ -51,6 +58,8 @@ export function useTaskAnswers(
   const entries = useRef(new Map<AnswerFormKey, Entry>());
   const saved = useRef(new Map<string, SavedAnswer>());
   const staleRequests = useRef(new Set<AnswerFormKey>());
+  const openTasks = useRef(new Set<string>());
+  const leases = useRef(new Map<string, { key: AnswerFormKey; projectId: ProjectId }>());
   const [, setRevision] = useState(0);
   const notify = useCallback((key?: AnswerFormKey) => {
     if (key)
@@ -59,6 +68,29 @@ export function useTaskAnswers(
       });
     setRevision((value) => value + 1);
   }, []);
+
+  /** Holds exactly one lease per task: open with input, or sending (open or not). */
+  const syncLease = useCallback(
+    (projectId: ProjectId, taskId: number) => {
+      const prefix = taskPrefix(projectId, taskId);
+      const taskEntries = [...entries.current.entries()].filter(([key]) => key.startsWith(prefix));
+      const sending = taskEntries.find(([, entry]) => entry.state.phase === 'sending');
+      const withInput = taskEntries.find(([, entry]) => hasUnsentInput(entry.state));
+      const wanted =
+        sending?.[0] ?? (openTasks.current.has(prefix) ? (withInput?.[0] ?? null) : null);
+      const held = leases.current.get(prefix);
+      if (held?.key === wanted) return;
+      if (held) {
+        leases.current.delete(prefix);
+        onLeaseChange(held.key, held.projectId, false);
+      }
+      if (wanted) {
+        leases.current.set(prefix, { key: wanted, projectId });
+        onLeaseChange(wanted, projectId, true);
+      }
+    },
+    [onLeaseChange],
+  );
 
   const stateStore = useMemo<AnswerFormStateStore>(
     () => ({
@@ -93,21 +125,17 @@ export function useTaskAnswers(
         const [projectIdValue, taskIdText] = key.split(':');
         const projectId = projectIdValue as ProjectId;
         if (previous.requestChanged && !state.requestChanged) {
+          // The user answered the new question: the carried-over older drafts are spent.
           const prefix = taskPrefix(projectId, Number(taskIdText));
-          for (const olderKey of entries.current.keys()) {
-            if (olderKey === key || !olderKey.startsWith(prefix)) continue;
-            if (hasInput(entries.current.get(olderKey)?.state))
-              onLeaseChange(olderKey, projectId, false);
-            entries.current.delete(olderKey);
+          for (const olderKey of [...entries.current.keys()]) {
+            if (olderKey !== key && olderKey.startsWith(prefix)) entries.current.delete(olderKey);
           }
-          if (hasInput(state)) onLeaseChange(key, projectId, true);
-        } else if (hasInput(previous) !== hasInput(state)) {
-          onLeaseChange(key, projectId, hasInput(state));
         }
+        syncLease(projectId, Number(taskIdText));
         notify(key);
       },
     }),
-    [notify, onLeaseChange],
+    [notify, syncLease],
   );
 
   const onAnswered = useCallback(
@@ -131,19 +159,19 @@ export function useTaskAnswers(
   const clearTask = useCallback(
     (projectId: ProjectId, taskId: number) => {
       const prefix = taskPrefix(projectId, taskId);
-      for (const key of entries.current.keys()) {
+      for (const key of [...entries.current.keys()]) {
         if (key.startsWith(prefix)) {
-          if (hasInput(entries.current.get(key)?.state)) onLeaseChange(key, projectId, false);
           staleRequests.current.add(key);
           entries.current.delete(key);
         }
       }
+      syncLease(projectId, taskId);
       const receipt = saved.current.get(`${projectId}:${taskId}`);
       if (receipt) staleRequests.current.add(keyOf(projectId, taskId, receipt.requestId));
       saved.current.delete(`${projectId}:${taskId}`);
       notify();
     },
-    [notify, onLeaseChange],
+    [notify, syncLease],
   );
 
   const reconcileTasks = useCallback(
@@ -153,6 +181,28 @@ export function useTaskAnswers(
       }
     },
     [clearTask],
+  );
+
+  const setAnswerOpen = useCallback(
+    (projectId: ProjectId, taskId: number, open: boolean) => {
+      const prefix = taskPrefix(projectId, taskId);
+      if (open) openTasks.current.add(prefix);
+      else openTasks.current.delete(prefix);
+      syncLease(projectId, taskId);
+    },
+    [syncLease],
+  );
+
+  const hasDraft = useCallback((projectId: ProjectId, taskId: number) => {
+    const prefix = taskPrefix(projectId, taskId);
+    return [...entries.current.entries()].some(
+      ([key, entry]) => key.startsWith(prefix) && hasInput(entry.state),
+    );
+  }, []);
+
+  const hasAnyDraft = useCallback(
+    () => [...entries.current.values()].some((entry) => hasInput(entry.state)),
+    [],
   );
 
   const withSavedAnswers = useCallback(
@@ -195,5 +245,11 @@ export function useTaskAnswers(
     reconcileTasks,
     withSavedAnswers,
     wasAnswered,
+    /** Tells the controller whether the answer for a task is open (its lease follows). */
+    setAnswerOpen,
+    /** True while any request of the task has unsent input, open or closed. */
+    hasDraft,
+    /** True while any task has unsent input; a build reload waits for it to clear. */
+    hasAnyDraft,
   };
 }

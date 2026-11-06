@@ -38,12 +38,23 @@ export interface DecisionRequestFormModel {
   disabled: boolean;
 }
 
+/** What the answer dialog and sheet read; a superset of the older inline form's model. */
+export interface DecisionAnswerModel extends DecisionRequestFormModel {
+  /** True when a choice or a note is entered. */
+  hasInput: boolean;
+  /** `changed`: the question was replaced. `withdrawn`: it is gone or was answered elsewhere. */
+  notice: 'changed' | 'withdrawn' | null;
+  failure: string | null;
+}
+
 interface UseDecisionRequestFormOptions {
   projectId: ProjectId;
   task: TaskSummary;
   operations: OperationControls;
   writeAnswer: AnswerWriter;
   disabled: boolean;
+  /** True when the task is no longer on the board; the last question stays readable. */
+  missing?: boolean;
   stateStore?: AnswerFormStateStore;
   onChanged?: () => void;
   onAnswered?: (result: AnswerResult) => void;
@@ -56,13 +67,18 @@ export function useDecisionRequestForm({
   operations,
   writeAnswer,
   disabled,
+  missing = false,
   stateStore,
   onChanged,
   onAnswered,
   onRequestStale,
 }: UseDecisionRequestFormOptions) {
   const { t } = useTranslation();
-  const requestId = task.pendingRequestId;
+  // A withdrawn question keeps the last request's key, so its input stays readable.
+  const lastRequestId = useRef(task.pendingRequestId);
+  if (task.pendingRequestId !== null) lastRequestId.current = task.pendingRequestId;
+  const requestId = task.pendingRequestId ?? lastRequestId.current;
+  const withdrawn = missing || task.pendingRequestId === null;
   const storeKey = `${projectId}:${task.id}:${requestId ?? ''}` as AnswerFormKey;
   const [state, setState] = useState(
     () => stateStore?.getSnapshot(storeKey) ?? initialState(requestId),
@@ -71,9 +87,6 @@ export function useDecisionRequestForm({
   stateRef.current = state;
   const sending = useRef(false);
   const mounted = useRef(true);
-  const operationsRef = useRef(operations);
-  operationsRef.current = operations;
-  const operationId = useRef<number | null>(null);
 
   useEffect(() => {
     if (!stateStore) return;
@@ -110,35 +123,24 @@ export function useDecisionRequestForm({
     update((current) => ({
       ...current,
       baseRequestId: requestId,
-      choiceId: task.pendingChoices.some((choice) => choice.id === current.choiceId)
-        ? current.choiceId
-        : null,
+      choiceId: null,
       phase: 'editing',
       failure: null,
       requestChanged: true,
     }));
-  }, [stale, requestId, task.pendingChoices, update]);
+  }, [stale, requestId, update]);
 
   const hasText = state.text.trim() !== '';
   const tooLong = [...state.text].length > MAX_ANSWER;
-  const dirty = state.choiceId !== null || state.text !== '';
+  const hasInput = state.choiceId !== null || state.text !== '';
   const sendable =
     !disabled &&
+    !withdrawn &&
     !stale &&
     !state.requestChanged &&
     (state.choiceId !== null || hasText) &&
     !tooLong &&
     state.phase !== 'sending';
-
-  useEffect(() => {
-    if (!dirty) return;
-    const id = operationsRef.current.begin('answer', projectId);
-    operationId.current = id;
-    return () => {
-      operationsRef.current.end(id);
-      operationId.current = null;
-    };
-  }, [dirty, projectId]);
 
   const clear = useCallback(() => {
     update((current) => ({
@@ -160,11 +162,13 @@ export function useDecisionRequestForm({
       const input: AnswerInput = { requestId: current.baseRequestId };
       if (current.choiceId !== null) input.choiceId = current.choiceId;
       if (current.text.trim() !== '') input.text = current.text;
-      const id = operationId.current;
-      if (id !== null) operations.saveStarted(id);
+      // The operation holds the board still only while the answer is on its way.
+      const id = operations.begin('answer', projectId);
+      operations.saveStarted(id);
       try {
         const result = await writeAnswer(projectId, task.id, input);
         sending.current = false;
+        operations.end(id);
         if (!mounted.current) return;
         clear();
         update((value) => ({ ...value, phase: 'editing' }));
@@ -172,7 +176,8 @@ export function useDecisionRequestForm({
         onChanged?.();
       } catch (error) {
         sending.current = false;
-        if (id !== null) operations.saveFailed(id);
+        operations.saveFailed(id);
+        operations.end(id);
         if (!mounted.current) return;
         if (
           error instanceof WriteError &&
@@ -242,8 +247,11 @@ export function useDecisionRequestForm({
       message: state.requestChanged ? t('request.changed') : state.failure,
       tooLong,
       sendable,
-      disabled: disabled || state.phase === 'sending',
-    } satisfies DecisionRequestFormModel,
+      disabled: disabled || withdrawn || state.phase === 'sending',
+      hasInput,
+      notice: withdrawn ? 'withdrawn' : state.requestChanged ? 'changed' : null,
+      failure: state.failure,
+    } satisfies DecisionAnswerModel,
     updateChoice,
     updateText,
     expandQuestion,

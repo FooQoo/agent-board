@@ -85,5 +85,12 @@ export interface MonitorAnswerController {
   reconcileTasks(tasks: readonly MonitorTask[]): void;
   tasksWithSavedAnswers(tasks: readonly MonitorTask[], snapshotIsFresh: boolean): MonitorTask[];
   wasAnswered(projectId: ProjectId, taskId: number, requestId: string | null): boolean;
+  /** Tells the controller whether the answer sheet of a task is open. */
+  setAnswerOpen(projectId: ProjectId, taskId: number, open: boolean): void;
+  /** True while any request of the task has unsent input, open or closed. */
+  hasDraft(projectId: ProjectId, taskId: number): boolean;
+  /** True while any task has unsent input. */
+  hasAnyDraft(): boolean;
+  /** True while an answer with input is open, or a send is in flight. */
   locked: boolean;
 }
