@@ -132,14 +132,16 @@ try {
         .getByRole('button', { name: more.discard, exact: true }).click();
       await expect(request).toHaveCount(0);
 
-      // question: the Pending card with its answer field.
+      // question: the answer dialog, opened from the Pending card's answer button.
       await expect(task(3)).toBeVisible();
-      const answer = page.locator('.card__answer').filter({ has: page.getByText(text.question, { exact: true }) });
-      await expect(answer).toBeVisible();
-      // A tall viewport keeps the lane from clipping the card (answer buttons included).
-      await page.setViewportSize({ width: 1440, height: 1600 });
-      await shot('question', page.locator('.card__item').filter({ has: answer }), page);
-      await page.setViewportSize({ width: 1440, height: 900 });
+      const answerButton = page.locator('[data-decision-answer][data-task-id="3"]');
+      await expect(answerButton).toBeVisible();
+      await answerButton.click();
+      const answerDialog = page.locator('.decision-dialog');
+      await expect(answerDialog.getByText(text.question, { exact: true })).toBeVisible();
+      await shot('question', answerDialog, page);
+      await page.keyboard.press('Escape');
+      await expect(answerDialog).toHaveCount(0);
 
       // card-detail: the Conditions tab of the selected card.
       await task(3).click();
