@@ -48,6 +48,16 @@
       ]
     },
     {
+      "file": "pages/monitor/components/MonitorAnswerSheet.tsx",
+      "exports": [
+        {
+          "name": "default",
+          "stories": [],
+          "exclusion": "MonitorAnswerSheet joins DecisionAnswerSheet to the monitor's answer controller; the sheet's states are DecisionAnswerSheet Stories, and the connection is verified by MonitorView tests and the monitor connection E2E."
+        }
+      ]
+    },
+    {
       "file": "pages/monitor/components/MonitorDrawerPanels.tsx",
       "exports": [
         {
