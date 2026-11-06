@@ -258,10 +258,12 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
     const targets: [string, string][] = [
       [pagePath(lang, 'home'), 'board'],
       [pagePath(lang, 'home'), 'epic'],
+      [pagePath(lang, 'home'), 'mobile-cards'],
       [pagePath(lang, 'home'), 'mobile-question'],
       [pagePath(lang, 'home'), 'mobile'],
       [pagePath(lang, 'index'), 'board'],
       [pagePath(lang, 'use/epics'), 'epic'],
+      [pagePath(lang, 'use/decisions'), 'mobile-question'],
       [pagePath(lang, 'operations/mobile-monitor'), 'mobile'],
     ];
     for (const [url, name] of targets) {

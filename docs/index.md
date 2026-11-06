@@ -82,6 +82,7 @@ landing:
         link: { text: Mobile monitor, link: /guide/operations/mobile-monitor }
         preview: /guide/feature-stages#mobile-monitor
         alts:
+          - The mobile monitor's card list, with a waiting task and its Answer the question button
           - A question on the mobile monitor with a choice picked and the Send button
           - A task open in the bottom drawer of the mobile monitor, on its Conditions tab
       - image: docs

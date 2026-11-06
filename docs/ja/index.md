@@ -82,6 +82,7 @@ landing:
         link: { text: モバイルモニター, link: /ja/guide/operations/mobile-monitor }
         preview: /ja/guide/feature-stages#mobile-monitor
         alts:
+          - 待機中のタスクと「質問に回答する」ボタンが見える、モバイルモニターのカードの一覧
           - 選択肢を選び、送信ボタンが出ているモバイルモニターの質問
           - モバイルモニターの下部のドロワーで、受入条件のタブを開いたタスク
       - image: docs

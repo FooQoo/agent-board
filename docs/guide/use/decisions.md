@@ -41,9 +41,9 @@ The dialog keeps your input and shows **Could not save. Try again.** Try again f
 
 On the mobile monitor, a Pending task shows the same **Answer the question** button. Tap it to open the answer sheet, which slides up from the bottom. The question comes first, then your answer. **Send** stays at the bottom, so it is in reach as you scroll.
 
-Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
+![Answer sheet on the phone with the question, choices, note, and Send](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
-![Mobile bottom drawer with Body, Conditions, History, and Epic tabs](../../images/mobile.png){.screenshot .screenshot--narrow}
+Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
 
 If you close the sheet with an unsent answer, and the question is then withdrawn or the task leaves the board, the monitor lists that answer under **Unsent answers**. Nothing is sent from it. Select **Discard answer draft** to remove it.
 

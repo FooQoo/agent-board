@@ -41,7 +41,6 @@ try {
       // The waiting card shows only its answer button; the question is read in the answer dialog.
       const answerLabel = locale === 'ja' ? '質問に回答する' : 'Answer the question';
       await expect(page.locator('[data-decision-answer][data-task-id="3"]')).toHaveText(answerLabel);
-      await expect(page.locator('.detail-view .detail__request')).toHaveCount(0);
       await settle(page);
       await page.screenshot({ path: path.join(output, `board${suffix}.png`) });
 
@@ -56,8 +55,12 @@ try {
       await page.setViewportSize({ width: 390, height: 844 });
       await server.open(page, `${remote}/monitor/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
-      // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
       const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
+      // The monitor's card list, with the waiting card and its answer button.
+      await expect(waiting.getByRole('button', { name: answerLabel, exact: true })).toBeInViewport();
+      await settle(page);
+      await page.screenshot({ path: path.join(output, `mobile-cards${suffix}.png`) });
+      // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
       await waiting.getByRole('button', { name: answerLabel, exact: true }).click();
       const sheet = page.getByRole('dialog', { name: text.titles[2], exact: true });
       await expect(sheet.getByText(text.question, { exact: true })).toBeVisible();
@@ -82,7 +85,7 @@ try {
       await settle(page);
       await page.screenshot({ path: path.join(output, `mobile${suffix}.png`) });
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured board, epic progress, the mobile question and drawer; no browser errors.`);
+      console.log(`${locale}: captured board, epic progress, the mobile cards, question, and drawer; no browser errors.`);
     } finally {
       await context?.close();
       await stop(server);

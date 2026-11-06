@@ -8,6 +8,8 @@ import epic from '../../images/epic.png'
 import epicJa from '../../images/epic.ja.png'
 import mobile from '../../images/mobile.png'
 import mobileJa from '../../images/mobile.ja.png'
+import mobileCards from '../../images/mobile-cards.png'
+import mobileCardsJa from '../../images/mobile-cards.ja.png'
 import mobileQuestion from '../../images/mobile-question.png'
 import mobileQuestionJa from '../../images/mobile-question.ja.png'
 import boardDark from '../../images/guide/board-dark.png'
@@ -34,9 +36,9 @@ const images = computed(() =>
     ? { board: boardJa, boardDark: boardDarkJa, epic: epicJa, docs: docsJa, question: questionJa }
     : { board, boardDark, epic, docs, question },
 )
-// The phone feature shows a question being answered on the left and a task in the drawer on the right.
+// The phone feature shows, from the left, the card list, a question being answered, and a task in the drawer.
 const phones = computed(() =>
-  ja.value ? [mobileQuestionJa, mobileJa] : [mobileQuestion, mobile],
+  ja.value ? [mobileCardsJa, mobileQuestionJa, mobileJa] : [mobileCards, mobileQuestion, mobile],
 )
 const video = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.mp4`))
 const poster = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.jpg`))
