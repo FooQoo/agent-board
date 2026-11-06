@@ -44,6 +44,11 @@
               "interaction": true
             },
             {
+              "id": "task-card-taskcard--pending-selected",
+              "states": ["selected", "frame surrounds the answer button"],
+              "interaction": true
+            },
+            {
               "id": "task-card-taskcard--pending-with-answer",
               "states": [
                 "decision request",

@@ -141,6 +141,20 @@ export const PendingWithAnswer: Story = {
     await expect(button.getBoundingClientRect().height).toBe(34);
   },
 };
+export const PendingSelected: Story = {
+  args: { ...answerCard(false), selected: true },
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: 'Answer the question' });
+    const item = button.closest<HTMLElement>('.card__item');
+    const card = item?.querySelector<HTMLElement>('.card');
+    if (!item || !card) throw new Error('The card frame is missing.');
+    const accent = getComputedStyle(button).backgroundColor;
+    // The selected frame surrounds the answer button, not only the card above it.
+    await expect(getComputedStyle(item).borderTopColor).toBe(accent);
+    await expect(getComputedStyle(item).borderBottomColor).toBe(accent);
+    await expect(getComputedStyle(card).boxShadow).toBe('none');
+  },
+};
 export const PendingContinuing: Story = {
   args: answerCard(true),
   play: async ({ canvasElement }) =>
