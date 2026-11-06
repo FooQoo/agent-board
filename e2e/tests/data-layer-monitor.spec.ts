@@ -119,7 +119,11 @@ test.describe('one project, named in the address', () => {
 
     // A project deleted after the page was opened ends the same way.
     const live = await page.context().newPage();
+    // The region is drawn before the Summary arrives, so wait for the read itself: a project removed
+    // before it would end in the error at once, with no Refresh button left to press.
+    const loaded = live.waitForResponse((r) => r.url().endsWith(`/projects/${gone}/summary`) && r.ok());
     await live.goto(url(gone));
+    await loaded;
     await expect(live.getByRole('region', { name: 'Work summary' })).toBeVisible();
     removeProject('DeleteMe', home);
     await live.getByRole('button', { name: 'Refresh' }).click();
