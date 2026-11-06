@@ -79,7 +79,7 @@ describe('story environment', () => {
         <span>monitor</span>
       </StoryEnvironment>,
     );
-    expect(count()).toBe(3);
+    expect(count()).toBe(2);
     monitor.unmount();
     expect(count()).toBe(0);
   });
