@@ -76,11 +76,15 @@ export class MonitorAnswerDrafts {
       if (existing) return existing.state;
       const [projectId, taskIdText, ...requestParts] = key.split(':');
       const prefix = taskPrefix(projectId ?? '', Number(taskIdText));
-      const hasOlderDraft = [...this.entries.entries()].some(
+      const older = [...this.entries.entries()].find(
         ([otherKey, entry]) =>
           otherKey.startsWith(prefix) && otherKey !== key && hasInput(entry.state),
-      );
-      const state = initialState(requestParts.join(':') || null, hasOlderDraft);
+      )?.[1].state;
+      // A replaced question drops the chosen option and keeps the note, as on the board.
+      const state = {
+        ...initialState(requestParts.join(':') || null, older !== undefined),
+        text: older?.text ?? '',
+      };
       this.entries.set(key, { state, listeners: new Set() });
       return state;
     },
@@ -111,17 +115,19 @@ export class MonitorAnswerDrafts {
     },
   };
 
-  /**
-   * The monitor must not refresh under an answer that is open with input or being sent.
-   * A closed answer keeps its draft without holding anything.
-   */
+  /** An answer that is open with input, or being sent; a closed one holds nothing. */
   get locked(): boolean {
-    if (this.leases.size > 0) return true;
+    if (this.sending) return true;
     return [...this.entries.entries()].some(([key, { state }]) => {
-      if (state.phase === 'sending') return true;
       const [projectId, taskIdText] = key.split(':');
       return hasInput(state) && this.openTasks.has(taskPrefix(projectId ?? '', Number(taskIdText)));
     });
+  }
+
+  /** True while an answer is on its way; only then is the screen held still. */
+  get sending(): boolean {
+    const inPhase = [...this.entries.values()].some(({ state }) => state.phase === 'sending');
+    return this.leases.size > 0 || inPhase;
   }
 
   setAnswerOpen(projectId: ProjectId, taskId: number, open: boolean): void {
@@ -209,6 +215,8 @@ export class MonitorAnswerDrafts {
     for (const [key, entry] of this.entries) {
       if (!hasInput(entry.state)) continue;
       const [projectId, taskIdText, ...requestParts] = key.split(':');
+      // An open sheet shows its own input, including a withdrawn question; the banner is for closed ones.
+      if (this.openTasks.has(taskPrefix(projectId ?? '', Number(taskIdText)))) continue;
       const current = byId.get(`${projectId}:${taskIdText}`);
       if (current) this.projectNames.set(current.projectId, current.projectName);
       if (current?.task.taskStatus === 'done') continue;

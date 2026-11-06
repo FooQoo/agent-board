@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
 import { MonitorView } from '../../src/pages/monitor/View';
 import type { MonitorViewProps } from '../../src/pages/monitor/contracts';
+import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 import { makeTask, PROJECT_A } from '../fixtures';
 
 function props(): MonitorViewProps {
@@ -36,10 +37,16 @@ function props(): MonitorViewProps {
   };
 }
 
+/** The view with the answer controller the page gives it. */
+function Connected() {
+  const answerController = useMonitorInteractions();
+  return <MonitorView {...props()} answerController={answerController} />;
+}
+
 describe('MonitorView', () => {
   beforeEach(() => selectLocale('en'));
   it('lists each task once in its Todo, Doing, or Done lane', () => {
-    const { container } = render(<MonitorView {...props()} />);
+    const { container } = render(<Connected />);
     expect(container.querySelector('header.header')).toBeTruthy();
     const headings = screen
       .getAllByRole('heading', { level: 2 })
@@ -52,11 +59,11 @@ describe('MonitorView', () => {
     expect(screen.getAllByRole('article', { name: /^#4 / })).toHaveLength(1);
     const pendingTask = screen.getByRole('article', { name: /^#4 Doing Pending / });
     expect(pendingTask.querySelector('.status-label')?.textContent).toBe('Pending');
-    expect(within(pendingTask).getByText('Waiting for decision')).toBeTruthy();
-    expect(within(pendingTask).getByRole('textbox')).toBeTruthy();
-    expect(
-      (within(pendingTask).getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+    // A decision card shows the button only: no question, no choices, no note.
+    expect(within(pendingTask).getByRole('button', { name: 'Answer the question' })).toBeTruthy();
+    expect(within(pendingTask).queryByText('Waiting for decision')).toBeNull();
+    expect(within(pendingTask).queryByRole('textbox')).toBeNull();
+    expect(within(pendingTask).queryByRole('button', { name: 'Send' })).toBeNull();
     expect(pendingTask.getAttribute('data-agent-status')).toBe('pending');
     const idleTodo = screen.getByRole('article', { name: /^#1 Todo Idle / });
     expect(idleTodo.getAttribute('data-agent-status')).toBe('idle');

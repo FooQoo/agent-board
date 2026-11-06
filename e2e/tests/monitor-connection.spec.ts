@@ -99,16 +99,35 @@ test('the phone lists the board through the entrance and exposes nothing of the 
   await direct.dispose();
 });
 
-test('the phone answers the current question, and the answer reaches the shared files', async ({ page }) => {
+// DM-6: the phone answers from the bottom sheet; the card itself carries only the button.
+test('the phone answers the current question from the sheet, and the answer reaches the shared files', async ({ page }) => {
   await entrance.open(page, monitorUrl());
   const article = page.getByRole('article', { name: /Alpha pending review/ });
-  await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toBeVisible();
-  await article.getByRole('textbox', { name: 'Your answer' }).fill('Reviewed on the phone.');
+  // The card shows the button only: no question, no choices, no note.
+  await expect(article.getByRole('button', { name: 'Answer the question' })).toBeVisible();
+  await expect(article.getByRole('textbox')).toHaveCount(0);
+  await expect(article.getByRole('button', { name: 'Send', exact: true })).toHaveCount(0);
+
+  await article.getByRole('button', { name: 'Answer the question' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Alpha pending review' });
+  await expect(sheet.getByText('Waiting for the user review.')).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+
+  // Closing without sending keeps the input, and the card then says to continue.
+  await sheet.getByRole('textbox').fill('Reviewed on the phone.');
+  await sheet.getByRole('button', { name: 'Close details', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(article.getByRole('button', { name: 'Continue answering' })).toBeVisible();
+
+  await article.getByRole('button', { name: 'Continue answering' }).click();
+  await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
+  await sheet.getByRole('radio', { name: 'Plan A' }).click();
   const answered = page.waitForResponse((response) =>
     response.url().includes('/tasks/1/answer') && response.request().method() === 'POST');
-  await article.getByRole('button', { name: 'Send', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Send', exact: true }).click();
   expect((await answered).status()).toBe(200);
-  await expect(article.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
+  await expect(sheet).toHaveCount(0);
+  await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
 
   const task = JSON.parse(agboard('Alpha', ['show', '1', '--json'], home).stdout).task as {
     agentStatus: string;

@@ -93,4 +93,6 @@ export interface MonitorAnswerController {
   hasAnyDraft(): boolean;
   /** True while an answer with input is open, or a send is in flight. */
   locked: boolean;
+  /** True only while a send is in flight; the screen holds its updates for that. */
+  sending: boolean;
 }

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useId, useRef } from 'react';
+import { Suspense, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { Header } from '../../shared/ui/app-header/Header';
@@ -22,6 +22,11 @@ const detailDrawer = preloadable(() =>
   import('./components/MonitorDetailDrawer').then((module) => module.MonitorDetailDrawer),
 );
 
+/** The answer sheet, with its form and the Markdown view, loads after the list is shown too. */
+const answerSheet = preloadable(() =>
+  import('./components/MonitorAnswerSheet').then((module) => module.default),
+);
+
 /** Fetches the drawer's code; the view calls it once the list is shown. */
 export const preloadMonitorDrawer = detailDrawer.preload;
 
@@ -32,7 +37,11 @@ export function MonitorView(props: MonitorViewProps) {
   useEffect(() => {
     // A failed fetch is tried again when the drawer is first rendered.
     detailDrawer.preload().catch(() => {});
+    answerSheet.preload().catch(() => {});
   }, []);
+  // The sheet is drawn outside the cards: a card that moves or leaves does not close it.
+  const [answering, setAnswering] = useState<{ projectId: string; taskId: number } | null>(null);
+  const [answerOpen, setAnswerOpen] = useState(false);
   const { summary, todo, doing, done, freshness } = props;
   const ordered = {
     todo: sortLane(todo),
@@ -105,8 +114,26 @@ export function MonitorView(props: MonitorViewProps) {
           detail.show(item, tab);
           props.onOpenDetail?.(item, tab);
         }}
+        onOpenAnswer={(item) => {
+          setAnswering({ projectId: item.projectId, taskId: item.task.id });
+          setAnswerOpen(true);
+        }}
         answerController={props.answerController}
       />
+      {props.answerController && answering && (
+        <Suspense fallback={null}>
+          <answerSheet.Component
+            key={`${answering.projectId}:${answering.taskId}`}
+            items={tasks}
+            projectId={answering.projectId}
+            taskId={answering.taskId}
+            open={answerOpen}
+            onOpenChange={setAnswerOpen}
+            controller={props.answerController}
+            resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
+          />
+        </Suspense>
+      )}
       <Suspense fallback={null}>
         <detailDrawer.Component
           item={detail.target}

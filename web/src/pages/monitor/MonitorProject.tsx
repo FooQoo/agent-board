@@ -65,11 +65,13 @@ function MonitorBoard({
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
-  // A drawer, and an answer being written, keep the list as it is; the data layer applies what
-  // arrived 3 seconds after they are gone. Reloading for a new build waits for the same.
+  // A drawer, and an answer on its way, keep the list as it is; the data layer applies what
+  // arrived 3 seconds after they are gone. An answer sheet that is only open holds nothing: the
+  // question is replaced or withdrawn in it as it happens. Reloading for a new build waits for the
+  // drawer, a send, and any input left in memory, which a reload would lose.
   usePresentationHold(detailOpen, 'drawer');
-  usePresentationHold(answers.locked, 'answer');
-  useBuildReload(build, answers.locked || detailOpen);
+  usePresentationHold(answers.sending, 'answer');
+  useBuildReload(build, answers.locked || detailOpen || answers.hasAnyDraft());
 
   const gone = monitorErrorStatus(summary.error) === 404;
   useEffect(() => {

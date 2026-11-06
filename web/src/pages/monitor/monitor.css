@@ -221,28 +221,6 @@ body {
 .monitor-card__request {
   min-width: 0;
 }
-.monitor-card__request .detail__request {
-  margin: 2px 0 0;
-  padding: 8px;
-  border-radius: 6px;
-}
-.monitor-card__request .detail__banner-head {
-  font-size: 12px;
-  line-height: 16px;
-}
-.monitor-card__request .detail__reason {
-  font-size: 12px;
-  line-height: 16px;
-}
-.monitor-card__request .detail__answer {
-  gap: 7px;
-}
-.monitor-card__request .detail__answer-input {
-  min-height: 64px;
-}
-.monitor-card__request .detail__answer-actions {
-  flex-wrap: wrap;
-}
 .monitor-card__reason {
   display: -webkit-box;
   overflow: hidden;

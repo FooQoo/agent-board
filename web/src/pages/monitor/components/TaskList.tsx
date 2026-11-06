@@ -13,9 +13,13 @@ export const TaskList = forwardRef<
     id: string;
     freshness: MonitorFreshness;
     onOpenDetail?: MonitorViewProps['onOpenDetail'];
+    onOpenAnswer?: (item: MonitorTask) => void;
     answerController?: MonitorViewProps['answerController'];
   }
->(function TaskList({ id, todo, doing, done, freshness, onOpenDetail, answerController }, ref) {
+>(function TaskList(
+  { id, todo, doing, done, freshness, onOpenDetail, onOpenAnswer, answerController },
+  ref,
+) {
   const { t } = useTranslation();
   const sections: Array<[MonitorSection, MonitorTask[]]> = [
     ['todo', todo],
@@ -48,6 +52,7 @@ export const TaskList = forwardRef<
                   item={item}
                   section={section}
                   onOpenDetail={onOpenDetail}
+                  onOpenAnswer={onOpenAnswer}
                   answerController={answerController}
                 />
               ))}

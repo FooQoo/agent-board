@@ -62,24 +62,34 @@ describe('useMonitorInteractions', () => {
     expect(result.current.locked).toBe(false);
   });
 
-  it('gives a changed request a blank form with a warning and keeps the old draft until cleared', () => {
+  it('gives a changed request the old note with a warning and keeps the old draft until cleared', () => {
     const { result } = renderHook(() => useMonitorInteractions());
     const oldKey = `${PROJECT_A.id}:3:r1` as const;
     const nextKey = `${PROJECT_A.id}:3:r2` as const;
     act(() => {
       result.current.stateStore.getSnapshot(oldKey);
-      result.current.stateStore.update(oldKey, (state) => ({ ...state, text: 'Old answer' }));
+      result.current.stateStore.update(oldKey, (state) => ({
+        ...state,
+        choiceId: 'a',
+        text: 'Old answer',
+      }));
     });
     let next: AnswerFormState | null = null;
     act(() => {
       next = result.current.stateStore.getSnapshot(nextKey);
     });
-    expect(next).toMatchObject({ text: '', requestChanged: true, baseRequestId: 'r2' });
-    expect(result.current.stateStore.getSnapshot(oldKey)?.text).toBe('Old answer');
+    // The option is dropped; the note stays.
+    expect(next).toMatchObject({
+      text: 'Old answer',
+      choiceId: null,
+      requestChanged: true,
+      baseRequestId: 'r2',
+    });
+    expect(result.current.orphanDrafts([]).map((draft) => draft.key)).toEqual([oldKey, nextKey]);
     act(() =>
       result.current.stateStore.update(nextKey, (state) => ({ ...state, requestChanged: false })),
     );
-    expect(result.current.stateStore.getSnapshot(oldKey)?.text).not.toBe('Old answer');
+    expect(result.current.orphanDrafts([]).map((draft) => draft.key)).toEqual([nextKey]);
     expect(result.current.locked).toBe(false);
   });
 

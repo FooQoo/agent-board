@@ -3,27 +3,24 @@ import { formatShort } from '../../../features/tasks/model/format';
 import { TaskCardContent } from '../../../features/tasks/card/TaskCard';
 import { StatusLabel } from '../../../features/tasks/status/StatusLabel';
 import { AcceptanceProgress } from '../../../features/tasks/acceptance/AcceptanceProgress';
-import { DecisionRequestForm } from '../../../features/tasks/answer/DecisionRequestForm';
-import { noOperations } from '../../../shared/lib/operations/operations';
-import type { AnswerWriter } from '../../../features/tasks/answer/model/answer';
+import { DecisionAnswerButton } from '../../../features/tasks/answer/DecisionAnswerButton';
 import { EpicLabel } from '../../../features/epics/label/EpicLabel';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { completedAt } from '../model/sort';
 
-const unavailableAnswerWriter: AnswerWriter = async () => {
-  throw new Error('Monitor answer integration is not connected.');
-};
-
 export function MonitorTask({
   item,
   section,
   onOpenDetail,
+  onOpenAnswer,
   answerController,
 }: {
   item: MonitorTaskModel;
   section: MonitorSection;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
+  /** The card's answer button was pressed; the sheet is drawn outside the cards. */
+  onOpenAnswer?: (item: MonitorTaskModel) => void;
   answerController?: MonitorViewProps['answerController'];
 }) {
   const { t } = useTranslation();
@@ -75,28 +72,12 @@ export function MonitorTask({
             onClick={() => onOpenDetail?.(item, 'epic')}
           />
         )}
-        {pending && task.pendingRequestId !== null && (
+        {pending && task.pendingRequestId !== null && answerController && (
           <div className="monitor-card__request">
-            <DecisionRequestForm
-              projectId={item.projectId}
-              task={task}
-              operations={
-                answerController?.operationsFor(item.projectId, task.id, task.pendingRequestId) ??
-                noOperations
-              }
-              writeAnswer={answerController?.writeAnswer ?? unavailableAnswerWriter}
-              stateStore={answerController?.stateStore}
-              disabled={
-                !answerController ||
-                answerController.wasAnswered(item.projectId, task.id, task.pendingRequestId)
-              }
-              onRequestStale={(requestId) =>
-                answerController?.markRequestStale(item.projectId, task.id, requestId)
-              }
-              onAnswered={(result) => {
-                if (task.pendingRequestId)
-                  answerController?.onAnswered(item, task.pendingRequestId, result);
-              }}
+            <DecisionAnswerButton
+              continuing={answerController.hasDraft(item.projectId, task.id)}
+              taskId={task.id}
+              onClick={() => onOpenAnswer?.(item)}
             />
           </div>
         )}

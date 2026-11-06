@@ -44,7 +44,8 @@ export function useMonitorInteractions({
       hasDraft: (projectId, taskId) => state.hasDraft(projectId, taskId),
       hasAnyDraft: () => state.hasAnyDraft(),
       locked: state.locked,
+      sending: state.sending,
     }),
-    [state, writeAnswer, state.locked],
+    [state, writeAnswer, state.locked, state.sending],
   );
 }
