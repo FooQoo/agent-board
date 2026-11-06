@@ -131,6 +131,221 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionQuestion.tsx",
+      "exports": [
+        {
+          "name": "DecisionQuestion",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerpanel--empty",
+              "states": ["markdown question", "table", "picture", "code"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--without-question",
+              "states": ["no question"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionAnswerFields.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerFields",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerpanel--empty",
+              "states": ["nothing chosen", "no clear link"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--choose-type-clear",
+              "states": ["choice", "note", "clear"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--note-only",
+              "states": ["no options"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--too-long",
+              "states": ["note over the limit"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionAnswerPanel.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerPanel",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerpanel--empty",
+              "states": ["stacked columns"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--choose-type-clear",
+              "states": ["choice", "note", "clear"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--note-only",
+              "states": ["no options"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--too-long",
+              "states": ["note over the limit"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerpanel--without-question",
+              "states": ["no question"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionAnswerDialog.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerDialog",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerdialog--normal",
+              "states": ["two columns", "first option focused", "send off", "clear"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--filled",
+              "states": ["choice and note", "send on", "clear link"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--note-only",
+              "states": ["note alone is an answer"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--sending",
+              "states": ["sending", "input stopped", "close stopped"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--failed",
+              "states": ["failure band", "input kept", "retry"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--changed",
+              "states": ["question changed", "note kept"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--withdrawn",
+              "states": ["question withdrawn", "close only"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--japanese",
+              "states": ["Japanese"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--dark",
+              "states": ["dark mode"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--long-question",
+              "states": ["left column scrolls by itself"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--narrow",
+              "states": ["stacked below 900px"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionAnswerSheet.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerSheet",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswersheet--normal",
+              "states": ["bottom sheet", "first option focused", "send pinned"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--input-and-failed",
+              "states": ["failure band", "input kept", "retry"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--sending",
+              "states": ["sending", "sheet stays open"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--changed",
+              "states": ["question changed"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswersheet--withdrawn",
+              "states": ["question withdrawn", "no send"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswersheet--dark",
+              "states": ["dark mode"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/DecisionAnswerButton.tsx",
+      "exports": [
+        {
+          "name": "DecisionAnswerButton",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerbutton--open",
+              "states": ["answer the question"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerbutton--continuing",
+              "states": ["continue answering"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerbutton--monitor-card",
+              "states": ["phone width"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

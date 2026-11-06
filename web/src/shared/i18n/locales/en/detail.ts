@@ -50,6 +50,18 @@ export const detailEn = {
     cancel: 'Cancel',
     changed: 'This request has changed. Review the latest board.',
   },
+  answer: {
+    open: 'Answer the question',
+    continue: 'Continue answering',
+    heading: 'Your answer',
+    note: 'Note',
+    notePlaceholder: 'Add a note if you need to…',
+    guide: 'Choose an option, or answer with a note alone.',
+    clear: 'Clear',
+    close: 'Close',
+    changed: 'The question has changed. Review it and answer again.',
+    withdrawn: 'This question was withdrawn. You can no longer answer it.',
+  },
   delete: {
     buttonLabel: 'Delete task',
     confirm:

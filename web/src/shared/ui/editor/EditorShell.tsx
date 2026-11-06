@@ -47,6 +47,10 @@ export interface EditorShellProps {
   dialogData?: Record<`data-${string}`, string | undefined>;
   /** The label of the footer button that closes the dialog; Cancel unless the dialog only reads. */
   closeLabel?: string;
+  /** What gets the focus when the dialog opens; the first text input unless a dialog says otherwise. */
+  initialFocusSelector?: string;
+  /** The footer line while saving; "Saving…" unless a dialog keeps its own line. */
+  savingStatus?: ReactNode;
   children: ReactNode;
 }
 
@@ -74,6 +78,8 @@ export function EditorShell({
   className,
   dialogData,
   closeLabel,
+  initialFocusSelector = 'input',
+  savingStatus,
   children,
 }: EditorShellProps) {
   const { t } = useTranslation();
@@ -110,7 +116,9 @@ export function EditorShell({
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           event.currentTarget instanceof HTMLElement &&
-            event.currentTarget.querySelector<HTMLElement>('input')?.focus();
+            event.currentTarget
+              .querySelector<HTMLElement>(initialFocusSelector)
+              ?.focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
@@ -171,7 +179,7 @@ export function EditorShell({
         <div className="editor__footer" data-saving={saving ? 'true' : undefined}>
           {footerStart}
           <span className="editor__status" role="status">
-            {saving ? t('editor.savingStatus') : status}
+            {saving ? (savingStatus ?? t('editor.savingStatus')) : status}
           </span>
           <DialogActions>
             <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>

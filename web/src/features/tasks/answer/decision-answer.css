@@ -1,0 +1,333 @@
+/*
+ * The decision answer: the question on the left and the answer on the right in the PC dialog, the
+ * same two stacked in the monitor's sheet. Colors are the r-* tokens of theme.css. The lengths are
+ * the design's own values (DECISION-MODAL). The rules are unlayered, so they sit above the Tailwind
+ * utilities of the shared form parts.
+ */
+
+/* ---- The panel: stacked by default, split inside the dialog ---- */
+
+.decision-panel {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--r-surface);
+}
+
+.decision-panel__question {
+  flex: none;
+  padding: 20px 28px;
+}
+
+.decision-panel__answer {
+  flex: none;
+  padding: 20px 24px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-bg);
+}
+
+/* The dialog is the container: it is as wide as the window less 48px, so 852px is a 900px window. */
+.editor-dialog.decision-dialog {
+  width: min(1120px, calc(100vw - 48px));
+  height: calc(100dvh - 48px);
+  max-height: calc(100dvh - 48px);
+  container: decision-dialog / inline-size;
+}
+
+@container decision-dialog (min-width: 852px) {
+  .decision-dialog .decision-panel {
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  .decision-dialog .decision-panel__question {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  .decision-dialog .decision-panel__answer {
+    width: 400px;
+    overflow-y: auto;
+    border-top: 0;
+    border-left: 1px solid var(--r-border);
+  }
+}
+
+/* The dialog stops growing at 800px once the window is wide enough for two columns. */
+@media (min-width: 900px) {
+  .editor-dialog.decision-dialog {
+    height: min(800px, calc(100dvh - 48px));
+  }
+}
+
+.decision-dialog__hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.decision-dialog__hint svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- The question ---- */
+
+.decision-question__plain {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--r-text2);
+}
+
+/* ---- The answer ---- */
+
+.decision-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.decision-answer__heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--r-text);
+}
+
+.decision-answer__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--r-pend-tx);
+}
+
+.decision-answer__notice svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+}
+
+.decision-answer__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decision-answer__choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--r-text);
+  cursor: pointer;
+}
+
+.decision-answer__choice [role="radio"] {
+  margin-top: 2px;
+  border-color: var(--r-text2);
+  background: var(--r-surface);
+}
+
+.decision-answer__choice [role="radio"][data-state="checked"] {
+  border-color: var(--r-accent);
+}
+
+.decision-answer__choice[data-checked="true"] {
+  border-color: var(--r-accent);
+  background: var(--r-accent-soft);
+}
+
+.decision-answer__label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--r-text);
+}
+
+.decision-answer__note.decision-answer__note {
+  field-sizing: fixed;
+  height: 200px;
+  min-height: 200px;
+  padding: 9px 11px;
+  border-color: var(--r-border);
+  border-radius: 6px;
+  background: var(--r-surface);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--r-text);
+  resize: none;
+}
+
+.decision-answer__note.decision-answer__note:focus-visible {
+  border-color: var(--r-accent);
+  outline: none;
+  box-shadow: none;
+}
+
+.decision-answer__note.decision-answer__note[aria-invalid="true"] {
+  border-color: var(--r-danger);
+}
+
+.decision-answer__note.decision-answer__note:disabled {
+  background: var(--r-lane);
+  color: var(--r-muted);
+  opacity: 1;
+}
+
+.decision-answer__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.decision-answer__guide {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--r-text2);
+}
+
+.decision-answer__clear {
+  flex: none;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--r-accent);
+  cursor: pointer;
+}
+
+.decision-answer__clear:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+/* ---- The sheet: one column that scrolls, the send pinned below ---- */
+
+/* The answer sheet rises to 56px below the top of the screen, as in the design. */
+.mobile-drawer.decision-sheet-popup[data-slot="drawer-popup"] {
+  height: calc(100dvh - 56px);
+}
+
+.decision-sheet {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.decision-sheet .decision-panel__question {
+  padding: 14px 16px 10px;
+}
+
+.decision-sheet .decision-panel__answer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.decision-sheet .decision-answer__choices {
+  gap: 10px;
+}
+
+.decision-sheet .decision-answer__choice {
+  padding: 11px;
+}
+
+.decision-sheet .decision-answer__note.decision-answer__note {
+  height: 72px;
+  min-height: 72px;
+}
+
+.decision-sheet__failure {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--r-danger);
+  background: var(--r-surface);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--r-danger);
+}
+
+.decision-sheet__failure svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.decision-sheet__failure span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.decision-sheet__bar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: 10px 16px 18px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+/* ---- The card's button ---- */
+
+.decision-answer-button {
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.decision-answer-button[data-variant="outline"] {
+  border-color: var(--r-accent);
+  color: var(--r-accent);
+}
+
+.decision-answer-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A stopped answer (sending, withdrawn) is dimmed; the notice keeps its color. */
+.decision-answer[data-disabled="true"] .decision-answer__heading,
+.decision-answer[data-disabled="true"] .decision-answer__choice,
+.decision-answer[data-disabled="true"] .decision-answer__label {
+  opacity: 0.55;
+}
+
+.decision-answer[data-disabled="true"] .decision-answer__choice {
+  cursor: default;
+}
+
+.decision-answer__choice [role="radio"] svg {
+  fill: var(--r-accent);
+  color: var(--r-accent);
+}

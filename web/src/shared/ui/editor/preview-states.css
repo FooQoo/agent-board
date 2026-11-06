@@ -43,7 +43,8 @@
   color: var(--r-accent);
 }
 
-.state-chip[data-kind="running"] {
+.state-chip[data-kind="running"],
+.state-chip[data-kind="pending"] {
   background: var(--r-pend-bg);
   color: var(--r-pend-tx);
 }
