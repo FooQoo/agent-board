@@ -6,7 +6,7 @@
 
 - `serve`は`127.0.0.1`だけで待ち受け、プロジェクトが0件でも動きます。空のデータ領域には`workspace.json`を作ることがあります。
 - データ領域ごとにサーバーが一つだけ動くよう、`lifecycle.lock`（標準の`try_lock`）を起動から終了まで保持します。ファイルがあるだけでサーバーが動いているとは判断しません。ロックはプロセスの終了で外れます。
-- 起動時に`serve.json`があり、そのポートの`GET /api/health`が同じ`pid`を返すなら、`serve`は`already_serving`で終了します。そうでなければ古いファイルとして上書きします。
+- 起動時に`serve.json`があり、そのポートの`GET /api/health`が同じ`pid`を返すなら、`serve`は`already_serving`で終了します。そうでなければ古いファイルとして上書きします。`serve -d`は先に同じ確認をします。ターミナルで人が実行していれば、動いているサーバーを`stop`と同じ手順で止めて起動し直すかどうかを尋ね、`--json`を付けたときやターミナルの外では`already_serving`で終了します。
 - `serve`は待ち受けを始めた後に`serve.json`（`pid`・`port`・`started_at`）を書きます。SIGINTかSIGTERMを受けると、自分のpidが書かれている場合だけ`serve.json`を消します。
 - `stop`は`serve.json`の`pid`にSIGTERMを送ります。ポートが応答しなくなり、さらに`lifecycle.lock`を取れるようになってから戻るので、直後に起動した`serve`が`database_busy`で失敗することはありません。10秒たってもサーバーの終了処理が終わらなければ、`stop`は失敗します。
 

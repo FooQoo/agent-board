@@ -6,7 +6,7 @@
 
 - `serve` listens only on `127.0.0.1` and works with zero projects; it may create `workspace.json` in an empty data area.
 - `lifecycle.lock` (a standard `try_lock`) is held from start to exit so that only one server runs per data area. The file existing does not mean a server is running; the lock is released when the process exits.
-- At startup, if `serve.json` exists and `GET /api/health` on its port returns the same `pid`, `serve` exits with `already_serving`. Otherwise the file is stale and is overwritten.
+- At startup, if `serve.json` exists and `GET /api/health` on its port returns the same `pid`, `serve` exits with `already_serving`. Otherwise the file is stale and is overwritten. `serve -d` makes the same check first: for a person at a terminal it offers to stop the running server through the `stop` path and start a new one; with `--json` or without a terminal it exits with `already_serving`.
 - `serve` writes `serve.json` (`pid`, `port`, `started_at`) after it starts listening. On SIGINT or SIGTERM it removes `serve.json` only if the file holds its own pid.
 - `stop` sends SIGTERM to the `pid` in `serve.json`. It returns only after the port stops answering and `lifecycle.lock` can be taken, so a `serve` started right after it does not fail with `database_busy`. A server still shutting down after 10 seconds makes `stop` fail.
 

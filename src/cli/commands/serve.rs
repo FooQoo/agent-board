@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::net::SocketAddr;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::process::CommandExt;
@@ -10,6 +10,7 @@ use serde_json::json;
 
 use crate::cli::args::{ServeArgs, validate_monitor_args};
 use crate::error::AgboardError;
+use crate::interact::confirm;
 use crate::server::monitor_connection::lifecycle::MonitorEnv;
 use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 
@@ -49,7 +50,23 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     if let Some(info) = crate::paths::read_serve_info_in(&data_dir)
         && server::is_serving(&info)
     {
-        return Err(AgboardError::AlreadyServing { port: info.port });
+        let replace = confirm_replace(
+            info.port,
+            confirm::is_interactive(json),
+            &mut std::io::stdin().lock(),
+            &mut std::io::stderr(),
+        )?;
+        let text = if replace {
+            super::stop::run(false)?
+        } else {
+            "Cancelled. Nothing was changed.\n".to_string()
+        };
+        let mut stdout = std::io::stdout().lock();
+        let _ = stdout.write_all(text.as_bytes());
+        let _ = stdout.flush();
+        if !replace {
+            return Ok(());
+        }
     }
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| unavailable(format!("Cannot create the data directory: {e}")))?;
@@ -123,6 +140,25 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
         }
         std::thread::sleep(Duration::from_millis(50));
     }
+}
+
+/// Ask whether to replace the server on `port`. Only a person at a terminal
+/// can say yes: a script or an agent gets `already_serving`, so it never stops
+/// a server someone else is using.
+fn confirm_replace(
+    port: u16,
+    interactive: bool,
+    input: &mut impl BufRead,
+    output: &mut impl Write,
+) -> Result<bool, AgboardError> {
+    if !interactive {
+        return Err(AgboardError::AlreadyServing { port });
+    }
+    confirm::confirm(
+        &format!("A server is already running on port {port}. Stop it and start a new one?"),
+        input,
+        output,
+    )
 }
 
 fn unavailable(reason: String) -> AgboardError {
@@ -228,6 +264,27 @@ mod tests {
         MonitorReady {
             url: "https://abc.ngrok.app".into(),
             passcode: Passcode::from_number(37),
+        }
+    }
+
+    #[test]
+    fn only_a_person_at_a_terminal_can_replace_a_running_server() {
+        let mut printed = Vec::new();
+        let err = confirm_replace(7971, false, &mut "y\n".as_bytes(), &mut printed).unwrap_err();
+        assert!(matches!(err, AgboardError::AlreadyServing { port: 7971 }));
+        assert!(printed.is_empty(), "nothing should be asked");
+    }
+
+    #[test]
+    fn the_answer_decides_whether_the_running_server_is_replaced() {
+        for (answer, replace) in [("y\n", true), ("n\n", false), ("\n", false), ("", false)] {
+            let mut printed = Vec::new();
+            let result = confirm_replace(7971, true, &mut answer.as_bytes(), &mut printed).unwrap();
+            assert_eq!(result, replace, "{answer:?}");
+            assert_eq!(
+                String::from_utf8(printed).unwrap(),
+                "A server is already running on port 7971. Stop it and start a new one? [y/N] "
+            );
         }
     }
 

@@ -35,7 +35,7 @@ Find what you see, read the cause, and do what the last column says. The command
 
 | Error | Cause | What to do |
 | --- | --- | --- |
-| `already_serving` | Another server already runs on this data folder. | Use that one, or stop it with Ctrl+C in its terminal first. |
+| `already_serving` | Another server already runs on this data folder. | Use that one, or stop it first with `agboard stop`. In a terminal, `agboard serve -d` offers to replace it. |
 | `port_in_use` | Another program uses the port. | Choose another one: `agboard serve --port 7421`. |
 | `database_busy` | Another command held the project for more than 5 seconds. | Run the command again. |
 

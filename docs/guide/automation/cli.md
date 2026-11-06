@@ -152,7 +152,9 @@ agboard stop
 
 `agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve` or `serve -d`. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
 
-The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If a server is already running, `serve -d` exits with code 1 (`already_serving`). If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
+The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
+
+If a server is already running, `serve -d` asks in the terminal whether to stop it and start a new one. Answer `y` to replace it; the new server uses the `--port` and `--monitor` of this command, not those of the old server, and with `--monitor ngrok` it gets a new passcode. Any other answer leaves the running server as it is and exits with code 0. With `--json`, or when the command does not run in a terminal, nothing is asked and `serve -d` exits with code 1 (`already_serving`).
 
 ## Set up the shared folder
 
