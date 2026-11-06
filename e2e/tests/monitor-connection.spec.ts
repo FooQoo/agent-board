@@ -166,6 +166,31 @@ test('an image attached to the task shows in the sheet from the monitor attachme
   await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
+test('an image in a history reason shows in the History tab from the monitor attachment route', async ({ page }) => {
+  const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
+  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const file = path.join(mkdtempSync(path.join(os.tmpdir(), 'agboard-history-image-')), 'evidence.png');
+  writeFileSync(file, png);
+  const added = json(['attachment', 'add', String(id), '--file', file, '--actor', 'ai']);
+  const reason = `Checked.\n\n| Screen | Result |\n| --- | --- |\n| Board | Passed |\n\n![the evidence](${added.path})`;
+  const noted = agboard('Alpha', ['history', 'add', String(id), '--reason', reason], home);
+  expect(noted.code, noted.stderr).toBe(0);
+
+  await entrance.open(page, monitorUrl());
+  await page.getByRole('button', { name: 'Alpha history evidence' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('tab', { name: /History/ }).click();
+  await expect(dialog.getByRole('cell', { name: 'Passed' })).toBeVisible();
+  const image = dialog.getByRole('img', { name: 'the evidence' });
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('src', new RegExp(`/monitor/api/projects/${alpha}/tasks/${id}/attachments/${added.attachment.id}$`));
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+});
+
 test('nothing is read or answered without a session, and a replaced tunnel needs a new passcode', async ({ page }) => {
   const bare = await playwrightRequest.newContext();
   const base = `${entrance.phoneOrigin}/monitor/api`;
