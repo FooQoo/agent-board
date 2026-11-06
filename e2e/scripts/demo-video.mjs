@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -75,6 +75,13 @@ function cli(home, args) {
 }
 
 function seed(home, text) {
+  // The first-run guide is skipped, so the video opens on the board, as the screenshot seed does.
+  const internal = path.join(home, 'shared', '.internal');
+  mkdirSync(internal, { recursive: true });
+  writeFileSync(
+    path.join(internal, 'onboarding.json'),
+    JSON.stringify({ formatVersion: 1, revision: 1, status: 'skipped', owner: null, run: null, appliedCommands: [] }),
+  );
   const meta = cli(home, ['project', 'create', project]).project;
   const run = (...args) => cli(home, ['--project', project, ...args]);
   run('epic', 'add', text.epic, '--name', text.epicName, '--color', '#008FCC', '--actor', 'ai');
