@@ -1,7 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { TaskCard } from '../../src/features/tasks/card/TaskCard';
+import { DecisionAnswerDialogContainer } from '../../src/features/tasks/answer/DecisionAnswerDialogContainer';
+import { noOperations } from '../../src/shared/lib/operations/operations';
 import { useTaskAnswers } from '../../src/features/tasks/answer/model/useTaskAnswers';
 import { selectLocale } from '../../src/shared/i18n';
 import type { AnswerLeaseChange } from '../../src/features/tasks/answer/model/useTaskAnswers';
@@ -9,8 +12,6 @@ import type { Task as TaskModel } from '../../src/shared/api/contracts';
 import { deferred, jsonResponse } from '../fakes';
 import { PROJECT_A, makeTask } from '../fixtures';
 
-const LONG =
-  'It is unclear whether to keep the existing data or start from scratch. There are three options: replace the old board, export it and import a new one, or keep both for now. Please decide which one to use.';
 const pendingTask = (overrides: Partial<TaskModel> = {}): TaskModel =>
   makeTask({
     id: 12,
@@ -30,29 +31,48 @@ function renderPendingTask(
   task: TaskModel = pendingTask(),
   onLeaseChange: AnswerLeaseChange = vi.fn(),
 ) {
-  function Harness({ value }: { value: TaskModel }) {
+  function Harness({ value, missing }: { value: TaskModel; missing: boolean }) {
     const answers = useTaskAnswers(onLeaseChange);
+    const [open, setOpen] = useState(false);
     return (
-      <TaskCard
-        task={value}
-        selected={false}
-        onSelect={vi.fn()}
-        projectId={PROJECT_A.id}
-        answers={answers}
-        syncedAt={new Date('2026-10-12T01:00:00Z')}
-      />
+      <>
+        <TaskCard
+          task={value}
+          selected={false}
+          onSelect={vi.fn()}
+          projectId={PROJECT_A.id}
+          answers={answers}
+          onAnswer={() => setOpen(true)}
+        />
+        {open && (
+          <DecisionAnswerDialogContainer
+            projectId={PROJECT_A.id}
+            taskId={value.id}
+            task={missing ? null : value}
+            answers={answers}
+            operations={noOperations}
+            syncedAt={new Date('2026-10-12T01:00:00Z')}
+            onClose={() => setOpen(false)}
+          />
+        )}
+      </>
     );
   }
-  const utils = render(<Harness value={task} />);
+  const utils = render(<Harness value={task} missing={false} />);
   return {
     ...utils,
-    rerenderTask: (next: TaskModel) => utils.rerender(<Harness value={next} />),
+    rerenderTask: (next: TaskModel, missing = false) =>
+      utils.rerender(<Harness value={next} missing={missing} />),
   };
 }
 
-const request = (container: HTMLElement) =>
-  container.querySelector('.card__answer .detail__request') as HTMLElement;
-const box = () => screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement;
+const answerButton = () =>
+  screen.getByRole('button', { name: /^(Answer the question|Continue answering)$/ });
+const openDialog = async () => {
+  await userEvent.click(answerButton());
+  return screen.findByRole('dialog');
+};
+const box = () => screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement;
 const send = () => screen.getByRole('button', { name: /^(Send|Retry)$/ }) as HTMLButtonElement;
 const choice = (label: string) => screen.getByRole('radio', { name: label });
 const bodyOf = (call: unknown[]) => JSON.parse(String((call[1] as RequestInit).body));
@@ -62,19 +82,25 @@ beforeEach(() => {
   document.head.innerHTML = '<meta name="agboard-token" content="test-token">';
 });
 
-describe('PC task answer form', () => {
-  it('shows the current Todo request and choices directly on the task', () => {
+describe('PC task answer dialog', () => {
+  it('shows only the answer button on the card and the question, choices and note in the dialog', async () => {
     const { container } = renderPendingTask();
-    expect(request(container).textContent).toContain('Which way should the board go?');
-    expect(within(request(container)).getAllByRole('radio')).toHaveLength(2);
+    expect(container.querySelector('.card__answer')?.textContent).toBe('Answer the question');
+    expect(screen.queryByText('Which way should the board go?')).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    const dialog = await openDialog();
+    expect(await within(dialog).findByText('Which way should the board go?')).toBeTruthy();
+    expect(within(dialog).getAllByRole('radio')).toHaveLength(2);
     expect(box().value).toBe('');
     expect(send().disabled).toBe(true);
   });
 
-  it('enables Send for a choice or non-blank text and sends the current request id', async () => {
+  it('enables Send for a choice or non-blank text, sends the current request id and closes', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ task: pendingTask(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
     renderPendingTask();
+    await openDialog();
     await userEvent.type(box(), '   ');
     expect(send().disabled).toBe(true);
     await userEvent.click(choice('Start over'));
@@ -88,6 +114,7 @@ describe('PC task answer form', () => {
       requestId: 'req-1',
       choiceId: 'reset',
     });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('prevents duplicate sends and keeps the form locked during the request', async () => {
@@ -95,6 +122,7 @@ describe('PC task answer form', () => {
     const fetchMock = vi.fn(() => gate.promise);
     vi.stubGlobal('fetch', fetchMock);
     renderPendingTask();
+    await openDialog();
     await userEvent.type(box(), 'Go');
     await userEvent.click(send());
     expect(screen.getByRole('button', { name: 'Sending…' })).toHaveProperty('disabled', true);
@@ -102,7 +130,7 @@ describe('PC task answer form', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sending…' }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     gate.resolve(jsonResponse({ task: pendingTask(), changed: true }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Sending…' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('keeps the input after a save failure and retries the same answer', async () => {
@@ -114,10 +142,11 @@ describe('PC task answer form', () => {
       .mockResolvedValueOnce(jsonResponse({ task: pendingTask(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
     renderPendingTask();
+    await openDialog();
     await userEvent.click(choice('Keep the data'));
     await userEvent.type(box(), 'Keep me');
     await userEvent.click(send());
-    expect((await screen.findByRole('alert')).textContent).toBe('Could not save. Try again.');
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not save. Try again.');
     expect(box().value).toBe('Keep me');
     expect(choice('Keep the data').getAttribute('aria-checked')).toBe('true');
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
@@ -129,13 +158,11 @@ describe('PC task answer form', () => {
     });
   });
 
-  it('keeps an old draft but prevents sending it after the request changes', async () => {
-    const fetchMock = vi.fn(async () =>
-      jsonResponse({ error: { code: 'request_changed', message: 'x', reason: 'changed.' } }, 409),
-    );
+  it('shows the new question, drops the choice and keeps the note when the request changes', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ task: pendingTask(), changed: true }));
     vi.stubGlobal('fetch', fetchMock);
-    const first = pendingTask();
-    const { container, rerenderTask } = renderPendingTask(first);
+    const { rerenderTask } = renderPendingTask(pendingTask());
+    await openDialog();
     await userEvent.click(choice('Keep the data'));
     await userEvent.type(box(), 'Old answer');
     rerenderTask(
@@ -145,10 +172,8 @@ describe('PC task answer form', () => {
         pendingChoices: [{ id: 'other', label: 'Another path' }],
       }),
     );
-    expect(request(container).textContent).toContain('A new question');
-    expect(screen.getByRole('alert').textContent).toBe(
-      'This request has changed. Review the latest board.',
-    );
+    expect(await screen.findByText('A new question')).toBeTruthy();
+    expect(screen.getByText('The question has changed. Review it and answer again.')).toBeTruthy();
     expect(screen.queryByRole('radio', { name: 'Keep the data' })).toBeNull();
     expect(box().value).toBe('Old answer');
     expect(send().disabled).toBe(true);
@@ -161,28 +186,60 @@ describe('PC task answer form', () => {
     });
   });
 
-  it('cuts a long question to four lines and lets the user expand it', async () => {
-    const lineBox = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(200);
-    const client = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(78);
-    try {
-      const { container } = renderPendingTask(pendingTask({ pendingReason: LONG }));
-      const reason = request(container).querySelector('.detail__reason') as HTMLElement;
-      expect(reason.className).toContain('detail__reason--clamped');
-      await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
-      expect(reason.className).not.toContain('detail__reason--clamped');
-    } finally {
-      lineBox.mockRestore();
-      client.mockRestore();
-    }
+  it('keeps the last question readable and stops sending when the request is withdrawn or the card is gone', async () => {
+    const { rerenderTask } = renderPendingTask(pendingTask());
+    await openDialog();
+    await userEvent.type(box(), 'Half way');
+    rerenderTask(
+      pendingTask({
+        agentStatus: 'idle',
+        pendingRequestId: null,
+        pendingReason: null,
+        pendingChoices: [],
+      }),
+    );
+    expect(
+      await screen.findByText('This question was withdrawn. You can no longer answer it.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Which way should the board go?')).toBeTruthy();
+    expect(box().value).toBe('Half way');
+    expect(box().disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: /^Send$/ })).toBeNull();
+    rerenderTask(
+      pendingTask({
+        agentStatus: 'idle',
+        pendingRequestId: null,
+        pendingReason: null,
+        pendingChoices: [],
+      }),
+      true,
+    );
+    expect(screen.getByText('Which way should the board go?')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Send$/ })).toBeNull();
   });
 
-  it('keeps labels, hints and buttons in Japanese', async () => {
+  it('keeps the input when the dialog is closed and offers to continue', async () => {
+    const onLeaseChange = vi.fn();
+    renderPendingTask(pendingTask(), onLeaseChange);
+    await openDialog();
+    await userEvent.type(box(), 'Not yet');
+    expect(onLeaseChange).toHaveBeenLastCalledWith(expect.any(String), PROJECT_A.id, true);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(onLeaseChange).toHaveBeenLastCalledWith(expect.any(String), PROJECT_A.id, false);
+    await waitFor(() => expect(answerButton().textContent).toBe('Continue answering'));
+    await waitFor(() => expect(document.activeElement).toBe(answerButton()));
+    await openDialog();
+    expect(box().value).toBe('Not yet');
+  });
+
+  it('keeps labels and buttons in Japanese', async () => {
     selectLocale('ja');
     renderPendingTask();
-    expect(screen.getByText('AIが回答を待っています')).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: '回答' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: '質問に回答する' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByRole('textbox', { name: 'メモ' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '送信' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeTruthy();
-    expect(screen.getByText('選択肢を選ぶか、自由記述で回答できます。')).toBeTruthy();
+    expect(screen.getByText('選択肢を選ぶか、メモだけでも回答できます。')).toBeTruthy();
   });
 });

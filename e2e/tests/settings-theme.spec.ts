@@ -4,6 +4,7 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
+import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The Rust serve on 7631 is real; only the browser storage and a few request
@@ -543,13 +544,17 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
 
   await task(page, 12).click();
-  // The answer is typed in place, not in a dialog: the form is open with the request, and its text area takes focus.
+  // The card's button opens the answer dialog; its first option takes the focus, Tab stays inside, and Escape gives the focus back to the button.
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const answerBox = page.locator('.card__answer[data-task-id="12"]').getByRole('textbox', { name: 'Your answer' });
-  await answerBox.click();
-  await expect(answerBox).toBeFocused();
-  await page.locator('.card__answer[data-task-id="12"]').getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(answerBox).toHaveValue('');
+  const answer = await openAnswer(page, 12);
+  await expect(answer.getByRole('radio').first()).toBeFocused();
+  for (let step = 0; step < 8; step += 1) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(answer).toHaveCount(0);
+  await expect(answerButton(page, 12)).toBeFocused();
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
 
@@ -603,9 +608,7 @@ test('changing the language does not translate or alter what was entered', async
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await task(page, 12).click();
-  const answer = page.locator(`.card__answer[data-task-id="12"]`);
-  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Keep the database name.');
-  await answer.getByRole('button', { name: 'Send', exact: true }).click();
+  await sendAnswer(page, 12, { text: 'Keep the database name.' });
   await expect(task(page, 12)).toContainText('Idle');
 
   const before = listTasks(mainProject);
@@ -685,14 +688,12 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await task(page, 12).click();
   const panel = details(page);
   await expect(panel).toContainText('Pending');
-  const answer = page.locator('.card__answer[data-task-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
-  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Replace the board after a backup.');
-  await answer.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(answer).toHaveCount(0);
+  await sendAnswer(page, 12, { text: 'Replace the board after a backup.' });
+  await expect(answerButton(page, 12)).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
   await expect(panel.getByRole('listitem').first()).toContainText('Replace the board after a backup.');
-  await expect(page.locator('.card__answer[data-task-id="12"]')).toHaveCount(0);
+  await expect(answerButton(page, 12)).toHaveCount(0);
   expect(listTasks(mainProject).find(({ id }) => id === 12)).toMatchObject({ agentStatus: 'idle', pendingReason: null });
 
   // Archive from the toolbar beside the tabs; Cancel keeps the card, Archive removes it from the board.
@@ -717,9 +718,11 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a theme review')]);
-  await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) }).locator('..')).toContainText(
-    'Waiting for a theme review',
-  );
+  await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) })).toBeVisible();
+  // The card offers the answer button; the question is read in its dialog.
+  await expect(await openAnswer(page, fresh + 1)).toContainText('Waiting for a theme review');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // The pending state keeps its own amber, apart from the Red accent.
   const pendingBadge = lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending `) }).locator('.status-label');
   await expect(pendingBadge).toHaveCSS('color', 'rgb(233, 176, 79)');
@@ -808,16 +811,16 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     });
   });
   await task(page, 12).click();
-  const answer = page.locator('.card__answer[data-task-id="12"]').getByRole('region', { name: 'The agent is waiting for your answer' });
-  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Kept answer.');
-  await answer.getByRole('button', { name: 'Send', exact: true }).click();
-  // The in-place answer shows the board's fixed save-failure text rather than the server's reason.
-  await expect(answer.getByRole('alert')).toHaveText('Could not save. Try again.');
-  await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('Kept answer.');
+  const answer = await openAnswer(page, 12);
+  await answerNote(page).fill('Kept answer.');
+  await answerSend(page).click();
+  // The dialog shows the board's fixed save-failure text rather than the server's reason.
+  await expect(answer.getByRole('alert')).toContainText('Could not save. Try again.');
+  await expect(answerNote(page)).toHaveValue('Kept answer.');
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
   answerFails = false;
-  await answer.getByRole('button', { name: /^(Send|Retry)$/ }).click();
-  await expect(answer).toHaveCount(0);
+  await answer.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(answer).toBeHidden();
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
 });
 

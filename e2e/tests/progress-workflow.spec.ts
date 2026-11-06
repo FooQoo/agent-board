@@ -14,6 +14,7 @@ import {
   workspace,
 } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
+import { answerNote, answerSend, openAnswer } from '../helpers/answer';
 
 function run(args: string[], home: string, cwd: string, input = ''): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
@@ -129,13 +130,12 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     const taskButton = page.getByRole('button', { name: new RegExp(`^#${publish}(?!\\d)`) });
     await expect(taskButton).toBeVisible();
     await taskButton.click();
-    const answer = page.locator(`.card__answer[data-task-id="${publish}"]`)
-      .getByRole('region', { name: 'The agent is waiting for your answer' });
+    const answer = await openAnswer(page, publish);
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });
-    await answer.getByRole('textbox', { name: 'Your answer' }).fill('Choose Plan A and publish after review.');
-    await answer.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(answer).toHaveCount(0);
+    await answerNote(page).fill('Choose Plan A and publish after review.');
+    await answerSend(page).click();
+    await expect(answer).toBeHidden();
 
     const completed = await waitResult;
     expect(completed.code, completed.stderr).toBe(0);

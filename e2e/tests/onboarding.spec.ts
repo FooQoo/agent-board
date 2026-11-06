@@ -53,10 +53,12 @@ test('OB-01: the guide runs both samples, takes the answer, and archives them', 
 	// The second card asks its question and waits for the user.
 	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
 	await expect(page.locator('.onboarding-panel__badge')).toHaveText('Waiting for you');
-	// The answer is given on the card inside the guide's spotlight, not on the card behind it.
+	// The card inside the guide's spotlight shows only the answer button; the answer is given in its dialog.
 	const stage = page.getByRole('dialog', { name: 'Guide' });
-	await stage.getByLabel('Keep it brief').check();
-	await stage.getByRole('button', { name: 'Send' }).click();
+	await stage.getByRole('button', { name: 'Answer the question' }).click();
+	const answer = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
+	await answer.getByLabel('Keep it brief').check();
+	await answer.getByRole('button', { name: 'Send', exact: true }).click();
 
 	await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Next' }).click();

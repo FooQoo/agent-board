@@ -24,8 +24,7 @@ export interface BoardProps {
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
   answers?: TaskAnswerController;
-  syncedAt?: Date | null;
-  onAnswerChanged?: () => void;
+  onAnswer?: (taskId: number) => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
 }
 
@@ -41,8 +40,7 @@ export function Board({
   onOpenEpic,
   projectId,
   answers,
-  syncedAt,
-  onAnswerChanged,
+  onAnswer,
   layoutRef,
 }: BoardProps) {
   if (message !== null) {
@@ -102,8 +100,7 @@ export function Board({
               onOpenEpic={onOpenEpic}
               projectId={projectId}
               answers={answers}
-              syncedAt={syncedAt}
-              onAnswerChanged={onAnswerChanged}
+              onAnswer={onAnswer}
             />
           ))}
         </div>

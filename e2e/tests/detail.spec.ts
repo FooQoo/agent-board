@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { resetBoard, mainProject } from '../helpers/agboard';
+import { answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
@@ -47,13 +48,15 @@ test('the panel shows the run state and the reason for Doing tasks, and an empty
   await expect(panel.locator('.detail__meta .status-label--pending svg')).toHaveCount(1);
   // The request is answered on the card, so the details do not repeat it.
   await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
-  const answer = task(page, 12).locator('..').locator('.card__answer');
-  // The answer is typed on the card, with no dialog; Cancel clears the draft.
+  // The card shows only the button; the answer is entered in its dialog, and Clear drops the input.
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await answer.getByRole('textbox', { name: 'Your answer' }).fill('Typed in place');
-  await answer.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(answer.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
-  await expect(answer.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+  await openAnswer(page);
+  await answerNote(page).fill('Typed in place');
+  await answerDialog(page).getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(answerNote(page)).toHaveValue('');
+  await expect(answerSend(page)).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await task(page, 11).click();
   await expect(panel).toContainText('Running');
@@ -151,11 +154,11 @@ test('opening, switching, and closing the panel never moves the board', async ({
 });
 
 test('the task grips never take keyboard focus', async ({ page }) => {
-  // The Pending card's answer controls join the tab order (one stop for its choice group); grips stay out of it.
+  // The Pending card's answer button joins the tab order (one stop); grips stay out of it.
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 16; step++) {
+  for (let step = 0; step < 14; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -177,9 +180,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'DIV #16',
     'DIV #11',
     'DIV #12',
-    'BUTTON ',
-    'TEXTAREA ',
-    'BUTTON Cancel',
+    'BUTTON Answer the question',
     'DIV #13',
     'BUTTON Archive completed tasks',
   ]);
@@ -203,8 +204,8 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), eight cards, the Pending form (its choice
-  // group, two more controls, Cancel), Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(6 + 8 + 4 + 1 + 4);
+  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), eight cards, the Pending card's answer
+  // button, Archive completed tasks, four detail controls.
+  expect(focusable).toHaveLength(6 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

@@ -36,6 +36,21 @@
           ]
         }
       ]
+    },
+    {
+      "file": "app/dialogs/TaskPreviewDialog.tsx",
+      "exports": [
+        {
+          "name": "TaskPreviewDialog",
+          "stories": [
+            {
+              "id": "task-dialogs-taskpreviewdialog--default",
+              "states": ["preview of a card that is not running opens in the editor frame"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

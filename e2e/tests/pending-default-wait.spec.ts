@@ -5,6 +5,7 @@ import {
   agboardBinary, agboardCatalogOk, agboardOk, decisionJson, makeHome, projectId, removeHome, startServe, stopServe,
   type Serve, type TaskJson,
 } from '../helpers/agboard';
+import { answerButton, answerSend, openAnswer } from '../helpers/answer';
 
 // Asking a pending question with no wait setting waits for the answer. This runs the real CLI as a child
 // process against its own data area and serve, answers in the browser, and expects the same child to finish.
@@ -53,22 +54,22 @@ test('default pending waits for a browser answer', async ({ page }) => {
     });
 
     await page.goto(`${serve.url}?project=${projectId(project, home)}`);
-    const request = page
-      .locator('.card__answer[data-task-id="1"]')
-      .getByRole('region', { name: 'The agent is waiting for your answer' });
+    await expect(answerButton(page, 1)).toBeVisible();
+    const request = await openAnswer(page, 1);
     await expect(request).toContainText('Which plan should the default wait use?');
     expect(waiter.exitCode, 'the child keeps waiting while the question is open').toBeNull();
     expect(show(home, 1)).toMatchObject({ agentStatus: 'pending' });
 
     await request.getByRole('radio', { name: 'Plan B' }).check();
-    await request.getByRole('button', { name: 'Send', exact: true }).click();
+    await answerSend(page).click();
 
     expect(await exited, stderr).toEqual({ code: 0, signal: null });
     const output = JSON.parse(stdout) as { task: TaskJson; answer: { actor: string; choiceId: string | null; choiceLabel: string | null } };
     expect(output.answer).toMatchObject({ actor: 'human', choiceId: 'b', choiceLabel: 'Plan B' });
     expect(output.task).toMatchObject({ id: 1, agentStatus: 'idle', pendingRequestId: null });
     expect(show(home, 1)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
-    await expect(request).toHaveCount(0);
+    await expect(request).toBeHidden();
+    await expect(answerButton(page, 1)).toHaveCount(0);
   } finally {
     await reap(waiter);
     await stopServe(serve);

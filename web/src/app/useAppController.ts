@@ -10,6 +10,7 @@ import { epicForEditor, taskForEditor, toBoardView, toTaskSummary } from './data
 import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
+import { useAnswerTarget } from './model/useAnswerTarget';
 import { useStreamSubscriptions } from './model/useStreamSubscriptions';
 import { useTaskAnswers } from '../features/tasks/answer/model/useTaskAnswers';
 import { findTask, nextSelection } from '../features/tasks/model/board';
@@ -36,7 +37,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     requested,
     initial?.select ?? null,
   );
-  // The dialog belongs to the project it was opened in: another project closes it.
   const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
   const taskAnswers = useTaskAnswers(answerLeaseControls.set);
   const projects = useProjects();
@@ -44,6 +44,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   useEffect(() => {
     if (docsOpenFor !== null && docsOpenFor !== activeId) setDocsOpenFor(null);
   }, [docsOpenFor, activeId]);
+  const { answerTarget, openAnswer, closeAnswer } = useAnswerTarget(activeId);
   const known =
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
   const core = useDataCore();
@@ -214,7 +215,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
   useBuildReload(
     serverBuild,
-    session.operation !== null || session.answerLeases.length > 0,
+    session.operation !== null || session.answerLeases.length > 0 || taskAnswers.hasAnyDraft(),
     core.gate,
   );
   useEffect(preloadBoardCode, []);
@@ -286,6 +287,9 @@ export function useAppController(initial: AppInitial | undefined): AppController
     setRequested,
     restoreFailure,
     setRestoreFailure,
+    answerTarget,
+    openAnswer,
+    closeAnswer,
     projectName: (projectId) => projects.projects.find((project) => project.id === projectId)?.name,
     viewMode: session.viewMode,
     docsProjectId: docsOpenFor === activeId ? docsOpenFor : null,

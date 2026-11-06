@@ -125,8 +125,7 @@ export function BoardWorkspace({
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
             answers={model.answerSession}
-            syncedAt={board.lastSyncedAt}
-            onAnswerChanged={actions.onAnswerChanged}
+            onAnswer={model.openAnswer}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}
             onReorder={actions.onReorder}
@@ -209,7 +208,7 @@ export function BoardWorkspace({
           }
           tasks={tasks}
           answers={model.answerSession}
-          syncedAt={board.lastSyncedAt}
+          onAnswer={model.openAnswer}
           onAnswerChanged={actions.onAnswerChanged}
         />
       </Suspense>

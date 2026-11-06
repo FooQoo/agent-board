@@ -1,3 +1,8 @@
+/*
+ * The answer button under a pending card. The lengths follow the approved mock (DECISION-MODAL, the card
+ * buttons): the button is 34px high, 10px under the divider and 10px above the card's lower edge, and the
+ * card's own lower padding is reduced to 6px so the divider sits 7px under the updated time.
+ */
 .card__answer {
   width: 100%;
   cursor: auto;
@@ -7,24 +12,10 @@
   border-top: 1px solid var(--r-pend-bd);
 }
 
-.card__answer .detail__request {
-  padding: 0;
-  gap: 7px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+.card__item:has(.card__answer) .card {
+  padding-bottom: 6px;
 }
 
-.card__answer .detail__answer-input.detail__answer-input {
-  min-height: 60px;
-  padding: 8px;
-}
-
-.card__answer .detail__choice {
-  gap: 6px;
-}
-
-.card__answer .detail__choice-label,
-.card__answer .detail__reason {
-  overflow-wrap: anywhere;
+.card__answer .decision-answer-button {
+  height: 34px;
 }

@@ -1,5 +1,6 @@
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { preloadDocumentBlocks } from '../../features/tasks/detail/BodyDocumentView';
+import { preloadDecisionQuestion } from '../../features/tasks/answer/DecisionQuestion';
 import { preloadDetailSection } from '../../features/tasks/detail/DetailSection';
 
 /**
@@ -12,6 +13,13 @@ export const actionDialog = preloadable(() =>
 export const bulkArchiveDialog = preloadable(() =>
   import('../../features/tasks/archive/BulkArchiveDialog').then(
     (module) => module.BulkArchiveDialog,
+  ),
+);
+
+/** The answer dialog, with the Markdown renderer of the question, loads before it is first opened. */
+export const decisionAnswerDialog = preloadable(() =>
+  import('../../features/tasks/answer/DecisionAnswerDialogContainer').then(
+    (module) => module.DecisionAnswerDialogContainer,
   ),
 );
 
@@ -28,6 +36,8 @@ export function preloadBoardCode(): void {
   for (const preload of [
     actionDialog.preload,
     bulkArchiveDialog.preload,
+    decisionAnswerDialog.preload,
+    preloadDecisionQuestion,
     preloadDocumentBlocks,
     preloadDetailSection,
   ])

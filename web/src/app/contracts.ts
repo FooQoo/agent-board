@@ -84,6 +84,10 @@ export interface AppControllerModel {
   ) => Promise<unknown>;
   restoreFailure: { projectId: ProjectId; taskId: number } | null;
   setRestoreFailure: (value: { projectId: ProjectId; taskId: number } | null) => void;
+  /** The card whose answer dialog is open in the active project, or null. */
+  answerTarget: { projectId: ProjectId; taskId: number } | null;
+  openAnswer: (taskId: number) => void;
+  closeAnswer: () => void;
   projectName: (projectId: ProjectId) => string | undefined;
   viewMode: ViewMode;
   /** The project whose docs dialog is open, or null. */
