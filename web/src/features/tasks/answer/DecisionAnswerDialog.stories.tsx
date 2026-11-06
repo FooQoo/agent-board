@@ -175,7 +175,7 @@ export const Dark: Story = {
 
 /** A long question scrolls inside the left column; the answer on the right does not move. */
 export const LongQuestion: Story = {
-  args: { long: true },
+  args: { long: true, initial: { choiceId: 'keep' } },
   play: async () => {
     const dialog = await page().findByRole('dialog');
     const left = dialog.querySelector<HTMLElement>('.decision-panel__question');
@@ -188,7 +188,6 @@ export const LongQuestion: Story = {
 
 /** Narrower than 900px the two columns stack, and the whole body scrolls. */
 export const Narrow: Story = {
-  args: { initial: { choiceId: 'keep' } },
   decorators: [
     (Story) => (
       <>
