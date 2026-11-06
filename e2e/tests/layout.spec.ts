@@ -105,8 +105,8 @@ for (const locale of ['en', 'ja']) {
         });
         expect(wrapped, 'tab labels stay on one line').toBe(false);
       }
-      const preview = detail.getByRole('button', { name: locale === 'ja' ? 'プレビュー' : 'Preview', exact: true });
-      await expect(preview).toHaveAttribute('title', locale === 'ja' ? 'プレビュー' : 'Preview');
+      const preview = detail.getByRole('button', { name: locale === 'ja' ? '全画面で開く（タスク）' : 'Open full screen (task)', exact: true });
+      await expect(preview).toHaveAttribute('title', locale === 'ja' ? '全画面で開く（タスク）' : 'Open full screen (task)');
       await page.screenshot({ path: testInfo.outputPath('detail-toolbar.png') });
       await expect(detail.getByRole('button', { name: locale === 'ja' ? '下書きにする' : 'Make draft' })).toHaveCount(0);
     });

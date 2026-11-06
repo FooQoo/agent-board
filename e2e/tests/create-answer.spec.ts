@@ -86,7 +86,7 @@ test('a task is added with a title, the AI as the default owner, and a Markdown 
   await expect(details(page).getByRole('radiogroup')).toHaveCount(0);
   await expect(details(page).getByRole('combobox')).toHaveCount(0);
   await putDraft(id);
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(editing).toBeVisible();
   await expect(editing.getByRole('radiogroup')).toHaveCount(0);

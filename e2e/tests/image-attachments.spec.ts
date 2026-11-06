@@ -83,7 +83,7 @@ test('side attachments render, persist, retry safely and become No image after d
 
   // Delete the picture in the editor: the reference stays in the body and shows as No image.
   await putDraft(id);
-  await detail.getByRole('button', { name: 'Preview', exact: true }).click();
+  await detail.getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const edit = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await edit.getByRole('button', { name: 'Remove capture.png' }).click();
   // Save keeps the draft; finalizing is done from the details.

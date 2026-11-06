@@ -22,7 +22,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** E. The entrances: the toolbar's Preview button and the epic tab's heading with Open full screen. */
+/** E. The entrances: the toolbar's Open full screen button and the epic tab's heading with Open full screen. */
 export const Entrances: Story = {
   render: () => {
     const onPreview = fn();
@@ -65,8 +65,8 @@ export const Entrances: Story = {
   },
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
-    await userEvent.click(view.getByRole('button', { name: 'Preview' }));
-    await userEvent.click(view.getByRole('button', { name: 'Open full screen' }));
+    await userEvent.click(view.getByRole('button', { name: 'Open full screen (task)' }));
+    await userEvent.click(view.getByRole('button', { name: 'Open full screen (epic)' }));
     await expect(view.getByText('PREVIEW-MODAL')).toBeInTheDocument();
     await expect(view.getByRole('heading', { name: EPIC.name })).toBeInTheDocument();
   },

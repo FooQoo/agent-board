@@ -1,4 +1,4 @@
-/* The top of the epic tab: the label, the epic's name, and the button that opens it full screen. */
+/* The top of the epic tab: the label with the full-screen button at its right, then the name. */
 
 .detail__epic-heading {
   display: flex;
@@ -24,6 +24,10 @@
 .detail__epic-label svg {
   width: 12px;
   height: 12px;
+}
+
+.detail__epic-open {
+  margin-left: auto;
 }
 
 .detail__epic-name {

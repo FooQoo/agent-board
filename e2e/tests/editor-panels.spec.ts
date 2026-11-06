@@ -70,7 +70,7 @@ test('creation and task editing use the same single conditions panel and compact
   await waitForSync(page);
   await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
   await putDraft(id);
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.locator('.editor-dialog');
   await dialog.locator('.conditions-dock__head').click();
   await expect(dialog.locator('.acceptance-edit__head')).toHaveCount(0);

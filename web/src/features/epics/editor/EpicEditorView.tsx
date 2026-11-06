@@ -104,6 +104,7 @@ export function EpicEditorView({
       onClose={close}
       closeLabel={dirty ? undefined : t('dialog.close')}
       status={status}
+      onSave={() => void run()}
       actions={
         <Button type="button" disabled={saving || !canSave} onClick={() => void run()}>
           {saving ? t('dialog.saving') : t('editor.save')}

@@ -139,19 +139,19 @@ describe('toolbar', () => {
       .getAllByRole('button')
       .map((b) => b.textContent || b.getAttribute('aria-label'));
 
-  it('offers Preview and Delete for an idle task that is not a draft, Delete last', () => {
+  it('offers Open full screen and Delete for an idle task that is not a draft, Delete last', () => {
     renderPanel(fixtureTask(8));
-    expect(names()).toEqual(['Preview', 'Archive task']);
+    expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
   it('offers the same Preview and Delete for a draft', () => {
     renderPanel({ ...fixtureTask(8), isDraft: true });
-    expect(names()).toEqual(['Preview', 'Archive task']);
+    expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
   it('offers Preview to pending and running tasks as well: running opens it read-only', () => {
     const { rerender } = renderPanel(fixtureTask(11));
-    expect(names()).toEqual(['Preview', 'Archive task']);
+    expect(names()).toEqual(['Open full screen', 'Archive task']);
     rerender(
       <DetailPanel
         projectId={PROJECT_A.id}
@@ -160,7 +160,7 @@ describe('toolbar', () => {
         onRemove={noRemove}
       />,
     );
-    expect(names()).toEqual(['Preview', 'Archive task']);
+    expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
   it('has no Make draft button', () => {
@@ -171,14 +171,14 @@ describe('toolbar', () => {
   it('keeps Preview and Delete in the History tab', async () => {
     renderPanel({ ...fixtureTask(8), isDraft: true });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
-    expect(names()).toEqual(['Preview', 'Archive task']);
+    expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
   it('calls onPreview with the task when Preview is pressed', async () => {
     const onPreview = vi.fn();
     const task = { ...fixtureTask(8), isDraft: true };
     renderPanel(task, { onPreview });
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open full screen (task)' }));
     expect(onPreview).toHaveBeenCalledWith(task);
   });
 
@@ -253,7 +253,7 @@ describe('toolbar', () => {
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
     renderPanel({ ...fixtureTask(8), isDraft: true });
-    expect(names()).toEqual(['プレビュー', 'タスクをアーカイブ']);
+    expect(names()).toEqual(['全画面で開く', 'タスクをアーカイブ']);
   });
 
   it('names the archived delete icon in Japanese inside the top toolbar', () => {

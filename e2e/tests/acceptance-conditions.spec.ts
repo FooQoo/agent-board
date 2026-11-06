@@ -76,7 +76,7 @@ async function startFromDraft(page: Page, id: number): Promise<void> {
 /** Open the card's edit dialog and wait until its text has loaded. */
 async function openEdit(page: Page, id: number): Promise<{ dialog: Locator; editor: Locator }> {
   await task(page, id).click();
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });

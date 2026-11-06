@@ -53,7 +53,7 @@ async function startFromDraft(page: Page): Promise<void> {
 }
 
 async function openEditor(page: Page): Promise<{ dialog: Locator; editor: Locator }> {
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
@@ -71,7 +71,7 @@ async function typeAtEnd(page: Page, editor: Locator, text: string): Promise<voi
 
 test('a task becomes a draft, is edited and saved, and finalized from the details', async ({ page }) => {
   // Before: an ordinary card offers Preview, and no Make draft.
-  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
+  expect(await toolbarLabels(page)).toEqual(['Open full screen (task)', 'Archive task']);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
   await startFromDraft(page);
 
@@ -79,7 +79,7 @@ test('a task becomes a draft, is edited and saved, and finalized from the detail
   await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(1);
   const banner = details(page).getByRole('region', { name: 'Draft' });
   await expect(banner).toContainText('Agents can only read this task. Once you finalize it, agents can work on it.');
-  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
+  expect(await toolbarLabels(page)).toEqual(['Open full screen (task)', 'Archive task']);
   await expect(details(page).getByRole('button', { name: 'Make draft' })).toHaveCount(0);
 
   const { dialog, editor } = await openEditor(page);
@@ -127,7 +127,7 @@ test('a task becomes a draft, is edited and saved, and finalized from the detail
   await expect.poll(() => show(id).isDraft).toBe(false);
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Draft me, rewritten');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
-  await expect(details(page).getByRole('button', { name: 'Preview', exact: true })).toBeVisible();
+  await expect(details(page).getByRole('button', { name: 'Open full screen (task)', exact: true })).toBeVisible();
   await expect(task(page, id).getByText('Draft', { exact: true })).toHaveCount(0);
 });
 
@@ -292,15 +292,15 @@ test('every task offers Preview, and a running task opens it read-only', async (
   await task(page, 11).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toBeVisible();
   await expect(details(page).getByRole('button', { name: 'Make draft' }), 'running').toHaveCount(0);
-  expect(await toolbarLabels(page)).toEqual(['Preview', 'Archive task']);
+  expect(await toolbarLabels(page)).toEqual(['Open full screen (task)', 'Archive task']);
   // An idle Doing card, a Pending card, and a Done card offer it too.
   for (const idle of [13, 12, 8]) {
     await task(page, idle).click();
-    await expect(details(page).getByRole('button', { name: 'Preview', exact: true })).toBeVisible();
+    await expect(details(page).getByRole('button', { name: 'Open full screen (task)', exact: true })).toBeVisible();
   }
   // The running card opens the preview, but only to read it.
   await task(page, 11).click();
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /^#11 Task preview/ });
   await expect(dialog).toHaveAttribute('data-read-only', '');
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeDisabled();
@@ -312,7 +312,7 @@ test('the toolbar puts archive at the right end; its confirmation sits above the
 }) => {
   await startFromDraft(page);
   const toolbar = details(page).getByRole('toolbar', { name: 'Task actions' });
-  const edit = toolbar.getByRole('button', { name: 'Preview', exact: true });
+  const edit = toolbar.getByRole('button', { name: 'Open full screen (task)', exact: true });
   const archive = toolbar.getByRole('button', { name: 'Archive task' });
   const editBox = (await edit.boundingBox())!;
   const archiveBox = (await archive.boundingBox())!;

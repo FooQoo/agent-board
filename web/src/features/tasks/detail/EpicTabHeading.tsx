@@ -12,17 +12,23 @@ export interface EpicTabHeadingProps {
   onOpen: () => void;
 }
 
-/** The top of the epic tab: the epic label, its name, and the button that opens it full screen. */
+/** The top of the epic tab: the epic label with the full-screen button at its right, then the name. */
 export function EpicTabHeading({ epic, renderLabel, onOpen }: EpicTabHeadingProps) {
   const { t } = useTranslation();
   return (
     <div className="detail__epic-heading">
       {renderLabel(epic)}
-      <h3 className="detail__epic-name">{epic.name}</h3>
-      <button type="button" className="detail__tool detail__tool--text" onClick={onOpen}>
+      <button
+        type="button"
+        className="detail__tool detail__tool--text detail__epic-open"
+        aria-label={t('detail.openEpicFullscreen')}
+        title={t('detail.openEpicFullscreen')}
+        onClick={onOpen}
+      >
         <Maximize2Icon aria-hidden="true" />
         {t('detail.openFullscreen')}
       </button>
+      <h3 className="detail__epic-name">{epic.name}</h3>
     </div>
   );
 }

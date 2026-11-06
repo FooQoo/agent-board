@@ -24,7 +24,7 @@ export interface DetailPanelProps {
   /** Tells the app about the delete confirmation, so the project cannot change under it. */
   operations?: OperationControls;
   onClose: () => void;
-  /** The Preview button was pressed: the app opens the preview dialog for the card. */
+  /** The Open full screen button was pressed: the app opens the preview dialog for the card. */
   onPreview?: (task: TaskSummary) => void;
   /** The epic tab's Open full screen button was pressed. The app opens the epic's preview. */
   onOpenEpic?: (epicId: string) => void;

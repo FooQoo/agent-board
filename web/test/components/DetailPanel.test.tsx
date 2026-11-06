@@ -36,7 +36,7 @@ describe('DetailPanel', () => {
     );
     expect(screen.getByRole('button', { name: '詳細を閉じる' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'タスクをアーカイブ' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'プレビュー' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '全画面で開く（タスク）' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '本文' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /^履歴/ })).toBeTruthy();
     expect(await screen.findByText('説明はありません。')).toBeTruthy();

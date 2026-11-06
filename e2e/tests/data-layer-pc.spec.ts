@@ -131,7 +131,7 @@ test('the drawer holds updates while it is open and for 3 seconds after; a save 
   // A change made here shows at once, with the drawer still open: the preview makes the card a draft at the
   // first change, and the card is a draft on its tile.
   await task(page, 14).click();
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const preview = page.getByRole('dialog', { name: /^#14 / });
   await preview.getByRole('textbox', { name: 'Title', exact: true }).fill('Changed in the preview');
   // The dialog hides the board from the accessibility tree, so the tile is found by its text.
@@ -214,7 +214,7 @@ test('a 50,000-character document is shown with a bounded page, and is edited an
 
   // Edit and save: the dialog opens from the whole text, and a later save wins over an earlier one.
   await putDraft(id);
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(new RegExp(`^${text.length.toLocaleString('en-US')} / 50,000`))).toBeVisible({ timeout: 30_000 });
@@ -224,7 +224,7 @@ test('a 50,000-character document is shown with a bounded page, and is edited an
   await second.goto('/');
   await waitForSync(second);
   await task(second, id).click();
-  await details(second).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(second).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const secondDialog = second.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
   await secondDialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved from the second page');
   await secondDialog.getByRole('button', { name: 'Save', exact: true }).click();

@@ -222,6 +222,7 @@ export function EditDialog({
       onClose={() => void close()}
       status={status}
       closeLabel={dirty && !readOnly ? undefined : t('dialog.close')}
+      onSave={save}
       actions={
         <Button type="button" disabled={flow.saving || !valid || !canSend} onClick={save}>
           {flow.saving ? t('dialog.saving') : t('editor.save')}

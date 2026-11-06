@@ -6,6 +6,7 @@ import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import { findTaskButton } from '../dialog-frame/DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
+import { useSaveShortcut } from './useSaveShortcut';
 import '../../styles/editor.css';
 import './editor-common.css';
 import '../../styles/rich-table.css';
@@ -38,6 +39,8 @@ export interface EditorShellProps {
   footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
   actions: ReactNode;
+  /** Cmd+S and Ctrl+S run this. It checks for itself whether a save can start. */
+  onSave?: () => void;
   /** Extra class on the dialog, for a screen that restyles the shell (the docs dialog). */
   className?: string;
   /** Data attributes on the dialog, for the same purpose as `className`. */
@@ -67,6 +70,7 @@ export function EditorShell({
   status,
   footerStart,
   actions,
+  onSave,
   className,
   dialogData,
   closeLabel,
@@ -76,6 +80,7 @@ export function EditorShell({
   const [asking, setAsking] = useState(false);
   // Where the focus was when the dialog opened (the button that opened it).
   const [opener] = useState(() => document.activeElement);
+  useSaveShortcut(onSave);
 
   const requestClose = () => {
     if (saving) return;

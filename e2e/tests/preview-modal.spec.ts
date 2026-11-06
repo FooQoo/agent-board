@@ -12,7 +12,7 @@ import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 const previewOf = (page: Page, id: number) => page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
-const previewButton = (page: Page) => details(page).getByRole('button', { name: 'Preview', exact: true });
+const previewButton = (page: Page) => details(page).getByRole('button', { name: 'Open full screen (task)', exact: true });
 const titleField = (dialog: Locator) => dialog.getByRole('textbox', { name: 'Title', exact: true });
 const saveButton = (dialog: Locator) => dialog.getByRole('button', { name: 'Save', exact: true });
 
@@ -131,6 +131,35 @@ test('PM-2 the first change makes a draft the CLI refuses, and saving gives the 
   await expect.poll(() => show(id).isDraft).toBe(false);
   expect(show(id).title).toBe('Changed in the preview, again');
   expect(agboard(mainProject, ['edit', String(id), '--title', 'By an agent after']).code).toBe(0);
+});
+
+test('PM-2 Cmd+S and Ctrl+S save like the Save button, from the title and from the body', async ({ page }) => {
+  const id = addTask('Saved with the keys');
+  await openBoard(page);
+
+  // Nothing to save yet: the keys change nothing, and the dialog stays.
+  let dialog = await openPreview(page, id);
+  await page.keyboard.press('Control+s');
+  await expect(dialog).toBeVisible();
+  expect(show(id).isDraft).toBe(false);
+
+  await titleField(dialog).fill('Saved with Ctrl+S');
+  await expect(saveButton(dialog)).toBeEnabled();
+  await page.keyboard.press('Control+s');
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => show(id).isDraft).toBe(false);
+  expect(show(id).title).toBe('Saved with Ctrl+S');
+
+  // The rich editor keeps the keys from nobody: the same keys save from the body.
+  await page.getByRole('button', { name: 'Close details' }).click();
+  dialog = await openPreview(page, id);
+  await dialog.getByRole('textbox', { name: 'Description (Markdown)' }).getByText('Original text.').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Typed.');
+  await expect(saveButton(dialog)).toBeEnabled();
+  await page.keyboard.press('Meta+s');
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => show(id).description).toContain('Original text. Typed.');
 });
 
 test('PM-3 discarding takes the draft back, with the discard in the history and no finalize', async ({ page }) => {
@@ -293,7 +322,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await task(page, id).click();
   await details(page).getByRole('tab', { name: /^Epic/ }).click();
   await expect(details(page).getByRole('heading', { name: 'Preview epic', exact: true })).toBeVisible();
-  await details(page).getByRole('button', { name: 'Open full screen' }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (epic)' }).click();
   await expect(epicDialog).toBeVisible();
   await expect(epicDialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Preview epic');
   await expect(epicDialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
@@ -315,6 +344,13 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   const refused = agboard(mainProject, ['epic', 'edit', 'PREVIEWEP', '--name', 'By an agent', '--json']);
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stderr || refused.stdout).error.code).toBe('epic_is_draft');
+  expect(epic().name).toBe('Preview epic');
+
+  // The discard question stays on top of the editor: the keys do not save under it.
+  await epicDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.keyboard.press('Control+s');
+  await expect(page.getByRole('button', { name: 'Discard and close' })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep editing' }).click();
   expect(epic().name).toBe('Preview epic');
 
   // Discarding on the real server gives the epic back unchanged.

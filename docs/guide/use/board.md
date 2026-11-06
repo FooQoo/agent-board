@@ -56,7 +56,7 @@ AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks c
 
 ## Change a task
 
-To edit a task or put it in an epic, choose **Preview** in the details toolbar. The preview uses the same editor, and opening it changes nothing. Your first change makes the task a draft, and **Save** finalizes it. See [Preview and save](./editing#preview-and-save) for the details.
+To edit a task or put it in an epic, choose **Open full screen** in the details toolbar. The preview uses the same editor, and opening it changes nothing. Your first change makes the task a draft, and **Save** finalizes it. See [Preview and save](./editing#preview-and-save) for the details.
 
 ## Drafts
 

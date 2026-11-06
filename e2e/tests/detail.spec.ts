@@ -71,9 +71,9 @@ test('the panel shows the run state and the reason for Doing tasks, and an empty
   const tabsBox = (await panel.getByRole('tablist').boundingBox())!;
   const toolbar = panel.getByRole('toolbar', { name: 'Task actions' });
   const toolbarButtons = toolbar.getByRole('button');
-  await expect(toolbarButtons).toHaveText(['Preview', '']);
-  await expect(toolbarButtons.first()).toHaveAttribute('title', 'Preview');
-  await expect(toolbarButtons.first()).toHaveAccessibleName('Preview');
+  await expect(toolbarButtons).toHaveText(['Open full screen', '']);
+  await expect(toolbarButtons.first()).toHaveAttribute('title', 'Open full screen (task)');
+  await expect(toolbarButtons.first()).toHaveAccessibleName('Open full screen (task)');
   await expect(toolbarButtons.last()).toHaveAccessibleName('Archive task');
   // At the default 360px detail width, the label and its icon fit
   // so the tabs and the actions remain on one line.

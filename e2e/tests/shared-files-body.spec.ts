@@ -194,7 +194,7 @@ test('a Done task rejects agent edits while a person can still edit and show its
 
   // Human editing in the page remains available: make a draft, edit the body, and save it while Done.
   await putDraft(13);
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /^#13 / });
   await expect(body(dialog).getByText('Check the layout at 1280, 800, and 480 px.')).toBeVisible();
   await body(dialog).getByText('Check the layout at 1280, 800, and 480 px.').click();
@@ -223,7 +223,7 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   expect(readFileSync(file, 'utf8')).toContain('reason: Marked task as draft.');
   const before = readFileSync(file, 'utf8');
   const beforeTime = statSync(file).mtimeMs;
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(dialog).getByText('Intro text.')).toBeVisible();
   // Opened and closed with no change: the file is not written, and its time does not move.
@@ -233,7 +233,7 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   expect(statSync(file).mtimeMs).toBe(beforeTime);
 
   // Opened again, changed, and saved: the text is written once, and the picture's reference stays.
-  await details(page).getByRole('button', { name: 'Preview', exact: true }).click();
+  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
   const again = page.getByRole('dialog', { name: /^#15 / });
   await expect(body(again).getByText('Intro text.')).toBeVisible();
   await body(again).getByText('Intro text.').click();

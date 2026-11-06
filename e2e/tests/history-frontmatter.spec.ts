@@ -217,7 +217,7 @@ test('saving a body edit after a concurrent lane change keeps the newest event a
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Concurrent edit history`) }).click();
 	const panel = details(page);
 	await putDraft(id, true, { origin: serve.pcOrigin, project, home });
-	await panel.getByRole('button', { name: 'Preview', exact: true }).click();
+	await panel.getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
 	const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
 	const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
 	await expect(editor.getByText('Original body.')).toBeVisible();

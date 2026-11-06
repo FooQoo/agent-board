@@ -137,7 +137,7 @@ export const Draft: Story = {
 
     for (const tab of [/^Description/, /^Conditions/, /^History/, /^Epic/]) {
       await userEvent.click(view.getByRole('tab', { name: tab }));
-      await userEvent.click(view.getByRole('button', { name: 'Preview' }));
+      await userEvent.click(view.getByRole('button', { name: 'Open full screen (task)' }));
       expect(args.onPreview).toHaveBeenLastCalledWith(args.task);
     }
     expectActionIconSpacing(canvasElement);

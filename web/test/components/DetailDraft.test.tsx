@@ -104,7 +104,7 @@ describe('Finalize', () => {
     renderPanel(fixtureTask(8));
     for (const name of [/^History/, /^Conditions/, /^Epic/]) {
       await userEvent.click(screen.getByRole('tab', { name }));
-      expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Open full screen (task)' })).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Make draft' })).toBeNull();
     }
   });
@@ -112,7 +112,7 @@ describe('Finalize', () => {
   it('Preview is Japanese: プレビュー', () => {
     selectLocale('ja');
     renderPanel(fixtureTask(8));
-    expect(screen.getByRole('button', { name: 'プレビュー' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '全画面で開く（タスク）' })).toBeTruthy();
   });
 });
 

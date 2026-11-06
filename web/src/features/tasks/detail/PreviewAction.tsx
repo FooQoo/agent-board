@@ -13,13 +13,13 @@ export function PreviewAction({ onPreview, disabled = false }: PreviewActionProp
     <button
       type="button"
       className="detail__tool detail__tool--text"
-      aria-label={t('detail.preview')}
-      title={t('detail.preview')}
+      aria-label={t('detail.openTaskFullscreen')}
+      title={t('detail.openTaskFullscreen')}
       disabled={disabled}
       onClick={onPreview}
     >
       <Maximize2Icon aria-hidden="true" />
-      {t('detail.preview')}
+      {t('detail.openFullscreen')}
     </button>
   );
 }
