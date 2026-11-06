@@ -51,11 +51,11 @@ fn fixture() -> TempDir {
     home
 }
 
-fn serve(home: &Path, port: u16) -> Child {
+fn serve(home: &Path) -> Child {
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
-        .args(["serve", "--port", &port.to_string()])
+        .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -64,7 +64,7 @@ fn serve(home: &Path, port: u16) -> Child {
     BufReader::new(child.stdout.take().unwrap())
         .read_line(&mut line)
         .expect("read serve readiness");
-    assert!(line.contains(&format!("127.0.0.1:{port}")), "{line}");
+    assert!(line.contains("127.0.0.1:"), "{line}");
     child
 }
 
@@ -97,7 +97,7 @@ fn stop(mut server: Child) {
 #[test]
 fn wait_cli_returns_a_task_created_in_the_same_session_without_claiming_it() {
     let home = fixture();
-    let server = serve(home.path(), 8730);
+    let server = serve(home.path());
     let waiter = wait(home.path(), "10");
     thread::sleep(Duration::from_millis(250));
 
@@ -157,7 +157,7 @@ fn wait_cli_returns_a_task_created_in_the_same_session_without_claiming_it() {
 #[test]
 fn irrelevant_same_project_events_do_not_restart_the_idle_timeout() {
     let home = fixture();
-    let server = serve(home.path(), 8731);
+    let server = serve(home.path());
     success(
         home.path(),
         &[
