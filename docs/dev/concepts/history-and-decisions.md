@@ -6,9 +6,10 @@ How Agent Board records what happened (history), asks people for decisions (Pend
 
 When an agent needs a person's decision, it moves the task to Pending with a question and choices:
 
-- The CLI takes `--request-json` with a question (1 to 2,000 characters) and 2 to 10 choices. Each choice has an ID unique within the request (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. A request with fewer than two or more than ten choices is refused, so every decision offers a real choice; the free-text answer is still available.
-- A new `pendingRequestId` is generated, and `pendingRequest` stores `{question, choices}`. History gets an entry describing the request.
-- An answer must name the current request ID; otherwise it fails with `request_changed`. It accepts a `choiceId`, a `text`, or both, but not neither; an unknown choice is `request_choice_unknown`. The answer is stored in `requestAnswers` with the label at the time of selection, the request is cleared, the task returns to Idle in the same lane, and history gets an entry. Resuming Running is a separate change.
+- The CLI takes `--request-json` with a question (1 to 5,000 characters, Markdown) and 2 to 10 choices. Each choice has an ID unique within the request (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. A request with fewer than two or more than ten choices is refused, so every decision offers a real choice; the free-text answer is still available.
+- A new `pendingRequestId` is generated, and `pendingRequest` stores `{question, choices}`. History gets an entry with the question and the choices as separate Markdown blocks.
+- A request for a task that is already Pending does not replace it, because a state that is already set is not a change. A lane move (including one to Done) or an archive withdraws the question, and the task must then be asked again.
+- An answer must name the current request ID; otherwise it fails with `request_changed`. It accepts a `choiceId`, a `text` of 1 to 2,000 characters after trimming, or both, but not neither; an unknown choice is `request_choice_unknown`. The answer is stored in `requestAnswers` with the label at the time of selection, the request is cleared, the task returns to Idle in the same lane, and history gets an entry that holds the question, the selected label, and the note as separate blocks. Resuming Running is a separate change.
 - Question and answer texts are trimmed, with CRLF and lone CR normalized to LF.
 
 Workflow data is never derived from history text. The current question comes from `pendingRequest` and answers from `requestAnswers`, so editing history never changes them.
@@ -25,7 +26,7 @@ Extra fields such as an ID, kind, actor, transition, or request ID are rejected.
 - Create, lane move, run-state change, decision request, answer, draft toggle, epic change, archive, restore, a person checking or unchecking a condition, and automatic Done append history automatically. If a move or a non-Pending state change omits the reason, the product generates one from the operation and the current state.
 - Agents append work progress with `agboard --project NAME history add ID [--reason TEXT | --reason-file PATH]`. The product assigns the time and refuses AI appends to drafts, archived tasks, and Done tasks. A blank reason is generated from the current lane and run state.
 - Agents record concise entries at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without asking for approval each time, and never duplicate an entry an operation already appended.
-- The UI shows time and content only, newest first. CLI `show` and snapshots return the full history.
+- The UI shows time and content only, newest first, and draws each reason as Markdown, the same way as a task body. CLI `show` and snapshots return the full history.
 
 Generated history from browser operations uses the UI language (`en` or `ja`) sent with that request. Without a supported setting, including CLI operations and automatic Done, the product infers the language from the latest task body: Japanese characters select Japanese; otherwise it uses English. Empty bodies and the default template use the title. Frontmatter and previous history are excluded from inference. Explicit nonblank reasons are preserved verbatim, and existing history is never translated.
 
