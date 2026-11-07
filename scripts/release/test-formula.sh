@@ -37,6 +37,9 @@ python3 -I "$render" --self-test
 python3 -I "$render" --tag v1.0.0 --sums "$fixtures/SHA256SUMS" --out "$work/fixture.rb"
 cmp "$work/fixture.rb" "$fixtures/agboard.rb.expected" || fail "fixture render differs from agboard.rb.expected"
 "$ruby_bin" -c "$work/fixture.rb" >/dev/null || fail "ruby -c rejected the rendered Formula"
+# `brew style` refuses a Formula that is not readable by everyone.
+mode=$(stat -f %Lp "$work/fixture.rb" 2>/dev/null || stat -c %a "$work/fixture.rb")
+[ "$mode" = 644 ] || fail "the rendered Formula has mode $mode, not 644"
 
 # 3. Forbidden content: no build dependencies, no binary rewriting, no latest URL.
 for pattern in 'depends_on "rust' 'depends_on "node' 'depends_on "git' ':build' 'strip' 'install_name_tool' 'lipo' 'codesign' 'latest' 'cargo' 'pnpm'; do

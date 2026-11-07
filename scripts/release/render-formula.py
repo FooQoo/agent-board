@@ -140,6 +140,9 @@ def write_atomic(path, text):
     path = Path(path)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".render-formula-")
     try:
+        # mkstemp creates the file as 0600; `brew style` refuses a Formula
+        # that is not readable by everyone.
+        os.fchmod(fd, 0o644)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(text)
         os.replace(tmp, path)
