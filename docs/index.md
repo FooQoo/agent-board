@@ -16,7 +16,6 @@ landing:
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: "Demo: the agent starts a task and asks a question, you answer on the task, and the agent resumes until the task is done"
-    questionAlt: A waiting task with the agent's question and two options to choose from
   problem:
     eyebrow: Why a shared board
     title: Get your agent's state out of the terminal.

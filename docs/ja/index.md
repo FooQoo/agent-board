@@ -16,7 +16,6 @@ landing:
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: デモ動画。エージェントがタスクに着手して質問し、タスクの回答欄から返答すると作業を再開して、完了まで進む
-    questionAlt: エージェントの質問と2つの選択肢が表示された、待機中のタスク
   problem:
     eyebrow: なぜ共有ボードか
     title: エージェントの状態を、ターミナルの外へ。

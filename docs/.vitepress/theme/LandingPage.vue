@@ -16,8 +16,6 @@ import boardDark from '../../images/guide/board-dark.png'
 import boardDarkJa from '../../images/guide/board-dark.ja.png'
 import docs from '../../images/guide/docs.png'
 import docsJa from '../../images/guide/docs.ja.png'
-import question from '../../images/guide/question.png'
-import questionJa from '../../images/guide/question.ja.png'
 
 // The copy lives in the `landing` frontmatter of each language's index.md; this component only lays it out.
 type Link = { text: string; link: string }
@@ -33,8 +31,8 @@ const ja = computed(() => lang.value === 'ja')
 
 const images = computed(() =>
   ja.value
-    ? { board: boardJa, boardDark: boardDarkJa, epic: epicJa, docs: docsJa, question: questionJa }
-    : { board, boardDark, epic, docs, question },
+    ? { board: boardJa, boardDark: boardDarkJa, epic: epicJa, docs: docsJa }
+    : { board, boardDark, epic, docs },
 )
 // The phone feature shows, from the left, the card list, a question being answered, and a task in the drawer.
 const phones = computed(() =>
@@ -112,7 +110,6 @@ onMounted(() => {
             loop
             playsinline
           ></video>
-          <img class="lp-hero__question" :src="images.question" :alt="c.hero.questionAlt" />
         </div>
       </div>
     </section>
@@ -644,15 +641,6 @@ onMounted(() => {
   left: 3%;
   width: 92%;
   height: auto;
-  border-radius: 12px;
-  box-shadow: var(--lp-shadow);
-}
-.lp-hero__question {
-  position: absolute;
-  top: 34%;
-  right: 1%;
-  width: 36%;
-  border: 1px solid var(--lp-pending-border);
   border-radius: 12px;
   box-shadow: var(--lp-shadow);
 }
