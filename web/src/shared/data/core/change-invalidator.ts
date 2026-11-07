@@ -122,7 +122,8 @@ function known(change: Change): boolean {
 /**
  * Whether a Summary response contradicts a notification that arrived while it was fetched: the
  * response shows no sign of a change the notification announced, so it may be older than the
- * change and must be fetched again.
+ * change and must be fetched again. Without an earlier Summary (the first load, or after the cache
+ * was dropped) a response cannot show that sign, so a `summary` change counts against it.
  */
 export function contradictsSummary(
   recorded: readonly ChangedEvent[],
@@ -134,7 +135,7 @@ export function contradictsSummary(
     if (event.projectId !== next.project.id) continue;
     for (const change of event.changes) {
       if (change.resource === 'project') {
-        if (previous && previous.version === next.version) return true;
+        if (unchanged(previous, next)) return true;
         continue;
       }
       const entry =
@@ -146,7 +147,7 @@ export function contradictsSummary(
         if (entry) return true;
         continue;
       }
-      if (facets.includes('summary') && previous && previous.version === next.version) return true;
+      if (facets.includes('summary') && unchanged(previous, next)) return true;
       if (!entry) continue;
       const key: ResourceKey =
         change.resource === 'task'
@@ -161,4 +162,9 @@ export function contradictsSummary(
     }
   }
   return false;
+}
+
+/** Whether nothing shows that the response is newer than the Summary held before it was asked. */
+function unchanged(previous: Summary | null, next: Summary): boolean {
+  return previous === null || previous.version === next.version;
 }

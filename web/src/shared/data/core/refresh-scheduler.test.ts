@@ -329,6 +329,18 @@ describe('a notification during a fetch', () => {
     expect(adapter.streamCalls.map((c) => c.request.sections)).toEqual([['document']]);
   });
 
+  it('fetches the first Summary again when a change arrived while it was on the way', async () => {
+    const done = scheduler.loadSummary(P);
+    note(1, 'summary');
+    // The server answered before it read the change, so the answer cannot show it.
+    adapter.summaryCalls[0]?.resolve(summaryOf([], 'sv1'));
+    await settle(0);
+    expect(adapter.summaryCalls).toHaveLength(2);
+    adapter.summaryCalls[1]?.resolve(summaryOf([{ id: 1, document: 'd1', history: 'h1' }], 'sv2'));
+    await done;
+    expect(store.getSummary(P)).toMatchObject({ state: 'ready', version: 'sv2' });
+  });
+
   it('fetches again when a deleted resource is still in the response', async () => {
     seed(1);
     const done = scheduler.loadSummary(P);

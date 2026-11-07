@@ -66,6 +66,8 @@ When a `changed` event arrives, the client does the following:
 - It marks the sections the facets name as outdated, and fetches again only the open ones.
 - It keeps the sections that the event does not name.
 
+A `changed` that arrives while the Summary is being fetched may describe a change the response does not include yet. The client fetches again if the response does not show that change: its `version` is the same as before, or there was no earlier Summary to compare with, as on the first load. It asks at most three times in all.
+
 A client that sees a gap in `seq`, a new `instanceId`, or an event it does not know drops the Summary and the related cached Details for the project, then reads the Summary again. A stream that has fallen too far behind gets `resync` (`{"instanceId", "seq"}`) instead of the events it missed, and the client does the same.
 
 ## How agent waits use events
