@@ -278,6 +278,34 @@ fn verify(archive: &Path, target: &str) -> Output {
 }
 
 #[test]
+fn verifier_accepts_the_three_files_in_a_case_insensitive_locale() {
+    // A UTF-8 locale, as on the GitHub runners, sorts `agboard` before
+    // `LICENSE`; the check must not depend on that order.
+    let dir = tempfile::tempdir().unwrap();
+    let license = read("LICENSE");
+    let notices = read("THIRD_PARTY_NOTICES.txt");
+    let path = archive(
+        dir.path(),
+        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &[
+            ("agboard", b"binary"),
+            ("LICENSE", license.as_bytes()),
+            ("THIRD_PARTY_NOTICES.txt", notices.as_bytes()),
+        ],
+    );
+    let out = Command::new("bash")
+        .arg(script("verify-artifact.sh"))
+        .arg(&path)
+        .arg("aarch64-apple-darwin")
+        .env("TZ", "UTC")
+        .env("LC_ALL", "en_US.UTF-8")
+        .output()
+        .expect("bash runs");
+    // The fake binary fails a later check; the file list must pass.
+    assert!(!text(&out).contains("unexpected files"), "{}", text(&out));
+}
+
+#[test]
 fn verifier_rejects_an_archive_without_the_license() {
     let dir = tempfile::tempdir().unwrap();
     let notices = read("THIRD_PARTY_NOTICES.txt");

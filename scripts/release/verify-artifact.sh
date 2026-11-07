@@ -29,7 +29,8 @@ version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$root/Cargo.toml" | head -n 1)
 expected="agboard-$version-$target.tar.gz"
 [ "$(basename "$archive")" = "$expected" ] || fail "archive is named $(basename "$archive"), expected $expected"
 
-listing=$(tar -tzf "$archive" | sort | tr '\n' ' ')
+# Byte order, so the expected list holds in every locale.
+listing=$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')
 for member in LICENSE THIRD_PARTY_NOTICES.txt agboard; do
   case " $listing" in *" $member "*) ;; *) fail "archive lacks $member" ;; esac
 done
