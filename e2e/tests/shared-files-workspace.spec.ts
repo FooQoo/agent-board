@@ -122,8 +122,7 @@ test('two working directories read and write one shared TASK.md; the page and wa
   expect(await waitEnded).toBe(0);
   expect(JSON.parse(waited).tasks.find((c: { id: number }) => c.id === 13).description).toContain('Checked from worktree A.');
 
-  // The open drawer holds the stream's updates back. Once it is closed and the hold has ended, the page shows the
-  // new text with no reload and no manual step.
+  // The page shows the new text with no reload and no manual step, also when the task is opened again.
   await details(page).getByRole('button', { name: 'Close details' }).click();
   await page.waitForTimeout(3_500);
   await task(page, 13).click();

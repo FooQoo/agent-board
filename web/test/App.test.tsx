@@ -136,20 +136,15 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
   });
 
-  it('applies a change that arrived while the drawer was open once the drawer has closed', async () => {
+  it('applies a change while the drawer is open', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(taskButton('Initialize the board'));
 
-    // The open drawer holds the stream's updates back, so the board still lists the task.
+    // The drawer sits beside the board and does not hold the stream back.
     setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
     act(() => FakeEventSource.latest.changed(PROJECT_A.id));
-    expect(screen.getByRole('heading', { level: 2, name: 'Initialize the board' })).toBeTruthy();
-    expect(screen.getByText('8 tasks')).toBeTruthy();
-
-    // After the drawer has been closed for three seconds, the change is applied.
-    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 2_000 });
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
   });
 
@@ -253,7 +248,7 @@ describe('App', () => {
     expect(epicReads()).toBe(1);
   });
 
-  it('holds the stream back while the drawer is open and applies it 3 seconds after it closes', async () => {
+  it('reads the Summary at once when the stream changes while the drawer is open', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(taskButton('Implement task moves'));
@@ -264,30 +259,9 @@ describe('App', () => {
 
     setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
     act(() => FakeEventSource.latest.changed(PROJECT_A.id));
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(summaryReads()).toBe(before);
-    expect(screen.getByText('8 tasks')).toBeTruthy();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
-    expect(summaryReads()).toBe(before);
-    expect(screen.getByText('8 tasks')).toBeTruthy();
-
-    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 3_500 });
+    await waitFor(() => expect(screen.getByText('7 tasks')).toBeTruthy(), { timeout: 2_000 });
     expect(summaryReads()).toBe(before + 1);
-  });
-
-  it('cancels the countdown when a drawer opens again', async () => {
-    show();
-    await screen.findByRole('region', { name: 'Todo' });
-    await userEvent.click(taskButton('Implement task moves'));
-    setCurrent({ ...current(), tasks: current().tasks.filter((c) => c.id !== 8) });
-    act(() => FakeEventSource.latest.changed(PROJECT_A.id));
-    await userEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
-    await userEvent.click(taskButton('Implement task moves'));
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
-    expect(screen.getByText('8 tasks')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Implement task moves' })).toBeTruthy();
   });
 
   it('shows the empty board message with three empty lanes', async () => {

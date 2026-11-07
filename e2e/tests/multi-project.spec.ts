@@ -286,7 +286,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Alpha: choose the license');
     await expect(page.getByText('Beta:')).toHaveCount(0);
 
-    // A change to the shown project arrives live. The open details hold it back; it appears about 3 seconds after they close.
+    // A change to the shown project arrives live, also after the details are closed.
     agboardOk('Alpha', ['edit', '1', '--title', 'Alpha: edited from the CLI'], home);
     await page.getByRole('button', { name: 'Close details' }).click();
     await expect(task(page, 1)).toContainText('Alpha: edited from the CLI', { timeout: 10_000 });
@@ -710,7 +710,7 @@ test.describe('two projects with the same task numbers', () => {
     expect(context).not.toContain('Beta');
     expect(context).not.toContain('Use the MIT license, please.');
     expect(context).not.toContain('Resuming with the MIT license.');
-    // The open details hold the page's update back; it appears about 3 seconds after they close.
+    // The change arrives live; closing the details does not hold it back either.
     await page.getByRole('button', { name: 'Close details' }).click();
     await expect(task(page, 2)).toContainText('Running', { timeout: 10_000 });
   });

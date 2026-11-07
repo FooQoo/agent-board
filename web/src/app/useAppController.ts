@@ -176,8 +176,8 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
 
   // The lists the data core does not own are read again when the stream says they changed. The
-  // archive list waits like the Summary while a drawer or a modal is open; the project list is
-  // not what a drawer or a modal shows, so it does not wait.
+  // archive list waits like the Summary while a modal is open; the project list is not what a
+  // modal shows, so it does not wait.
   const reloadProjectsRef = useRef(reloadProjects);
   reloadProjectsRef.current = reloadProjects;
   const reloadArchiveRef = useRef(reloadArchive);
@@ -202,13 +202,9 @@ export function useAppController(initial: AppInitial | undefined): AppController
 
   const { subscribeDocs, subscribeChanges } = useStreamSubscriptions(adapter, activeRef);
 
-  // Automatic updates wait while the detail drawer or a modal is open and for 3 seconds after.
-  usePresentationHold(
-    session.selectedId !== null ||
-      session.archiveSelectedId !== null ||
-      session.epicSelectedId !== null,
-    'drawer',
-  );
+  // Automatic updates wait while a modal is open and for 3 seconds after. The detail, archive and
+  // epic panels sit beside the board and do not hold them: a person reading a task there watches the
+  // agent's progress on the board and in the panel at the same time.
   usePresentationHold(
     session.operation !== null || session.dialog !== null || session.bulkArchive !== null,
     'modal',
