@@ -2,6 +2,8 @@
 
 #[path = "support/detail_lines.rs"]
 mod detail_lines;
+#[path = "support/serve_process.rs"]
+mod serve_process;
 #[path = "support/server_thread.rs"]
 mod server_thread;
 
@@ -1573,11 +1575,12 @@ fn notify_serve_is_false_after_the_server_stopped() {
 
 // ---------------------------------------------------------------- serve command
 
+use serve_process::ServeProcess;
 use std::process::{Child, Stdio};
 
 /// Start `agboard serve` with `args`, serving the data area in `home`.
-fn spawn_serve(home: &Path, args: &[&str]) -> Child {
-    Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn spawn_serve(home: &Path, args: &[&str]) -> ServeProcess {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .arg("serve")
         .args(args)
         .env("AGBOARD_HOME", home)
@@ -1585,18 +1588,21 @@ fn spawn_serve(home: &Path, args: &[&str]) -> Child {
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
-        .unwrap()
+        .unwrap();
+    ServeProcess(child)
 }
 
-fn wait_for_file(path: &Path, within: Duration) -> bool {
+/// Wait for a complete serve.json. The server writes it in place, so the file
+/// can exist before it can be read.
+fn wait_for_serve_json(home: &Path, within: Duration) -> Option<ServeInfo> {
     let deadline = Instant::now() + within;
     while Instant::now() < deadline {
-        if path.exists() {
-            return true;
+        if let Some(info) = serve_json(home) {
+            return Some(info);
         }
         std::thread::sleep(Duration::from_millis(25));
     }
-    path.exists()
+    serve_json(home)
 }
 
 fn wait_for_exit(child: &mut Child, within: Duration) -> Option<std::process::ExitStatus> {
@@ -1610,21 +1616,19 @@ fn wait_for_exit(child: &mut Child, within: Duration) -> Option<std::process::Ex
     child.try_wait().unwrap()
 }
 
-/// Start `agboard serve` on `port`, check it serves, send `signal`, and check
-/// it exits cleanly and removes serve.json.
-fn serve_stops_on(signal: &str, port: u16) {
+/// Start `agboard serve` on a port the OS picks, check it serves, send `signal`,
+/// and check it exits cleanly and removes serve.json.
+fn serve_stops_on(signal: &str) {
     let home = board_home();
-    let mut child = spawn_serve(home.path(), &["--port", &port.to_string()]);
+    let mut child = spawn_serve(home.path(), &["--port", "0"]);
     let serve_path = home.path().join("serve.json");
-    assert!(
-        wait_for_file(&serve_path, Duration::from_secs(5)),
-        "serve.json never appeared"
-    );
-    let health = ureq::get(format!("http://127.0.0.1:{port}/api/health"))
+    let info = wait_for_serve_json(home.path(), Duration::from_secs(5))
+        .expect("serve.json never appeared");
+    assert_eq!(info.pid, child.id());
+    let health = ureq::get(format!("http://127.0.0.1:{}/api/health", info.port))
         .call()
         .unwrap();
     assert_eq!(health.status().as_u16(), 200);
-    assert_eq!(serve_json(home.path()).unwrap().port, port);
 
     let sent = Command::new("kill")
         .args([signal, &child.id().to_string()])
@@ -1632,10 +1636,6 @@ fn serve_stops_on(signal: &str, port: u16) {
         .unwrap();
     assert!(sent.success());
     let status = wait_for_exit(&mut child, Duration::from_secs(5));
-    if status.is_none() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
     assert_eq!(status.and_then(|s| s.code()), Some(0));
     assert!(!serve_path.exists(), "serve.json was left behind");
 }
@@ -1643,13 +1643,13 @@ fn serve_stops_on(signal: &str, port: u16) {
 #[test]
 #[cfg(unix)]
 fn serve_stops_on_sigint_and_cleans_up() {
-    serve_stops_on("-INT", 7941);
+    serve_stops_on("-INT");
 }
 
 #[test]
 #[cfg(unix)]
 fn serve_stops_on_sigterm_and_cleans_up() {
-    serve_stops_on("-TERM", 7942);
+    serve_stops_on("-TERM");
 }
 
 #[test]
@@ -1657,7 +1657,7 @@ fn serve_reports_an_unusable_shared_folder_with_exit_code_1() {
     let home = tempfile::tempdir().unwrap();
     // A file where the shared folder should be is not a folder of projects.
     std::fs::write(home.path().join("shared"), b"not a folder").unwrap();
-    let mut child = spawn_serve(home.path(), &["--port", "7940"]);
+    let mut child = spawn_serve(home.path(), &["--port", "0"]);
     let status = wait_for_exit(&mut child, Duration::from_secs(5)).expect("it should exit");
     assert_eq!(status.code(), Some(1));
     let mut stderr = String::new();

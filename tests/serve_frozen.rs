@@ -2,9 +2,14 @@
 //! serving: a second `serve` on the same data area is refused and leaves
 //! `serve.json` as it was.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+
+use serve_process::ServeProcess;
 
 fn bin(home: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
@@ -34,12 +39,13 @@ fn a_frozen_server_still_refuses_a_second_serve_and_keeps_its_record() {
             .status
             .success()
     );
-    let mut first = bin(home.path())
+    let first = bin(home.path())
         .args(["serve", "--port", "0"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let first = ServeProcess(first);
     let record = wait_for_serve_json(home.path());
     let pid = first.id() as libc::pid_t;
 
@@ -50,8 +56,7 @@ fn a_frozen_server_still_refuses_a_second_serve_and_keeps_its_record() {
         .output()
         .unwrap();
     unsafe { libc::kill(pid, libc::SIGCONT) };
-    let _ = first.kill();
-    let _ = first.wait();
+    drop(first);
 
     assert!(!second.status.success());
     let stderr = String::from_utf8_lossy(&second.stderr);

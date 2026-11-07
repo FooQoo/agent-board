@@ -1,14 +1,19 @@
 //! The guide's sample cards keep their identity and stay out of agent-facing selection.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 
 use agent_board::domain::ProjectId;
 use agent_board::file_store::FileStore;
 use serde_json::{Value, json};
 use tempfile::tempdir;
+
+use serve_process::ServeProcess;
 
 const RUN_ID: &str = "0123456789abcdef0123456789abcdef";
 
@@ -56,8 +61,8 @@ fn project(home: &Path, name: &str) -> ProjectId {
 }
 
 /// Starts `agboard serve` on a free port, which `wait` needs, and returns the port it bound.
-fn serve(home: &Path) -> (Child, String) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn serve(home: &Path) -> (ServeProcess, String) {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["serve", "--port", "0"])
@@ -65,6 +70,7 @@ fn serve(home: &Path) -> (Child, String) {
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let mut child = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(child.stdout.take().unwrap())
         .read_line(&mut line)
@@ -145,7 +151,7 @@ fn a_sample_is_left_out_of_progress_and_wait_but_stays_readable() {
     );
     assert!(!listed_ids(&progress).contains(&1), "{progress}");
 
-    let (mut server, _) = serve(home);
+    let (server, _) = serve(home);
     let waited = json(
         home,
         &[
@@ -159,8 +165,7 @@ fn a_sample_is_left_out_of_progress_and_wait_but_stays_readable() {
             "--json",
         ],
     );
-    server.kill().unwrap();
-    let _ = server.wait();
+    drop(server);
     assert_eq!(waited["kind"], "idle_timeout", "{waited}");
 
     let shown = json(home, &["--project", "onboarding", "show", "1", "--json"]);
@@ -207,7 +212,7 @@ fn an_ordinary_card_is_still_selected_next_to_a_sample() {
     let progress = json(home, &["--project", "mixed", "progress", "--json"]);
     assert_eq!(listed_ids(&progress), vec![2], "{progress}");
 
-    let (mut server, _) = serve(home);
+    let (server, _) = serve(home);
     let waited = json(
         home,
         &[
@@ -221,8 +226,7 @@ fn an_ordinary_card_is_still_selected_next_to_a_sample() {
             "--json",
         ],
     );
-    server.kill().unwrap();
-    let _ = server.wait();
+    drop(server);
     assert_eq!(waited["kind"], "task", "{waited}");
     assert_eq!(waited["task"]["id"], 2, "{waited}");
 }

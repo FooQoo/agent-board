@@ -1,10 +1,9 @@
 //! `agboard serve` and the automatic notification after a write.
 //!
 //! These tests run the real `agboard` binary with `AGBOARD_HOME` in a temporary
-//! directory and `TZ=UTC`. They use only ports 7943 to 7962 (never 7420) and
-//! run one at a time, so a port can be reused from test to test. Every `agboard
-//! serve` child is stopped when its handle is dropped, and the port is checked
-//! to be free again.
+//! directory and `TZ=UTC`. Every server listens on a port the OS picks (never
+//! 7420), and the tests run one at a time. Every `agboard serve` child is
+//! stopped when its handle is dropped, and the port is checked to be free again.
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
@@ -22,7 +21,7 @@ use assert_cmd::Command;
 
 static SERIAL: Mutex<()> = Mutex::new(());
 
-/// Tests share ports and the process table, so they run one at a time.
+/// Tests share the process table, so they run one at a time.
 /// A TASK.md body the file store accepts (the required headings and one completion condition).
 const BODY: &str = "## 作業内容\n\nDetails\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Done\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n";
 
@@ -93,6 +92,20 @@ fn port_is_free(port: u16) -> bool {
     TcpListener::bind((Ipv4Addr::LOCALHOST, port)).is_ok()
 }
 
+/// A port nothing listens on.
+fn free_port() -> u16 {
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    listener.local_addr().unwrap().port()
+}
+
+/// The port of the `http://127.0.0.1:<port>/` address in `text`.
+fn port_in(text: &str) -> u16 {
+    let (_, rest) = text
+        .split_once("127.0.0.1:")
+        .unwrap_or_else(|| panic!("no address in {text:?}"));
+    rest.split('/').next().unwrap().parse().unwrap()
+}
+
 /// A stand-in for `agboard serve`: answers every request with 204 and reports the
 /// request line of each one.
 struct FakeServe {
@@ -102,9 +115,10 @@ struct FakeServe {
 }
 
 impl FakeServe {
-    /// Listen on `port` and point `home`'s `serve.json` at it.
-    fn start(home: &Path, port: u16) -> FakeServe {
-        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).unwrap();
+    /// Listen on a port the OS picks and point `home`'s `serve.json` at it.
+    fn start(home: &Path) -> FakeServe {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
         listener.set_nonblocking(true).unwrap();
         write_serve_json(home, std::process::id(), port);
         let (tx, requests) = mpsc::channel();
@@ -169,13 +183,14 @@ struct Serving {
 }
 
 impl Serving {
-    fn start_with(home: &Path, args: &[&str], port: u16) -> (Serving, String) {
-        let mut serving = Serving::spawn(home, args, port);
+    fn start_with(home: &Path, args: &[&str]) -> (Serving, String) {
+        let mut serving = Serving::spawn(home, args);
         let first = serving.first_line();
+        serving.port = port_in(&first);
         (serving, first)
     }
 
-    fn spawn(home: &Path, args: &[&str], port: u16) -> Serving {
+    fn spawn(home: &Path, args: &[&str]) -> Serving {
         let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("agboard"))
             .args(args)
             .env("AGBOARD_HOME", home)
@@ -195,12 +210,16 @@ impl Serving {
                 }
             }
         });
-        Serving { child, port, lines }
+        Serving {
+            child,
+            port: 0,
+            lines,
+        }
     }
 
-    /// `agboard serve --port <port>`, waiting until it prints its first line.
-    fn start(home: &Path, port: u16) -> (Serving, String) {
-        Serving::start_with(home, &["serve", "--port", &port.to_string()], port)
+    /// `agboard serve --port 0`, waiting until it prints its first line.
+    fn start(home: &Path) -> (Serving, String) {
+        Serving::start_with(home, &["serve", "--port", "0"])
     }
 
     fn first_line(&mut self) -> String {
@@ -211,6 +230,10 @@ impl Serving {
 
     fn addr(&self) -> SocketAddr {
         SocketAddr::from((Ipv4Addr::LOCALHOST, self.port))
+    }
+
+    fn url(&self, path: &str) -> String {
+        format!("http://127.0.0.1:{}{path}", self.port)
     }
 
     /// Open `GET /api/events` and wait for the `ready` event.
@@ -329,7 +352,7 @@ const SILENCE: Duration = Duration::from_millis(400);
 fn a_write_that_changes_the_board_notifies_the_running_serve() {
     let _serial = serial();
     let home = board();
-    let fake = FakeServe::start(home.path(), 7943);
+    let fake = FakeServe::start(home.path());
     let commands: &[&[&str]] = &[
         &["add", "First task"],
         &["add", "Second task", "--desc", BODY],
@@ -354,7 +377,7 @@ fn commands_that_change_nothing_do_not_notify() {
     let home = board();
     run_ok(home.path(), &["add", "A task"]);
     run_ok(home.path(), &["mv", "1", "doing"]);
-    let fake = FakeServe::start(home.path(), 7943);
+    let fake = FakeServe::start(home.path());
     let quiet: &[&[&str]] = &[
         &["ls"],
         &["ls", "--json"],
@@ -384,34 +407,32 @@ fn commands_that_change_nothing_do_not_notify() {
 fn serve_starts_in_a_new_data_area_with_no_project() {
     let _serial = serial();
     let home = tempfile::tempdir().unwrap();
-    let (serving, first) = Serving::start(home.path(), 7943);
+    let (serving, first) = Serving::start(home.path());
+    let port = serving.port;
     assert_eq!(
         first,
-        "Serving at http://127.0.0.1:7943/ (press Ctrl+C to stop)"
+        format!("Serving at http://127.0.0.1:{port}/ (press Ctrl+C to stop)")
     );
-    let health = ureq::get("http://127.0.0.1:7943/api/health")
-        .call()
-        .unwrap();
+    let health = ureq::get(serving.url("/api/health")).call().unwrap();
     assert_eq!(health.status().as_u16(), 200);
     drop(serving);
-    assert!(port_is_free(7943));
+    assert!(port_is_free(port));
 }
 
 #[test]
 fn serve_prints_the_startup_line_and_answers_health() {
     let _serial = serial();
     let home = board();
-    let (serving, first) = Serving::start(home.path(), 7944);
+    let (serving, first) = Serving::start(home.path());
+    let port = serving.port;
     assert_eq!(
         first,
-        "Serving at http://127.0.0.1:7944/ (press Ctrl+C to stop)"
+        format!("Serving at http://127.0.0.1:{port}/ (press Ctrl+C to stop)")
     );
-    let health = ureq::get("http://127.0.0.1:7944/api/health")
-        .call()
-        .unwrap();
+    let health = ureq::get(serving.url("/api/health")).call().unwrap();
     assert_eq!(health.status().as_u16(), 200);
     let info = std::fs::read_to_string(home.path().join("serve.json")).unwrap();
-    assert!(info.contains("\"port\":7944"), "{info}");
+    assert!(info.contains(&format!("\"port\":{port}")), "{info}");
     drop(serving);
 }
 
@@ -419,12 +440,12 @@ fn serve_prints_the_startup_line_and_answers_health() {
 fn serve_json_prints_the_url_as_the_first_line() {
     let _serial = serial();
     let home = board();
-    let (serving, first) =
-        Serving::start_with(home.path(), &["serve", "--json", "--port", "7946"], 7946);
-    assert_eq!(first, r#"{"url":"http://127.0.0.1:7946/"}"#);
-    let health = ureq::get("http://127.0.0.1:7946/api/health")
-        .call()
-        .unwrap();
+    let (serving, first) = Serving::start_with(home.path(), &["serve", "--json", "--port", "0"]);
+    assert_eq!(
+        first,
+        format!(r#"{{"url":"http://127.0.0.1:{}/"}}"#, serving.port)
+    );
+    let health = ureq::get(serving.url("/api/health")).call().unwrap();
     assert_eq!(health.status().as_u16(), 200);
     drop(serving);
 }
@@ -433,8 +454,9 @@ fn serve_json_prints_the_url_as_the_first_line() {
 fn a_second_serve_on_the_same_data_exits_1_with_already_serving() {
     let _serial = serial();
     let home = board();
-    let (_first, _) = Serving::start(home.path(), 7947);
-    let o = run(home.path(), &["serve", "--port", "7945"]);
+    let (first, _) = Serving::start(home.path());
+    let other = free_port();
+    let o = run(home.path(), &["serve", "--port", &other.to_string()]);
     assert_eq!(o.code, 1, "{}", o.err);
     assert_eq!(o.out, "");
     assert!(
@@ -442,12 +464,10 @@ fn a_second_serve_on_the_same_data_exits_1_with_already_serving() {
         "{}",
         o.err
     );
-    assert!(o.err.contains("http://127.0.0.1:7947/"), "{}", o.err);
-    assert!(port_is_free(7945));
+    assert!(o.err.contains(&first.url("/")), "{}", o.err);
+    assert!(port_is_free(other));
     // The first serve is untouched.
-    let health = ureq::get("http://127.0.0.1:7947/api/health")
-        .call()
-        .unwrap();
+    let health = ureq::get(first.url("/api/health")).call().unwrap();
     assert_eq!(health.status().as_u16(), 200);
 }
 
@@ -455,11 +475,16 @@ fn a_second_serve_on_the_same_data_exits_1_with_already_serving() {
 fn a_port_held_by_another_process_exits_1_with_port_in_use() {
     let _serial = serial();
     let home = board();
-    let _holder = TcpListener::bind((Ipv4Addr::LOCALHOST, 7948)).unwrap();
-    let o = run(home.path(), &["serve", "--port", "7948"]);
+    let holder = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = holder.local_addr().unwrap().port();
+    let o = run(home.path(), &["serve", "--port", &port.to_string()]);
     assert_eq!(o.code, 1, "{}", o.err);
     assert_eq!(o.out, "");
-    assert!(o.err.contains("port 7948 is already in use."), "{}", o.err);
+    assert!(
+        o.err.contains(&format!("port {port} is already in use.")),
+        "{}",
+        o.err
+    );
     assert!(
         o.err.contains("Choose another port with --port."),
         "{}",
@@ -473,7 +498,7 @@ fn serve_stops_with_exit_0_and_removes_serve_json_on_ctrl_c_and_sigterm() {
     let _serial = serial();
     for signal in ["INT", "TERM"] {
         let home = board();
-        let (mut serving, _) = Serving::start(home.path(), 7949);
+        let (mut serving, _) = Serving::start(home.path());
         assert!(home.path().join("serve.json").exists());
         assert_eq!(serving.signal(signal), Some(0), "SIG{signal}");
         assert!(
@@ -494,7 +519,7 @@ fn serve_stops_with_exit_0_and_removes_serve_json_on_ctrl_c_and_sigterm() {
 fn a_subscriber_receives_changed_after_add_mv_and_state() {
     let _serial = serial();
     let home = board();
-    let (serving, _) = Serving::start(home.path(), 7949);
+    let (serving, _) = Serving::start(home.path());
     let mut events = serving.events();
     let commands: &[&[&str]] = &[
         &["add", "A task"],
@@ -519,7 +544,7 @@ fn a_subscriber_receives_nothing_for_commands_that_change_nothing() {
     let home = board();
     run_ok(home.path(), &["add", "A task"]);
     run_ok(home.path(), &["mv", "1", "doing"]);
-    let (serving, _) = Serving::start(home.path(), 7960);
+    let (serving, _) = Serving::start(home.path());
     let mut events = serving.events();
     run_ok(home.path(), &["ls"]);
     run_ok(home.path(), &["show", "1"]);
@@ -541,7 +566,7 @@ fn a_subscriber_receives_nothing_for_commands_that_change_nothing() {
 fn a_write_after_serve_stopped_succeeds_quickly() {
     let _serial = serial();
     let home = board();
-    let (mut serving, _) = Serving::start(home.path(), 7961);
+    let (mut serving, _) = Serving::start(home.path());
     assert_eq!(serving.terminate(), Some(0));
     let o = run_ok(home.path(), &["add", "After serve"]);
     assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
@@ -552,8 +577,7 @@ fn a_write_with_a_stale_serve_json_succeeds_quickly() {
     let _serial = serial();
     let home = board();
     // Nothing listens on the port in serve.json.
-    assert!(port_is_free(7962));
-    write_serve_json(home.path(), 4_000_000, 7962);
+    write_serve_json(home.path(), 4_000_000, free_port());
     let o = run_ok(home.path(), &["add", "Stale"]);
     assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
     assert!(o.out.contains("Stale"), "{}", o.out);
@@ -563,7 +587,7 @@ fn a_write_with_a_stale_serve_json_succeeds_quickly() {
 fn a_write_after_serve_was_killed_succeeds_quickly() {
     let _serial = serial();
     let home = board();
-    let (mut serving, _) = Serving::start(home.path(), 7961);
+    let (mut serving, _) = Serving::start(home.path());
     // SIGKILL: serve cannot clean up, so serve.json stays behind.
     serving.child.kill().unwrap();
     serving.child.wait().unwrap();
@@ -571,7 +595,7 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
     let o = run_ok(home.path(), &["add", "After crash"]);
     assert!(o.elapsed < Duration::from_secs(1), "took {:?}", o.elapsed);
     // A new serve takes over the stale file.
-    let (_again, first) = Serving::start(home.path(), 7961);
+    let (_again, first) = Serving::start(home.path());
     assert!(first.starts_with("Serving at"), "{first}");
 }
 
@@ -579,15 +603,16 @@ fn a_write_after_serve_was_killed_succeeds_quickly() {
 fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
     let _lock = serial();
     let home = tempfile::tempdir().unwrap();
+    let port = free_port();
     let o = agboard(home.path())
-        .args(["--project", "x", "serve", "--port", "7964"])
+        .args(["--project", "x", "serve", "--port", &port.to_string()])
         .output()
         .unwrap();
     assert_eq!(o.status.code(), Some(2));
-    assert!(port_is_free(7964));
+    assert!(port_is_free(port));
     assert!(!home.path().join("serve.json").exists());
 
-    let (serving, _) = Serving::start(home.path(), 7964);
+    let (serving, _) = Serving::start(home.path());
     for name in ["alpha", "beta"] {
         let o = agboard(home.path())
             .args(folder_args(home.path(), &["project", "create", name]))
@@ -596,7 +621,7 @@ fn serve_takes_no_project_and_changes_made_through_two_projects_are_notified() {
         assert_eq!(o.status.code(), Some(0));
     }
     let list: serde_json::Value = serde_json::from_str(
-        &ureq::get("http://127.0.0.1:7964/api/projects")
+        &ureq::get(serving.url("/api/projects"))
             .call()
             .unwrap()
             .body_mut()

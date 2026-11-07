@@ -1,11 +1,15 @@
 use std::io::{BufRead, BufReader};
 
 mod common;
+#[path = "support/serve_process.rs"]
+mod serve_process;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::tempdir;
+
+use serve_process::ServeProcess;
 
 /// Run `agboard --project "Agent Board" <args>`.
 fn agboard(home: &std::path::Path, args: &[&str]) -> std::process::Output {
@@ -22,14 +26,15 @@ fn agboard_for(home: &std::path::Path, project: &str, args: &[&str]) -> std::pro
         .unwrap()
 }
 
-fn start_server(home: &std::path::Path) -> std::process::Child {
-    let mut server = Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn start_server(home: &std::path::Path) -> ServeProcess {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let mut server = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(server.stdout.take().unwrap())
         .read_line(&mut line)
@@ -95,7 +100,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
     let after = baseline["cursor"].as_str().unwrap().to_string();
     assert!(after.ends_with(&format!(":{}", baseline["version"].as_str().unwrap())));
-    let mut server = start_server(home.path());
+    let _server = start_server(home.path());
 
     let waiter = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home.path())
@@ -166,8 +171,6 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let latest: Value = serde_json::from_slice(&latest.stdout).unwrap();
     assert_eq!(latest["tasks"][0]["agentStatus"], "running");
     assert_eq!(latest["tasks"][0]["history"].as_array().unwrap().len(), 5);
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]
@@ -198,7 +201,7 @@ fn wait_keeps_the_event_stream_open_until_its_timeout() {
     let baseline = agboard(home.path(), &["snapshot", "--json"]);
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
     let after = baseline["cursor"].as_str().unwrap().to_string();
-    let mut server = start_server(home.path());
+    let _server = start_server(home.path());
 
     let began = Instant::now();
     let output = agboard(
@@ -213,8 +216,6 @@ fn wait_keeps_the_event_stream_open_until_its_timeout() {
         elapsed >= Duration::from_secs(3),
         "wait ended after {elapsed:?}"
     );
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]
@@ -229,7 +230,7 @@ fn a_change_to_another_project_does_not_end_the_wait() {
     let baseline = agboard(home.path(), &["snapshot", "--json"]);
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
     let after = baseline["cursor"].as_str().unwrap().to_string();
-    let mut server = start_server(home.path());
+    let _server = start_server(home.path());
 
     let waiter = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home.path())
@@ -258,8 +259,6 @@ fn a_change_to_another_project_does_not_end_the_wait() {
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "wait_timeout");
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]

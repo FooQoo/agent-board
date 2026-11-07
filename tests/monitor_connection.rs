@@ -35,8 +35,8 @@ fn agboard(home: &Path) -> Command {
 fn exit_of(args: &[&str], envs: &[(&str, &str)]) -> (i32, String) {
     let home = tempfile::tempdir().unwrap();
     let mut cmd = agboard(home.path());
-    // A port that would be used if parsing wrongly succeeded; never 7420.
-    cmd.args(["serve", "--port", "8811"]).args(args);
+    // The OS picks the port if parsing wrongly succeeds; never 7420.
+    cmd.args(["serve", "--port", "0"]).args(args);
     for (k, v) in envs {
         cmd.env(k, v);
     }

@@ -1,6 +1,9 @@
 //! `state ... pending --request-json '{..., "wait": {"timeoutSeconds": N}}'`: ask a decision and wait for its
 //! answer in one command.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Child, Command, Output, Stdio};
@@ -8,6 +11,8 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::tempdir;
+
+use serve_process::ServeProcess;
 
 /// A question with two choices and the given `wait` value (`None` leaves the key out).
 fn question(wait: Option<&str>) -> String {
@@ -31,14 +36,15 @@ fn agboard(home: &Path, args: &[&str]) -> Output {
     command(home, args).output().unwrap()
 }
 
-fn start_server(home: &Path) -> Child {
-    let mut server = Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn start_server(home: &Path) -> ServeProcess {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let mut server = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(server.stdout.take().unwrap())
         .read_line(&mut line)
@@ -135,11 +141,6 @@ fn ask_and_wait_forever(home: &Path) -> Child {
     ask_with(home, None)
 }
 
-fn stop(mut server: Child) {
-    let _ = server.kill();
-    let _ = server.wait();
-}
-
 #[test]
 fn the_answer_comes_back_when_the_request_is_answered() {
     let home = tempdir().unwrap();
@@ -165,7 +166,7 @@ fn the_answer_comes_back_when_the_request_is_answered() {
     );
     assert!(answered.status.success());
     let output = waiter.wait_with_output().unwrap();
-    stop(server);
+    drop(server);
     assert!(
         output.status.success(),
         "{}",
@@ -185,7 +186,7 @@ fn a_timeout_is_not_an_answer_and_the_request_stays() {
     board(home.path());
     let server = start_server(home.path());
     let output = ask_and_wait(home.path(), 1).wait_with_output().unwrap();
-    stop(server);
+    drop(server);
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "wait_timeout");
@@ -216,7 +217,7 @@ fn wait_without_a_timeout_returns_the_answer_and_leaves_no_expiry() {
     );
     assert!(answered.status.success());
     let output = waiter.wait_with_output().unwrap();
-    stop(server);
+    drop(server);
     assert!(
         output.status.success(),
         "{}",
@@ -241,7 +242,7 @@ fn a_move_cancels_the_request_and_the_wait_says_so() {
     );
     assert!(moved.status.success());
     let output = waiter.wait_with_output().unwrap();
-    stop(server);
+    drop(server);
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
     assert_eq!(error["error"]["code"], "request_changed");
@@ -258,7 +259,7 @@ fn an_indefinite_wait_reports_connection_loss_without_expiring_the_question() {
     let waiter = ask_and_wait_forever(home.path());
     wait_for_request(home.path());
 
-    stop(server);
+    drop(server);
     let output = waiter.wait_with_output().unwrap();
     assert!(!output.status.success());
     let error: Value = serde_json::from_slice(&output.stderr).unwrap();
@@ -286,7 +287,7 @@ fn interrupting_the_indefinite_wait_preserves_the_pending_question() {
     assert!(!output.status.success());
     assert_eq!(task(home.path())["agentStatus"], "pending");
     assert!(task(home.path())["pendingRequestId"].is_string());
-    stop(server);
+    drop(server);
 }
 
 #[test]
@@ -390,7 +391,7 @@ fn every_form_without_a_time_waits_for_the_answer() {
         );
         assert!(answered.status.success());
         let output = waiter.wait_with_output().unwrap();
-        stop(server);
+        drop(server);
         assert!(output.status.success(), "{wait:?}");
         let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
         assert_eq!(reply["answer"]["choiceId"], "b", "{wait:?}");
@@ -441,7 +442,7 @@ fn no_wait_with_a_time_is_refused_and_nothing_changes() {
         assert_eq!(error_code(&output), "invalid_argument");
         assert_eq!(show(home.path()), before);
         if let Some(running) = running {
-            stop(running);
+            drop(running);
         }
     }
 }

@@ -1,5 +1,8 @@
 //! End-to-end CLI checks for the task-listening wait contract.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -9,6 +12,8 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::TempDir;
+
+use serve_process::ServeProcess;
 
 fn run(home: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
@@ -51,8 +56,8 @@ fn fixture() -> TempDir {
     home
 }
 
-fn serve(home: &Path) -> Child {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn serve(home: &Path) -> ServeProcess {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["serve", "--port", "0"])
@@ -60,6 +65,7 @@ fn serve(home: &Path) -> Child {
         .stderr(Stdio::null())
         .spawn()
         .expect("serve should start");
+    let mut child = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(child.stdout.take().unwrap())
         .read_line(&mut line)
@@ -88,7 +94,7 @@ fn wait(home: &Path, timeout: &str) -> Child {
         .expect("wait should start")
 }
 
-fn stop(mut server: Child) {
+fn stop(mut server: ServeProcess) {
     server.kill().expect("stop fixture server");
     let status = server.wait().expect("reap fixture server");
     assert!(!status.success());

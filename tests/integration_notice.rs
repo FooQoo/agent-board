@@ -130,7 +130,13 @@ fn hook_wait_help_version_connect_and_update_stay_quiet() {
 #[test]
 fn serve_stays_quiet_and_releases_its_port() {
     let fx = stale_fx();
-    let mut term = fx.session(&fx.root(), &["serve", "--port", "9071"]);
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+        .to_string();
+    let mut term = fx.session(&fx.root(), &["serve", "--port", &port]);
     let seen = term.expect("Serving at").unwrap();
     assert_eq!(count(&String::from_utf8_lossy(seen.as_bytes())), 0);
     // The signal handler is installed just after the line is printed.
@@ -139,8 +145,8 @@ fn serve_stays_quiet_and_releases_its_port() {
     let (_, screen) = finish(term);
     assert_eq!(count(&screen), 0, "serve: {screen}");
     assert!(
-        TcpListener::bind("127.0.0.1:9071").is_ok(),
-        "port 9071 is still held"
+        TcpListener::bind(format!("127.0.0.1:{port}")).is_ok(),
+        "port {port} is still held"
     );
 }
 

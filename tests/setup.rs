@@ -2,12 +2,17 @@
 //! and a temporary HOME, so neither the real home nor the real data directory
 //! is reachable. Sentinel contents in the agent settings must survive.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde_json::Value;
+
+use serve_process::ServeProcess;
 
 const CODEX_SENTINEL: &str = "# keep this comment\nmodel = \"gpt-sentinel\"\nsandbox_mode = \"workspace-write\"\n\n[sandbox_workspace_write]\n# other roots stay\nwritable_roots = [\"/sentinel/other\"]\nnetwork_access = false\n\n[tui]\ntheme = \"sentinel\"\n";
 
@@ -614,7 +619,7 @@ fn serve_and_the_cli_share_the_default_root_created_by_setup() {
     use std::io::{BufRead, BufReader};
     let (_tmp, home) = home_with_settings("home");
     setup_json(&home, &[], &[]);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env_clear()
         .env("HOME", &home)
         .env("TZ", "UTC")
@@ -624,6 +629,7 @@ fn serve_and_the_cli_share_the_default_root_created_by_setup() {
         .stderr(std::process::Stdio::null())
         .spawn()
         .unwrap();
+    let mut child = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(child.stdout.take().unwrap())
         .read_line(&mut line)
@@ -635,7 +641,5 @@ fn serve_and_the_cli_share_the_default_root_created_by_setup() {
         "serve.json must be in {}",
         data_root(&home).display()
     );
-    let _ = child.kill();
-    let _ = child.wait();
     assert!(line.contains("Serving at"), "{line}");
 }

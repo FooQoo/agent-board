@@ -1,5 +1,8 @@
 //! CLI contract and event-driven task wait behavior on isolated data areas.
 
+#[path = "support/serve_process.rs"]
+mod serve_process;
+
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -12,6 +15,8 @@ use agent_board::file_store::FileStore;
 use assert_cmd::Command as AssertCommand;
 use serde_json::Value;
 use tempfile::{TempDir, tempdir};
+
+use serve_process::ServeProcess;
 
 fn agboard(home: &Path, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
@@ -78,20 +83,21 @@ fn add(home: &Path, project: &str, title: &str, assignee: &str, epic: Option<&st
     json(home, &args)["task"]["id"].as_i64().unwrap()
 }
 
-fn serve(home: &Path, port: u16) -> std::process::Child {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+fn serve(home: &Path) -> ServeProcess {
+    let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
-        .args(["serve", "--port", &port.to_string()])
+        .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .unwrap();
+    let mut child = ServeProcess(child);
     let mut line = String::new();
     BufReader::new(child.stdout.take().unwrap())
         .read_line(&mut line)
         .unwrap();
-    assert!(line.contains(&format!("127.0.0.1:{port}")), "{line}");
+    assert!(line.contains("127.0.0.1:"), "{line}");
     child
 }
 
@@ -389,7 +395,7 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
 #[test]
 fn task_wait_returns_new_work_after_a_change_event() {
     let (home, _) = demo();
-    let mut server = serve(home.path(), 8700);
+    let _server = serve(home.path());
     let waiter = wait(home.path(), "Demo", "10");
     thread::sleep(Duration::from_millis(250));
     let task_id = add(home.path(), "Demo", "arrived", "ai", None);
@@ -402,15 +408,13 @@ fn task_wait_returns_new_work_after_a_change_event() {
     let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
     assert_eq!(selected["kind"], "task");
     assert_eq!(selected["task"]["id"], task_id);
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]
 fn unrelated_project_changes_do_not_extend_the_idle_deadline() {
     let (home, _) = demo();
     project(home.path(), "Other");
-    let mut server = serve(home.path(), 8701);
+    let _server = serve(home.path());
     let waiter = wait(home.path(), "Demo", "2");
     thread::sleep(Duration::from_millis(800));
     add(home.path(), "Other", "irrelevant", "ai", None);
@@ -427,14 +431,12 @@ fn unrelated_project_changes_do_not_extend_the_idle_deadline() {
         elapsed < Duration::from_millis(2800),
         "deadline was extended: {elapsed:?}"
     );
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]
 fn task_wait_tracks_the_original_project_id_across_rename_and_same_name_recreation() {
     let (home, original_id) = demo();
-    let mut server = serve(home.path(), 8702);
+    let _server = serve(home.path());
     let waiter = wait(home.path(), "Demo", "10");
     thread::sleep(Duration::from_millis(250));
     success(
@@ -452,18 +454,15 @@ fn task_wait_tracks_the_original_project_id_across_rename_and_same_name_recreati
     let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
     assert_eq!(selected["projectId"], original_id.as_str());
     assert_eq!(selected["task"]["id"], task_id);
-    server.kill().unwrap();
-    let _ = server.wait();
 }
 
 #[test]
 fn a_dropped_event_stream_is_an_error_not_an_idle_timeout() {
     let (home, _) = demo();
-    let mut server = serve(home.path(), 8703);
+    let server = serve(home.path());
     let waiter = wait(home.path(), "Demo", "10");
     thread::sleep(Duration::from_millis(250));
-    server.kill().unwrap();
-    let _ = server.wait();
+    drop(server);
     let result = waiter.wait_with_output().unwrap();
     assert_eq!(result.status.code(), Some(1));
     let error: Value = serde_json::from_slice(&result.stderr).unwrap();
