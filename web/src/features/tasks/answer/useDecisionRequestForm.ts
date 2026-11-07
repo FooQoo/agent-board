@@ -78,7 +78,14 @@ export function useDecisionRequestForm({
   const lastRequestId = useRef(task.pendingRequestId);
   if (task.pendingRequestId !== null) lastRequestId.current = task.pendingRequestId;
   const requestId = task.pendingRequestId ?? lastRequestId.current;
-  const withdrawn = missing || task.pendingRequestId === null;
+  // The request this form answered. Its going away is that answer, not a withdrawal: the sheet is
+  // still sliding shut when the answered task replaces the card.
+  const answeredHere = useRef<string | null>(null);
+  const answered =
+    task.pendingRequestId === null &&
+    answeredHere.current !== null &&
+    answeredHere.current === requestId;
+  const withdrawn = missing || (task.pendingRequestId === null && !answered);
   const storeKey = `${projectId}:${task.id}:${requestId ?? ''}` as AnswerFormKey;
   const [state, setState] = useState(
     () => stateStore?.getSnapshot(storeKey) ?? initialState(requestId),
@@ -136,6 +143,7 @@ export function useDecisionRequestForm({
   const sendable =
     !disabled &&
     !withdrawn &&
+    !answered &&
     !stale &&
     !state.requestChanged &&
     (state.choiceId !== null || hasText) &&
@@ -168,6 +176,7 @@ export function useDecisionRequestForm({
       try {
         const result = await writeAnswer(projectId, task.id, input);
         sending.current = false;
+        answeredHere.current = current.baseRequestId;
         operations.end(id);
         if (!mounted.current) return;
         clear();
@@ -247,7 +256,7 @@ export function useDecisionRequestForm({
       message: state.requestChanged ? t('request.changed') : state.failure,
       tooLong,
       sendable,
-      disabled: disabled || withdrawn || state.phase === 'sending',
+      disabled: disabled || withdrawn || answered || state.phase === 'sending',
       hasInput,
       notice: withdrawn ? 'withdrawn' : state.requestChanged ? 'changed' : null,
       failure: state.failure,
