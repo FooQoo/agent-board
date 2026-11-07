@@ -56,3 +56,17 @@ Rustのテストは[cargo-nextest](https://nexte.st/)で実行します（`cargo
 Playwrightのテストは`e2e/`にあります。初回は`pnpm --dir e2e install --frozen-lockfile`で依存関係を、`pnpm --dir e2e exec playwright install chromium`でブラウザをインストールします。
 
 `pnpm --dir e2e test`はアプリのテストを実行し、共通の事前処理（global setup）でWeb画面とCLIをビルドします。`pnpm --dir e2e test:docs`は、ビルド済みのドキュメントサイトを検証します。
+
+アプリのテストは、複数のPlaywrightワーカーでテストファイルを並行して実行します。
+
+- ワーカーごとに、一時的なデータ領域と、ポート0で起動した`agboard serve`を1つずつ持ちます。固定のポートは使わないため、2つのチェックアウトで同時に実行できます。
+- ワーカー数の既定値はCPU数の半分です。変えるときは`AGBOARD_E2E_WORKERS`を設定するか、`--workers`を指定します。1つのファイルのテストは同じワーカーのボードを共有するため、1つのワーカーで順に実行されます。
+- 別の`agboard`バイナリを使うときは`AGBOARD_E2E_BINARY`を指定します。`AGBOARD_E2E_HOME`と`AGBOARD_E2E_MAIN_URL`はワーカーのフィクスチャが設定するので、自分では設定しません。
+- 結果とトレースは、システムの一時ディレクトリにある`agent-board-e2e-results-<チェックアウト>`に、チェックアウトごとに保存されます。
+
+アプリのテストを書くときは、次の点を守ります。
+
+- `test`と`expect`は`@playwright/test`ではなく`e2e/helpers/fixtures`から読み込みます。こうすると、ワーカーのサーバーとその`baseURL`を使います。
+- `mainUrl()`、`mainOrigin()`、`mainHome()`は、ファイルの読み込み時ではなく、テストかフックの中で呼びます。
+- 専用のサーバーが必要なテストは`startServe(home)`で起動し、返り値からポートを読みます。同じポートを渡すと、そのポートで再起動します。Playwrightは`beforeAll`より先に`baseURL`を決めるので、`states.spec.ts`のように、先に必要になった方からサーバーを起動します。`startImageServer()`の画像サーバーもポート0を使います。
+- `resetBoard`は、ワーカーのサーバーが元に戻したボードを表示するまで待ちます。そのため、直後に開いたページはフィクスチャの内容を読み込みます。

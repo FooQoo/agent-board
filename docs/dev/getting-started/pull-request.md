@@ -54,3 +54,17 @@ Rules for tests:
 - `agboard serve` listens only on `127.0.0.1`. Do not use port 7420; use an available port or port 0, and connect to `http://127.0.0.1:<port>/` rather than `localhost`.
 
 The Playwright suites live in `e2e/`. Install them once with `pnpm --dir e2e install --frozen-lockfile` and `pnpm --dir e2e exec playwright install chromium`. `pnpm --dir e2e test` runs the app suite (its global setup builds the web UI and the CLI); `pnpm --dir e2e test:docs` runs the documentation site suite against a built site.
+
+The app suite runs its spec files on several Playwright workers at once:
+
+- Each worker has its own temporary data area and its own `agboard serve` on port 0. The suite uses no fixed port, so two checkouts can run it at the same time.
+- The number of workers defaults to half the CPUs. Set `AGBOARD_E2E_WORKERS`, or pass `--workers`, to change it. The tests in one file run in order on one worker, because they share that worker's board.
+- `AGBOARD_E2E_BINARY` selects a different `agboard` binary. The worker fixture sets `AGBOARD_E2E_HOME` and `AGBOARD_E2E_MAIN_URL` itself; do not set them.
+- Results and traces go to `agent-board-e2e-results-<checkout>` in the system's temporary directory, one folder for each checkout.
+
+When you write an app spec:
+
+- Import `test` and `expect` from `e2e/helpers/fixtures`, not from `@playwright/test`, so the spec uses the worker's server and its `baseURL`.
+- Call `mainUrl()`, `mainOrigin()`, and `mainHome()` inside a test or a hook, not when the file loads.
+- A spec that needs its own server starts it with `startServe(home)` and reads the port from the result; passing the same port restarts the server on it. Playwright resolves `baseURL` before `beforeAll` runs, so start the server from whichever needs it first, as `states.spec.ts` does. Image servers from `startImageServer()` also use port 0.
+- `resetBoard` waits until the worker's server shows the restored board, so a page opened right after it loads the fixture.
