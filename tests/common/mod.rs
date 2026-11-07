@@ -8,7 +8,6 @@
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Command;
-use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -20,21 +19,9 @@ use std::time::Duration;
 mod server_thread;
 
 use agent_board::error::AgboardError;
-use agent_board::server::{ServeConfig, run_until};
+use agent_board::file_store::watch::WatchMode;
+use agent_board::server::{ServeConfig, run_until_in};
 use serde_json::Value;
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-/// Run `f` with `AGBOARD_HOME` set to `home`. Environment access is serialized.
-pub fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    // SAFETY: access to the environment is serialized by ENV_LOCK.
-    unsafe { std::env::set_var("AGBOARD_HOME", home) };
-    let result = f();
-    // SAFETY: as above.
-    unsafe { std::env::remove_var("AGBOARD_HOME") };
-    result
-}
 
 /// A valid 1x1 PNG.
 pub fn png() -> Vec<u8> {
@@ -52,6 +39,7 @@ pub const BODY: &str = "## 作業内容\n\nDetails\n\n## 完了条件と確認�
 /// Returns the exit code, standard output, and standard error.
 pub fn agboard(home: &Path, args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)
@@ -150,29 +138,32 @@ pub struct Running {
 
 impl Running {
     pub fn start(home: &Path) -> Running {
-        with_home(home, || {
-            let (ready_tx, ready_rx) = mpsc::channel();
-            let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
-            let handle = std::thread::spawn(move || {
-                run_until(
-                    ServeConfig { port: 0 },
-                    async move {
-                        let _ = stop_rx.await;
-                    },
-                    move |addr| {
-                        let _ = ready_tx.send(addr);
-                    },
-                )
-            });
-            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
-                Ok(started) => Running {
-                    addr: started.ready,
-                    stop: Some(started.stop),
-                    handle: Some(started.handle),
+        // The data area is passed in, so servers start in parallel without
+        // touching AGBOARD_HOME, and the poll watch starts without FSEvents.
+        let data_dir = home.to_path_buf();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+        let handle = std::thread::spawn(move || {
+            run_until_in(
+                &data_dir,
+                WatchMode::Poll,
+                ServeConfig { port: 0 },
+                async move {
+                    let _ = stop_rx.await;
                 },
-                Err(result) => panic!("server did not start: {result:?}"),
-            }
-        })
+                move |addr| {
+                    let _ = ready_tx.send(addr);
+                },
+            )
+        });
+        match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+            Ok(started) => Running {
+                addr: started.ready,
+                stop: Some(started.stop),
+                handle: Some(started.handle),
+            },
+            Err(result) => panic!("server did not start: {result:?}"),
+        }
     }
 
     pub fn port(&self) -> u16 {

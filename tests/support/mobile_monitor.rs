@@ -9,17 +9,17 @@ use std::time::Duration;
 use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
+use agent_board::file_store::watch::WatchMode;
 use agent_board::server::monitor_connection::contracts::PublicOrigin;
 use agent_board::server::monitor_connection::lifecycle::{
     Connector, MonitorEnv, OpenFuture, OpenRequest, OpenedTunnel, Secret,
 };
-use agent_board::server::{MonitorOptions, ServeConfig, run_until_with_monitor};
+use agent_board::server::{MonitorOptions, ServeConfig, run_until_with_monitor_in};
 use serde_json::Value;
 
 #[path = "server_thread.rs"]
 pub mod server_thread;
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 /// The public origin the fake tunnel reports.
 pub const ORIGIN: &str = "https://fixture-run.ngrok.app";
 
@@ -85,11 +85,7 @@ pub struct Running {
 
 impl Running {
     pub fn start(home: &Path) -> Self {
-        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let previous = std::env::var_os("AGBOARD_HOME");
-        // SAFETY: startup and environment restoration hold ENV_LOCK. Server
-        // shutdown never mutates the process environment.
-        unsafe { std::env::set_var("AGBOARD_HOME", home) };
+        let data_dir = home.to_path_buf();
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
         let connector = Arc::new(RecordingConnector::default());
@@ -102,7 +98,9 @@ impl Running {
                 true,
             );
             options.connector = connector;
-            run_until_with_monitor(
+            run_until_with_monitor_in(
+                &data_dir,
+                WatchMode::Poll,
                 ServeConfig { port: 0 },
                 options,
                 async move {
@@ -113,24 +111,7 @@ impl Running {
                 },
             )
         });
-        let ready = {
-            // Restores the parent environment on every path out of the wait, a failed or
-            // timed-out start included. Every server path has already been captured then.
-            struct Restore(Option<std::ffi::OsString>);
-            impl Drop for Restore {
-                fn drop(&mut self) {
-                    // SAFETY: the same startup lock still protects restoration.
-                    unsafe {
-                        match self.0.take() {
-                            Some(value) => std::env::set_var("AGBOARD_HOME", value),
-                            None => std::env::remove_var("AGBOARD_HOME"),
-                        }
-                    }
-                }
-            }
-            let _restore = Restore(previous);
-            server_thread::wait_ready(&ready_rx, stop_tx, handle)
-        };
+        let ready = server_thread::wait_ready(&ready_rx, stop_tx, handle);
         let server_thread::Started {
             ready: (local, announced),
             stop: stop_tx,

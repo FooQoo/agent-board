@@ -18,7 +18,7 @@ use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 
@@ -27,6 +27,7 @@ use super::index::ProjectIndex;
 use super::projection::ChangeSink;
 use crate::domain::ProjectId;
 use crate::error::{AgboardError, FileAction};
+pub use mode::{POLL_INTERVAL, WatchMode};
 
 /// How long a target waits for further events before it is reloaded.
 pub const DEBOUNCE: Duration = Duration::from_millis(200);
@@ -58,9 +59,9 @@ impl DocsSink {
     }
 }
 
-/// Holds the OS watch. Dropping it stops the events.
+/// Holds the watch. Dropping it stops the events.
 pub struct Watch {
-    _watcher: RecommendedWatcher,
+    _watcher: Box<dyn Watcher + Send>,
 }
 
 /// Queues reloads from inside the server (after a save, or `POST /api/notify`).
@@ -118,12 +119,13 @@ impl Watch {
         index: Arc<RwLock<ProjectIndex>>,
         changed: impl Into<ChangeSink>,
     ) -> Result<(Watch, Reloader), AgboardError> {
-        Watch::start_with_docs(shared, index, changed, DocsSink::none())
+        Watch::start_with_docs(shared, WatchMode::Native, index, changed, DocsSink::none())
     }
 
     /// [`Watch::start`], also telling `docs` about changes in the projects' Docs.
     pub fn start_with_docs(
         shared: &Path,
+        mode: WatchMode,
         index: Arc<RwLock<ProjectIndex>>,
         changed: impl Into<ChangeSink>,
         docs: DocsSink,
@@ -134,22 +136,36 @@ impl Watch {
 
         let sender = tx.clone();
         let handler_root = root.clone();
-        let mut watcher = notify::recommended_watcher(
-            move |result: notify::Result<notify::Event>| match result {
-                Ok(event) if !event.need_rescan() => {
-                    for path in &event.paths {
-                        if let Some(target) = classify(&handler_root, path) {
-                            let _ = sender.send(target);
-                        }
+        let handler = move |result: notify::Result<notify::Event>| match result {
+            Ok(event) if !event.need_rescan() => {
+                for path in &event.paths {
+                    if let Some(target) = classify(&handler_root, path) {
+                        let _ = sender.send(target);
                     }
                 }
-                // The platform lost events: read everything again.
-                _ => {
-                    let _ = sender.send(Target::All);
-                }
-            },
-        )
-        .map_err(|e| watch_error(shared, e))?;
+            }
+            // The platform lost events: read everything again.
+            _ => {
+                let _ = sender.send(Target::All);
+            }
+        };
+        let mut watcher: Box<dyn Watcher + Send> = match mode {
+            WatchMode::Native => Box::new(
+                RecommendedWatcher::new(handler, notify::Config::default())
+                    .map_err(|e| watch_error(shared, e))?,
+            ),
+            WatchMode::Poll => Box::new(
+                PollWatcher::new(
+                    handler,
+                    // The poll keeps modification times in whole seconds, so a second save
+                    // within the same second is found only by comparing the contents.
+                    notify::Config::default()
+                        .with_poll_interval(POLL_INTERVAL)
+                        .with_compare_contents(true),
+                )
+                .map_err(|e| watch_error(shared, e))?,
+            ),
+        };
         watcher
             .watch(&root, RecursiveMode::Recursive)
             .map_err(|e| watch_error(shared, e))?;
@@ -270,6 +286,8 @@ fn apply(root: &Path, index: &RwLock<ProjectIndex>, changed: &ChangeSink, ready:
         changed.send(set);
     }
 }
+
+mod mode;
 
 #[cfg(test)]
 mod tests;

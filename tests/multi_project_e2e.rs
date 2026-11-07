@@ -34,7 +34,10 @@ fn fixture(name: &str) -> PathBuf {
 /// `agboard [--project NAME] ARGS...` with no terminal and nothing on stdin.
 fn run(home: &Path, project: Option<&str>, args: &[&str]) -> Output {
     let mut command = bin();
-    command.env("AGBOARD_HOME", home).env("TZ", "UTC");
+    command
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
+        .env("TZ", "UTC");
     if let Some(project) = project {
         command.args(["--project", project]);
     }
@@ -221,6 +224,7 @@ impl Drop for Serve {
 
 fn serve(home: &Path) -> Serve {
     let mut child = bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
@@ -420,14 +424,10 @@ fn finish(mut child: Child, limit: Duration) -> Output {
 
 fn spawn_wait(home: &Path, project: &str, after: &str, timeout: Option<&str>) -> Child {
     let mut command = bin();
-    command.env("AGBOARD_HOME", home).args([
-        "--project",
-        project,
-        "--json",
-        "wait",
-        "--after",
-        after,
-    ]);
+    command
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
+        .args(["--project", project, "--json", "wait", "--after", after]);
     if let Some(timeout) = timeout {
         command.args(["--timeout", timeout]);
     }
@@ -446,6 +446,7 @@ fn still_running(child: &mut Child, for_how_long: Duration) -> bool {
 
 fn hook(home: &Path, project: &str, agent: &str) -> String {
     let mut child = bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .args(["--project", project, "hook", "--agent", agent])
         .stdin(Stdio::piped())
@@ -488,6 +489,7 @@ fn on_terminal(home: &Path, project: &str, answer: &str, args: &[&str]) -> (i32,
 
     let mut command = bin();
     command
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
@@ -605,6 +607,7 @@ fn every_command_that_works_on_a_project_refuses_to_guess_one() {
         // Not the environment, not a project the server shows, not the current directory.
         let mut command = bin();
         command
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .env("AGBOARD_PROJECT", "Alpha")
             .current_dir(home.path())

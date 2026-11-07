@@ -537,6 +537,7 @@ fn a_request_read_from_standard_input_keeps_its_question_and_choices() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .env("TZ", "UTC")
         .args([

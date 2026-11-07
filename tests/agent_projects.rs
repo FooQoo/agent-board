@@ -17,6 +17,7 @@ fn bin() -> Command {
 
 fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
     bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
@@ -27,6 +28,7 @@ fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
 
 fn agboard_in(home: &Path, cwd: &Path, args: &[&str]) -> Output {
     bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(cwd)
@@ -98,7 +100,9 @@ fn hook_in(
     cwd: Option<&Path>,
 ) -> Output {
     let mut command = bin();
-    command.env("AGBOARD_HOME", home);
+    command
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home);
     command.env("TZ", "UTC");
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
@@ -157,6 +161,7 @@ impl Drop for Server {
 
 fn start_server(home: &Path) -> Server {
     let mut server = bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
@@ -177,14 +182,10 @@ fn stop(server: Server) {
 
 fn spawn_wait(home: &Path, project: &str, after: &str, timeout: Option<&str>) -> Child {
     let mut command = bin();
-    command.env("AGBOARD_HOME", home).args([
-        "--project",
-        project,
-        "--json",
-        "wait",
-        "--after",
-        after,
-    ]);
+    command
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
+        .args(["--project", project, "--json", "wait", "--after", after]);
     if let Some(timeout) = timeout {
         command.args(["--timeout", timeout]);
     }

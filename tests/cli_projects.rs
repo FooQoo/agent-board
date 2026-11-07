@@ -22,6 +22,7 @@ use tempfile::tempdir;
 fn agboard(home: &Path, args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(folder_args(home, args))
@@ -252,6 +253,7 @@ fn every_project_command_refuses_a_missing_project() {
         }
         let output = Command::cargo_bin("agboard")
             .unwrap()
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .current_dir(home.path())
             .args(&command)
@@ -393,6 +395,7 @@ fn project_rm_and_task_rm_refuse_without_a_human_terminal() {
         // Even a "yes" on standard input is not a human at a terminal.
         let output = Command::cargo_bin("agboard")
             .unwrap()
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .args(&args)
             .write_stdin("y\n")
@@ -419,6 +422,7 @@ mod terminal {
         let mut command =
             std::process::Command::new(Command::cargo_bin("agboard").unwrap().get_program());
         command
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")
             .args(args);

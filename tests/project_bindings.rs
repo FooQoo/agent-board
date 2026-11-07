@@ -160,6 +160,7 @@ fn an_unknown_folder_cannot_be_canonicalized_and_a_file_is_not_a_folder() {
 fn agboard(home: &Path, cwd: &Path, args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(cwd)

@@ -14,7 +14,6 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
 use std::process::Command;
-use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -23,23 +22,12 @@ use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, Proje
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::Choice;
-use agent_board::server::{ServeConfig, run_until};
+use agent_board::file_store::watch::WatchMode;
+use agent_board::server::{ServeConfig, run_until_in};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
 
 // ---------------------------------------------------------------- harness
-
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    // SAFETY: access to the environment is serialized by ENV_LOCK.
-    unsafe { std::env::set_var("AGBOARD_HOME", home) };
-    let result = f();
-    // SAFETY: as above.
-    unsafe { std::env::remove_var("AGBOARD_HOME") };
-    result
-}
 
 fn t(minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 2, 1, minute, 0).unwrap()
@@ -146,29 +134,32 @@ struct Running {
 
 impl Running {
     fn start(home: &Path) -> Running {
-        with_home(home, || {
-            let (ready_tx, ready_rx) = mpsc::channel();
-            let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
-            let handle = std::thread::spawn(move || {
-                run_until(
-                    ServeConfig { port: 0 },
-                    async move {
-                        let _ = stop_rx.await;
-                    },
-                    move |addr| {
-                        let _ = ready_tx.send(addr);
-                    },
-                )
-            });
-            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
-                Ok(started) => Running {
-                    addr: started.ready,
-                    stop: Some(started.stop),
-                    handle: Some(started.handle),
+        // The data area is passed in, so servers start in parallel without
+        // touching AGBOARD_HOME, and the poll watch starts without FSEvents.
+        let data_dir = home.to_path_buf();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+        let handle = std::thread::spawn(move || {
+            run_until_in(
+                &data_dir,
+                WatchMode::Poll,
+                ServeConfig { port: 0 },
+                async move {
+                    let _ = stop_rx.await;
                 },
-                Err(result) => panic!("server did not start: {result:?}"),
-            }
-        })
+                move |addr| {
+                    let _ = ready_tx.send(addr);
+                },
+            )
+        });
+        match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+            Ok(started) => Running {
+                addr: started.ready,
+                stop: Some(started.stop),
+                handle: Some(started.handle),
+            },
+            Err(result) => panic!("server did not start: {result:?}"),
+        }
     }
 
     fn port(&self) -> u16 {
@@ -337,6 +328,7 @@ impl EventStream {
 
 fn agboard(home: &Path, args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)

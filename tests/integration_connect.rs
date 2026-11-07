@@ -85,6 +85,7 @@ impl Fx {
         command
             .current_dir(cwd)
             .env_clear()
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", self.data())
             .env("HOME", self.home())
             .env("CODEX_HOME", self.codex())

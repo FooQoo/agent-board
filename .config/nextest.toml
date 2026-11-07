@@ -1,0 +1,17 @@
+# cargo-nextest settings. Each test runs in its own process, so a test that
+# hangs is reported and stopped instead of holding up the whole run.
+
+[profile.default]
+# Report a test as slow after 30 s and stop it after 4 periods (2 minutes).
+slow-timeout = { period = "30s", terminate-after = 4 }
+# Run every test even after one fails, so a single run shows all failures.
+fail-fast = false
+
+[test-groups]
+# These binaries start and stop real `agboard serve` processes, including
+# background servers, and were written to run one at a time.
+serve-process = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "binary(cli_serve) | binary(cli_daemon)"
+test-group = "serve-process"

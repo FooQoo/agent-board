@@ -25,6 +25,7 @@ fn question(wait: Option<&str>) -> String {
 fn command(home: &Path, args: &[&str]) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
     command
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", "Agent Board"])
@@ -38,6 +39,7 @@ fn agboard(home: &Path, args: &[&str]) -> Output {
 
 fn start_server(home: &Path) -> ServeProcess {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())

@@ -12,6 +12,7 @@ fn invoke(home: &std::path::Path, args: &[&str]) -> assert_cmd::assert::Assert {
 fn invoke_for(home: &std::path::Path, project: &str, args: &[&str]) -> assert_cmd::assert::Assert {
     let mut command = Command::cargo_bin("agboard").unwrap();
     command
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])
@@ -187,6 +188,7 @@ fn a_command_needs_a_project_that_exists_and_never_guesses_one() {
     // No --project: refused even though exactly one project exists.
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .args(["ls"])
         .assert()
@@ -219,6 +221,7 @@ fn make_draft(home: &std::path::Path, project: &str, id: i64) {
 fn invoke_none(home: &std::path::Path, args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(args)
@@ -378,6 +381,7 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
     );
     let piped = Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .args([
             "--project",

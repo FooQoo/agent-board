@@ -13,7 +13,10 @@ use serve_process::ServeProcess;
 
 fn bin(home: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
-    command.env("AGBOARD_HOME", home).env("TZ", "UTC");
+    command
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
+        .env("TZ", "UTC");
     command
 }
 

@@ -10,12 +10,13 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use agent_board::error::AgboardError;
+use agent_board::file_store::watch::WatchMode;
 use agent_board::server::monitor_connection::contracts::PublicOrigin;
 use agent_board::server::monitor_connection::keychain::{TokenVault, VaultError};
 use agent_board::server::monitor_connection::lifecycle::{
     Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel, Secret,
 };
-use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor};
+use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor_in};
 use serde_json::{Value, json};
 
 use super::support::server_thread;
@@ -23,7 +24,6 @@ use super::support::token;
 
 pub const TOKEN: &str = "tok-SECRET-0123456789";
 pub const PUBLIC: &str = "https://fake-abc.ngrok.app";
-static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 // ------------------------------------------------------------- the harness
 
@@ -206,9 +206,7 @@ impl Default for Opts {
 
 impl Server {
     pub fn try_start(home: &Path, opts: Opts) -> Result<Self, AgboardError> {
-        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // SAFETY: startup holds ENV_LOCK and the path is read once at startup.
-        unsafe { std::env::set_var("AGBOARD_HOME", home) };
+        let data_dir = home.to_path_buf();
         let (tx, rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
         let monitor = MonitorOptions {
@@ -220,7 +218,9 @@ impl Server {
             vault: opts.vault.clone(),
         };
         let handle = std::thread::spawn(move || {
-            run_until_with_monitor(
+            run_until_with_monitor_in(
+                &data_dir,
+                WatchMode::Poll,
                 ServeConfig { port: 0 },
                 monitor,
                 async move {
@@ -231,10 +231,7 @@ impl Server {
                 },
             )
         });
-        let got = server_thread::wait_ready(&rx, stop_tx, handle);
-        // SAFETY: same lock; the server has captured the path.
-        unsafe { std::env::remove_var("AGBOARD_HOME") };
-        let started = match got {
+        let started = match server_thread::wait_ready(&rx, stop_tx, handle) {
             Ok(started) => started,
             Err(result) => return result.map(|()| unreachable!("server never became ready")),
         };

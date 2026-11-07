@@ -5,7 +5,7 @@ use tokio::sync::broadcast;
 
 use super::*;
 use crate::file_store::index::ProjectIndex;
-use crate::file_store::watch::Watch;
+use crate::file_store::watch::{DocsSink, Watch, WatchMode};
 use crate::server::MonitorOptions;
 use crate::server::monitor_connection::config::ConfigStore;
 use crate::server::monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
@@ -21,7 +21,14 @@ async fn serve() -> (String, tempfile::TempDir, Watch) {
     let shared = home.path().join("shared");
     let index = Arc::new(RwLock::new(ProjectIndex::default()));
     let changed = crate::server::change_feed::ChangeFeed::new();
-    let (watch, reloader) = Watch::start(&shared, index.clone(), changed.sink()).unwrap();
+    let (watch, reloader) = Watch::start_with_docs(
+        &shared,
+        WatchMode::Poll,
+        index.clone(),
+        changed.sink(),
+        DocsSink::none(),
+    )
+    .unwrap();
     let options = MonitorOptions::without_keychain(MonitorEnv::default(), false);
     let app = Arc::new(AppState {
         port: 0,

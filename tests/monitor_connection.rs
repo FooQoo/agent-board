@@ -23,7 +23,8 @@ use support::home;
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
-    cmd.env("AGBOARD_HOME", home)
+    cmd.env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .env_remove("NGROK_AUTHTOKEN")
         .env_remove("AGBOARD_GOOGLE_CLIENT_ID")

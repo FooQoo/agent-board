@@ -33,7 +33,7 @@ pnpm --dir web build               # required before cargo build
 cargo build
 cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
-TZ=UTC cargo test
+TZ=UTC cargo nextest run
 pnpm --dir web typecheck
 pnpm --dir web check
 TZ=UTC pnpm --dir web test
@@ -44,10 +44,13 @@ pnpm --dir web build-storybook
 
 Run `pnpm --dir web format` to apply the web formatter.
 
+The Rust tests run with [cargo-nextest](https://nexte.st/) (`cargo install cargo-nextest --locked`). Each test runs in its own process, and `.config/nextest.toml` stops a test that runs longer than two minutes. `TZ=UTC cargo test` still works, but it runs each test binary's tests in one process and has no time limit.
+
 Rules for tests:
 
 - Set `TZ=UTC` so displayed times are fixed.
 - Never use the default data area: each test sets `AGBOARD_HOME` to a temporary directory.
+- A test that starts `agboard serve` sets `AGBOARD_WATCH=poll`, and an embedded server is started with `server::run_until_in` and `WatchMode::Poll`. Only `tests/file_watch.rs` uses the platform's file events.
 - `agboard serve` listens only on `127.0.0.1`. Do not use port 7420; use an available port or port 0, and connect to `http://127.0.0.1:<port>/` rather than `localhost`.
 
 The Playwright suites live in `e2e/`. Install them once with `pnpm --dir e2e install --frozen-lockfile` and `pnpm --dir e2e exec playwright install chromium`. `pnpm --dir e2e test` runs the app suite (its global setup builds the web UI and the CLI); `pnpm --dir e2e test:docs` runs the documentation site suite against a built site.

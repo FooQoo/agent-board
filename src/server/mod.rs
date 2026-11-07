@@ -31,7 +31,7 @@ pub mod web_assets;
 use crate::docs::DocsLocale;
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use tokio::sync::broadcast;
@@ -40,7 +40,7 @@ use crate::clock::format_utc;
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
-use crate::file_store::watch::{DocsSink, Reloader, Watch};
+use crate::file_store::watch::{DocsSink, Reloader, Watch, WatchMode};
 use crate::paths::{self, ServeInfo};
 use monitor_connection::config::ConfigStore;
 use monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
@@ -88,7 +88,23 @@ pub fn run_until<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr),
 ) -> Result<(), AgboardError> {
-    run_until_with_monitor(
+    let data_dir = paths::data_dir()?;
+    run_until_in(&data_dir, WatchMode::from_env(), config, shutdown, on_ready)
+}
+
+/// [`run_until`] with the data area and the watch mode given, not read from the
+/// environment. Embedded servers in the tests use it so that they need not set
+/// `AGBOARD_HOME` for the whole process.
+pub fn run_until_in<F: Future<Output = ()>>(
+    data_dir: &Path,
+    watch: WatchMode,
+    config: ServeConfig,
+    shutdown: F,
+    on_ready: impl FnOnce(SocketAddr),
+) -> Result<(), AgboardError> {
+    run_until_with_monitor_in(
+        data_dir,
+        watch,
         config,
         MonitorOptions::without_keychain(MonitorEnv::default(), false),
         shutdown,
@@ -107,6 +123,26 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
     // Resolve the process environment once. Another embedded caller can change
     // AGBOARD_HOME while startup is awaiting file locks or filesystem watches.
     let data_dir = paths::data_dir()?;
+    run_until_with_monitor_in(
+        &data_dir,
+        WatchMode::from_env(),
+        config,
+        monitor,
+        shutdown,
+        on_ready,
+    )
+}
+
+/// [`run_until_with_monitor`] with the data area and the watch mode given.
+pub fn run_until_with_monitor_in<F: Future<Output = ()>>(
+    data_dir: &Path,
+    watch: WatchMode,
+    config: ServeConfig,
+    monitor: MonitorOptions,
+    shutdown: F,
+    on_ready: impl FnOnce(SocketAddr, Option<MonitorReady>),
+) -> Result<(), AgboardError> {
+    let data_dir = data_dir.to_path_buf();
     let serve_path = data_dir.join("serve.json");
     if let Some(info) = paths::read_serve_info_in(&data_dir)
         && instance::is_serving(&info)
@@ -144,6 +180,7 @@ pub fn run_until_with_monitor<F: Future<Output = ()>>(
         let docs_sender = docs_changed.clone();
         let (_watch, reloader) = Watch::start_with_docs(
             &shared,
+            watch,
             index.clone(),
             changed.sink(),
             DocsSink::new(move |project| {

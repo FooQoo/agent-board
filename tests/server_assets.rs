@@ -8,14 +8,14 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::Path;
 use std::process::Command;
-use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use agent_board::error::AgboardError;
+use agent_board::file_store::watch::WatchMode;
 use agent_board::server::web_assets::{APP_ASSETS, MONITOR_ASSETS};
-use agent_board::server::{ServeConfig, run_until};
+use agent_board::server::{ServeConfig, run_until_in};
 
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
@@ -202,10 +202,6 @@ fn the_build_id_follows_the_page() {
 
 // ---------------------------------------------------------------- harness
 
-// AGBOARD_HOME is process-global. It is only needed while a server starts (the
-// server captures its paths then), so the lock is released once it is ready.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
 struct Running {
     addr: SocketAddr,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
@@ -214,13 +210,13 @@ struct Running {
 
 impl Running {
     fn start(home: &Path) -> Running {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        // SAFETY: access to the environment is serialized by ENV_LOCK.
-        unsafe { std::env::set_var("AGBOARD_HOME", home) };
+        let data_dir = home.to_path_buf();
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
         let handle = std::thread::spawn(move || {
-            run_until(
+            run_until_in(
+                &data_dir,
+                WatchMode::Poll,
                 ServeConfig { port: 0 },
                 async move {
                     let _ = stop_rx.await;
@@ -230,10 +226,8 @@ impl Running {
                 },
             )
         });
-        let started = server_thread::wait_ready(&ready_rx, stop_tx, handle);
-        // SAFETY: as above.
-        unsafe { std::env::remove_var("AGBOARD_HOME") };
-        let started = started.unwrap_or_else(|result| panic!("server did not start: {result:?}"));
+        let started = server_thread::wait_ready(&ready_rx, stop_tx, handle)
+            .unwrap_or_else(|result| panic!("server did not start: {result:?}"));
         Running {
             addr: started.ready,
             stop: Some(started.stop),

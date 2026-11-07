@@ -27,6 +27,7 @@ fn bin() -> Command {
 
 fn run(home: &Path, args: &[&str]) -> Output {
     bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(folder_args(home, args))
@@ -239,6 +240,7 @@ impl Drop for Serve {
 
 fn serve(home: &Path) -> Serve {
     let mut child = bin()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .args(["serve", "--port", "0"])
         .stdout(Stdio::piped())
@@ -371,6 +373,7 @@ fn on_terminal(home: &Path, project: &str, answer: &str, args: &[&str]) -> i32 {
 
     let mut command = bin();
     command
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["--project", project])

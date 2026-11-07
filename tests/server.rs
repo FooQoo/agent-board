@@ -129,7 +129,8 @@ use std::time::{Duration, Instant};
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::server::{ServeConfig, run_until};
+use agent_board::file_store::watch::WatchMode;
+use agent_board::server::{ServeConfig, run_until_in};
 use chrono::{DateTime, TimeZone, Utc};
 
 // AGBOARD_HOME is process-global. It is only needed while a server starts (the
@@ -246,33 +247,36 @@ impl Running {
     /// Start a server for the data directory `home` on `port` (0 = any) and
     /// wait until it is ready, or return the error it stopped with.
     fn start(home: &Path, port: u16) -> Result<Running, AgboardError> {
-        with_home(home, || {
-            let (ready_tx, ready_rx) = mpsc::channel();
-            let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
-            let handle = std::thread::spawn(move || {
-                run_until(
-                    ServeConfig { port },
-                    async move {
-                        let _ = stop_rx.await;
-                    },
-                    move |addr| {
-                        let _ = ready_tx.send(addr);
-                    },
-                )
-            });
-            match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
-                Ok(started) => Ok(Running {
-                    addr: started.ready,
-                    base: FileStore::open(&home.join("shared"))
-                        .project_by_name("main")
-                        .map(|project| format!("/api/projects/{}", project.id))
-                        .unwrap_or_default(),
-                    stop: Some(started.stop),
-                    handle: Some(started.handle),
-                }),
-                Err(result) => Err(result.expect_err("stopped without becoming ready")),
-            }
-        })
+        // The data area is passed in, so servers start in parallel without
+        // touching AGBOARD_HOME, and the poll watch starts without FSEvents.
+        let data_dir = home.to_path_buf();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+        let handle = std::thread::spawn(move || {
+            run_until_in(
+                &data_dir,
+                WatchMode::Poll,
+                ServeConfig { port },
+                async move {
+                    let _ = stop_rx.await;
+                },
+                move |addr| {
+                    let _ = ready_tx.send(addr);
+                },
+            )
+        });
+        match server_thread::wait_ready(&ready_rx, stop_tx, handle) {
+            Ok(started) => Ok(Running {
+                addr: started.ready,
+                base: FileStore::open(&home.join("shared"))
+                    .project_by_name("main")
+                    .map(|project| format!("/api/projects/{}", project.id))
+                    .unwrap_or_default(),
+                stop: Some(started.stop),
+                handle: Some(started.handle),
+            }),
+            Err(result) => Err(result.expect_err("stopped without becoming ready")),
+        }
     }
 
     fn port(&self) -> u16 {
@@ -1583,6 +1587,7 @@ fn spawn_serve(home: &Path, args: &[&str]) -> ServeProcess {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .arg("serve")
         .args(args)
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .stdout(Stdio::null())

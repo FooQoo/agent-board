@@ -31,7 +31,8 @@ fn serial() -> MutexGuard<'static, ()> {
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
-    cmd.env("AGBOARD_HOME", home)
+    cmd.env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home);
     cmd
@@ -193,6 +194,7 @@ impl Serving {
     fn spawn(home: &Path, args: &[&str]) -> Serving {
         let mut child = StdCommand::new(assert_cmd::cargo::cargo_bin("agboard"))
             .args(args)
+            .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")
             .current_dir(home)

@@ -19,6 +19,7 @@ const RUN_ID: &str = "0123456789abcdef0123456789abcdef";
 
 fn agboard(home: &Path, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(args)
@@ -63,6 +64,7 @@ fn project(home: &Path, name: &str) -> ProjectId {
 /// Starts `agboard serve` on a free port, which `wait` needs, and returns the port it bound.
 fn serve(home: &Path) -> (ServeProcess, String) {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .args(["serve", "--port", "0"])

@@ -23,6 +23,8 @@ flowchart LR
 
 1. `serve` resolves the data area once at startup and uses it until exit. It writes `serve.json` after it starts listening and removes it on exit.
 2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, and `README.md` are ignored. Events in a project's `docs/` folder are not board data: they go to the docs notice (see [The docs](#the-docs)) and never reload the project.
+
+   The watcher uses the platform's file events (FSEvents on macOS). With `AGBOARD_WATCH=poll` it scans `shared/` every 100 ms instead. The tests use poll mode, because registering with FSEvents can take many seconds on a busy Mac; the embedded test servers pass it to `server::run_until_in` together with their data area, so they never set `AGBOARD_HOME`.
 3. Events are coalesced per project for 200 ms. A rescan request from the watcher reloads every project.
 4. After a save that changed something, the CLI reads `serve.json` and sends `POST http://127.0.0.1:<port>/api/notify` over a plain TCP connection with a 300 ms budget, ignoring failure. Agents that edit files directly need not notify.
 5. After a reload, the server compares the parsed data with the data before it. A save that changes nothing a Summary or Detail shows sends no event. A change set gets the next `seq` of this server run, and every open stream receives SSE `changed` with the changed resources and facets.

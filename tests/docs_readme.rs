@@ -11,6 +11,7 @@ use common::Running;
 
 fn cli(home: &Path, args: &[&str]) -> String {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)

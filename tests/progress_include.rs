@@ -15,6 +15,7 @@ fn agboard(home: &Path, args: &[&str]) -> assert_cmd::assert::Assert {
     full.extend(args);
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)
@@ -61,6 +62,7 @@ fn board() -> Board {
     let folder = folder.display().to_string();
     Command::cargo_bin("agboard")
         .unwrap()
+        .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .args(["project", "create", "Demo", "--folder", &folder])
         .assert()
