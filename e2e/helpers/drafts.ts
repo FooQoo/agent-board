@@ -18,7 +18,7 @@ export async function putDraft(
   isDraft = true,
   options: { discard?: boolean; project?: string; origin?: string; home?: string } = {},
 ): Promise<void> {
-  const origin = options.origin ?? mainOrigin;
+  const origin = options.origin ?? mainOrigin();
   const project = options.project ?? mainProject;
   const response = await fetch(`${origin}/api/projects/${projectId(project, options.home ?? mainHome())}/tasks/${id}/draft`, {
     method: 'PUT',
@@ -38,7 +38,7 @@ export async function archiveTask(
   id: number,
   options: { project?: string; origin?: string; home?: string } = {},
 ): Promise<void> {
-  const origin = options.origin ?? mainOrigin;
+  const origin = options.origin ?? mainOrigin();
   const project = options.project ?? mainProject;
   const response = await fetch(`${origin}/api/projects/${projectId(project, options.home ?? mainHome())}/tasks/${id}/archive`, {
     method: 'POST',

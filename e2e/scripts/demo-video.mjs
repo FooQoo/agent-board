@@ -176,7 +176,7 @@ async function record(browser, locale, tmp) {
     const origin = `http://127.0.0.1:${port}`;
     let stderr = '';
     server = spawn(binary, ['serve', '--port', String(port)], {
-      cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'ignore', 'pipe'],
+      cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC', AGBOARD_WATCH: 'poll' }, stdio: ['ignore', 'ignore', 'pipe'],
     });
     server.stderr.on('data', (chunk) => { stderr += chunk; });
     await expect.poll(async () => {

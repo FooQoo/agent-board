@@ -1,6 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import net from 'node:net';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import {
   agboardBinary, agboardCatalogOk, agboardOk, decisionJson, makeHome, projectId, removeHome, startServe, stopServe,
   type Serve, type TaskJson,
@@ -14,14 +13,6 @@ const project = 'default-wait';
 
 function show(home: string, id: number): TaskJson & { agentStatus: string; pendingRequestId: string | null } {
   return JSON.parse(agboardOk(project, ['show', String(id), '--json'], home).stdout).task;
-}
-
-async function freePort(): Promise<number> {
-  const server = net.createServer();
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address() as net.AddressInfo;
-  await new Promise((resolve) => server.close(resolve));
-  return port;
 }
 
 async function reap(child: ChildProcess | undefined): Promise<void> {
@@ -38,7 +29,7 @@ test('default pending waits for a browser answer', async ({ page }) => {
   try {
     agboardCatalogOk(['project', 'create', project], home);
     agboardOk(project, ['add', 'Ask and wait', '--assignee', 'ai', '--actor', 'ai'], home);
-    serve = await startServe(await freePort(), home);
+    serve = await startServe(home);
 
     // The request has no wait setting at all: the child must wait for the answer on its own.
     waiter = spawn(agboardBinary(), [

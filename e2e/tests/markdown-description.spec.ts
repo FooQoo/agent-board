@@ -1,20 +1,20 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainOrigin, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { longMarkdown } from '../helpers/markdown';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // A card whose description is long Markdown, made with the real CLI, read on the real page. External images
-// and links come from a sample server on the loopback address (port 7890), never from the internet.
+// and links come from a sample server on the loopback address, never from the internet.
 
 let images: ImageServer;
 let work: string;
 
 test.beforeAll(async () => {
-  images = await startImageServer(7890);
+  images = await startImageServer();
   work = mkdtempSync(path.join(os.tmpdir(), 'agent-board-e2e-md-'));
 });
 
@@ -214,7 +214,7 @@ test('the page loads nothing from outside, and answers with the security headers
   await expect(body(page).getByRole('img', { name: 'sample picture' })).toBeVisible();
   const hosts = new Set(requested.map((url) => new URL(url).origin));
   // The page's own server and the sample image server only.
-  expect([...hosts].sort()).toEqual([mainOrigin, images.origin].sort());
+  expect([...hosts].sort()).toEqual([mainOrigin(), images.origin].sort());
 
   const response = await request.get('/');
   const policy = response.headers()['content-security-policy'];

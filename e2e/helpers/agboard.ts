@@ -12,6 +12,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(here, '..', '..');
 export const seedFile = path.resolve(here, '..', 'fixtures', 'agent-board.json');
 const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
+const serveCaughtUp = path.resolve(here, 'serve-caught-up.mjs');
 
 /**
  * Backups of two projects, `Alpha` and `Beta`. Both have a card #1 and a card #2 with different content.
@@ -21,10 +22,6 @@ const ptyAnswer = path.resolve(here, 'agboard_pty_answer.py');
 export const alphaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-a.json');
 export const betaFixture = path.resolve(here, '..', 'fixtures', 'multi-project-b.json');
 
-export const mainPort = Number(process.env.AGBOARD_E2E_MAIN_PORT ?? 7631);
-export const statesPort = Number(process.env.AGBOARD_E2E_STATES_PORT ?? 7632);
-export const mainOrigin = `http://127.0.0.1:${mainPort}`;
-
 /** The project the main serve shows. Every helper takes the project explicitly; none has a default. */
 export const mainProject = 'agent-board';
 
@@ -32,11 +29,35 @@ export function agboardBinary(): string {
   return process.env.AGBOARD_E2E_BINARY ?? path.join(repoRoot, 'target', 'debug', 'agboard');
 }
 
-/** The data directory shared by the main serve and the CLI helper. */
+/*
+ * Each Playwright worker has its own data area and its own main serve on a port the system picks; the worker
+ * fixture in fixtures.ts sets them up and records them in the worker's environment. They are known only once the
+ * worker runs, so the functions below are called inside a test or a hook, never at the top of a spec.
+ */
+const notInWorker = 'is not set; import test from helpers/fixtures';
+
+/** The data directory of this worker, shared by its main serve and the CLI helper. */
 export function mainHome(): string {
   const home = process.env.AGBOARD_E2E_HOME;
-  if (!home) throw new Error('AGBOARD_E2E_HOME is not set; global setup did not run');
+  if (!home) throw new Error(`AGBOARD_E2E_HOME ${notInWorker}`);
   return home;
+}
+
+/** The URL of this worker's main serve, such as `http://127.0.0.1:53124/`. */
+export function mainUrl(): string {
+  const url = process.env.AGBOARD_E2E_MAIN_URL;
+  if (!url) throw new Error(`AGBOARD_E2E_MAIN_URL ${notInWorker}`);
+  return url;
+}
+
+/** This worker's main serve without the trailing slash, as a browser sends it in `Origin`. */
+export function mainOrigin(): string {
+  return mainUrl().replace(/\/$/, '');
+}
+
+/** The port of this worker's main serve. */
+export function mainPort(): number {
+  return Number(new URL(mainUrl()).port);
 }
 
 /**
@@ -72,6 +93,14 @@ export function removeHome(home: string): void {
 
 function agboardEnv(home: string): NodeJS.ProcessEnv {
   return { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' };
+}
+
+/**
+ * The environment of an `agboard serve` the tests start. `AGBOARD_WATCH=poll` makes the serve poll the shared
+ * folder instead of registering a macOS FSEvents watch, which can take tens of seconds per start.
+ */
+export function serveEnv(home: string): NodeJS.ProcessEnv {
+  return { ...agboardEnv(home), AGBOARD_WATCH: 'poll' };
 }
 
 export interface AgboardResult {
@@ -377,6 +406,24 @@ export function resetBoard(project: string, home: string = mainHome()): void {
 export function restoreProject(project: string, file: string, home: string = mainHome()): void {
   ensureProject(project, home);
   seedProject(project, file, home);
+  if (home === process.env.AGBOARD_E2E_HOME && process.env.AGBOARD_E2E_MAIN_URL) {
+    waitForServeToShow(process.env.AGBOARD_E2E_MAIN_URL, project, file);
+  }
+}
+
+/**
+ * Block until the serve at `url` shows the cards of `file` in `project`. The serve learns of the rewritten
+ * files from its watcher, so a page opened straight after a reset could still load the previous test's board.
+ */
+function waitForServeToShow(url: string, project: string, file: string): void {
+  const fixture = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
+  const tasks = fixture.tasks.map(({ id, title, taskStatus, agentStatus, updatedAt }) => ({ id, title, taskStatus, agentStatus, updatedAt }));
+  const result = spawnSync(process.execPath, [serveCaughtUp], {
+    input: JSON.stringify({ url, project, tasks }),
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  if (result.status !== 0) throw new Error(result.stderr || `waiting for the serve failed: ${result.error ?? result.status}`);
 }
 
 /** Delete `project` and its cards the way a person does: with a `y` on a terminal. */
@@ -434,32 +481,84 @@ export interface Serve {
   url: string;
 }
 
-async function waitForHealth(port: number, child: ChildProcess): Promise<void> {
-  const deadline = Date.now() + 15_000;
+/**
+ * How long a serve may take to start. Registering the file watch can take tens of seconds on macOS, and longer
+ * while several workers start their serves at once.
+ */
+export const serveStartTimeout = 90_000;
+
+/**
+ * The address on the startup line, `{"url":"http://127.0.0.1:<port>/"}`, which `agboard --json serve` prints once
+ * it has bound its port.
+ */
+function readStartupUrl(child: ChildProcess, stderr: () => string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let buffer = '';
+    const finish = (settle: () => void) => {
+      clearTimeout(timer);
+      child.stdout?.off('data', onData);
+      child.off('exit', onExit);
+      // Keep draining stdout so the serve never blocks on a full pipe.
+      child.stdout?.resume();
+      settle();
+    };
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(() => reject(new Error(`agboard serve printed no address within ${serveStartTimeout} ms: ${stderr()}`)));
+    }, serveStartTimeout);
+    const onExit = (code: number | null) => finish(() => reject(new Error(`agboard serve exited with ${code}: ${stderr()}`)));
+    const onData = (chunk: Buffer) => {
+      buffer += chunk.toString('utf8');
+      const newline = buffer.indexOf('\n');
+      if (newline < 0) return;
+      const line = buffer.slice(0, newline);
+      finish(() => {
+        try {
+          resolve((JSON.parse(line) as { url: string }).url);
+        } catch {
+          reject(new Error(`agboard serve printed an unexpected startup line: ${line}`));
+        }
+      });
+    };
+    child.stdout?.on('data', onData);
+    child.once('exit', onExit);
+  });
+}
+
+async function waitForHealth(url: string, child: ChildProcess): Promise<void> {
+  const deadline = Date.now() + serveStartTimeout;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`agboard serve exited with ${child.exitCode}`);
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/api/health`);
+      const response = await fetch(`${url}api/health`);
       if (response.ok) return;
     } catch {
-      // not listening yet
+      // not answering yet
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`agboard serve did not answer on port ${port}`);
+  throw new Error(`agboard serve did not answer at ${url}`);
 }
 
-/** Start `agboard serve --port <port>` on `home` and wait until it answers. */
-export async function startServe(port: number, home: string): Promise<Serve> {
-  if (!(await portIsFree(port))) throw new Error(`port ${port} is already in use`);
-  const child = spawn(agboardBinary(), ['serve', '--port', String(port)], {
-    env: agboardEnv(home),
+/**
+ * Start `agboard serve` on `home` and wait until it answers. It listens on a port the system picks (`--port 0`),
+ * read back from its startup line. A spec that restarts a serve under an open page passes the earlier serve's
+ * port, so the page reconnects to the same address.
+ */
+export async function startServe(home: string, port = 0): Promise<Serve> {
+  if (port !== 0 && !(await portIsFree(port))) throw new Error(`port ${port} is already in use`);
+  const child = spawn(agboardBinary(), ['--json', 'serve', '--port', String(port)], {
+    env: serveEnv(home),
     cwd: home,
-    stdio: ['ignore', 'ignore', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  child.stderr?.resume();
-  await waitForHealth(port, child);
-  return { process: child, port, url: `http://127.0.0.1:${port}/` };
+  let stderr = '';
+  child.stderr?.on('data', (chunk: Buffer) => {
+    if (stderr.length < 8_000) stderr += chunk.toString('utf8');
+  });
+  const url = await readStartupUrl(child, () => stderr);
+  await waitForHealth(url, child);
+  return { process: child, port: Number(new URL(url).port), url };
 }
 
 /** Stop a serve this process started and wait for it to exit. */

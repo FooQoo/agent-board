@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { createMonitorHome, monitorProjectId, removeMonitorHome, startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
 
 // The phone's first visit through ngrok's warning page (free plan). "Visit Site" sets a cookie on

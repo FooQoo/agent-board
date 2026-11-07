@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import { resetBoard, mainProject } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync, editorValue, openManualCreateDialog } from '../helpers/ui';

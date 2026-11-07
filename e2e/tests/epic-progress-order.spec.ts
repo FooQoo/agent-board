@@ -1,7 +1,7 @@
 // The progress table of an epic: a task is moved with the keyboard, the order is saved with the epic, and the CLI
 // reads the same order from the progress table.
 
-import { expect, test, type Page, type Locator } from '@playwright/test';
+import { expect, test, type Page, type Locator } from '../helpers/fixtures';
 import { agboardOk, mainProject, projectId, resetBoard } from '../helpers/agboard';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 

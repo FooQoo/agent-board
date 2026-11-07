@@ -1,28 +1,35 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import {
   agboardOk,
   createEmptyProject,
   makeHome,
   removeHome,
   startServe,
-  statesPort,
   stopServe,
   type Serve,
 } from '../helpers/agboard';
 import { openManualCreateDialog, waitForSync } from '../helpers/ui';
 
-// This spec restarts its serve while a page is open, so its token goes out of date. It owns the same port and data
-// directory as the states spec, which runs in another file, one file at a time.
+// This spec restarts its serve while a page is open, so its token goes out of date. It starts its own serve with
+// its own data directory.
 test.describe.configure({ mode: 'serial' });
-test.use({ baseURL: `http://127.0.0.1:${statesPort}/` });
 
 let home: string;
 let serve: Serve | undefined;
 
+// Playwright resolves baseURL before beforeAll runs, so whichever comes first starts the serve.
+async function ownServe(): Promise<Serve> {
+  if (!serve) {
+    home = makeHome('stale');
+    createEmptyProject(home, 'Stale Board');
+    serve = await startServe(home);
+  }
+  return serve;
+}
+
+test.use({ baseURL: async ({}, use) => use((await ownServe()).url) });
 test.beforeAll(async () => {
-  home = makeHome('stale');
-  createEmptyProject(home, 'Stale Board');
-  serve = await startServe(statesPort, home);
+  await ownServe();
 });
 
 test.afterAll(async () => {
@@ -43,7 +50,7 @@ test('after a restart, a save from an open page asks for a reload, and the reloa
 
   // The serve is restarted: this page still holds the token of the earlier server.
   await stopServe(serve);
-  serve = await startServe(statesPort, home);
+  serve = await startServe(home, serve!.port);
 
   const dialog = await openManualCreateDialog(page);
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed before the reload');

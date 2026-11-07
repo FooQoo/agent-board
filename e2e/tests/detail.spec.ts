@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { resetBoard, mainProject } from '../helpers/agboard';
 import { answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';
 

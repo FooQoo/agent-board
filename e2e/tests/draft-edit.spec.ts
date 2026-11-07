@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
 import { putDraft } from '../helpers/drafts';
 import { editorValue, readBoardAfterReset, waitForSync } from '../helpers/ui';

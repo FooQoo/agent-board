@@ -32,7 +32,7 @@ async function pageToken(origin: string): Promise<string> {
  * Save the language and/or the color theme the way the settings screen does: `PUT /api/preferences`
  * on the PC entrance, with the page's token and same-origin headers. Returns the saved value.
  */
-export async function setPreferences(patch: PreferencesPatch, origin: string = mainOrigin): Promise<SavedPreferences> {
+export async function setPreferences(patch: PreferencesPatch, origin: string = mainOrigin()): Promise<SavedPreferences> {
   const response = await fetch(`${origin}/api/preferences`, {
     method: 'PUT',
     headers: {
@@ -48,12 +48,12 @@ export async function setPreferences(patch: PreferencesPatch, origin: string = m
 }
 
 /** Put the language and theme back to the defaults so that no value leaks into the next spec. */
-export function resetPreferences(origin: string = mainOrigin): Promise<SavedPreferences> {
+export function resetPreferences(origin: string = mainOrigin()): Promise<SavedPreferences> {
   return setPreferences(defaultPreferences, origin);
 }
 
 /** The saved preferences, as `GET /api/preferences` answers. */
-export async function getPreferences(origin: string = mainOrigin): Promise<SavedPreferences> {
+export async function getPreferences(origin: string = mainOrigin()): Promise<SavedPreferences> {
   const response = await fetch(`${origin}/api/preferences`);
   if (!response.ok) throw new Error(`GET /api/preferences answered ${response.status}`);
   return (await response.json()) as SavedPreferences;

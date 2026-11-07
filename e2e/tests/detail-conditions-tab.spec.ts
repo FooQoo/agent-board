@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import path from 'node:path';
 import { agboardOk, mainProject, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';

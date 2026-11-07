@@ -1,7 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import {
   agboardBinary,
   agboardCatalogOk,
@@ -104,7 +104,7 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
       .replace('Private task body for progress omission check.', 'Publish the approved release.');
     replaceFileAtomically(taskFile, taskWithAcceptance);
     agboardOk(project, ['mv', String(publish), 'doing', '--actor', 'ai', '--reason', 'Preparing release'], home);
-    serve = await startServe(Number(process.env.AGBOARD_E2E_PROGRESS_PORT ?? 8362), home);
+    serve = await startServe(home);
     waiter = startWaiter(home, work, project, publish);
     const waitResult = waiterResult(waiter);
     await expect.poll(async () => {

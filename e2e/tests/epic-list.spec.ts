@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 

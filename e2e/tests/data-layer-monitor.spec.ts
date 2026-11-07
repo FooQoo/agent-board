@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboard, removeProject, taskBody } from '../helpers/agboard';
 import {
   createMonitorHome,
@@ -126,7 +126,12 @@ test.describe('one project, named in the address', () => {
     await loaded;
     await expect(live.getByRole('region', { name: 'Work summary' })).toBeVisible();
     removeProject('DeleteMe', home);
-    await live.getByRole('button', { name: 'Refresh' }).click();
+    // The live update can end the page before the click lands, and that removes the Refresh button.
+    const ended = live.getByRole('alert').filter({ hasText: 'This project is no longer available' });
+    await Promise.race([
+      live.getByRole('button', { name: 'Refresh' }).click({ timeout: 15_000 }).catch(() => undefined),
+      ended.waitFor(),
+    ]);
     await expect(live.getByRole('alert')).toContainText('This project is no longer available');
     await expect(live.getByRole('region', { name: 'Work summary' })).toHaveCount(0);
     await live.close();

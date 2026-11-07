@@ -1,5 +1,5 @@
 import { expectHistoryNote } from '../helpers/history';
-import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Route } from '../helpers/fixtures';
 import {
   agboardCatalogOk,
   agboardOk,
@@ -11,7 +11,6 @@ import {
   removeProject,
   resetAlphaBeta,
   startServe,
-  statesPort,
   stopServe,
   agboardBinary,
   type Serve,
@@ -24,11 +23,36 @@ import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '..
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
 // answer for one request. Every test names its project; the page URL (`?project=<ID>`) is what the screen
-// shows. This spec owns port 7632 and its own data directory, like states.spec.ts.
+// shows. Like states.spec.ts, each group starts its own serve on its own data directory.
 
 test.describe.configure({ mode: 'serial' });
-test.use({ baseURL: `http://127.0.0.1:${statesPort}/` });
-const statesOrigin = `http://127.0.0.1:${statesPort}`;
+// The serve of the group that is running.
+let serve: Serve | undefined;
+
+/**
+ * Gives the enclosing group its own serve on the data area `prepare` builds. Playwright resolves baseURL before
+ * beforeAll runs, so whichever comes first starts the serve; the group's afterAll stops it and removes the area.
+ */
+function useGroupServe(prepare: () => string): void {
+  let home: string | undefined;
+  const start = async (): Promise<Serve> => {
+    if (!serve) {
+      home = prepare();
+      serve = await startServe(home);
+    }
+    return serve;
+  };
+  test.use({ baseURL: async ({}, use) => use((await start()).url) });
+  test.beforeAll(async () => {
+    await start();
+  });
+  test.afterAll(async () => {
+    await stopServe(serve);
+    serve = undefined;
+    if (home) removeHome(home);
+  });
+}
+const statesOrigin = () => serve!.url.replace(/\/$/, '');
 
 const synced = (page: Page) => page.getByRole('contentinfo').getByRole('status');
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -98,16 +122,8 @@ test.afterEach(() => {
 
 test.describe('a new data area', () => {
   let home: string;
-  let serve: Serve | undefined;
 
-  test.beforeAll(async () => {
-    home = makeHome('multi-empty');
-    serve = await startServe(statesPort, home);
-  });
-  test.afterAll(async () => {
-    await stopServe(serve);
-    removeHome(home);
-  });
+  useGroupServe(() => (home = makeHome('multi-empty')));
 
   test('opens with no projects, and projects created by the CLI appear without a reload', async ({ page }) => {
     await page.goto('/');
@@ -163,25 +179,17 @@ test.describe('a new data area', () => {
 
 test.describe('two projects with the same task numbers', () => {
   let home: string;
-  let serve: Serve | undefined;
   let alpha: string;
   let beta: string;
 
-  test.beforeAll(async () => {
-    home = makeHome('multi-two');
-    serve = await startServe(statesPort, home);
-  });
-  test.afterAll(async () => {
-    await stopServe(serve);
-    removeHome(home);
-  });
+  useGroupServe(() => (home = makeHome('multi-two')));
   test.beforeEach(async () => {
     resetAlphaBeta(home);
     alpha = projectId('Alpha', home);
     beta = projectId('Beta', home);
-    await resetPreferences(statesOrigin);
+    await resetPreferences(statesOrigin());
   });
-  test.afterEach(() => resetPreferences(statesOrigin));
+  test.afterEach(() => resetPreferences(statesOrigin()));
 
   test('task #1 and #2 of each project show their own content, and acting in one never changes the other', async ({
     page,
@@ -866,7 +874,7 @@ test.describe('two projects with the same task numbers', () => {
   });
 
   test('existing screens work in every project: Japanese and the detail width', async ({ page }) => {
-    await setPreferences({ locale: 'ja' }, statesOrigin);
+    await setPreferences({ locale: 'ja' }, statesOrigin());
     await open(page, alpha);
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();
@@ -914,7 +922,7 @@ test.describe('two projects with the same task numbers', () => {
     await open(page, alpha);
     for (const mode of ['dark', 'light']) {
       for (const accent of accents) {
-        await setPreferences({ theme: { mode: mode as Mode, accent: accent as Accent } }, statesOrigin);
+        await setPreferences({ theme: { mode: mode as Mode, accent: accent as Accent } }, statesOrigin());
         await page.reload();
         await expect(synced(page)).toHaveText(/^Synced/);
         const root = page.locator('html');
@@ -941,25 +949,20 @@ test.describe('two projects with the same task numbers', () => {
 
 test.describe('long names and many projects', () => {
   let home: string;
-  let serve: Serve | undefined;
   const longName = 'The quarterly planning board of the platform teams'; // 50 characters
   const many = Array.from({ length: 100 }, (_, index) => `Project ${String(index + 1).padStart(3, '0')}`);
 
-  test.beforeAll(async () => {
+  useGroupServe(() => {
     expect(longName).toHaveLength(50);
     home = makeHome('multi-many');
     agboardCatalogOk(['project', 'create', longName], home);
     for (const name of many) agboardCatalogOk(['project', 'create', name], home);
     agboardOk(longName, ['add', 'A task in the long project', '--desc', 'x'], home);
     agboardOk(many[41], ['add', 'A task in project 042'], home);
-    serve = await startServe(statesPort, home);
+    return home;
   });
-  test.afterAll(async () => {
-    await stopServe(serve);
-    removeHome(home);
-  });
-  test.beforeEach(() => resetPreferences(statesOrigin));
-  test.afterEach(() => resetPreferences(statesOrigin));
+  test.beforeEach(() => resetPreferences(statesOrigin()));
+  test.afterEach(() => resetPreferences(statesOrigin()));
 
   async function headerFits(page: Page): Promise<void> {
     const width = page.viewportSize()!.width;
@@ -1074,7 +1077,7 @@ test.describe('long names and many projects', () => {
   }
 
   test('in Japanese the header controls fit with the 50-character name as well', async ({ page }) => {
-    await setPreferences({ locale: 'ja' }, statesOrigin);
+    await setPreferences({ locale: 'ja' }, statesOrigin());
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, projectId(longName, home));
     await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();

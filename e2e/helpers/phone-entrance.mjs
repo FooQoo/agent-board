@@ -169,7 +169,7 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000, warning = 
     waiters.length = 0;
     child = spawn(binary, ['--ignored', '--nocapture'], {
       cwd: repo,
-      env: { ...process.env, AGBOARD_PHONE_HOME: home, TZ: 'UTC' },
+      env: { ...process.env, AGBOARD_PHONE_HOME: home, TZ: 'UTC', AGBOARD_WATCH: 'poll' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let partial = '';

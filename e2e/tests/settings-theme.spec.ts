@@ -1,13 +1,13 @@
 import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
-// working with them. The Rust serve on 7631 is real; only the browser storage and a few request
+// working with them. The worker's Rust serve is real; only the browser storage and a few request
 // failures are injected at the browser edge.
 
 const ACCENTS = [

@@ -1,8 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
-import { ensureProject, makeHome, projectId, removeHome, startServe, statesPort, type Serve } from '../helpers/agboard';
+import { expect, test, type Page } from '../helpers/fixtures';
+import { ensureProject, makeHome, projectId, removeHome, startServe, type Serve } from '../helpers/agboard';
 
 // The first-run guide on a data area that has never shown it. Each test starts its own
-// serve on the states port, with its own data area, so the board tests are not affected.
+// serve with its own data area, so the board tests are not affected.
 
 const PROJECT = 'guide';
 let home = '';
@@ -11,7 +11,7 @@ let serve: Serve | null = null;
 async function openFreshBoard(): Promise<string> {
 	home = makeHome('onboarding', 'unseen');
 	ensureProject(PROJECT, home);
-	serve = await startServe(statesPort, home);
+	serve = await startServe(home);
 	return serve.url;
 }
 
@@ -104,7 +104,7 @@ test('OB-03: ending the guide early archives its two cards and offers a new run'
 async function openSkippedBoard(): Promise<string> {
 	home = makeHome('onboarding-tutorial', 'skipped');
 	ensureProject(PROJECT, home);
-	serve = await startServe(statesPort, home);
+	serve = await startServe(home);
 	return serve.url;
 }
 
@@ -139,7 +139,7 @@ test('OB-05: a tutorial started in a second project puts its samples on that pro
 	home = makeHome('onboarding-switch', 'skipped');
 	ensureProject('first', home);
 	ensureProject('second', home);
-	serve = await startServe(statesPort, home);
+	serve = await startServe(home);
 	const url = serve.url;
 	await page.goto(url);
 

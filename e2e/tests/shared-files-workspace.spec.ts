@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import {
   agboard,
   agboardBinary,
@@ -184,7 +184,7 @@ test('an image reference that points at another owner or outside the folder is n
   await expect(details(page).locator('img')).toHaveCount(0);
   expect(requests.filter((url) => url.includes(`/tasks/13/assets/`) || url.includes('etc'))).toEqual([]);
   // The owner's picture is reachable only from its own card: asking for it through card 13 is refused.
-  const direct = await page.request.get(`${mainOrigin}/api/projects/${projectId(mainProject)}/tasks/13/attachments/${otherId}`);
+  const direct = await page.request.get(`${mainOrigin()}/api/projects/${projectId(mainProject)}/tasks/13/attachments/${otherId}`);
   expect([403, 404]).toContain(direct.status());
 });
 
@@ -207,7 +207,7 @@ test('the editor is not loaded on the first screen, and assets that are not regi
   await expect.poll(() => loaded.some((name) => /RichMarkdownEditor\.impl/.test(name))).toBe(true);
 
   // A name that is not registered is a 404.
-  const missing = await page.request.get(`${mainOrigin}/assets/not-registered-${Date.now()}.js`);
+  const missing = await page.request.get(`${mainOrigin()}/assets/not-registered-${Date.now()}.js`);
   expect(missing.status()).toBe(404);
 });
 

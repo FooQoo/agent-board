@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainOrigin, mainPort, mainProject, projectId, resetBoard, taskBody, type TaskJson } from '../helpers/agboard';
 
 // Writes go to /api/projects/<ProjectId>/cards/<number>; the guard answers before it looks at the project.
@@ -31,14 +31,14 @@ test('a token alone, a bad token, or a wrong Origin is not enough', async ({ pag
 
   // The page's origin, but no token.
   const originOnly = await request.delete(task15, {
-    headers: { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
+    headers: { Origin: mainOrigin(), 'Sec-Fetch-Site': 'same-origin' },
   });
   expect(originOnly.status()).toBe(403);
 
   // The page's origin and a wrong token.
   const wrongToken = await request.delete(task15, {
     headers: {
-      Origin: mainOrigin,
+      Origin: mainOrigin(),
       'Sec-Fetch-Site': 'same-origin',
       'X-Agboard-Token': '0'.repeat(64),
     },
@@ -118,11 +118,11 @@ test('the edit and the draft switch are refused without the guard, and nothing c
     const attempts: Record<string, string>[] = [
       {},
       { 'X-Agboard-Token': token },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin' },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': '0'.repeat(64) },
+      { Origin: mainOrigin(), 'Sec-Fetch-Site': 'same-origin' },
+      { Origin: mainOrigin(), 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': '0'.repeat(64) },
       { Origin: 'http://example.com', 'Sec-Fetch-Site': 'cross-site', 'X-Agboard-Token': token },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'cross-site', 'X-Agboard-Token': token },
-      { Origin: mainOrigin, 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': token, Host: `evil.example:${mainPort}` },
+      { Origin: mainOrigin(), 'Sec-Fetch-Site': 'cross-site', 'X-Agboard-Token': token },
+      { Origin: mainOrigin(), 'Sec-Fetch-Site': 'same-origin', 'X-Agboard-Token': token, Host: `evil.example:${mainPort()}` },
     ];
     for (const headers of attempts) {
       const response = await send(headers);

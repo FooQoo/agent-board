@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, decisionJson, mainProject, resetBoard, type TaskJson } from '../helpers/agboard';
 import { answerButton, answerDialog, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 import { expectHistoryNote } from '../helpers/history';
@@ -35,7 +35,7 @@ let images: ImageServer;
 let work: string;
 
 test.beforeAll(async () => {
-  images = await startImageServer(9641);
+  images = await startImageServer();
   work = mkdtempSync(path.join(os.tmpdir(), 'agent-board-e2e-dm-'));
 });
 

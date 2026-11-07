@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import { agboard, agboardOk, mainProject, resetBoard, workspace } from '../helpers/agboard';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 

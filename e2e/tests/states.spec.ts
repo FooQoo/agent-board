@@ -1,27 +1,34 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import {
   agboardOk,
   createEmptyProject,
   makeHome,
   removeHome,
   startServe,
-  statesPort,
   stopServe,
   type Serve,
 } from '../helpers/agboard';
 
-// This spec stops and restarts its serve, so it owns port 7632 and its own
+// This spec stops and restarts its serve, so it starts its own serve with its own
 // data directory and shares nothing with the other specs.
 test.describe.configure({ mode: 'serial' });
-test.use({ baseURL: `http://127.0.0.1:${statesPort}/` });
 
 let home: string;
 let serve: Serve | undefined;
 
+// Playwright resolves baseURL before beforeAll runs, so whichever comes first starts the serve.
+async function ownServe(): Promise<Serve> {
+  if (!serve) {
+    home = makeHome('states');
+    createEmptyProject(home, 'Empty Board');
+    serve = await startServe(home);
+  }
+  return serve;
+}
+
+test.use({ baseURL: async ({}, use) => use((await ownServe()).url) });
 test.beforeAll(async () => {
-  home = makeHome('states');
-  createEmptyProject(home, 'Empty Board');
-  serve = await startServe(statesPort, home);
+  await ownServe();
 });
 
 test.afterAll(async () => {
@@ -61,7 +68,8 @@ test('stopping the serve shows Disconnected, and restarting it reconnects and fe
   // The CLI still works while the serve is down, and the change waits for the screen.
   agboardOk('Empty Board', ['add', 'Added while disconnected'], home);
 
-  serve = await startServe(statesPort, home);
+  // The same port, so the open page reconnects.
+  serve = await startServe(home, serve!.port);
   await expect(
     page.getByRole('button', { name: /^#1 AI Added while disconnected / }),
   ).toBeVisible({ timeout: 30_000 });

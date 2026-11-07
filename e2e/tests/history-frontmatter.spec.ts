@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import {
 	agboardBinary,
 	agboardOk,
@@ -364,11 +364,15 @@ test('history add timestamps free work notes and defaults without changing lane 
   replaceFileAtomically(reasonFile, 'Verified persistence after restart.');
   cliOk(['history', 'add', String(id), '--reason-file', reasonFile]);
   expect(show(id).history.at(-1)?.reason).toBe('Verified persistence after restart.');
-  await openPc(page);
-  await page.getByRole('button', { name: new RegExp(`^#${id} .*AI work notes`) }).click();
-  await details(page).getByRole('tab', { name: /^History/ }).click();
   const rows = details(page).getByRole('tabpanel').getByRole('listitem');
-  await expect(rows.first()).toContainText('Verified persistence after restart.');
+  // The server sees the last note on its next scan, and an open details panel holds updates back, so a page
+  // opened in between is opened again.
+  await expect(async () => {
+    await openPc(page);
+    await page.getByRole('button', { name: new RegExp(`^#${id} .*AI work notes`) }).click();
+    await details(page).getByRole('tab', { name: /^History/ }).click();
+    await expect(rows.first()).toContainText('Verified persistence after restart.', { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await expect(rows).toHaveCount(4);
   await expect(details(page).getByRole('tabpanel')).toContainText('All targeted tests passed.');
   const unchanged = show(id);

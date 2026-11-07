@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { agboard, agboardOk, mainProject, nextTaskId, resetBoard, taskBody, workspace } from '../helpers/agboard';
 import { archiveTask, putDraft } from '../helpers/drafts';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';

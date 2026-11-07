@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers/fixtures";
 import { writeFileSync } from "node:fs";
 import { mainProject, resetBoard } from "../helpers/agboard";
 import { resetPreferences, setPreferences } from "../helpers/preferences";

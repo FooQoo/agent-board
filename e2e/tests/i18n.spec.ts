@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '../helpers/fixtures';
 import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
 import { getPreferences, resetPreferences } from '../helpers/preferences';
 import { openManualCreateDialog, readBoardAfterReset } from '../helpers/ui';

@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mainPort, mainProject, makeHome, repoRoot, resetBoard, startServe } from './helpers/agboard';
-import { state } from './helpers/state';
+import { repoRoot } from './helpers/agboard';
 
 function run(command: string, args: string[]): void {
   const result = spawnSync(command, args, { cwd: repoRoot, stdio: 'inherit' });
@@ -9,13 +8,9 @@ function run(command: string, args: string[]): void {
   }
 }
 
+// Builds once for the whole run. Each worker then starts its own serve and data area (helpers/fixtures.ts).
 export default async function globalSetup(): Promise<void> {
   // The binary embeds web/dist, so the screen is built first.
   run('corepack', ['pnpm', '--dir', 'web', 'build']);
   run('cargo', ['build']);
-
-  const home = makeHome('main');
-  process.env.AGBOARD_E2E_HOME = home;
-  resetBoard(mainProject, home);
-  state.serve = await startServe(mainPort, home);
 }

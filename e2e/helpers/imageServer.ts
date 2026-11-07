@@ -1,4 +1,5 @@
 import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 /** A 1x1 PNG. */
 const png = Buffer.from(
@@ -21,8 +22,7 @@ export interface ImageServer {
  * A tiny sample server standing in for an external image host. `/ok.png` is an image; `/page.html` is a
  * page the links point to; any other path is a 404 (a broken image).
  */
-export async function startImageServer(port: number): Promise<ImageServer> {
-  port = Number(process.env.AGBOARD_E2E_IMAGE_PORT ?? port);
+export async function startImageServer(): Promise<ImageServer> {
   const referers: (string | null)[] = [];
   const paths: string[] = [];
   const server = http.createServer((request, response) => {
@@ -44,8 +44,9 @@ export async function startImageServer(port: number): Promise<ImageServer> {
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', resolve);
+    server.listen(0, '127.0.0.1', resolve);
   });
+  const { port } = server.address() as AddressInfo;
   return {
     port,
     origin: `http://127.0.0.1:${port}`,

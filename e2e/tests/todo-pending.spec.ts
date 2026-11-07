@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 import { answerButton, answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';

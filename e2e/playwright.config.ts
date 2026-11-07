@@ -1,24 +1,30 @@
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { mainOrigin } from './helpers/agboard';
+import { repoRoot } from './helpers/agboard';
 
-// The main serve (port 7631) and the CLI helper share one AGBOARD_HOME, so the
-// specs run one at a time. states.spec.ts starts its own serve on 7632.
+// Each worker starts its own `agboard serve` on a port the system picks, with its own data area (see
+// helpers/fixtures.ts), so workers and separate checkouts never share a port or a board. Specs in a file still run
+// in order, because many of them build on the board the previous test left.
+const workers = Number(process.env.AGBOARD_E2E_WORKERS) || Math.max(1, Math.floor(os.cpus().length / 2));
+
+// Traces, screenshots, and failure context go to the OS temp directory, not into the repository. Playwright empties
+// this folder at the start of a run, so each checkout has its own.
+const checkout = createHash('sha256').update(repoRoot).digest('hex').slice(0, 8);
+
 export default defineConfig({
   testDir: './tests',
-  workers: 1,
+  workers,
   fullyParallel: false,
   retries: 0,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  // Traces, screenshots, and failure context go to the OS temp directory, not into the repository.
-  outputDir: path.join(os.tmpdir(), 'agent-board-e2e-results'),
+  outputDir: path.join(os.tmpdir(), `agent-board-e2e-results-${checkout}`),
   reporter: [['list']],
   globalSetup: './global-setup.ts',
-  globalTeardown: './global-teardown.ts',
   use: {
-    baseURL: `${mainOrigin}/`,
+    // baseURL comes from the worker's serve, in helpers/fixtures.ts.
     timezoneId: 'UTC',
     locale: 'en-US',
     viewport: { width: 1280, height: 900 },

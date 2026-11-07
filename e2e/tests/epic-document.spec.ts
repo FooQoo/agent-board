@@ -1,7 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import net from 'node:net';
 import path from 'node:path';
 import {
   agboard,
@@ -21,7 +20,7 @@ import { waitForSync } from '../helpers/ui';
 
 // Each epic keeps its details in EPIC.md. The real server leaves the files as they are, and the CLI, snapshot,
 // progress, hook, wait, API, and the page all use `document` and `documentPath`. Every scenario runs on its own
-// temporary data area and on a free loopback port.
+// temporary data area and on a port the system picks.
 
 test.describe.configure({ mode: 'serial' });
 
@@ -37,17 +36,6 @@ const DOC_ALPHA = `---\npriority: [3, 1, 2]\n---\n\n# Alpha document\n\nAlpha te
 const DOC_BETA = `---\npriority: [5, 4]\n---\n\n# Beta document\n\nBeta text.\n`;
 // An epic whose document is empty.
 const DOC_GAMMA = '';
-
-async function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address() as net.AddressInfo;
-      server.close(() => resolve(port));
-    });
-  });
-}
 
 interface Fixture {
   home: string;
@@ -119,7 +107,6 @@ const read = (file: string) => readFileSync(file);
 
 test.beforeAll(async () => {
   fixture = buildHome('epic-doc');
-  port = await freePort();
   for (const id of ['ALPHA', 'BETA', 'GAMMA']) {
     epicJsonBefore[id] = readFileSync(path.join(fixture.folder, 'epics', id, 'epic.json'), 'utf8');
   }
@@ -136,7 +123,8 @@ test.afterAll(async () => {
 test('starting the server keeps every byte of each EPIC.md, the card membership, and the image', async () => {
   const before = { alpha: read(path.join(fixture.alpha, 'EPIC.md')), beta: read(path.join(fixture.beta, 'EPIC.md')) };
 
-  serve = await startServe(port, fixture.home);
+  serve = await startServe(fixture.home);
+  port = serve.port;
 
   expect(read(path.join(fixture.alpha, 'EPIC.md')).equals(before.alpha)).toBe(true);
   expect(read(path.join(fixture.beta, 'EPIC.md')).equals(before.beta)).toBe(true);
@@ -161,7 +149,7 @@ test('starting the server keeps every byte of each EPIC.md, the card membership,
 
   // Restarting changes nothing either.
   await stopServe(serve);
-  serve = await startServe(port, fixture.home);
+  serve = await startServe(fixture.home, port);
   expect(read(path.join(fixture.alpha, 'EPIC.md')).equals(before.alpha)).toBe(true);
 });
 
@@ -311,7 +299,7 @@ test('the page shows the epic details with its cards in order and the Markdown i
 
   // Restart the server and open the page again: the edit, the order, and the picture are still there.
   await stopServe(serve);
-  serve = await startServe(port, fixture.home);
+  serve = await startServe(fixture.home, port);
   await page.reload();
   await waitForSync(page);
   await page.locator('[data-epic-label="ALPHA"]').first().click();

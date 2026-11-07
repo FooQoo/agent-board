@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from '../helpers/fixtures';
 import { resetBoard, mainProject } from '../helpers/agboard';
 
 // The seed is the eight sample cards; see fixtures/agent-board.json.

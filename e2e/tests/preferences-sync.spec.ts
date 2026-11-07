@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { mainOrigin } from '../helpers/agboard';
 import {
   createMonitorHome,
@@ -36,12 +36,12 @@ test.afterAll(async () => {
 
 // The main serve for E-1 and the backend of the monitor each keep their own saved setting.
 test.beforeEach(async () => {
-  await resetPreferences(mainOrigin);
+  await resetPreferences(mainOrigin());
   await resetPreferences(entrance.pcOrigin);
 });
 
 test.afterEach(async () => {
-  await resetPreferences(mainOrigin);
+  await resetPreferences(mainOrigin());
   await resetPreferences(entrance.pcOrigin);
 });
 
@@ -62,8 +62,8 @@ async function expectLook(page: Page, lang: string, mode: string, accent: string
 test('E-1: a language and theme chosen in one PC browser open the same in a browser with empty storage', async ({
   browser,
 }) => {
-  const contextA = await browser.newContext({ baseURL: `${mainOrigin}/` });
-  const contextB = await browser.newContext({ baseURL: `${mainOrigin}/` });
+  const contextA = await browser.newContext({ baseURL: `${mainOrigin()}/` });
+  const contextB = await browser.newContext({ baseURL: `${mainOrigin()}/` });
   try {
     const a = await contextA.newPage();
     await a.goto('/');
@@ -72,7 +72,7 @@ test('E-1: a language and theme chosen in one PC browser open the same in a brow
     await choose(a, 'Settings', '日本語');
     await expectLook(a, 'ja', 'dark', 'teal');
     // The server holds the choice.
-    await expect.poll(async () => getPreferences(mainOrigin)).toMatchObject({
+    await expect.poll(async () => getPreferences(mainOrigin())).toMatchObject({
       locale: 'ja',
       theme: { mode: 'dark', accent: 'teal' },
     });

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../helpers/fixtures';
 import { agboardBinary, replaceFileAtomically } from '../helpers/agboard';
 
 // `agboard setup` and a CLI project that uses the shared folder it prepares, run with the real binary.

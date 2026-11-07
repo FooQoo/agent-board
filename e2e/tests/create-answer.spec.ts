@@ -1,5 +1,5 @@
 import { expectHistoryNote } from '../helpers/history';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
@@ -26,7 +26,7 @@ function show(id: number): ShownTask {
 let images: ImageServer;
 
 test.beforeAll(async () => {
-  images = await startImageServer(7891);
+  images = await startImageServer();
 });
 test.afterAll(async () => {
   await images.close();

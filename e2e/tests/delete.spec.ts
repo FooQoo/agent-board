@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, agboardOnTerminal, listTasks, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
 

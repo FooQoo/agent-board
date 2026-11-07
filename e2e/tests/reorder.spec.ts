@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
 
