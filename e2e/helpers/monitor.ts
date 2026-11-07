@@ -22,7 +22,10 @@ function run(home: string, args: string[]): string {
     env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' },
     encoding: 'utf8',
   });
-  if (result.status !== 0) throw new Error(`agboard ${args.join(' ')} failed: ${result.stderr}`);
+  if (result.error) throw new Error(`agboard ${args.join(' ')} did not run: ${result.error.message}`, { cause: result.error });
+  if (result.status !== 0) {
+    throw new Error(`agboard ${args.join(' ')} failed (${result.signal ?? `exit ${result.status}`}): ${result.stderr}`);
+  }
   return result.stdout;
 }
 
