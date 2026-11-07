@@ -150,6 +150,24 @@
   color: var(--r-muted);
 }
 
+.acceptance-view__text {
+  min-width: 0;
+}
+
+/* A condition keeps the size of its row; the rest of the Markdown look is the task body's. */
+.acceptance-view__text .md {
+  --md-size: 13px;
+  --md-leading: 1.5;
+  --md-gap: 6px;
+  color: inherit;
+}
+
+.acceptance-view__plain {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .acceptance-view__item.is-done .acceptance-view__text {
   color: var(--r-text2);
 }

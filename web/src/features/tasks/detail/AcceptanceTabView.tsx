@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ListChecksIcon } from 'lucide-react';
 import type { AcceptanceItem, Task } from '../../../shared/api/contracts';
+import type { AttachmentResolver } from '../../../shared/markdown/model';
 import { AcceptanceList } from '../acceptance/AcceptanceList';
 import { progressOf } from '../acceptance/model/acceptance';
 import { useConditionToggle } from '../acceptance/model/useConditionToggle';
@@ -13,9 +14,12 @@ import './acceptance-tab.css';
 export function AcceptanceTabView({
   task,
   onToggle,
+  resolveAttachment,
 }: {
   task: Pick<Task, 'acceptance' | 'acceptanceError'>;
   onToggle?: (conditionId: string, done: boolean) => Promise<unknown>;
+  /** Turns an `attachment:<id>` image into its URL. */
+  resolveAttachment?: AttachmentResolver;
 }) {
   const { t } = useTranslation();
   return (
@@ -25,6 +29,7 @@ export function AcceptanceTabView({
         items={task.acceptance}
         unreadable={task.acceptanceError}
         onToggle={onToggle}
+        resolveAttachment={resolveAttachment}
       />
     </div>
   );
@@ -35,11 +40,13 @@ function ConditionSection({
   items,
   unreadable,
   onToggle,
+  resolveAttachment,
 }: {
   title: string;
   items: readonly AcceptanceItem[];
   unreadable: boolean;
   onToggle?: (conditionId: string, done: boolean) => Promise<unknown>;
+  resolveAttachment?: AttachmentResolver;
 }) {
   const { t } = useTranslation();
   const toggle = useConditionToggle(items, onToggle);
@@ -58,6 +65,7 @@ function ConditionSection({
           items={toggle.items}
           onToggle={onToggle ? toggle.change : undefined}
           busy={toggle.busy}
+          resolveAttachment={resolveAttachment}
         />
       ) : (
         <p>{t('detail.conditionsEmpty')}</p>

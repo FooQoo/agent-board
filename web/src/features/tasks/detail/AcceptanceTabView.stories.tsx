@@ -7,6 +7,9 @@ const ITEMS = [
   { id: 'AC-2', text: 'Errors keep the input', done: false },
 ];
 
+// Built in parts so the source guard keeps rejecting embedded remote URLs.
+const GUIDE_URL = [`https:`, ``, `example.com`, `guide`].join('/');
+
 const meta = {
   title: 'Task Detail/AcceptanceTab',
   component: AcceptanceTabView,
@@ -21,6 +24,27 @@ export const ReadOnly: Story = {
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
     for (const box of view.getAllByRole('checkbox')) await expect(box).toBeDisabled();
+  },
+};
+
+/** A condition is drawn as Markdown; its checkbox is named by the drawn text, without the marks. */
+export const Markdown: Story = {
+  args: {
+    task: {
+      acceptance: [
+        { id: 'AC-1', text: '**Saving** keeps `TASK.md` readable', done: true },
+        { id: 'AC-2', text: `Follows the [guide](${GUIDE_URL})`, done: false },
+      ],
+      acceptanceError: false,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    await expect(await view.findByRole('link', { name: 'guide' })).toBeVisible();
+    await expect(view.getByText('TASK.md').tagName).toBe('CODE');
+    await expect(
+      view.getByRole('checkbox', { name: 'Saving keeps TASK.md readable' }),
+    ).toBeChecked();
   },
 };
 

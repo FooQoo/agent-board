@@ -207,6 +207,7 @@ export function TaskDetailView({
                   acceptanceError: task.acceptanceError ?? false,
                 }}
                 onToggle={onToggleCondition}
+                resolveAttachment={attachmentUrl}
               />
             )}
           </DetailSectionView>

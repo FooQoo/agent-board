@@ -129,6 +129,11 @@
               "interaction": true
             },
             {
+              "id": "task-detail-acceptancetab--markdown",
+              "states": ["Markdown in a condition", "checkbox named by the drawn text"],
+              "interaction": true
+            },
+            {
               "id": "task-detail-acceptancetab--toggle",
               "states": ["check a condition", "count follows", "save called"],
               "interaction": true

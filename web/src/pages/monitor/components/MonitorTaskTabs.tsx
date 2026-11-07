@@ -62,6 +62,9 @@ export function TaskAcceptanceTab({
         <AcceptanceTabView
           task={{ acceptance: document.acceptance, acceptanceError: false }}
           onToggle={toggle}
+          resolveAttachment={attachmentResolver((id) =>
+            resolvers.attachmentUrl(item.projectId, item.task.id, id),
+          )}
         />
       )}
     </MonitorSection>

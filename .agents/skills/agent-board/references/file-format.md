@@ -22,7 +22,7 @@ history: []
 
 - `acceptance`: a list. Each item has three keys and no others:
   - `id`: `AC-` followed by a positive number without a leading zero. Unique in the file.
-  - `text`: one to 2,000 characters after trimming. Write it so that it can be verified.
+  - `text`: one to 2,000 characters after trimming. Write it so that it can be verified. The board draws it as Markdown, like the task body.
   - `done`: `true` or `false`.
 - `history`: a required top-level list in stored `TASK.md` files. An empty list is valid, even when `acceptance` is empty. New-task input may omit it or supply `history: []`; created tasks get a generated initial entry.
 - An `EPIC.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing `EPIC.md`. This is independent of lane order.

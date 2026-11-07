@@ -28,7 +28,7 @@ Select a task to open its details on the right. The tabs show:
 
 ![Task details panel with the Conditions tab showing the task's acceptance conditions](../../images/guide/card-detail.png){.screenshot}
 
-The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. An epic's own reference conditions stay in its Markdown details.
+The panel on the right shows the selected task. The Conditions tab lists the task's own acceptance conditions with a progress bar. Each condition is drawn as Markdown, like the task body, so it can hold links, code, and images. An epic's own reference conditions stay in its Markdown details.
 
 You can check and uncheck a condition in the Conditions tab. The change shows at once and is saved right away; if it cannot be saved, the checkbox goes back and a message says so. Your choice is saved over the latest file, so it wins even if an agent changed the task after you opened it, and the rest of the file, including the agent's other changes, stays. The history records that a person checked or unchecked the condition.
 

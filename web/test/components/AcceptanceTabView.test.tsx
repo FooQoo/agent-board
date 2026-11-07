@@ -19,6 +19,29 @@ it('shows only the task conditions, all read-only without fold controls', () => 
     expect((input as HTMLInputElement).disabled).toBe(true);
 });
 
+it('draws a condition as Markdown and names its checkbox without the marks', async () => {
+  const items = [{ id: 'AC-1', text: '**Saving** keeps `TASK.md`', done: false }];
+  render(<AcceptanceTabView task={{ acceptance: items, acceptanceError: false }} />);
+  expect((await screen.findByText('Saving')).tagName).toBe('STRONG');
+  expect(screen.getByText('TASK.md').tagName).toBe('CODE');
+  expect(screen.getByRole('checkbox', { name: 'Saving keeps TASK.md' })).toBeTruthy();
+});
+
+it('resolves an attached image in a condition', async () => {
+  const items = [
+    { id: 'AC-1', text: '![Proof](attachment:0123456789abcdef0123456789abcdef)', done: false },
+  ];
+  render(
+    <AcceptanceTabView
+      task={{ acceptance: items, acceptanceError: false }}
+      resolveAttachment={(id) => `/files/${id}`}
+    />,
+  );
+  expect((await screen.findByRole('img', { name: 'Proof' })).getAttribute('src')).toBe(
+    '/files/0123456789abcdef0123456789abcdef',
+  );
+});
+
 it('handles empty and unreadable task conditions without invalid progress', () => {
   const { rerender } = render(
     <AcceptanceTabView task={{ acceptance: [], acceptanceError: false }} />,

@@ -43,7 +43,7 @@ Any headings and text you need.
 | Key | Rule |
 | --- | --- |
 | `id` | `AC-` followed by a positive number without a leading zero. Unique in the file. |
-| `text` | 1 to 2,000 characters after trimming. Write it so that it can be verified. |
+| `text` | 1 to 2,000 characters after trimming. Write it so that it can be verified. The board draws it as Markdown, like the task body. |
 | `done` | `true` or `false`. |
 
 Add a condition with the next free number; do not renumber. Other keys in the frontmatter are kept when the board writes the file.
