@@ -26,16 +26,8 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const DEFAULT_REPO = 'FooQoo/agent-board';
 const TAG = /^v(\d+)\.(\d+)\.(\d+)$/;
 
-const SECTIONS = {
-  en: {
-    marker: '## English',
-    headings: ['### Changes', '### Fixes', '### Breaking changes', '### Required update steps'],
-  },
-  ja: {
-    marker: '## 日本語',
-    headings: ['### 変更点', '### 不具合修正', '### 互換性に影響する変更', '### 必要な更新操作'],
-  },
-};
+// The release notes are written in English and carry these headings.
+const HEADINGS = ['## Changes', '## Fixes', '## Breaking changes', '## Required update steps'];
 
 function parseArgs(argv) {
   const options = { mode: 'none', repo: DEFAULT_REPO, out: path.join(repoRoot, 'docs'), apiUrl: 'https://api.github.com' };
@@ -94,31 +86,14 @@ function fixtureReleases(options) {
     });
 }
 
-function splitBody(body, tag) {
-  const markers = [SECTIONS.en.marker, SECTIONS.ja.marker];
-  const lines = body.replace(/\r\n/g, '\n').split('\n');
-  const found = {};
-  let current = null;
-  for (const line of lines) {
-    const marker = markers.find((m) => line.trim() === m);
-    if (marker) {
-      if (found[marker] !== undefined) throw new Error(`${tag}: "${marker}" appears twice`);
-      current = marker;
-      found[marker] = [];
-    } else if (current) found[current].push(line);
+// Fails unless the body has each heading exactly once.
+function checkNotes(body, tag) {
+  const lines = body.replace(/\r\n/g, '\n').split('\n').map((line) => line.trim());
+  for (const heading of HEADINGS) {
+    const count = lines.filter((line) => line === heading).length;
+    if (count === 0) throw new Error(`${tag}: the release notes have no "${heading}" heading`);
+    if (count > 1) throw new Error(`${tag}: "${heading}" appears ${count} times`);
   }
-  const result = {};
-  for (const [lang, spec] of Object.entries(SECTIONS)) {
-    const text = (found[spec.marker] ?? []).join('\n').trim();
-    if (!text) throw new Error(`${tag}: the ${lang} section "${spec.marker}" is missing or empty`);
-    for (const heading of spec.headings) {
-      if (!text.split('\n').some((line) => line.trim() === heading)) {
-        throw new Error(`${tag}: the ${lang} section has no "${heading}" heading`);
-      }
-    }
-    result[lang] = text;
-  }
-  return result;
 }
 
 // Keeps only published, semver releases, validates them, and sorts newest first.
@@ -134,8 +109,8 @@ export function validate(releases, options) {
       throw new Error(`${tag}: html_url is not a release of ${options.repo}`);
     }
     if (typeof release.body !== 'string') throw new Error(`${tag}: the release has no body`);
-    // The body keeps both languages, as the GitHub Release is the release notes.
-    splitBody(release.body, tag);
+    // The GitHub Release body is the release notes; check its shape.
+    checkNotes(release.body, tag);
     valid.push({ tag, version: tag.slice(1), parts: match.slice(1).map(Number), url: release.html_url });
   }
   valid.sort((a, b) => b.parts[0] - a.parts[0] || b.parts[1] - a.parts[1] || b.parts[2] - a.parts[2]);

@@ -7,8 +7,8 @@ import { readRepoFile, repoRoot, type Lang } from './site';
 
 // The published version in the header. It comes from scripts/release/docs-release.mjs,
 // never from Cargo.toml. These tests cover the script (no browser) and the built site in the
-// state it was built in: not yet published, or a fixture preview. The site has no release
-// notes page; the GitHub Release is the release notes.
+// state it was built in: not yet published, or a fixture preview. The release notes page is
+// written by hand in English and Japanese and linked from the nav.
 
 const script = path.join(repoRoot, 'scripts', 'release', 'docs-release.mjs');
 const langs: Lang[] = ['en', 'ja'];
@@ -27,37 +27,19 @@ function tmp(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'agboard-docs-release-'));
 }
 
-const body = (extra = '') => `## English
+const body = (extra = '') => `Opening.
 
-Opening.
-
-### Changes
+## Changes
 - A change.${extra}
 
-### Fixes
+## Fixes
 - A fix.
 
-### Breaking changes
+## Breaking changes
 None.
 
-### Required update steps
+## Required update steps
 None.
-
-## 日本語
-
-概要。
-
-### 変更点
-- 変更。
-
-### 不具合修正
-- 修正。
-
-### 互換性に影響する変更
-なし。
-
-### 必要な更新操作
-なし。
 `;
 
 function release(tag: string, over: Record<string, unknown> = {}) {
@@ -116,15 +98,24 @@ test.describe('docs-release script', () => {
     if (cargo !== '1.10.0') expect(header.version).not.toBe(cargo);
   });
 
-  test('a release without a Japanese section stops the script and writes nothing', () => {
+  test('a release without one of the headings stops the script and writes nothing', () => {
     const out = tmp();
     const file = path.join(out, 'api.json');
-    fs.writeFileSync(file, JSON.stringify([release('v1.0.0', { body: body().split('## 日本語')[0] })]));
+    fs.writeFileSync(file, JSON.stringify([release('v1.0.0', { body: body().replace('## Fixes', '### Fixes') })]));
     const result = run(['--releases-json', file], out);
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('ja section');
+    expect(result.stderr).toContain('no "## Fixes" heading');
     expect(fs.existsSync(path.join(out, 'releases.md'))).toBe(false);
     expect(fs.existsSync(path.join(out, '.vitepress'))).toBe(false);
+  });
+
+  test('a heading that appears twice stops the script', () => {
+    const out = tmp();
+    const file = path.join(out, 'api.json');
+    fs.writeFileSync(file, JSON.stringify([release('v1.0.0', { body: `${body()}\n## Changes\n- Again.\n` })]));
+    const result = run(['--releases-json', file], out);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('"## Changes" appears 2 times');
   });
 
   test('a release of another repository is refused', () => {
@@ -176,11 +167,10 @@ function builtState(): { state: string; version: string | null; url: string | nu
 
 for (const lang of langs) {
   const prefix = lang === 'ja' ? 'ja/' : '';
-  test(`the nav (${lang}) shows the version of the built state and no release notes page`, async ({ page, request }) => {
+  test(`the nav (${lang}) shows the version of the built state`, async ({ page }) => {
     const built = builtState();
     await page.goto(`${prefix}guide/`);
     const nav = page.locator('.VPNavBarMenu');
-    await expect(nav.getByRole('link', { name: lang === 'en' ? 'Releases' : 'リリースノート' })).toHaveCount(0);
     const versionLink = nav.getByRole('link', { name: /^v\d/ });
     // Only a published release shows a version; a fixture preview shows none.
     if (built.state === 'published' && built.version) {
@@ -190,10 +180,31 @@ for (const lang of langs) {
     } else {
       await expect(versionLink).toHaveCount(0);
     }
-    expect(fs.existsSync(path.join(repoRoot, 'docs', prefix, 'releases.md'))).toBe(false);
-    expect((await request.get(`${prefix}releases`)).status()).toBe(404);
+  });
+
+  test(`the release notes page (${lang}) opens from the nav and lists v1.0.0`, async ({ page }) => {
+    const label = lang === 'en' ? 'Release notes' : 'リリースノート';
+    await page.goto(`${prefix}guide/`);
+    const link = page.locator('.VPNavBarMenu').getByRole('link', { name: label, exact: true });
+    await expect(link).toHaveAttribute('href', `/agent-board/${prefix}releases`);
+    await link.click();
+    await expect(page.locator('.vp-doc h1')).toHaveText(label);
+    await expect(page.locator('.vp-doc h2[id="v1-0-0"]')).toHaveCount(1);
+    const headings = lang === 'en'
+      ? ['Changes', 'Fixes', 'Breaking changes', 'Required update steps']
+      : ['変更点', '不具合修正', '互換性に影響する変更', '必要な更新操作'];
+    await expect(page.locator('.vp-doc h3')).toHaveText(headings);
   });
 }
+
+test('the English and Japanese release notes list the same versions in the same order', () => {
+  const versions = (lang: Lang) =>
+    [...readRepoFile('docs', ...(lang === 'ja' ? ['ja'] : []), 'releases.md').matchAll(/^## (v\d+\.\d+\.\d+)$/gm)].map(
+      (m) => m[1],
+    );
+  expect(versions('en')).toEqual(['v1.0.0']);
+  expect(versions('ja')).toEqual(versions('en'));
+});
 
 test('the feature stages page keeps the anchors the product links to', async ({ page }) => {
   for (const lang of langs) {

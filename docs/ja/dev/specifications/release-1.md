@@ -61,7 +61,7 @@ Hook入力のcwd（ない、null、空のときはプロセスcwd）から、最
 
 ## 公式ドキュメントと公開履歴
 
-VitePressの英語・日本語ヘッダーに公開済みバージョンとGitHub Releasesへのリンクを表示する。文書サイトにはリリースノートのページを設けず、公開済みのGitHub Releasesをリリースノートとし、その履歴を正本とする。mainの開発中Cargoバージョンを公開版として表示しない。過去版の切替UIは設けない。
+VitePressの英語・日本語ヘッダーに公開済みバージョンとGitHub Releasesへのリンクを表示する。GitHub Releaseの本文には英語のリリースノートを載せる。文書サイトには英語と日本語のリリースノートのページを設け、ヘッダーからリンクし、公開済みの版を新しい順に並べる。mainの開発中Cargoバージョンを公開版として表示しない。過去版の切替UIは設けない。
 
 導入ガイドはHomebrew、connect、update、bind、Global/Projectの違い、Hookの未bind時のskipと信頼確認を説明する。画面はVitePress既定テーマに従い、アプリUIや新しいPencilモックは追加しない。
 
