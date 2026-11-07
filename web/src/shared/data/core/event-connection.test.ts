@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventConnection, type VisibilitySource } from './event-connection';
 import { changed, FakeAdapter, P } from './test-support';

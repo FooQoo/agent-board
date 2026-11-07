@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { monitorTasksOf } from '../../src/pages/monitor/model/summary';
 import { summaryOf } from '../../src/shared/data/core/test-support';

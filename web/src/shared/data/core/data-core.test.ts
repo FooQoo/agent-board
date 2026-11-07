@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataCore } from './data-core';
 import type { VisibilitySource } from './event-connection';

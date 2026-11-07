@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { makeTask, PROJECT_A, PROJECT_B } from '../fixtures';
 import type { MonitorTask } from '../../src/pages/monitor/contracts';

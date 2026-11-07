@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangeInvalidator } from './change-invalidator';
 import { PresentationGate } from './presentation-gate';

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import jsQR from 'jsqr';
 import qrcode from 'qrcode-generator';
 import { describe, expect, it } from 'vitest';

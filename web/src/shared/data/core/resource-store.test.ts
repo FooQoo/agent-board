@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { ResourceStore } from './resource-store';
 import { doc, epic, hist, P, summaryOf, task } from './test-support';

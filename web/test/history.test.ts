@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { historyItems } from '../src/features/tasks/history/model/history';
 import type { HistoryEvent } from '../src/shared/api/contracts';

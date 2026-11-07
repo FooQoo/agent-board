@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { activeOutlineIndex, outlineOf } from '../../src/shared/rich-editor/outline';
 

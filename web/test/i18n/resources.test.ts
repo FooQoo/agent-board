@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 import { resources } from '../../src/shared/i18n/resources';

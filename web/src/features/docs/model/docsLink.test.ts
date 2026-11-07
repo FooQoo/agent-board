@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { DocsTreeNode } from '../api/docsApi';
 import { resolveDocsLink } from './docsLink';

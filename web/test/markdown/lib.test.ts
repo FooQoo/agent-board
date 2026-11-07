@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { countItems } from '../../src/shared/markdown/model/countItems';
 import { splitSections } from '../../src/shared/markdown/model/splitSections';

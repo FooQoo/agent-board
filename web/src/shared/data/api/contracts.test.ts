@@ -1,3 +1,4 @@
+// @vitest-environment node
 // The TypeScript contract against the same golden examples the Rust tests read.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

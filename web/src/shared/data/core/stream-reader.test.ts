@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import type { DetailEvent } from '../api/contracts';
 import { ContractError } from '../api/guards';

@@ -1,10 +1,19 @@
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { chunkGraph } from './chunk-graph.ts';
 import { liveApi, liveProxy } from './live-api.ts';
 import { mockApi } from './mock-api.ts';
+
+const TEST_FILES = ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'];
+// In a VM context the jsdom window is the global object itself, and properties such as
+// `location` cannot be redefined there ("Cannot redefine property: location"). Files that
+// replace one with `vi.stubGlobal` run in a worker of their own instead.
+const REAL_WINDOW_FILES = [
+  'test/components/StalePageNotice.test.tsx',
+  'test/hooks/useBuildReload.test.tsx',
+];
 
 export default defineConfig(({ mode }) => {
   const backendOrigin = `http://127.0.0.1:${process.env.AGBOARD_BACKEND_PORT ?? '7421'}`;
@@ -52,10 +61,29 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    // Tests run in jsdom unless a file starts with `// @vitest-environment node`; mark a file
+    // that needs no DOM that way: it then skips the jsdom window and the page code the setup
+    // preloads, the slowest part of starting a file.
     test: {
       environment: 'jsdom',
       setupFiles: ['./test/setup.ts'],
-      include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
+      projects: [
+        {
+          // A VM context per file keeps files isolated from each other without building a new
+          // worker and jsdom window for each one.
+          extends: true,
+          test: {
+            name: 'vm',
+            include: TEST_FILES,
+            exclude: [...configDefaults.exclude, ...REAL_WINDOW_FILES],
+            pool: 'vmThreads',
+          },
+        },
+        {
+          extends: true,
+          test: { name: 'window', include: REAL_WINDOW_FILES },
+        },
+      ],
     },
   };
 });

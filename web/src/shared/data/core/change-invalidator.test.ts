@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Change, ChangedEvent } from '../api/contracts';
 import { ChangeInvalidator } from './change-invalidator';

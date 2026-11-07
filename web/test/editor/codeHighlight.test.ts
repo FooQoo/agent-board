@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { CODE_HIGHLIGHT_COLORS } from '../../src/shared/rich-editor/codeHighlight';
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { ProxyOptions } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
 import { liveProxy } from '../live-api';

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const render = vi.fn(async (_id: string, text: string) => ({ svg: `<svg>${text}</svg>` }));

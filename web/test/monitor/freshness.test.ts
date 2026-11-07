@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { monitorFreshness } from '../../src/pages/monitor/model/freshness';
 
