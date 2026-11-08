@@ -88,9 +88,11 @@ The details of an archived task use the same layout as an active task. **Restore
 
 The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. There is no refresh button; reloading the page reads everything again.
 
-While a details panel, an editor, or a dialog is open, automatic updates wait, so the text you are reading or editing does not move. They are applied about three seconds after you close it.
+The board follows changes while a details panel is open beside it. When an agent moves the task or checks a condition, the card and the panel show it at once, so you can read a task and watch its progress together.
 
-A decision is the exception. When an agent asks for a decision, or a decision is answered or withdrawn, the board shows it at once, even while a panel is open.
+While an editor or a dialog is open, automatic updates wait, so the text you are editing does not move. They are applied about three seconds after you close it.
+
+A decision is the exception. When an agent asks for a decision, or a decision is answered or withdrawn, the board shows it at once, even while an editor or a dialog is open.
 
 ## Settings
 

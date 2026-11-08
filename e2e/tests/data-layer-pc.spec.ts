@@ -9,8 +9,9 @@ import { putDraft } from '../helpers/drafts';
 import { answerButton, sendAnswer } from '../helpers/answer';
 
 // Opening a task reads its text, conditions, log and epic once, so every tab shows at once. A status
-// change reads the Summary and the history again but not the text. The drawer holds the stream back
-// while it is open and for 3 seconds after, while a save or an answer shows at once.
+// change reads the Summary and the history again but not the text. The details panel beside the board
+// follows the stream while it is open; a dialog holds it back while it is open and for 3 seconds after,
+// while a save or an answer shows at once.
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const lane = (page: Page, name: string) => page.getByRole('region', { name });
@@ -70,12 +71,13 @@ test('a status change reads the Summary and the history again, and the document 
     histories: sectionReads(seen, 16, 'history').length,
   };
 
-  // The open drawer holds the stream's update back; closing it lets the update in 3 seconds later.
+  // The open panel does not hold the stream's update back: the card moves and the history is read again.
   agboardOk(mainProject, ['mv', '16', 'doing', '--actor', 'ai', '--reason', 'Started the work.']);
-  await details(page).getByRole('button', { name: 'Close details' }).click();
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible({ timeout: 5_000 });
   await expect.poll(() => sectionReads(seen, 16, 'history').length).toBeGreaterThan(before.histories);
   expect(summaries(seen).length).toBeGreaterThan(before.summaries);
+  await expect(details(page).getByRole('tabpanel').getByRole('listitem').first()).toContainText('Started the work.');
+  await details(page).getByRole('button', { name: 'Close details' }).click();
 
   // Opened again, the new history is there, and the document read before is shown again without a new read.
   await task(page, 16).click();
@@ -118,17 +120,24 @@ test('a task nobody opened is not read, and opening a task reads its epic once, 
   expect(epicReads()).toBe(1);
 });
 
-test('the drawer holds updates while it is open and for 3 seconds after; a save and an answer show at once', async ({ page }) => {
+// I-028: an agent's progress shows on the board while a person reads a task's details beside it.
+test('the details panel does not hold updates; a dialog holds them while open and for 3 seconds after', async ({ page }) => {
   await task(page, 8).click();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Initialize the board');
 
-  // A change from the CLI does not reach the board while the drawer is open.
+  // A change from the CLI reaches the board while the panel is open, and the panel stays open.
   agboardOk(mainProject, ['mv', '16', 'doing']);
-  await page.waitForTimeout(1500);
-  await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toBeVisible();
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toHaveCount(0);
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible({ timeout: 5_000 });
+  await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toHaveCount(0);
+  await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Initialize the board');
 
-  // A change made here shows at once, with the drawer still open: the preview makes the card a draft at the
+  // An answer shows at once: the request is gone and the card is idle.
+  await expect(answerButton(page)).toBeVisible();
+  await sendAnswer(page, 12, { text: 'Keep the current name.' });
+  await expect(answerButton(page)).toHaveCount(0, { timeout: 2_000 });
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle / })).toBeVisible({ timeout: 2_000 });
+
+  // A change made here shows at once, with a dialog open: the preview makes the card a draft at the
   // first change, and the card is a draft on its tile.
   await task(page, 14).click();
   await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
@@ -137,23 +146,23 @@ test('the drawer holds updates while it is open and for 3 seconds after; a save 
   // The dialog hides the board from the accessibility tree, so the tile is found by its text.
   const tile = page.getByRole('button', { name: /^#14(?!\d)/, includeHidden: true });
   await expect(tile.getByText('Draft', { exact: true })).toHaveCount(1, { timeout: 2_000 });
+
   // Discarding takes the draft back.
   await preview.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(preview).toHaveCount(0);
   await expect(task(page, 14).getByText('Draft', { exact: true })).toHaveCount(0, { timeout: 2_000 });
 
-  // An answer shows at once, too: the request is gone and the card is idle.
-  await expect(answerButton(page)).toBeVisible();
-  await sendAnswer(page, 12, { text: 'Keep the current name.' });
-  await expect(answerButton(page)).toHaveCount(0, { timeout: 2_000 });
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle / })).toBeVisible({ timeout: 2_000 });
-
-  // A change from the CLI made now is held until the drawer has been closed for 3 seconds.
+  // A change from the CLI made while a dialog is open waits until it has been closed for 3 seconds. The new
+  // task dialog closes without saving, so nothing reads the board at once.
+  await page.getByRole('button', { name: 'Add task' }).click();
+  const create = page.getByRole('dialog', { name: 'New task' });
+  await expect(create).toBeVisible();
   agboardOk(mainProject, ['mv', '15', 'doing']);
   await page.waitForTimeout(1000);
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 / })).toHaveCount(0);
-  await details(page).getByRole('button', { name: 'Close details' }).click();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 /, includeHidden: true })).toHaveCount(0);
+  await create.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(create).toHaveCount(0);
   await page.waitForTimeout(1500);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 / })).toHaveCount(0);
   // After the wait it is shown, with no reload.

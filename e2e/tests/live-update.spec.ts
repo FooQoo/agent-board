@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
-import { closeForUpdates, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
 import { openAnswer, sendAnswer } from '../helpers/answer';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
@@ -135,25 +135,15 @@ test('agboard state updates the run state and reason without reloading', async (
   await notReloaded(page);
 });
 
-test('an open task stays where it was while it moves to another lane, and shows the new lane once opened again', async ({ page }) => {
+test('an open task follows its move to another lane while its details stay open', async ({ page }) => {
   await task(page, 11).click();
   const panel = page.getByRole('complementary', { name: 'Task details' });
   await expect(panel).toContainText('Running');
   await expect(panel).toContainText('Doing');
 
-  // The open details hold the stream's updates back: the card and the panel stay where they were.
+  // The details panel does not hold the stream's updates back: the card moves and stays selected.
   agboardOk(mainProject, ['mv', '11', 'done']);
-  await page.waitForTimeout(1_500);
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#11(?!\d)/ })).toHaveAttribute('aria-current', 'true');
-  await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement task moves');
-  await expect(panel).toContainText('Doing');
-
-  // Closed, the move arrives; opened again, the task shows where it is now.
-  await closeForUpdates(
-    () => panel.getByRole('button', { name: 'Close details' }).click(),
-    () => expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/, { timeout: 1_500 }),
-  );
-  await task(page, 11).click();
+  await expect(lane(page, 'Done').locator('.lane__cards').getByRole('button').first()).toHaveText(/^#11(?!\d)/, { timeout: 5_000 });
   await expect(task(page, 11)).toHaveAttribute('aria-current', 'true');
   await expect(panel.getByRole('heading', { level: 2 })).toHaveText('Implement task moves');
   await expect(panel).toContainText('Done');
