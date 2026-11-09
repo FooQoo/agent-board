@@ -1047,10 +1047,12 @@ test.describe('long names and many projects', () => {
       await page.keyboard.press('Home');
       await expect(menuItem(page, 'Project 001')).toBeFocused();
       await expect(menuItem(page, 'Project 001')).toBeInViewport();
-      // Thirty arrow presses at the pace of a held key (presses with no gap at all are merged by the menu).
-      for (let step = 0; step < 30; step += 1) {
+      // Thirty arrow presses, one item each. The menu moves the focus in a timer after the key, from the item that
+      // had the focus when the key came; a press before that timer runs is counted from the same item, so wait
+      // for each move rather than for a fixed pause (which a slow machine outlasts).
+      for (let step = 1; step <= 30; step += 1) {
         await page.keyboard.press('ArrowDown');
-        await page.waitForTimeout(15);
+        await expect(menuItem(page, `Project ${String(step + 1).padStart(3, '0')}`)).toBeFocused();
       }
       await expect(menuItem(page, 'Project 031')).toBeFocused();
       await expect(menuItem(page, 'Project 031')).toBeInViewport();

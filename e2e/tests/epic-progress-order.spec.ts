@@ -7,6 +7,40 @@ import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 const task = (page: Page | Locator, title: string) => page.locator('.epic-progress__row', { hasText: title });
 
+/**
+ * Picks a row up by its grip, moves it up `steps` places with ArrowUp, and drops it with Space.
+ *
+ * The drag library handles each key asynchronously: the drag starts after the key, and each arrow key measures
+ * the rows and then moves the dragged row to its new place. An arrow key that comes before the drag has started
+ * is ignored, and the drop puts the row where the last finished move left it, so keys sent back to back on a
+ * slow machine leave the order unchanged. Each key therefore waits until the previous one has taken effect.
+ */
+async function moveUp(page: Page, dialog: Locator, title: string, steps: number): Promise<void> {
+  // The dialog zooms in as it opens; rows measured during that animation are not where they end up.
+  await dialog.evaluate((element) =>
+    Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished)).then(() => undefined),
+  );
+  const rows = dialog.locator('.epic-progress__row');
+  const tops = await rows.evaluateAll((elements) => elements.map((element) => Math.round(element.getBoundingClientRect().top)));
+  const from = (await rows.allTextContents()).findIndex((text) => text.includes(title));
+  expect(from).toBeGreaterThanOrEqual(steps);
+
+  await task(dialog, title).locator('.epic-progress__grip').focus();
+  await page.keyboard.press('Space');
+  await expect(dialog.locator('.epic-progress__grip[aria-pressed="true"]')).toHaveCount(1);
+  // While it is dragged, the row and the placeholder that keeps its place in the list are both marked.
+  const dragged = dialog.locator('.epic-progress__row.is-dragging');
+  for (let step = 1; step <= steps; step += 1) {
+    await page.keyboard.press('ArrowUp');
+    const top = tops[from - step];
+    await expect
+      .poll(() => dragged.evaluateAll((elements) => elements.map((element) => Math.round(element.getBoundingClientRect().top))))
+      .toEqual([top, top]);
+  }
+  await page.keyboard.press('Space');
+  await expect(dialog.locator('.epic-progress__grip[aria-pressed="true"]')).toHaveCount(0);
+}
+
 function progressOrder(): number[] {
   const table = JSON.parse(agboardOk(mainProject, ['progress', '--json']).stdout);
   return (table.epics as { tasks: { id: number }[] }[])[0]?.tasks.map((item) => item.id) ?? [];
@@ -34,12 +68,7 @@ test('a task moved in the progress table by keyboard is saved with the epic and 
   await expect(dialog).toBeVisible();
 
   // Pick the third task up by its grip, move it up twice, and drop it at the top.
-  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
-  await grip.focus();
-  await page.keyboard.press('Space');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('Space');
+  await moveUp(page, dialog, 'Third step', 2);
   await expect(dialog.locator('.epic-progress__row').first()).toContainText('Third step');
 
   // Nothing is stored until Save; the save writes the new order to the epic.
@@ -59,12 +88,7 @@ test('cancelling after a move in the progress table discards the new order', asy
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
 
-  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
-  await grip.focus();
-  await page.keyboard.press('Space');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('Space');
+  await moveUp(page, dialog, 'Third step', 2);
   await expect(dialog.locator('.epic-progress__row').first()).toContainText('Third step');
 
   // Cancel asks first, because the order has changed; discarding closes the dialog and keeps the saved order.
@@ -84,12 +108,8 @@ test('a failed save keeps the new order in the progress table, and trying again 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Title' }) });
   await expect(dialog).toBeVisible();
 
-  const grip = task(dialog, 'Third step').locator('.epic-progress__grip');
-  await grip.focus();
-  await page.keyboard.press('Space');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('Space');
+  await moveUp(page, dialog, 'Third step', 2);
+  await expect(dialog.locator('.epic-progress__row').first()).toContainText('Third step');
 
   // The first save of the order is refused by the server; the dialog stays with the new order.
   // The change itself already made the epic a draft with a PATCH of its own, which goes through.

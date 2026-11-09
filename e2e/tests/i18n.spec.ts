@@ -163,10 +163,23 @@ test('the settings dialog stays within the desktop viewports', async ({ page }, 
     { width: 1280, height: 900 },
     { width: 1920, height: 1080 },
   ]) {
+    // The detail width follows the new viewport in the window's resize handler, which can run well after
+    // setViewportSize returns on a slow machine; until then the board keeps the width of the previous viewport
+    // (664 rather than 680 at 1024px). Wait until the page has handled the resize and drawn twice.
+    await page.evaluate(() => {
+      const flags = window as unknown as { __resized?: boolean };
+      flags.__resized = false;
+      window.addEventListener(
+        'resize',
+        () => requestAnimationFrame(() => requestAnimationFrame(() => (flags.__resized = true))),
+        { once: true },
+      );
+    });
     await page.setViewportSize(viewport);
+    await page.waitForFunction(() => (window as unknown as { __resized?: boolean }).__resized === true);
     // The open dialog makes the board inert, so it is located by CSS rather than by role.
     const board = page.locator('main.board');
-    // The detail width follows the new viewport asynchronously; wait until the board width is stable.
+    // A size observer may still adjust the layout after the resize; wait until the board width is stable.
     let previous = -1;
     await expect
       .poll(async () => {
