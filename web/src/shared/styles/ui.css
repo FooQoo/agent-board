@@ -2,7 +2,9 @@
  * Tailwind CSS entry. Preflight is intentionally not imported so the existing app CSS keeps its
  * base styles; only the theme and utilities layers are generated.
  */
-@layer theme, base, utilities;
+/* `properties` comes first, as in Tailwind's own entry: on Safari before 17.4 Tailwind sets every
+ * `--tw-*` variable to its initial value in that layer, and a later layer would override the utilities. */
+@layer properties, theme, base, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";

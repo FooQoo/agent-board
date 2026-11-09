@@ -3,7 +3,9 @@
  * Paddings are measured from the outer edge, so they are one pixel smaller where the element has
  * a 1px border. There are no width breakpoints: one layout serves every width.
  */
-@layer theme, base, utilities;
+/* `properties` comes first, as in Tailwind's own entry: on Safari before 17.4 Tailwind sets every
+ * `--tw-*` variable to its initial value in that layer, and a later layer would override the utilities. */
+@layer properties, theme, base, utilities;
 
 *,
 *::before,
