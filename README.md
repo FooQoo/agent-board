@@ -4,6 +4,8 @@
 
 # Agent Board
 
+[![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
+
 **People and AI agents, working on one board.**
 
 See what your agent is doing and what it is waiting on. Tasks, questions, and acceptance conditions share one board, and you can answer from your PC or your phone.

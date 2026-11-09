@@ -67,6 +67,14 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./test/setup.ts'],
+      // Measured only with `--coverage` (`pnpm test:coverage`); CI sends the lcov report to Codecov.
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/**/*.stories.tsx', 'src/**/*.test.{ts,tsx}', 'src/**/*.d.ts'],
+        reporter: ['text-summary', 'lcov'],
+        reportsDirectory: './coverage',
+      },
       projects: [
         {
           // A VM context per file keeps files isolated from each other without building a new

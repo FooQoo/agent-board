@@ -1,0 +1,179 @@
+name: CI
+
+# Runs the checks in docs/dev/getting-started/pull-request.md#verification on
+# every pull request and every push to main. The commands match that page, so
+# a change that passes locally passes here, and the other way round.
+#
+# The Rust and E2E jobs run on macOS 15, the platform Agent Board supports.
+# The web checks do not depend on the OS and run on Ubuntu.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  RUST_VERSION: "1.96.0"
+  NEXTEST_VERSION: "0.9.137"
+  LLVM_COV_VERSION: "0.9.1"
+  NODE_VERSION: "24"
+  PNPM_VERSION: "12"
+  TZ: UTC
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (fmt, clippy, nextest)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_VERSION}" --profile minimal --component rustfmt,clippy
+          rustup default "${RUST_VERSION}"
+      - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
+      - name: Install cargo-nextest
+        run: curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+      # The binary embeds web/dist, so the web UI is built before any cargo command.
+      - name: Build the web UI
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web build
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo nextest run --locked
+
+  web:
+    name: Web (typecheck, lint, unit, Storybook)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: pnpm --dir web typecheck
+      - run: pnpm --dir web check
+      - run: pnpm --dir web test
+      - run: pnpm --dir web typecheck:storybook
+      # The Storybook tests run every Story in a headless Chromium.
+      - name: Install Chromium for the Storybook tests
+        run: pnpm --dir web exec playwright install --with-deps chromium
+      - run: pnpm --dir web test:storybook
+      - run: pnpm --dir web build-storybook
+
+  # Coverage runs beside the jobs above, not in place of them: an instrumented
+  # build is slower, and the pass/fail decision stays with the plain test runs.
+  # Codecov shows the result; a fork's pull request has no token, so its upload
+  # may fail without failing the run.
+  coverage:
+    name: Coverage (Rust, Web)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_VERSION}" --profile minimal --component llvm-tools-preview
+          rustup default "${RUST_VERSION}"
+      - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
+        with:
+          key: coverage
+      - name: Install cargo-nextest and cargo-llvm-cov
+        run: |
+          curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+          command -v cargo-llvm-cov >/dev/null || cargo install cargo-llvm-cov --locked --version "${LLVM_COV_VERSION}"
+      - name: Build the web UI
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web build
+      - name: Measure the Rust coverage
+        run: cargo llvm-cov nextest --locked --lcov --output-path lcov.info
+      - name: Measure the web coverage
+        run: pnpm --dir web test:coverage
+      - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          flags: rust
+          disable_search: true
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: web/coverage/lcov.info
+          flags: web
+          disable_search: true
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: |
+            web/pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install "${RUST_VERSION}" --profile minimal
+          rustup default "${RUST_VERSION}"
+      - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
+      - name: Install dependencies and browsers
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir e2e install --frozen-lockfile
+          pnpm --dir e2e exec playwright install chromium webkit
+      # The global setup builds the web UI and the CLI, then each worker starts
+      # its own `agboard serve` on port 0 with its own temporary data area.
+      - run: pnpm --dir e2e test
+      - name: Find the results folder
+        if: failure()
+        id: results
+        run: echo "dir=$(node -e "const c=require('node:crypto').createHash('sha256').update(process.cwd()).digest('hex').slice(0,8);console.log(require('node:path').join(require('node:os').tmpdir(),'agent-board-e2e-results-'+c))")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: failure()
+        with:
+          name: e2e-results
+          path: ${{ steps.results.outputs.dir }}
+          if-no-files-found: ignore
+          retention-days: 7

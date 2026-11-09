@@ -11,3 +11,5 @@ docs/.vitepress/cache/
 docs/.vitepress/release.json
 graphify-out
 scripts/bench/results/
+web/coverage/
+lcov.info
