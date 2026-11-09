@@ -47,7 +47,7 @@ Run `pnpm --dir web format` to apply the web formatter. To measure coverage loca
 The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml) runs the same checks on every pull request and every push to `main`:
 
 - The Rust job runs `cargo fmt`, `cargo clippy`, and `cargo nextest run` on macOS 15.
-- The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build on Ubuntu.
+- The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build.
 - The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on macOS 15.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 

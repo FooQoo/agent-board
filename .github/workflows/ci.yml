@@ -4,8 +4,8 @@ name: CI
 # every pull request and every push to main. The commands match that page, so
 # a change that passes locally passes here, and the other way round.
 #
-# The Rust and E2E jobs run on macOS 15, the platform Agent Board supports.
-# The web checks do not depend on the OS and run on Ubuntu.
+# Every job runs on macOS 15, the platform Agent Board supports. The Storybook
+# tests measure rendered sizes, which follow the system fonts, so they need it too.
 
 on:
   pull_request:
@@ -66,7 +66,7 @@ jobs:
 
   web:
     name: Web (typecheck, lint, unit, Storybook)
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,7 +87,7 @@ jobs:
       - run: pnpm --dir web typecheck:storybook
       # The Storybook tests run every Story in a headless Chromium.
       - name: Install Chromium for the Storybook tests
-        run: pnpm --dir web exec playwright install --with-deps chromium
+        run: pnpm --dir web exec playwright install chromium
       - run: pnpm --dir web test:storybook
       - run: pnpm --dir web build-storybook
 

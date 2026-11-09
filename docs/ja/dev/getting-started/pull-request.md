@@ -47,7 +47,7 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 [CIのワークフロー](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml)は、プルリクエストと`main`へのpushのたびに、同じ確認を実行します。
 
 - Rustのジョブは、macOS 15で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
-- Webのジョブは、Ubuntuで型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。
+- Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。
 - E2Eのジョブは、macOS 15でPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。
 - カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
 
