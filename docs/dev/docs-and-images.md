@@ -17,6 +17,14 @@ Run `pnpm --dir docs build` before committing any change under `docs/`. Links to
 
 The home page has no Markdown body. Its copy lives in the `landing` frontmatter of `docs/index.md` and `docs/ja/index.md`, and `docs/.vitepress/theme/LandingPage.vue` lays it out, picks the screenshots for the language, and swaps the board image for its dark version. Edit the copy in both files and keep their keys the same. The build's dead-link check does not see links in frontmatter, so the site tests open every link on the home page instead. Its colors are the `--lp-*` variables in `custom.css`, which follow the app's lane and pending colors.
 
+The English top page (`/agent-board/`) chooses its language in the browser:
+
+- A reader whose browser prefers Japanese (the first entry of `navigator.languages` starts with `ja`) is sent to `/agent-board/ja/`.
+- A language picked in the nav's language menu, on a desktop or a phone, is saved in `localStorage` under `agent-board-docs-lang`. From then on the saved choice wins over the browser language.
+- Only the English top page moves. Deep links, the Japanese pages, and in-site navigation never redirect. When storage is blocked, the choice is not kept and the browser language decides.
+
+The redirect is client-side only, so the built HTML of every page stays the same for crawlers. `docs/.vitepress/theme/languageChoice.ts` holds both parts. `config.ts` inlines its redirect script right after the charset of the top page only, ahead of the stylesheets, so the English page barely shows before it moves. The script reads `base` from the config. The theme's `enhanceApp` saves the choice when a language menu link is clicked. The site tests in `e2e/docs/language.spec.ts` cover Japanese and English browsers, a saved choice, the phone menu, blocked storage, and deep links.
+
 Keep diagrams focused on one flow. Flowcharts and sequence diagrams retain their label size; diagrams wider than the article scroll within their frame. Use a left-to-right flow for system diagrams, and split large diagrams by purpose. The site tests check label size and catch unparsed bold markers in rendered prose. Tables keep a readable minimum column width and scroll horizontally within the article; prose inside cells can still wrap.
 
 Regenerate the guide screenshots and the demo videos with the scripts below. Both need the web UI and CLI [built](./getting-started/setup.md#build) first, and the Playwright browser from [Verification](./getting-started/pull-request.md#verification).

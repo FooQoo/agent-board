@@ -2,8 +2,10 @@ import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+import { languageRedirectScript } from './theme/languageChoice'
 
 const repo = 'https://github.com/FooQoo/agent-board'
+const base = '/agent-board/'
 
 // The published version comes from scripts/release/docs-release.mjs, which reads the
 // GitHub Releases before the build. Without that file, or with no published release, the
@@ -139,7 +141,7 @@ function sidebar(prefix: string, chapter: string, lang: 'en' | 'ja', groups: Gro
 export default withMermaid(
   defineConfig({
     title: 'Agent Board',
-    base: '/agent-board/',
+    base,
     cleanUrls: true,
     mermaid: {
       flowchart: { useMaxWidth: false },
@@ -152,7 +154,16 @@ export default withMermaid(
         include: ['mermaid'],
       },
     },
-    head: [['link', { rel: 'icon', type: 'image/png', href: '/agent-board/logo.png' }]],
+    head: [['link', { rel: 'icon', type: 'image/png', href: `${base}logo.png` }]],
+    // Only the English top page carries a small script that opens the Japanese top page for a
+    // Japanese browser or a saved Japanese choice. See theme/languageChoice.ts. It goes right
+    // after the charset, ahead of the stylesheets, so it runs before anything renders or loads.
+    transformHtml(html, _id, { pageData }) {
+      if (pageData.relativePath !== 'index.md') return
+      const charset = '<meta charset="utf-8">'
+      if (!html.includes(charset)) throw new Error('index.html has no charset meta for the language script')
+      return html.replace(charset, `${charset}\n    <script>${languageRedirectScript(base)}</script>`)
+    },
 
     locales: {
       root: {
