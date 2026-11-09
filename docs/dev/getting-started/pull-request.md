@@ -48,10 +48,10 @@ The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workfl
 
 - The Rust job runs `cargo fmt`, `cargo clippy`, and `cargo nextest run` on macOS 15.
 - The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build.
-- The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on macOS 15.
+- The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on macOS 15. It takes about 15 minutes, so it runs on pushes to `main` and on manual runs, not on pull requests.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 
-Check that the Rust, web, and E2E jobs pass before you merge. When the E2E job fails, its traces are attached to the run as the `e2e-results` artifact.
+Check that the Rust and web jobs pass before you merge, and run `pnpm --dir e2e test` locally when the change affects the app. When the E2E job fails on `main`, its traces are attached to the run as the `e2e-results` artifact.
 
 The Rust tests run with [cargo-nextest](https://nexte.st/) (`cargo install cargo-nextest --locked`). Each test runs in its own process, and `.config/nextest.toml` stops a test that runs longer than two minutes. `TZ=UTC cargo test` still works, but it runs each test binary's tests in one process and has no time limit.
 
