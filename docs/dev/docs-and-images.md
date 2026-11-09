@@ -36,9 +36,9 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg
 
 Both scripts use disposable data in a temporary `AGBOARD_HOME` and their own loopback ports, so your saved board and port 7420 are untouched. Review the generated images and videos before committing them.
 
-## Preview published release metadata
+## Check published release notes
 
-The version in the site header comes from the published GitHub Releases, not from the repository. `node scripts/release/docs-release.mjs` writes it before the build.
+The site header shows no version. Before the build, `node scripts/release/docs-release.mjs` reads the published GitHub Releases and checks their notes, so a malformed Release stops the build.
 
 The release notes live in two places:
 
@@ -53,10 +53,10 @@ pnpm --dir docs build
 ```
 
 - It counts only releases with `draft=false`, `prerelease=false`, and a `vMAJOR.MINOR.PATCH` tag, and takes the newest by version. The version in `Cargo.toml` is never used. The release notes are written in English only. Each release body needs the four headings `## Changes`, `## Fixes`, `## Breaking changes`, and `## Required update steps`, each exactly once; a missing or repeated heading stops the script.
-- It writes `docs/.vitepress/release.json` (ignored by Git), which the header reads. `--fixture` uses the review copies in `releases/` and records the fixture state, so the header still shows no version.
+- It writes `docs/.vitepress/release.json` (ignored by Git) with the state it found. `--fixture` uses the review copies in `releases/` and records the fixture state.
 - The Pages workflow runs the script with `--github` before the build, on `main` pushes, on `release` events (published, edited, deleted), and by hand. If the API call fails or a release is invalid, the build stops and the published site stays as it is. Pull requests build offline with the committed state. A release published with the workflow's own token may not start the workflow; run it by hand.
 - `releases/vX.Y.Z.md` is the review copy of the release notes. The GitHub Release body is the source of truth once it is published.
-- To check the header of a published release, run the script with `--releases-json` and a file in the shape of the GitHub API list, build, and `pnpm --dir docs preview --port <port>`. Run `--none` afterwards.
+- To check a Release body before you publish it, run the script with `--releases-json` and a file in the shape of the GitHub API list.
 
 ## UI stories and coverage
 

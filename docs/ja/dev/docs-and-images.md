@@ -36,9 +36,9 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/(ffmpegも必要)
 
 どちらのスクリプトも、一時的な`AGBOARD_HOME`と専用のループバックポートを使うため、普段のボードやポート7420には影響しません。生成した画像と動画は、コミット前に確認してください。
 
-## 公開済みリリースの情報をプレビューする
+## 公開済みのリリースノートを検査する
 
-サイトのヘッダーの版は、リポジトリではなく、公開済みのGitHub Releaseから作ります。ビルドの前に、`node scripts/release/docs-release.mjs`が書き出します。
+サイトのヘッダーには版を表示しません。ビルドの前に、`node scripts/release/docs-release.mjs`が公開済みのGitHub Releaseを読んでリリースノートを検査し、形式が崩れたReleaseがあればビルドを止めます。
 
 リリースノートは2か所にあります。
 
@@ -53,10 +53,10 @@ pnpm --dir docs build
 ```
 
 - 対象にするのは、`draft=false`、`prerelease=false`で、タグが`vMAJOR.MINOR.PATCH`の形のリリースだけで、その中で版が最も新しいものを使います。`Cargo.toml`の版は使いません。リリースノートは英語だけで書きます。各リリースの本文には、`## Changes`、`## Fixes`、`## Breaking changes`、`## Required update steps`の4つの見出しが1回ずつ要ります。見出しが欠けていたり、重なっていたりすると、スクリプトは止まります。
-- `docs/.vitepress/release.json`（Gitは無視します。ヘッダーが読みます）を書き出します。`--fixture`は`releases/`のレビュー用の原稿を使い、fixtureの状態として記録するので、ヘッダーには版を表示しません。
+- 見つけた状態を`docs/.vitepress/release.json`（Gitは無視します）に書き出します。`--fixture`は`releases/`のレビュー用の原稿を使い、fixtureの状態として記録します。
 - Pagesのワークフローは、`main`へのプッシュ、`release`イベント（published、edited、deleted）、手動の実行で、ビルドの前にこのスクリプトを`--github`で実行します。APIの呼び出しが失敗する、またはリリースが不正なときは、ビルドが止まり、公開済みのサイトはそのまま残ります。プルリクエストは、コミットしてある状態で、オフラインでビルドします。ワークフロー自身のトークンで公開したリリースは、ワークフローを起動しないことがあります。その場合は手動で実行してください。
 - `releases/vX.Y.Z.md`は、リリースノートのレビュー用の原稿です。公開後は、GitHub Releaseの本文が正本です。
-- 公開したリリースのヘッダーを確認するには、GitHub APIの一覧と同じ形のファイルを`--releases-json`に渡してスクリプトを実行し、ビルドして、`pnpm --dir docs preview --port <port>`で開きます。確認したら、`--none`で戻します。
+- Releaseを公開する前に本文を確かめるには、GitHub APIの一覧と同じ形のファイルを`--releases-json`に渡してスクリプトを実行します。
 
 ## UIのStoryとカバレッジ
 

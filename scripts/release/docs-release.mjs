@@ -3,7 +3,7 @@
 // GitHub Releases, before `pnpm --dir docs build`.
 //
 // It writes one file under the output folder (default: docs):
-//   .vitepress/release.json   the version the site header shows (git-ignored)
+//   .vitepress/release.json   the release state that was found (git-ignored)
 //
 // Source of the releases (exactly one):
 //   --github          the GitHub API of --repo (default FooQoo/agent-board); the

@@ -5,10 +5,10 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { readRepoFile, repoRoot, type Lang } from './site';
 
-// The published version in the header. It comes from scripts/release/docs-release.mjs,
-// never from Cargo.toml. These tests cover the script (no browser) and the built site in the
-// state it was built in: not yet published, or a fixture preview. The release notes page is
-// written by hand in English and Japanese and linked from the nav.
+// scripts/release/docs-release.mjs checks the published GitHub Releases before the site is
+// built, never reading Cargo.toml. These tests cover the script (no browser) and the built
+// site. The header shows no version; the release notes page is written by hand in English and
+// Japanese and linked from the nav.
 
 const script = path.join(repoRoot, 'scripts', 'release', 'docs-release.mjs');
 const langs: Lang[] = ['en', 'ja'];
@@ -63,12 +63,19 @@ test.describe('docs-release script', () => {
     expect(fs.readdirSync(out)).toEqual(['.vitepress']);
   });
 
-  test('--fixture reads the review copy of v1.0.0 and records the fixture state', () => {
+  test('--fixture reads the newest review copy and records the fixture state', () => {
     const out = tmp();
     expect(run(['--fixture'], out).status).toBe(0);
     const header = JSON.parse(fs.readFileSync(path.join(out, '.vitepress', 'release.json'), 'utf8'));
     expect(header.state).toBe('fixture');
-    expect(header.version).toBe('1.0.0');
+    const newest = fs
+      .readdirSync(path.join(repoRoot, 'releases'))
+      .map((name) => /^v(\d+)\.(\d+)\.(\d+)\.md$/.exec(name))
+      .filter((m): m is RegExpExecArray => m !== null)
+      .map((m) => m.slice(1).map(Number))
+      .sort((a, b) => b[0] - a[0] || b[1] - a[1] || b[2] - a[2])[0]
+      .join('.');
+    expect(header.version).toBe(newest);
     expect(fs.existsSync(path.join(out, 'releases.md'))).toBe(false);
   });
 
@@ -156,30 +163,11 @@ test.describe('Pages workflow reads the releases', () => {
   });
 });
 
-// The state this site was built in.
-function builtState(): { state: string; version: string | null; url: string | null } {
-  try {
-    return JSON.parse(readRepoFile('docs', '.vitepress', 'release.json'));
-  } catch {
-    return { state: 'unpublished', version: null, url: null };
-  }
-}
-
 for (const lang of langs) {
   const prefix = lang === 'ja' ? 'ja/' : '';
-  test(`the nav (${lang}) shows the version of the built state`, async ({ page }) => {
-    const built = builtState();
+  test(`the nav (${lang}) shows no version link`, async ({ page }) => {
     await page.goto(`${prefix}guide/`);
-    const nav = page.locator('.VPNavBarMenu');
-    const versionLink = nav.getByRole('link', { name: /^v\d/ });
-    // Only a published release shows a version; a fixture preview shows none.
-    if (built.state === 'published' && built.version) {
-      await expect(versionLink).toHaveCount(1);
-      await expect(versionLink).toHaveText(`v${built.version}`);
-      await expect(versionLink).toHaveAttribute('href', built.url!);
-    } else {
-      await expect(versionLink).toHaveCount(0);
-    }
+    await expect(page.locator('.VPNavBarMenu').getByRole('link', { name: /^v\d/ })).toHaveCount(0);
   });
 
   test(`the release notes page (${lang}) opens from the nav and lists v1.0.0`, async ({ page }) => {
@@ -193,7 +181,9 @@ for (const lang of langs) {
     const headings = lang === 'en'
       ? ['Changes', 'Fixes', 'Breaking changes', 'Required update steps']
       : ['変更点', '不具合修正', '互換性に影響する変更', '必要な更新操作'];
-    await expect(page.locator('.vp-doc h3')).toHaveText(headings);
+    // Every version carries the same four headings.
+    const count = await page.locator('.vp-doc h2[id^="v"]').count();
+    await expect(page.locator('.vp-doc h3')).toHaveText(Array.from({ length: count }, () => headings).flat());
   });
 }
 
@@ -202,7 +192,7 @@ test('the English and Japanese release notes list the same versions in the same 
     [...readRepoFile('docs', ...(lang === 'ja' ? ['ja'] : []), 'releases.md').matchAll(/^## (v\d+\.\d+\.\d+)$/gm)].map(
       (m) => m[1],
     );
-  expect(versions('en')).toEqual(['v1.0.0']);
+  expect(versions('en')).toContain('v1.0.0');
   expect(versions('ja')).toEqual(versions('en'));
 });
 

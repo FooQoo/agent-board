@@ -61,7 +61,7 @@ After a CLI upgrade, interactive ordinary CLI operations can suggest `agboard up
 
 ## Official documentation and release history
 
-The English and Japanese VitePress headers show the published version and link to GitHub Releases. The GitHub Release body holds the release notes in English. The documentation site has a release notes page in English and in Japanese, linked from the header, with every published version newest first. Do not display the development Cargo version on main as the published version. Do not add a documentation version switcher.
+The VitePress headers show no version. The GitHub Release body holds the release notes in English. The documentation site has a release notes page in English and in Japanese, linked from the header, with every published version newest first. Do not display the development Cargo version on main as the published version. Do not add a documentation version switcher.
 
 Installation guides explain Homebrew, connect, update, bind, the Global/Project distinction, unbound Hook skips, and trust approval. Use the existing VitePress theme without adding application UI or new Pencil mockups.
 
