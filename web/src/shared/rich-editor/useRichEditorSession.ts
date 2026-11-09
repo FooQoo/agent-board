@@ -58,8 +58,10 @@ export function useRichEditorSession(props: SessionProps): React.RefObject<HTMLD
   // The text the document is written as right after it was created. The writing of the original
   // may differ from it (notation is normalized), but a change is only a change from this text.
   const initialText = useRef<string | null>(null);
-  // Actions asked for before the editor was ready (a heading to go to, text to insert).
+  // Actions asked for before the editor took them (a heading to go to, text to insert).
   const pending = useRef<Array<() => void>>([]);
+  // Whether the editor takes actions: from the first animation frame after it was created.
+  const accepting = useRef(false);
   const headings = useRef<{ dirty: boolean; offsets: number[] }>({ dirty: true, offsets: [] });
   const latest = useRef(props);
   latest.current = props;
@@ -113,17 +115,27 @@ export function useRichEditorSession(props: SessionProps): React.RefObject<HTMLD
     builder.current = created;
 
     let disposed = false;
+    let frame = 0;
     void created.create().then(() => {
       if (disposed) return;
       created.editor.action((ctx) => {
         initialText.current = ctx.get(serializerCtx)(ctx.get(editorViewCtx).state.doc);
       });
       live.current = true;
-      for (const run of pending.current.splice(0)) run();
-      setReady(true);
+      // Each list item, as Crepe draws it, asks for an animation frame that puts back the selection
+      // it saw then (the top of the document). The editor is ready, and takes actions, only in a
+      // later frame, so that does not undo a heading gone to, or text inserted, before it came.
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (disposed) return;
+        accepting.current = true;
+        for (const run of pending.current.splice(0)) run();
+        setReady(true);
+      });
     });
     return () => {
       disposed = true;
+      cancelAnimationFrame(frame);
       live.current = false;
       builder.current = null;
       previews.dispose();
@@ -144,7 +156,7 @@ export function useRichEditorSession(props: SessionProps): React.RefObject<HTMLD
         if (current === null) return;
         current.editor.action((ctx) => run(ctx.get(editorViewCtx), ctx));
       };
-      if (live.current) perform();
+      if (accepting.current) perform();
       else pending.current.push(perform);
     };
     const markdown = () => {
