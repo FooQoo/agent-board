@@ -14,7 +14,7 @@
 brew install fooqoo/tap/agboard
 ```
 
-[English](README.md) · [使い方](https://fooqoo.github.io/agent-board/ja/guide/) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
+[English](README.md) · [デモを試す](https://fooqoo.github.io/agent-board/demo/) · [使い方](https://fooqoo.github.io/agent-board/ja/guide/) · [開発に参加する](CONTRIBUTING.ja.md) · [GitHubリポジトリ](https://github.com/FooQoo/agent-board)
 
 ![ローカル完結](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![通常のファイル](https://img.shields.io/badge/storage-plain%20files-1f6feb)

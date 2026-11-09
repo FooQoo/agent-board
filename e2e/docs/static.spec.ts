@@ -29,9 +29,10 @@ function workflowParts(text: string) {
 test.describe('Pages workflow (AC-9)', () => {
   const text = readRepoFile('.github', 'workflows', 'docs.yml');
   const { sections, jobs } = workflowParts(text);
-  const paths = ['"docs/**"', '".github/workflows/docs.yml"'];
+  // The demo is built from web/, so a web change rebuilds the site as well.
+  const paths = ['"docs/**"', '"web/**"', '".github/workflows/docs.yml"'];
 
-  test('runs on pull requests and pushes to main that touch docs, and on demand', () => {
+  test('runs on pull requests and pushes to main that touch docs or the web UI, and on demand', () => {
     const on = sections.on;
     const pullRequest = /pull_request:\n([\s\S]*?)\n {2}(?:push|workflow_dispatch):/.exec(on)?.[1] ?? '';
     const push = /push:\n([\s\S]*?)\n {2}workflow_dispatch:/.exec(on)?.[1] ?? '';
@@ -50,22 +51,40 @@ test.describe('Pages workflow (AC-9)', () => {
     expect(sections.concurrency).toMatch(/group: pages/);
   });
 
-  test('build job only installs and builds, and uploads the artifact outside pull requests', () => {
+  test('build job builds the site and the demo, and uploads the artifact outside pull requests', () => {
     expect(Object.keys(jobs).sort()).toEqual(['build', 'deploy']);
     const build = jobs.build;
     expect(build).toContain('pnpm --dir docs install --frozen-lockfile');
+    expect(build).toContain('pnpm --dir web install --frozen-lockfile');
     expect(build).toContain('pnpm --dir docs build');
-    expect(build).toMatch(/version: 12/);
-    expect(build).toMatch(/node-version: 24/);
-    expect(build).toContain('cache-dependency-path: docs/pnpm-lock.yaml');
-    expect(build).not.toMatch(/cargo|rustup|web build|--dir web/);
+    // Node and pnpm are pinned once, as in ci.yml.
+    expect(sections.env).toMatch(/NODE_VERSION: "24"/);
+    expect(sections.env).toMatch(/PNPM_VERSION: "12"/);
+    expect(build).toContain('version: ${{ env.PNPM_VERSION }}');
+    expect(build).toContain('node-version: ${{ env.NODE_VERSION }}');
+    expect(build).toMatch(/cache-dependency-path: \|\n\s+docs\/pnpm-lock\.yaml\n\s+web\/pnpm-lock\.yaml/);
+    expect(build).not.toMatch(/cargo|rustup/);
+    // VitePress empties its output folder, so the demo goes in after the site build.
+    const siteBuild = build.indexOf('pnpm --dir docs build');
+    const demoBuild = build.indexOf('pnpm --dir web build:demo');
+    const copy = build.indexOf('cp -R web/dist-demo docs/.vitepress/dist/demo');
+    expect(siteBuild).toBeGreaterThan(-1);
+    expect(demoBuild).toBeGreaterThan(siteBuild);
+    expect(copy).toBeGreaterThan(demoBuild);
+    expect(copy).toBeLessThan(build.indexOf('actions/upload-pages-artifact'));
     expect(build).not.toMatch(/pages: write|id-token: write/);
     // Upload and Pages configuration are skipped on pull requests.
     for (const action of ['actions/configure-pages', 'actions/upload-pages-artifact']) {
-      const step = new RegExp(`uses: ${action}@\\S+\\n\\s+if: github.event_name != 'pull_request'`);
+      const step = new RegExp(`uses: ${action}@[0-9a-f]{40}[^\\n]*\\n\\s+if: github.event_name != 'pull_request'`);
       expect(build).toMatch(step);
     }
     expect(build).toContain('path: docs/.vitepress/dist');
+  });
+
+  test('pins every action to a full commit SHA', () => {
+    const uses = [...text.matchAll(/uses: (\S+)/g)].map((m) => m[1]);
+    expect(uses.length).toBeGreaterThan(0);
+    for (const action of uses) expect(action).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/);
   });
 
   test('deploy job runs only off pull requests, after the build, with the Pages permissions', () => {

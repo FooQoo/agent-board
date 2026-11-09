@@ -12,6 +12,8 @@ import { withBase } from 'vitepress'
 
 One task, start to finish: the agent starts the task and asks a question, you answer on the task, and the agent resumes. When every acceptance condition is checked, the task moves to Done on its own.
 
+Want to see it for yourself? [Try the demo](https://fooqoo.github.io/agent-board/demo/) in your browser, with nothing to install. It opens the first-run guide on sample data, and reloading the page starts it over.
+
 ## What Agent Board is
 
 Agent Board is a local work board shared by you and your AI agents. When an agent works for a long time, you need to see what is moving, what is waiting, and what answer will unblock it. Agent Board gives you and the agent one shared board, with a history of everything that happened.

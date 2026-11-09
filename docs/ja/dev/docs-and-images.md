@@ -4,7 +4,7 @@
 
 ## ドキュメントサイト
 
-ドキュメントサイトは`docs/`にあり、VitePressでビルドします。利用者向けのガイド（`docs/guide/`）と、この開発者向けの章（`docs/dev/`）があります。英語が正本で、英語を変えるたびに`docs/ja/`の日本語ページも揃えます。`main`から`.github/workflows/docs.yml`でGitHub Pagesに公開し、`docs/**`を変えるプルリクエストではビルドだけを行います。
+ドキュメントサイトは`docs/`にあり、VitePressでビルドします。利用者向けのガイド（`docs/guide/`）と、この開発者向けの章（`docs/dev/`）があります。英語が正本で、英語を変えるたびに`docs/ja/`の日本語ページも揃えます。`main`から`.github/workflows/docs.yml`でGitHub Pagesに公開し、`docs/**`か`web/**`を変えるプルリクエストではビルドだけを行います。同じワークフローが、サイトのあとに[デモ](./getting-started/setup.md#demo-build)をビルドし、`web/dist-demo/`を`docs/.vitepress/dist/demo/`へコピーするので、デモは`/agent-board/demo/`で配信されます。デモはVitePressのページではないため、ガイドからのリンクには完全なURLを使います。
 
 ```sh
 pnpm --dir docs install

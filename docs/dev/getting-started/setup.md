@@ -67,7 +67,7 @@ The data area holds `shared/` (the projects as plain files), `serve.json` while 
 
 ## Demo build
 
-The demo build runs the board with the same sample data on a static site, with no server. It is the version published on the documentation site:
+The demo build runs the board with the same sample data on a static site, with no server. It is the version published on the documentation site, at `/agent-board/demo/`:
 
 ```sh
 pnpm --dir web build:demo     # writes web/dist-demo/

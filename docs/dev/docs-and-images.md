@@ -4,7 +4,7 @@ The documentation site lives in `docs/`. This page explains how to preview and b
 
 ## Documentation site
 
-The documentation site lives in `docs/` and is built with VitePress. It has the user guide (`docs/guide/`) and this developer chapter (`docs/dev/`). English is the source language; keep the Japanese pages in `docs/ja/` in step with every English change. It is published to GitHub Pages from `main` by `.github/workflows/docs.yml`; pull requests that change `docs/**` only build it.
+The documentation site lives in `docs/` and is built with VitePress. It has the user guide (`docs/guide/`) and this developer chapter (`docs/dev/`). English is the source language; keep the Japanese pages in `docs/ja/` in step with every English change. It is published to GitHub Pages from `main` by `.github/workflows/docs.yml`; pull requests that change `docs/**` or `web/**` only build it. The same workflow builds the [demo](./getting-started/setup.md#demo-build) after the site and copies `web/dist-demo/` into `docs/.vitepress/dist/demo/`, so it is served at `/agent-board/demo/`. Links to the demo from the guide use its full URL, because the demo is not a VitePress page.
 
 ```sh
 pnpm --dir docs install

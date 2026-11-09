@@ -14,7 +14,7 @@ See what your agent is doing and what it is waiting on. Tasks, questions, and ac
 brew install fooqoo/tap/agboard
 ```
 
-[日本語](README.ja.md) · [Usage guide](https://fooqoo.github.io/agent-board/guide/) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
+[日本語](README.ja.md) · [Try the demo](https://fooqoo.github.io/agent-board/demo/) · [Usage guide](https://fooqoo.github.io/agent-board/guide/) · [Contributing](CONTRIBUTING.md) · [GitHub repository](https://github.com/FooQoo/agent-board)
 
 ![Local only](https://img.shields.io/badge/data-local%20only-1f6feb)
 ![Plain files](https://img.shields.io/badge/storage-plain%20files-1f6feb)
