@@ -1,4 +1,4 @@
-import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
+import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
@@ -160,9 +160,7 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await page.mouse.up();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  // dnd-kit keeps the source in a dropping animation briefly after the pointer is released.
-  const dragged = page.locator('.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
-  await expect(dragged).not.toHaveClass(/card--dragging/);
+  await waitForDrop(page);
   return dialog;
 }
 

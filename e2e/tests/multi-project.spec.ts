@@ -17,7 +17,7 @@ import {
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
-import { openManualCreateDialog } from '../helpers/ui';
+import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
 import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
@@ -89,9 +89,7 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await page.mouse.up();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  // dnd-kit keeps the source in a dropping animation briefly after the pointer is released.
-  const dragged = page.locator('.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
-  await expect(dragged).not.toHaveClass(/card--dragging/);
+  await waitForDrop(page);
   return dialog;
 }
 
@@ -377,6 +375,10 @@ test.describe('two projects with the same task numbers', () => {
     await page.keyboard.press('Enter');
     await expect(switcher(page)).toHaveText('Beta');
     await expect.poll(() => projectParam(page)).toBe(beta);
+    // The menu closes with a short animation and gives the focus back to the switcher when it is gone. Until
+    // then the closing menu still has the focus and swallows Tab, so wait for the focus to come back.
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(switcher(page)).toBeFocused();
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
     // The header order is project, Add card, Archive, Settings.
