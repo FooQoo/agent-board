@@ -99,9 +99,6 @@ describe('acceptance conditions', () => {
         message: 'Task #11 has no acceptance condition AC-9.',
       }),
     ]);
-    expect(bodyOf<{ error: { code: string } }>(check(server, 16, 'AC-1', true)).error.code).toBe(
-      'file_invalid',
-    );
     send(server, { method: 'POST', url: `${base}/11/archive`, body: '{}' });
     const archived = check(server, 11, 'AC-3', true);
     expect([archived.status, bodyOf<{ error: { code: string } }>(archived).error.code]).toEqual([

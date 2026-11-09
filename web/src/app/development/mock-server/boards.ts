@@ -1,6 +1,5 @@
 import type { Board, Epic, Problem, Project, Task } from '../../../shared/api/contracts.ts';
 import {
-  JA_BROKEN_BODY,
   JA_EPIC_NAME,
   JA_LONG_MARKDOWN,
   JA_LONG_MARKDOWN_TITLE,
@@ -141,25 +140,12 @@ export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
   const fixtureTasks = structuredClone(seed.fixture.tasks);
   const japanese = seed.locale === 'ja';
   const epic: Epic = japanese ? { ...SAMPLE_EPIC, name: JA_EPIC_NAME } : SAMPLE_EPIC;
-  const brokenBody = japanese
-    ? JA_BROKEN_BODY
-    : "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n";
   const withEpic = (tasks: Task[]): Task[] =>
     tasks.map((task) => {
       const conditions = SAMPLE_CONDITIONS[task.id];
-      // Card 16 has a frontmatter that cannot be read: its body is shown whole, with a notice.
-      const broken =
-        task.id === 16
-          ? {
-              ...task,
-              body: brokenBody,
-              acceptance: [],
-              acceptanceError: true,
-            }
-          : task;
       const withConditions = conditions
-        ? { ...broken, acceptance: structuredClone(conditions) }
-        : broken;
+        ? { ...task, acceptance: structuredClone(conditions) }
+        : task;
       // Cards 11 and 13 also wait for an answer, so the Doing lane shows several pending cards at once.
       const extraPending = EXTRA_PENDING[task.id];
       const pending: Task = extraPending

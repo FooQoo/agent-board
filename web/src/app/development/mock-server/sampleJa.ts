@@ -70,10 +70,6 @@ const CONDITIONS: Record<number, Record<string, string>> = {
 /** The name of the sample epic in Japanese. */
 export const JA_EPIC_NAME = 'ファイル共有';
 
-/** The card with a frontmatter that cannot be read (#16): its whole body, in Japanese. */
-export const JA_BROKEN_BODY =
-  "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\n本文はそのまま表示されます。\n";
-
 /** The title of the card with a long Markdown description. */
 export const JA_LONG_MARKDOWN_TITLE = '長い Markdown の説明';
 
