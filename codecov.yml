@@ -1,0 +1,10 @@
+# Codecov reports the coverage and never fails a check for it (docs/dev/getting-started/pull-request.md#verification).
+# The Rust numbers move a little between runs of the same code, so a pass/fail threshold would fail at random.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
