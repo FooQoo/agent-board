@@ -130,7 +130,15 @@ For the progress table, see [Epics and progress](../use/epics).
 
 After reading an editable AI task, the agent shortens an unclear title to describe the affected area and requested change before starting work. The original request and images stay in the task body and attachments. An already clear title stays as it is. This happens in the agent session, including listener mode; the form still initially uses the request's first non-empty line. Completed tasks are not renamed by the agent.
 
-Agents ask task-related questions only on the board, including clarification and approval. Each request includes choices and waits for your answer by default. The agent uses `--no-wait` only when you explicitly ask it to register the question and return immediately. Chat may point you to the pending request. If the board is unavailable, the agent reports the problem and waits to ask there.
+### Break a request into tasks
+
+When you ask an agent for work that is more than one task, it breaks the request down before creating anything. It shows you the proposed tasks, each with its owner, scope, acceptance conditions, and order, and the epic they go in. Then it asks whether to put them on the board. It creates the cards only after you say yes. Any other reply, including a request for changes, leaves the board unchanged until you agree to a revised breakdown.
+
+If the request is already a task on the board, the agent asks on that task with choices to register, revise, or cancel. If you asked in conversation and no task exists yet, it asks in the conversation. That confirmation is the only question an agent asks outside the board.
+
+### Questions
+
+Apart from that confirmation, agents ask task-related questions only on the board, including clarification and approval. Each request includes choices and waits for your answer by default. The agent uses `--no-wait` only when you explicitly ask it to register the question and return immediately. Chat may point you to the pending request. If the board is unavailable, the agent reports the problem and waits to ask there.
 
 ## Wait for changes
 

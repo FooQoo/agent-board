@@ -125,3 +125,18 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_connect_run() {
         assert!(!skill.contains(forbidden), "found {forbidden}");
     }
 }
+
+#[test]
+fn the_skill_registers_a_breakdown_only_after_the_user_agrees() {
+    let skill = include_str!("../.agents/skills/agent-board/SKILL.md");
+    assert!(
+        skill.contains("Break a request into tasks, and register them only after a yes"),
+        "the Skill must break a request down before registering it"
+    );
+    assert!(
+        skill.contains(
+            "Silence, a timeout, an unclear reply, or a request for changes is not a yes"
+        ),
+        "the Skill must register only on an explicit yes"
+    );
+}

@@ -103,6 +103,20 @@ For these two epics, keep per-task plans, decisions, verification, and results i
 
 Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
+### Break a request into tasks, and register them only after a yes
+
+When the user asks for work that is more than one task, such as a feature, a change across several areas, or a list of things to do, break it down before you create anything on the board:
+
+1. **Read.** Read the progress table and the relevant epics and tasks, so the breakdown reuses what exists and creates no duplicates.
+2. **Draft.** For each proposed task, write a title, the owner (`ai` or `human`), a one-line scope, its acceptance conditions, and its order or dependencies. Name the epic it belongs to: an existing one, a new one with its proposed EPIC-ID and name, or none. Keep each task to one piece of work that can be reviewed on its own.
+3. **Ask.** Show the breakdown and ask whether to register it on the board:
+   - When the request came as a board task (picked in the work loop or by the listener), ask with a decision request on that task (section 7). Put the breakdown in the question, with choices such as `register`, `revise`, and `cancel`.
+   - When the request came in conversation and no task holds it yet, present the breakdown in chat and ask for a yes or no there. This is the only question you ask in chat. Do not create a task just to ask it.
+4. **Register only after a yes.** Create the epic and the tasks only after the user explicitly agrees. Silence, a timeout, an unclear reply, or a request for changes is not a yes: revise and ask again, or leave the board unchanged. Register exactly the breakdown that was agreed; if it has to change, ask again.
+5. **Report.** List the created task IDs. Record the breakdown and its order in the epic's approach section (not for `BUG` or `ENHANCEMENT`), and, when the request came from a task, in that task's history.
+
+This confirmation covers creating cards from a request. A task the user already put on the board needs no confirmation to work on, and splitting an oversized task plan (section 3) is asked with a decision request on that task.
+
 ## 5. Lanes and run states
 
 Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing; only Doing supports Running:
@@ -151,7 +165,7 @@ Keep history reasons concise and useful. Use Markdown in a reason when it makes 
 
 ## 7. Ask the user a decision
 
-Ask every task-related question only through an Agent Board decision request on the relevant task. This includes clarification, preferences, scope, and approval. Do not ask in chat, a final response, or an agent-native question tool. Chat may tell the user that a question is waiting on the board, without repeating it as a second question. If the board is unavailable, report the connection problem and leave dependent work blocked; do not fall back to another question channel.
+Ask every task-related question only through an Agent Board decision request on the relevant task. This includes clarification, preferences, scope, and approval. Do not ask in chat, a final response, or an agent-native question tool. Chat may tell the user that a question is waiting on the board, without repeating it as a second question. The one exception is confirming a breakdown of a request made in conversation, before any task exists to hold the question (section 4). If the board is unavailable, report the connection problem and leave dependent work blocked; do not fall back to another question channel.
 
 Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the task to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 

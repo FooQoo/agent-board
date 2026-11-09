@@ -34,6 +34,8 @@ Agents make no board-dependent changes until the table can be read, and they rea
 
 The skill requires all task-related questions to use board decision requests with choices. `pending --request-json` waits indefinitely by default, even when `wait` is omitted; `wait: {}` remains compatible. The skill uses `--no-wait` only when the user explicitly asks to register a question and return immediately. It forbids substituting chat or native agent question tools, including when the board is unavailable.
 
+The skill also has the agent break a multi-task request into proposed tasks and register them only after the user agrees. A request that is already a task is confirmed with a decision request on it; a request made in conversation, with no task to hold the question, is confirmed in chat. That confirmation is the one exception to board-only questions. This is a skill instruction; the CLI and the server do not enforce it. See [Break a request into tasks](../../guide/automation/agents.md#break-a-request-into-tasks) for what the user sees.
+
 ## Waiting for changes
 
 `agboard wait --after <cursor>` blocks until the project changes:
