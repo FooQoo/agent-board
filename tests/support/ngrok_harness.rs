@@ -118,7 +118,28 @@ pub fn request(
     for (k, v) in headers {
         req = req.header(*k, *v);
     }
-    let mut response = agent.run(req.body(body.to_owned()).unwrap()).unwrap();
+    let request = req.body(body.to_owned()).unwrap();
+    // A refused request is answered before its body is read, so on macOS the
+    // client can see the reset (an I/O error such as EINVAL) while it is still
+    // sending. Ask again in that case, as tests/common does.
+    let mut attempts = 0;
+    let mut response = loop {
+        match agent.run(request.clone()) {
+            Ok(response) => break response,
+            Err(ureq::Error::Io(error))
+                if attempts < 4
+                    && matches!(
+                        error.kind(),
+                        std::io::ErrorKind::InvalidInput
+                            | std::io::ErrorKind::BrokenPipe
+                            | std::io::ErrorKind::ConnectionReset
+                    ) =>
+            {
+                attempts += 1;
+            }
+            Err(error) => panic!("{method} {path}: {error:?}"),
+        }
+    };
     let status = response.status().as_u16();
     let headers = response.headers().clone();
     let body = response.body_mut().read_to_string().unwrap_or_default();
