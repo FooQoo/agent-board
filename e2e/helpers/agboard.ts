@@ -403,23 +403,26 @@ export function resetBoard(project: string, home: string = mainHome()): void {
  * Put `project` back to the fixture in `file`. A project that does not exist is created first; an existing
  * one keeps its ID and gets the fixture's cards.
  */
-export function restoreProject(project: string, file: string, home: string = mainHome()): void {
+/**
+ * Restore `project` from `file`, then wait for the serve that shows `home` to show it. The main data area's
+ * serve is known; a group with a serve of its own passes `serveUrl`.
+ */
+export function restoreProject(project: string, file: string, home: string = mainHome(), serveUrl?: string): void {
   ensureProject(project, home);
   seedProject(project, file, home);
-  if (home === process.env.AGBOARD_E2E_HOME && process.env.AGBOARD_E2E_MAIN_URL) {
-    waitForServeToShow(process.env.AGBOARD_E2E_MAIN_URL, project, file);
-  }
+  const url = serveUrl ?? (home === process.env.AGBOARD_E2E_HOME ? process.env.AGBOARD_E2E_MAIN_URL : undefined);
+  if (url) waitForServeToShow(url, project, file, projectId(project, home));
 }
 
 /**
  * Block until the serve at `url` shows the cards of `file` in `project`. The serve learns of the rewritten
  * files from its watcher, so a page opened straight after a reset could still load the previous test's board.
  */
-function waitForServeToShow(url: string, project: string, file: string): void {
+function waitForServeToShow(url: string, project: string, file: string, id: string): void {
   const fixture = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
   const tasks = fixture.tasks.map(({ id, title, taskStatus, agentStatus, updatedAt }) => ({ id, title, taskStatus, agentStatus, updatedAt }));
   const result = spawnSync(process.execPath, [serveCaughtUp], {
-    input: JSON.stringify({ url, project, tasks }),
+    input: JSON.stringify({ url, project, id, tasks }),
     encoding: 'utf8',
     timeout: 30_000,
   });
@@ -432,13 +435,13 @@ export function removeProject(project: string, home: string = mainHome()): void 
   if (result.code !== 0) throw new Error(`deleting ${project} failed: ${result.stdout}${result.stderr}`);
 }
 
-/** Leave exactly `Alpha` and `Beta` in `home`, each restored from its backup. */
-export function resetAlphaBeta(home: string): void {
+/** Leave exactly `Alpha` and `Beta` in `home`, each restored from its backup and shown by the serve at `serveUrl`. */
+export function resetAlphaBeta(home: string, serveUrl?: string): void {
   for (const project of listProjects(home)) {
     if (project.name !== 'Alpha' && project.name !== 'Beta') removeProject(project.name, home);
   }
-  restoreProject('Alpha', alphaFixture, home);
-  restoreProject('Beta', betaFixture, home);
+  restoreProject('Alpha', alphaFixture, home, serveUrl);
+  restoreProject('Beta', betaFixture, home, serveUrl);
 }
 
 function withTestDefaults(project: string, args: string[], home: string): string[] {

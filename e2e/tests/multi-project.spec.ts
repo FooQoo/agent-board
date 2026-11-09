@@ -184,7 +184,8 @@ test.describe('two projects with the same task numbers', () => {
 
   useGroupServe(() => (home = makeHome('multi-two')));
   test.beforeEach(async () => {
-    resetAlphaBeta(home);
+    // Wait for this group's serve too: a page opened before it sees the recreated projects selects none.
+    resetAlphaBeta(home, serve!.url);
     alpha = projectId('Alpha', home);
     beta = projectId('Beta', home);
     await resetPreferences(statesOrigin());

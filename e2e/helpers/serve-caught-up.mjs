@@ -4,8 +4,9 @@
 // the files directly the serve still shows the cards of the previous test. A page opened in that moment loads the
 // old board. `restoreProject` runs this script synchronously after it writes a fixture.
 //
-// Input on stdin: {"url", "project", "tasks": [{"id", "title", "taskStatus", "agentStatus", "updatedAt"}]}.
-// Exits 0 once the serve's summary of `project` lists exactly those cards (and no epics), 1 after the deadline.
+// Input on stdin: {"url", "project", "id", "tasks": [{"id", "title", "taskStatus", "agentStatus", "updatedAt"}]}.
+// Exits 0 once the serve lists `project` under `id` and its summary lists exactly those cards (and no epics),
+// 1 after the deadline. The id matters when a project was deleted and created again under the same name.
 
 const input = JSON.parse(await new Promise((resolve) => {
   let text = '';
@@ -22,14 +23,16 @@ let last = 'no answer';
 while (Date.now() < deadline) {
   try {
     const projects = await (await fetch(`${base}/api/projects`)).json();
-    const project = projects.projects.find((candidate) => candidate.name === input.project);
+    const project = projects.projects.find(
+      (candidate) => candidate.name === input.project && (!input.id || candidate.id === input.id),
+    );
     if (project) {
       const summary = await (await fetch(`${base}/api/projects/${project.id}/summary`)).json();
       const got = summary.tasks.map(key).sort().join('\n');
       if (got === want && summary.epics.length === 0) process.exit(0);
       last = `tasks:\n${got}\nepics: ${summary.epics.length}`;
     } else {
-      last = `no project named ${input.project}`;
+      last = `no project named ${input.project} with the id ${input.id}`;
     }
   } catch (error) {
     last = String(error);
