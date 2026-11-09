@@ -54,15 +54,27 @@ fn fixture_root(manifest_version: &str, lock_version: &str) -> tempfile::TempDir
 }
 
 #[test]
-fn package_metadata_is_version_1_0_0_under_mit() {
+fn package_metadata_is_mit_and_the_lockfile_names_the_same_version() {
+    let version = env!("CARGO_PKG_VERSION");
     let manifest = read("Cargo.toml");
-    assert!(manifest.contains("version = \"1.0.0\""), "{manifest}");
+    assert!(
+        manifest.contains(&format!("version = \"{version}\"")),
+        "{manifest}"
+    );
     assert!(manifest.contains("license = \"MIT\""), "{manifest}");
     let lock = read("Cargo.lock");
     assert!(
-        lock.contains("name = \"agent-board\"\nversion = \"1.0.0\""),
+        lock.contains(&format!("name = \"agent-board\"\nversion = \"{version}\"")),
         "the lockfile names another version"
     );
+}
+
+/// The archive name the verifier expects for this build and an Apple Silicon Mac.
+fn arm_archive_name() -> String {
+    format!(
+        "agboard-{}-aarch64-apple-darwin.tar.gz",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 #[test]
@@ -296,7 +308,7 @@ fn verifier_accepts_the_three_files_in_a_case_insensitive_locale() {
     let notices = read("THIRD_PARTY_NOTICES.txt");
     let path = archive(
         dir.path(),
-        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &arm_archive_name(),
         &[
             ("agboard", b"binary"),
             ("LICENSE", license.as_bytes()),
@@ -321,7 +333,7 @@ fn verifier_rejects_an_archive_without_the_license() {
     let notices = read("THIRD_PARTY_NOTICES.txt");
     let path = archive(
         dir.path(),
-        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &arm_archive_name(),
         &[
             ("agboard", b"binary"),
             ("THIRD_PARTY_NOTICES.txt", notices.as_bytes()),
@@ -338,7 +350,7 @@ fn verifier_rejects_an_archive_without_the_notices() {
     let license = read("LICENSE");
     let path = archive(
         dir.path(),
-        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &arm_archive_name(),
         &[("agboard", b"binary"), ("LICENSE", license.as_bytes())],
     );
     let out = verify(&path, "aarch64-apple-darwin");
@@ -356,7 +368,7 @@ fn verifier_rejects_a_license_that_differs_from_the_repository_file() {
     let notices = read("THIRD_PARTY_NOTICES.txt");
     let path = archive(
         dir.path(),
-        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &arm_archive_name(),
         &[
             ("agboard", b"binary"),
             ("LICENSE", b"changed"),
@@ -399,7 +411,7 @@ fn verifier_rejects_a_binary_that_is_not_a_macho_for_the_target() {
     let notices = read("THIRD_PARTY_NOTICES.txt");
     let path = archive(
         dir.path(),
-        "agboard-1.0.0-aarch64-apple-darwin.tar.gz",
+        &arm_archive_name(),
         &[
             ("agboard", b"#!/bin/sh\necho agboard 1.0.0\n"),
             ("LICENSE", license.as_bytes()),
