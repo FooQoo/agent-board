@@ -104,6 +104,13 @@
 - `web/src/app/model/useStreamSubscriptions.ts`: プレビューとドキュメントのダイアログが追従する変更通知の購読。
 - `e2e/tests/preview-modal.spec.ts`: プレビューのE2Eテスト。
 
+### ブラウザのデモ
+
+- `web/src/app/development/mock-server/`: Node APIを使わないサンプルデータのサーバー。サンプルデータモード（`web/mock-api.ts`）とデモで共有します。
+- `web/src/app/development/demo/`: デモの開始（`install.ts`）、`fetch`と`EventSource`の差し替え（`transport.ts`）、画像の書き換え（`images.ts`）。
+- `web/demo-build.ts`: `demo`モードのViteプラグイン、ベースパス、ページに渡すサンプルデータ。
+- `e2e/playwright.demo.config.ts`と`e2e/demo/`: ビルド済みのドキュメントサイトを相手にするデモのスイート。[ブラウザのデモ](../concepts/demo.md)を参照してください。
+
 ## 採用技術
 
 <div class="technology-table">

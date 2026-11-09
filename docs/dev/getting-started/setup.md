@@ -81,7 +81,7 @@ How it differs from the product build:
 - The page has a fixed token and an empty build ID, so it never reloads for a new build. Reloading the page restores the sample data and opens the first-run guide again.
 - Features that need a computer are hidden: project Docs (with its buttons that open files and folders), the mobile monitor connection, and saving pasted or dropped images.
 
-The demo code lives in `web/src/app/development/demo/` and loads only when Vite runs with `--mode demo`. `pnpm --dir web build` contains none of it, and `web/test/monitor/build-contract.test.ts` checks that.
+The demo code lives in `web/src/app/development/demo/` and loads only when Vite runs with `--mode demo`. `pnpm --dir web build` contains none of it, and `web/test/monitor/build-contract.test.ts` checks that. [The browser demo](../concepts/demo.md) explains how it works and how to test it the way it is published.
 
 ## Storybook
 

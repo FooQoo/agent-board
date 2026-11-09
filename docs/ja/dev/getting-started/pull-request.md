@@ -64,7 +64,7 @@ Rustのテストは[cargo-nextest](https://nexte.st/)で実行します（`cargo
 
 Playwrightのテストは`e2e/`にあります。初回は`pnpm --dir e2e install --frozen-lockfile`で依存関係を、`pnpm --dir e2e exec playwright install chromium`でブラウザをインストールします。
 
-`pnpm --dir e2e test`はアプリのテストを実行し、共通の事前処理（global setup）でWeb画面とCLIをビルドします。`pnpm --dir e2e test:docs`は、ビルド済みのドキュメントサイトを検証します。
+`pnpm --dir e2e test`はアプリのテストを実行し、共通の事前処理（global setup）でWeb画面とCLIをビルドします。`pnpm --dir e2e test:docs`は、ビルド済みのドキュメントサイトを検証します。`pnpm --dir e2e test:demo`は、デモをコピーしたビルド済みのサイトでデモを検証します（[ブラウザのデモ](../concepts/demo.md#手元で確かめる)を参照）。
 
 アプリのテストは、複数のPlaywrightワーカーでテストファイルを並行して実行します。
 

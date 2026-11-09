@@ -104,6 +104,13 @@ The main files and directories outside `src/` are:
 - `web/src/app/model/useStreamSubscriptions.ts`: the change subscriptions that the previews and the Docs dialog follow.
 - `e2e/tests/preview-modal.spec.ts`: the preview's end-to-end tests.
 
+### Browser demo
+
+- `web/src/app/development/mock-server/`: the sample-data server without Node APIs, shared by the sample-data mode (`web/mock-api.ts`) and the demo.
+- `web/src/app/development/demo/`: the demo's start (`install.ts`), the `fetch` and `EventSource` replacement (`transport.ts`), and the image rewrite (`images.ts`).
+- `web/demo-build.ts`: the `demo` mode's Vite plugin, its base path, and the sample data it gives the page.
+- `e2e/playwright.demo.config.ts` and `e2e/demo/`: the demo suite, run against the built documentation site. See [The browser demo](../concepts/demo.md).
+
 ## Technology choices
 
 <div class="technology-table">

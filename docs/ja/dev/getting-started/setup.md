@@ -81,7 +81,7 @@ pnpm --dir web preview:demo   # http://127.0.0.1:4174/agent-board/demo/
 - トークンは固定で、ビルドIDは空です。そのため新しいビルドを理由に再読み込みすることはありません。ページを再読み込みするとサンプルデータが元に戻り、初回の案内がもう一度表示されます。
 - パソコンが必要な機能は表示しません。対象は、プロジェクトのDocs（ファイルやフォルダを開くボタンを含む）、モバイルモニターの接続、貼り付けやドロップした画像の保存です。
 
-デモのコードは`web/src/app/development/demo/`にあり、Viteを`--mode demo`で動かしたときだけ読み込まれます。`pnpm --dir web build`の成果物には含まれず、`web/test/monitor/build-contract.test.ts`がそれを確かめます。
+デモのコードは`web/src/app/development/demo/`にあり、Viteを`--mode demo`で動かしたときだけ読み込まれます。`pnpm --dir web build`の成果物には含まれず、`web/test/monitor/build-contract.test.ts`がそれを確かめます。仕組みと、公開されるときと同じ形でのテストの方法は[ブラウザのデモ](../concepts/demo.md)で説明しています。
 
 ## Storybook
 

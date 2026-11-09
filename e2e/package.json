@@ -5,6 +5,7 @@
   "scripts": {
     "test": "playwright test",
     "test:docs": "playwright test -c playwright.docs.config.ts",
+    "test:demo": "playwright test -c playwright.demo.config.ts",
     "test:storybook": "playwright test -c playwright.storybook.config.ts"
   },
   "devDependencies": {

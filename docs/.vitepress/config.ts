@@ -93,6 +93,7 @@ const devGroups: Group[] = [
       { file: 'concepts/saving-and-recovery', en: 'Saving and recovery', ja: '保存と復旧' },
       { file: 'concepts/notifications', en: 'Change notifications', ja: '変更の通知' },
       { file: 'concepts/server-and-ui', en: 'Server and web UI', ja: 'サーバーと画面' },
+      { file: 'concepts/demo', en: 'The browser demo', ja: 'ブラウザのデモ' },
       { file: 'concepts/agents', en: 'Agent integration', ja: 'エージェント連携' },
       { file: 'concepts/remote-access', en: 'The mobile monitor', ja: 'モバイルモニター' },
       { file: 'concepts/security', en: 'Security model', ja: 'セキュリティモデル' },

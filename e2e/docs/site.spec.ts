@@ -189,7 +189,7 @@ test('the sidebar lists the sixteen guide pages in four groups, in the same orde
   expect(hrefs.ja.map((h) => h.replace('/agent-board/ja/', '/agent-board/'))).toEqual(hrefs.en);
 });
 
-test('the developer chapter is in the nav and its sidebar lists twenty-one pages in four groups', async ({ page }) => {
+test('the developer chapter is in the nav and its sidebar lists twenty-two pages in four groups', async ({ page }) => {
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'home'));
     const nav = page.locator('.VPNavBarMenu').getByRole('link', { name: lang === 'en' ? 'Developers' : '開発者向け' });

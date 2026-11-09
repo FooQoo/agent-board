@@ -62,7 +62,7 @@ Rules for tests:
 - A test that starts `agboard serve` sets `AGBOARD_WATCH=poll`, and an embedded server is started with `server::run_until_in` and `WatchMode::Poll`. Only `tests/file_watch.rs` uses the platform's file events.
 - `agboard serve` listens only on `127.0.0.1`. Do not use port 7420; use an available port or port 0, and connect to `http://127.0.0.1:<port>/` rather than `localhost`.
 
-The Playwright suites live in `e2e/`. Install them once with `pnpm --dir e2e install --frozen-lockfile` and `pnpm --dir e2e exec playwright install chromium`. `pnpm --dir e2e test` runs the app suite (its global setup builds the web UI and the CLI); `pnpm --dir e2e test:docs` runs the documentation site suite against a built site.
+The Playwright suites live in `e2e/`. Install them once with `pnpm --dir e2e install --frozen-lockfile` and `pnpm --dir e2e exec playwright install chromium`. `pnpm --dir e2e test` runs the app suite (its global setup builds the web UI and the CLI); `pnpm --dir e2e test:docs` runs the documentation site suite against a built site, and `pnpm --dir e2e test:demo` runs the demo suite against the built site with the demo copied in (see [The browser demo](../concepts/demo.md#check-it-locally)).
 
 The app suite runs its spec files on several Playwright workers at once:
 

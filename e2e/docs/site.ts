@@ -39,6 +39,7 @@ export const devFiles = [
   'concepts/saving-and-recovery',
   'concepts/notifications',
   'concepts/server-and-ui',
+  'concepts/demo',
   'concepts/agents',
   'concepts/remote-access',
   'concepts/security',
@@ -67,8 +68,8 @@ export function devPagePath(lang: Lang, file: DevFile): string {
   return file === 'index' ? `${prefix}dev/` : `${prefix}dev/${file}`;
 }
 
-// Every page of the site in both languages: the home page, the sixteen guide pages, and the twenty-one
-// developer pages (76).
+// Every page of the site in both languages: the home page, the sixteen guide pages, and the twenty-two
+// developer pages (78).
 export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'ja'] as Lang[]).flatMap((lang) => [
   ...(['home', ...guideFiles] as PageFile[]).map((file) => ({ lang, file, path: pagePath(lang, file) })),
   ...devFiles.map((file) => ({ lang, file: `dev/${file}`, path: devPagePath(lang, file) })),

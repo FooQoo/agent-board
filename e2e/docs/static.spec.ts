@@ -29,10 +29,16 @@ function workflowParts(text: string) {
 test.describe('Pages workflow (AC-9)', () => {
   const text = readRepoFile('.github', 'workflows', 'docs.yml');
   const { sections, jobs } = workflowParts(text);
-  // The demo is built from web/, so a web change rebuilds the site as well.
-  const paths = ['"docs/**"', '"web/**"', '".github/workflows/docs.yml"'];
+  // The demo is built from web/ and tested by e2e/demo/, so a change to either rebuilds the site as well.
+  const paths = [
+    '"docs/**"',
+    '"web/**"',
+    '"e2e/demo/**"',
+    '"e2e/playwright.demo.config.ts"',
+    '".github/workflows/docs.yml"',
+  ];
 
-  test('runs on pull requests and pushes to main that touch docs or the web UI, and on demand', () => {
+  test('runs on pull requests and pushes to main that touch docs, the web UI, or the demo suite, and on demand', () => {
     const on = sections.on;
     const pullRequest = /pull_request:\n([\s\S]*?)\n {2}(?:push|workflow_dispatch):/.exec(on)?.[1] ?? '';
     const push = /push:\n([\s\S]*?)\n {2}workflow_dispatch:/.exec(on)?.[1] ?? '';
@@ -62,7 +68,9 @@ test.describe('Pages workflow (AC-9)', () => {
     expect(sections.env).toMatch(/PNPM_VERSION: "12"/);
     expect(build).toContain('version: ${{ env.PNPM_VERSION }}');
     expect(build).toContain('node-version: ${{ env.NODE_VERSION }}');
-    expect(build).toMatch(/cache-dependency-path: \|\n\s+docs\/pnpm-lock\.yaml\n\s+web\/pnpm-lock\.yaml/);
+    expect(build).toMatch(
+      /cache-dependency-path: \|\n\s+docs\/pnpm-lock\.yaml\n\s+web\/pnpm-lock\.yaml\n\s+e2e\/pnpm-lock\.yaml/,
+    );
     expect(build).not.toMatch(/cargo|rustup/);
     // VitePress empties its output folder, so the demo goes in after the site build.
     const siteBuild = build.indexOf('pnpm --dir docs build');
@@ -72,6 +80,19 @@ test.describe('Pages workflow (AC-9)', () => {
     expect(demoBuild).toBeGreaterThan(siteBuild);
     expect(copy).toBeGreaterThan(demoBuild);
     expect(copy).toBeLessThan(build.indexOf('actions/upload-pages-artifact'));
+    // The demo suite tests the copied demo on every run, pull requests included, so a broken demo
+    // stops the job before Pages is configured or anything is uploaded.
+    const e2eInstall = build.indexOf('pnpm --dir e2e install --frozen-lockfile');
+    const browser = build.indexOf('pnpm --dir e2e exec playwright install --with-deps chromium');
+    const demoTest = build.indexOf('pnpm --dir e2e test:demo');
+    expect(e2eInstall).toBeGreaterThan(-1);
+    expect(e2eInstall).toBeLessThan(demoTest);
+    expect(browser).toBeGreaterThan(copy);
+    expect(demoTest).toBeGreaterThan(browser);
+    expect(demoTest).toBeLessThan(build.indexOf('actions/configure-pages'));
+    expect(demoTest).toBeLessThan(build.indexOf('actions/upload-pages-artifact'));
+    // No `if:` on the step: the next line starts the next step.
+    expect(build).toMatch(/- name: Test the demo\n\s+run: pnpm --dir e2e test:demo\n\s+- /);
     expect(build).not.toMatch(/pages: write|id-token: write/);
     // Upload and Pages configuration are skipped on pull requests.
     for (const action of ['actions/configure-pages', 'actions/upload-pages-artifact']) {
@@ -206,7 +227,7 @@ test.describe('site sources', () => {
       const sections = (text: string) => text.split('\n').filter((line) => /^##+ /.test(line)).length;
       expect(sections(ja), `dev/${file}: headings`).toBe(sections(en));
     }
-    expect(allPages).toHaveLength(76);
+    expect(allPages).toHaveLength(78);
   });
 
   test('the eighteen guide screenshots exist as readable PNGs', () => {

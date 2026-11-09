@@ -12,6 +12,7 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | Request handling, the web UI, and its failure behavior | [docs/dev/concepts/server-and-ui.md](docs/dev/concepts/server-and-ui.md) |
 | The skill, the hook, `wait`, and `setup` | [docs/dev/concepts/agents.md](docs/dev/concepts/agents.md) |
 | The mobile monitor | [docs/dev/concepts/remote-access.md](docs/dev/concepts/remote-access.md) |
+| The browser demo and its suite | [docs/dev/concepts/demo.md](docs/dev/concepts/demo.md) |
 | What is protected and what is not | [docs/dev/concepts/security.md](docs/dev/concepts/security.md) |
 | Every stored file and its fields | [docs/dev/reference/files.md](docs/dev/reference/files.md) |
 | Endpoints, error codes, and the JSON agents receive | [web-api](docs/dev/reference/web-api.md), [errors](docs/dev/reference/errors.md), [agent-output](docs/dev/reference/agent-output.md) |
