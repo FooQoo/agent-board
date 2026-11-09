@@ -17,7 +17,7 @@ import {
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
-import { openManualCreateDialog } from '../helpers/ui';
+import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
 import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
@@ -89,9 +89,7 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await page.mouse.up();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  // dnd-kit keeps the source in a dropping animation briefly after the pointer is released.
-  const dragged = page.locator('.card').filter({ hasText: new RegExp(`^#${id}(?!\\d)`) }).first();
-  await expect(dragged).not.toHaveClass(/card--dragging/);
+  await waitForDrop(page);
   return dialog;
 }
 
@@ -377,6 +375,10 @@ test.describe('two projects with the same task numbers', () => {
     await page.keyboard.press('Enter');
     await expect(switcher(page)).toHaveText('Beta');
     await expect.poll(() => projectParam(page)).toBe(beta);
+    // The menu closes with a short animation and gives the focus back to the switcher when it is gone. Until
+    // then the closing menu still has the focus and swallows Tab, so wait for the focus to come back.
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(switcher(page)).toBeFocused();
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
     // The header order is project, Add card, Archive, Settings.
@@ -1047,10 +1049,12 @@ test.describe('long names and many projects', () => {
       await page.keyboard.press('Home');
       await expect(menuItem(page, 'Project 001')).toBeFocused();
       await expect(menuItem(page, 'Project 001')).toBeInViewport();
-      // Thirty arrow presses at the pace of a held key (presses with no gap at all are merged by the menu).
-      for (let step = 0; step < 30; step += 1) {
+      // Thirty arrow presses, one item each. The menu moves the focus in a timer after the key, from the item that
+      // had the focus when the key came; a press before that timer runs is counted from the same item, so wait
+      // for each move rather than for a fixed pause (which a slow machine outlasts).
+      for (let step = 1; step <= 30; step += 1) {
         await page.keyboard.press('ArrowDown');
-        await page.waitForTimeout(15);
+        await expect(menuItem(page, `Project ${String(step + 1).padStart(3, '0')}`)).toBeFocused();
       }
       await expect(menuItem(page, 'Project 031')).toBeFocused();
       await expect(menuItem(page, 'Project 031')).toBeInViewport();
