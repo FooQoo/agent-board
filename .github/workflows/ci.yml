@@ -49,8 +49,12 @@ jobs:
           rustup toolchain install "${RUST_VERSION}" --profile minimal --component rustfmt,clippy
           rustup default "${RUST_VERSION}"
       - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
+      # The runner's toolchain does not live in ~/.cargo, so its bin folder is created and put on PATH.
       - name: Install cargo-nextest
-        run: curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+        run: |
+          bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+          mkdir -p "$bin" && echo "$bin" >> "$GITHUB_PATH"
+          curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "$bin"
       # The binary embeds web/dist, so the web UI is built before any cargo command.
       - name: Build the web UI
         run: |
@@ -77,6 +81,8 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile
       - run: pnpm --dir web typecheck
       - run: pnpm --dir web check
+      # Some unit tests check the built output (test/monitor/build-contract.test.ts).
+      - run: pnpm --dir web build
       - run: pnpm --dir web test
       - run: pnpm --dir web typecheck:storybook
       # The Storybook tests run every Story in a headless Chromium.
@@ -112,7 +118,9 @@ jobs:
           key: coverage
       - name: Install cargo-nextest and cargo-llvm-cov
         run: |
-          curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
+          bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+          mkdir -p "$bin" && echo "$bin" >> "$GITHUB_PATH" && export PATH="$bin:$PATH"
+          curl -LsSf "https://get.nexte.st/${NEXTEST_VERSION}/mac" | tar zxf - -C "$bin"
           command -v cargo-llvm-cov >/dev/null || cargo install cargo-llvm-cov --locked --version "${LLVM_COV_VERSION}"
       - name: Build the web UI
         run: |
