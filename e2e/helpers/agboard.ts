@@ -227,9 +227,11 @@ export function taskBody(text: string): string {
 }
 
 /** Write a file the way the README asks people to: a temporary file in the same folder, renamed over the target. */
-export function replaceFileAtomically(file: string, content: string): void {
+export function replaceFileAtomically(file: string, content: string, modified?: Date): void {
   const temp = path.join(path.dirname(file), `.tmp-${randomBytes(6).toString('hex')}`);
   writeFileSync(temp, content, 'utf8');
+  // The time is set before the rename, so no reader ever sees the file with the time of this write.
+  if (modified) utimesSync(temp, modified, modified);
   renameSync(temp, file);
 }
 
@@ -241,8 +243,8 @@ export function replaceTaskBodyPreservingFrontmatter(file: string, body: string)
   replaceFileAtomically(file, `---\n${match[1]}\n---\n\n${taskBody(body)}\n`);
 }
 
-function writeJson(file: string, value: unknown): void {
-  replaceFileAtomically(file, `${JSON.stringify(value, null, 2)}\n`);
+function writeJson(file: string, value: unknown, modified?: Date): void {
+  replaceFileAtomically(file, `${JSON.stringify(value, null, 2)}\n`, modified);
 }
 
 function yamlScalar(value: unknown): string {
@@ -352,13 +354,13 @@ export function seedProject(project: string, file: string, home: string = mainHo
     const dir = path.join(folder, 'tasks', String(item.id));
     mkdirSync(dir, { recursive: true });
     const { task, markdown } = taskFilesFor(item);
-    writeJson(path.join(dir, 'task.json'), task);
-    replaceFileAtomically(path.join(dir, 'TASK.md'), markdown);
     // The screen shows the newer of task.json's updatedAt and TASK.md's modification time, so both files
-    // carry the fixture's time and the seeded cards keep the times the specs expect.
+    // carry the fixture's time and the seeded cards keep the times the specs expect. Each file has that
+    // time when it appears: the version a serve compares ignores modification times, so a serve that read
+    // TASK.md before a later touch would keep showing the time of the write.
     const at = new Date(item.updatedAt);
-    utimesSync(path.join(dir, 'task.json'), at, at);
-    utimesSync(path.join(dir, 'TASK.md'), at, at);
+    writeJson(path.join(dir, 'task.json'), task, at);
+    replaceFileAtomically(path.join(dir, 'TASK.md'), markdown, at);
   }
   const projectFile = path.join(folder, 'project.json');
   const current = JSON.parse(readFileSync(projectFile, 'utf8')) as Record<string, unknown>;
@@ -400,12 +402,9 @@ export function resetBoard(project: string, home: string = mainHome()): void {
 }
 
 /**
- * Put `project` back to the fixture in `file`. A project that does not exist is created first; an existing
- * one keeps its ID and gets the fixture's cards.
- */
-/**
- * Restore `project` from `file`, then wait for the serve that shows `home` to show it. The main data area's
- * serve is known; a group with a serve of its own passes `serveUrl`.
+ * Put `project` back to the fixture in `file`, then wait for the serve that shows `home` to show it. A project
+ * that does not exist is created first; an existing one keeps its ID and gets the fixture's cards. The main
+ * data area's serve is known; a group with a serve of its own passes `serveUrl`.
  */
 export function restoreProject(project: string, file: string, home: string = mainHome(), serveUrl?: string): void {
   ensureProject(project, home);
