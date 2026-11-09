@@ -472,10 +472,13 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await expect(settingsButton).toBeFocused();
 
   // The arrow keys move between the themes while holding the key (the group selects on it).
+  // The group moves the focus on a timer after the key goes down, so the key is held until
+  // the focus has moved: a fixed short press can end first on a slow machine and select nothing.
   await settingsButton.click();
   await dialog.getByRole('radio', { name: 'Light Blue' }).focus();
-  await page.keyboard.press('ArrowRight', { delay: 60 });
+  await page.keyboard.down('ArrowRight');
   await expect(dialog.getByRole('radio', { name: 'Light Sky' })).toBeFocused();
+  await page.keyboard.up('ArrowRight');
   await expect(dialog.getByRole('radio', { name: 'Light Sky' })).toHaveAttribute('aria-checked', 'true');
   await expectTheme(page, 'Light', 'Sky');
   await page.keyboard.press('Escape');

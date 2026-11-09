@@ -132,9 +132,11 @@ test('keyboard selection keeps an open archive confirmation and the selected tas
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('radio', { name: 'English' })).toBeFocused();
   // The language options are one radio group: the arrow keys move between them and select.
-  // Radix selects on arrow keys only while the key is held, so hold it briefly like a person does.
-  await page.keyboard.press('ArrowLeft', { delay: 60 });
+  // Radix selects on arrow keys only while the key is held, and moves the focus on a timer
+  // after the key goes down, so the key is held until the focus has moved.
+  await page.keyboard.down('ArrowLeft');
   await expect(page.getByRole('radio', { name: '日本語' })).toBeFocused();
+  await page.keyboard.up('ArrowLeft');
   await expect(page.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
