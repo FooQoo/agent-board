@@ -309,6 +309,25 @@ fn summary_pc_errors_for_a_missing_or_malformed_project() {
 }
 
 #[test]
+fn summary_pc_answers_a_project_created_outside_the_server_before_the_watcher_reloads() {
+    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let (home, _) = home();
+    let server = common::Running::start(home.path());
+    // The CLI creates a project while the server runs. The project list reads the files and
+    // names it at once, so the Summary must answer it at once too, without waiting for the
+    // watcher, or a page opened on the new project shows it as missing.
+    let store = FileStore::open(&home.path().join("shared"));
+    let project = store.create_project("Created later", at(10)).unwrap().id;
+    let listed = server.get("/api/projects");
+    assert!(listed.body.contains(project.as_str()), "{}", listed.body);
+    let summary = server.get(&format!("/api/projects/{project}/summary"));
+    assert_eq!(summary.status, 200, "{}", summary.body);
+    // The Detail routes read the same index: the project is known, only the epic is missing.
+    let detail = server.get(&format!("/api/projects/{project}/epics/NONE/detail"));
+    assert_eq!(detail.code(), "epic_not_found", "{}", detail.body);
+}
+
+#[test]
 fn summary_the_same_content_has_the_same_version_after_a_restart() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let (home, project) = home();

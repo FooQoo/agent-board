@@ -104,6 +104,22 @@ fn indexed_ready_in<T>(
             project: id.to_string(),
         });
     }
+    // A folder that is new is a created project, even before the watcher reloads. The
+    // project list reads the files, so it names a project the CLI has just created; read the
+    // project now, or a page opened on it gets `project_not_found` for a project the list
+    // shows. A new project folder is complete when it appears (it is renamed into place).
+    // The changes this read finds stay pending and go out with the watcher's next reload.
+    let known = index
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .entry(id)
+        .is_some();
+    if !known {
+        let mut writer = index.write().unwrap_or_else(|e| e.into_inner());
+        if writer.entry(id).is_none() {
+            writer.reload_project(shared, id);
+        }
+    }
     let index = index.read().unwrap_or_else(|e| e.into_inner());
     let entry = index
         .entry(id)
