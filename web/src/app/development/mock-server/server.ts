@@ -4,6 +4,7 @@ import { acceptanceRoutes } from './acceptance.ts';
 import { SAMPLE_IMAGE, SAMPLE_PROJECTS, sampleBoards, type MockBoard } from './boards.ts';
 import { completedTasks } from './completion.ts';
 import { editRoutes } from './edits.ts';
+import { createGuide } from './guide.ts';
 import { lifecycleRoutes } from './lifecycle.ts';
 import { readRoutes } from './reads.ts';
 import { reorderRoutes } from './reorder.ts';
@@ -53,6 +54,8 @@ export function createMockServer(options: MockServerOptions): MockServer {
       }),
     );
   let boards: Record<string, MockBoard> = loaded();
+  // The first-run guide, held in memory: a new server (a new page) offers it from the beginning.
+  const guide = createGuide();
   const listeners = new Set<(event: ChangedEvent) => void>();
   // A reset starts a new instance, as a restarted server does: the page then drops what it holds.
   let instance = 0;
@@ -80,7 +83,8 @@ export function createMockServer(options: MockServerOptions): MockServer {
       // As `agboard serve` does after a write, move AI tasks whose conditions are all met to Done
       // as a change of its own. The completed tasks no longer qualify, so this stops after one round.
       const completed = completedTasks(saved, now());
-      if (completed.tasks.length > 0) context.replaceTasks(saved, completed.tasks, completed.changes);
+      if (completed.tasks.length > 0)
+        context.replaceTasks(saved, completed.tasks, completed.changes);
     },
     replaceTasks(board, updated, changes) {
       const byId = new Map(updated.map((task): [number, Task] => [task.id, task]));
@@ -94,6 +98,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
 
   const reset = () => {
     boards = loaded();
+    guide.reset();
     instance += 1;
     seq = 0;
     for (const id of Object.keys(boards))
@@ -133,6 +138,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
 
   const routes: Routes[] = [
     globalRoutes,
+    guide.routes,
     editRoutes,
     acceptanceRoutes,
     reorderRoutes,

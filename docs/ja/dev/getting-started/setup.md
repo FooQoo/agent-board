@@ -52,6 +52,8 @@ just serve        # 保存されたボードとViteのHMR、Rustの監視(ポー
 pnpm --dir web dev --mode mock --port <port>
 ```
 
+サンプルデータは新しいデータ領域と同じ状態から始まります。最初にページを開くと[初回の案内](../../guide/quickstart.md#before-you-start-the-first-run-guide)が表示され、2枚のサンプルカードをメモリ上で動かします。スキップもできます。完了またはスキップしたあとは、開発サーバーを再起動するか `POST /api/__mock/reset` でサンプルデータを戻すまで表示されません。
+
 手でCLIを試すときは、一時的なデータ領域を使います。
 
 ```sh
