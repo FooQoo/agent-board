@@ -126,8 +126,11 @@ jobs:
         run: |
           pnpm --dir web install --frozen-lockfile
           pnpm --dir web build
+      # Tests that start agboard with a cleared environment lose LLVM_PROFILE_FILE, so the child writes its
+      # profile into the test's folder and a check that the folder is unchanged fails. The Rust job decides
+      # pass or fail; here a failed test still leaves a report.
       - name: Measure the Rust coverage
-        run: cargo llvm-cov nextest --locked --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest --locked --ignore-run-fail --lcov --output-path lcov.info
       - name: Measure the web coverage
         run: pnpm --dir web test:coverage
       - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
