@@ -198,7 +198,9 @@ test('the editor is not loaded on the first screen, and assets that are not regi
   expect(loaded.some((name) => /^app-[\w-]+\.js$/.test(name))).toBe(true);
   expect(loaded.some((name) => /^app-[\w-]+\.css$/.test(name))).toBe(true);
   // The editor itself (its small wrapper may load with the preloaded dialogs) and the diagram engines (one chunk per diagram kind, plus its layout and graph code) wait for their use.
-  expect(loaded.filter((name) => /RichMarkdownEditor\.impl|Diagram|cytoscape|elk|katex|codemirror/i.test(name)), loaded.join(' ')).toEqual([]);
+  // Only the module part of a name is matched: the content hash after it can spell anything, such as "Elk".
+  const moduleName = (name: string) => name.replace(/-.{8}\.(js|css)$/, '');
+  expect(loaded.filter((name) => /RichMarkdownEditor\.impl|Diagram|cytoscape|elk|katex|codemirror/i.test(moduleName(name))), loaded.join(' ')).toEqual([]);
 
   // Opening the add dialog loads the editor chunk, which the first screen did not need.
   const create = await openManualCreateDialog(page);
