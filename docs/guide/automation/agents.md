@@ -132,7 +132,7 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it breaks the request down before creating anything. It shows you the proposed tasks, each with its owner, scope, acceptance conditions, and order, and the epic they go in. Then it asks whether to put them on the board. It creates the cards only after you say yes. Any other reply, including a request for changes, leaves the board unchanged until you agree to a revised breakdown.
+When you ask an agent for work that is more than one task, it breaks the request down before creating anything. It shows you the proposed tasks, each with its owner, scope, acceptance conditions, and order, and the epic they go in. For new work, that can be a new epic, shown with its proposed ID and name. Then it asks whether to put them on the board. It creates the cards, and any new epic, only after you say yes. Any other reply, including a request for changes, leaves the board unchanged until you agree to a revised breakdown.
 
 If the request is already a task on the board, the agent asks on that task with choices to register, revise, or cancel. If you asked in conversation and no task exists yet, it asks in the conversation. That confirmation is the only question an agent asks outside the board.
 
