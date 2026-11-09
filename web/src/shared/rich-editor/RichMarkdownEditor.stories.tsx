@@ -169,6 +169,50 @@ export const LongDocument: Story = {
   },
 };
 
+/**
+ * A busy page draws its next frame only once the button is clicked (or after 300 ms with no
+ * click). Returns the function that gives the page its frames back.
+ */
+function holdFramesUntilClick(): () => void {
+  const request = window.requestAnimationFrame;
+  let held: Array<() => void> = [];
+  const release = () => {
+    const due = held;
+    held = [];
+    for (const run of due) run();
+  };
+  const afterClick = () => window.setTimeout(release, 0);
+  document.addEventListener('click', afterClick, true);
+  window.requestAnimationFrame = (callback) => {
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      request.call(window, callback);
+    };
+    held.push(run);
+    window.setTimeout(run, 300);
+    return 0;
+  };
+  return () => {
+    document.removeEventListener('click', afterClick, true);
+    window.requestAnimationFrame = request;
+    release();
+  };
+}
+
+/**
+ * The editor's first frame comes only after the heading action. The list items' first frame must
+ * not take the cursor back to the top: the action waits for that frame and runs after it.
+ */
+export const LongDocumentLateFrame: Story = {
+  args: { initial: LONG },
+  beforeEach: () => holdFramesUntilClick(),
+  play: async (context) => {
+    await LongDocument.play?.(context);
+  },
+};
+
 /** Typing changes the text: it is reported, written back with `-` bullets, and read at once. */
 export const EditText: Story = {
   play: async ({ canvasElement }) => {

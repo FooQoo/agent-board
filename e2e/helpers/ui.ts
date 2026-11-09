@@ -42,6 +42,17 @@ export async function waitForSync(page: Page): Promise<void> {
 }
 
 /**
+ * Wait until a card dropped with the mouse has finished its drop. After the pointer is released, the drag
+ * library animates the card back into place for a few hundred milliseconds. The card loses `card--dragging` as
+ * the animation starts, but the drag only ends when it finishes. Until then the whole page is `user-select: none`,
+ * any text selection is removed as soon as it is made, and the card still carries `data-dnd-dragging`. Text
+ * typed into the move dialog during that time can be lost, so wait for the attribute to go.
+ */
+export async function waitForDrop(page: Page): Promise<void> {
+  await expect(page.locator('[data-dnd-dragging]')).toHaveCount(0);
+}
+
+/**
  * Read the board again after the files under it were replaced. The server notices a changed file
  * 200 ms later, so the first read of a page opened right after the CLI wrote may predate the change,
  * and the page holds the stream's updates back while a drawer or a dialog is open and for 3 seconds

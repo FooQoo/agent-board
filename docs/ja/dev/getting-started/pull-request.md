@@ -42,7 +42,16 @@ TZ=UTC pnpm --dir web test:storybook
 pnpm --dir web build-storybook
 ```
 
-Webのフォーマットを適用するには`pnpm --dir web format`を実行します。
+Webのフォーマットを適用するには`pnpm --dir web format`を実行します。手元でカバレッジを測るには、Webは`pnpm --dir web test:coverage`（結果は`web/coverage/`に出ます）、Rustは`cargo llvm-cov nextest`を実行します（[cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov)は`cargo install cargo-llvm-cov --locked`でインストールします）。
+
+[CIのワークフロー](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml)は、プルリクエストと`main`へのpushのたびに、同じ確認を実行します。
+
+- Rustのジョブは、macOS 15で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
+- Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。
+- E2Eのジョブは、macOS 15でPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。15分ほどかかるため、プルリクエストでは実行せず、`main`へのpushと手動実行のときだけ動きます。
+- カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
+
+マージする前に、RustとWebのジョブが成功していることを確かめます。アプリの動作に関わる変更では、手元で`pnpm --dir e2e test`も実行します。`main`でE2Eのジョブが失敗したときは、トレースが`e2e-results`という成果物として実行結果に添付されます。
 
 Rustのテストは[cargo-nextest](https://nexte.st/)で実行します（`cargo install cargo-nextest --locked`でインストールします）。テストはそれぞれ別のプロセスで動き、`.config/nextest.toml`の設定で、2分を超えたテストは止まります。`TZ=UTC cargo test`も使えますが、テストバイナリごとに1つのプロセスでまとめて動き、時間の上限もありません。
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
-import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset } from '../helpers/ui';
+import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { openAnswer, sendAnswer } from '../helpers/answer';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
@@ -32,6 +32,7 @@ async function dragToLane(page: Page, id: number, targetLane: 'Todo' | 'Doing' |
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
+  await waitForDrop(page);
 }
 
 async function notReloaded(page: Page): Promise<void> {
@@ -68,11 +69,6 @@ test('dragging a task opens the reason dialog before moving it', async ({ page }
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');
   await expect(move).toContainText('Doing');
-  // dnd-kit keeps the source in a dropping animation briefly after pointer-up.
-  // Wait until that transition is finished before editing the newly opened dialog.
-  // The open dialog makes the board inert, so the card is located by CSS rather than by role.
-  const dragged = page.locator('.card').filter({ hasText: /^#16(?!\d)/ }).first();
-  await expect(dragged).not.toHaveClass(/card--dragging/);
   await move.getByLabel('Reason').fill('Move after reviewing the board.');
   await expect(move.getByLabel('Reason')).toHaveValue('Move after reviewing the board.');
   const moveResponse = page.waitForResponse(
@@ -96,7 +92,6 @@ test('a move after an external lane change is refused, shows the current status,
   const move = page.getByRole('dialog');
   const reason = move.getByRole('textbox', { name: 'Reason (optional)' });
   await expect(reason).toHaveValue('');
-  await expect(page.locator('.card--dragging')).toHaveCount(0);
   const before = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history.length;
   agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
   // The open dialog holds the stream's updates back, so it still shows the move from Todo. The server
@@ -177,8 +172,7 @@ test('users can add a task, choose its owner, and move it with a reason', async 
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const draggedTask = page.locator('.card').filter({ hasText: new RegExp(`^#${fresh}(?!\\d)`) }).first();
-  await expect(draggedTask).not.toHaveClass(/card--dragging/);
+  await waitForDrop(page);
 
   const move = page.getByRole('dialog');
   await expect(move).toContainText('Todo');

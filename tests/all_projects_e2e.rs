@@ -742,7 +742,7 @@ fn a_missing_data_area_lists_nothing_and_is_not_created_and_an_old_database_is_i
 }
 
 #[test]
-fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_projects() {
+fn each_project_in_a_listing_is_whole_while_another_command_keeps_changing_two_projects() {
     let home = tempdir().unwrap();
     for name in ["North", "South"] {
         ok(&run(home.path(), &["project", "create", name]));
@@ -756,8 +756,9 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
         let done = done.clone();
         let path = home.path().to_path_buf();
         std::thread::spawn(move || {
-            // One task at a time, North then South: any consistent moment has North equal to South or one
-            // ahead. A reader that took the projects at different moments could see South ahead of North.
+            // One task at a time, North then South. The listing reads the projects in turn, so the
+            // two may come from different moments (docs/dev/concepts/server-and-ui.md); each project
+            // must still come from before or after a save, never from the middle of one.
             for i in 0..25 {
                 add(&path, "North", &format!("n{i}"), "ai");
                 add(&path, "South", &format!("s{i}"), "ai");
@@ -766,21 +767,26 @@ fn a_listing_is_one_moment_even_while_another_command_keeps_changing_two_project
         })
     };
     let mut reads = 0;
+    let (mut last_n, mut last_s) = (0, 0);
     while !done.load(Ordering::SeqCst) || reads < 5 {
         let list = all(home.path(), &[]);
-        let north = entry(&list, "North");
-        let south = entry(&list, "South");
-        let (n, s) = (
-            // The task counts stand in for the revisions: each save adds one task.
-            north["tasks"].as_array().unwrap().len() as i64,
-            south["tasks"].as_array().unwrap().len() as i64,
+        let north = entry(&list, "North")["tasks"].as_array().unwrap().clone();
+        let south = entry(&list, "South")["tasks"].as_array().unwrap().clone();
+        // The task counts stand in for the revisions: each save adds one task, so a later
+        // listing never shows a project with fewer.
+        let (n, s) = (north.len(), south.len());
+        assert!(n <= 25 && s <= 25, "North {n} and South {s}");
+        assert!(
+            n >= last_n && s >= last_s,
+            "North {last_n}->{n}, South {last_s}->{s}"
         );
-        assert!(n - s == 0 || n - s == 1, "North {n} and South {s}");
-        assert_eq!(north["tasks"].as_array().unwrap().len() as i64, n);
-        assert_eq!(south["tasks"].as_array().unwrap().len() as i64, s);
-        // Each project's history: one event per task.
-        for c in north["tasks"].as_array().unwrap() {
-            assert_eq!(c["history"].as_array().unwrap().len(), 1);
+        (last_n, last_s) = (n, s);
+        // Each task is whole: its title and its one history entry come from the same save.
+        for (tasks, prefix) in [(&north, "n"), (&south, "s")] {
+            for c in tasks {
+                assert!(c["title"].as_str().unwrap().starts_with(prefix), "{c}");
+                assert_eq!(c["history"].as_array().unwrap().len(), 1);
+            }
         }
         reads += 1;
         if reads > 400 {

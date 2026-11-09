@@ -4,6 +4,8 @@
 
 # Agent Board
 
+[![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
+
 **人とAIが、同じボードで仕事を進める。**
 
 エージェントが何をしていて、何に答えを待っているか。タスク・質問・受入条件をひとつのボードで共有し、PCでもスマホでも返答できます。

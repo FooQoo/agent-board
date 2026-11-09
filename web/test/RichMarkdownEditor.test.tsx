@@ -95,6 +95,10 @@ async function mounted(
   );
   await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy());
   await waitFor(() => expect(ref.current).not.toBeNull());
+  // The editor is ready, and takes the handle's actions at once, when its label is set.
+  await waitFor(() =>
+    expect(document.querySelector('.ProseMirror')?.getAttribute('aria-label')).toBe('Description'),
+  );
   return { ...utils, ref, onChange };
 }
 

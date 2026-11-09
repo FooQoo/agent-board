@@ -24,6 +24,11 @@
               "interaction": true
             },
             {
+              "id": "editor-richmarkdowneditor--long-document-late-frame",
+              "states": ["first frame after the heading action", "cursor offset of Section 2"],
+              "interaction": true
+            },
+            {
               "id": "editor-richmarkdowneditor--edit-text",
               "states": ["typing", "change reported", "bullet normalized", "immediate read"],
               "interaction": true
