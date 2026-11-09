@@ -293,7 +293,8 @@ describe('App', () => {
   it('keeps showing the board and says Disconnected when the update stream drops', async () => {
     show();
     await screen.findByRole('region', { name: 'Todo' });
-    expect(screen.getByText(/^Synced \d\d:\d\d$/)).toBeTruthy();
+    // The board and the update stream connect separately, so Synced can come a render later.
+    expect(await screen.findByText(/^Synced \d\d:\d\d$/)).toBeTruthy();
 
     act(() => FakeEventSource.latest.emit('error'));
 
