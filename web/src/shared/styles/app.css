@@ -13,9 +13,15 @@
   box-sizing: border-box;
 }
 
+/* The app fills the window and scrolls inside its lanes and panels, so the page itself never moves
+ * up or down. On a touch screen, dragging the board would otherwise pull the whole page, and Safari
+ * on iPad bounces it past its edges. Sideways scrolling stays possible for windows narrower than the layout. */
 html,
 body {
   margin: 0;
+  height: 100%;
+  overflow-y: hidden;
+  overscroll-behavior: none;
 }
 
 body {
