@@ -80,15 +80,25 @@ fn license_file_holds_the_standard_mit_text() {
 
 #[test]
 fn check_version_accepts_the_matching_tag() {
-    let out = python("scripts/release/check-version.py", &["--tag", "v1.0.0"]);
+    let version = env!("CARGO_PKG_VERSION");
+    let out = python(
+        "scripts/release/check-version.py",
+        &["--tag", &format!("v{version}")],
+    );
     assert!(out.status.success(), "{}", text(&out));
-    assert!(text(&out).contains("1.0.0"));
+    assert!(text(&out).contains(version));
 }
 
 #[test]
 fn check_version_rejects_a_mismatched_tag() {
-    for tag in ["v1.0.1", "1.0.0", "v1.0", "v1.0.0-rc1"] {
-        let out = python("scripts/release/check-version.py", &["--tag", tag]);
+    let version = env!("CARGO_PKG_VERSION");
+    for tag in [
+        "v0.0.1".to_string(),
+        version.to_string(),
+        "v1".to_string(),
+        format!("v{version}-rc1"),
+    ] {
+        let out = python("scripts/release/check-version.py", &["--tag", &tag]);
         assert_eq!(out.status.code(), Some(1), "tag {tag}: {}", text(&out));
     }
 }

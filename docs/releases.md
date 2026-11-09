@@ -2,6 +2,36 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.1.0
+
+A release with fixes for the board in Safari and on iPad, and a Skill that confirms a breakdown before it adds cards.
+
+### Changes
+
+- **Break a request into tasks.** When you ask an agent for work that is more than one task, the Skill now has it propose the tasks, their order, and the epic, and add them to the board only after you say yes. See [Break a request into tasks](./guide/automation/agents.md#break-a-request-into-tasks).
+
+### Fixes
+
+- The board keeps updating while a side panel is open.
+- Dialogs are no longer drawn off to the side in Safari and on iPad.
+- The board page itself no longer scrolls up or down.
+- A project created with the CLI no longer shows "Project not found" when opened at once.
+- An answered question on the mobile monitor no longer flashes as withdrawn.
+
+### Breaking changes
+
+None.
+
+### Required update steps
+
+Update the command:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+```
+
+This release changes the Skill. Run `agboard update` to bring the installed Skill up to date; the Hook does not change. Start a new agent session afterwards so the agent loads the new Skill.
+
 ## v1.0.0
 
 Agent Board is a local board for sharing tasks, progress, and decisions with Claude Code and Codex. The first public release brings Homebrew installation and guided agent setup to macOS.
