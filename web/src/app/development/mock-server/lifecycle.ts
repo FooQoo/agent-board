@@ -1,6 +1,6 @@
 import type { Assignee, ColumnName, Task } from '../../../shared/api/contracts.ts';
 import type { MockBoard } from './boards.ts';
-import type { MockContext, MockResponse, Routes } from './types.ts';
+import type { MockContext, MockResponse, RouteRequest, Routes } from './types.ts';
 import {
   error,
   forbidden,
@@ -82,8 +82,8 @@ export const lifecycleRoutes: Routes = (context, request) => {
   if (!input) return invalidJson();
   if (creates)
     return input.requestKind === 'simple'
-      ? createTask(context, found, simpleRequest(found, input))
-      : createTask(context, found, input);
+      ? createTask(context, found, simpleRequest(found, input), request.language)
+      : createTask(context, found, input, request.language);
   const id = Number(taskMatch?.[1]);
   const task = found.tasks.find((item) => item.id === id);
   if (!task) return error(404, 'task_not_found', `task #${id} not found.`, `No task has ID ${id}.`);
@@ -146,6 +146,7 @@ function createTask(
   context: MockContext,
   found: MockBoard,
   input: Record<string, unknown>,
+  language: RouteRequest['language'],
 ): MockResponse {
   const title = String(input.title ?? '').trim();
   if (
@@ -177,7 +178,10 @@ function createTask(
     agentStatusChangedAt: at,
     isDraft: input.isDraft === true,
     archivedAt: null,
-    history: [{ at, reason: 'Created task in Todo.' }],
+    // The page's language, as `agboard serve` writes the history of the cards it creates.
+    history: [
+      { at, reason: language === 'ja' ? 'タスクをTodoに作成しました。' : 'Created task in Todo.' },
+    ],
     attachments: [],
   };
   context.commit(found.project.id, { ...found, tasks: [...found.tasks, task] }, [

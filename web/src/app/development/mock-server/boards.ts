@@ -1,4 +1,11 @@
 import type { Board, Epic, Problem, Project, Task } from '../../../shared/api/contracts.ts';
+import {
+  JA_BROKEN_BODY,
+  JA_EPIC_NAME,
+  JA_LONG_MARKDOWN,
+  JA_LONG_MARKDOWN_TITLE,
+  japaneseCard,
+} from './sampleJa.ts';
 
 /**
  * The sample boards of the sample-data server (`server.ts`). The fixture board and the long
@@ -19,6 +26,11 @@ export interface MockBoard {
 export interface MockSeed {
   fixture: Pick<Board, 'tasks'>;
   longMarkdown: string;
+  /**
+   * The language of the sample text: `en` (the default) keeps the fixture's words, `ja` puts the
+   * Japanese text of `sampleJa.ts` in their place. The browser demo passes the browser's language.
+   */
+  locale?: 'en' | 'ja';
 }
 
 /** An epic the sample board shows: its label and frame on a few cards. */
@@ -101,8 +113,8 @@ const EXTRA_PENDING: Record<
   },
 };
 
-function asBoard(project: Project, tasks: Task[]): MockBoard {
-  return { project, revision: 1, epics: [SAMPLE_EPIC], problems: [], tasks };
+function asBoard(project: Project, tasks: Task[], epic: Epic): MockBoard {
+  return { project, revision: 1, epics: [epic], problems: [], tasks };
 }
 
 /** A card with a long Markdown description, to try the description rendering with sample data. */
@@ -127,6 +139,11 @@ function longMarkdownTask(tasks: Task[], description: string): Task {
 export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
   // A deep copy, so a board changed by the mock never changes the seed it was made from.
   const fixtureTasks = structuredClone(seed.fixture.tasks);
+  const japanese = seed.locale === 'ja';
+  const epic: Epic = japanese ? { ...SAMPLE_EPIC, name: JA_EPIC_NAME } : SAMPLE_EPIC;
+  const brokenBody = japanese
+    ? JA_BROKEN_BODY
+    : "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n";
   const withEpic = (tasks: Task[]): Task[] =>
     tasks.map((task) => {
       const conditions = SAMPLE_CONDITIONS[task.id];
@@ -135,7 +152,7 @@ export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
         task.id === 16
           ? {
               ...task,
-              body: "---\nacceptance:\n  - id: AC-1\n    text: ''\n---\n\nThe body stays visible.\n",
+              body: brokenBody,
               acceptance: [],
               acceptanceError: true,
             }
@@ -148,20 +165,23 @@ export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
       const pending: Task = extraPending
         ? { ...withConditions, agentStatus: 'pending', ...structuredClone(extraPending) }
         : withConditions;
-      return SAMPLE_EPIC_TASKS.includes(task.id)
-        ? {
-            ...pending,
-            epic: { id: SAMPLE_EPIC.id, name: SAMPLE_EPIC.name, color: SAMPLE_EPIC.color },
-          }
+      const inEpic: Task = SAMPLE_EPIC_TASKS.includes(task.id)
+        ? { ...pending, epic: { id: epic.id, name: epic.name, color: epic.color } }
         : pending;
+      return japanese ? japaneseCard(inEpic) : inEpic;
     });
+  const longTask = (tasks: Task[]): Task =>
+    japanese
+      ? {
+          ...longMarkdownTask(tasks, JA_LONG_MARKDOWN),
+          title: JA_LONG_MARKDOWN_TITLE,
+          body: JA_LONG_MARKDOWN,
+        }
+      : longMarkdownTask(tasks, seed.longMarkdown);
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
   return {
-    [first.id]: asBoard(
-      first,
-      withEpic([...fixtureTasks, longMarkdownTask(fixtureTasks, seed.longMarkdown)]),
-    ),
-    [second.id]: asBoard(second, withEpic(structuredClone(fixtureTasks.slice(0, 3)))),
-    [third.id]: asBoard(third, []),
+    [first.id]: asBoard(first, withEpic([...fixtureTasks, longTask(fixtureTasks)]), epic),
+    [second.id]: asBoard(second, withEpic(structuredClone(fixtureTasks.slice(0, 3))), epic),
+    [third.id]: asBoard(third, [], epic),
   };
 }

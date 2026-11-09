@@ -48,6 +48,14 @@ The guide's routes (`mock-server/guide.ts`, `guideState.ts`, `guideCards.ts`) fo
 
 The guide's state lives only in memory. A new page is a new server, so the guide starts again on every page load, and **Skip** closes it for that page only. Its user-facing steps are described in the [quickstart](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 
+### Language
+
+The demo starts in the language of the visitor's browser. `demo/install.ts` reads the first entry of `navigator.languages` through `demo/locale.ts`: Japanese when it starts with `ja`, English otherwise. It applies that language before the first screen is drawn, so the screens and the first-run guide start in it, and passes it to the sample-data server as `locale`.
+
+The sample boards come from the English fixture. For a Japanese start, `mock-server/sampleJa.ts` puts Japanese words in their place: card titles and descriptions, history entries, waiting reasons, choices, acceptance conditions, the epic name, and the long Markdown description. The cards keep their IDs, lanes, and states. The sample-data mode (`pnpm --dir web dev --mode mock`) passes no `locale` and stays in English.
+
+The demo ignores any language an earlier visit left in the browser. A language chosen in the settings applies at once and lasts until the page is reloaded; a reload follows the browser's language again. The sample data keeps the language it started with.
+
 ### Hidden features
 
 A static site has no computer and no `agboard serve` to reach, so the demo hides the features that need one:
@@ -57,7 +65,7 @@ A static site has no computer and no `agboard serve` to reach, so the demo hides
 | Project Docs | `BoardWorkspace.tsx` passes no `onDocs`, so the header has no **Docs** button | Docs open files and folders on the computer. |
 | Mobile connection | `BoardSettings.tsx` leaves out the connection row and dialog | A phone connects to an `agboard serve`. |
 | Attachments | `EditorBody.tsx` and `RequestDialog.tsx` offer no images panel and ignore pasted or dropped images | Nothing is saved, so there is nowhere to keep them. |
-| Saved language and theme | `app/entry/board.tsx` and `BoardSettings.tsx` skip `/api/preferences` | They stay in the browser, as in the sample-data mode. |
+| Saved language and theme | `app/entry/board.tsx` and `BoardSettings.tsx` skip `/api/preferences` | There is no server to keep them. The theme stays in the browser, as in the sample-data mode; the language follows the browser on each page load. |
 
 The page also has a fixed token and an empty build ID, so it never reloads for a newer build. Nothing is saved: a reload starts again from the sample data.
 
@@ -87,6 +95,10 @@ The suite (`e2e/playwright.demo.config.ts` and `e2e/demo/`) serves `docs/.vitepr
 - after the guide, a card can be dragged to another lane
 - answering a waiting card and checking its last acceptance conditions moves it to Done automatically
 - the Docs button and the mobile connection are absent, and a reload starts again from the sample data
+- in a `ja-JP` browser, the screens, the guide, and the sample cards start in Japanese
+- a language chosen in the settings lasts until the page is reloaded, and a reload starts in the browser's language again
+
+The English tests set their browser locale to `en-US` and the Japanese ones to `ja-JP`, with `test.use({ locale })`.
 
 The Pages workflow runs the same suite after the demo is copied and before anything is uploaded, on pull requests too, so a broken demo is never published.
 

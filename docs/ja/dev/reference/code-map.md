@@ -106,8 +106,8 @@
 
 ### ブラウザのデモ
 
-- `web/src/app/development/mock-server/`: Node APIを使わないサンプルデータのサーバー。サンプルデータモード（`web/mock-api.ts`）とデモで共有します。
-- `web/src/app/development/demo/`: デモの開始（`install.ts`）、`fetch`と`EventSource`の差し替え（`transport.ts`）、画像の書き換え（`images.ts`）。
+- `web/src/app/development/mock-server/`: Node APIを使わないサンプルデータのサーバー。サンプルデータモード（`web/mock-api.ts`）とデモで共有します。`sampleJa.ts`はサンプルのボードの日本語の文です。
+- `web/src/app/development/demo/`: デモの開始（`install.ts`）、`fetch`と`EventSource`の差し替え（`transport.ts`）、画像の書き換え（`images.ts`）、始めの言語の判定（`locale.ts`）。
 - `web/demo-build.ts`: `demo`モードのViteプラグイン、ベースパス、ページに渡すサンプルデータ。
 - `e2e/playwright.demo.config.ts`と`e2e/demo/`: ビルド済みのドキュメントサイトを相手にするデモのスイート。[ブラウザのデモ](../concepts/demo.md)を参照してください。
 

@@ -42,7 +42,11 @@ export type {
  * (the event stream is refused) and `deleteFail=1` (deleting a card fails).
  */
 export function createMockServer(options: MockServerOptions): MockServer {
-  const seed = { fixture: options.fixture, longMarkdown: options.longMarkdown };
+  const seed = {
+    fixture: options.fixture,
+    longMarkdown: options.longMarkdown,
+    locale: options.locale,
+  };
   const now = options.now ?? (() => new Date().toISOString());
   /** Boards as loaded, with any task whose conditions are all met already moved to Done. */
   const loaded = (): Record<string, MockBoard> =>
