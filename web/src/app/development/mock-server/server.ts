@@ -1,9 +1,12 @@
 import type { Task } from '../../../shared/api/contracts.ts';
 import type { Change, ChangedEvent } from '../../../shared/data/api/contracts.ts';
+import { acceptanceRoutes } from './acceptance.ts';
 import { SAMPLE_IMAGE, SAMPLE_PROJECTS, sampleBoards, type MockBoard } from './boards.ts';
+import { completedTasks } from './completion.ts';
 import { editRoutes } from './edits.ts';
 import { lifecycleRoutes } from './lifecycle.ts';
 import { readRoutes } from './reads.ts';
+import { reorderRoutes } from './reorder.ts';
 import type {
   MockContext,
   MockRequest,
@@ -40,7 +43,16 @@ export type {
 export function createMockServer(options: MockServerOptions): MockServer {
   const seed = { fixture: options.fixture, longMarkdown: options.longMarkdown };
   const now = options.now ?? (() => new Date().toISOString());
-  let boards: Record<string, MockBoard> = sampleBoards(seed);
+  /** Boards as loaded, with any task whose conditions are all met already moved to Done. */
+  const loaded = (): Record<string, MockBoard> =>
+    Object.fromEntries(
+      Object.entries(sampleBoards(seed)).map(([id, board]) => {
+        const { tasks } = completedTasks(board, now());
+        const byId = new Map(tasks.map((task): [number, Task] => [task.id, task]));
+        return [id, { ...board, tasks: board.tasks.map((task) => byId.get(task.id) ?? task) }];
+      }),
+    );
+  let boards: Record<string, MockBoard> = loaded();
   const listeners = new Set<(event: ChangedEvent) => void>();
   // A reset starts a new instance, as a restarted server does: the page then drops what it holds.
   let instance = 0;
@@ -62,8 +74,13 @@ export function createMockServer(options: MockServerOptions): MockServer {
     commit(projectId, next, changes) {
       const board = boards[projectId];
       if (!board) return;
-      boards = { ...boards, [projectId]: { ...next, revision: board.revision + 1 } };
+      const saved: MockBoard = { ...next, revision: board.revision + 1 };
+      boards = { ...boards, [projectId]: saved };
       emit(projectId, changes);
+      // As `agboard serve` does after a write, move AI tasks whose conditions are all met to Done
+      // as a change of its own. The completed tasks no longer qualify, so this stops after one round.
+      const completed = completedTasks(saved, now());
+      if (completed.tasks.length > 0) context.replaceTasks(saved, completed.tasks, completed.changes);
     },
     replaceTasks(board, updated, changes) {
       const byId = new Map(updated.map((task): [number, Task] => [task.id, task]));
@@ -76,7 +93,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
   };
 
   const reset = () => {
-    boards = sampleBoards(seed);
+    boards = loaded();
     instance += 1;
     seq = 0;
     for (const id of Object.keys(boards))
@@ -114,7 +131,14 @@ export function createMockServer(options: MockServerOptions): MockServer {
     return null;
   };
 
-  const routes: Routes[] = [globalRoutes, editRoutes, readRoutes, lifecycleRoutes];
+  const routes: Routes[] = [
+    globalRoutes,
+    editRoutes,
+    acceptanceRoutes,
+    reorderRoutes,
+    readRoutes,
+    lifecycleRoutes,
+  ];
 
   const handle = (request: MockRequest): MockResult | null => {
     // Only the path and query matter; a non-network base keeps the core free of host names.
