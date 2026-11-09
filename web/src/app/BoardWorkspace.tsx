@@ -86,7 +86,8 @@ export function BoardWorkspace({
         onAdd={actions.onAdd}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
-        onDocs={actions.onDocs}
+        // Docs open the project's files on this computer; the demo has no such files.
+        onDocs={import.meta.env.MODE === 'demo' ? undefined : actions.onDocs}
       />
       <div
         className="app__body"

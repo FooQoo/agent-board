@@ -11,7 +11,7 @@ export interface MockRequest {
   page?: string;
   /** Request headers with lowercase names. `x-agboard-token` and `x-agboard-language` are read. */
   headers?: Record<string, string | undefined>;
-  /** The request body as text. Form bodies (images) are not read. */
+  /** The request body as text. For a multipart form, the text of its `metadata` field: images are not read. */
   body?: string;
 }
 

@@ -57,7 +57,7 @@ export function RequestDialog({
   const dirty = request !== '' || epicId !== '' || attachmentsState.attachments.length > 0;
 
   const pasteImage = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (saving) return;
+    if (saving || import.meta.env.MODE === 'demo') return;
     const files = Array.from(event.clipboardData.files);
     if (files.length === 0) return;
     event.preventDefault();
@@ -167,16 +167,19 @@ export function RequestDialog({
           </DropdownMenu>
         )}
       </div>
-      <AttachmentPanel
-        attachments={attachmentsState.attachments}
-        onFiles={attachmentsState.addFiles}
-        onRemove={attachmentsState.remove}
-        notice={attachmentsState.error}
-        disabled={saving}
-        className="request-dialog__attachments"
-        optionalHeader
-        layout="tray"
-      />
+      {/* The demo build keeps nothing it could save pictures to. */}
+      {import.meta.env.MODE === 'demo' ? null : (
+        <AttachmentPanel
+          attachments={attachmentsState.attachments}
+          onFiles={attachmentsState.addFiles}
+          onRemove={attachmentsState.remove}
+          notice={attachmentsState.error}
+          disabled={saving}
+          className="request-dialog__attachments"
+          optionalHeader
+          layout="tray"
+        />
+      )}
     </DialogFrame>
   );
 }

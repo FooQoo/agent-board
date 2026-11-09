@@ -9,9 +9,13 @@ import { requestTutorial } from './onboarding/tutorialRequest';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
-/** The board saves the language and theme on its own server; the sample-data mode has none. */
+/** The board saves the language and theme on its own server; the sample-data mode and the demo have none. */
 const boardPreferences: PreferencesEndpoint | undefined =
-  import.meta.env.MODE === 'mock' ? undefined : { url: '/api/preferences', token: readToken };
+  import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo'
+    ? undefined
+    : { url: '/api/preferences', token: readToken };
+/** A phone connects to an `agboard serve` on this computer; the demo on a static site has none. */
+const phoneConnection = import.meta.env.MODE !== 'demo';
 
 /**
  * The settings dialog of the PC board and the mobile connection dialog its entry row opens.
@@ -37,21 +41,25 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 requestTutorial();
               }}
             />
-            <ConnectionEntryRow
-              onOpen={() => {
-                onOpenChange(false);
-                setConnectionOpen(true);
-              }}
-            />
+            {phoneConnection ? (
+              <ConnectionEntryRow
+                onOpen={() => {
+                  onOpenChange(false);
+                  setConnectionOpen(true);
+                }}
+              />
+            ) : null}
           </div>
         }
       />
-      <ConnectionSettings
-        open={connectionOpen}
-        onOpenChange={setConnectionOpen}
-        restoreFocusRef={restoreFocusRef}
-        projectId={projectId}
-      />
+      {phoneConnection ? (
+        <ConnectionSettings
+          open={connectionOpen}
+          onOpenChange={setConnectionOpen}
+          restoreFocusRef={restoreFocusRef}
+          projectId={projectId}
+        />
+      ) : null}
     </>
   );
 }

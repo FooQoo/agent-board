@@ -67,7 +67,7 @@ export function Header({
   onBack = () => {},
   projectSwitcher = null,
   settings,
-  logoSrc = '/logo-white.png',
+  logoSrc = `${import.meta.env.BASE_URL}logo-white.png`,
   settingsSize = 'm',
 }: HeaderProps) {
   const { t } = useTranslation();

@@ -84,6 +84,16 @@ describe('board build', () => {
     expect(files('assets')).not.toContain('app.js');
   });
 
+  it('ships none of the sample-data server or the demo transport', () => {
+    const graph = JSON.parse(read('chunk-graph.json')) as {
+      chunks: Record<string, { sources: string[] }>;
+    };
+    const sources = Object.values(graph.chunks).flatMap((chunk) => chunk.sources);
+    expect(sources.filter((source) => source.startsWith('src/app/development/'))).toEqual([]);
+    for (const name of files('assets').filter((file) => file.endsWith('.js')))
+      expect(read(`assets/${name}`), name).not.toMatch(/DemoEventSource|demo-token|__mock\//);
+  });
+
   it('loads the editor, its dialogs and the Markdown renderer after the first screen', () => {
     const graph = JSON.parse(read('chunk-graph.json')) as {
       chunks: Record<string, { sources: string[]; packages: string[] }>;

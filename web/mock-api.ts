@@ -24,10 +24,20 @@ function headerOf(req: IncomingMessage, name: string): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** The body as text; for a multipart form, the text of its `metadata` field (see `MockRequest`). */
 async function readBody(req: IncomingMessage): Promise<string> {
-  let body = '';
-  for await (const chunk of req) body += chunk;
-  return body;
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(Buffer.from(chunk));
+  const raw = Buffer.concat(chunks);
+  const type = headerOf(req, 'content-type') ?? '';
+  if (!type.startsWith('multipart/form-data')) return raw.toString('utf8');
+  try {
+    const form = await new Response(raw, { headers: { 'Content-Type': type } }).formData();
+    const metadata = form.get('metadata');
+    return typeof metadata === 'string' ? metadata : '';
+  } catch {
+    return '';
+  }
 }
 
 /**

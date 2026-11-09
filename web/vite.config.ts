@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { configDefaults, defineConfig } from 'vitest/config';
 import { chunkGraph } from './chunk-graph.ts';
+import { DEMO_BASE, DEMO_OUT_DIR, demoBuild } from './demo-build.ts';
 import { liveApi, liveProxy } from './live-api.ts';
 import { mockApi } from './mock-api.ts';
 
@@ -18,14 +19,18 @@ const REAL_WINDOW_FILES = [
 export default defineConfig(({ mode }) => {
   const backendOrigin = `http://127.0.0.1:${process.env.AGBOARD_BACKEND_PORT ?? '7421'}`;
   const webOrigin = `http://127.0.0.1:${process.env.AGBOARD_WEB_PORT ?? '7420'}`;
+  // The demo build runs in the browser alone and is served from a folder of the documentation site.
+  const demo = mode === 'demo';
 
   return {
+    ...(demo ? { base: DEMO_BASE } : {}),
     plugins: [
       react(),
       tailwindcss(),
       chunkGraph(),
       ...(mode === 'mock' ? [mockApi()] : []),
       ...(mode === 'live' ? [liveApi(backendOrigin)] : []),
+      ...(demo ? [demoBuild()] : []),
     ],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
@@ -35,7 +40,7 @@ export default defineConfig(({ mode }) => {
       ...(mode === 'live' ? { proxy: { '/api': liveProxy(backendOrigin, webOrigin) } } : {}),
     },
     build: {
-      outDir: 'dist',
+      outDir: demo ? DEMO_OUT_DIR : 'dist',
       emptyOutDir: true,
       cssCodeSplit: false,
       modulePreload: false,

@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --config vite.monitor.config.ts && vite build --config vite.sandbox.config.ts && node scripts/finalize-monitor-build.mjs && node scripts/compress-dist.mjs",
+    "build:demo": "vite build --mode demo",
+    "preview:demo": "vite preview --mode demo --port 4174 --strictPort",
     "typecheck": "tsc --noEmit",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "format": "biome format --write .",

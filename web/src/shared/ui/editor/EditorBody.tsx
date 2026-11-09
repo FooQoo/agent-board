@@ -77,6 +77,9 @@ export function useOverLimit(
   };
 }
 
+/** The demo build keeps nothing it could save pictures to, so it offers no images panel. */
+const SAVES_IMAGES = import.meta.env.MODE !== 'demo';
+
 /** The body shared by the edit and the add dialogs: outline, title, the rich editor and the images. */
 export function EditorBody({
   title,
@@ -106,6 +109,7 @@ export function EditorBody({
   const { t } = useTranslation();
   const ids = useId();
   const titleId = `${ids}-title`;
+  const addFiles = SAVES_IMAGES ? onFiles : undefined;
   const [cursor, setCursor] = useState(0);
 
   const deferred = useDeferredValue(description);
@@ -129,25 +133,25 @@ export function EditorBody({
       aria-label={body}
       className="editor__body"
       onPasteCapture={(event) => {
-        if (disabled || !onFiles) return;
+        if (disabled || !addFiles) return;
         const files = Array.from(event.clipboardData.files).filter((file) =>
           file.type.startsWith('image/'),
         );
         if (files.length === 0) return;
         event.preventDefault();
         event.stopPropagation();
-        onFiles(files);
+        addFiles(files);
       }}
       onDragOver={(event) => {
-        if (!disabled && onFiles && event.dataTransfer.types.includes('Files'))
+        if (!disabled && addFiles && event.dataTransfer.types.includes('Files'))
           event.preventDefault();
       }}
       onDrop={(event) => {
-        if (disabled || !onFiles) return;
+        if (disabled || !addFiles) return;
         const files = Array.from(event.dataTransfer.files);
         if (files.length === 0) return;
         event.preventDefault();
-        onFiles(files);
+        addFiles(files);
       }}
     >
       <div className="editor__side">
@@ -233,11 +237,11 @@ export function EditorBody({
         </div>
         {dock && <div className="editor__dock">{dock}</div>}
       </div>
-      {onFiles && onRemoveAttachment && (
+      {onFiles && onRemoveAttachment && (addFiles || asideTop || sidebar) && (
         <div className={sidebar ? 'editor__aside editor__aside--progress' : 'editor__aside'}>
           {asideTop}
           {sidebar}
-          {onAttachmentsOpenChange ? (
+          {!addFiles ? null : onAttachmentsOpenChange ? (
             <CollapsibleSection
               title={t('editor.attachments')}
               icon={
@@ -249,7 +253,7 @@ export function EditorBody({
             >
               <AttachmentPanel
                 attachments={attachments}
-                onFiles={onFiles}
+                onFiles={addFiles}
                 onRemove={onRemoveAttachment}
                 onInsert={insertImage}
                 notice={attachmentNotice}
@@ -260,7 +264,7 @@ export function EditorBody({
           ) : (
             <AttachmentPanel
               attachments={attachments}
-              onFiles={onFiles}
+              onFiles={addFiles}
               onRemove={onRemoveAttachment}
               onInsert={insertImage}
               notice={attachmentNotice}

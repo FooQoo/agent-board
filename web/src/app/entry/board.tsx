@@ -14,25 +14,37 @@ import '../../shared/styles/ui.css';
 import '../../shared/styles/theme.css';
 
 initializeTheme();
-// The browser copy painted the first screen; the board's saved value replaces it when it differs.
-if (import.meta.env.MODE !== 'mock')
-  void syncPreferences({ url: '/api/preferences', token: readToken });
+// The sample-data mode and the demo have no server to keep the language and theme: they stay in
+// the browser. Otherwise the browser copy painted the first screen, and the board's saved value
+// replaces it when it differs.
+const serverless = import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo';
+if (!serverless) void syncPreferences({ url: '/api/preferences', token: readToken });
 
 const initial =
   import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;
 
-const root = document.getElementById('root');
-if (!root) throw new Error('#root not found');
-if (import.meta.env.MODE === 'mock' && new URLSearchParams(window.location.search).has('view')) {
-  // Sample-data mode only: a single part on its own page (see `src/mockMarkdown.tsx`).
-  void import('../development/MarkdownSample').then(({ MarkdownSample }) => {
-    createRoot(root).render(<MarkdownSample search={window.location.search} />);
+function render(): void {
+  const root = document.getElementById('root');
+  if (!root) throw new Error('#root not found');
+  if (import.meta.env.MODE === 'mock' && new URLSearchParams(window.location.search).has('view')) {
+    // Sample-data mode only: a single part on its own page (see `src/mockMarkdown.tsx`).
+    void import('../development/MarkdownSample').then(({ MarkdownSample }) => {
+      createRoot(root).render(<MarkdownSample search={window.location.search} />);
+    });
+  } else
+    createRoot(root).render(
+      <StrictMode>
+        <NuqsAdapter>
+          <App initial={initial} />
+        </NuqsAdapter>
+      </StrictMode>,
+    );
+}
+
+// The demo build answers the board's requests in the page; that is in place before the first one.
+if (import.meta.env.MODE === 'demo')
+  void import('../development/demo/install').then(({ installDemo }) => {
+    installDemo();
+    render();
   });
-} else
-  createRoot(root).render(
-    <StrictMode>
-      <NuqsAdapter>
-        <App initial={initial} />
-      </NuqsAdapter>
-    </StrictMode>,
-  );
+else render();

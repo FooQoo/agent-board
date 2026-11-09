@@ -73,12 +73,17 @@ export const lifecycleRoutes: Routes = (context, request) => {
   }
 
   const taskMatch = /^tasks\/(\d+)\/(move|answer)$/.exec(rest);
-  if (rest !== 'tasks' && !taskMatch) return null;
+  const creates = rest === 'tasks' || rest === 'tasks/multipart';
+  if (!creates && !taskMatch) return null;
   if (!request.token) return forbidden();
   if (!found) return projectNotFound();
+  // A form body arrives as the text of its `metadata` field; its images are not read.
   const input = parseBody(request.body);
   if (!input) return invalidJson();
-  if (rest === 'tasks') return createTask(context, found, input);
+  if (creates)
+    return input.requestKind === 'simple'
+      ? createTask(context, found, simpleRequest(found, input))
+      : createTask(context, found, input);
   const id = Number(taskMatch?.[1]);
   const task = found.tasks.find((item) => item.id === id);
   if (!task) return error(404, 'task_not_found', `task #${id} not found.`, `No task has ID ${id}.`);
@@ -119,13 +124,35 @@ function archiveDone(
   });
 }
 
+const TITLE_LIMIT = 100;
+
+/**
+ * A simple request as the server reads it: an AI card whose title is the first line of the text
+ * that is not blank, cut to the title limit, in the epic the request names.
+ */
+function simpleRequest(found: MockBoard, input: Record<string, unknown>): Record<string, unknown> {
+  const description = String(input.description ?? '');
+  const firstLine = description.split('\n').find((line) => line.trim() !== '') ?? '';
+  const epic = found.epics.find((item) => item.id === input.epicId);
+  return {
+    title: [...firstLine.trim()].slice(0, TITLE_LIMIT).join(''),
+    description,
+    assignee: 'ai',
+    epic: epic ? { id: epic.id, name: epic.name, color: epic.color } : null,
+  };
+}
+
 function createTask(
   context: MockContext,
   found: MockBoard,
   input: Record<string, unknown>,
 ): MockResponse {
   const title = String(input.title ?? '').trim();
-  if (!title || title.length > 100 || !['ai', 'human'].includes(String(input.assignee)))
+  if (
+    !title ||
+    [...title].length > TITLE_LIMIT ||
+    !['ai', 'human'].includes(String(input.assignee))
+  )
     return error(422, 'validation', 'invalid task.', 'A title and assignee are required.');
   const at = context.now();
   const id = Math.max(0, ...found.tasks.map((task) => task.id)) + 1;
@@ -144,7 +171,7 @@ function createTask(
     pendingReason: null,
     pendingRequestId: null,
     pendingChoices: [],
-    epic: null,
+    epic: (input.epic as Task['epic'] | undefined) ?? null,
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,

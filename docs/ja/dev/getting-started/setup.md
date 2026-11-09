@@ -65,6 +65,24 @@ cargo run -- serve --port <port>
 
 データ領域には、プロジェクトのファイルを保存する`shared/`、サーバーの稼働情報を示す`serve.json`、多重起動を防ぐ`lifecycle.lock`があります。データベースは使いません。`task.json`はタスクの現在の状態（`formatVersion: 1`）を、`TASK.md`は本文・受入条件と`at`/`reason`の履歴を持ちます。`formatVersion`が1でないファイルは未対応として報告し、移行しません。すべてのファイルは[データモデル](../reference/files.md#ディスク上のファイル)で説明しています。
 
+## デモビルド {#demo-build}
+
+デモビルドは、同じサンプルデータのボードをサーバーなしの静的サイトで動かします。ドキュメントサイトで公開するのはこの版です。
+
+```sh
+pnpm --dir web build:demo     # web/dist-demo/ に書き出す
+pnpm --dir web preview:demo   # http://127.0.0.1:4174/agent-board/demo/
+```
+
+製品のビルドとの違いは次のとおりです。
+
+- ページは`/agent-board/demo/`から配信します。別のフォルダで配信するときは、ビルド時に`AGBOARD_DEMO_BASE`を指定します（例: `AGBOARD_DEMO_BASE=/demo/`）。
+- サンプルデータのサーバーはページの中で動きます。置き換えた`fetch`と`EventSource`が`/api/`へのリクエストとライブ更新をそこへ送り、添付画像もそこから`data:` URLとして返します。
+- トークンは固定で、ビルドIDは空です。そのため新しいビルドを理由に再読み込みすることはありません。ページを再読み込みするとサンプルデータが元に戻り、初回の案内がもう一度表示されます。
+- パソコンが必要な機能は表示しません。対象は、プロジェクトのDocs（ファイルやフォルダを開くボタンを含む）、モバイルモニターの接続、貼り付けやドロップした画像の保存です。
+
+デモのコードは`web/src/app/development/demo/`にあり、Viteを`--mode demo`で動かしたときだけ読み込まれます。`pnpm --dir web build`の成果物には含まれず、`web/test/monitor/build-contract.test.ts`がそれを確かめます。
+
 ## Storybook
 
 Storybookでは、UI部品とページ全体を架空のデータで表示できます。ツールバーで表示言語、ライト・ダークモード、アクセントの色、表示幅を切り替えられます。Storyは対象部品と同じ場所に`web/src/**/*.stories.tsx`として置きます。ページStoryは、アプリと同じ部品を組み合わせて画面全体を確認します。共通のfixture、decorator、テスト用の部品は`web/.storybook/`にあります。

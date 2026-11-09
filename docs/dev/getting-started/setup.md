@@ -65,6 +65,24 @@ cargo run -- serve --port <port>
 
 The data area holds `shared/` (the projects as plain files), `serve.json` while a server runs, and `lifecycle.lock`. Nothing is stored in a database. `task.json` holds a task's current state (`formatVersion: 1`), and `TASK.md` holds its body, acceptance conditions, and `at`/`reason` history; a file with any other `formatVersion` is reported as unsupported and never migrated. The [data model](../reference/files.md#files-on-disk) describes every file.
 
+## Demo build
+
+The demo build runs the board with the same sample data on a static site, with no server. It is the version published on the documentation site:
+
+```sh
+pnpm --dir web build:demo     # writes web/dist-demo/
+pnpm --dir web preview:demo   # http://127.0.0.1:4174/agent-board/demo/
+```
+
+How it differs from the product build:
+
+- The pages are served from `/agent-board/demo/`. Set `AGBOARD_DEMO_BASE` (for example `AGBOARD_DEMO_BASE=/demo/`) when building to use another folder.
+- The sample-data server runs in the page. A replacement `fetch` and `EventSource` send `/api/` requests and the live stream to it, and attachment images are answered from it as `data:` URLs.
+- The page has a fixed token and an empty build ID, so it never reloads for a new build. Reloading the page restores the sample data and opens the first-run guide again.
+- Features that need a computer are hidden: project Docs (with its buttons that open files and folders), the mobile monitor connection, and saving pasted or dropped images.
+
+The demo code lives in `web/src/app/development/demo/` and loads only when Vite runs with `--mode demo`. `pnpm --dir web build` contains none of it, and `web/test/monitor/build-contract.test.ts` checks that.
+
 ## Storybook
 
 Storybook shows UI parts and complete pages with synthetic data. Its toolbar switches the language, light or dark mode, accent color, and width. Stories sit beside the parts they show, as `web/src/**/*.stories.tsx`; page-level Stories compose the same parts used by the application. The shared fixtures, decorators, and test adapters are in `web/.storybook/`.

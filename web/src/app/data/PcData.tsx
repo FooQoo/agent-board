@@ -36,7 +36,8 @@ export function PcDataProvider({
   const onReady = useCallback((build: string) => {
     setServerBuild(build === '' ? null : build);
     // A save made while the stream was down is read again.
-    if (import.meta.env.MODE !== 'mock') void syncPreferences({ url: '/api/preferences' });
+    if (import.meta.env.MODE !== 'mock' && import.meta.env.MODE !== 'demo')
+      void syncPreferences({ url: '/api/preferences' });
   }, []);
   // The saved language and theme are shown at once; the board is not read again for them.
   const onPreferences = useCallback((event: unknown) => applyPreferenceEvent(event as Event), []);
