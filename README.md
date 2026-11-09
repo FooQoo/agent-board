@@ -35,6 +35,8 @@ flowchart LR
     D -- "local server" --> B["Browser"]
 ```
 
+To see it for yourself, [try the demo](https://fooqoo.github.io/agent-board/demo/) in your browser, with nothing to install. It walks you through the first-run guide on sample data, and reloading the page starts it over.
+
 ## Features
 
 - **The board.** Todo, Doing, and Done, with Running and Pending states on top. Answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/use/board)
