@@ -31,6 +31,17 @@ Always:
 - Point `AGBOARD_HOME` at a temporary directory in tests and never use port 7420.
 - Never commit machine-specific absolute paths.
 
+## Release notes
+
+Write the notes of every release in the same shape, so that the documentation site can read them. See [Check published release notes](docs/dev/docs-and-images.md#check-published-release-notes) for how the site reads them.
+
+- Write the GitHub Release body in English, and keep its review copy in `releases/vX.Y.Z.md`.
+- Start with one sentence that says what the release is, then use these four headings in this order, each exactly once: `## Changes`, `## Fixes`, `## Breaking changes`, and `## Required update steps`.
+- Keep a heading even when it has nothing to report, and write `None.` under it. A missing or repeated heading stops the documentation site build.
+- Describe each change from the user's side, not as implementation history. Under `## Required update steps`, give the upgrade command and say whether `agboard update` is needed.
+- Add the version to `docs/releases.md` and `docs/ja/releases.md` with `###` headings: Changes, Fixes, Breaking changes, Required update steps, and in Japanese 変更点, 不具合修正, 互換性に影響する変更, 必要な更新操作. Write `ありません。` under an empty Japanese heading.
+- Before you publish, check the body with `node scripts/release/docs-release.mjs --releases-json <file>`.
+
 ## Documentation style
 
 Write for people using or developing Agent Board. Apply these rules to the README and the documentation site, and follow [Documentation and images](docs/dev/docs-and-images.md) for preview and verification commands.

@@ -52,7 +52,7 @@ node scripts/release/docs-release.mjs --none                                 # t
 pnpm --dir docs build
 ```
 
-- It counts only releases with `draft=false`, `prerelease=false`, and a `vMAJOR.MINOR.PATCH` tag, and takes the newest by version. The version in `Cargo.toml` is never used. The release notes are written in English only. Each release body needs the four headings `## Changes`, `## Fixes`, `## Breaking changes`, and `## Required update steps`, each exactly once; a missing or repeated heading stops the script.
+- It counts only releases with `draft=false`, `prerelease=false`, and a `vMAJOR.MINOR.PATCH` tag, and takes the newest by version. The version in `Cargo.toml` is never used. The release notes are written in English only. Each release body needs the four headings `## Changes`, `## Fixes`, `## Breaking changes`, and `## Required update steps`, each exactly once; a missing or repeated heading stops the script. Keep a heading that has nothing to report and write `None.` under it.
 - It writes `docs/.vitepress/release.json` (ignored by Git) with the state it found. `--fixture` uses the review copies in `releases/` and records the fixture state.
 - The Pages workflow runs the script with `--github` before the build, on `main` pushes, on `release` events (published, edited, deleted), and by hand. If the API call fails or a release is invalid, the build stops and the published site stays as it is. Pull requests build offline with the committed state. A release published with the workflow's own token may not start the workflow; run it by hand.
 - `releases/vX.Y.Z.md` is the review copy of the release notes. The GitHub Release body is the source of truth once it is published.

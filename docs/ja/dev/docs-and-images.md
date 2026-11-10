@@ -52,7 +52,7 @@ node scripts/release/docs-release.mjs --none                                 # �
 pnpm --dir docs build
 ```
 
-- 対象にするのは、`draft=false`、`prerelease=false`で、タグが`vMAJOR.MINOR.PATCH`の形のリリースだけで、その中で版が最も新しいものを使います。`Cargo.toml`の版は使いません。リリースノートは英語だけで書きます。各リリースの本文には、`## Changes`、`## Fixes`、`## Breaking changes`、`## Required update steps`の4つの見出しが1回ずつ要ります。見出しが欠けていたり、重なっていたりすると、スクリプトは止まります。
+- 対象にするのは、`draft=false`、`prerelease=false`で、タグが`vMAJOR.MINOR.PATCH`の形のリリースだけで、その中で版が最も新しいものを使います。`Cargo.toml`の版は使いません。リリースノートは英語だけで書きます。各リリースの本文には、`## Changes`、`## Fixes`、`## Breaking changes`、`## Required update steps`の4つの見出しが1回ずつ要ります。見出しが欠けていたり、重なっていたりすると、スクリプトは止まります。書くことがない見出しも残し、その下に`None.`と書きます。
 - 見つけた状態を`docs/.vitepress/release.json`（Gitは無視します）に書き出します。`--fixture`は`releases/`のレビュー用の原稿を使い、fixtureの状態として記録します。
 - Pagesのワークフローは、`main`へのプッシュ、`release`イベント（published、edited、deleted）、手動の実行で、ビルドの前にこのスクリプトを`--github`で実行します。APIの呼び出しが失敗する、またはリリースが不正なときは、ビルドが止まり、公開済みのサイトはそのまま残ります。プルリクエストは、コミットしてある状態で、オフラインでビルドします。ワークフロー自身のトークンで公開したリリースは、ワークフローを起動しないことがあります。その場合は手動で実行してください。
 - `releases/vX.Y.Z.md`は、リリースノートのレビュー用の原稿です。公開後は、GitHub Releaseの本文が正本です。
