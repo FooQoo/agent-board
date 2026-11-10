@@ -6,6 +6,10 @@ What changed in each published version of Agent Board, newest first. Each versio
 
 A release with one fix to how the board reads files that change while they are being read.
 
+### Changes
+
+None.
+
 ### Fixes
 
 - The board no longer keeps showing missing or outdated tasks after another program deletes and rewrites a project's files while the board is reading them.
