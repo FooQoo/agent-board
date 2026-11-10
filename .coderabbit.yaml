@@ -1,6 +1,6 @@
 # CodeRabbit reviews pull requests to this repository.
 # Reference: https://docs.coderabbit.ai/reference/configuration
-language: ja-JP
+language: en-US
 reviews:
   profile: chill
   high_level_summary: true
