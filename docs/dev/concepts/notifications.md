@@ -30,6 +30,8 @@ flowchart LR
    A request does not wait for that reload when the project's folder and the index disagree. The project list reads the files, so it names a project as soon as the CLI creates it. A request for a project whose folder exists but is not yet in the index reads that project into the index first, and a request for a project whose folder is gone answers `project_not_found` at once. The changes found by such a read are sent with the watcher's next reload.
 4. After a save that changed something, the CLI reads `serve.json` and sends `POST http://127.0.0.1:<port>/api/notify` over a plain TCP connection with a 300 ms budget, ignoring failure. Agents that edit files directly need not notify.
 5. After a reload, the server compares the parsed data with the data before it. A save that changes nothing a Summary or Detail shows sends no event. A change set gets the next `seq` of this server run, and every open stream receives SSE `changed` with the changed resources and facets.
+
+   A reload does not read a project whose files still hash to the content version of its last read. When the files changed while that read was in progress, the read may mix the states before and after the change, so the next reload reads the project even if its files are back at that version, as when a folder is deleted and written again.
 6. There is no periodic polling anywhere.
 
 ## Facets and change events
