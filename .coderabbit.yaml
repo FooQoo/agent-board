@@ -1,0 +1,17 @@
+# CodeRabbit reviews pull requests to this repository.
+# Reference: https://docs.coderabbit.ai/reference/configuration
+language: ja-JP
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  # Generated or lock files: reviewing them adds noise and no findings.
+  path_filters:
+    - "!Cargo.lock"
+    - "!**/pnpm-lock.yaml"
+    - "!THIRD_PARTY_NOTICES.txt"
+    - "!web/src/**/story-coverage.*.json"
+    - "!**/__snapshots__/**"
