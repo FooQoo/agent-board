@@ -1,14 +1,29 @@
 # CodeRabbit reviews pull requests to this repository.
 # Reference: https://docs.coderabbit.ai/reference/configuration
 language: en-US
+# Comment only on what must be fixed before merging (at most 250 characters).
+tone_instructions: >-
+  Only report problems that must be fixed before merging: bugs, data loss, security holes,
+  crashes, and races. Do not suggest refactorings, style, naming, or other improvements.
 reviews:
-  profile: chill
+  profile: quiet
   high_level_summary: true
   poem: false
   auto_review:
     enabled: true
     drafts: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
   path_instructions:
+    # Findings are limited to defects; improvements are not wanted.
+    - path: "**"
+      instructions: |
+        Report only defects that must be fixed before merging: incorrect behavior, unhandled
+        errors, data loss or corruption, security problems, crashes, races, and broken
+        compatibility with stored files or the documented interface. Do not comment on style,
+        naming, readability, refactoring, performance that is not a defect, or optional
+        improvements. When nothing must be fixed, post no inline comments.
     # Behavior changes must update the documentation in the same pull request (AGENTS.md).
     - path: "src/**"
       instructions: &docs |
