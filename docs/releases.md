@@ -2,6 +2,28 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.1.1
+
+A release with one fix to how the board reads files that change while they are being read.
+
+### Fixes
+
+- The board no longer keeps showing missing or outdated tasks after another program deletes and rewrites a project's files while the board is reading them.
+
+### Breaking changes
+
+None.
+
+### Required update steps
+
+Update the command:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+```
+
+The Skill and the Hook do not change, so `agboard update` is not needed.
+
 ## v1.1.0
 
 A release with fixes for the board in Safari and on iPad, and a Skill that confirms a breakdown before it adds cards.
