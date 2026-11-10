@@ -51,7 +51,7 @@ The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workfl
 - The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on macOS 15. It takes about 15 minutes, so it runs on pushes to `main` and on manual runs, not on pull requests.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 
-[CodeRabbit](https://www.coderabbit.ai/) also reviews each pull request and comments on it in Japanese. Its settings are in `.coderabbit.yaml`, which leaves lock files and other generated files out of the review. Treat its comments as suggestions: fix what is right, and reply with the reason when you do not.
+[CodeRabbit](https://www.coderabbit.ai/) also reviews each pull request and comments on it in Japanese. Its settings are in `.coderabbit.yaml`. Besides the code, it checks that a change in behavior updates the documentation in the same pull request, and that a changed test is explained as an intended change of the specification or as a fix to the test. Lock files and other generated files are left out of the review. Treat its comments as suggestions: fix what is right, and reply with the reason when you do not.
 
 Check that the Rust and web jobs pass before you merge, and run `pnpm --dir e2e test` locally when the change affects the app. When the E2E job fails on `main`, its traces are attached to the run as the `e2e-results` artifact.
 

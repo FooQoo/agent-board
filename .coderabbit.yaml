@@ -8,6 +8,45 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+  path_instructions:
+    # Behavior changes must update the documentation in the same pull request (AGENTS.md).
+    - path: "src/**"
+      instructions: &docs |
+        When this change alters behavior that a user or an agent can see (commands, options,
+        JSON output, error codes, stored files, screens, the Skill, or the Hook), check that the
+        same pull request updates the pages that describe it: the user guide in docs/guide,
+        the developer guide in docs/dev, their Japanese translations under docs/ja, and the
+        README when it is affected. Name each page that looks out of date. Do not ask for
+        documentation when the change is internal only, such as a refactoring or a fix that
+        restores the documented behavior.
+    - path: "web/src/**"
+      instructions: *docs
+    - path: "integrations/**"
+      instructions: *docs
+    - path: ".agents/skills/**"
+      instructions: *docs
+    # A changed test means a changed specification only when that change is intended.
+    - path: "tests/**"
+      instructions: &tests |
+        When an existing test or its fixture changes, decide from the pull request description,
+        the commit messages, and the changed source whether this is an intended change of the
+        specification. A test may change because the behavior changed on purpose, or to fix the
+        test itself (a race, a slow machine, a wrong fixture). Say which one you judge it to be
+        and why. Flag a test that is loosened, skipped, or deleted, or an expectation that is
+        changed to match new behavior, when nothing in the description or the source explains
+        it. When the specification did change, also check that the documentation was updated.
+    - path: "e2e/**"
+      instructions: *tests
+    - path: "web/test/**"
+      instructions: *tests
+    - path: "**/*.test.ts"
+      instructions: *tests
+    - path: "**/*.test.tsx"
+      instructions: *tests
+    - path: "**/*.spec.ts"
+      instructions: *tests
+    - path: "src/**/tests.rs"
+      instructions: *tests
   # Generated or lock files: reviewing them adds noise and no findings.
   path_filters:
     - "!Cargo.lock"
