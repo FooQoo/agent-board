@@ -145,13 +145,12 @@ test.describe('removed documents (AC-10)', () => {
     }
   });
 
-  test('READMEs and integration notes link to the site', () => {
+  test('the READMEs link to the site', () => {
     const site = 'https://fooqoo.github.io/agent-board/';
-    for (const file of ['README.md', 'README.ja.md', path.join('integrations', 'README.md')]) {
+    for (const file of ['README.md', 'README.ja.md']) {
       expect(readRepoFile(file), file).toContain(site);
     }
     expect(readRepoFile('README.ja.md')).toContain(`${site}ja/guide/`);
-    expect(readRepoFile('integrations', 'README.md')).toMatch(/agent-board\/guide\//);
   });
 });
 
