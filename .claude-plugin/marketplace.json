@@ -8,7 +8,7 @@
       "name": "agent-board",
       "source": "./plugins/agent-board",
       "description": "The Agent Board Skill and the Hook that shows the progress table.",
-      "version": "1.1.1"
+      "version": "1.2.0"
     }
   ]
 }
