@@ -57,10 +57,7 @@ pub(crate) fn plan(
         ));
     }
     if directories.iter().any(|value| value.as_str() == Some(root)) {
-        return Ok(Planned {
-            text: None,
-            changes: Vec::new(),
-        });
+        return Ok(Planned::default());
     }
     directories.push(json!(root));
 
@@ -72,12 +69,10 @@ pub(crate) fn plan(
         )
     })?;
     text.push('\n');
-    Ok(Planned {
-        text: Some(text),
-        changes: vec![format!(
-            "add \"{root}\" to permissions.additionalDirectories"
-        )],
-    })
+    Ok(Planned::change(
+        text,
+        format!("add \"{root}\" to permissions.additionalDirectories"),
+    ))
 }
 
 #[cfg(test)]

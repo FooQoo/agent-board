@@ -25,17 +25,54 @@ pub struct Target {
 }
 
 /// What an adapter plans for one file. `text` is `None` when nothing changes.
-#[derive(Debug)]
+/// `manual` is a step the user has to take because the file is set up in a
+/// way setup does not change. `full_access` means the agent already runs
+/// without a sandbox, so it needs no permission at all.
+#[derive(Debug, Default)]
 pub(crate) struct Planned {
     pub text: Option<String>,
     pub changes: Vec<String>,
+    pub manual: Option<String>,
+    pub full_access: bool,
+}
+
+impl Planned {
+    pub(crate) fn change(text: String, change: String) -> Planned {
+        Planned {
+            text: Some(text),
+            changes: vec![change],
+            ..Planned::default()
+        }
+    }
+
+    pub(crate) fn manual(step: String) -> Planned {
+        Planned {
+            manual: Some(step),
+            ..Planned::default()
+        }
+    }
+
+    pub(crate) fn full_access() -> Planned {
+        Planned {
+            full_access: true,
+            ..Planned::default()
+        }
+    }
+}
+
+/// The settings file of `agent` planned, with the manual step and the
+/// full-access flag of the plan.
+pub(super) struct SettingsPlan {
+    pub target: Target,
+    pub manual: Option<String>,
+    pub full_access: bool,
 }
 
 pub(super) fn plan(
     agent: Agent,
     config_path: &Path,
     data_root: &str,
-) -> Result<Target, AgboardError> {
+) -> Result<SettingsPlan, AgboardError> {
     let (file, original) = resolve_and_read(config_path)?;
     let text = match &original {
         Some(bytes) => Some(std::str::from_utf8(bytes).map_err(|_| {
@@ -47,13 +84,40 @@ pub(super) fn plan(
         Agent::Codex => codex::plan(config_path, text, data_root)?,
         Agent::Claude => claude::plan(config_path, text, data_root)?,
     };
+    Ok(SettingsPlan {
+        target: Target {
+            agent,
+            config_path: config_path.to_path_buf(),
+            file,
+            planned: planned.text.map(String::into_bytes),
+            original,
+            changes: planned.changes,
+        },
+        manual: planned.manual,
+        full_access: planned.full_access,
+    })
+}
+
+/// The Codex rule that lets `agboard` run outside the sandbox without a
+/// prompt. Written only when the file does not exist yet; a file the user
+/// already has is kept as it is.
+pub(super) const CODEX_RULES: &str = "# Written by agboard setup: lets Codex run agboard without asking each time.\nprefix_rule(pattern=[\"agboard\"], decision=\"allow\")\n";
+
+pub(super) fn plan_rules(path: &Path) -> Result<Target, AgboardError> {
+    let (file, original) = resolve_and_read(path)?;
+    let planned = original.is_none().then(|| CODEX_RULES.as_bytes().to_vec());
+    let changes = if planned.is_some() {
+        vec!["allow the agboard command (prefix_rule)".to_string()]
+    } else {
+        Vec::new()
+    };
     Ok(Target {
-        agent,
-        config_path: config_path.to_path_buf(),
+        agent: Agent::Codex,
+        config_path: path.to_path_buf(),
         file,
-        planned: planned.text.map(String::into_bytes),
         original,
-        changes: planned.changes,
+        planned,
+        changes,
     })
 }
 
@@ -99,15 +163,5 @@ pub(crate) fn invalid_file(path: &Path, field: &str, reason: &str) -> AgboardErr
         file: display(path),
         field: field.to_string(),
         reason: reason.to_string(),
-    }
-}
-
-/// A file that setup cannot change in this configuration. Nothing is written;
-/// `reason` carries the cause and the manual step.
-pub(crate) fn blocked(path: &Path, reason: String) -> AgboardError {
-    AgboardError::FileError {
-        action: FileAction::Write,
-        file: display(path),
-        reason,
     }
 }

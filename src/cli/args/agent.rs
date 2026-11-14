@@ -1,5 +1,5 @@
 //! Arguments of the agent and server commands: `progress`, `hook`, `wait`,
-//! `setup`, `connect`, `update`, `serve`, and `stop`.
+//! `setup`, `update`, `serve`, and `stop`.
 
 use clap::{Args, ValueEnum};
 
@@ -71,28 +71,35 @@ pub enum SetupAgentArg {
     All,
 }
 
-/// `connect` takes no options: it is an interactive first-time setup.
-#[derive(Args, Debug)]
-pub struct ConnectArgs {}
-
-/// `update` refreshes what connect installed. It keeps the recorded agents
-/// and scopes, so it has one option.
-#[derive(Args, Debug)]
-pub struct UpdateArgs {
-    /// Skip the confirmation question; conflicts still stop the update
-    #[arg(long)]
-    pub yes: bool,
-}
-
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard setup\n  agboard setup --agent codex --dry-run\n  agboard setup --agent claude --json"
+    after_help = "Examples:\n  agboard setup\n  agboard setup --agent codex --dry-run\n  agboard setup --agent claude --yes --json"
 )]
 pub struct SetupArgs {
-    /// Agent whose user settings are updated
-    #[arg(long, value_enum, default_value = "all")]
-    pub agent: SetupAgentArg,
-    /// Show the planned changes; create and change nothing
+    /// Agent to set up; asked on a terminal when omitted
+    #[arg(long, value_enum)]
+    pub agent: Option<SetupAgentArg>,
+    /// Skip the confirmation question, including the one for Codex hook trust
+    #[arg(long)]
+    pub yes: bool,
+    /// Show the planned changes; install, create, and change nothing
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+/// `update` moves the installed plugin to this version.
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Examples:\n  agboard update\n  agboard update --dry-run\n  agboard update --agent codex --yes"
+)]
+pub struct UpdateArgs {
+    /// Agent whose plugin is updated; every agent with the plugin when omitted
+    #[arg(long, value_enum)]
+    pub agent: Option<SetupAgentArg>,
+    /// Skip the confirmation question, including the one for Codex hook trust
+    #[arg(long)]
+    pub yes: bool,
+    /// Show the planned update; change nothing
     #[arg(long)]
     pub dry_run: bool,
 }

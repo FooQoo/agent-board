@@ -22,27 +22,11 @@ impl Cli {
             (Command::Ls(args), None) if args.all_projects => {}
             // `serve` shows every project, so naming one is a mistake.
             (
-                Command::Serve(_)
-                | Command::Stop(_)
-                | Command::Setup(_)
-                | Command::Connect(_)
-                | Command::Update(_),
+                Command::Serve(_) | Command::Stop(_) | Command::Setup(_) | Command::Update(_),
                 Some(_),
             ) => {
                 return Err(AgboardError::InvalidArgument {
                     message: format!("{command} does not take --project."),
-                    command: Some(command.to_string()),
-                });
-            }
-            (Command::Update(_), None) if self.json => {
-                return Err(AgboardError::InvalidArgument {
-                    message: "update does not take --json or --dry-run.".to_string(),
-                    command: Some(command.to_string()),
-                });
-            }
-            (Command::Connect(_), None) if self.json => {
-                return Err(AgboardError::InvalidArgument {
-                    message: "connect is interactive and does not take --json.".to_string(),
                     command: Some(command.to_string()),
                 });
             }
@@ -75,7 +59,6 @@ impl Cli {
                 Command::Serve(_)
                 | Command::Stop(_)
                 | Command::Setup(_)
-                | Command::Connect(_)
                 | Command::Update(_)
                 | Command::Hook(_)
                 | Command::Progress(_),

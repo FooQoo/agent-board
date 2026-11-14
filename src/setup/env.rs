@@ -1,5 +1,5 @@
-//! Environment and path resolution for `agboard setup`. The paths are resolved
-//! once per run and used as absolute paths from then on.
+//! Environment and path resolution for `agboard setup` and `agboard update`.
+//! The paths are resolved once per run and used as absolute paths from then on.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -15,6 +15,11 @@ pub struct SetupEnv {
     pub home: Option<PathBuf>,
     pub codex_home: Option<OsString>,
     pub claude_config_dir: Option<OsString>,
+    /// `PATH`, where the `codex` and `claude` commands are looked up.
+    pub path_var: Option<OsString>,
+    /// `AGBOARD_PLUGIN_MARKETPLACE`: a marketplace to install the plugin from
+    /// instead of the release tag on GitHub (a local checkout, for development).
+    pub marketplace: Option<OsString>,
 }
 
 impl SetupEnv {
@@ -24,6 +29,8 @@ impl SetupEnv {
             home: dirs::home_dir(),
             codex_home: std::env::var_os("CODEX_HOME"),
             claude_config_dir: std::env::var_os("CLAUDE_CONFIG_DIR"),
+            path_var: std::env::var_os("PATH"),
+            marketplace: std::env::var_os("AGBOARD_PLUGIN_MARKETPLACE"),
         }
     }
 
@@ -34,14 +41,36 @@ impl SetupEnv {
         absolute(dir)
     }
 
+    /// Codex's folder: `$CODEX_HOME`, or `~/.codex`. An empty `CODEX_HOME`
+    /// counts as unset.
+    fn codex_dir(&self) -> Result<PathBuf, AgboardError> {
+        match non_empty(&self.codex_home) {
+            Some(dir) => absolute(PathBuf::from(dir)),
+            None => absolute(self.home_dir("CODEX_HOME")?.join(".codex")),
+        }
+    }
+
     /// Codex's user config: `$CODEX_HOME/config.toml`, or `~/.codex/config.toml`.
-    /// An empty `CODEX_HOME` counts as unset.
     pub fn codex_config(&self) -> Result<PathBuf, AgboardError> {
-        let dir = match non_empty(&self.codex_home) {
-            Some(dir) => PathBuf::from(dir),
-            None => self.home_dir("CODEX_HOME")?.join(".codex"),
-        };
-        absolute(dir.join("config.toml"))
+        Ok(self.codex_dir()?.join("config.toml"))
+    }
+
+    /// The rule file setup writes for Codex: `$CODEX_HOME/rules/agboard.rules`.
+    pub fn codex_rules(&self) -> Result<PathBuf, AgboardError> {
+        Ok(self.codex_dir()?.join("rules").join("agboard.rules"))
+    }
+
+    /// The marketplace override, when `AGBOARD_PLUGIN_MARKETPLACE` is set and
+    /// not empty.
+    pub fn marketplace_override(&self) -> Option<String> {
+        non_empty(&self.marketplace).map(|value| value.to_string_lossy().into_owned())
+    }
+
+    /// A folder that exists, for the commands that need a working folder:
+    /// the data directory when it exists, else the home directory.
+    pub fn work_dir(&self) -> Option<PathBuf> {
+        let data = self.data_dir().ok().filter(|dir| dir.is_dir());
+        data.or_else(|| self.home.clone().filter(|dir| dir.is_dir()))
     }
 
     /// Claude Code's user settings: `$CLAUDE_CONFIG_DIR/settings.json`, or

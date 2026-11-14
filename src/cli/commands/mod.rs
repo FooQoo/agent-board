@@ -3,7 +3,6 @@
 
 pub mod add;
 pub mod attachment;
-pub mod connect;
 pub mod edit;
 pub mod epic;
 pub mod init;
@@ -15,11 +14,11 @@ pub mod qa;
 pub mod rm;
 pub mod serve;
 pub mod serve_auto;
+pub mod setup;
 pub mod show;
 pub mod snapshot;
 pub mod state;
 pub mod stop;
-pub mod update;
 pub mod workspace;
 
 pub mod history;

@@ -58,7 +58,6 @@ fn access(command: &Command) -> Access {
         Command::Serve(_)
         | Command::Stop(_)
         | Command::Setup(_)
-        | Command::Connect(_)
         | Command::Update(_)
         | Command::Hook(_)
         | Command::Wait(_) => Access::Catalog,
@@ -136,7 +135,6 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         | Command::Serve(_)
         | Command::Stop(_)
         | Command::Setup(_)
-        | Command::Connect(_)
         | Command::Update(_) => {
             unreachable!("serve, setup, and the agent commands are handled before store setup")
         }

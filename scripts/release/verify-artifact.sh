@@ -63,14 +63,6 @@ minos=$(otool -l "$bin" | awk '/LC_BUILD_VERSION/{f=1} /LC_VERSION_MIN_MACOSX/{f
 bad=$(otool -L "$bin" | tail -n +2 | awk '{print $1}' | grep -v -e '^/usr/lib/' -e '^/System/Library/' || true)
 [ -z "$bad" ] || fail "agboard links non-system libraries: $bad"
 
-# The Skill and Hook files are used by `connect`. Until that command exists the
-# linker drops them, so the marker is required only once `connect` is present.
-if "$bin" --help 2>/dev/null | grep -q '^  connect'; then
-  grep -aq 'Use Agent Board to plan and track work' "$bin" || fail "the Skill is not embedded in agboard"
-else
-  echo "verify-artifact: no connect command; Skill embedding not checked"
-fi
-
 host=$(uname -m)
 runner=()
 if [ "$host" != "$arch" ]; then

@@ -86,13 +86,9 @@ pub enum Command {
     /// Stop the running server (the one started with serve, or serve -d)
     #[command(after_help = "Examples:\n  agboard stop\n  agboard stop --json")]
     Stop(StopArgs),
-    /// Create the data folder and add it to Codex and Claude Code settings
+    /// Create the data folder and install the Agent Board plugin for Codex and Claude Code
     Setup(SetupArgs),
-    /// Install the Skill and Hook for Claude Code and Codex (interactive)
-    #[command(after_help = "Examples:\n  agboard project create \"My project\"\n  agboard connect")]
-    Connect(ConnectArgs),
-    /// Update the installed Skill and Hook to this version
-    #[command(after_help = "Examples:\n  agboard update\n  agboard update --yes")]
+    /// Update the installed Agent Board plugin to this version
     Update(UpdateArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
@@ -126,7 +122,6 @@ impl Command {
             Command::Serve(_) => "serve",
             Command::Stop(_) => "stop",
             Command::Setup(_) => "setup",
-            Command::Connect(_) => "connect",
             Command::Update(_) => "update",
             Command::Workspace(_) => "workspace",
             Command::Progress(_) => "progress",
@@ -134,7 +129,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 23] = [
+pub const SUBCOMMAND_NAMES: [&str; 22] = [
     "project",
     "init",
     "add",
@@ -156,7 +151,6 @@ pub const SUBCOMMAND_NAMES: [&str; 23] = [
     "workspace",
     "progress",
     "setup",
-    "connect",
     "update",
 ];
 

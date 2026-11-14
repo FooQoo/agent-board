@@ -32,9 +32,8 @@ Commands:
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser (-d runs it in the background)
   stop    Stop the running server
-  setup   Add the shared folder to Codex and Claude Code settings
-  connect Install the Skill and Hook for Claude Code and Codex (interactive)
-  update  Update the installed Skill and Hook to this version
+  setup   Install the Agent Board plugin for Codex and Claude Code
+  update  Update the installed Agent Board plugin to this version
 
 Workflow for agents:
   agboard project ls --json

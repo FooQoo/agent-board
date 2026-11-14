@@ -7,10 +7,10 @@ use std::io::Write;
 
 pub(crate) use self::prepare::prepare;
 use self::prepare::prepare_and_run;
-use crate::cli::args::{self, Command, Parsed, SetupAgentArg};
+use crate::cli::args::{self, Command, Parsed};
 use crate::cli::{Context, Env, commands, errors, output};
 use crate::error::AgboardError;
-use crate::setup::{self, Agent, SetupEnv, SetupOptions};
+use crate::setup::Mode;
 
 /// Runs a command line when no data directory can be resolved (no
 /// `AGBOARD_HOME` and no home directory). Help and version still print; every
@@ -65,43 +65,38 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     if let Err(error) = cli.validate() {
         return fail(env, &error, cli.json);
     }
-    // `setup` needs no project and no store: it resolves the data directory
-    // itself and runs before any board files are opened.
-    if let Command::Setup(args) = &cli.command {
-        let agents = match args.agent {
-            SetupAgentArg::Codex => vec![Agent::Codex],
-            SetupAgentArg::Claude => vec![Agent::Claude],
-            SetupAgentArg::All => vec![Agent::Codex, Agent::Claude],
-        };
-        let options = SetupOptions {
-            agents,
+    // `setup` and `update` need no project and no store: they resolve the
+    // data directory themselves and run before any board files are opened.
+    let request = match &cli.command {
+        Command::Setup(args) => Some(commands::setup::Request {
+            mode: Mode::Setup,
+            agent: args.agent,
+            yes: args.yes,
             dry_run: args.dry_run,
-        };
-        return match setup::run(&SetupEnv::from_process(), &options) {
-            Ok(report) => {
+            json: cli.json,
+        }),
+        Command::Update(args) => Some(commands::setup::Request {
+            mode: Mode::Update,
+            agent: args.agent,
+            yes: args.yes,
+            dry_run: args.dry_run,
+            json: cli.json,
+        }),
+        _ => None,
+    };
+    if let Some(request) = request {
+        return match commands::setup::run(&request) {
+            Ok(commands::setup::Finished::Report(report)) => {
                 let text = if cli.json {
                     format!("{}\n", output::render_json(&report.to_json()))
                 } else {
                     report.to_human()
                 };
                 write_text(env.stdout, &text);
-                0
+                report.exit_code()
             }
+            Ok(commands::setup::Finished::Cancelled) => 0,
             Err(error) => fail(env, &error, cli.json),
-        };
-    }
-    // `connect` is interactive: it checks the terminal and the folder binding
-    // itself and prints its own results.
-    if let Command::Connect(_) = &cli.command {
-        return match commands::connect::run(env) {
-            Ok(code) => code,
-            Err(error) => fail(env, &error, false),
-        };
-    }
-    if let Command::Update(args) = &cli.command {
-        return match commands::update::run(env, args) {
-            Ok(code) => code,
-            Err(error) => fail(env, &error, false),
         };
     }
     if let Command::Hook(args) = &cli.command {
@@ -199,7 +194,6 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 outcome.human
             };
             write_text(env.stdout, &text);
-            commands::update::notice_if_stale(env, cli.json);
             if let (true, Some(ctx)) = (outcome.changed, &ctx) {
                 let dir = env
                     .shared_dir

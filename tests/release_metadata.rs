@@ -190,7 +190,11 @@ fn check_version_rejects_a_plugin_of_another_version() {
         &["--tag", "v1.2.3", "--root", root.to_str().unwrap()],
     );
     assert_eq!(out.status.code(), Some(1), "{}", text(&out));
-    assert!(text(&out).contains(".claude-plugin/plugin.json"), "{}", text(&out));
+    assert!(
+        text(&out).contains(".claude-plugin/plugin.json"),
+        "{}",
+        text(&out)
+    );
 
     let fixture = fixture_root("1.2.3", "1.2.3");
     let root = fixture.path();

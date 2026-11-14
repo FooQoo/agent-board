@@ -1,7 +1,12 @@
-//! `agboard setup` run as the real binary. Every run gets a cleared environment
-//! and a temporary HOME, so neither the real home nor the real data directory
-//! is reachable. Sentinel contents in the agent settings must survive.
+//! `agboard setup` run as the real binary: the data directory and the agent
+//! settings files. Every run gets a cleared environment, a temporary HOME, and
+//! fake `codex` and `claude` commands as the only ones on PATH, so neither the
+//! real home, the real agents, nor the network is reachable. Sentinel contents
+//! in the agent settings must survive. The plugin steps are in
+//! `setup_plugin.rs`.
 
+#[path = "support/fake_agents.rs"]
+mod fake_agents;
 #[path = "support/serve_process.rs"]
 mod serve_process;
 
@@ -12,19 +17,28 @@ use std::process::Command;
 
 use serde_json::Value;
 
+use fake_agents::FakeAgents;
 use serve_process::ServeProcess;
 
 const CODEX_SENTINEL: &str = "# keep this comment\nmodel = \"gpt-sentinel\"\nsandbox_mode = \"workspace-write\"\n\n[sandbox_workspace_write]\n# other roots stay\nwritable_roots = [\"/sentinel/other\"]\nnetwork_access = false\n\n[tui]\ntheme = \"sentinel\"\n";
 
 const CLAUDE_SENTINEL: &str = r#"{"model":"sentinel-model","permissions":{"allow":["Read"],"ask":["Bash(git push:*)"],"deny":["Read(.env)"],"defaultMode":"acceptEdits","additionalDirectories":["/sentinel/other"]},"hooks":{"Stop":[{"hooks":[{"type":"command","command":"sentinel-hook"}]}]},"futureKey":{"kept":true}}"#;
 
-/// Runs `agboard setup` with a cleared environment: HOME is `home`, and only
-/// `extra` variables are added. Returns exit code, stdout, and stderr.
+/// The fake agents next to `home`, created on first use.
+fn fakes(home: &Path) -> FakeAgents {
+    FakeAgents::new(home.parent().unwrap(), &["codex", "claude"])
+}
+
+/// Runs `agboard` with a cleared environment: HOME is `home`, PATH holds only
+/// the fake agents, and only `extra` variables are added. Returns exit code,
+/// stdout, and stderr.
 fn setup(home: &Path, extra: &[(&str, &str)], args: &[&str]) -> (i32, String, String) {
+    let fakes = fakes(home);
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env_clear()
         .env("AGBOARD_AUTOSTART", "0")
         .env("HOME", home)
+        .env("PATH", &fakes.bin)
         .env("TZ", "UTC")
         .current_dir(home)
         .args(args)
@@ -39,9 +53,17 @@ fn setup(home: &Path, extra: &[(&str, &str)], args: &[&str]) -> (i32, String, St
     )
 }
 
+/// `agboard --json setup` with `--agent all` and `--yes` unless `args` name an
+/// agent or a dry run.
 fn setup_json(home: &Path, extra: &[(&str, &str)], args: &[&str]) -> Value {
     let mut all = vec!["--json", "setup"];
     all.extend_from_slice(args);
+    if !args.contains(&"--agent") {
+        all.extend(["--agent", "all"]);
+    }
+    if !args.contains(&"--dry-run") {
+        all.push("--yes");
+    }
     let (code, out, err) = setup(home, extra, &all);
     assert_eq!(code, 0, "setup failed: {err}");
     serde_json::from_str(&out).unwrap_or_else(|_| panic!("not JSON: {out}"))
@@ -113,8 +135,13 @@ fn default_root_is_directly_under_home_and_setup_creates_it() {
     assert_eq!(names, ["codex", "claude"]);
     for agent in agents {
         assert_eq!(agent["status"], "updated");
-        assert_eq!(agent["changes"].as_array().unwrap().len(), 1);
+        let files = agent["files"].as_array().unwrap();
+        assert_eq!(files[0]["status"], "updated");
+        assert_eq!(files[0]["changes"].as_array().unwrap().len(), 1);
     }
+    // Codex also gets the rule that allows the agboard command.
+    assert_eq!(agents[0]["files"].as_array().unwrap().len(), 2);
+    assert_eq!(agents[1]["files"].as_array().unwrap().len(), 1);
 }
 
 #[test]
@@ -139,27 +166,52 @@ fn json_output_has_the_documented_keys() {
         ]
     );
     let agent = &json["agents"][0];
+    let mut keys: Vec<&str> = agent
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "agent",
+            "files",
+            "manualSteps",
+            "plugin",
+            "reason",
+            "status",
+            "steps",
+            "trustedHooks"
+        ]
+    );
     assert_eq!(agent["agent"], "codex");
+    let files = agent["files"].as_array().unwrap();
     assert!(
-        agent["configPath"]
+        files[0]["path"]
             .as_str()
             .unwrap()
             .ends_with(".codex/config.toml")
     );
+    assert!(
+        files[1]["path"]
+            .as_str()
+            .unwrap()
+            .ends_with(".codex/rules/agboard.rules")
+    );
+    assert_eq!(agent["plugin"]["version"], env!("CARGO_PKG_VERSION"));
 }
 
 #[test]
 fn human_output_is_english_and_names_the_next_step() {
     let (_tmp, home) = home_with_settings("home");
-    let (code, out, _) = setup(&home, &[], &["setup"]);
-    assert_eq!(code, 0);
+    let (code, out, err) = setup(&home, &[], &["setup", "--agent", "all", "--yes"]);
+    assert_eq!(code, 0, "{err}");
     assert!(out.contains("Data directory:"), "{out}");
     assert!(out.contains("Codex: updated"), "{out}");
     assert!(out.contains("Claude Code: updated"), "{out}");
-    assert!(
-        out.contains("Start new Codex and Claude Code sessions"),
-        "{out}"
-    );
+    assert!(out.contains("Start a new agent session"), "{out}");
 }
 
 #[test]
@@ -261,11 +313,12 @@ fn the_existing_settings_and_sentinels_are_kept() {
 fn dry_run_changes_nothing_and_creates_nothing() {
     let (_tmp, home) = home_with_settings("home");
     let before = snapshot(&home);
-    let json = setup_json(&home, &[], &["--dry-run"]);
+    let json = setup_json(&home, &[], &["--agent", "all", "--dry-run"]);
     assert_eq!(json["dryRun"], true);
     assert_eq!(json["restartRequired"], true);
     for agent in json["agents"].as_array().unwrap() {
         assert_eq!(agent["status"], "planned");
+        assert_eq!(agent["files"][0]["status"], "planned");
     }
     assert!(!data_root(&home).exists());
     assert_eq!(snapshot(&home), before, "dry run must not change any file");
@@ -292,7 +345,10 @@ fn a_second_run_changes_nothing_and_adds_no_backup() {
     let json = setup_json(&home, &[], &[]);
     for agent in json["agents"].as_array().unwrap() {
         assert_eq!(agent["status"], "unchanged");
-        assert!(agent["backupPath"].is_null());
+        for file in agent["files"].as_array().unwrap() {
+            assert_eq!(file["status"], "unchanged");
+            assert!(file["backupPath"].is_null());
+        }
     }
     assert_eq!(json["restartRequired"], false);
     assert_eq!(
@@ -377,6 +433,8 @@ fn codex_home_and_claude_config_dir_overrides_are_honored() {
             .unwrap()
             .contains(".agent-board")
     );
+    assert!(codex_home.join("rules/agboard.rules").is_file());
+    assert!(!home.join(".codex/rules").exists());
     assert!(
         fs::read_to_string(claude_dir.join("settings.json"))
             .unwrap()
@@ -398,13 +456,13 @@ fn empty_overrides_count_as_unset() {
     let json = setup_json(
         &home,
         &[("CODEX_HOME", ""), ("CLAUDE_CONFIG_DIR", "")],
-        &["--dry-run"],
+        &["--agent", "all", "--dry-run"],
     );
     let paths: Vec<&str> = json["agents"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|a| a["configPath"].as_str().unwrap())
+        .map(|a| a["files"][0]["path"].as_str().unwrap())
         .collect();
     assert!(paths[0].ends_with(".codex/config.toml"), "{paths:?}");
     assert!(paths[1].ends_with(".claude/settings.json"), "{paths:?}");
@@ -417,7 +475,7 @@ fn a_missing_claude_settings_file_is_created_with_private_permissions() {
     fs::create_dir_all(&home).unwrap();
     let json = setup_json(&home, &[], &["--agent", "claude"]);
     assert_eq!(json["agents"][0]["status"], "updated");
-    assert!(json["agents"][0]["backupPath"].is_null());
+    assert!(json["agents"][0]["files"][0]["backupPath"].is_null());
     let text = fs::read_to_string(home.join(".claude/settings.json")).unwrap();
     let value: Value = serde_json::from_str(&text).unwrap();
     assert_eq!(
@@ -436,7 +494,7 @@ fn a_missing_claude_settings_file_is_created_with_private_permissions() {
 }
 
 #[test]
-fn a_codex_config_without_workspace_write_is_refused_and_nothing_is_written() {
+fn a_codex_config_without_workspace_write_is_left_alone_with_a_manual_step() {
     for text in [
         "model = \"gpt\"\n",
         "sandbox_mode = \"read-only\"\n",
@@ -446,28 +504,67 @@ fn a_codex_config_without_workspace_write_is_refused_and_nothing_is_written() {
         let tmp = tempfile::tempdir().unwrap();
         let home = tmp.path().join("home");
         fs::create_dir_all(home.join(".codex")).unwrap();
-        fs::create_dir_all(home.join(".claude")).unwrap();
         fs::write(home.join(".codex/config.toml"), text).unwrap();
-        fs::write(home.join(".claude/settings.json"), CLAUDE_SENTINEL).unwrap();
-        let before = snapshot(&home);
 
-        let (code, _out, err) = setup(&home, &[], &["--json", "setup"]);
-        assert_ne!(code, 0, "{text:?}");
-        let value: Value = serde_json::from_str(&err).unwrap();
-        assert_eq!(value["error"]["code"], "file_error", "{text:?}");
-        assert!(
-            value["error"]["reason"]
-                .as_str()
-                .unwrap()
-                .contains("Manual setup"),
-            "{err}"
+        let json = setup_json(&home, &[], &["--agent", "codex"]);
+        let agent = &json["agents"][0];
+        assert_eq!(agent["status"], "updated", "{text:?}");
+        assert_eq!(agent["files"][0]["status"], "unchanged", "{text:?}");
+        let manual = agent["manualSteps"].as_array().unwrap();
+        assert_eq!(manual.len(), 1, "{text:?}");
+        assert!(manual[0].as_str().unwrap().contains("Codex"), "{manual:?}");
+        assert_eq!(
+            fs::read_to_string(home.join(".codex/config.toml")).unwrap(),
+            text,
+            "the sandbox settings are never changed"
         );
-        assert_eq!(snapshot(&home), before, "{text:?} must change nothing");
-        assert!(
-            !data_root(&home).exists(),
-            "validation runs before folders are created"
-        );
+        assert!(home.join(".codex/rules/agboard.rules").is_file());
+        assert!(backups_in(&home.join(".codex")).is_empty());
     }
+}
+
+#[test]
+fn full_access_codex_needs_no_permission_and_no_rule() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    fs::create_dir_all(home.join(".codex")).unwrap();
+    let text = "sandbox_mode = \"danger-full-access\"\n";
+    fs::write(home.join(".codex/config.toml"), text).unwrap();
+    let json = setup_json(&home, &[], &["--agent", "codex"]);
+    let agent = &json["agents"][0];
+    assert_eq!(agent["files"].as_array().unwrap().len(), 1);
+    assert_eq!(agent["files"][0]["status"], "unchanged");
+    assert!(agent["manualSteps"].as_array().unwrap().is_empty());
+    assert_eq!(
+        fs::read_to_string(home.join(".codex/config.toml")).unwrap(),
+        text
+    );
+    assert!(!home.join(".codex/rules").exists());
+}
+
+#[test]
+fn an_existing_rule_file_is_kept_as_it_is() {
+    let (_tmp, home) = home_with_settings("home");
+    fs::create_dir_all(home.join(".codex/rules")).unwrap();
+    let mine = "# my own rules\nprefix_rule(pattern=[\"agboard\"], decision=\"prompt\")\n";
+    fs::write(home.join(".codex/rules/agboard.rules"), mine).unwrap();
+    let json = setup_json(&home, &[], &["--agent", "codex"]);
+    assert_eq!(json["agents"][0]["files"][1]["status"], "unchanged");
+    assert_eq!(
+        fs::read_to_string(home.join(".codex/rules/agboard.rules")).unwrap(),
+        mine
+    );
+}
+
+#[test]
+fn the_written_rule_allows_the_agboard_command() {
+    let (_tmp, home) = home_with_settings("home");
+    setup_json(&home, &[], &["--agent", "codex"]);
+    let rules = fs::read_to_string(home.join(".codex/rules/agboard.rules")).unwrap();
+    assert!(
+        rules.contains("prefix_rule(pattern=[\"agboard\"], decision=\"allow\")"),
+        "{rules}"
+    );
 }
 
 #[test]
@@ -475,10 +572,15 @@ fn an_invalid_settings_file_stops_the_whole_run_before_any_write() {
     let (_tmp, home) = home_with_settings("home");
     fs::write(home.join(".claude/settings.json"), "{ not json").unwrap();
     let before = snapshot(&home);
-    let (code, _out, err) = setup(&home, &[], &["--json", "setup"]);
+    let (code, _out, err) = setup(&home, &[], &["--json", "setup", "--agent", "all", "--yes"]);
     assert_ne!(code, 0);
     let value: Value = serde_json::from_str(&err).unwrap();
     assert_eq!(value["error"]["code"], "file_invalid");
+    // The plugins are not installed either: only the read-only lists ran.
+    let fakes = fakes(&home);
+    for agent in ["codex", "claude"] {
+        assert_eq!(fakes.log(agent), ["plugin list --json"], "{agent}");
+    }
     assert_eq!(
         snapshot(&home),
         before,
@@ -488,14 +590,14 @@ fn an_invalid_settings_file_stops_the_whole_run_before_any_write() {
 }
 
 #[test]
-fn a_missing_codex_config_is_refused_and_creates_no_file() {
+fn a_missing_codex_config_is_not_created_and_names_the_manual_step() {
     let tmp = tempfile::tempdir().unwrap();
     let home = tmp.path().join("home");
     fs::create_dir_all(&home).unwrap();
-    let (code, _out, err) = setup(&home, &[], &["setup", "--agent", "codex"]);
-    assert_ne!(code, 0);
-    assert!(err.contains("sandbox_mode is not set"), "{err}");
-    assert!(!home.join(".codex").exists());
+    let (code, out, err) = setup(&home, &[], &["setup", "--agent", "codex", "--yes"]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("sandbox_mode is not set"), "{out}");
+    assert!(!home.join(".codex/config.toml").exists());
 }
 
 #[test]
@@ -507,7 +609,7 @@ fn a_failure_while_writing_restores_the_files_already_written() {
     let claude_dir = home.join(".claude");
     fs::set_permissions(&claude_dir, fs::Permissions::from_mode(0o500)).unwrap();
     let before = snapshot(&home);
-    let (code, _out, err) = setup(&home, &[], &["--json", "setup"]);
+    let (code, _out, err) = setup(&home, &[], &["--json", "setup", "--agent", "all", "--yes"]);
     fs::set_permissions(&claude_dir, fs::Permissions::from_mode(0o700)).unwrap();
     assert_ne!(code, 0, "{err}");
     let value: Value = serde_json::from_str(&err).unwrap();
@@ -564,7 +666,11 @@ fn a_dangling_symbolic_link_is_refused() {
         home.join(".claude/settings.json"),
     )
     .unwrap();
-    let (code, _out, err) = setup(&home, &[], &["--json", "setup", "--agent", "claude"]);
+    let (code, _out, err) = setup(
+        &home,
+        &[],
+        &["--json", "setup", "--agent", "claude", "--yes"],
+    );
     assert_ne!(code, 0);
     assert_eq!(
         serde_json::from_str::<Value>(&err).unwrap()["error"]["code"],
@@ -589,7 +695,7 @@ fn the_old_os_application_folder_is_neither_read_nor_changed() {
     let before = snapshot(&old);
     setup_json(&home, &[], &[]);
     assert_eq!(snapshot(&old), before);
-    let json = setup_json(&home, &[], &["--dry-run"]);
+    let json = setup_json(&home, &[], &["--agent", "all", "--dry-run"]);
     assert_eq!(json["dataDir"], data_root(&home).display().to_string());
     assert_eq!(snapshot(&old), before);
 }
@@ -597,7 +703,7 @@ fn the_old_os_application_folder_is_neither_read_nor_changed() {
 #[test]
 fn setup_rejects_a_project_option_and_unknown_agents() {
     let (_tmp, home) = home_with_settings("home");
-    let (code, _out, err) = setup(&home, &[], &["--project", "x", "setup"]);
+    let (code, _out, err) = setup(&home, &[], &["--project", "x", "setup", "--yes"]);
     assert_eq!(code, 2, "{err}");
     let (code, _out, _err) = setup(&home, &[], &["setup", "--agent", "other"]);
     assert_eq!(code, 2);

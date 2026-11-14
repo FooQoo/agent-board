@@ -15,8 +15,7 @@ import sys
 import tempfile
 
 FOCUSED_TESTS = [
-    "--test", "integration_assets",
-    "--test", "integration_paths",
+    "--test", "plugin_layout",
     "--test", "agent_hook",
     "--test", "project_bindings",
     "--test", "agent_projects",
@@ -35,8 +34,6 @@ WAVES = {
         ["cargo", "build"],
         [
             "cargo", "test", *FOCUSED_TESTS,
-            "--test", "integration_install",
-            "--test", "integration_recovery",
             "--test", "setup",
             "--test", "release_metadata",
         ],
@@ -48,11 +45,8 @@ WAVES = {
         ["cargo", "build"],
         [
             "cargo", "test", *FOCUSED_TESTS,
-            "--test", "integration_install",
-            "--test", "integration_recovery",
             "--test", "setup",
             "--test", "release_metadata",
-            "--test", "integration_connect",
             "--test", "agent_templates",
         ],
         ["bash", "scripts/release/test-formula.sh"],
@@ -64,14 +58,9 @@ WAVES = {
         ["cargo", "build"],
         [
             "cargo", "test", *FOCUSED_TESTS,
-            "--test", "integration_install",
-            "--test", "integration_recovery",
             "--test", "setup",
             "--test", "release_metadata",
-            "--test", "integration_connect",
             "--test", "agent_templates",
-            "--test", "integration_update",
-            "--test", "integration_notice",
             "--test", "release_signing",
         ],
         ["bash", "scripts/release/test-formula.sh"],
@@ -81,7 +70,7 @@ WAVES = {
     "4.5": [
         ["pnpm", "--dir", "web", "build"],
         ["cargo", "build"],
-        ["cargo", "test", "--test", "integration_connect", "--test", "integration_update"],
+        ["cargo", "test", "--test", "setup", "--test", "plugin_layout"],
         ["cargo", "test"],
         ["pnpm", "--dir", "web", "typecheck"],
         ["pnpm", "--dir", "web", "check"],

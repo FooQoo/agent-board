@@ -5,8 +5,6 @@
 //!   as the gzip files the web build writes beside them, with a build ID for
 //!   each page. Files are named by their content, and a file both builds
 //!   contain is embedded once.
-//! - `integration_bundle.rs`: the Skill and Hook files of connect and update,
-//!   written by `src/integrations/build_bundle.rs`.
 //!
 //! The script uses the standard library only: the tests compile it alone.
 
@@ -14,8 +12,6 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-#[path = "src/integrations/build_bundle.rs"]
-mod build_bundle;
 #[path = "src/server/dist.rs"]
 mod dist;
 
@@ -24,7 +20,6 @@ fn main() {
         std::env::var_os("CARGO_MANIFEST_DIR").expect("Cargo sets CARGO_MANIFEST_DIR"),
     );
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR"));
-    build_bundle::write(&manifest_dir, &out_dir);
     let dist_dir = manifest_dir.join("web/dist");
     let missing = dist::missing_files(&dist_dir);
     if !missing.is_empty() {

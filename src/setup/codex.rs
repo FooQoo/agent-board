@@ -1,16 +1,20 @@
 //! Codex: adds the data root to `sandbox_workspace_write.writable_roots` in the
-//! user's `config.toml`. Only the workspace-write setup is supported. Any other
-//! configuration is refused before a write, with the manual steps, and the
-//! sandbox mode is never changed here.
+//! user's `config.toml`. Only the workspace-write setup is changed. Any other
+//! configuration is left as it is and reported with the manual step, and the
+//! sandbox mode is never changed here. With `danger-full-access` nothing is
+//! needed, so nothing is written.
 
 use std::path::Path;
 
 use toml_edit::{Array, DocumentMut, Item, Table, Value};
 
-use super::plan::{Planned, blocked, invalid_file};
+use super::plan::{Planned, invalid_file};
 use crate::error::AgboardError;
 
 const SUPPORTED_MODE: &str = "workspace-write";
+
+/// The mode that runs every command outside the sandbox.
+const FULL_ACCESS: &str = "danger-full-access";
 
 /// Keys that select permission profiles or the legacy named profiles. The
 /// writable-roots method cannot be mixed with either, so their presence stops
@@ -35,32 +39,27 @@ pub(crate) fn plan(
     })?;
 
     if let Some(key) = PROFILE_KEYS.iter().find(|key| doc.contains_key(key)) {
-        return Err(blocked(
-            config,
-            format!(
-                "{key} is set. Permission profiles cannot be combined with writable_roots, so nothing was written. Manual setup: add \"{root}\" to the filesystem permissions of your permission profile, following the Codex configuration reference."
-            ),
-        ));
+        return Ok(Planned::manual(format!(
+            "{key} is set in {}. Permission profiles cannot be combined with writable_roots, so it was not changed. To let Codex edit the shared files, add \"{root}\" to the filesystem permissions of your permission profile, following the Codex configuration reference.",
+            config.display()
+        )));
     }
 
     match doc.get("sandbox_mode") {
         None => {
-            return Err(blocked(
-                config,
-                format!(
-                    "sandbox_mode is not set, so writable_roots would have no effect. Nothing was written. Manual setup: set sandbox_mode = \"{SUPPORTED_MODE}\" in this file, then run setup again."
-                ),
-            ));
+            return Ok(Planned::manual(format!(
+                "sandbox_mode is not set in {}, so writable_roots would have no effect and it was not changed. To let Codex edit the shared files, set sandbox_mode = \"{SUPPORTED_MODE}\" there and run agboard setup again.",
+                config.display()
+            )));
         }
         Some(item) => match item.as_str() {
             Some(SUPPORTED_MODE) => {}
+            Some(FULL_ACCESS) => return Ok(Planned::full_access()),
             Some(other) => {
-                return Err(blocked(
-                    config,
-                    format!(
-                        "sandbox_mode is \"{other}\", which does not allow writable_roots to take effect. Nothing was written and the mode was not changed. Manual setup: set sandbox_mode = \"{SUPPORTED_MODE}\" yourself if the shared folder must be writable, then run setup again."
-                    ),
-                ));
+                return Ok(Planned::manual(format!(
+                    "sandbox_mode is \"{other}\" in {}, which does not let writable_roots take effect, so it was not changed. To let Codex edit the shared files, set sandbox_mode = \"{SUPPORTED_MODE}\" yourself and run agboard setup again.",
+                    config.display()
+                )));
             }
             None => {
                 return Err(invalid_file(config, "sandbox_mode", "must be a string."));
@@ -88,10 +87,7 @@ pub(crate) fn plan(
                 ));
             }
             if array.iter().any(|value| value.as_str() == Some(root)) {
-                return Ok(Planned {
-                    text: None,
-                    changes: Vec::new(),
-                });
+                return Ok(Planned::default());
             }
         }
     }
@@ -118,12 +114,10 @@ pub(crate) fn plan(
         })?;
     array.push(root);
 
-    Ok(Planned {
-        text: Some(doc.to_string()),
-        changes: vec![format!(
-            "add \"{root}\" to sandbox_workspace_write.writable_roots"
-        )],
-    })
+    Ok(Planned::change(
+        doc.to_string(),
+        format!("add \"{root}\" to sandbox_workspace_write.writable_roots"),
+    ))
 }
 
 #[cfg(test)]
@@ -177,20 +171,30 @@ mod tests {
     }
 
     #[test]
-    fn profiles_and_other_modes_are_refused_without_a_write() {
+    fn profiles_and_other_modes_are_left_alone_with_a_manual_step() {
         for text in [
             "sandbox_mode = \"workspace-write\"\ndefault_permissions = \"p\"\n",
             "sandbox_mode = \"workspace-write\"\n[permissions.p]\n",
             "sandbox_mode = \"workspace-write\"\nprofile = \"p\"\n",
             "sandbox_mode = \"workspace-write\"\n[profiles.p]\n",
             "sandbox_mode = \"read-only\"\n",
-            "sandbox_mode = \"danger-full-access\"\n",
             "model = \"gpt\"\n",
             "",
         ] {
-            let error = plan(Path::new("/c/config.toml"), Some(text), ROOT).unwrap_err();
-            assert_eq!(error.code(), "file_error", "{text:?}");
+            let planned = plan(Path::new("/c/config.toml"), Some(text), ROOT).unwrap();
+            assert!(planned.text.is_none(), "{text:?}");
+            assert!(planned.manual.is_some(), "{text:?}");
+            assert!(!planned.full_access, "{text:?}");
         }
+    }
+
+    #[test]
+    fn full_access_needs_nothing() {
+        let text = "sandbox_mode = \"danger-full-access\"\n";
+        let planned = plan(Path::new("/c/config.toml"), Some(text), ROOT).unwrap();
+        assert!(planned.text.is_none());
+        assert!(planned.manual.is_none());
+        assert!(planned.full_access);
     }
 
     #[test]
