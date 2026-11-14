@@ -69,9 +69,8 @@ function command(server: MockServer, action: 'finish' | 'abort') {
 }
 
 function answerQuestion(server: MockServer, id: number) {
-  return post(server, `/api/projects/${PROJECT}/tasks/${id}/answer`, {
-    requestId: taskOf(server, id).pendingRequestId,
-    choiceId: 'brief',
+  return post(server, `/api/projects/${PROJECT}/qa/answers`, {
+    answers: [{ questionId: taskOf(server, id).pendingRequestId, choiceId: 'brief' }],
   });
 }
 

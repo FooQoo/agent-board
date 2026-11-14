@@ -33,7 +33,7 @@ test('default pending waits for a browser answer', async ({ page }) => {
 
     // The request has no wait setting at all: the child must wait for the answer on its own.
     waiter = spawn(agboardBinary(), [
-      '--project', project, 'state', '1', 'pending', '--actor', 'ai', '--json',
+      '--project', project, 'qa', 'ask', '--actor', 'ai', '--task', '1', '--json',
       '--request-json', decisionJson('Which plan should the default wait use?'),
     ], { cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
@@ -55,9 +55,13 @@ test('default pending waits for a browser answer', async ({ page }) => {
     await answerSend(page).click();
 
     expect(await exited, stderr).toEqual({ code: 0, signal: null });
-    const output = JSON.parse(stdout) as { task: TaskJson; answer: { actor: string; choiceId: string | null; choiceLabel: string | null } };
-    expect(output.answer).toMatchObject({ actor: 'human', choiceId: 'b', choiceLabel: 'Plan B' });
-    expect(output.task).toMatchObject({ id: 1, agentStatus: 'idle', pendingRequestId: null });
+    // The command prints one JSON event per line and ends with the answers.
+    const events = stdout.trim().split('\n').map((line) => JSON.parse(line) as { type: string; answers?: { id: string; choiceId: string | null; choiceLabel: string | null; via: string }[] });
+    expect(events[0]?.type).toBe('registered');
+    const last = events.at(-1);
+    expect(last?.type).toBe('answered');
+    expect(last?.answers?.[0]).toMatchObject({ id: 'Q-1', choiceId: 'b', choiceLabel: 'Plan B', via: 'ui' });
+    expect(show(home, 1)).toMatchObject({ id: 1, agentStatus: 'idle', pendingRequestId: null });
     expect(show(home, 1)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
     await expect(request).toBeHidden();
     await expect(answerButton(page, 1)).toHaveCount(0);

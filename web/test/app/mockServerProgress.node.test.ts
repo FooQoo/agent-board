@@ -115,8 +115,10 @@ describe('automatic Done', () => {
     const { server, events } = start();
     send(server, {
       method: 'POST',
-      url: `${base}/11/answer`,
-      body: JSON.stringify({ requestId: '11111111111111111111111111111111', choiceId: 'fifo' }),
+      url: `/api/projects/${PROJECT}/qa/answers`,
+      body: JSON.stringify({
+        answers: [{ questionId: '11111111111111111111111111111111', choiceId: 'fifo' }],
+      }),
     });
     check(server, 11, 'AC-3', true);
     expect(taskOf(server, 11).taskStatus).toBe('doing');
@@ -144,8 +146,10 @@ describe('automatic Done', () => {
     const { server, events } = start();
     send(server, {
       method: 'POST',
-      url: `${base}/12/answer`,
-      body: JSON.stringify({ requestId: '0123456789abcdef0123456789abcdef', text: 'Replace it.' }),
+      url: `/api/projects/${PROJECT}/qa/answers`,
+      body: JSON.stringify({
+        answers: [{ questionId: '0123456789abcdef0123456789abcdef', text: 'Replace it.' }],
+      }),
     });
     expect(taskOf(server, 12).taskStatus).toBe('done');
     expect(events.map((event) => event.changes[0]?.facets)).toEqual([

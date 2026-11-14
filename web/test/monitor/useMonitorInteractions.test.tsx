@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AnswerFormState } from '../../src/features/tasks/answer/model/answer';
+import { type AnswerFormState, answeredTask } from '../../src/features/tasks/answer/model/answer';
 
 import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 import { PROJECT_A, makeTask } from '../fixtures';
@@ -121,11 +121,14 @@ describe('useMonitorInteractions', () => {
         makeTask({ id: 3, taskStatus: status, agentStatus: 'pending', pendingRequestId: 'r1' }),
       );
       await act(async () => {
-        const data = await result.current.writeAnswer(original.projectId, original.task.id, {
+        await result.current.writeAnswer(original.projectId, original.task.id, {
           requestId: 'r1',
           text: 'Confirmed',
         });
-        result.current.onAnswered(original, 'r1', data);
+        result.current.onAnswered(original, 'r1', {
+          task: answeredTask(original.task),
+          changed: true,
+        });
       });
       expect(writeAnswer).toHaveBeenCalledWith(PROJECT_A.id, 3, {
         requestId: 'r1',

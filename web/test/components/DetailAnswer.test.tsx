@@ -108,11 +108,10 @@ describe('PC task answer dialog', () => {
     await userEvent.click(send());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe(
-      `/api/projects/${PROJECT_A.id}/tasks/12/answer`,
+      `/api/projects/${PROJECT_A.id}/qa/answers`,
     );
     expect(bodyOf(fetchMock.mock.calls[0] as unknown[])).toEqual({
-      requestId: 'req-1',
-      choiceId: 'reset',
+      answers: [{ questionId: 'req-1', choiceId: 'reset' }],
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
@@ -152,9 +151,7 @@ describe('PC task answer dialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(bodyOf(fetchMock.mock.calls[1] as unknown[])).toEqual({
-      requestId: 'req-1',
-      choiceId: 'keep',
-      text: 'Keep me',
+      answers: [{ questionId: 'req-1', choiceId: 'keep', text: 'Keep me' }],
     });
   });
 
@@ -181,8 +178,7 @@ describe('PC task answer dialog', () => {
     await userEvent.click(send());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(bodyOf(fetchMock.mock.calls[0] as unknown[])).toEqual({
-      requestId: 'req-2',
-      text: 'Old answer again',
+      answers: [{ questionId: 'req-2', text: 'Old answer again' }],
     });
   });
 

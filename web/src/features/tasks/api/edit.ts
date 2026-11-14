@@ -2,13 +2,13 @@ import type { AcceptanceItem, ProjectId } from '../../../shared/api/contracts';
 import { projectPath } from '../../../shared/api/http';
 import { multipartBody, postTask, sendMultipart, sendTask } from '../../../shared/api/write';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
-import type { AnswerInput } from '../answer/model/answer';
-import type { Task } from '../../../shared/api/contracts';
+import { type AnswerInput, answersBody } from '../answer/model/answer';
 
-export async function answerRequest(projectId: ProjectId, id: number, input: AnswerInput) {
-  return postTask<{ task: Task; changed: boolean }>(
-    `${projectPath(projectId)}/tasks/${id}/answer`,
-    input,
+/** Sends a person's answer to the question shown on task `_id`. */
+export async function answerRequest(projectId: ProjectId, _id: number, input: AnswerInput) {
+  return postTask<{ questions: unknown[] }>(
+    `${projectPath(projectId)}/qa/answers`,
+    answersBody(input),
   );
 }
 

@@ -79,9 +79,8 @@ export function transcript(): unknown[] {
     { url: `${base}/epics/FILE-SHARE/detail` },
     post(`${base}/tasks`, { title: 'New card', assignee: 'ai' }),
     post(`${base}/tasks/15/move`, { taskStatus: 'doing' }),
-    post(`${base}/tasks/13/answer`, {
-      requestId: '13131313131313131313131313131313',
-      choiceId: 'board',
+    post(`${base}/qa/answers`, {
+      answers: [{ questionId: '13131313131313131313131313131313', choiceId: 'board' }],
     }),
     { method: 'PATCH', url: `${base}/tasks/14`, body: JSON.stringify({ title: 'Edited' }) },
     { method: 'PUT', url: `${base}/tasks/14/epic`, body: JSON.stringify({ epicId: null }) },
@@ -220,14 +219,13 @@ export function mockServerCases(): void {
       expect(same.status).toBe(422);
     });
 
-    it('answers a pending request, and refuses an old one', () => {
+    it('answers an open question, and refuses an unknown one', () => {
       const { server } = start();
-      const url = `/api/projects/${PROJECT}/tasks/13/answer`;
-      expect(send(server, post(url, { requestId: 'old', choiceId: 'board' })).status).toBe(409);
-      const ok = send(
-        server,
-        post(url, { requestId: '13131313131313131313131313131313', choiceId: 'board' }),
-      );
+      const url = `/api/projects/${PROJECT}/qa/answers`;
+      const answer = (questionId: string) =>
+        post(url, { answers: [{ questionId, choiceId: 'board' }] });
+      expect(send(server, answer('old')).status).toBe(404);
+      const ok = send(server, answer('13131313131313131313131313131313'));
       expect(ok.status).toBe(200);
       const task = taskOf(server, 13);
       expect(task.agentStatus).toBe('idle');

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '../helpers/fixtures';
-import { agboardOk, decisionJson, mainProject, resetBoard, type TaskJson } from '../helpers/agboard';
+import { agboardOk, askArgs, decisionJson, mainProject, resetBoard, type TaskJson } from '../helpers/agboard';
 import { answerButton, answerDialog, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 import { expectHistoryNote } from '../helpers/history';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
@@ -23,7 +23,7 @@ function show(id: number): Shown {
 
 /** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait. */
 function ask(question: string): void {
-  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(question)]);
+  agboardOk(mainProject, askArgs('13', decisionJson(question)));
 }
 
 const png = Buffer.from(
@@ -169,7 +169,7 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   ask('Will it fail?');
   const bodies: string[] = [];
   let fail = true;
-  await page.route('**/api/projects/*/tasks/13/answer', async (route) => {
+  await page.route('**/api/projects/*/qa/answers', async (route) => {
     bodies.push(route.request().postData() ?? '');
     if (fail) {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'database_error', reason: 'busy' } }) });

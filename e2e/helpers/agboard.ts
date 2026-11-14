@@ -114,7 +114,7 @@ export interface AgboardResult {
  * without a terminal. The project is always named by the caller.
  */
 export function agboard(project: string, args: string[], home: string = mainHome()): AgboardResult {
-  return run(['--project', project, ...withTestDefaults(project, args, home)], home);
+  return run(['--project', project, ...withTestDefaults(args)], home);
 }
 
 /** Run a whole-catalog command such as `project create NAME` or `project ls`, which takes no `--project`. */
@@ -279,9 +279,10 @@ function historyFrontmatter(events: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-function taskMarkdown(description: string, events: Record<string, unknown>[]): string {
+function taskMarkdown(description: string, events: Record<string, unknown>[], questions: string[] = []): string {
   const text = taskBody(description);
-  const frontmatter = historyFrontmatter(events);
+  const questionLines = questions.length ? `questions:\n${questions.map((id) => `  - ${id}`).join('\n')}\n` : '';
+  const frontmatter = questionLines + historyFrontmatter(events);
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return `---\n${frontmatter}\n---\n\n${text}`;
   const yaml = match[1].trimEnd();
@@ -314,8 +315,8 @@ interface Fixture {
   tasks: FixtureTask[];
 }
 
-/** The task.json and TASK.md of one fixture card, in the current file format. */
-function taskFilesFor(item: FixtureTask): { task: Record<string, unknown>; markdown: string } {
+/** The task.json and TASK.md of one fixture card, in the current file format. A pending card refers to `question`. */
+function taskFilesFor(item: FixtureTask, question?: string): { task: Record<string, unknown>; markdown: string } {
   const history = item.history.map(({ at, reason }) => ({ at, reason }));
   const taskJson = {
     formatVersion: 1,
@@ -325,19 +326,45 @@ function taskFilesFor(item: FixtureTask): { task: Record<string, unknown>; markd
     epicId: null,
     taskStatus: item.taskStatus,
     taskStatusChangedAt: item.taskStatusChangedAt,
-    agentStatus: item.agentStatus,
+    // Waiting is derived from the open question the card refers to; only idle and running are stored.
+    agentStatus: item.agentStatus === 'pending' ? 'idle' : item.agentStatus,
     position: item.position,
     isDraft: false,
     archivedAt: null,
-    pendingRequestId: item.agentStatus === 'pending' ? item.pendingRequestId : null,
-    pendingRequest: item.agentStatus === 'pending' ? { question: item.pendingReason ?? '', choices: item.pendingChoices ?? [] } : null,
-    requestAnswers: [],
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     agentStatusChangedAt: item.agentStatusChangedAt,
     attachments: [],
   };
-  return { task: taskJson, markdown: taskMarkdown(item.description, history) };
+  return { task: taskJson, markdown: taskMarkdown(item.description, history, question ? [question] : []) };
+}
+
+/** `qa/<request-id>/request.json` with one open question for a pending fixture card. */
+function questionRequestFor(item: FixtureTask, question: string): Record<string, unknown> {
+  const choices = item.pendingChoices?.length ? item.pendingChoices : [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }];
+  return {
+    formatVersion: 1,
+    requestId: requestIdFor(item),
+    createdAt: item.agentStatusChangedAt,
+    createdBy: 'ai',
+    withdrawnAt: null,
+    withdrawReason: null,
+    questions: [{
+      id: question,
+      kind: 'task',
+      question: item.pendingReason ?? 'Waiting for a decision.',
+      choices,
+      recommendedChoiceId: null,
+      approvingChoiceIds: [],
+      answer: null,
+    }],
+  };
+}
+
+/** The fixture's request ID when it is one, or one made from the card's ID. */
+function requestIdFor(item: FixtureTask): string {
+  if (item.pendingRequestId && /^[0-9a-f]{32}$/.test(item.pendingRequestId)) return item.pendingRequestId;
+  return item.id.toString(16).padStart(32, '0');
 }
 
 /**
@@ -349,11 +376,20 @@ export function seedProject(project: string, file: string, home: string = mainHo
   const folder = workspace(project, home).folder;
   rmSync(path.join(folder, 'tasks'), { recursive: true, force: true });
   rmSync(path.join(folder, 'epics'), { recursive: true, force: true });
+  rmSync(path.join(folder, 'qa'), { recursive: true, force: true });
   const fixture = JSON.parse(readFileSync(file, 'utf8')) as Fixture;
+  let nextQuestionId = 1;
   for (const item of fixture.tasks) {
     const dir = path.join(folder, 'tasks', String(item.id));
     mkdirSync(dir, { recursive: true });
-    const { task, markdown } = taskFilesFor(item);
+    let question: string | undefined;
+    if (item.agentStatus === 'pending') {
+      question = `Q-${nextQuestionId++}`;
+      const requestDir = path.join(folder, 'qa', requestIdFor(item));
+      mkdirSync(requestDir, { recursive: true });
+      writeJson(path.join(requestDir, 'request.json'), questionRequestFor(item, question));
+    }
+    const { task, markdown } = taskFilesFor(item, question);
     // The screen shows the newer of task.json's updatedAt and TASK.md's modification time, so both files
     // carry the fixture's time and the seeded cards keep the times the specs expect. Each file has that
     // time when it appears: the version a serve compares ignores modification times, so a serve that read
@@ -364,7 +400,7 @@ export function seedProject(project: string, file: string, home: string = mainHo
   }
   const projectFile = path.join(folder, 'project.json');
   const current = JSON.parse(readFileSync(projectFile, 'utf8')) as Record<string, unknown>;
-  writeJson(projectFile, { ...current, nextTaskId: fixture.board.nextTaskId });
+  writeJson(projectFile, { ...current, nextTaskId: fixture.board.nextTaskId, nextQuestionId });
 }
 
 /** Create `project` if it does not exist yet. */
@@ -443,22 +479,12 @@ export function resetAlphaBeta(home: string, serveUrl?: string): void {
   restoreProject('Beta', betaFixture, home, serveUrl);
 }
 
-function withTestDefaults(project: string, args: string[], home: string): string[] {
+function withTestDefaults(args: string[]): string[] {
   const result = [...args];
   const command = result[0];
   if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
     result.push('--actor', 'human');
-  }
-  if (command === 'state' && result[2] === 'idle' && !result.includes('--request')) {
-    const snapshot = spawnSync(agboardBinary(), ['--project', project, 'snapshot', '--json'], { env: agboardEnv(home), encoding: 'utf8' });
-    if (snapshot.status === 0) {
-      const task = (JSON.parse(snapshot.stdout).tasks as TaskJson[]).find((item) => item.id === Number(result[1]));
-      if (task?.agentStatus === 'pending' && task.pendingRequestId) {
-        result.push('--request', task.pendingRequestId);
-        if (!result.includes('--reason') && !result.includes('--reason-file')) result.push('--reason', 'User confirmed the current request.');
-      }
-    }
   }
   return result;
 }
@@ -576,13 +602,25 @@ export async function stopServe(serve: Serve | undefined): Promise<void> {
   }
 }
 
-/** A decision request for `state ... pending --request-json`: the question and two choices. */
+/** A request for `qa ask --request-json`: one question and two choices. */
 export function decisionJson(question: string): string {
   return JSON.stringify({
-    question,
-    choices: [
-      { id: 'a', label: 'Plan A' },
-      { id: 'b', label: 'Plan B' },
-    ],
+    questions: [{
+      question,
+      choices: [
+        { id: 'a', label: 'Plan A' },
+        { id: 'b', label: 'Plan B' },
+      ],
+    }],
   });
+}
+
+/** `qa ask` arguments that make task `id` wait on one question without waiting for its answer. */
+/** A request with one question, in the shape `qa ask --request-json` reads. */
+export function questionJson(question: string, choices: { id: string; label: string }[]): string {
+  return JSON.stringify({ questions: [{ question, choices }] });
+}
+
+export function askArgs(id: number | string, request: string): string[] {
+  return ['qa', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--request-json', request];
 }

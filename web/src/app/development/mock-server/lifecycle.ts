@@ -15,7 +15,7 @@ import {
 
 // A card's life on the board: create, move, answer, archive, restore and delete.
 
-const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?)$/;
+const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?|qa\/answers)$/;
 
 export const lifecycleRoutes: Routes = (context, request) => {
   const match = TASK_ROUTE.exec(request.url.pathname);
@@ -72,7 +72,15 @@ export const lifecycleRoutes: Routes = (context, request) => {
     return archiveDone(context, found, input);
   }
 
-  const taskMatch = /^tasks\/(\d+)\/(move|answer)$/.exec(rest);
+  if (rest === 'qa/answers') {
+    if (!request.token) return forbidden();
+    if (!found) return projectNotFound();
+    const input = parseBody(request.body);
+    if (!input) return invalidJson();
+    return answerQuestion(context, found, input);
+  }
+
+  const taskMatch = /^tasks\/(\d+)\/move$/.exec(rest);
   const creates = rest === 'tasks' || rest === 'tasks/multipart';
   if (!creates && !taskMatch) return null;
   if (!request.token) return forbidden();
@@ -87,9 +95,7 @@ export const lifecycleRoutes: Routes = (context, request) => {
   const id = Number(taskMatch?.[1]);
   const task = found.tasks.find((item) => item.id === id);
   if (!task) return error(404, 'task_not_found', `task #${id} not found.`, `No task has ID ${id}.`);
-  return taskMatch?.[2] === 'move'
-    ? moveTask(context, found, task, input)
-    : answerTask(context, found, task, input);
+  return moveTask(context, found, task, input);
 };
 
 function archiveDone(
@@ -226,19 +232,20 @@ function moveTask(
   return json(200, { task: updated, changed: true });
 }
 
-function answerTask(
+/** `POST .../qa/answers` with one answer: the mock keeps one question per waiting card. */
+function answerQuestion(
   context: MockContext,
   found: MockBoard,
-  task: Task,
-  input: Record<string, unknown>,
+  body: Record<string, unknown>,
 ): MockResponse {
-  if (task.agentStatus !== 'pending' || input.requestId !== task.pendingRequestId)
-    return error(
-      409,
-      'request_changed',
-      'the request has changed.',
-      'Refresh the task and answer the current request.',
-    );
+  const answers = Array.isArray(body.answers) ? body.answers : [];
+  const input = answers[0] as Record<string, unknown> | undefined;
+  if (answers.length !== 1 || typeof input !== 'object' || input === null)
+    return error(422, 'validation', 'invalid answers.', 'Send one answer.');
+  const id = input.questionId;
+  const task = found.tasks.find((t) => t.agentStatus === 'pending' && t.pendingRequestId === id);
+  if (!task)
+    return error(404, 'question_not_found', `question ${String(id)} not found.`, 'Refresh.');
   const choiceId = typeof input.choiceId === 'string' ? input.choiceId : undefined;
   const text = typeof input.text === 'string' ? input.text.trim() : '';
   if (text.length > 2000)
@@ -271,5 +278,5 @@ function answerTask(
     history: [...task.history, { at, reason: [choice?.label, text].filter(Boolean).join(' — ') }],
   };
   context.replaceTasks(found, [updated], [taskChangeOf(task, updated, ['summary', 'history'])]);
-  return json(200, { task: updated, changed: true });
+  return json(200, { questions: [{ id, status: 'answered' }] });
 }

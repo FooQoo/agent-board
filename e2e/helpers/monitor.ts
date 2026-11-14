@@ -41,8 +41,10 @@ function move(home: string, project: string, id: number, lane: 'doing' | 'done',
 }
 
 function state(home: string, project: string, id: number, status: 'running' | 'pending', reason: string): void {
-  const args = status === 'pending' ? ['--no-wait', '--request-json', decisionJson(reason)] : ['--reason', reason];
-  run(home, ['--project', project, 'state', String(id), status, '--actor', 'ai', ...args]);
+  const args = status === 'pending'
+    ? ['qa', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--request-json', decisionJson(reason)]
+    : ['state', String(id), status, '--actor', 'ai', '--reason', reason];
+  run(home, ['--project', project, ...args]);
 }
 
 function writeJson(file: string, value: unknown): void {

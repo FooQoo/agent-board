@@ -7,6 +7,7 @@ import type {
   Summary,
   SummaryEpic,
   SummaryProblem,
+  SummaryQuestion,
   SummaryTask,
 } from './contracts';
 import { bool, exact, fail, int, list, nullableStr, oneOf, str } from './guards';
@@ -14,7 +15,8 @@ import { bool, exact, fail, int, list, nullableStr, oneOf, str } from './guards'
 const STATUSES = ['todo', 'doing', 'done'] as const;
 const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
-const RESOURCES = ['task', 'epic', 'project'] as const;
+const RESOURCES = ['task', 'epic', 'project', 'qa'] as const;
+const QUESTION_KINDS = ['plan', 'start_approval', 'task'] as const;
 const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
 const TASK_FIELDS = [
@@ -39,7 +41,7 @@ const TASK_FIELDS = [
 ];
 
 function parseTask(value: unknown, path: string): SummaryTask {
-  const o = exact(value, path, TASK_FIELDS, ['onboardingSample']);
+  const o = exact(value, path, TASK_FIELDS, ['onboardingSample', 'questionIds', 'openQuestionIds']);
   const acceptance = exact(o.acceptance, `${path}.acceptance`, ['done', 'total']);
   const versions = exact(o.detailVersions, `${path}.detailVersions`, ['document', 'history']);
   const task: SummaryTask = {
@@ -71,6 +73,10 @@ function parseTask(value: unknown, path: string): SummaryTask {
       history: str(versions.history, `${path}.detailVersions.history`),
     },
   };
+  // The question lists come from servers that keep project questions; a mock may leave them out.
+  for (const field of ['questionIds', 'openQuestionIds'] as const) {
+    if (o[field] !== undefined) task[field] = list(o[field], `${path}.${field}`, str);
+  }
   if (o.onboardingSample !== undefined) {
     const s = exact(o.onboardingSample, `${path}.onboardingSample`, ['runId', 'ordinal']);
     task.onboardingSample = {
@@ -121,11 +127,37 @@ function parseProblem(value: unknown, path: string): SummaryProblem {
   };
 }
 
+function parseQuestion(value: unknown, path: string): SummaryQuestion {
+  const o = exact(value, path, [
+    'id',
+    'requestId',
+    'kind',
+    'title',
+    'recommendedChoiceId',
+    'referencedBy',
+    'createdAt',
+  ]);
+  return {
+    id: str(o.id, `${path}.id`),
+    requestId: str(o.requestId, `${path}.requestId`),
+    kind: oneOf(o.kind, `${path}.kind`, QUESTION_KINDS),
+    title: str(o.title, `${path}.title`),
+    recommendedChoiceId: nullableStr(o.recommendedChoiceId, `${path}.recommendedChoiceId`),
+    referencedBy: list(o.referencedBy, `${path}.referencedBy`, (v, q) => int(v, q, 1)),
+    createdAt: str(o.createdAt, `${path}.createdAt`),
+  };
+}
+
 /** The Summary response body, or a `ContractError`. */
 export function parseSummary(value: unknown): Summary {
-  const o = exact(value, 'summary', ['project', 'version', 'tasks', 'epics', 'problems']);
+  const o = exact(
+    value,
+    'summary',
+    ['project', 'version', 'tasks', 'epics', 'problems'],
+    ['questions'],
+  );
   const project = exact(o.project, 'summary.project', ['id', 'name']);
-  return {
+  const summary: Summary = {
     project: {
       id: str(project.id, 'summary.project.id'),
       name: str(project.name, 'summary.project.name'),
@@ -135,6 +167,10 @@ export function parseSummary(value: unknown): Summary {
     epics: list(o.epics, 'summary.epics', parseEpic),
     problems: list(o.problems, 'summary.problems', parseProblem),
   };
+  if (o.questions !== undefined) {
+    summary.questions = list(o.questions, 'summary.questions', parseQuestion);
+  }
+  return summary;
 }
 
 function parseChange(value: unknown, path: string): Change {
@@ -144,6 +180,9 @@ function parseChange(value: unknown, path: string): Change {
   const facets: Facet[] = list(o.facets, `${path}.facets`, (v, p) => oneOf(v, p, FACETS));
   if (facets.length === 0) fail(`${path}.facets`, 'at least one facet');
   if (new Set(facets).size !== facets.length) fail(`${path}.facets`, 'no repeated facet');
+  if (resource === 'qa' && facets.some((f) => f !== 'summary')) {
+    fail(`${path}.facets`, 'only summary for qa');
+  }
   if (resource === 'project' && facets.some((f) => f !== 'summary' && f !== 'deleted')) {
     fail(`${path}.facets`, 'only summary or deleted for a project');
   }

@@ -8,6 +8,7 @@ import type {
   AnswerResult,
   AnswerWriter,
 } from './model/answer';
+import { answeredTask, isStaleAnswer } from './model/answer';
 import { problemOf, WriteError } from '../../../shared/api/writeErrors';
 import type { OperationControls } from '../../../shared/lib/operations/operations';
 import type { TaskSummary, ProjectId } from '../../../shared/api/contracts';
@@ -174,7 +175,8 @@ export function useDecisionRequestForm({
       const id = operations.begin('answer', projectId);
       operations.saveStarted(id);
       try {
-        const result = await writeAnswer(projectId, task.id, input);
+        await writeAnswer(projectId, task.id, input);
+        const result: AnswerResult = { task: answeredTask(task), changed: true };
         sending.current = false;
         answeredHere.current = current.baseRequestId;
         operations.end(id);
@@ -188,10 +190,7 @@ export function useDecisionRequestForm({
         operations.saveFailed(id);
         operations.end(id);
         if (!mounted.current) return;
-        if (
-          error instanceof WriteError &&
-          (error.code === 'request_changed' || error.status === 404)
-        ) {
+        if (error instanceof WriteError && isStaleAnswer(error.code, error.status)) {
           onRequestStale?.(current.baseRequestId);
           update((value) => ({ ...value, phase: 'editing', requestChanged: true }));
           onChanged?.();
@@ -225,7 +224,7 @@ export function useDecisionRequestForm({
       projectId,
       sendable,
       t,
-      task.id,
+      task,
       update,
       writeAnswer,
     ],

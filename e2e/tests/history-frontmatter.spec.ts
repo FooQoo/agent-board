@@ -6,6 +6,7 @@ import { expect, test, type Page } from '../helpers/fixtures';
 import {
 	agboardBinary,
 	agboardOk,
+	askArgs,
 	makeHome,
 	replaceFileAtomically,
 	replaceTaskBodyPreservingFrontmatter,
@@ -172,7 +173,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 		question: 'Which release should ship?',
 		choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
 	};
-	cliOk(['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify(request)]);
+	cliOk(askArgs(String(id), JSON.stringify({ questions: [request] })));
 	const pending = show(id);
 	const requestId = pending.pendingRequestId;
 	expect(requestId).toBeTruthy();
@@ -189,7 +190,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await sheet.getByRole('radio', { name: 'Plan B' }).click();
 	await sheet.getByRole('textbox').fill('Ship the stable release.');
 	const answerRequest = page.waitForResponse((response) =>
-		response.url().includes(`/tasks/${id}/answer`) && response.request().method() === 'POST');
+		response.url().includes('/qa/answers') && response.request().method() === 'POST');
 	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
 	expect((await answerRequest).status()).toBe(200);
 	await expect(sheet).toHaveCount(0);
@@ -202,12 +203,11 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const task = show(id);
 	expect(task.agentStatus).toBe('idle');
 	expect(task.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
-	const metadata = JSON.parse(readFileSync(taskJsonFile(id), 'utf8'));
-	expect(metadata.pendingRequest).toBeNull();
-	expect(metadata.requestAnswers.at(-1)).toMatchObject({ requestId, actor: 'human', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
+	const recorded = JSON.parse(cliOk(['qa', 'show', requestId!]).trim()) as { question: { answer: unknown } };
+	expect(recorded.question.answer).toMatchObject({ actor: 'human', via: 'ui', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
 	expect(task.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
-	const stale = cli(['state', String(id), 'idle', '--actor', 'human', '--request', requestId!, '--reason', 'Late answer', '--json']);
+	const stale = cli(['qa', 'answer', requestId!, '--actor', 'human', '--via', 'cli', '--text', 'Late answer', '--json']);
 	expect(stale.code).not.toBe(0);
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Pending history answer`) }).click();

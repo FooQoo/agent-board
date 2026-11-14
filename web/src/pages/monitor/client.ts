@@ -1,7 +1,11 @@
 import { i18n } from '../../shared/i18n';
 import type { MonitorReadResolvers } from './contracts';
 import type { Task, ProjectId } from '../../shared/api/contracts';
-import type { AnswerInput, AnswerResult } from '../../features/tasks/answer/model/answer';
+import {
+  type AnswerInput,
+  type AnswerResult,
+  answersBody,
+} from '../../features/tasks/answer/model/answer';
 import { writeFailure } from '../../shared/api/writeErrors';
 import { attachmentSegment, epicSegment, projectSegment, taskSegment } from './segments';
 import {
@@ -38,11 +42,12 @@ function taskPath(projectId: ProjectId, taskId: number, rest: string) {
 
 function answerRequest(
   projectId: ProjectId,
-  taskId: number,
+  _taskId: number,
   input: AnswerInput,
   options: MonitorRequestOptions = {},
-): Promise<AnswerResult> {
-  return writeTask('answer', 'POST', taskPath(projectId, taskId, 'answer'), input, options);
+): Promise<unknown> {
+  const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/qa/answers`;
+  return writeTask('answer', 'POST', path, answersBody(input), options);
 }
 
 /** Checks (`done: true`) or unchecks one acceptance condition, as the person. */

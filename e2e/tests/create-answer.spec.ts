@@ -1,6 +1,6 @@
 import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '../helpers/fixtures';
-import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, decisionJson } from '../helpers/agboard';
+import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, askArgs, decisionJson } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
@@ -209,7 +209,7 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
     release = resolve;
   });
   let posts = 0;
-  await page.route('**/api/projects/*/tasks/12/answer', async (route) => {
+  await page.route('**/api/projects/*/qa/answers', async (route) => {
     posts += 1;
     if (mode === 'fail') {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'database_error', reason: 'busy' } }) });
@@ -244,10 +244,16 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
 
 /** A person's move drops the old request; the agent then runs again and asks something else. */
 function askAgain(reason: string): void {
+  // The agent withdraws the open question before it asks a new one.
+  const open = show(12).pendingRequestId;
+  if (open) {
+    const { requestId } = JSON.parse(agboardOk(mainProject, ['qa', 'show', open, '--json']).stdout).question as { requestId: string };
+    agboardOk(mainProject, ['qa', 'withdraw', requestId, '--actor', 'ai', '--reason', 'Asking again.']);
+  }
   agboardOk(mainProject, ['mv', '12', 'todo', '--actor', 'human', '--reason', 'Back to Todo.']);
   agboardOk(mainProject, ['mv', '12', 'doing', '--actor', 'human', '--reason', 'Doing again.']);
   agboardOk(mainProject, ['state', '12', 'running', '--actor', 'ai', '--reason', 'Moving on.']);
-  agboardOk(mainProject, ['state', '12', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(reason)]);
+  agboardOk(mainProject, askArgs('12', decisionJson(reason)));
 }
 
 test('when the agent asks something else while the dialog is open, it shows the new question, keeps the text, and sends it for the new request only after an edit', async ({
@@ -291,7 +297,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   await page.route('**/api/projects/*/summary', (route) => route.abort());
   askAgain('A different question now.');
   await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
-  const answered = page.waitForResponse((response) => response.url().endsWith('/tasks/12/answer'));
+  const answered = page.waitForResponse((response) => response.url().endsWith('/qa/answers'));
   await answerSend(page).click();
   expect((await answered).status()).toBe(409);
   await expect(dialog).toContainText('The question has changed. Review it and answer again.');
@@ -309,7 +315,7 @@ test('an answer sent from a page that missed the new request is refused by the s
 
 test('a long question does not grow the card; the dialog reads all of it', async ({ page }) => {
   const lines = Array.from({ length: 14 }, (_, index) => `Line ${index + 1} of a long question about the release plan.`);
-  agboardOk(mainProject, ['state', '13', 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(lines.join('\n'))]);
+  agboardOk(mainProject, askArgs('13', decisionJson(lines.join('\n'))));
   await expect(answerButton(page, 13)).toBeVisible();
   // The card shows no question text, so its height does not follow the question.
   await expect(page.getByText('Line 1 of a long question')).toHaveCount(0);

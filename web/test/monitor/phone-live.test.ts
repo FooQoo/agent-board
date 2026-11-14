@@ -250,17 +250,13 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     await monitorClient.unlock(backend.passcode);
     const pendingRequest = await firstPendingRequest();
     // The same write without the token is refused by the real guard.
-    const bare = await send(
-      `/monitor/api/projects/${projectId}/tasks/${pendingRequest.taskId}/answer`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestId: pendingRequest.requestId,
-          choiceId: pendingRequest.choice,
-        }),
-      },
-    );
+    const bare = await send(`/monitor/api/projects/${projectId}/qa/answers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        answers: [{ questionId: pendingRequest.requestId, choiceId: pendingRequest.choice }],
+      }),
+    });
     expect(bare.statusCode).toBe(403);
     bare.resume();
 
@@ -268,7 +264,7 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
       requestId: pendingRequest.requestId,
       choiceId: pendingRequest.choice,
     });
-    expect(result.task.pendingRequestId).toBeNull();
+    expect((result as { questions: { status: string }[] }).questions[0]?.status).toBe('answered');
     expect(browser.wrote).toBe(2); // the unlock and the answer
   });
 

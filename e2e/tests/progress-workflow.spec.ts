@@ -30,11 +30,12 @@ function run(args: string[], home: string, cwd: string, input = ''): { code: num
 function startWaiter(home: string, cwd: string, project: string, id: number): ChildProcess {
   const child = spawn(agboardBinary(), [
     '--project', project,
-    'state', String(id), 'pending', '--actor', 'ai',
+    'qa', 'ask', '--actor', 'ai', '--task', String(id),
     '--request-json', JSON.stringify({
-      question: 'Which release plan should we use?',
-      choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
-      wait: {},
+      questions: [{
+        question: 'Which release plan should we use?',
+        choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
+      }],
     }),
   ], {
     cwd,

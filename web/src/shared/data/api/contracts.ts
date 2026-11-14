@@ -52,6 +52,9 @@ export interface SummaryTask {
   pendingRequestId: string | null;
   pendingReason: string | null;
   pendingChoices: Choice[];
+  /** The questions the task refers to, and those of them still open. */
+  questionIds?: string[];
+  openQuestionIds?: string[];
   taskStatusChangedAt: string;
   agentStatusChangedAt: string;
   onboardingSample?: { runId: string; ordinal: number };
@@ -86,12 +89,29 @@ export interface SummaryProblem {
   reason: string;
 }
 
+export type QuestionKind = 'plan' | 'start_approval' | 'task';
+
+/** An open question of the project; the full text is read with `GET .../qa/{questionId}`. */
+export interface SummaryQuestion {
+  id: string;
+  requestId: string;
+  kind: QuestionKind;
+  /** The first line of the question, up to 200 characters. */
+  title: string;
+  recommendedChoiceId: string | null;
+  /** The unarchived tasks that wait on the question. */
+  referencedBy: number[];
+  createdAt: string;
+}
+
 export interface Summary {
   project: SummaryProject;
   version: Version;
   tasks: SummaryTask[];
   epics: SummaryEpic[];
   problems: SummaryProblem[];
+  /** The open questions, in ID order. */
+  questions?: SummaryQuestion[];
 }
 
 // ---- Detail NDJSON: `.../tasks/{id}/detail`, `.../epics/{epicId}/detail`
@@ -136,7 +156,8 @@ export type DetailEvent =
 
 // ---- SSE `changed`
 
-export type ChangeResource = 'task' | 'epic' | 'project';
+/** `qa`: the project's questions changed; its ID is the project's and its only facet `summary`. */
+export type ChangeResource = 'task' | 'epic' | 'project' | 'qa';
 /**
  * `request`: a task's pending decision request was asked, answered, or withdrawn. It always comes
  * with `summary` and is applied even while a panel holds the other updates back.

@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, request as playwrightRequest, test } from '../helpers/fixtures';
-import { agboard } from '../helpers/agboard';
+import { agboard, askArgs, decisionJson } from '../helpers/agboard';
 import {
   createMonitorHome,
   monitorProjectId,
@@ -126,7 +126,7 @@ test('the phone answers the current question from the sheet, and the answer reac
   await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
   await sheet.getByRole('radio', { name: 'Plan A' }).click();
   const answered = page.waitForResponse((response) =>
-    response.url().includes('/tasks/1/answer') && response.request().method() === 'POST');
+    response.url().includes('/qa/answers') && response.request().method() === 'POST');
   await sheet.getByRole('button', { name: 'Send', exact: true }).click();
   expect((await answered).status()).toBe(200);
   await expect(sheet).toHaveCount(0);
@@ -154,7 +154,7 @@ test('an image attached to the task shows in the sheet from the monitor attachme
   writeFileSync(file, png);
   const attachment: string = json(['attachment', 'add', String(id), '--file', file, '--actor', 'ai']).attachment.id;
   const question = `Which one?\n\n![the picture](attachment:${attachment})`;
-  const st = agboard('Alpha', ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', JSON.stringify({ question, choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }] })], home);
+  const st = agboard('Alpha', askArgs(String(id), decisionJson(question)), home);
   expect(st.code, st.stderr).toBe(0);
 
   await entrance.open(page, monitorUrl());
@@ -200,9 +200,9 @@ test('nothing is read or answered without a session, and a replaced tunnel needs
     expect((await response.json()).error?.code ?? (await response.json()).code).toBe('session_required');
     expect(response.headers()['set-cookie']).toBeUndefined();
   }
-  const forged = await bare.post(`${base}/projects/${alpha}/tasks/2/answer`, {
+  const forged = await bare.post(`${base}/projects/${alpha}/qa/answers`, {
     headers: { Cookie: 'agboard_ngrok_session=' + '0'.repeat(64), 'X-Agboard-Csrf': '0'.repeat(64) },
-    data: { requestId: 'x', text: 'forged' },
+    data: { answers: [{ questionId: 'Q-1', text: 'forged' }] },
   });
   expect(forged.status()).toBe(401);
   await bare.dispose();

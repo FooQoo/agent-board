@@ -2,7 +2,7 @@ import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
-import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, decisionJson } from '../helpers/agboard';
+import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
 
@@ -718,7 +718,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['state', String(fresh + 1), 'running']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Running Added by the CLI `) })).toBeVisible();
-  agboardOk(mainProject, ['state', String(fresh + 1), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Waiting for a theme review')]);
+  agboardOk(mainProject, askArgs(String(fresh + 1), decisionJson('Waiting for a theme review')));
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Pending Added by the CLI `) })).toBeVisible();
   // The card offers the answer button; the question is read in its dialog.
   await expect(await openAnswer(page, fresh + 1)).toContainText('Waiting for a theme review');
@@ -803,7 +803,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
 
   // Answering: a refused answer keeps the text, and the card stays pending.
   let answerFails = true;
-  await page.route('**/api/projects/*/tasks/12/answer', async (route) => {
+  await page.route('**/api/projects/*/qa/answers', async (route) => {
     if (!answerFails) return route.fallback();
     return route.fulfill({
       status: 409,

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '../helpers/fixtures';
-import { agboardOk, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
+import { agboardOk, askArgs, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
 import { answerButton, answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';
 
@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
 test('an AI task in Todo asks, shows as pending there, and the answer returns it to Todo idle', async ({ page }) => {
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'ai']);
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Which plan before we start?')]);
+  agboardOk(mainProject, askArgs(String(id), decisionJson('Which plan before we start?')));
   await page.reload();
   await waitForSync(page);
 
@@ -47,7 +47,7 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
 test('moving a task out of Todo cancels its pending question', async ({ page }) => {
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson('Still wanted?')]);
+  agboardOk(mainProject, askArgs(String(id), decisionJson('Still wanted?')));
   await page.reload();
   await waitForSync(page);
   agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Start now.']);

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '../helpers/fixtures';
-import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, decisionJson } from '../helpers/agboard';
+import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, askArgs, decisionJson, questionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
 import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
@@ -37,13 +37,13 @@ function askWithChoices(id: number, question: string, choices: { id: string; lab
   if (show(id).taskStatus !== 'doing') agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Doing it.']);
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
   const file = path.join(work, `request-${id}-${Date.now()}.json`);
-  writeFileSync(file, JSON.stringify({ question, choices }));
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', readFileSync(file, 'utf8')]);
+  writeFileSync(file, questionJson(question, choices));
+  agboardOk(mainProject, askArgs(String(id), readFileSync(file, 'utf8')));
 }
 
 function askText(id: number, question: string): void {
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
-  agboardOk(mainProject, ['state', String(id), 'pending', '--actor', 'ai', '--no-wait', '--request-json', decisionJson(question)]);
+  agboardOk(mainProject, askArgs(String(id), decisionJson(question)));
 }
 
 let work: string;

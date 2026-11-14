@@ -1,8 +1,9 @@
-import type {
-  AnswerFormKey,
-  AnswerFormState,
-  AnswerFormStateStore,
-  AnswerResult,
+import {
+  type AnswerFormKey,
+  type AnswerFormState,
+  type AnswerFormStateStore,
+  type AnswerResult,
+  answeredTask,
 } from '../../../features/tasks/answer/model/answer';
 import type { ProjectId } from '../../../shared/api/contracts';
 import type { OperationControls, OperationKind } from '../../../shared/lib/operations/operations';
@@ -28,9 +29,7 @@ function formKey(projectId: ProjectId, taskId: number, requestId: string | null)
   return `${projectId}:${taskId}:${requestId ?? ''}` as AnswerFormKey;
 }
 
-function taskPrefix(projectId: ProjectId, taskId: number): string {
-  return `${projectId}:${taskId}:`;
-}
+const taskPrefix = (projectId: ProjectId, taskId: number): string => `${projectId}:${taskId}:`;
 
 function initialState(requestId: string | null, requestChanged = false): AnswerFormState {
   return {
@@ -286,7 +285,7 @@ export class MonitorAnswerDrafts {
     return tasks.map((item) => {
       const receipt = this.saved.get(`${item.projectId}:${item.task.id}`);
       if (!receipt || item.task.pendingRequestId !== receipt.requestId) return item;
-      return { ...item, task: receipt.result.task };
+      return { ...item, task: answeredTask(item.task) };
     });
   }
 

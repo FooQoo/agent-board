@@ -308,7 +308,7 @@ describe('monitor answer client', () => {
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
     ).resolves.toEqual({ task, changed: true });
     expect(fetchMock).toHaveBeenCalledWith(
-      `/monitor/api/projects/${PROJECT_ID}/tasks/7/answer`,
+      `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -317,7 +317,7 @@ describe('monitor answer client', () => {
           'X-Agboard-Token': 'monitor-secret',
           'X-Agboard-Language': 'en',
         },
-        body: JSON.stringify({ requestId: 'request-7', choiceId: 'yes' }),
+        body: JSON.stringify({ answers: [{ questionId: 'request-7', choiceId: 'yes' }] }),
       }),
     );
   });
@@ -403,7 +403,7 @@ describe('monitor session client', () => {
     await monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' });
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       '/monitor/api/session',
-      `/monitor/api/projects/${PROJECT_ID}/tasks/7/answer`,
+      `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
     ]);
     const headers = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
     expect(headers['X-Agboard-Csrf']).toBe('csrf-1');
@@ -578,7 +578,7 @@ describe('monitor passcode client', () => {
     await monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' });
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       '/monitor/api/unlock',
-      `/monitor/api/projects/${PROJECT_ID}/tasks/7/answer`,
+      `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
     ]);
     const headers = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
     expect(headers['X-Agboard-Csrf']).toBe('csrf-9');
