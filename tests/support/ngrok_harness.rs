@@ -165,6 +165,9 @@ pub struct FakeVault {
     saved: Mutex<Option<String>>,
     usable: bool,
     pub loads: AtomicUsize,
+    /// When set, `load` waits (until a message, a dropped sender or 20 seconds)
+    /// as the OS keychain does while it asks the user for permission.
+    pub hold: Mutex<Option<mpsc::Receiver<()>>>,
 }
 
 impl FakeVault {
@@ -173,6 +176,7 @@ impl FakeVault {
             saved: Mutex::new(saved.map(str::to_owned)),
             usable,
             loads: AtomicUsize::new(0),
+            hold: Mutex::new(None),
         })
     }
     pub fn saved(&self) -> Option<String> {
@@ -186,6 +190,10 @@ impl TokenVault for FakeVault {
     }
     fn load(&self) -> Result<Option<Secret>, VaultError> {
         self.loads.fetch_add(1, Ordering::SeqCst);
+        let hold = self.hold.lock().unwrap().take();
+        if let Some(rx) = hold {
+            let _ = rx.recv_timeout(Duration::from_secs(20));
+        }
         if !self.usable {
             return Err(VaultError::Unavailable);
         }

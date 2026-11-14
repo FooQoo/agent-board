@@ -33,7 +33,7 @@ The connection is one supervisor, `MonitorConnections`, owned by the server stat
 | --- | --- |
 | `disabled` | Not enabled. The default. |
 | `needs_config` | Enabled in the saved settings but no token is available, so nothing was started. |
-| `starting` | Opening the tunnel and applying the policy. |
+| `starting` | Opening the tunnel and applying the policy. Also shown while a restore at startup is still reading the secure storage. |
 | `ready` | The public address is known and the entry admits requests. |
 | `reconnecting` | Part of the status set that the API and the PC dialog understand. The supervisor does not enter it: the ngrok SDK's forwarding gives no disconnect signal, so only stopping and starting again is guaranteed to recover a lost tunnel. |
 | `failed` | The last start failed; `failure` holds the code. |
@@ -41,6 +41,8 @@ The connection is one supervisor, `MonitorConnections`, owned by the server stat
 
 - **Starting.** Only an explicit start (the PC dialog's **Save and connect**, or `--monitor ngrok`) opens a tunnel. Opening the dialog or saving a draft never does. A start saves the settings as enabled first; if that fails, nothing starts. A token typed in the start request wins; otherwise `NGROK_AUTHTOKEN` is used; a token saved in the PC's secure storage is used only when neither is present.
 - **Restoring.** When `serve` starts and the saved settings are enabled, the supervisor starts the tunnel only if a token is available from the environment or the secure storage; otherwise it reports `needs_config` and waits for the PC. An unreadable settings file reports `failed` with `config_unreadable` and keeps the PC entrance. A start from the command line takes priority over the saved settings; when it fails, `serve` exits with code 1. A server that a command started restores the saved connection too, and it does not stop by itself while the connection is starting, ready, reconnecting, or stopping. To let it stop, stop the connection on the PC.
+
+  The secure storage can stop to ask the user for permission, for example after the program was reinstalled. Restoring reads it in the background, so the server is ready and answers requests at once, and the status is `starting` until the read returns. Only `--monitor ngrok` waits for the connection.
 - **Starting again.** A start while the tunnel runs (the PC dialog's **Save and connect** after **Reset token**, or any other start) closes the old tunnel, generates a new passcode, and ends the old sessions and event streams before the new tunnel is reported ready. Saving the same settings again changes nothing.
 - **Stopping.** Stop closes the tunnel, closes the entry so open event streams end, refuses new answers, and saves the settings as disabled. The settings file is written atomically; passcodes, sessions, and tokens are never written to disk.
 

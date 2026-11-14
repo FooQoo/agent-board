@@ -23,7 +23,7 @@ impl MonitorConnections {
     /// that fails counts as nothing saved. Looked at lazily so that a run that
     /// never needs a token never touches the keychain.
     pub(super) fn probe_keychain(&self, inner: &mut Inner) {
-        if inner.keychain_saved.is_some() {
+        if inner.keychain_saved.is_some() || inner.probing {
             return;
         }
         let saved = match self.vault.load() {

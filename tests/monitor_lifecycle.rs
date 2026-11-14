@@ -329,7 +329,7 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
 
     // Saved and enabled but no token: nothing starts; the PC entrance serves.
     let s = Server::start(home.path(), Opts::default());
-    assert_eq!(s.get()["status"], "needs_config");
+    s.wait_status("needs_config");
     assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
     assert_eq!(request(s.local, "GET", "/", &[], "").status, 200);
     drop(s);
@@ -343,6 +343,39 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
     let s = Server::start(home.path(), env_opts());
     assert_eq!(s.get()["status"], "disabled");
     assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn a_keychain_that_waits_for_the_user_does_not_hold_up_startup() {
+    // Saved and enabled, with the token only in the keychain, which does not
+    // answer (a permission prompt nobody has clicked yet).
+    let home = fixture();
+    {
+        let s = Server::start(home.path(), env_opts());
+        assert_eq!(s.put(true, 0).status, 200);
+    }
+    let vault = FakeVault::new(Some(TOKEN), true);
+    let (release, held) = std::sync::mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(held);
+    let began = Instant::now();
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    // The server answers while the keychain is still pending.
+    assert_eq!(request(s.local, "GET", "/api/health", &[], "").status, 200);
+    assert!(began.elapsed() < Duration::from_secs(10));
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    let pending = s.get();
+    assert_eq!(pending["status"], "starting");
+    // Once the keychain answers, the saved connection is restored.
+    drop(release);
+    s.wait_status("ready");
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(vault.loads.load(Ordering::SeqCst), 1);
 }
 
 // ----------------------------------------------------------- every entrance

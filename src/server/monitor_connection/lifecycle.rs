@@ -24,6 +24,9 @@ pub(super) struct Inner {
     pub(super) token_source: Option<TokenSource>,
     /// Whether the keychain holds a token; `None` until it was first looked at.
     pub(super) keychain_saved: Option<bool>,
+    /// Whether the startup restore is still reading the keychain in the
+    /// background; other readers leave the keychain alone until it is done.
+    pub(super) probing: bool,
     pub(super) generation: u64,
     pub(super) run: Option<Run>,
     /// The passcode of the running connection; set once it is ready.
@@ -73,6 +76,7 @@ impl MonitorConnections {
                 token_source: env.token.is_some().then_some(TokenSource::Env),
                 token: env.token,
                 keychain_saved: None,
+                probing: false,
                 generation: 0,
                 run: None,
                 passcode: None,
@@ -104,15 +108,13 @@ impl MonitorConnections {
                 Some(self.begin(&mut inner).map_err(|e| failure_of(&e))?)
             } else {
                 if inner.config.enabled && inner.failure.is_none() {
-                    self.probe_keychain(&mut inner);
                     if inner.token.is_some() {
-                        // Restoring: a failure is shown on the PC, not fatal.
-                        if let Err(e) = self.begin(&mut inner) {
-                            inner.status = ConnectionStatus::Failed;
-                            inner.failure = Some(failure_of(&e));
-                        }
+                        // A token is already held: nothing to read.
+                        self.restore(&mut inner);
                     } else {
-                        inner.status = ConnectionStatus::NeedsConfig;
+                        // The keychain may stop to ask the user, so it is read
+                        // in the background and startup does not wait for it.
+                        self.restore_from_keychain(&mut inner);
                     }
                 }
                 None
@@ -260,7 +262,7 @@ pub(super) fn idle_status(config: &ConnectionConfig, has_token: bool) -> Connect
 }
 
 /// The fixed failure reason for a start that could not begin.
-fn failure_of(error: &StartError) -> FailureCode {
+pub(super) fn failure_of(error: &StartError) -> FailureCode {
     match error {
         StartError::TokenRequired => FailureCode::ConfigInvalid,
         _ => FailureCode::Internal,

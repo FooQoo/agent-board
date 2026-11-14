@@ -7,6 +7,7 @@ pub mod contracts;
 mod entry;
 pub mod keychain;
 pub mod lifecycle;
+mod restore;
 pub mod router;
 mod run;
 mod start;
