@@ -53,7 +53,7 @@ While you are talking with an agent, it shows the same question in the chat as w
 
 ## Approve a plan
 
-When an agent plans a request of several tasks, it asks approval to start with a question of the kind `start_approval`. Every task of the plan refers to it and stays Pending until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
+When an agent plans a request of several tasks, it first asks its questions about the plan and revises the plan. It then asks approval to start the revised plan with a question of the kind `start_approval`. Every task of the plan refers to it and stays Pending until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
 
 ## How an agent asks
 

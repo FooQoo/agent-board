@@ -142,6 +142,15 @@ fn the_skill_plans_first_and_starts_after_one_approval() {
         skill.contains("Do not ask before registering it"),
         "the Skill must not ask before registering the plan"
     );
+    // Plan questions come first; one start approval follows the revised plan.
+    assert!(
+        skill.contains("**Ask the plan questions.**")
+            && skill.contains("**Ask one start approval.**")
+            && skill.find("**Ask the plan questions.**")
+                < skill.find("**Ask one start approval.**"),
+        "the Skill must ask plan questions before the start approval"
+    );
+    assert!(skill.contains("With no plan questions, go to step 5"));
     // The plan's tasks wait on one start approval.
     for needed in ["\"start_approval\"", "approvingChoiceIds", "qa unlink"] {
         assert!(skill.contains(needed), "the Skill omits {needed}");

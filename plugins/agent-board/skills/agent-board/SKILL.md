@@ -103,22 +103,24 @@ For these two epics, keep per-task plans, decisions, verification, and results i
 
 Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
-### Plan a request: provisional plan, questions, one start approval
+### Plan a request: provisional plan, plan questions, then one start approval
 
 When the user asks for work that is more than one task, such as a feature, a change across several areas, or a list of things to do, put a provisional plan on the board first and let the user correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
 2. **Register the provisional plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner, plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Start none of the tasks.
-3. **Ask, with one start approval.** In one `qa ask` request (section 7), ask the `plan` questions you cannot settle yourself, each with choices and a recommendation, and one `start_approval` question that lists the plan's tasks. List every AI task of the plan in the approval's `tasks`, so they stay Pending until it is approved; when the request came from a board task, add that task too.
+3. **Ask the plan questions.** Ask what you cannot settle yourself in one `qa ask` request of `plan` questions (section 7), each with choices and a recommendation. List every AI task of the plan in their `tasks`, so the plan stays Pending while you ask; when the request came from a board task, add that task too. With no plan questions, go to step 5.
+4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. If the answers leave something open, ask more `plan` questions the same way.
+5. **Ask one start approval.** Right after revising, before anything else, ask one `start_approval` question that shows the revised plan, linked to the same tasks. They stay Pending until it is approved.
 
    ```json
-   { "kind": "start_approval", "question": "Start this plan?\n\n- #21 …\n- #22 …",
+   { "questions": [ { "kind": "start_approval", "question": "Start this plan?\n\n- #21 …\n- #22 …",
      "choices": [ { "id": "approve", "label": "Start this plan" }, { "id": "revise", "label": "Change the plan" } ],
-     "recommendedChoiceId": "approve", "approvingChoiceIds": ["approve"], "tasks": [21, 22] }
+     "recommendedChoiceId": "approve", "approvingChoiceIds": ["approve"], "tasks": [21, 22] } ] }
    ```
 
-4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. When the approval was not given, when the answers leave something open, or when the plan has to change beyond what the answers say, ask again with new `plan` questions and a new `start_approval` linked to the tasks, then `qa unlink` the old approval from them. Silence, a timeout, or an unclear reply is not an approval.
-5. **Proceed.** After approval, work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
+   If the user chooses to change the plan, revise it, ask a new `start_approval` linked to the tasks, and `qa unlink` the old approval from them. Silence, a timeout, or an unclear reply is not an approval.
+6. **Proceed.** After approval, work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
 
 A task the user already put on the board needs no start approval to work on. Splitting an oversized task plan (section 3) is asked with a question on that task.
 

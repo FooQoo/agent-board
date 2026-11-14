@@ -103,9 +103,10 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 When you ask an agent for work that is more than one task, it puts a provisional plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. You can open the cards and read the plan while the agent asks about it.
 
-1. **Questions and one start approval.** The agent asks what it cannot settle itself about the plan, with choices and a recommendation, together with one question that asks approval to start. The plan's tasks refer to that approval, so they show **Pending** and no agent starts them until you approve.
-2. **Revisions.** The agent changes the epic and the tasks as your answers say. If you chose to change the plan, or your answers leave something open, it asks again with a new start approval.
-3. **Work.** After you approve, the agent works through the tasks in the epic's order without asking each time.
+1. **Questions about the plan.** The agent asks what it cannot settle itself, with choices and a recommendation. The plan's tasks refer to these questions, so they show **Pending** while you answer.
+2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
+3. **One start approval.** The agent then asks once whether to start the revised plan. The tasks refer to this question too and stay **Pending**, and no agent starts them, until you approve. If the agent has no questions about the plan, it asks only this. If you choose to change the plan, it revises the plan and asks for approval again.
+4. **Work.** After you approve, the agent works through the tasks in the epic's order without asking each time.
 
 After the start, the agent calls you only when:
 
