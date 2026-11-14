@@ -80,6 +80,16 @@ taskの項目を省略した例です。
 
 待機秒数は必須で、1〜86,400秒です。接続・プロジェクト・データ・引数のエラーは、`idle_timeout`にはなりません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
 
+## open
+
+`agboard open --json`は、サーバーが動いていなければ起動し（`AGBOARD_AUTOSTART=0`のときを除く）、登録されたプロジェクトか指定したプロジェクトのボードを開いて、オブジェクトを一つ出します。
+
+```json
+{"url":"http://127.0.0.1:7420/?project=<id>","projectId":"<id>","opened":true}
+```
+
+`--print`のときと、ブラウザーを開いてはいけないときは`opened`が`false`になり、`notice`に理由が入ります。例：`"AGBOARD_OPEN_BROWSER=0 turns opening the browser off."`。サーバーに届かなければ`board_unavailable`、開くためのプログラムを起動できなければ`browser_open_failed`です。[エラーコード](./errors.md#サーバーと待機)を参照してください。
+
 ## qaのイベント
 
 `agboard qa ask --request-json <json> --task <id>…`は、次の形を受け取ります。

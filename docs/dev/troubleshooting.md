@@ -35,6 +35,8 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | `local_network_denied` | The OS or a sandbox does not let `agboard` use `127.0.0.1`. | In Codex, run `agboard setup`. Elsewhere, run the command outside the sandbox. |
 | `board_unavailable` from `wait`, `qa ask`, `qa wait`, or the hook | Autostart is off, the server could not start, the server in `serve.json` does not answer, or the connection failed. It is a technical failure, not an answer. | Read the reason. When it names `serve.log`, read that file. When it names a pid, run `agboard stop`. Then run `wait` again. For questions already saved, run `qa wait <request-id>`. |
 | A test starts a server on 7420 | The test runs `agboard` without `AGBOARD_AUTOSTART=0`. | Set `AGBOARD_AUTOSTART=0`, or `AGBOARD_AUTOSTART_PORT=0` in a test of autostart itself. |
+| A test opens a browser window | The test runs `agboard` with autostart on and without `AGBOARD_OPEN_BROWSER=0`. | Set `AGBOARD_OPEN_BROWSER=0`. A test of opening sets `AGBOARD_BROWSER_OPENER` to a script that records the address instead. |
+| An automatic server did not open the board | A board page connected within the grace period, or opening is off. | Read `serve.log`: it says `Opened …`, `Did not open …` with the reason, or `Could not open …`. See [Opening the board](./concepts/server-and-ui.md#opening-the-board). |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | Take a fresh `cursor` from `snapshot` for the same project. |
 | `wait_timeout` | The optional `--timeout` of `wait --after` elapsed with no change. | Wait again. |
 | `qa ask` or `qa wait` exits 5 | The `--timeout` passed before every question was answered. The questions stay open. | Run `qa wait <request-id>` again. |

@@ -70,7 +70,8 @@
 | `already_serving` | このデータ領域で、すでに別の`serve`が動いている。自動で起動したサーバーなら、理由には動かし続けるための`agboard serve -d`を示す。 | 1 | なし |
 | `port_in_use` | `serve`に指定したポートが使われている。理由には使っているものを示す。データ領域の違う別のAgent Boardのサーバー（pidつき）か、別のプログラム。自動のサーバーは代わりに別のポートを使う。 | 1 | なし |
 | `local_network_denied` | OSやサンドボックスが、`agboard`が`127.0.0.1`で待ち受けることや接続することを拒んだ（`EACCES`か`EPERM`）。Codexでは`agboard setup`で`agboard`をサンドボックスの外で動かせるようにする。 | 1 | なし |
-| `board_unavailable` | 回答を待つ`qa ask`、`qa wait`、`wait`、Hookがサーバーに届かない。自動起動が無効（`AGBOARD_AUTOSTART=0`）、サーバーを起動できない（理由に`serve.log`を示す）、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。回答を待つ`qa ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
+| `board_unavailable` | 回答を待つ`qa ask`、`qa wait`、`wait`、`open`、Hookがサーバーに届かない。自動起動が無効（`AGBOARD_AUTOSTART=0`）、サーバーを起動できない（理由に`serve.log`を示す）、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。回答を待つ`qa ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
+| `browser_open_failed` | `open`が、ブラウザーを開くプログラム（`open`、`xdg-open`、`AGBOARD_BROWSER_OPENER`）を起動できなかった。理由に、手で開くアドレスを示す。ブラウザーを開いてはいけないとき（`AGBOARD_OPEN_BROWSER=0`、SSH、画面がない）はエラーではない。 | 1 | なし |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
 | `wait_timeout` | 変更待ち（`wait --after`）が、変更のないまま任意の`--timeout`に達した。`qa ask`や`qa wait`が`--timeout`に達するのはエラーではなく、`timeout`イベントを出して終了コード5で終わる。 | 1 | なし |
 | `hook_cwd_unavailable` | Hookの入力の`cwd`が、存在しない、または読めない絶対パス。`AGBOARD_ERROR`として返す。確認できないフォルダを未登録とは扱わない。 | なし（Hookの出力） | なし |

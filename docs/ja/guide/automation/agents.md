@@ -142,6 +142,7 @@ agboard --project "My project" wait --after "<cursor>" --json
 cursorの形式は`f1:<project-id>:<version>`です。`snapshot`が返す値を使い、自分で組み立てないでください。
 
 - `wait`は、同じデータ領域のサーバーを必要とします。動いていなければ裏で起動し、ポーリングせずに変更を待ちます。
+- `wait`、回答を待つ質問、Hookが裏で起動したサーバーは、ボードのタブがつながっていなければ、そのプロジェクトのボードをブラウザーで一度だけ開きます。開かないときと`agboard open`については、[ボードをブラウザーで開く](./cli#open-the-board-in-the-browser)を参照してください。
 - 名前変更をまたいで同じプロジェクトを追うので、以後のコマンドとHookでは新しい名前を使います。ほかのプロジェクトの変更では終わりません。プロジェクトが削除されると、`project_not_found`で失敗します。
 - `wait_timeout`・`board_unavailable`・`cursor_invalid`・`project_not_found`はエラーで、回答ではありません。
 - `wait`が返ったら、スナップショットと履歴をすべて読み、ユーザーの理由を考慮して、再開するか、追加の質問をします。

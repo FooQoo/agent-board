@@ -218,7 +218,7 @@ agboard --project "<name>" qa answer --actor human --via chat --answers-json '{"
 
 The waiting command then ends with `answered`. If the board already has an answer, `qa answer` fails with `question_answered` and prints it: the first answer stands. When it differs from the chat answer, tell the user and ask again in the chat; if they want the other answer, ask a new question rather than overwriting. Never answer a question yourself, and use `--actor human` only for the user's own words. When nobody is in the conversation, such as while listening or during a long unattended run, ask and wait on the board only.
 
-If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead. Read a question and its answer with `agboard --project "<name>" qa show <Q-id> --json`, and the open questions with `qa ls --json`. An answer also appends a concise history reason to each task that refers to the question.
+If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead. To show the user the board, run `agboard open`; it prints the address and opens the project's board in their browser. Read a question and its answer with `agboard --project "<name>" qa show <Q-id> --json`, and the open questions with `qa ls --json`. An answer also appends a concise history reason to each task that refers to the question.
 
 ## 8. Wait and resume
 

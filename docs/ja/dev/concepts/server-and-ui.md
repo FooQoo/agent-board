@@ -35,6 +35,17 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 
 `AGBOARD_AUTOSTART=0`にすると、これらはすべて止まります。コマンドはこれまでどおり`board_unavailable`を返し、Hookは何も起動しません。ライブラリが自分でサーバーを起動することはなく、起動するのは`agboard`のコマンドラインだけです。
 
+### ボードを開く {#opening-the-board}
+
+自動のサーバーは、起動のきっかけになったプロジェクトのボードを一度だけ開きます。利用者から見た決まりは[CLIリファレンス](../../guide/automation/cli.md#open-the-board-in-the-browser)にあります。
+
+- サーバーを起動するコマンドは、隠しオプション`serve --auto --open-board=<projectId>`でプロジェクトIDを渡します。待つコマンドは待っているプロジェクト、`qa ask`と`qa wait`は依頼のプロジェクト、Hookは出力した進行表のプロジェクトを渡します。`agboard open`は自分でページを開くので、何も渡しません。
+- サーバーの準備ができて`autostart.lock`を外した後、スレッドが3秒待ちます（試験では`AGBOARD_OPEN_GRACE_MS`で変えられ、上限は60,000ミリ秒）。起動してからボードのページが一度もつながっていなければ、`http://127.0.0.1:<port>/?project=<projectId>`を開きます。つながってから閉じたタブも、つながり直すかもしれないので数に入れます。
+- ボードのページとは、`X-Agboard-Wait`ヘッダーのない`GET /api/events`のストリームです。待つコマンドはこのヘッダーを付けるので、起動の直後に開く自分のストリームがタブと取り違えられることはありません。モニターのストリームは別の経路なので数えません。
+- ブラウザーを開けるかどうかは`src/interact/browser.rs`が次の順で決めます。`AGBOARD_OPEN_BROWSER=0`なら開きません。`AGBOARD_BROWSER_OPENER`があれば、そのプログラムをシステムのものの代わりに使います。`SSH_CONNECTION`か`SSH_TTY`があれば開きません。macOSとWindows以外では、`DISPLAY`も`WAYLAND_DISPLAY`もなければ開きません。それ以外なら`open`（macOS）、`explorer`（Windows）、`xdg-open`を、アドレスだけを引数にしてシェルを通さずに起動し、終わるのを待ちません。
+- 結果は`serve.log`に1行残ります。`Opened … in the browser.`、理由つきの`Did not open … in the browser.`、プログラムを起動できなかったときの`Could not open …`のどれかです。
+- サーバーの起動と同じく、ブラウザーを開くのは`agboard`のコマンドラインだけで、試験に組み込んだライブラリは開きません。試験は`AGBOARD_OPEN_BROWSER=0`を設定し、開く処理の試験は`AGBOARD_BROWSER_OPENER`をアドレスを記録するスクリプトに向けます。
+
 ### ポート
 
 - 手動のサーバーは`--port`（既定は7420）だけで待ち受けます。使われているポートは`port_in_use`で、理由には使っているものを示します。データ領域の違う別のAgent Boardのサーバー（pidつき）か、別のプログラムです。
@@ -46,7 +57,7 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 自動のサーバーは、次のどれかに当てはまる間は「使われている」とみなします。
 
 - `GET /api/health`以外のリクエストが、使われない時間の上限内に届いた。
-- イベントストリーム（`GET /api/events`）が開いている。ブラウザーのタブ、`wait`、答えを待つ質問がこれに当たります。
+- イベントストリーム（`GET /api/events`）が開いている。ブラウザーのタブ、`wait`、答えを待つ質問がこれに当たります（待つコマンドは自分のストリームに`X-Agboard-Wait`ヘッダーを付けます。[ボードを開く](#opening-the-board)を参照）。
 - 携帯モニターの接続が、開始中・接続済み・再接続中・停止中のどれかである。
 - ファイルの監視が、上限内にボードかDocsの変更を見つけた。ファイルを直接編集するエージェントのために、自動Doneが働くようサーバーを残します。
 

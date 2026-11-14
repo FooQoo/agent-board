@@ -15,7 +15,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `agent` | The hook and `wait`. |
 | `autostart` | Starting the shared server when a command needs it: the check, `autostart.lock`, the detached `serve --auto` child (`spawn`), and the `autostart.paused` marker. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
-| `interact` | Human confirmation (terminal detection, y/N) and the notify client. |
+| `interact` | Human confirmation (terminal detection, y/N), the notify client, and opening a board page in the browser (`browser`: the board address, when no browser is opened, and the platform's opener). |
 | `setup` | Installs and updates the Agent Board plugin and prepares agent access to the data area. |
 | `paths`<br>`lifecycle`<br>`clock`<br>`error` | Data area resolution, the `serve` lock, UTC time, and `AgboardError` (code, exit code, message, reason). |
 
@@ -23,7 +23,7 @@ Dependencies point one way.
 
 `cli` uses `agent`, `autostart`, `interact`, `server`, `setup`, and `progress`. `agent` and `cli` use `autostart`, which uses `server` and `file_store`. `agent` uses `progress`; `agent`, `progress`, and `server` use `file_store`, which uses `domain`. `server` uses `docs`, which uses `file_store`'s `layout` and `io` for its paths and read errors; `file_store` takes only `DocsLocale` from `docs`, to choose the README of a new `docs/` folder. 
 
-`interact` and `setup` use only `paths` and `error`. Nothing depends on `cli`, and `server` does not depend on `cli`, `agent`, or `progress`. 
+`interact` and `setup` use only `paths`, `error`, and `domain`; `interact::browser` also asks `autostart` whether it runs in the `agboard` command line. `server` uses `interact::browser` for the platform's opener of the Docs route. Nothing depends on `cli`, and `server` does not depend on `cli`, `agent`, or `progress`. 
 
 `domain` performs no I/O; its one reference to `file_store` is the `HistoryRecord` type alias.
 

@@ -35,6 +35,8 @@
 | `local_network_denied` | OSやサンドボックスが、`agboard`に`127.0.0.1`を使わせない。 | Codexでは`agboard setup`を実行します。それ以外では、サンドボックスの外でコマンドを実行します。 |
 | `wait`・`qa ask`・`qa wait`・Hookの`board_unavailable` | 自動起動が無効、サーバーを起動できない、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。技術的な失敗で、回答ではない。 | 理由を読みます。`serve.log`が示されていればそのファイルを、pidが示されていれば`agboard stop`を実行します。そのうえで`wait`を実行し直します。保存済みの質問は`qa wait <request-id>`で待ち直します。 |
 | テストが7420でサーバーを起動する | テストが`AGBOARD_AUTOSTART=0`を付けずに`agboard`を実行している。 | `AGBOARD_AUTOSTART=0`を付けます。自動起動そのものの試験では`AGBOARD_AUTOSTART_PORT=0`を付けます。 |
+| テストがブラウザーのウィンドウを開く | 自動起動を有効にしたまま、`AGBOARD_OPEN_BROWSER=0`を付けずに`agboard`を実行している。 | `AGBOARD_OPEN_BROWSER=0`を付けます。開く処理の試験では、代わりに`AGBOARD_BROWSER_OPENER`をアドレスを記録するスクリプトに向けます。 |
+| 自動のサーバーがボードを開かなかった | 待つ時間のうちにボードのページがつながった、または開く処理が無効になっている。 | `serve.log`を読みます。`Opened …`、理由つきの`Did not open …`、`Could not open …`のどれかが書かれています。[ボードを開く](./concepts/server-and-ui.md#opening-the-board)を参照。 |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 同じプロジェクトの`snapshot`から新しい`cursor`を取ります。 |
 | `wait_timeout` | `wait --after`の任意の`--timeout`が経過しても変更がなかった。 | もう一度待ちます。 |
 | `qa ask`や`qa wait`が終了コード5で終わる | すべての質問に回答が付く前に`--timeout`が過ぎた。質問は未回答のまま残る。 | `qa wait <request-id>`をもう一度実行します。 |

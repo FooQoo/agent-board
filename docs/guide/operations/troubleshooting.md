@@ -13,6 +13,8 @@ Find what you see, read the cause, and do what the last column says. The command
 | A task is missing from the board | Its file is damaged, or it has an unsupported `formatVersion`. | Open `agboard --project "My project" snapshot --json` and read `problems`: it names the file, the item, and the reason. Fix the file by hand; Agent Board never rewrites it. See [When a file is invalid](../automation/file-format#when-a-file-is-invalid). |
 | A task shows a warning and no conditions | The frontmatter of its `TASK.md` is not valid YAML. | Fix the frontmatter. The body stays visible meanwhile. |
 | The board does not update after an agent changed something | The server is not running, or the files are on a network drive. | Reload the page. The server starts when an agent waits or its hook runs, or start it with `agboard serve -d`. Network drives may not report file changes. |
+| The board opened in the browser by itself | An agent's command or hook started the server in the background, and no board tab was connected. It opens once for each start. | Keep the tab open, or set `AGBOARD_OPEN_BROWSER=0` to turn this off. See [Open the board in the browser](../automation/cli#open-the-board-in-the-browser). |
+| The board did not open when the server started | A board tab connected first, `AGBOARD_OPEN_BROWSER=0` is set, the command ran over SSH, or Linux has no display. `serve.log` in the data folder says which. | Run `agboard open`, or open the address that `agboard open --print` shows. |
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
 | A question disappeared | It was answered elsewhere, for example in the chat, or the agent withdrew it. Moving a task does not withdraw its questions. | Open the task's History tab, or run `agboard qa ls --status all`, and answer the current question if there is one. |
@@ -40,6 +42,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | `port_in_use` | The port you gave `agboard serve` is taken. The message says whether another Agent Board server (with a different data folder) or another program uses it. | Choose another one: `agboard serve --port 7421`. |
 | `local_network_denied` | The environment does not let `agboard` use local network connections, so the server cannot start or be reached. | In Codex, run `agboard setup` to allow `agboard` to run outside the sandbox. |
 | `database_busy` | Another command held the project for more than 5 seconds. | Run the command again. |
+| `browser_open_failed` | `agboard open` could not start the program that opens the browser (`open`, `xdg-open`, or `AGBOARD_BROWSER_OPENER`). | Open the address in the message yourself, or install or fix that program. |
 
 ## The phone cannot reach the board
 

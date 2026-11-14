@@ -80,6 +80,16 @@ If the requested interval passes with no eligible task, the command returns a su
 
 The timeout is required and ranges from 1 to 86,400 seconds. Connection, project, data, and argument errors remain errors; they are not encoded as `idle_timeout`. See [Error codes](./errors.md#server-and-waiting).
 
+## Open
+
+`agboard open --json` starts the server when none runs (unless `AGBOARD_AUTOSTART=0`), opens the board of the bound or named project, and prints one object:
+
+```json
+{"url":"http://127.0.0.1:7420/?project=<id>","projectId":"<id>","opened":true}
+```
+
+`opened` is `false` with `--print`, and when the browser may not be opened; then `notice` says why, for example `"AGBOARD_OPEN_BROWSER=0 turns opening the browser off."`. A server that cannot be reached is `board_unavailable`, and a program that cannot be started is `browser_open_failed`. See [Error codes](./errors.md#server-and-waiting).
+
 ## qa events
 
 `agboard qa ask --request-json <json> --task <id>…` takes:

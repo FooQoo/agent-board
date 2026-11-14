@@ -15,7 +15,7 @@
 | `agent` | Hookと`wait`。 |
 | `autostart` | コマンドが必要とするときに共有のサーバーを起動する。確認、`autostart.lock`、切り離した`serve --auto`の子プロセス（`spawn`）、`autostart.paused`の目印。 |
 | `progress` | `agboard progress`とHookが共有する進行表を組み立てる。 |
-| `interact` | 人による確認（端末の判定、y/N入力）と通知のクライアント。 |
+| `interact` | 人による確認（端末の判定、y/N入力）、通知のクライアント、ボードのページをブラウザーで開く処理（`browser`：ボードのアドレス、開かない場合の判定、OSごとに開くプログラム）。 |
 | `setup` | Agent Boardプラグインを導入・更新し、データ領域へのエージェントのアクセスを準備する。 |
 | `paths`<br>`lifecycle`<br>`clock`<br>`error` | データ領域の解決、`serve`のロック、UTCの時刻、`AgboardError`（コード・終了コード・message・reason）。 |
 
@@ -23,7 +23,7 @@
 
 `cli`は`agent`・`autostart`・`interact`・`server`・`setup`・`progress`を使います。`agent`と`cli`は`autostart`を使い、`autostart`は`server`と`file_store`を使います。`agent`は`progress`を使い、`agent`・`progress`・`server`は`file_store`を、`file_store`は`domain`を使います。`server`は`docs`を使い、`docs`はパスと読み込みのエラーに`file_store`の`layout`と`io`を使います。`file_store`が`docs`から使うのは、新しい`docs/`のREADMEを選ぶ`DocsLocale`だけです。
 
-`interact`と`setup`は`paths`と`error`だけを使います。`cli`に依存するものはなく、`server`は`cli`・`agent`・`progress`に依存しません。
+`interact`と`setup`は`paths`・`error`・`domain`だけを使います。`interact::browser`は、`agboard`のコマンドラインで動いているかどうかを`autostart`にも尋ねます。`server`は、Docsの経路でOSごとに開くプログラムを選ぶのに`interact::browser`を使います。`cli`に依存するものはなく、`server`は`cli`・`agent`・`progress`に依存しません。
 
 `domain`はI/Oを行わず、`file_store`への参照は型の別名`HistoryRecord`の一つだけです。
 

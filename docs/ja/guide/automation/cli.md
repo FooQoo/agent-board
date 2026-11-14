@@ -19,6 +19,7 @@ title: CLIリファレンス
 | タスクをまとめて順序づける | `epic`、`progress` |
 | 変更を待つ | `wait` |
 | プロジェクトとフォルダを管理する | `project`、`workspace` |
+| ボードをブラウザーで開く | `open` |
 | サーバーとHookを動かす | `serve`、`stop`、`hook` |
 | Agent Boardプラグインを導入・更新する | `setup`、`update` |
 | 削除する（人だけ） | `rm`、`project rm`、`epic rm`、`init` |
@@ -144,6 +145,32 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 ```
 
 こうして起動したサーバーは、ブラウザーでボードを開いている間、エージェントが待っている間、スマホが接続している間は動き続けます。どれもない状態が30分続くと止まります。`AGBOARD_IDLE_TIMEOUT`（60〜86,400秒）で変えられます。ポート7420が使われていれば、空いているポートを使い、そのことを表示します。`AGBOARD_AUTOSTART=0`で自動の起動を止められます。このとき、サーバーが要るコマンドは、サーバーがないときと同じく`board_unavailable`で失敗します。`add`・`mv`・`ls`などのほかのコマンドは、サーバーを起動しません。
+
+### ボードをブラウザーで開く {#open-the-board-in-the-browser}
+
+裏で起動したサーバーは、起動のきっかけになったプロジェクトのボードを、既定のブラウザーで一度だけ開きます。開く前に3秒ほど待ち、前から開いていたボードのタブがつながり直したとき（スリープから戻ったときなど）は何も開きません。サーバーが動いている間に質問が届いても、ブラウザーは開きません。`agboard serve`と`agboard serve -d`も開きません。
+
+次のときは、ブラウザーを開きません。
+
+- `AGBOARD_OPEN_BROWSER=0`を設定しているとき
+- SSH越しにコマンドを実行しているとき（`SSH_CONNECTION`か`SSH_TTY`が設定されている）
+- Linuxで画面がないとき（`DISPLAY`も`WAYLAND_DISPLAY`も設定されていない）
+
+開いたかどうかと、開かなかった理由は、データフォルダの`serve.log`に残ります。
+
+自分でボードを開くには、`agboard open`を実行します。今のフォルダに登録されたプロジェクトか、`--project`で指定したプロジェクトのボードを開きます。サーバーが動いていなければ、先に裏で起動します。
+
+```sh
+agboard open
+agboard --project "My project" open
+agboard open --print
+```
+
+開いたときも、`http://127.0.0.1:7420/?project=<id>`のようなボードのアドレスを表示します。`--print`はアドレスを表示するだけです。`--json`では`{"url":"…","projectId":"…","opened":true}`を出します。ブラウザーを開かなかったときは`opened`が`false`になり、`notice`に理由が入ります。`AGBOARD_AUTOSTART=0`でサーバーが動いていなければ`board_unavailable`で失敗します。開くためのプログラムを起動できなければ`browser_open_failed`で失敗し、自分で開くアドレスをメッセージに示します。
+
+macOSでは`open`、Linuxでは`xdg-open`を使います。ほかのプログラムを使うには、`AGBOARD_BROWSER_OPENER`にそのプログラムを設定します。アドレスだけを引数にして実行し、SSH越しや画面がないときも使います。
+
+### 自分でサーバーを起動する
 
 動かし続けたいとき、ポートを選びたいとき、起動と同時にスマホを接続したいときは、自分で起動します。
 

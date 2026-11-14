@@ -29,7 +29,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 - **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude --plugin-version <version>`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
 - **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex --plugin-version <version>`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。
 - **上限。** 入力はUTF-8で64 KiB、一覧は256 KiB、一回の実行は10秒が上限です。Codexの`additionalContextLimit`は0にし、Hookが自分の上限を守ります。超えたら`context_too_large`を報告し、切り詰めて成功として報告することはありません。一覧を作れない、または入力の全体が届かなかったときは、Hookがそれを伝え、元のツールの結果を保ちます。
-- **安全性。** コマンドは固定で、タスクのテキストや`tool_input`から何も組み立てません。Hookがエージェントのツールを呼ぶことも、自分自身を起動することも、ボードのファイルを変えることもありません。進行表を加えるとき、サーバーが動いていなければ、待たずに裏で起動します。`agboard stop`で止めた後と`AGBOARD_AUTOSTART=0`のときは起動しません（[サーバーと画面](./server-and-ui.md#コマンドがサーバーを起動する手順)を参照）。エージェントがファイルを編集するだけでも、自動Doneが働くようにするためです。パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出しません。
+- **安全性。** コマンドは固定で、タスクのテキストや`tool_input`から何も組み立てません。Hookがエージェントのツールを呼ぶことも、自分自身を起動することも、ボードのファイルを変えることもありません。進行表を加えるとき、サーバーが動いていなければ、待たずに裏で起動します。`agboard stop`で止めた後と`AGBOARD_AUTOSTART=0`のときは起動しません（[サーバーと画面](./server-and-ui.md#コマンドがサーバーを起動する手順)を参照）。エージェントがファイルを編集するだけでも、自動Doneが働くようにするためです。こうして起動したサーバーは、そのプロジェクトのボードをブラウザーで一度だけ開きます（[ボードを開く](./server-and-ui.md#opening-the-board)を参照）。パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出しません。
 
 エージェントは、一覧を読めるまでボードに依存する変更をせず、コンテキスト圧縮後には一覧を新しく読みます。
 

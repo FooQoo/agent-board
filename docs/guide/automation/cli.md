@@ -19,6 +19,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
+| Open the board in the browser | `open` |
 | Run the server and the hook | `serve`, `stop`, `hook` |
 | Install and update the Agent Board plugin | `setup`, `update` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
@@ -144,6 +145,32 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 ```
 
 A server started this way keeps running while the board is open in a browser, while an agent waits, or while the phone is connected. It stops after 30 minutes without any of these; set `AGBOARD_IDLE_TIMEOUT` (60 to 86,400 seconds) to change that. If port 7420 is taken, it uses a free port and says so. Set `AGBOARD_AUTOSTART=0` to turn automatic starts off; commands that need the server then fail with `board_unavailable`, as when no server runs. Other commands, such as `add`, `mv`, and `ls`, never start the server.
+
+### Open the board in the browser
+
+A server that starts in the background opens the board of the project it started for, once, in your default browser. Before it opens the page, it waits about three seconds: if a board tab that was already open connects again, for example after the computer woke from sleep, it opens nothing. A question that arrives while the server runs does not open the browser, and neither does `agboard serve` or `agboard serve -d`.
+
+The browser is not opened when:
+
+- `AGBOARD_OPEN_BROWSER=0` is set;
+- the command runs in an SSH session (`SSH_CONNECTION` or `SSH_TTY` is set);
+- on Linux, no display is available (`DISPLAY` and `WAYLAND_DISPLAY` are unset).
+
+Whether it opened the page, and why not, is written to `serve.log` in the data folder.
+
+To open the board yourself, run `agboard open`. It opens the board of the project bound to the current folder, or of the one `--project` names, and starts the server in the background first when none runs:
+
+```sh
+agboard open
+agboard --project "My project" open
+agboard open --print
+```
+
+It prints the board's address, such as `http://127.0.0.1:7420/?project=<id>`, even when it opens it. `--print` only prints the address. With `--json`, it prints `{"url":"…","projectId":"…","opened":true}`; when the browser was not opened, `opened` is `false` and `notice` says why. With `AGBOARD_AUTOSTART=0` and no server running, it fails with `board_unavailable`; a program that cannot be started fails with `browser_open_failed`, and the message names the address to open yourself.
+
+Agent Board uses `open` on macOS and `xdg-open` on Linux. To use another program, set `AGBOARD_BROWSER_OPENER` to it; Agent Board runs it with the address as its only argument, also over SSH or without a display.
+
+### Start the server yourself
 
 Start it yourself to keep it running, to choose the port, or to connect a phone when it starts.
 

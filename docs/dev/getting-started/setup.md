@@ -15,7 +15,7 @@ Two habits keep your own board safe while you work:
 
 - **Use a temporary data area.** The default data area (`~/.agent-board/` on macOS, `%USERPROFILE%\.agent-board\` on Windows) is your real board. For experiments and tests, set `AGBOARD_HOME` to a temporary directory. The variable applies to the current shell only.
 - **Leave port 7420 free.** It is the default port for normal use. Use another port, or port 0 in tests.
-- **Know that commands start a server.** `wait`, a question that waits, and the hook start a background server for the data area when none runs. Set `AGBOARD_AUTOSTART=0` while you experiment if you do not want that, and `agboard stop` ends one.
+- **Know that commands start a server.** `wait`, a question that waits, and the hook start a background server for the data area when none runs. Such a server also opens the board in your browser. Set `AGBOARD_AUTOSTART=0` while you experiment if you do not want a server, or `AGBOARD_OPEN_BROWSER=0` if you only do not want the browser, and `agboard stop` ends one.
 
 ## Build
 
