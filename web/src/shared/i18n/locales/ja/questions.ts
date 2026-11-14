@@ -19,6 +19,7 @@ export const questionsJa = {
     },
     card: {
       waiting: '未回答の質問 {{count}} 件',
+      waitingStart: '開始の承認待ち',
     },
   },
 } as const;

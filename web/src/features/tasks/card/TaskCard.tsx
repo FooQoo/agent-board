@@ -78,14 +78,16 @@ export function TaskCardContent({
 
 /**
  * Why a pending card waits: the number of its open questions, or the older single question's text
- * for a card that does not list them.
+ * for a card that does not list them. A pending card with neither waits for its start to be
+ * approved: its plan was asked about and no approval was given yet.
  */
 function PendingReason({ task, className }: { task: TaskModel; className: string }) {
   const { t } = useTranslation();
   const open = task.openQuestionIds?.length ?? 0;
   if (open > 0)
     return <span className={className}>{t('questions.card.waiting', { count: open })}</span>;
-  return task.pendingReason ? <span className={className}>{task.pendingReason}</span> : null;
+  if (task.pendingReason) return <span className={className}>{task.pendingReason}</span>;
+  return <span className={className}>{t('questions.card.waitingStart')}</span>;
 }
 
 /** Whether a pending card offers the answer button: it waits on at least one open question. */

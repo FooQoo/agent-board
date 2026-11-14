@@ -8,7 +8,7 @@ A decision is a question an agent asks when it cannot continue without you. This
 
 ## How you notice a question
 
-A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
 
 Every open question of the project is also listed in the **Unanswered questions** band above the lanes, with the count in its header. Each item shows the tasks that refer to the question, or **No task**, and its title in up to two lines. An item you have answered but not sent is marked **Answered, not sent**. When there are no questions, the band keeps its place and says **No unanswered questions**. When the items do not fit, scroll the band sideways.
 
