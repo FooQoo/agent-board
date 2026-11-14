@@ -19,6 +19,7 @@ fn serial() -> MutexGuard<'static, ()> {
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
+    cmd.env("AGBOARD_AUTOSTART", "0");
     cmd.env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC");
@@ -91,7 +92,9 @@ fn serve_d_returns_while_the_server_runs_and_stop_ends_it() {
     assert!(stopped.status.success(), "{stopped:?}");
     assert_eq!(
         stdout(&stopped),
-        format!("Stopped the server on port {port}.\n")
+        format!(
+            "Stopped the server on port {port}. A command that waits for the board starts it again automatically.\n"
+        )
     );
     assert!(port_is_free(port), "stop should release the port");
     assert!(!home.path().join("serve.json").exists());

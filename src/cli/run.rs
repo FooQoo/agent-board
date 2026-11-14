@@ -110,7 +110,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             args::AgentArg::Codex => "codex",
         };
         let mut stdin = std::io::stdin().lock();
-        if let Some(output) = crate::agent::hook::run_with(
+        let run = crate::agent::hook::run_reporting(
             agent,
             &mut stdin,
             &env.shared_dir,
@@ -119,8 +119,14 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 pending: args.progress.include_pending,
                 done: args.progress.include_done,
             },
-        ) {
+        );
+        if let Some(output) = run.output {
             write_text(env.stdout, &output);
+        }
+        // An agent is working on a board: keep its server running, so that
+        // automatic Done and live updates follow its direct file edits.
+        if run.board {
+            crate::autostart::start_in_background(&data_dir_of(&env.shared_dir));
         }
         return 0;
     }
@@ -203,6 +209,15 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         }
         Err(error) => fail(env, &error, cli.json),
     }
+}
+
+/// The data directory: the parent of the shared folder.
+fn data_dir_of(shared: &std::path::Path) -> std::path::PathBuf {
+    shared
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .to_path_buf()
 }
 
 pub(crate) fn fail(env: &mut Env, error: &AgboardError, json: bool) -> i32 {

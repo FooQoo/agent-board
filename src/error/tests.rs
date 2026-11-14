@@ -85,8 +85,15 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         AgboardError::DatabaseError {
             reason: "boom".into(),
         },
-        AgboardError::AlreadyServing { port: 7420 },
-        AgboardError::PortInUse { port: 7420 },
+        AgboardError::AlreadyServing {
+            port: 7420,
+            auto: false,
+        },
+        AgboardError::PortInUse {
+            port: 7420,
+            holder: PortHolder::Unknown,
+        },
+        AgboardError::LocalNetworkDenied,
         AgboardError::BoardUnavailable {
             reason: "no running server".into(),
         },
@@ -159,6 +166,7 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("database_error", 1),
             ("already_serving", 1),
             ("port_in_use", 1),
+            ("local_network_denied", 1),
             ("board_unavailable", 1),
             ("cursor_invalid", 1),
             ("wait_timeout", 1),

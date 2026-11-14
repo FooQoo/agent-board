@@ -76,6 +76,63 @@ impl LifecycleLock {
     }
 }
 
+/// The lock that puts commands starting a server for the same data directory
+/// in turn (`autostart.lock`). The started server keeps it until it is ready.
+#[derive(Debug)]
+pub struct AutostartLock {
+    file: File,
+}
+
+impl AutostartLock {
+    /// Wait at most `wait` for another command that is starting the server.
+    pub fn acquire_waiting(
+        data_dir: &Path,
+        wait: std::time::Duration,
+    ) -> Result<Self, AgboardError> {
+        let file = Self::open(data_dir)?;
+        let began = std::time::Instant::now();
+        loop {
+            match file.try_lock() {
+                Ok(()) => return Ok(AutostartLock { file }),
+                Err(TryLockError::WouldBlock) if began.elapsed() < wait => {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(TryLockError::WouldBlock) => {
+                    return Err(AgboardError::BoardUnavailable {
+                        reason: format!(
+                            "Another agboard command was still starting the server after {} seconds. Try again.",
+                            wait.as_secs()
+                        ),
+                    });
+                }
+                Err(TryLockError::Error(e)) => return Err(unavailable(e)),
+            }
+        }
+    }
+
+    /// Take the lock only if nobody holds it.
+    pub fn try_acquire(data_dir: &Path) -> Option<Self> {
+        let file = Self::open(data_dir).ok()?;
+        file.try_lock().ok()?;
+        Some(AutostartLock { file })
+    }
+
+    /// The open lock file, to hand to the server being started.
+    pub fn file(&self) -> &File {
+        &self.file
+    }
+
+    fn open(data_dir: &Path) -> Result<File, AgboardError> {
+        open_lock_file(&data_dir.join("autostart.lock")).map_err(unavailable)
+    }
+}
+
+fn unavailable(error: std::io::Error) -> AgboardError {
+    AgboardError::BoardUnavailable {
+        reason: format!("Cannot open autostart.lock: {error}."),
+    }
+}
+
 fn open_lock_file(path: &Path) -> std::io::Result<File> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;

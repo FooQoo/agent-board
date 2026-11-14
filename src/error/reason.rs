@@ -1,4 +1,4 @@
-use super::AgboardError;
+use super::{AgboardError, PortHolder};
 
 impl AgboardError {
     /// What to do about it, or why it happened.
@@ -111,10 +111,14 @@ impl AgboardError {
             }
             AgboardError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
             AgboardError::DatabaseError { reason } => reason.clone(),
-            AgboardError::AlreadyServing { port } => {
+            AgboardError::AlreadyServing { port, auto: false } => {
                 format!("Open http://127.0.0.1:{port}/ or stop the other \"agboard serve\".")
             }
-            AgboardError::PortInUse { .. } => "Choose another port with --port.".to_string(),
+            AgboardError::AlreadyServing { port, auto: true } => format!(
+                "A server started automatically is running at http://127.0.0.1:{port}/. Run \"agboard serve -d\" to keep it running, or stop it with \"agboard stop\"."
+            ),
+            AgboardError::PortInUse { port, holder } => port_in_use_reason(*port, *holder),
+            AgboardError::LocalNetworkDenied => LOCAL_NETWORK_DENIED.to_string(),
             AgboardError::BoardUnavailable { reason } => reason.clone(),
             AgboardError::CursorInvalid { reason } => reason.clone(),
             AgboardError::WaitTimeout => {
@@ -142,5 +146,20 @@ impl AgboardError {
             }
             AgboardError::DocsOpenFailed { reason } => reason.clone(),
         }
+    }
+}
+
+/// Why `agboard` cannot listen on or reach 127.0.0.1, and the fix for Codex.
+const LOCAL_NETWORK_DENIED: &str = "This environment does not allow local network connections, so the Agent Board server cannot be started or reached. In Codex, run \"agboard setup\" to allow agboard to run outside the sandbox.";
+
+fn port_in_use_reason(port: u16, holder: PortHolder) -> String {
+    match holder {
+        PortHolder::AgentBoard { pid } => format!(
+            "Port {port} is used by another Agent Board server (pid {pid}) with a different data folder. Choose another port with --port."
+        ),
+        PortHolder::OtherProgram => {
+            format!("Port {port} is used by another program. Choose another port with --port.")
+        }
+        PortHolder::Unknown => "Choose another port with --port.".to_string(),
     }
 }

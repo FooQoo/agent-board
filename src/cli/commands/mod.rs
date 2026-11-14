@@ -14,6 +14,7 @@ pub mod project;
 pub mod qa;
 pub mod rm;
 pub mod serve;
+pub mod serve_auto;
 pub mod show;
 pub mod snapshot;
 pub mod state;

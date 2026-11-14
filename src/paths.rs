@@ -8,12 +8,32 @@ use crate::error::AgboardError;
 /// Name of the data directory directly under the home directory.
 pub const DEFAULT_DATA_DIR_NAME: &str = ".agent-board";
 
+/// How a running server was started: by a person (`serve`, `serve -d`) or by
+/// the CLI when a command needed one. Only an automatic server stops by itself.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ServeMode {
+    #[default]
+    Manual,
+    Auto,
+}
+
 /// Contents of `serve.json`: how the CLI finds a running `agboard serve`.
+/// A file without `mode` was written by a manual server.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServeInfo {
     pub pid: u32,
     pub port: u16,
     pub started_at: String,
+    #[serde(default)]
+    pub mode: ServeMode,
+    /// How long an automatic server waits without use before it stops.
+    #[serde(
+        rename = "idleTimeoutSeconds",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub idle_timeout_seconds: Option<u64>,
 }
 
 /// The data directory: `$AGBOARD_HOME` when it is set and not empty, otherwise
@@ -123,6 +143,8 @@ mod tests {
             pid: 41235,
             port: 7420,
             started_at: "2026-10-02T01:00:00Z".into(),
+            mode: ServeMode::Manual,
+            idle_timeout_seconds: None,
         }
     }
 
@@ -191,13 +213,31 @@ mod tests {
             let text = std::fs::read_to_string(serve_info_path().unwrap()).unwrap();
             assert_eq!(
                 serde_json::from_str::<serde_json::Value>(&text).unwrap(),
-                serde_json::json!({"pid": 41235, "port": 7420, "started_at": "2026-10-02T01:00:00Z"})
+                serde_json::json!({"pid": 41235, "port": 7420, "started_at": "2026-10-02T01:00:00Z", "mode": "manual"})
             );
             remove_serve_info();
             assert_eq!(read_serve_info(), None);
             // removing again is harmless
             remove_serve_info();
         });
+    }
+
+    #[test]
+    fn a_file_without_a_mode_is_read_as_a_manual_server() {
+        let old: ServeInfo =
+            serde_json::from_str(r#"{"pid":1,"port":7420,"started_at":"x"}"#).unwrap();
+        assert_eq!(old.mode, ServeMode::Manual);
+        assert_eq!(old.idle_timeout_seconds, None);
+        let auto: ServeInfo = serde_json::from_str(
+            r#"{"pid":41235,"port":7420,"started_at":"2026-11-14T03:00:00Z","mode":"auto","idleTimeoutSeconds":1800}"#,
+        )
+        .unwrap();
+        assert_eq!(auto.mode, ServeMode::Auto);
+        assert_eq!(auto.idle_timeout_seconds, Some(1800));
+        assert_eq!(
+            serde_json::to_value(&auto).unwrap(),
+            serde_json::json!({"pid":41235,"port":7420,"started_at":"2026-11-14T03:00:00Z","mode":"auto","idleTimeoutSeconds":1800})
+        );
     }
 
     #[test]

@@ -47,6 +47,7 @@ impl AgboardError {
             AgboardError::DatabaseError { .. } => "database_error",
             AgboardError::AlreadyServing { .. } => "already_serving",
             AgboardError::PortInUse { .. } => "port_in_use",
+            AgboardError::LocalNetworkDenied => "local_network_denied",
             AgboardError::BoardUnavailable { .. } => "board_unavailable",
             AgboardError::CursorInvalid { .. } => "cursor_invalid",
             AgboardError::WaitTimeout => "wait_timeout",

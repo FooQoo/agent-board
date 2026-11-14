@@ -36,7 +36,7 @@ pub(crate) fn is_serving(info: &ServeInfo) -> bool {
 
 /// Whether a process with `pid` exists. Signal 0 sends nothing; it only checks.
 /// A process we may not signal still exists.
-fn process_alive(pid: u32) -> bool {
+pub(crate) fn process_alive(pid: u32) -> bool {
     let Ok(pid) = libc::pid_t::try_from(pid) else {
         return false;
     };
@@ -50,7 +50,7 @@ fn port_accepts(port: u16) -> bool {
     TcpStream::connect_timeout(&addr, HEALTH_TIMEOUT).is_ok()
 }
 
-fn health_pid(port: u16) -> Option<u32> {
+pub(crate) fn health_pid(port: u16) -> Option<u32> {
     let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
     let mut stream = TcpStream::connect_timeout(&addr, HEALTH_TIMEOUT).ok()?;
     stream.set_read_timeout(Some(HEALTH_TIMEOUT)).ok()?;
@@ -78,6 +78,23 @@ pub(crate) fn remove_serve_info_of(path: &Path, pid: u32) {
         .is_some_and(|info| info.pid == pid);
     if ours {
         let _ = std::fs::remove_file(path);
+    }
+}
+
+/// Mark the `serve.json` at `path` as written by a manual server, if it still
+/// names `pid`: the server was switched to manual and no longer stops by itself.
+pub(crate) fn mark_manual(path: &Path, pid: u32) {
+    let Some(mut info) = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<ServeInfo>(&text).ok())
+        .filter(|info| info.pid == pid)
+    else {
+        return;
+    };
+    info.mode = crate::paths::ServeMode::Manual;
+    info.idle_timeout_seconds = None;
+    if let Some(dir) = path.parent() {
+        crate::paths::write_serve_info_in(dir, &info);
     }
 }
 

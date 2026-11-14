@@ -121,6 +121,10 @@ fn messages_and_reasons_follow_the_design_table() {
             "port 7420 is already in use.",
             "Choose another port with --port.",
         ),
+        (
+            "local network connections are not allowed.",
+            "This environment does not allow local network connections, so the Agent Board server cannot be started or reached. In Codex, run \"agboard setup\" to allow agboard to run outside the sandbox.",
+        ),
         ("the board is unavailable.", "no running server"),
         ("the cursor is invalid.", "wrong project"),
         (
@@ -162,4 +166,42 @@ fn messages_and_reasons_follow_the_design_table() {
         .map(|(m, r)| (m.to_string(), r.to_string()))
         .collect();
     assert_eq!(got, expected);
+}
+
+#[test]
+fn port_in_use_names_what_holds_the_port() {
+    let board = AgboardError::PortInUse {
+        port: 7420,
+        holder: crate::error::PortHolder::AgentBoard { pid: 41235 },
+    };
+    assert_eq!(
+        board.reason(),
+        "Port 7420 is used by another Agent Board server (pid 41235) with a different data folder. Choose another port with --port."
+    );
+    let other = AgboardError::PortInUse {
+        port: 7420,
+        holder: crate::error::PortHolder::OtherProgram,
+    };
+    assert_eq!(
+        other.reason(),
+        "Port 7420 is used by another program. Choose another port with --port."
+    );
+}
+
+#[test]
+fn already_serving_says_when_the_server_was_started_automatically() {
+    let auto = AgboardError::AlreadyServing {
+        port: 52114,
+        auto: true,
+    };
+    assert!(
+        auto.reason().contains("started automatically"),
+        "{}",
+        auto.reason()
+    );
+    assert!(
+        auto.reason().contains("agboard serve -d"),
+        "{}",
+        auto.reason()
+    );
 }

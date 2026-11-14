@@ -18,8 +18,13 @@ const POLL: Duration = Duration::from_millis(50);
 ///
 /// A missing or stale `serve.json` means nothing is running, which is not an
 /// error: the end state the caller asked for already holds.
+///
+/// `stop` also leaves `autostart.paused`, so that the agent hook does not start
+/// the server again right away. A command that waits, `serve` and `serve -d`
+/// remove it and start one.
 pub fn run(json: bool) -> Result<String, AgboardError> {
     let data_dir = crate::paths::data_dir()?;
+    crate::autostart::pause(&data_dir);
     let Some(info) = crate::paths::read_serve_info_in(&data_dir) else {
         return Ok(render(json, None));
     };
@@ -79,7 +84,9 @@ fn render(json: bool, stopped_port: Option<u16>) -> String {
     match (json, stopped_port) {
         (true, Some(port)) => format!("{}\n", json!({ "stopped": true, "port": port })),
         (true, None) => format!("{}\n", json!({ "stopped": false })),
-        (false, Some(port)) => format!("Stopped the server on port {port}.\n"),
+        (false, Some(port)) => format!(
+            "Stopped the server on port {port}. A command that waits for the board starts it again automatically.\n"
+        ),
         (false, None) => "No server is running.\n".to_string(),
     }
 }
@@ -117,7 +124,7 @@ mod tests {
     fn the_output_says_whether_a_server_was_stopped() {
         assert_eq!(
             render(false, Some(7420)),
-            "Stopped the server on port 7420.\n"
+            "Stopped the server on port 7420. A command that waits for the board starts it again automatically.\n"
         );
         assert_eq!(render(false, None), "No server is running.\n");
         assert_eq!(

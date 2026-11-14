@@ -223,6 +223,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/preferences",
             get(get_preferences).put(put_preferences),
         )
+        .layer(middleware::from_fn_with_state(
+            state.activity.clone(),
+            super::idle::track,
+        ))
         .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
         .layer(middleware::from_fn_with_state(
             guard_context.clone(),

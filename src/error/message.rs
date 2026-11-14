@@ -86,7 +86,10 @@ impl AgboardError {
             AgboardError::DatabaseBusy => "the board is busy.".to_string(),
             AgboardError::DatabaseError { .. } => "cannot open the board.".to_string(),
             AgboardError::AlreadyServing { .. } => "the board is already being served.".to_string(),
-            AgboardError::PortInUse { port } => format!("port {port} is already in use."),
+            AgboardError::PortInUse { port, .. } => format!("port {port} is already in use."),
+            AgboardError::LocalNetworkDenied => {
+                "local network connections are not allowed.".to_string()
+            }
             AgboardError::BoardUnavailable { .. } => "the board is unavailable.".to_string(),
             AgboardError::CursorInvalid { .. } => "the cursor is invalid.".to_string(),
             AgboardError::WaitTimeout => "no board change before the timeout.".to_string(),

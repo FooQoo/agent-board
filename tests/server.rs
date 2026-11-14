@@ -1438,6 +1438,8 @@ fn info(pid: u32, port: u16) -> ServeInfo {
         pid,
         port,
         started_at: "2026-10-02T01:00:00Z".into(),
+        mode: Default::default(),
+        idle_timeout_seconds: None,
     }
 }
 
@@ -1488,13 +1490,25 @@ fn a_second_server_for_the_same_data_directory_is_already_serving() {
     let first = Running::start(home.path(), 0).unwrap();
     let before = serve_json(home.path());
     let error = Running::start(home.path(), 0).err().unwrap();
-    assert_eq!(error, AgboardError::AlreadyServing { port: first.port() });
+    assert_eq!(
+        error,
+        AgboardError::AlreadyServing {
+            port: first.port(),
+            auto: false
+        }
+    );
     // The first server is untouched.
     assert_eq!(serve_json(home.path()), before);
     assert_eq!(first.get("/api/health").status, 200);
     // Asking for the running server's own port is also "already serving".
     let error = Running::start(home.path(), first.port()).err().unwrap();
-    assert_eq!(error, AgboardError::AlreadyServing { port: first.port() });
+    assert_eq!(
+        error,
+        AgboardError::AlreadyServing {
+            port: first.port(),
+            auto: false
+        }
+    );
     first.stop().unwrap();
 }
 
@@ -1504,7 +1518,13 @@ fn a_port_in_use_by_something_else_is_port_in_use() {
     let blocker = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = blocker.local_addr().unwrap().port();
     let error = Running::start(home.path(), port).err().unwrap();
-    assert_eq!(error, AgboardError::PortInUse { port });
+    assert_eq!(
+        error,
+        AgboardError::PortInUse {
+            port,
+            holder: agent_board::error::PortHolder::OtherProgram
+        }
+    );
     assert_eq!(error.code(), "port_in_use");
     assert!(!home.path().join("serve.json").exists());
 }
@@ -1535,7 +1555,7 @@ fn a_serve_json_whose_port_answers_with_the_same_pid_means_already_serving() {
     let (port, fake) = fake_health_server(2);
     write_serve_json(home.path(), &info(2, port));
     let error = Running::start(home.path(), 0).err().unwrap();
-    assert_eq!(error, AgboardError::AlreadyServing { port });
+    assert_eq!(error, AgboardError::AlreadyServing { port, auto: false });
     fake.join().unwrap();
 }
 
@@ -1610,6 +1630,7 @@ use std::process::{Child, Stdio};
 /// Start `agboard serve` with `args`, serving the data area in `home`.
 fn spawn_serve(home: &Path, args: &[&str]) -> ServeProcess {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_AUTOSTART", "0")
         .arg("serve")
         .args(args)
         .env("AGBOARD_WATCH", "poll")

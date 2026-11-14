@@ -221,6 +221,17 @@ impl MonitorConnections {
         self.snapshot_now(&inner)
     }
 
+    /// Whether the connection is up or on its way up: the server is in use for as long as it is.
+    pub(crate) fn is_active(&self) -> bool {
+        matches!(
+            self.lock().status,
+            ConnectionStatus::Starting
+                | ConnectionStatus::Ready
+                | ConnectionStatus::Reconnecting
+                | ConnectionStatus::Stopping
+        )
+    }
+
     /// Close everything without touching the saved settings (server exit, rollback).
     pub fn shutdown(&self) {
         let mut inner = self.lock();

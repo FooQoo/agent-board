@@ -99,15 +99,26 @@ pub struct SetupArgs {
     after_help = "Examples:\n  agboard serve\n  agboard serve --port 7500\n  agboard serve -d\n  agboard stop\n  NGROK_AUTHTOKEN=... agboard serve --monitor ngrok"
 )]
 pub struct ServeArgs {
-    /// Port to listen on (127.0.0.1 only)
-    #[arg(long, value_name = "PORT", default_value_t = 7420)]
-    pub port: u16,
+    /// Port to listen on (127.0.0.1 only) [default: 7420]
+    #[arg(long, value_name = "PORT")]
+    pub port: Option<u16>,
     /// Built-in mobile monitor connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
     #[arg(long, value_name = "MODE")]
     pub monitor: Option<String>,
     /// Run in the background and return once the server is ready; stop it with `agboard stop`. Output goes to serve.log in the data directory
     #[arg(short = 'd', long)]
     pub daemon: bool,
+    /// Started by another command that needed a server: prefer the default
+    /// port, and stop after a time without use. Not for people.
+    #[arg(long, hide = true, conflicts_with_all = ["port", "monitor", "daemon"])]
+    pub auto: bool,
+}
+
+impl ServeArgs {
+    /// The port a manual server listens on.
+    pub fn port(&self) -> u16 {
+        self.port.unwrap_or(crate::autostart::DEFAULT_PORT)
+    }
 }
 
 #[derive(Args, Debug)]

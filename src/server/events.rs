@@ -44,10 +44,16 @@ pub(crate) async fn events(
     // A lagged notice may have named any project, so it asks for every project's Docs.
     let docs = BroadcastStream::new(state.docs_changed.subscribe())
         .map(|project| Ok(docs_event(project.unwrap_or(None).as_ref())));
+    // The stream is use for as long as it is open, so an automatic server keeps running.
+    let held = state.activity.open_stream();
     let stream = tokio_stream::once(Ok(Event::default()
         .event("ready")
         .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))
-    .chain(changes.merge(preferences).merge(docs));
+    .chain(changes.merge(preferences).merge(docs))
+    .map(move |event| {
+        let _ = &held;
+        event
+    });
     Sse::new(stream).keep_alive(KeepAlive::new().interval(KEEP_ALIVE))
 }
 

@@ -21,12 +21,17 @@ use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 /// afterwards. The command works on the whole data area, never on one project
 /// or task, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
+    if args.auto {
+        return super::serve_auto::run();
+    }
     if args.daemon {
         return daemonize(json, args);
     }
     let explicit = validate_monitor_args(args, &|name| std::env::var(name).ok())?;
+    // A person started the server: the hook may start one again after it stops.
+    crate::autostart::resume(&crate::paths::data_dir()?);
     server::run_until_with_monitor(
-        ServeConfig { port: args.port },
+        ServeConfig { port: args.port() },
         MonitorOptions::new(MonitorEnv::from_process(), explicit),
         shutdown_signal(),
         |addr, monitor| announce(addr, monitor, json),
@@ -50,8 +55,13 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     if let Some(info) = crate::paths::read_serve_info_in(&data_dir)
         && server::is_serving(&info)
     {
+        let auto = info.mode == crate::paths::ServeMode::Auto;
+        if auto && !super::serve_auto::conflicts(args.port, args.monitor.as_deref(), &info) {
+            return super::serve_auto::switch_to_manual(&data_dir, &info, json);
+        }
         let replace = confirm_replace(
             info.port,
+            auto,
             confirm::is_interactive(json),
             &mut std::io::stdin().lock(),
             &mut std::io::stderr(),
@@ -70,6 +80,7 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     }
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| unavailable(format!("Cannot create the data directory: {e}")))?;
+    crate::autostart::resume(&data_dir);
     let log_path = data_dir.join("serve.log");
     let log = std::fs::OpenOptions::new()
         .write(true)
@@ -86,7 +97,7 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
 
     let mut command = process::Command::new(exe);
     // The startup line is the handshake, so the child always prints JSON.
-    command.args(["--json", "serve", "--port", &args.port.to_string()]);
+    command.args(["--json", "serve", "--port", &args.port().to_string()]);
     if let Some(mode) = &args.monitor {
         command.args(["--monitor", mode]);
     }
@@ -147,12 +158,13 @@ fn daemonize(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
 /// a server someone else is using.
 fn confirm_replace(
     port: u16,
+    auto: bool,
     interactive: bool,
     input: &mut impl BufRead,
     output: &mut impl Write,
 ) -> Result<bool, AgboardError> {
     if !interactive {
-        return Err(AgboardError::AlreadyServing { port });
+        return Err(AgboardError::AlreadyServing { port, auto });
     }
     confirm::confirm(
         &format!("A server is already running on port {port}. Stop it and start a new one?"),
@@ -167,7 +179,12 @@ fn unavailable(reason: String) -> AgboardError {
 
 /// The line `serve -d` prints: the child's startup object with the process and
 /// log added, or the usual sentence with the way to stop it.
-fn daemon_line(mut startup: serde_json::Value, pid: u32, log: &Path, json: bool) -> String {
+pub(super) fn daemon_line(
+    mut startup: serde_json::Value,
+    pid: u32,
+    log: &Path,
+    json: bool,
+) -> String {
     if json {
         startup["pid"] = json!(pid);
         startup["log"] = json!(log.display().to_string());
@@ -229,7 +246,7 @@ fn startup_line(addr: SocketAddr, monitor: Option<&MonitorReady>, json: bool) ->
 }
 
 /// Completes on Ctrl+C, or on SIGTERM where the platform has it.
-async fn shutdown_signal() {
+pub(super) async fn shutdown_signal() {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{SignalKind, signal};
@@ -270,8 +287,15 @@ mod tests {
     #[test]
     fn only_a_person_at_a_terminal_can_replace_a_running_server() {
         let mut printed = Vec::new();
-        let err = confirm_replace(7971, false, &mut "y\n".as_bytes(), &mut printed).unwrap_err();
-        assert!(matches!(err, AgboardError::AlreadyServing { port: 7971 }));
+        let err =
+            confirm_replace(7971, false, false, &mut "y\n".as_bytes(), &mut printed).unwrap_err();
+        assert!(matches!(
+            err,
+            AgboardError::AlreadyServing {
+                port: 7971,
+                auto: false
+            }
+        ));
         assert!(printed.is_empty(), "nothing should be asked");
     }
 
@@ -279,7 +303,8 @@ mod tests {
     fn the_answer_decides_whether_the_running_server_is_replaced() {
         for (answer, replace) in [("y\n", true), ("n\n", false), ("\n", false), ("", false)] {
             let mut printed = Vec::new();
-            let result = confirm_replace(7971, true, &mut answer.as_bytes(), &mut printed).unwrap();
+            let result =
+                confirm_replace(7971, false, true, &mut answer.as_bytes(), &mut printed).unwrap();
             assert_eq!(result, replace, "{answer:?}");
             assert_eq!(
                 String::from_utf8(printed).unwrap(),

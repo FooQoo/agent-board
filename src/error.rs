@@ -9,6 +9,17 @@ pub enum FileAction {
     Write,
 }
 
+/// What holds a port that `serve` could not take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PortHolder {
+    /// Nothing answered the question.
+    Unknown,
+    /// An Agent Board server of another data directory, with its process ID.
+    AgentBoard { pid: u32 },
+    /// Something that is not an Agent Board server.
+    OtherProgram,
+}
+
 /// Every error `agboard` can report. Each variant maps to one error code in the
 /// design's error table.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -169,12 +180,18 @@ pub enum AgboardError {
     DatabaseError {
         reason: String,
     },
+    /// A server for the same data directory is running; `auto` when the CLI started it.
     AlreadyServing {
         port: u16,
+        auto: bool,
     },
+    /// The port is taken; `holder` says by what, when that could be found out.
     PortInUse {
         port: u16,
+        holder: PortHolder,
     },
+    /// The OS or a sandbox does not allow listening on or connecting to 127.0.0.1.
+    LocalNetworkDenied,
     /// `agboard wait` could not read the board or reach the server.
     BoardUnavailable {
         reason: String,

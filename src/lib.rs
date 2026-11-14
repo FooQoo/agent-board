@@ -1,4 +1,5 @@
 pub mod agent;
+pub mod autostart;
 pub mod cli;
 pub mod clock;
 pub mod docs;

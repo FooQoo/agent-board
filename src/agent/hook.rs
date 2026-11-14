@@ -37,8 +37,8 @@ impl Failure {
 /// registered ancestor of the `cwd` supplied in the hook input. When the input
 /// has no `cwd`, the process working directory is used.
 ///
-/// The hook returns the same progress data as `agboard progress --json`. It is
-/// read-only and never builds a shell command from hook input.
+/// The hook returns the same progress data as `agboard progress --json`. It
+/// changes no board file and never builds a shell command from hook input.
 pub fn run(
     agent: &str,
     input: &mut dyn Read,
@@ -55,6 +55,38 @@ pub fn run_with(
     shared: &Path,
     project: Option<&str>,
     include: Include,
+) -> Option<String> {
+    run_reporting(agent, input, shared, project, include).output
+}
+
+/// What the hook printed, and whether it found the project's progress table.
+pub struct HookRun {
+    pub output: Option<String>,
+    /// A progress table was produced: the agent is working on a board.
+    pub board: bool,
+}
+
+/// [`run_with`], also saying whether a progress table was produced, so the
+/// command line can start the server for the agent's board.
+pub fn run_reporting(
+    agent: &str,
+    input: &mut dyn Read,
+    shared: &Path,
+    project: Option<&str>,
+    include: Include,
+) -> HookRun {
+    let mut board = false;
+    let output = hook_output(agent, input, shared, project, include, &mut board);
+    HookRun { output, board }
+}
+
+fn hook_output(
+    agent: &str,
+    input: &mut dyn Read,
+    shared: &Path,
+    project: Option<&str>,
+    include: Include,
+    board: &mut bool,
 ) -> Option<String> {
     let mut bytes = Vec::new();
     if input
@@ -93,7 +125,10 @@ pub fn run_with(
         return None;
     }
     let context = match progress_context(shared, project, value.get("cwd"), include) {
-        Ok(Some(context)) => context,
+        Ok(Some(context)) => {
+            *board = true;
+            context
+        }
         // A readable folder with no bound ancestor is not an error: say nothing.
         Ok(None) => return None,
         Err(failure) => error_context(&failure),

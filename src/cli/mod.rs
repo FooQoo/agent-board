@@ -89,6 +89,8 @@ pub struct Env<'a> {
 /// Entry point of the command line interface. Returns the process exit code.
 pub fn run() -> i32 {
     let args: Vec<OsString> = std::env::args_os().collect();
+    // Only the real command line may start a server in the background.
+    crate::autostart::allow_in_this_process();
     // Unlocked handles: a long-running `serve` writes diagnostics to stderr from
     // worker threads, and a lock held here for the whole command would block them.
     let mut stdout = std::io::stdout();

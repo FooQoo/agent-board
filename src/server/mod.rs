@@ -6,12 +6,15 @@
 mod acceptance;
 mod api;
 pub mod assets;
+pub(crate) mod bind;
 pub(crate) mod change_feed;
 pub mod contracts;
 pub mod dist;
 mod events;
 pub mod guard;
-mod instance;
+pub mod idle;
+pub(crate) mod instance;
+mod launch;
 pub mod monitor;
 pub(crate) mod preferences;
 mod qa;
@@ -28,21 +31,20 @@ mod store;
 mod summary_response;
 pub mod web_assets;
 
-use crate::docs::DocsLocale;
 use std::future::Future;
-use std::net::{SocketAddr, TcpListener};
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use tokio::sync::broadcast;
 
-use crate::clock::format_utc;
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
-use crate::file_store::watch::{DocsSink, Reloader, Watch, WatchMode};
-use crate::paths::{self, ServeInfo};
-use monitor_connection::config::ConfigStore;
+use crate::file_store::watch::{Reloader, WatchMode};
+use crate::paths;
+pub use idle::IdleStop;
+pub use launch::{Ended, Ready};
 use monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
 pub use monitor_connection::lifecycle::{MonitorOptions, MonitorReady};
 
@@ -75,6 +77,8 @@ pub(crate) struct AppState {
     pub preferences_changed: broadcast::Sender<preferences::Preferences>,
     /// The projects whose Docs changed (`None`: any project); the board's stream sends `docs`.
     pub docs_changed: broadcast::Sender<Option<ProjectId>>,
+    /// When the server was last used; an automatic server stops after its idle time.
+    pub activity: Arc<idle::Activity>,
 }
 
 pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {
@@ -142,119 +146,58 @@ pub fn run_until_with_monitor_in<F: Future<Output = ()>>(
     shutdown: F,
     on_ready: impl FnOnce(SocketAddr, Option<MonitorReady>),
 ) -> Result<(), AgboardError> {
-    let data_dir = data_dir.to_path_buf();
-    let serve_path = data_dir.join("serve.json");
-    if let Some(info) = paths::read_serve_info_in(&data_dir)
-        && instance::is_serving(&info)
-    {
-        return Err(AgboardError::AlreadyServing { port: info.port });
-    }
-    let _lifecycle = crate::lifecycle::LifecycleGuard::acquire(&data_dir)?;
-    let shared = data_dir.join("shared");
-    crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
-    crate::file_store::FileStore::open(&shared).seed_unseeded_projects(chrono::Utc::now());
-    let docs_locale =
-        DocsLocale::from_locale(&preferences::PreferencesStore::new(&data_dir).load().locale);
-    crate::file_store::FileStore::open(&shared).ensure_docs_dirs(docs_locale);
-    let listener = bind(config.port)?;
-    let addr = listener
-        .local_addr()
-        .map_err(|_| port_in_use(config.port))?;
-
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| internal(format!("Cannot start the server runtime: {e}")))?;
-    runtime.block_on(async move {
-        let listener = listener
-            .set_nonblocking(true)
-            .and_then(|()| tokio::net::TcpListener::from_std(listener))
-            .map_err(|e| internal(format!("Cannot listen on {addr}: {e}")))?;
-
-        // The watch exists before the first read, so a change made during the
-        // read is queued and read again.
-        let index = Arc::new(RwLock::new(ProjectIndex::default()));
-        let changed = change_feed::ChangeFeed::new();
-        let (preferences_changed, _) = broadcast::channel(16);
-        let (docs_changed, _) = broadcast::channel(64);
-        let docs_sender = docs_changed.clone();
-        let (_watch, reloader) = Watch::start_with_docs(
-            &shared,
-            watch,
-            index.clone(),
-            changed.sink(),
-            DocsSink::new(move |project| {
-                let _ = docs_sender.send(project);
-            }),
-        )?;
-        let state = Arc::new(AppState {
-            port: addr.port(),
-            token: assets::new_token()?,
-            shared,
-            index,
-            reloader,
-            changed,
-            monitor: MonitorConnections::new(
-                ConfigStore::new(&data_dir),
-                monitor.connector.clone(),
-                monitor.vault.clone(),
-                monitor.env.clone(),
-            ),
-            preferences: preferences::PreferencesStore::new(&data_dir),
-            preferences_changed,
-            docs_changed,
-        });
-        state.monitor.attach(&state);
-        let app = api::router(state.clone());
-
-        // A command-line monitor must be up before the board announces itself;
-        // on failure nothing has been written yet, so the run just ends.
-        let explicit = monitor.explicit;
-        let monitor_ready = match state.monitor.startup(explicit).await {
-            Ok(ready) => ready.filter(|_| explicit),
-            Err(code) => {
-                state.monitor.shutdown();
-                return Err(internal(format!(
-                    "The ngrok connection could not be started ({}).",
-                    code.as_str()
-                )));
-            }
-        };
-
-        let pid = std::process::id();
-        paths::write_serve_info_in(
-            &data_dir,
-            &ServeInfo {
-                pid,
-                port: addr.port(),
-                started_at: format_utc(chrono::Utc::now()),
-            },
-        );
-        on_ready(addr, monitor_ready);
-        let result = tokio::select! {
-            served = async { axum::serve(listener, app).await } => {
-                served.map_err(|e| internal(format!("The server stopped: {e}")))
-            }
-            () = shutdown => Ok(()),
-        };
-        state.monitor.shutdown();
-        instance::remove_serve_info_of(&serve_path, pid);
-        result
+    let launch = launch::Launch {
+        data_dir,
+        watch,
+        port: config.port,
+        auto: None,
+    };
+    launch::run(launch, monitor, shutdown, |ready| {
+        on_ready(ready.addr, ready.monitor)
     })
+    .map(|_| ())
 }
 
-fn internal(reason: String) -> AgboardError {
-    AgboardError::DatabaseError { reason }
+/// Serve as a server the CLI started by itself: prefer `port` and take a free
+/// one when it is taken, and stop after `idle` without use. A signal (SIGUSR1)
+/// turns it into a manual server that no longer stops by itself.
+pub fn run_auto_until<F: Future<Output = ()>>(
+    port: u16,
+    idle: IdleStop,
+    monitor: MonitorOptions,
+    shutdown: F,
+    on_ready: impl FnOnce(Ready),
+) -> Result<Ended, AgboardError> {
+    let data_dir = paths::data_dir()?;
+    run_auto_until_in(
+        &data_dir,
+        WatchMode::from_env(),
+        port,
+        idle,
+        monitor,
+        shutdown,
+        on_ready,
+    )
 }
 
-fn port_in_use(port: u16) -> AgboardError {
-    AgboardError::PortInUse { port }
+/// [`run_auto_until`] with the data area and the watch mode given.
+pub fn run_auto_until_in<F: Future<Output = ()>>(
+    data_dir: &Path,
+    watch: WatchMode,
+    port: u16,
+    idle: IdleStop,
+    monitor: MonitorOptions,
+    shutdown: F,
+    on_ready: impl FnOnce(Ready),
+) -> Result<Ended, AgboardError> {
+    let launch = launch::Launch {
+        data_dir,
+        watch,
+        port,
+        auto: Some(idle),
+    };
+    launch::run(launch, monitor, shutdown, on_ready)
 }
 
 /// A temporary file or folder older than this is left over from a crash and is removed at startup.
 const STALE_TEMPORARY_AGE: std::time::Duration = std::time::Duration::from_secs(60 * 60);
-
-/// Bind 127.0.0.1:`port`. Any failure to bind is reported as `PortInUse`.
-fn bind(port: u16) -> Result<TcpListener, AgboardError> {
-    TcpListener::bind(("127.0.0.1", port)).map_err(|_| port_in_use(port))
-}

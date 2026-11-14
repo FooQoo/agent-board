@@ -11,15 +11,8 @@ use std::time::Duration;
 use eventsource_stream::Eventsource;
 use futures_util::StreamExt;
 
-use crate::{error::AgboardError, paths};
-
-const CONNECT_LIMIT: Duration = Duration::from_secs(3);
-
-#[derive(serde::Deserialize)]
-struct Health {
-    ok: bool,
-    pid: u32,
-}
+use super::wait_connect::{Connected, connect};
+use crate::error::AgboardError;
 
 /// A source that keeps reading exactly one project after its name is resolved.
 pub(crate) trait WaitReader {
@@ -49,10 +42,6 @@ fn unavailable(reason: impl Into<String>) -> AgboardError {
 
 fn remaining(deadline: Option<tokio::time::Instant>) -> Option<Duration> {
     deadline.map(|at| at.saturating_duration_since(tokio::time::Instant::now()))
-}
-
-fn connect_budget(deadline: Option<tokio::time::Instant>) -> Duration {
-    remaining(deadline).map_or(CONNECT_LIMIT, |left| left.min(CONNECT_LIMIT))
 }
 
 async fn final_read<R, T, F>(
@@ -100,93 +89,23 @@ where
         .parent()
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    let info = paths::read_serve_info_in(dir).ok_or_else(|| {
-        unavailable("No running Agent Board server was found. Run \"agboard serve\".")
-    })?;
-    let client = reqwest::Client::builder()
-        .connect_timeout(CONNECT_LIMIT)
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| unavailable(error.to_string()))?;
-    let base = format!("http://127.0.0.1:{}", info.port);
-
-    let budget = connect_budget(deadline);
-    if budget.is_zero() {
-        return final_read(reader, &mut evaluate).await;
-    }
-    let health_response = tokio::time::timeout(
-        budget,
-        client
-            .get(format!("{base}/api/health"))
-            .timeout(budget)
-            .send(),
-    )
-    .await;
-    let health_response = match health_response {
-        Ok(Ok(response)) => response
-            .error_for_status()
-            .map_err(|error| unavailable(error.to_string()))?,
-        Ok(Err(error))
-            if error.is_timeout() && remaining(deadline).is_some_and(|d| d.is_zero()) =>
-        {
-            return final_read(reader, &mut evaluate).await;
+    // A server that stops between reading serve.json and connecting is
+    // started again once.
+    let mut retried = false;
+    let response = loop {
+        if crate::autostart::enabled() {
+            crate::autostart::ensure_serving(dir)?;
         }
-        Ok(Err(error)) => {
-            return Err(unavailable(format!(
-                "serve.json names the server on port {}, which does not answer ({error}). The server may have stopped; run \"agboard serve\" again.",
-                info.port
-            )));
+        match connect(dir, deadline).await {
+            Ok(Connected::Stream(response)) => break response,
+            Ok(Connected::DeadlineReached) => return final_read(reader, &mut evaluate).await,
+            Err(AgboardError::BoardUnavailable { .. })
+                if !retried && crate::autostart::enabled() =>
+            {
+                retried = true;
+            }
+            Err(error) => return Err(error),
         }
-        Err(_) if remaining(deadline).is_some_and(|d| d.is_zero()) => {
-            return final_read(reader, &mut evaluate).await;
-        }
-        Err(_) => return Err(unavailable("The server health check timed out.")),
-    };
-    let body_budget = connect_budget(deadline);
-    if body_budget.is_zero() {
-        return final_read(reader, &mut evaluate).await;
-    }
-    let health: Health = match tokio::time::timeout(body_budget, health_response.json()).await {
-        Ok(Ok(health)) => health,
-        Ok(Err(error)) => return Err(unavailable(error.to_string())),
-        Err(_) if remaining(deadline).is_some_and(|d| d.is_zero()) => {
-            return final_read(reader, &mut evaluate).await;
-        }
-        Err(_) => return Err(unavailable("The server health response timed out.")),
-    };
-    if !health.ok || health.pid != info.pid {
-        return Err(unavailable(format!(
-            "serve.json names process {} on port {}, but that port is answered by another process. Run \"agboard serve\" again.",
-            info.pid, info.port
-        )));
-    }
-
-    let budget = connect_budget(deadline);
-    if budget.is_zero() {
-        return final_read(reader, &mut evaluate).await;
-    }
-    let connecting = tokio::time::timeout(
-        budget,
-        client
-            .get(format!("{base}/api/events"))
-            .header("Host", format!("127.0.0.1:{}", info.port))
-            .send(),
-    )
-    .await;
-    let response = match connecting {
-        Ok(Ok(response)) => response
-            .error_for_status()
-            .map_err(|error| unavailable(error.to_string()))?,
-        Ok(Err(error))
-            if error.is_timeout() && remaining(deadline).is_some_and(|d| d.is_zero()) =>
-        {
-            return final_read(reader, &mut evaluate).await;
-        }
-        Ok(Err(error)) => return Err(unavailable(error.to_string())),
-        Err(_) if remaining(deadline).is_some_and(|d| d.is_zero()) => {
-            return final_read(reader, &mut evaluate).await;
-        }
-        Err(_) => return Err(unavailable("The event stream connection timed out.")),
     };
 
     let mut events = response.bytes_stream().eventsource();
