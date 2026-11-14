@@ -18,7 +18,7 @@ import {
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
-import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, openReview, sendAnswer } from '../helpers/answer';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
@@ -429,7 +429,7 @@ test.describe('two projects with the same task numbers', () => {
     });
   }
 
-  test('a closed answer dialog keeps its input without holding the project; the input is there when it is opened again', async ({
+  test('an answer kept unsent holds the project even with the dialog closed; clearing it lets the project go', async ({
     page,
   }) => {
     await open(page, alpha);
@@ -439,15 +439,17 @@ test.describe('two projects with the same task numbers', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(answerButton(page, 2)).toHaveText('Continue answering');
-    // Closing frees the menu even though the input stays.
+    // The answer is not sent yet, so the project stays and the band offers to send it.
+    await expect(switcher(page)).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Review and send', exact: true })).toBeVisible();
+    await openAnswer(page, 2);
+    await expect(answerNote(page)).toHaveValue('Kept while closed.');
+    await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
     await expect(switcher(page)).toBeEnabled();
     await choose(page, 'Beta');
     await expect.poll(() => projectParam(page)).toBe(beta);
-    await choose(page, 'Alpha');
-    await expect.poll(() => projectParam(page)).toBe(alpha);
-    await expect(answerButton(page, 2)).toHaveText('Continue answering');
-    await openAnswer(page, 2);
-    await expect(answerNote(page)).toHaveValue('Kept while closed.');
   });
 
   test('back and forward during a form are applied after it is done, and the form writes to the project it started in', async ({
@@ -542,6 +544,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(answerNote(page)).toHaveValue('Beta answer.');
+    await openReview(page);
     await expect(answerSend(page)).toBeEnabled();
     const answerResponse = page.waitForResponse((response) =>
       response.url().includes(`/api/projects/${beta}/qa/answers`),

@@ -191,9 +191,10 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await sheet.getByRole('textbox').fill('Ship the stable release.');
 	const answerRequest = page.waitForResponse((response) =>
 		response.url().includes('/qa/answers') && response.request().method() === 'POST');
-	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+	await sheet.getByRole('button', { name: 'Next', exact: true }).click();
+	await page.getByRole('dialog', { name: 'Review your answers' }).getByRole('button', { name: 'Send all', exact: true }).click();
 	expect((await answerRequest).status()).toBe(200);
-	await expect(sheet).toHaveCount(0);
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
 
 	const waited = await waiting.result;

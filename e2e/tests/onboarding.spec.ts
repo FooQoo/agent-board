@@ -58,7 +58,9 @@ test('OB-01: the guide runs both samples, takes the answer, and archives them', 
 	await stage.getByRole('button', { name: 'Answer the question' }).click();
 	const answer = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
 	await answer.getByLabel('Keep it brief').check();
-	await answer.getByRole('button', { name: 'Send', exact: true }).click();
+	// The answer is reviewed before it is sent.
+	await answer.getByRole('navigation').getByRole('button', { name: 'Review and send' }).click();
+	await page.getByRole('dialog').filter({ hasText: 'Review your answers' }).getByRole('button', { name: 'Send all', exact: true }).click();
 
 	await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
 	await page.getByRole('button', { name: 'Next' }).click();

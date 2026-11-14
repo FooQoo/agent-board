@@ -114,7 +114,8 @@ test('the phone answers the current question from the sheet, and the answer reac
   await article.getByRole('button', { name: 'Answer the question' }).click();
   const sheet = page.getByRole('dialog', { name: 'Alpha pending review' });
   await expect(sheet.getByText('Waiting for the user review.')).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+  // The answer is reviewed before it is sent, so the step itself sends nothing.
+  await expect(sheet.getByRole('button', { name: 'Send all', exact: true })).toHaveCount(0);
 
   // Closing without sending keeps the input, and the card then says to continue.
   await sheet.getByRole('textbox').fill('Reviewed on the phone.');
@@ -125,11 +126,14 @@ test('the phone answers the current question from the sheet, and the answer reac
   await article.getByRole('button', { name: 'Continue answering' }).click();
   await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
   await sheet.getByRole('radio', { name: 'Plan A' }).click();
+  await sheet.getByRole('button', { name: 'Next', exact: true }).click();
+  const review = page.getByRole('dialog', { name: 'Review your answers' });
+  await expect(review).toContainText('Reviewed on the phone.');
   const answered = page.waitForResponse((response) =>
     response.url().includes('/qa/answers') && response.request().method() === 'POST');
-  await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+  await review.getByRole('button', { name: 'Send all', exact: true }).click();
   expect((await answered).status()).toBe(200);
-  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
 
   const task = JSON.parse(agboard('Alpha', ['show', '1', '--json'], home).stdout).task as {
@@ -140,6 +144,40 @@ test('the phone answers the current question from the sheet, and the answer reac
   expect(task.pendingRequestId).toBeNull();
   expect(task.agentStatus).toBe('idle');
   expect(task.history.at(-1)?.reason).toContain('Reviewed on the phone.');
+});
+
+test('the phone band lists the open questions; an answer held there is sent from the review', async ({ page }) => {
+  const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
+  await entrance.open(page, monitorUrl());
+  const band = page.getByRole('region', { name: 'Unanswered questions' });
+  await expect(band).toBeVisible();
+  const before = await band.getByRole('listitem').count();
+
+  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
+  const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
+  expect(asked.code, asked.stderr).toBe(0);
+  await expect(band.getByRole('listitem')).toHaveCount(before + 1);
+  await expect(band).toContainText(`#${id}`);
+
+  // The item opens the sheet at its question; closing keeps the answer, and the band offers the review.
+  await band.getByRole('button', { name: /Which plan for the band\?/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Alpha band question' });
+  await sheet.getByRole('radio', { name: 'Plan B' }).click();
+  await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(band.getByText('Answered, not sent', { exact: true })).toHaveCount(1);
+  expect(json(['show', String(id)]).task.agentStatus).toBe('pending');
+
+  await band.getByRole('button', { name: 'Review and send', exact: true }).click();
+  const review = page.getByRole('dialog', { name: 'Review your answers' });
+  await expect(review.getByRole('button', { name: /^Change:/ })).toHaveCount(1);
+  await review.getByRole('button', { name: 'Send all', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(band.getByRole('listitem')).toHaveCount(before);
+  const stored = json(['show', String(id)]).task as { agentStatus: string; history: { reason: string }[] };
+  expect(stored.agentStatus).toBe('idle');
+  expect(stored.history.at(-1)?.reason).toContain('Plan B');
 });
 
 test('an image attached to the task shows in the sheet from the monitor attachment route', async ({ page }) => {

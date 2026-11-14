@@ -2,7 +2,7 @@ import { expect, test } from '../helpers/fixtures';
 import { agboardOk, askArgs, mainProject, nextTaskId, projectId, questionJson, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, openAnswer } from '../helpers/answer';
+import { answerButton, answerDialog, openAnswer, openReview } from '../helpers/answer';
 
 test.beforeEach(() => resetPreferences());
 
@@ -68,7 +68,7 @@ for (const { locale, theme, height } of [
     const item = answer.locator('xpath=ancestor::div[contains(@class,"card__item")]');
     // The card shows the button only; a long question never makes the card grow.
     await expect(answer).toBeVisible();
-    await expect(page.getByText(question, { exact: true })).toHaveCount(0);
+    await expect(item.getByText(question, { exact: true })).toHaveCount(0);
     await item.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath('pending-lane.png') });
 
@@ -90,12 +90,15 @@ for (const { locale, theme, height } of [
 
     // The dialog reads the whole question and keeps the answer in view.
     const dialog = await openAnswer(page, id);
-    await expect(dialog.getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.locator('.decision-panel').getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
-    const send = answerDialog(page).getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true });
-    await expect(send).toBeInViewport({ ratio: 1 });
+    const next = answerDialog(page).getByRole('button', { name: locale === 'ja' ? '次へ' : 'Next', exact: true });
+    await expect(next).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-answer.png') });
     await dialog.getByText('この計画を承認する', { exact: true }).click();
+    await openReview(page);
+    const send = answerDialog(page).getByRole('button', { name: locale === 'ja' ? 'まとめて送る' : 'Send all', exact: true });
+    await expect(send).toBeInViewport({ ratio: 1 });
     await send.click();
     await expect(dialog).toBeHidden();
     await expect(answer).toHaveCount(0);

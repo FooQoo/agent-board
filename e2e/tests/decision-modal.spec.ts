@@ -3,7 +3,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, resetBoard, type TaskJson } from '../helpers/agboard';
-import { answerButton, answerDialog, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
+import {
+  answerButton,
+  answerDialog,
+  answerNote,
+  answerSend,
+  openAnswer,
+  openReview,
+  pressSendAll,
+  questionBand,
+  sendAnswer,
+} from '../helpers/answer';
 import { expectHistoryNote } from '../helpers/history';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
@@ -115,7 +125,10 @@ test('a withdrawn question stays readable in the open dialog and cannot be sent'
   await expect(dialog).toContainText('Will this stay?');
   await expect(answerNote(page)).toHaveValue('Typed before it was withdrawn.');
   await expect(answerNote(page)).toBeDisabled();
-  await expect(answerSend(page)).toHaveCount(0);
+  // The review keeps the note, marked as one that cannot be sent, and nothing is left to send.
+  await openReview(page);
+  await expect(dialog).toContainText('This question was withdrawn. Your answer cannot be sent.');
+  await expect(answerSend(page)).toBeDisabled();
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
@@ -179,10 +192,11 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   const dialog = await openAnswer(page, 13);
   await dialog.getByRole('radio', { name: 'Plan B' }).check();
   await answerNote(page).fill('Same answer, twice.');
-  await answerSend(page).click();
+  await pressSendAll(page);
   await expect(dialog.getByRole('alert')).toContainText('Could not save. Try again.');
-  await expect(answerNote(page)).toHaveValue('Same answer, twice.');
-  await expect(dialog.getByRole('radio', { name: 'Plan B' })).toBeChecked();
+  // The review still holds the answer.
+  await expect(dialog).toContainText('Plan B');
+  await expect(dialog).toContainText('Same answer, twice.');
   expect(show(13).agentStatus).toBe('pending');
 
   fail = false;
@@ -191,4 +205,38 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   expect(bodies).toHaveLength(2);
   expect(JSON.parse(bodies[1])).toEqual(JSON.parse(bodies[0]));
   expectHistoryNote(show(13).history.at(-1), ['Will it fail?', 'Plan B', 'Same answer, twice.']);
+});
+
+// DM-6: the band lists every open question; they are answered in a row and sent together.
+test('the band lists the open questions, and the answers are sent together from the review', async ({ page }) => {
+  const band = questionBand(page);
+  // The fresh board has one waiting card, #12.
+  await expect(band.getByRole('listitem')).toHaveCount(1);
+  ask('Which way for #13?');
+  await expect(band.getByRole('listitem')).toHaveCount(2);
+  await expect(band).toContainText('Which way for #13?');
+  await expect(band).toContainText('#13');
+
+  await band.getByRole('button', { name: 'Answer them' }).click();
+  const dialog = answerDialog(page);
+  await expect(dialog).toContainText('1 / 2');
+  await answerNote(page).fill('Replace it.');
+  await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(dialog).toContainText('2 / 2');
+  await dialog.getByRole('radio', { name: 'Plan A' }).check();
+  // Closing keeps both answers: the band offers to review them, and nothing is sent yet.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(band.getByText('Answered, not sent', { exact: true })).toHaveCount(2);
+  expect(show(13).agentStatus).toBe('pending');
+  expect(show(12).agentStatus).toBe('pending');
+
+  await band.getByRole('button', { name: 'Review and send' }).click();
+  await expect(dialog.getByRole('button', { name: /^Change:/ })).toHaveCount(2);
+  await dialog.getByRole('button', { name: 'Send all', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(band.getByRole('status')).toContainText('No unanswered questions');
+  expect(show(12)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
+  expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
+  expectHistoryNote(show(13).history.at(-1), ['Which way for #13?', 'Plan A']);
 });

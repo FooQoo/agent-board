@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { resetBoard, mainProject } from '../helpers/agboard';
-import { answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';
+import { answerDialog, answerNote, openAnswer } from '../helpers/answer';
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
@@ -54,7 +54,8 @@ test('the panel shows the run state and the reason for Doing tasks, and an empty
   await answerNote(page).fill('Typed in place');
   await answerDialog(page).getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(answerNote(page)).toHaveValue('');
-  await expect(answerSend(page)).toBeDisabled();
+  // Nothing is held, so nothing would be sent.
+  await expect(answerDialog(page).getByText('0 answered', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -158,7 +159,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 14; step++) {
+  for (let step = 0; step < 16; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -175,6 +176,9 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'BUTTON Epics',
     'BUTTON Archive',
     'BUTTON Settings',
+    // The band of unanswered questions comes before the lanes.
+    'BUTTON Answer them',
+    'BUTTON Waiting for confirmation on how to replace a board. (#12)',
     'DIV #14',
     'DIV #15',
     'DIV #16',
@@ -204,8 +208,8 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), eight cards, the Pending card's answer
-  // button, Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(6 + 8 + 1 + 1 + 4);
+  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), the band's button and its one question,
+  // eight cards, the Pending card's answer button, Archive completed tasks, four detail controls.
+  expect(focusable).toHaveLength(6 + 2 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

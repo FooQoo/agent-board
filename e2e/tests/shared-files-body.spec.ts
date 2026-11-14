@@ -6,7 +6,7 @@ import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, askArgs, decisionJson, questionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
-import { answerButton, answerNote, answerSend, openAnswer, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, openReview, sendAll, sendAnswer } from '../helpers/answer';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -125,12 +125,11 @@ test('a decision request is answered with a choice only, with text only, or with
   const answer = await openAnswer(page, 16);
   await expect(answer.getByRole('radiogroup')).toBeVisible();
   await expect(answer).toContainText('Which way?');
-  const send = answerSend(page);
-  await expect(send).toBeDisabled();
+  const held = (count: number) => answer.getByText(`${count} answered`, { exact: true });
+  await expect(held(0)).toBeVisible();
   await answer.getByRole('radio', { name: 'Proceed' }).check();
-  await expect(send).toBeEnabled();
-  await send.click();
-  await expect(answer).toBeHidden();
+  await expect(held(1)).toBeVisible();
+  await sendAll(page);
   await expect(answerButton(page, 16)).toHaveCount(0);
   expect(show(16)).toMatchObject({ agentStatus: 'idle' });
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
@@ -153,12 +152,19 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
   const dialog = await openAnswer(page, 15);
-  const send = answerSend(page);
-  await expect(send).toBeDisabled();
+  const held = (count: number) => dialog.getByText(`${count} answered`, { exact: true });
+  await expect(held(0)).toBeVisible();
   await answerNote(page).fill('   ');
-  await expect(send).toBeDisabled();
+  await expect(held(0)).toBeVisible();
+  // The review lists it as not answered, and nothing can be sent.
+  await openReview(page);
+  await expect(dialog.getByRole('button', { name: /^Answer: .*Ready\?/ })).toBeVisible();
+  await expect(answerSend(page)).toBeDisabled();
+  await dialog.getByRole('button', { name: /^Answer: .*Ready\?/ }).click();
   await dialog.getByRole('radio', { name: 'Yes' }).check();
-  await expect(send).toBeEnabled();
+  await expect(held(1)).toBeVisible();
+  await openReview(page);
+  await expect(answerSend(page)).toBeEnabled();
 });
 
 test('a Done task rejects agent edits while a person can still edit and show its body', async ({ page }) => {
