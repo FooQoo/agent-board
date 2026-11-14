@@ -297,16 +297,17 @@ describe('monitor adapter events', () => {
 describe('monitor answer client', () => {
   it('uses the monitor token and only the fixed answer POST route', async () => {
     document.head.innerHTML = '<meta name="agboard-monitor-token" content="monitor-secret">';
-    const task = { id: 7, title: 'Decision', pendingRequestId: null };
+    // The answer route returns the recorded questions and no task; a success is all that counts.
+    const questions = [{ id: 'request-7', status: 'answered' }];
     const fetchMock = vi.fn(
-      async () => new Response(JSON.stringify({ task, changed: true }), { status: 200 }),
+      async () => new Response(JSON.stringify({ questions }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');
 
     await expect(
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
-    ).resolves.toEqual({ task, changed: true });
+    ).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
       expect.objectContaining({
@@ -337,6 +338,26 @@ describe('monitor answer client', () => {
     await expect(
       monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
     ).rejects.toMatchObject({ status: 403, code: 'page_out_of_date' });
+  });
+
+  it('keeps the code of a question that was answered or withdrawn first', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'question_withdrawn', reason: 'withdrawn', message: 'withdrawn' },
+            questionAnswered: [],
+            questionWithdrawn: ['request-7'],
+            questions: [],
+          }),
+          { status: 409 },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { monitorClient } = await import('../../src/pages/monitor/client');
+    await expect(
+      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
+    ).rejects.toMatchObject({ status: 409, code: 'question_withdrawn' });
   });
 });
 
@@ -392,11 +413,10 @@ describe('monitor session client', () => {
 
   it('sends the CSRF token, not a monitor token, once the page has no token', async () => {
     document.head.innerHTML = '<meta name="agboard-monitor-token" content="">';
-    const task = { id: 7, title: 'Decision', pendingRequestId: null };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) =>
       String(input).endsWith('/session')
         ? json({ csrfToken: 'csrf-1', expiresAt: 10, expiresInSeconds: 5 })
-        : json({ task, changed: true }),
+        : json({ questions: [] }),
     );
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');

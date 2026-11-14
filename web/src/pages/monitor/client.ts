@@ -47,7 +47,8 @@ function answerRequest(
   options: MonitorRequestOptions = {},
 ): Promise<unknown> {
   const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/qa/answers`;
-  return writeTask('answer', 'POST', path, answersBody(input), options);
+  // The answer route returns the recorded questions, not a task; only success is read.
+  return writeTask('answer', 'POST', path, answersBody(input), options, false);
 }
 
 /** Checks (`done: true`) or unchecks one acceptance condition, as the person. */
@@ -62,14 +63,34 @@ function setAcceptance(
   return writeTask('acceptance', 'PUT', path, { done }, options);
 }
 
-/** One write of the monitor, with its session, CSRF token, and time limit. */
+/**
+ * One write of the monitor, with its session, CSRF token, and time limit. With `returnsTask`, a
+ * success must carry the changed `task`; otherwise any success body is accepted and `null` returned.
+ */
 async function writeTask(
   what: 'answer' | 'acceptance',
   method: 'POST' | 'PUT',
   path: string,
   input: unknown,
   options: MonitorRequestOptions,
-): Promise<AnswerResult> {
+  returnsTask: false,
+): Promise<null>;
+async function writeTask(
+  what: 'answer' | 'acceptance',
+  method: 'POST' | 'PUT',
+  path: string,
+  input: unknown,
+  options: MonitorRequestOptions,
+  returnsTask?: true,
+): Promise<AnswerResult>;
+async function writeTask(
+  what: 'answer' | 'acceptance',
+  method: 'POST' | 'PUT',
+  path: string,
+  input: unknown,
+  options: MonitorRequestOptions,
+  returnsTask = true,
+): Promise<AnswerResult | null> {
   const session = usesMonitorSession();
   if (session && currentCsrf() === null) {
     try {
@@ -144,7 +165,7 @@ async function writeTask(
     } catch {
       // Error responses may not contain JSON.
     }
-    if (!response.ok || body.task === undefined) {
+    if (!response.ok || (returnsTask && body.task === undefined)) {
       // A refused write may mean the CSRF token is stale; fetch a new one before the next try.
       if (session && response.status === 403) forgetCsrf();
       throw writeFailure(
@@ -154,6 +175,7 @@ async function writeTask(
         body.error?.message ?? null,
       );
     }
+    if (body.task === undefined) return null;
     const { epicId: _epicId, ...task } = body.task;
     return { task: task as Task, changed: body.changed ?? true };
   } finally {
