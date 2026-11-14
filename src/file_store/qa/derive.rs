@@ -24,8 +24,8 @@ pub fn apply(task: &mut TaskView, index: &QaIndex) {
     task.pending_choices = Vec::new();
     if shows_pending(task, index) {
         task.agent_status = RunState::Pending;
-        if let Some((request, question)) = open.first() {
-            task.pending_request_id = Some(request.request_id.clone());
+        if let Some((_, question)) = open.first() {
+            task.pending_request_id = Some(question.id.clone());
             task.pending_reason = Some(question.question.clone());
             task.pending_choices = question.choices.clone();
         }

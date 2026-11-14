@@ -127,6 +127,9 @@ fn ask_without_waiting_needs_no_server_and_a_wait_needs_one() {
     };
     assert_eq!(task["agentStatus"], "pending", "{task}");
     assert_eq!(task["openQuestionIds"], serde_json::json!(["Q-1"]));
+    // The board answers the question named here.
+    assert_eq!(task["pendingRequestId"], "Q-1");
+    assert_eq!(task["pendingReason"], "Which plan?");
 }
 
 #[test]
