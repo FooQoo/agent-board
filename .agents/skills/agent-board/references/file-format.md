@@ -25,6 +25,7 @@ history: []
   - `text`: one to 2,000 characters after trimming. Write it so that it can be verified. The board draws it as Markdown, like the task body.
   - `done`: `true` or `false`.
 - `history`: a required top-level list in stored `TASK.md` files. An empty list is valid, even when `acceptance` is empty. New-task input may omit it or supply `history: []`; created tasks get a generated initial entry.
+- `questions`: an optional list of the project question IDs the task refers to, such as `[Q-12, Q-15]`, without duplicates. `qa ask --task` and `qa link`/`qa unlink` maintain it. While any of them is open, an AI task in Todo or Doing reads as `pending`.
 - An `EPIC.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing `EPIC.md`. This is independent of lane order.
 - Other frontmatter keys are preserved when the board writes the file. An `EPIC.md` without frontmatter is entirely body text; its reference conditions are not parsed by the app.
 - Earlier versions named this file `PLAN.md`; Agent Board renames it to `EPIC.md` on the first read of the project. If an epic folder has both files, do not choose between them yourself; report the conflict to the user.
@@ -64,5 +65,5 @@ If frontmatter cannot be read, the board reports the file, item, and reason as a
 
 - Set `done: true` only after verification succeeds. Keep the result in the task body and record the verification in history before saving the final completed condition. Attach images when a visual result is useful.
 - Add a condition with the next free number. Do not renumber items.
-- When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing task to Done. Pending questions remain open until answered. Do not manually move an AI task to Done in the normal work loop; people can still move tasks themselves.
+- When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing task to Done. A task that waits for an answer is skipped until the answer arrives. Do not manually move an AI task to Done in the normal work loop; people can still move tasks themselves.
 - Keep task plans, verified results, and references in the body; keep all chronological progress and operation history only in the `history` frontmatter.

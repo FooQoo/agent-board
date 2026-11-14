@@ -128,11 +128,11 @@ Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing;
 | `ai` | `done` | `idle` only |
 | `human` | any | `idle` only |
 
-- `running` means you are working on it. `pending` means you need the user's decision.
-- A real lane move resets the run state to `idle` and withdraws any open question. Withdrawal is not an answer.
-- `running` is self-reported and is not reset automatically. Set it while actively working, return it to `idle` when active work stops, and use `pending` while waiting for a user decision. A session starting or resuming alone does not make a task `running`.
+- `running` means you are working on it. `pending` means the task refers to a question that is still open. It is never set directly; it follows from the questions (section 7).
+- A real lane move resets the run state to `idle`. It does not withdraw questions: they belong to the project.
+- `running` is self-reported and is not reset automatically. Set it while actively working, return it to `idle` when active work stops, and ask with `qa ask` when you need a user decision. A session starting or resuming alone does not make a task `running`.
 - Never report `running` or `pending` on a `human` task.
-- Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and non-Pending state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
+- Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction.
 
 ## 6. Work loop
 
@@ -167,29 +167,38 @@ Keep history reasons concise and useful. Use Markdown in a reason when it makes 
 
 Ask every task-related question only through an Agent Board decision request on the relevant task. This includes clarification, preferences, scope, and approval. Do not ask in chat, a final response, or an agent-native question tool. Chat may tell the user that a question is waiting on the board, without repeating it as a second question. The one exception is confirming a breakdown of a request made in conversation, before any task exists to hold the question (section 4). If the board is unavailable, report the connection problem and leave dependent work blocked; do not fall back to another question channel.
 
-Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then set the task to `pending`; the operation records the question in history automatically. Offer choices whenever the answer is one of a known set. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
+Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Then ask with `qa ask`. Questions belong to the project; `--task` makes the task refer to them, and the task shows as `pending` while any question it refers to is open. The command records the question in the task's history. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
 
 ```json
 {
-  "question": "Should existing records be deleted or kept?",
-  "choices": [
-    { "id": "delete", "label": "Delete them and start clean" },
-    { "id": "keep", "label": "Keep them and migrate" }
+  "questions": [
+    {
+      "question": "Should existing records be deleted or kept?",
+      "choices": [
+        { "id": "delete", "label": "Delete them and start clean" },
+        { "id": "keep", "label": "Keep them and migrate" }
+      ],
+      "recommendedChoiceId": "keep"
+    }
   ]
 }
 ```
 
 ```sh
-agboard --project "<name>" state <id> pending --actor ai --request-json '<json>'
-cat <path> | agboard --project "<name>" state <id> pending --actor ai --request-json -
+agboard --project "<name>" qa ask --actor ai --task <id> --request-json '<json>' --json
+cat <path> | agboard --project "<name>" qa ask --actor ai --task <id> --request-json - --json
 ```
 
-- `question`: 1 to 5,000 characters, written in Markdown and drawn like the task body. An image attached to the same task uses the reference form in [`references/file-format.md`](references/file-format.md). `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the request; each `label` is 1 to 200 characters.
-- A `pending --request-json` command waits indefinitely for the answer by default, even when the JSON omits `wait`. Existing requests containing `"wait": {}` remain valid. Use `--no-wait` only when the user explicitly asks to register a question and return immediately; it needs no running `agboard serve`. Continue independent work while a waiting command is open; dependent work must wait for the actual answer. Add `"wait":{"timeoutSeconds":<1 to 86400>}` to limit the wait. `--no-wait` cannot be combined with an integer timeout. A timeout, Ctrl+C, or a lost connection does not expire or withdraw the question; `wait_timeout` means only that the optional wait duration elapsed, and `board_unavailable` means a technical connection problem. `request_changed` means a task move withdrew the question.
-- Every question for the user has choices. A pending state without `--request-json` is refused, and so is `--reason` with pending.
-- The task must be an AI task in `todo` or `doing`. Only `doing` may become `running`.
+- `questions`: 1 to 20 questions, asked together and answered together. `question`: 1 to 5,000 characters, written in Markdown and drawn like the task body. An image attached to the same task uses the reference form in [`references/file-format.md`](references/file-format.md). `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the question; each `label` is 1 to 200 characters. `recommendedChoiceId` is optional. `kind` is `task` unless given: use `plan` for a question while planning and `start_approval`, with `approvingChoiceIds`, to ask approval to start.
+- The command prints one JSON line per event. The first line is `registered`, with the request ID and the question IDs (`Q-<n>`). It then waits until every question is answered and prints `answered` with all answers (exit 0). While it waits it prints a short `waiting` line every 60 seconds. It waits 600 seconds by default; `--timeout <1 to 86400>` changes this and `--timeout none` waits without a limit.
+- `timeout` (exit 5) means only that the wait ended; the questions stay open. Wait again with `agboard --project "<name>" qa wait <request-id> --json`; it never asks a second time. `withdrawn` (exit 6) means the request was withdrawn. `board_unavailable` means a technical connection problem; start `agboard serve` and wait again. None of these is an answer.
+- Waiting needs a running `agboard serve`. Use `--no-wait` only when the user explicitly asks to register a question and return immediately.
+- Continue independent work while a question is open; dependent work must wait for the actual answer.
+- The task must be an AI task in `todo` or `doing`. While it waits, `state <id> running` is refused with `questions_unanswered`.
 
-The user answers in the browser with a choice, a note, or both. The answer returns the task to `idle` and appends a concise history reason. Read the current question from `show` or `snapshot` and the answer from its history reason. A request command that waits also returns the resolved answer separately as `answer`; request lookup metadata is separate from the two-field history entries.
+The user answers in the browser with a choice, a note, or both. The answer appends a concise history reason to each task that refers to the question. Read a question and its answer with `agboard --project "<name>" qa show <Q-id> --json`, and the open questions with `qa ls --json`.
+
+If the user answers in the chat instead, record the user's own words with `qa answer <Q-id> --actor human --via chat --choice <id>` or `--text "<their words>"`. Never answer a question yourself. When the question was answered first elsewhere, the command fails with `question_answered` and prints the recorded answer: compare it with the chat answer and ask again in the chat if they differ.
 
 ## 8. Wait and resume
 
@@ -199,9 +208,9 @@ When no work can proceed in the ordinary work loop, wait for a change using the 
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A Pending question remains until answered or withdrawn by an explicit task change. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
+Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A question remains open until it is answered or its request is withdrawn with `qa withdraw`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
-After `wait` returns, read the complete snapshot and history, including the user's reason and any separate `answer` returned by a waiting request command. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
+After `wait` or `qa ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `qa ask`. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
 ```sh
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"
@@ -209,7 +218,7 @@ agboard --project "<name>" state <id> running --actor ai --reason "<how the answ
 
 If the answer changes the scope or completion conditions, update `TASK.md` (and `EPIC.md` if affected) before resuming. If new information still conflicts, ask again.
 
-For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or a Pending answer. Do not start it implicitly as part of the ordinary work loop.
+For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or for answers with `qa ask`. Do not start it implicitly as part of the ordinary work loop.
 
 ## 9. Drafts and archived tasks
 
