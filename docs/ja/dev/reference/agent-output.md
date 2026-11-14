@@ -55,6 +55,7 @@
 - `additionalContext`には、成功時は`AGBOARD_PROGRESS`と進行表のJSONが入ります。失敗時は`AGBOARD_ERROR`に続き、`code`と理由、ボードに依存する変更を止めるよう促す注意文が入ります。
 - `AGBOARD_ERROR`のコード: `bound_project_missing`・`project_not_found`・`board_unavailable`・`context_too_large`・`invalid_hook_input`（JSONが不正、または`cwd`が文字列でない、絶対パスでない）・`hook_cwd_unavailable`（`cwd`が存在しない、または読めない）。`folder_unbound`は、Hookの出力ではなくなりました。
 - **静かなスキップ。** フォルダの登録情報が正常で、`cwd`が読め、一致する登録がないとき、Hookはstdoutにもstderrにも出力せず、終了コード0で終わります。そのため、GlobalのHookが、プロジェクトのないフォルダでの作業を妨げることはありません。[Hookのスキップとエラー](../concepts/agents.md#hookのスキップとエラー)を参照してください。
+- 表を加えるとき、サーバーが動いていなければ、Hookは裏で起動もします。出力は変わらず、失敗は`serve.log`に残ります。
 - 上限: 入力は64 KiB、表は256 KiB、一回の実行は10秒。超えると`context_too_large`を報告し、切り詰めて成功とすることはありません。
 
 ## スナップショットとwait

@@ -12,7 +12,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | --- | --- | --- |
 | A task is missing from the board | Its file is damaged, or it has an unsupported `formatVersion`. | Open `agboard --project "My project" snapshot --json` and read `problems`: it names the file, the item, and the reason. Fix the file by hand; Agent Board never rewrites it. See [When a file is invalid](../automation/file-format#when-a-file-is-invalid). |
 | A task shows a warning and no conditions | The frontmatter of its `TASK.md` is not valid YAML. | Fix the frontmatter. The body stays visible meanwhile. |
-| The board does not update after an agent changed something | The server is not running, or the files are on a network drive. | Reload the page. Keep `agboard serve` running. Network drives may not report file changes. |
+| The board does not update after an agent changed something | The server is not running, or the files are on a network drive. | Reload the page. The server starts when an agent waits or its hook runs, or start it with `agboard serve -d`. Network drives may not report file changes. |
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
 | A question disappeared | It was answered elsewhere, for example in the chat, or the agent withdrew it. Moving a task does not withdraw its questions. | Open the task's History tab, or run `agboard qa ls --status all`, and answer the current question if there is one. |
@@ -36,8 +36,9 @@ Find what you see, read the cause, and do what the last column says. The command
 
 | Error | Cause | What to do |
 | --- | --- | --- |
-| `already_serving` | Another server already runs on this data folder. | Use that one, or stop it first with `agboard stop`. In a terminal, `agboard serve -d` offers to replace it. |
-| `port_in_use` | Another program uses the port. | Choose another one: `agboard serve --port 7421`. |
+| `already_serving` | Another server already runs on this data folder. | Use that one, or stop it first with `agboard stop`. If a command started it, `agboard serve -d` keeps it running. Otherwise, in a terminal, `agboard serve -d` offers to replace it. |
+| `port_in_use` | The port you gave `agboard serve` is taken. The message says whether another Agent Board server (with a different data folder) or another program uses it. | Choose another one: `agboard serve --port 7421`. |
+| `local_network_denied` | The environment does not let `agboard` use local network connections, so the server cannot start or be reached. | In Codex, run `agboard setup` to allow `agboard` to run outside the sandbox. |
 | `database_busy` | Another command held the project for more than 5 seconds. | Run the command again. |
 
 ## The phone cannot reach the board

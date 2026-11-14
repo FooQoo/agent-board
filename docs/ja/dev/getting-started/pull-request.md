@@ -63,6 +63,7 @@ Rustのテストは[cargo-nextest](https://nexte.st/)で実行します（`cargo
 
 - 表示時刻を固定するため、`TZ=UTC`を設定します。
 - 既定のデータ領域は使いません。各テストが`AGBOARD_HOME`を一時ディレクトリに設定します。
+- `agboard`のバイナリを実行するテストは`AGBOARD_AUTOSTART=0`を設定し、待つコマンドやHookが勝手にサーバーを起動しないようにします。Playwrightの設定は、スイート全体にこれを設定します。自動起動そのものの試験はこれを設定せず、`AGBOARD_AUTOSTART_PORT=0`を設定し、起動したサーバーをすべて止めます。
 - `agboard serve`を起動するテストは`AGBOARD_WATCH=poll`を設定します。テスト内で起動するサーバーは`server::run_until_in`と`WatchMode::Poll`で起動します。プラットフォームのファイルイベントを使うのは`tests/file_watch.rs`だけです。
 - `agboard serve`は`127.0.0.1`だけで待ち受けます。ポート7420は使わず、空いているポートかポート0を使い、接続先には`localhost`ではなく`http://127.0.0.1:<port>/`を使います。
 

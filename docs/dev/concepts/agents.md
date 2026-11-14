@@ -29,7 +29,7 @@ The hook identifies the project from the nearest bound ancestor of the input `cw
 - **Claude Code.** The template in `integrations/claude-code/` registers `agboard hook` on PostToolUse, and on PostToolUseFailure after failures, without a fixed project name. Generic skill frontmatter hooks are not used. The skill reads a snapshot when first loaded; the table is fetched again after compaction (SessionStart `compact`) or on the next tool completion.
 - **Codex.** The template in `integrations/codex/` registers `agboard hook --agent codex` on PostToolUse and also fetches at first use and after compaction. Existing settings are never written automatically; users review and trust the template.
 - **Limits.** Input is limited to 64 KiB of UTF-8, the table to 256 KiB, and a run to 10 seconds. Codex's `additionalContextLimit` is set to 0 so the hook enforces its own limit. Exceeding it reports `context_too_large`; output is never truncated and reported as success. When the table cannot be produced or the full input did not arrive, the hook says so and keeps the original tool result.
-- **Safety.** Commands are fixed; nothing is built from task text or `tool_input`. The hook never calls agent tools, never triggers itself, and never changes files. Paths appear only in local CLI and hook output, never in remote JSON.
+- **Safety.** Commands are fixed; nothing is built from task text or `tool_input`. The hook never calls agent tools, never triggers itself, and changes no board file. When it adds a progress table, it starts the server in the background if none runs, without waiting, unless `agboard stop` paused that or `AGBOARD_AUTOSTART=0` is set (see [Server and web UI](./server-and-ui.md#how-a-command-starts-a-server)). This keeps automatic Done working while an agent only edits files. Paths appear only in local CLI and hook output, never in remote JSON.
 
 Agents make no board-dependent changes until the table can be read, and they read a fresh table after context compaction.
 
@@ -41,21 +41,21 @@ The skill also has the agent break a multi-task request into proposed tasks and 
 
 `agboard wait --after <cursor>` blocks until the project changes:
 
-1. Read `pid` and `port` from `serve.json` in the same data area and connect to `GET /api/events`.
+1. Read `pid` and `port` from `serve.json` in the same data area and connect to `GET /api/events`. When no server answers, start one first and wait until it does (see [Server and web UI](./server-and-ui.md#how-a-command-starts-a-server)). If the connection fails after `serve.json` was read, start a server once more.
 2. Match the project name against the cursor and fix the ProjectId. A cursor for another project, or in an old format, is `cursor_invalid`.
 3. After `ready`, compare the project's current version with the cursor. If they differ, return at once; this catches changes made between fetching and subscribing.
 4. Otherwise wait for `changed`. If a re-read shows the same version (another project changed), keep waiting.
 
 - `changed`, `ready`, and keep-alive comments are distinguished. Renames return the same project's snapshot; deletion returns `project_not_found` and never moves to a re-created project.
-- The connection limit is 3 seconds, and the wait itself is unlimited by default. With an optional `--timeout`, it checks the version once more at the end and returns `wait_timeout` if nothing changed. A disconnect returns `board_unavailable`. There are no automatic short retries and no periodic polling.
+- The connection limit is 3 seconds, and the wait itself is unlimited by default. With an optional `--timeout`, it checks the version once more at the end and returns `wait_timeout` if nothing changed. A disconnect during the wait returns `board_unavailable`; the wait does not start a server again then. There are no automatic short retries and no periodic polling.
 - Disconnects, timeouts, and Ctrl+C never change tasks or history, never count as "no change", and never restart a finished agent.
 - Because CLI notifications are best effort, a missed one is caught on the next connection, a real `changed`, or the final read at a timeout.
 
 ### Waiting for answers
 
-`qa ask` saves the request, notifies `serve`, and then waits for its answers on the same SSE stream (`src/agent/qa_wait.rs` on top of `wait_engine`). A wait needs a running `serve`; a preflight check runs before the save, so an unavailable server stores nothing and fails with `board_unavailable`. `qa wait <request-id>` waits again for a request that is already stored and never asks a second time.
+`qa ask` saves the request, notifies `serve`, and then waits for its answers on the same SSE stream (`src/agent/qa_wait.rs` on top of `wait_engine`). A preflight check runs before the save and starts the server when none runs (see [Server and web UI](./server-and-ui.md#how-a-command-starts-a-server)), so a server that cannot start stores nothing and fails with `board_unavailable`. `qa wait <request-id>` waits again for a request that is already stored and never asks a second time.
 
-The output is JSON Lines with `--json`, or the same events as English sentences without it. The first line is `registered`; the last is `answered` (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`. In between, `waiting` lines come every `--heartbeat` seconds (default 60, 10 to 600). The heartbeat is a timer and never reads the board; the board is read only when the server reports a change. `answered` comes only when every question of the request is answered. The wait lasts 600 seconds by default; `--timeout` takes 1 to 86,400 seconds, or `none` for no limit. A timeout, interruption, or lost connection leaves the questions open. `--no-wait` prints `registered` after saving and notifying and needs no `serve`.
+The output is JSON Lines with `--json`, or the same events as English sentences without it. The first line is `registered`; the last is `answered` (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`. In between, `waiting` lines come every `--heartbeat` seconds (default 60, 10 to 600). The heartbeat is a timer and never reads the board; the board is read only when the server reports a change. `answered` comes only when every question of the request is answered. The wait lasts 600 seconds by default; `--timeout` takes 1 to 86,400 seconds, or `none` for no limit. A timeout, interruption, or lost connection leaves the questions open. `--no-wait` prints `registered` after saving and notifying and needs no server.
 
 Asking returns a Running task to Idle. After the answers arrive, the agent reads them and the history, then explicitly resumes Running with a reason. The event fields are in [Agent output](../reference/agent-output.md#qa-events). See [Decision requests](../../guide/use/decisions.md) for the user workflow.
 
@@ -75,6 +75,7 @@ The rule is defined in [Data model](./history-and-decisions.md#acceptance-condit
 - `serve` evaluates existing tasks at startup, before publishing the first snapshot. During operation it evaluates after FileStore saves and after atomic file updates seen by the watcher. It never re-triggers from its own notification, and re-evaluating the same task never duplicates history.
 - A CLI edit that also changes the epic is evaluated after all changes apply. AI-facing CLI and FileStore entry points apply the Done guard.
 - Tasks that wait for a person are skipped and re-evaluated after the answer. Done tasks never reopen automatically.
+- Automatic Done needs a running server. The hook starts one, and a watcher-seen file change counts as use, so an automatic server does not stop while an agent keeps editing.
 - Agents record verification in history, put concise results in the body, and only then set the last condition to `done: true`.
 - Starting a new version of `serve` completes existing eligible tasks. Before adopting it for normal use, list those tasks and take a backup.
 
@@ -125,7 +126,7 @@ The Hook resolves the project with `FileStore::resolve_binding`, which returns a
 | The `cwd` does not exist or cannot be read | `hook_cwd_unavailable`. It is never turned into a skip. |
 | An explicit `--project` | The named project wins. A name that is not found is `project_not_found`. |
 
-The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never shows an update notice, recovers a settings file, uses the network, or writes settings.
+The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never shows an update notice, recovers a settings file, uses the network, or writes settings. Starting the server is the one side effect it has.
 
 ## The update notice
 

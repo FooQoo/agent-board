@@ -60,7 +60,7 @@ Start the server:
 agboard serve
 ```
 
-Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/) and select the project in the header. Keep the server running while you use the browser or while an agent waits for you. Press Ctrl+C in its terminal to stop it. The server listens only on `127.0.0.1`; choose another port with `--port` if 7420 is taken.
+Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/) and select the project in the header. Press Ctrl+C in its terminal to stop it. You do not have to keep it running for agents: a waiting command and the agent hook start a server in the background when none runs, and that server stops by itself after 30 minutes without use. To keep a server running in the background instead, use `agboard serve -d`. The server listens only on `127.0.0.1`; choose another port with `--port` if 7420 is taken.
 
 ![Agent Board in the browser with a project selected, showing tasks in Todo, Doing, and Done](../images/board.png){.screenshot}
 

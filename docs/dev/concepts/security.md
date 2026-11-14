@@ -28,6 +28,7 @@ Everything below serves one of these two goals. When a protection only restrains
 ## Exposure
 
 - By default `agboard serve` listens only on `127.0.0.1`, and every request must carry `Host: 127.0.0.1:<port>` or `localhost:<port>`. Users on the same machine are not authenticated.
+- A server that a command started listens the same way. It may take a port the OS chooses when 7420 is taken, and it stops by itself after it has gone unused. Starting it opens nothing beyond `127.0.0.1`.
 - Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read, answer, acceptance-check, and preferences routes; it never serves the desktop board.
 - The monitor is limited to reading, answering the current question, checking or unchecking an acceptance condition, and saving the language and color theme. It cannot edit, move, archive, or delete tasks, or change projects or connection settings. The checks in front of it are described in [The ngrok entrance](#the-ngrok-entrance).
 - The connection settings API (`/api/monitor-connections`) is on the local listener only. A phone can never start, stop, or reconfigure the connection.
@@ -104,7 +105,7 @@ Titles, descriptions, reasons, and answers are written by agents and users, so t
 - Shared files are created with the OS default permissions and hold no secrets.
 - Owned paths are built only after validating ProjectId (32 hexadecimal characters), task ID, EPIC-ID, and image ID. Names and body text never become paths or shell code.
 - The absolute path of the shared area is returned only by `workspace --json`. Hooks, snapshots, and errors show relative paths only. Folder bindings stay in the machine-local data area, and `EPIC.md`/`TASK.md` paths appear only in local CLI and hook output, never in remote JSON.
-- Board text is work data: it is never used as hook configuration, command arguments, or shell code. The hook and `wait` only read. Session tokens, environment variables, and settings contents never appear in snapshots.
+- Board text is work data: it is never used as hook configuration, command arguments, or shell code. The hook and `wait` only read board files; they may start the local server, with fixed arguments. Session tokens, environment variables, and settings contents never appear in snapshots.
 
 ## Project docs
 
@@ -177,4 +178,4 @@ These limits are deliberate. Keep them in mind when someone asks for "just one m
 - **A docs folder swapped between the check and the open.** The path check and the open are separate steps, and only the standard library is used. A program that replaces a folder inside `docs/` with a symbolic link after the check and before the open can make the server read or write through that link. The final `O_NOFOLLOW` protects only the last part of the path. Such a program already runs as the same user and can change the files directly.
 - **Opening a docs file.** **Open in editor** starts whatever app the operating system assigns to the file's type, with the user's rights. A file someone placed in `docs/` can be opened this way, as if the user double-clicked it in the file manager.
 - **The `docs/` folder itself.** The checks start below `docs/`. The data area, the project folder, and `docs/` itself are trusted, as for every other shared file.
-- **The lifecycle lock** prevents a second `serve` among cooperative processes; it does not authorize anything.
+- **The lifecycle lock** and **`autostart.lock`** prevent a second `serve` among cooperative processes; they do not authorize anything.

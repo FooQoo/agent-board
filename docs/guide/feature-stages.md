@@ -39,7 +39,7 @@ Features that are GA show no notice.
 | Acceptance conditions and history | Same | A history entry has only a time (`at`) and a reason (`reason`). | [The board](./use/board), [Markdown file format](./automation/file-format) |
 | Editing text and images | PC browser | Image size limits apply. | [Editing and image attachments](./use/editing) |
 | Archive and delete | PC browser | Only a person deletes. | [Archive](./use/board#archive) |
-| Decisions and answers | PC, mobile monitor, CLI | An agent waits for your answer without a time limit by default, and `agboard serve` has to be running. | [Decisions](./use/decisions) |
+| Decisions and answers | PC, mobile monitor, CLI | An agent waits for your answer without a time limit by default. The waiting command starts the server when it is not running. | [Decisions](./use/decisions) |
 | Epics and progress table | PC browser, CLI | The progress table leaves out Pending tasks. | [Epics and progress](./use/epics) |
 | Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./automation/cli#projects) |
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
@@ -71,7 +71,7 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 The mobile monitor shows the board on a phone and lets you answer an agent's question.
 
 - **Supported range:** the browser of a smartphone, through ngrok.
-- **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and `agboard serve` is running. The way it connects may change.
+- **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and the server is running. The way it connects may change.
 - **Guide:** [Mobile monitor](./operations/mobile-monitor).
 
 ## Related

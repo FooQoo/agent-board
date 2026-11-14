@@ -15,6 +15,7 @@ Agent Boardの開発に必要な環境を用意し、ビルド・動作確認・
 
 - **一時的なデータ領域を使う。** 既定のデータ領域（macOSは`~/.agent-board/`、Windowsは`%USERPROFILE%\.agent-board\`）は普段使っているボードの保存先です。試すときやテストでは、`AGBOARD_HOME`に一時ディレクトリを設定してください。この設定は現在のシェル内で有効です。
 - **ポート7420を空けておく。** 通常の利用の既定のポートです。ほかのポートか、テストではポート0を使ってください。
+- **コマンドがサーバーを起動することを知っておく。** `wait`、答えを待つ質問、Hookは、サーバーが動いていなければ、そのデータ領域のサーバーを裏で起動します。試している間に起動させたくなければ`AGBOARD_AUTOSTART=0`を設定してください。`agboard stop`で止められます。
 
 ## ビルド
 
@@ -63,7 +64,7 @@ cargo run -- --project dev add "Try it" --assignee ai --actor ai
 cargo run -- serve --port <port>
 ```
 
-データ領域には、プロジェクトのファイルを保存する`shared/`、サーバーの稼働情報を示す`serve.json`、多重起動を防ぐ`lifecycle.lock`があります。データベースは使いません。`task.json`はタスクの現在の状態（`formatVersion: 1`）を、`TASK.md`は本文・受入条件と`at`/`reason`の履歴を持ちます。`formatVersion`が1でないファイルは未対応として報告し、移行しません。すべてのファイルは[データモデル](../reference/files.md#ディスク上のファイル)で説明しています。
+データ領域には、プロジェクトのファイルを保存する`shared/`、サーバーの稼働情報を示す`serve.json`、多重起動を防ぐ`lifecycle.lock`と`autostart.lock`があります。データベースは使いません。`task.json`はタスクの現在の状態（`formatVersion: 1`）を、`TASK.md`は本文・受入条件と`at`/`reason`の履歴を持ちます。`formatVersion`が1でないファイルは未対応として報告し、移行しません。すべてのファイルは[データモデル](../reference/files.md#ディスク上のファイル)で説明しています。
 
 ## デモビルド {#demo-build}
 

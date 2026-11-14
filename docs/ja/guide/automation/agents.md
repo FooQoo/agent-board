@@ -149,14 +149,14 @@ agboard --project "My project" wait --after "<cursor>" --json
 
 cursorの形式は`f1:<project-id>:<version>`です。`snapshot`が返す値を使い、自分で組み立てないでください。
 
-- `wait`は、同じデータ領域で動いている`agboard serve`を必要とし、ポーリングせずに変更を待ちます。
+- `wait`は、同じデータ領域のサーバーを必要とします。動いていなければ裏で起動し、ポーリングせずに変更を待ちます。
 - 名前変更をまたいで同じプロジェクトを追うので、以後のコマンドとHookでは新しい名前を使います。ほかのプロジェクトの変更では終わりません。プロジェクトが削除されると、`project_not_found`で失敗します。
 - `wait_timeout`・`board_unavailable`・`cursor_invalid`・`project_not_found`はエラーで、回答ではありません。
 - `wait`が返ったら、スナップショットと履歴をすべて読み、ユーザーの理由を考慮して、再開するか、追加の質問をします。
 
 ## 次のタスクを待つ {#listen-for-the-next-task}
 
-起動済みのCodexまたはClaude Codeのセッションを一つ使い、同じプロジェクトのAI担当タスクを順番に進められます。同じデータ領域で`agboard serve`を起動してから、明示的にリッスンを始め、対象がない状態が何秒続いたらコマンドを終えるか指定します。
+起動済みのCodexまたはClaude Codeのセッションを一つ使い、同じプロジェクトのAI担当タスクを順番に進められます。明示的にリッスンを始め（同じデータ領域のサーバーが動いていなければ、コマンドが起動します）、対象がない状態が何秒続いたらコマンドを終えるか指定します。
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json

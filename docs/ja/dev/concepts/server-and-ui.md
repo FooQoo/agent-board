@@ -4,11 +4,59 @@
 
 ## serveの起動と停止
 
+データ領域ごとにサーバーは一つまでです。動き方は二通りあり、`serve.json`の`mode`に記録します。
+
+- **自動**　サーバーがないと動かないコマンドが、裏でサーバーを起動します。対象は`wait --after`、`wait --until task`、`--no-wait`を付けない`state ... pending`です。エージェントのHookも、待たずに起動します。使われなくなると、サーバーは自分で止まります。
+- **手動**　人が`agboard serve`（前面）か`agboard serve -d`（裏）で起動します。Ctrl+Cか`agboard stop`まで動き続けます。
+
+ほかのコマンドはファイルだけで動き、サーバーを起動しません。
+
+### 起動
+
 - `serve`は`127.0.0.1`だけで待ち受け、プロジェクトが0件でも動きます。空のデータ領域には`workspace.json`を作ることがあります。
-- データ領域ごとにサーバーが一つだけ動くよう、`lifecycle.lock`（標準の`try_lock`）を起動から終了まで保持します。ファイルがあるだけでサーバーが動いているとは判断しません。ロックはプロセスの終了で外れます。
-- 起動時に`serve.json`があり、そのポートの`GET /api/health`が同じ`pid`を返すなら、`serve`は`already_serving`で終了します。そうでなければ古いファイルとして上書きします。`serve -d`は先に同じ確認をします。ターミナルで人が実行していれば、動いているサーバーを`stop`と同じ手順で止めて起動し直すかどうかを尋ね、`--json`を付けたときやターミナルの外では`already_serving`で終了します。
-- `serve`は待ち受けを始めた後に`serve.json`（`pid`・`port`・`started_at`）を書きます。SIGINTかSIGTERMを受けると、自分のpidが書かれている場合だけ`serve.json`を消します。
-- `stop`は`serve.json`の`pid`にSIGTERMを送ります。ポートが応答しなくなり、さらに`lifecycle.lock`を取れるようになってから戻るので、直後に起動した`serve`が`database_busy`で失敗することはありません。10秒たってもサーバーの終了処理が終わらなければ、`stop`は失敗します。
+- データ領域ごとにサーバーが一つだけ動くよう、`lifecycle.lock`（標準の`try_lock`）を起動から終了まで保持します。ファイルがあるだけでサーバーが動いているとは判断しません。ロックはプロセスの終了で外れます。自動のサーバーは、終了処理中のサーバーがロックを外すのを最大10秒待ちます。
+- 起動時に`serve.json`があり、そのポートの`GET /api/health`が同じ`pid`を返すなら、`serve`は`already_serving`で終了します。そうでなければ古いファイルとして上書きします。動いているサーバーが自動なら、理由には動かし続けるための`agboard serve -d`を示します。
+- `serve -d`は先に同じ確認をします。動いているサーバーが自動で、それと食い違う`--port`や`--monitor`の指定がなければ、そのサーバーにSIGUSR1を送ります。同じプロセスが`mode: "manual"`を記録し、使われていない時間を数えるのをやめます。接続はどれも切れません。それ以外の場合、ターミナルで人が実行していれば、動いているサーバーを`stop`と同じ手順で止めて起動し直すかどうかを尋ね、`--json`を付けたときやターミナルの外では`already_serving`で終了します。
+- `serve`は待ち受けを始めた後に`serve.json`（`pid`・`port`・`started_at`・`mode`、自動のサーバーでは`idleTimeoutSeconds`も）を書きます。SIGINTかSIGTERMを受けると、自分のpidが書かれている場合だけ`serve.json`を消します。
+
+### コマンドがサーバーを起動する手順
+
+1. `serve.json`を読みます。そのサーバーがヘルスチェックに応えれば、それを使います。
+2. `serve.json`のpidが生きていて`lifecycle.lock`を持っているのに応えないときは、起動中か終了中の場合に備えて最大10秒待ち、そのpidを示した`board_unavailable`で失敗します。二つ目のサーバーは起動しません。OSやサンドボックスが接続を拒んだときは`local_network_denied`です。
+3. それ以外なら`autostart.lock`を取ります。ほかのコマンドが起動中なら最大40秒待ち、もう一度確かめます。
+4. `agboard --json serve --auto`を新しいセッション（`setsid`）として起動します。作業ディレクトリはデータ領域、標準出力と標準エラーは`serve.log`（起動のたびに空にし、権限は0600）です。子プロセスは開いたままの`autostart.lock`を受け継ぎ、準備ができてから外すので、その間にほかのコマンドが二つ目を起動することはありません。
+5. `serve.log`に起動の行が出るまで最大30秒待ち、標準エラーに1行出して続けます。標準出力はコマンド本来の出力のままです。
+
+```text
+Started the Agent Board server at http://127.0.0.1:7420/ in the background. It stops by itself after 30 minutes without use.
+```
+
+`serve.json`を読んだ後に接続が失敗したとき（その間にサーバーが止まったときなど）は、もう一度だけ起動します。Hookは待たずに起動します。確かめるのは`serve.json`のpidが生きているかと`autostart.lock`が空いているかだけで、`agboard stop`の後は起動しません（後述）。失敗は`serve.log`に残ります。
+
+`AGBOARD_AUTOSTART=0`にすると、これらはすべて止まります。コマンドはこれまでどおり`board_unavailable`を返し、Hookは何も起動しません。ライブラリが自分でサーバーを起動することはなく、起動するのは`agboard`のコマンドラインだけです。
+
+### ポート
+
+- 手動のサーバーは`--port`（既定は7420）だけで待ち受けます。使われているポートは`port_in_use`で、理由には使っているものを示します。データ領域の違う別のAgent Boardのサーバー（pidつき）か、別のプログラムです。
+- 自動のサーバーはまず7420を試します（`AGBOARD_AUTOSTART_PORT`で変えられ、試験では0を使います）。使われていれば、OSが選んだポートで待ち受け、その理由を出します。例：`Port 7420 is used by another program, so this server uses port 52114.`
+- OSやサンドボックスによる拒否（`EACCES`か`EPERM`）は`local_network_denied`です。そのほかの待ち受けの失敗は、OSのメッセージつきの`board_unavailable`です。
+
+### 自動での停止
+
+自動のサーバーは、次のどれかに当てはまる間は「使われている」とみなします。
+
+- `GET /api/health`以外のリクエストが、使われない時間の上限内に届いた。
+- イベントストリーム（`GET /api/events`）が開いている。ブラウザーのタブ、`wait`、答えを待つ質問がこれに当たります。
+- 携帯モニターの接続が、開始中・接続済み・再接続中・停止中のどれかである。
+- ファイルの監視が、上限内にボードかDocsの変更を見つけた。ファイルを直接編集するエージェントのために、自動Doneが働くようサーバーを残します。
+
+上限は30分で、`AGBOARD_IDLE_TIMEOUT`で60〜86400秒に変えられます。確認は30秒ごとで、単調増加の時計を使います。上限の間使われなかったときは、まず`serve.json`を消します（新しいコマンドがこのサーバーにつながず、新しく起動するためです）。続けて新しいリクエストに`503 board_unavailable`を返し、モニターの接続を終え、`lifecycle.lock`を外し、`serve.log`に`Stopped after 30 minutes without use.`と書きます。
+
+### stop
+
+`stop`は、どちらの動き方でも`serve.json`の`pid`にSIGTERMを送ります。ポートが応答しなくなり、さらに`lifecycle.lock`を取れるようになってから戻るので、直後に起動した`serve`が`database_busy`で失敗することはありません。10秒たってもサーバーの終了処理が終わらなければ、`stop`は失敗します。
+
+`stop`はデータ領域に`autostart.paused`も残し、Hookがすぐにまた起動しないようにします。待つコマンド、`serve`、`serve -d`がこれを消して、サーバーを起動します。
 
 ## リクエストの処理
 

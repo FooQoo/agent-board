@@ -13,6 +13,7 @@
 | `domain` | タスク・レーン・稼働状態・エピック・質問・入力の上限・規則。<br>I/Oなし。 |
 | `server` | axumのアプリ、API、SSE、書き込みの保護、埋め込んだWeb資産、モニターの入口。 |
 | `agent` | Hookと`wait`。 |
+| `autostart` | コマンドが必要とするときに共有のサーバーを起動する。確認、`autostart.lock`、切り離した`serve --auto`の子プロセス（`spawn`）、`autostart.paused`の目印。 |
 | `progress` | `agboard progress`とHookが共有する進行表を組み立てる。 |
 | `interact` | 人による確認（端末の判定、y/N入力）と通知のクライアント。 |
 | `setup` | データ領域へのエージェントのアクセスを準備する。 |
@@ -20,7 +21,7 @@
 
 依存は一方向です。
 
-`cli`は`agent`・`interact`・`server`・`setup`・`progress`を使います。`agent`は`progress`を使い、`agent`・`progress`・`server`は`file_store`を、`file_store`は`domain`を使います。`server`は`docs`を使い、`docs`はパスと読み込みのエラーに`file_store`の`layout`と`io`を使います。`file_store`が`docs`から使うのは、新しい`docs/`のREADMEを選ぶ`DocsLocale`だけです。
+`cli`は`agent`・`autostart`・`interact`・`server`・`setup`・`progress`を使います。`agent`と`cli`は`autostart`を使い、`autostart`は`server`と`file_store`を使います。`agent`は`progress`を使い、`agent`・`progress`・`server`は`file_store`を、`file_store`は`domain`を使います。`server`は`docs`を使い、`docs`はパスと読み込みのエラーに`file_store`の`layout`と`io`を使います。`file_store`が`docs`から使うのは、新しい`docs/`のREADMEを選ぶ`DocsLocale`だけです。
 
 `interact`と`setup`は`paths`と`error`だけを使います。`cli`に依存するものはなく、`server`は`cli`・`agent`・`progress`に依存しません。
 
@@ -57,6 +58,7 @@
 | `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する、質問の読み出しと回答の保存、人による受入条件1件の設定（ボードのハンドラーは`api/qa.rs`）。 |
 | `web_assets` | 埋め込んだボードとモニターのスクリプトとスタイルシート、それぞれのビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
 | `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
+| `launch`<br>`bind`<br>`idle` | サーバー一つの起動と終了（`launch`）。待ち受けと、その失敗の意味、ポートを使っているもの、空きポートへの切り替え（`bind`）。自動のサーバーで「使われている」とみなすものと、使われないときの停止（`idle`）。 |
 | `change_feed.rs` | このサーバーの実行で変更の組に番号（`seq`、実行ごとの`instanceId`）を付け、まだ送っていないイベントを保持する。遅れすぎたストリームには`resync`を送る。 |
 | `summary_response.rs`<br>`api/summary.rs`・`api/detail.rs`・`monitor/data.rs` | `ETag`付きのSummaryの応答と、Detailのストリーム。ボードとモニターは同じ組み立て処理を使う。 |
 

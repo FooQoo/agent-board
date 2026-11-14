@@ -9,6 +9,7 @@ Several agents, the CLI, the web server, and text editors may touch the same fil
 | `.internal/write.lock` | One project | Every CLI and web write: `task.json`, `epic.json`, `project.json`, `TASK.md`, `EPIC.md`, and `qa/<request-id>/request.json`. |
 | `shared/.internal/catalog.lock` | All projects | Project create, rename, and delete, after checking name uniqueness. |
 | `lifecycle.lock` | The data area | Held by `serve` from start to exit so only one server runs (see [Server and web UI](./server-and-ui.md#starting-and-stopping-serve)). |
+| `autostart.lock` | The data area | Taken by a command that starts the server, and handed to that server until it is ready, so commands started together start only one. A command waits up to 40 seconds for it. |
 
 - All are standard file locks. A writer waits up to **5 seconds** for the project lock, then fails with `database_busy` (exit code 1) and changes nothing. Agents may simply retry.
 - Under the lock a writer re-reads the latest files, changes only what it needs, and replaces each file by renaming a temporary file written in the same folder.
@@ -91,7 +92,9 @@ A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 sec
 | Situation | What happens |
 | --- | --- |
 | `serve` is not running, `serve.json` is stale, or a notification is lost | The CLI still succeeds and keeps the save. Changes are picked up from OS events, or when the server starts. |
-| `serve` crashed and left `serve.json` | CLI notifications fail to connect and are ignored; the next `serve` overwrites the file. |
+| `serve` crashed and left `serve.json` | CLI notifications fail to connect and are ignored; the next `serve` overwrites the file. A command that needs the server starts a new one, because the pid is gone or `lifecycle.lock` is free. |
+| The pid in `serve.json` is alive and holds `lifecycle.lock` but does not answer | A command that needs the server waits up to 10 seconds, then fails with `board_unavailable` naming the pid and `agboard stop`. It does not start a second server. |
+| An automatic server could not start | The command fails with `board_unavailable` that names `serve.log`, or with `local_network_denied` or `port_in_use`. Nothing was saved. |
 | The watcher cannot be registered | `serve` exits with an error. |
 | The watcher reports an error while running | Every project is reloaded and the error is logged. |
 | The OS drops events and asks for a rescan | Every project is reloaded. |

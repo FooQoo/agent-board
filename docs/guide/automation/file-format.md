@@ -84,7 +84,7 @@ Agents add meaningful progress with [`history add`](./cli#report-work), without 
 
 Mark a condition `done: true` only after you have verified it. Keep a concise result in the body, and record the verification in the history before you save the last completed condition.
 
-While `agboard serve` is running, a task finishes by itself when it is:
+While the server runs, a task finishes by itself when it is the following. The agent hook starts the server when it is not running, so this works while an agent only edits files.
 
 - AI-owned, not a draft, not archived, and in Todo or Doing;
 - carrying at least one valid condition, with every condition `done: true`.

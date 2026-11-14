@@ -149,14 +149,14 @@ agboard --project "My project" wait --after "<cursor>" --json
 
 A cursor has the format `f1:<project-id>:<version>`. Use the value that `snapshot` returns; do not construct one.
 
-- `wait` needs a running `agboard serve` in the same data area and listens for changes without polling.
+- `wait` needs the server of the same data area. It starts one in the background when none runs, then listens for changes without polling.
 - It follows the same project through a rename, so update the name in future commands and hooks. Changes to other projects do not end it. If the project is deleted, it fails with `project_not_found`.
 - `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, never answers.
 - When `wait` returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
 
 ## Listen for the next task
 
-You can keep one already-open Codex or Claude Code session working through AI tasks in one project. Run `agboard serve` against the same data area, then start listening explicitly and choose how many seconds the board must have no eligible task before the command ends:
+You can keep one already-open Codex or Claude Code session working through AI tasks in one project. Start listening explicitly (the command starts the server of the same data area if none runs) and choose how many seconds the board must have no eligible task before the command ends:
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json

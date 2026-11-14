@@ -109,7 +109,7 @@ With `--json`, the command prints one JSON object per line. Without it, it print
 | `withdrawn` | The request was withdrawn. | 6 |
 | `error` | Waiting failed after the questions were saved, for example when the server stopped. The questions stay open. | 1 |
 
-The command waits 600 seconds by default. `--timeout` takes 1 to 86,400 seconds, or `none` to wait without a limit. Waiting needs a running `agboard serve`; the CLI checks it before saving anything and fails with `board_unavailable` if it is not running. `--no-wait` saves the questions, prints `registered`, and returns at once, without a server.
+The command waits 600 seconds by default. `--timeout` takes 1 to 86,400 seconds, or `none` to wait without a limit. Waiting needs the server; the CLI checks it before saving anything and starts it in the background when none runs. If it cannot start the server, nothing is saved and the command fails with `board_unavailable`. `--no-wait` saves the questions, prints `registered`, and returns at once, without a server.
 
 To wait again after a timeout or an error, pass the request ID. The questions are not asked a second time:
 

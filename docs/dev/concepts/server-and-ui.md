@@ -4,11 +4,59 @@
 
 ## Starting and stopping serve
 
+A data area has at most one server. It runs in one of two modes, recorded as `mode` in `serve.json`:
+
+- **Automatic.** A command that cannot work without a server starts one in the background: `wait --after`, `wait --until task`, and `state ... pending` unless `--no-wait`. The agent hook starts one too, without waiting. The server stops by itself after it has gone unused.
+- **Manual.** A person runs `agboard serve` (in the foreground) or `agboard serve -d` (in the background). It runs until Ctrl+C or `agboard stop`.
+
+Every other command works on the files alone and starts nothing.
+
+### Starting
+
 - `serve` listens only on `127.0.0.1` and works with zero projects; it may create `workspace.json` in an empty data area.
-- `lifecycle.lock` (a standard `try_lock`) is held from start to exit so that only one server runs per data area. The file existing does not mean a server is running; the lock is released when the process exits.
-- At startup, if `serve.json` exists and `GET /api/health` on its port returns the same `pid`, `serve` exits with `already_serving`. Otherwise the file is stale and is overwritten. `serve -d` makes the same check first: for a person at a terminal it offers to stop the running server through the `stop` path and start a new one; with `--json` or without a terminal it exits with `already_serving`.
-- `serve` writes `serve.json` (`pid`, `port`, `started_at`) after it starts listening. On SIGINT or SIGTERM it removes `serve.json` only if the file holds its own pid.
-- `stop` sends SIGTERM to the `pid` in `serve.json`. It returns only after the port stops answering and `lifecycle.lock` can be taken, so a `serve` started right after it does not fail with `database_busy`. A server still shutting down after 10 seconds makes `stop` fail.
+- `lifecycle.lock` (a standard `try_lock`) is held from start to exit so that only one server runs per data area. The file existing does not mean a server is running; the lock is released when the process exits. An automatic server waits up to 10 seconds for a server that is still shutting down to release it.
+- At startup, if `serve.json` exists and `GET /api/health` on its port returns the same `pid`, `serve` exits with `already_serving`. Otherwise the file is stale and is overwritten. When the running server is automatic, the reason says to run `agboard serve -d` to keep it.
+- `serve -d` makes the same check first. If the running server is automatic and the command gives no `--port` or `--monitor` that differs from it, `serve -d` sends it SIGUSR1: the same process records `mode: "manual"`, stops counting idle time, and keeps every connection. Otherwise, for a person at a terminal, it offers to stop the running server through the `stop` path and start a new one; with `--json` or without a terminal it exits with `already_serving`.
+- `serve` writes `serve.json` (`pid`, `port`, `started_at`, `mode`, and `idleTimeoutSeconds` for an automatic server) after it starts listening. On SIGINT or SIGTERM it removes `serve.json` only if the file holds its own pid.
+
+### How a command starts a server
+
+1. The command reads `serve.json`. If its server answers the health check, the command uses it.
+2. If the pid in `serve.json` is alive and still holds `lifecycle.lock` but does not answer, the command waits up to 10 seconds in case it is starting or stopping, then fails with `board_unavailable` naming the pid. It never starts a second server. A connection the OS or a sandbox refuses is `local_network_denied` instead.
+3. Otherwise the command takes `autostart.lock`, waiting up to 40 seconds for another command that is starting a server, and checks again.
+4. It runs `agboard --json serve --auto` as a new session (`setsid`), with the data area as its working directory and standard output and error in `serve.log` (truncated at each start, mode 0600). The child inherits the open `autostart.lock` and releases it once it is ready, so no other command starts a second server meanwhile.
+5. The command waits up to 30 seconds for the startup line in `serve.log`, then prints one line on standard error and continues. Standard output stays the command's own.
+
+```text
+Started the Agent Board server at http://127.0.0.1:7420/ in the background. It stops by itself after 30 minutes without use.
+```
+
+If the connection fails after a command has read `serve.json`, for example because the server stopped in between, the command starts a server once more. The hook starts the server without waiting: it only checks that the pid in `serve.json` is alive and that `autostart.lock` is free, and it starts nothing after `agboard stop` (see below). Failures are left in `serve.log`.
+
+`AGBOARD_AUTOSTART=0` turns all of this off: commands report `board_unavailable` as before, and the hook starts nothing. The library never starts a server by itself; only the `agboard` command line does.
+
+### Ports
+
+- A manual server listens on `--port` (7420 by default) and nothing else. A taken port is `port_in_use`, and the reason names what holds it: another Agent Board server (with its pid) whose data area is different, or another program.
+- An automatic server tries 7420 first (`AGBOARD_AUTOSTART_PORT` changes it; tests use 0). When it is taken, the server listens on a port the OS chooses and prints why, for example `Port 7420 is used by another program, so this server uses port 52114.`
+- A refusal by the OS or a sandbox (`EACCES` or `EPERM`) is `local_network_denied`. Any other failure to listen is `board_unavailable` with the OS message.
+
+### Stopping by itself
+
+An automatic server is in use while any of these is true:
+
+- a request other than `GET /api/health` arrived within the idle time;
+- an event stream (`GET /api/events`) is open: a browser tab, a `wait`, or a question that waits;
+- the mobile monitor connection is starting, ready, reconnecting, or stopping;
+- the file watcher saw a change to the board or the Docs within the idle time, so an agent that edits files keeps the server running for automatic Done.
+
+The idle time is 30 minutes; `AGBOARD_IDLE_TIMEOUT` sets it from 60 to 86400 seconds. The check runs every 30 seconds on a monotonic clock. When the server has been unused for the idle time, it removes `serve.json` first (so a new command starts a new server instead of connecting to this one), answers new requests with `503 board_unavailable`, ends the monitor connection, releases `lifecycle.lock`, and writes `Stopped after 30 minutes without use.` to `serve.log`.
+
+### stop
+
+`stop` sends SIGTERM to the `pid` in `serve.json`, whichever mode it runs in. It returns only after the port stops answering and `lifecycle.lock` can be taken, so a `serve` started right after it does not fail with `database_busy`. A server still shutting down after 10 seconds makes `stop` fail.
+
+`stop` also leaves `autostart.paused` in the data area, so the hook does not start the server again right away. A command that waits, `serve`, or `serve -d` removes it and starts a server.
 
 ## Handling a request
 

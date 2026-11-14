@@ -63,6 +63,7 @@ Rules for tests:
 
 - Set `TZ=UTC` so displayed times are fixed.
 - Never use the default data area: each test sets `AGBOARD_HOME` to a temporary directory.
+- A test that runs the `agboard` binary sets `AGBOARD_AUTOSTART=0`, so that a wait or the hook does not start a server by itself. The Playwright config sets it for the whole suite. A test of autostart itself leaves it unset and sets `AGBOARD_AUTOSTART_PORT=0`, and stops every server it started.
 - A test that starts `agboard serve` sets `AGBOARD_WATCH=poll`, and an embedded server is started with `server::run_until_in` and `WatchMode::Poll`. Only `tests/file_watch.rs` uses the platform's file events.
 - `agboard serve` listens only on `127.0.0.1`. Do not use port 7420; use an available port or port 0, and connect to `http://127.0.0.1:<port>/` rather than `localhost`.
 

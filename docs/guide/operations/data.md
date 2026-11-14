@@ -21,6 +21,9 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
 .agent-board/
   bindings.json          folder registrations (machine-specific)
   serve.json             how the CLI finds a running agboard serve
+  serve.log              output of a server started in the background
+  autostart.lock         keeps commands from starting two servers
+  autostart.paused       left by agboard stop; the hook does not start a server
   .internal/
     preferences.json     language and color theme (written by the app)
   shared/
@@ -120,7 +123,7 @@ Setup does not install the Hook or the `agent-board` Skill. `agboard connect` do
 
 ## Back up and restore
 
-Stop `agboard serve`, agents, and editors writing to the files before backing up or restoring. Copy the whole `shared/` folder to preserve all projects and the workspace format. For one project, copy its entire folder, using the `folder` value from `workspace --json`. Restore the copy to the same location before restarting the server and agents.
+Stop the server with `agboard stop`, and stop agents and editors writing to the files, before backing up or restoring. Copy the whole `shared/` folder to preserve all projects and the workspace format. For one project, copy its entire folder, using the `folder` value from `workspace --json`. Restore the copy to the same location before restarting the server and agents.
 
 Copying `shared/` does not include `.internal/`, so a project backup does not carry the language and color theme. To keep them too, copy `preferences.json` as well.
 

@@ -15,6 +15,7 @@ Two habits keep your own board safe while you work:
 
 - **Use a temporary data area.** The default data area (`~/.agent-board/` on macOS, `%USERPROFILE%\.agent-board\` on Windows) is your real board. For experiments and tests, set `AGBOARD_HOME` to a temporary directory. The variable applies to the current shell only.
 - **Leave port 7420 free.** It is the default port for normal use. Use another port, or port 0 in tests.
+- **Know that commands start a server.** `wait`, a question that waits, and the hook start a background server for the data area when none runs. Set `AGBOARD_AUTOSTART=0` while you experiment if you do not want that, and `agboard stop` ends one.
 
 ## Build
 
@@ -63,7 +64,7 @@ cargo run -- --project dev add "Try it" --assignee ai --actor ai
 cargo run -- serve --port <port>
 ```
 
-The data area holds `shared/` (the projects as plain files), `serve.json` while a server runs, and `lifecycle.lock`. Nothing is stored in a database. `task.json` holds a task's current state (`formatVersion: 1`), and `TASK.md` holds its body, acceptance conditions, and `at`/`reason` history; a file with any other `formatVersion` is reported as unsupported and never migrated. The [data model](../reference/files.md#files-on-disk) describes every file.
+The data area holds `shared/` (the projects as plain files), `serve.json` while a server runs, `lifecycle.lock`, and `autostart.lock`. Nothing is stored in a database. `task.json` holds a task's current state (`formatVersion: 1`), and `TASK.md` holds its body, acceptance conditions, and `at`/`reason` history; a file with any other `formatVersion` is reported as unsupported and never migrated. The [data model](../reference/files.md#files-on-disk) describes every file.
 
 ## Demo build
 

@@ -13,6 +13,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `domain` | Tasks, lanes, run states, epics, questions, input limits, and rules.<br>No I/O. |
 | `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
 | `agent` | The hook and `wait`. |
+| `autostart` | Starting the shared server when a command needs it: the check, `autostart.lock`, the detached `serve --auto` child (`spawn`), and the `autostart.paused` marker. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
 | `interact` | Human confirmation (terminal detection, y/N) and the notify client. |
 | `setup` | Prepares agent access to the data area. |
@@ -20,7 +21,7 @@ Where things live in the repository. For how the parts work together, read [How 
 
 Dependencies point one way.
 
-`cli` uses `agent`, `interact`, `server`, `setup`, and `progress`. `agent` uses `progress`; `agent`, `progress`, and `server` use `file_store`, which uses `domain`. `server` uses `docs`, which uses `file_store`'s `layout` and `io` for its paths and read errors; `file_store` takes only `DocsLocale` from `docs`, to choose the README of a new `docs/` folder. 
+`cli` uses `agent`, `autostart`, `interact`, `server`, `setup`, and `progress`. `agent` and `cli` use `autostart`, which uses `server` and `file_store`. `agent` uses `progress`; `agent`, `progress`, and `server` use `file_store`, which uses `domain`. `server` uses `docs`, which uses `file_store`'s `layout` and `io` for its paths and read errors; `file_store` takes only `DocsLocale` from `docs`, to choose the README of a new `docs/` folder. 
 
 `interact` and `setup` use only `paths` and `error`. Nothing depends on `cli`, and `server` does not depend on `cli`, `agent`, or `progress`. 
 
@@ -57,6 +58,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | `store`<br>`qa`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; reading questions and saving answers, and setting one acceptance condition as a person, both shared by the board and the monitor (`api/qa.rs` holds the board's handlers). |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
 | `contracts/` | The data layer's wire types: the Summary, the Detail NDJSON lines, and the `changed` event. The golden examples in `tests/fixtures/data-layer/` pin their shapes. |
+| `launch`<br>`bind`<br>`idle` | Starting one server and ending it (`launch`); listening and what a failure to listen means, with the port holder and the free-port fallback (`bind`); what counts as use and the idle stop of an automatic server (`idle`). |
 | `change_feed.rs` | Numbers each change set of this server run (`seq`, with an `instanceId` for the run) and holds the events a stream has not yet sent. A stream that falls too far behind gets `resync`. |
 | `summary_response.rs`<br>`api/summary.rs`, `api/detail.rs`, `monitor/data.rs` | The Summary response with its `ETag`, and the Detail streams. The board and the monitor share the same builders. |
 

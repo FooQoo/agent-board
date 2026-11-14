@@ -30,9 +30,11 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 
 | Symptom | Cause | What to do |
 | --- | --- | --- |
-| `already_serving` | Another `serve` runs on the same data area. | Use that one, or stop it first. |
-| `port_in_use` | Another program uses the port. | Pick another port with `--port`. Keep 7420 free for normal use; tests must use another port or port 0. |
-| `board_unavailable` from `wait`, `qa ask`, `qa wait`, or the hook | `serve` is not running, or the connection failed. It is a technical failure, not an answer. | Start `serve`, then run `wait` again. For questions already saved, run `qa wait <request-id>`. |
+| `already_serving` | Another `serve` runs on the same data area. | Use that one, or stop it first. If it was started automatically, `agboard serve -d` keeps it running. |
+| `port_in_use` | The port given to `serve` is taken; the reason says whether another Agent Board server or another program holds it. | Pick another port with `--port`. Keep 7420 free for normal use; tests must use another port or port 0. |
+| `local_network_denied` | The OS or a sandbox does not let `agboard` use `127.0.0.1`. | In Codex, run `agboard setup`. Elsewhere, run the command outside the sandbox. |
+| `board_unavailable` from `wait`, `qa ask`, `qa wait`, or the hook | Autostart is off, the server could not start, the server in `serve.json` does not answer, or the connection failed. It is a technical failure, not an answer. | Read the reason. When it names `serve.log`, read that file. When it names a pid, run `agboard stop`. Then run `wait` again. For questions already saved, run `qa wait <request-id>`. |
+| A test starts a server on 7420 | The test runs `agboard` without `AGBOARD_AUTOSTART=0`. | Set `AGBOARD_AUTOSTART=0`, or `AGBOARD_AUTOSTART_PORT=0` in a test of autostart itself. |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | Take a fresh `cursor` from `snapshot` for the same project. |
 | `wait_timeout` | The optional `--timeout` of `wait --after` elapsed with no change. | Wait again. |
 | `qa ask` or `qa wait` exits 5 | The `--timeout` passed before every question was answered. The questions stay open. | Run `qa wait <request-id>` again. |

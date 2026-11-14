@@ -21,7 +21,7 @@ flowchart LR
   D -->|nothing the screens show changed| X[Send nothing]
 ```
 
-1. `serve` resolves the data area once at startup and uses it until exit. It writes `serve.json` after it starts listening and removes it on exit.
+1. `serve` resolves the data area once at startup and uses it until exit. It writes `serve.json` after it starts listening and removes it on exit. An automatic server removes it before it stops after going unused, so that no command connects to a server that is about to end (see [Server and web UI](./server-and-ui.md#stopping-by-itself)). `serve -d` on an automatic server rewrites only its `mode`.
 2. It registers a recursive watcher on `shared/` before loading every project into its index. Events for dot-prefixed names, `.internal/`, and `README.md` are ignored. Events in a project's `docs/` folder are not board data: they go to the docs notice (see [The docs](#the-docs)) and never reload the project.
 
    The watcher uses the platform's file events (FSEvents on macOS). With `AGBOARD_WATCH=poll` it scans `shared/` every 100 ms instead. The tests use poll mode, because registering with FSEvents can take many seconds on a busy Mac; the embedded test servers pass it to `server::run_until_in` together with their data area, so they never set `AGBOARD_HOME`.

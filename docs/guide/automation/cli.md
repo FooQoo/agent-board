@@ -58,7 +58,7 @@ The command assigns the timestamp and applies AI write permissions; it needs no 
 
 ### Finish a task
 
-To finish, record the verification in `TASK.md` and set each verified acceptance condition's `done` to `true`. A running server moves eligible AI tasks to Done automatically, so do not run `mv ... done --actor ai`. See the [Markdown file format](./file-format) for the rules. A Done task is read-only for agents; a user can reopen it when more work is needed.
+To finish, record the verification in `TASK.md` and set each verified acceptance condition's `done` to `true`. The server moves eligible AI tasks to Done automatically (the hook and waiting commands start it when needed), so do not run `mv ... done --actor ai`. See the [Markdown file format](./file-format) for the rules. A Done task is read-only for agents; a user can reopen it when more work is needed.
 
 ### Ask a question
 
@@ -68,7 +68,7 @@ Use `qa ask` to ask the user one or more questions. Questions belong to the proj
 agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
 ```
 
-It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting requires a running `agboard serve`; `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../use/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../use/epics).
+It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting needs the server: the command starts it in the background when none is running, before it saves the questions. `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../use/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../use/epics).
 
 ## Edit long text from a file
 
@@ -137,6 +137,16 @@ When there has been no eligible task for the full interval, it prints `{"kind":"
 
 ## Run the server
 
+You rarely need to start the server yourself. `wait`, a question that waits for its answer, and the agent hook start it in the background when none is running. A command that starts it prints one line on standard error:
+
+```text
+Started the Agent Board server at http://127.0.0.1:7420/ in the background. It stops by itself after 30 minutes without use.
+```
+
+A server started this way keeps running while the board is open in a browser, while an agent waits, or while the phone is connected. It stops after 30 minutes without any of these; set `AGBOARD_IDLE_TIMEOUT` (60 to 86,400 seconds) to change that. If port 7420 is taken, it uses a free port and says so. Set `AGBOARD_AUTOSTART=0` to turn automatic starts off; commands that need the server then fail with `board_unavailable`, as when no server runs. Other commands, such as `add`, `mv`, and `ls`, never start the server.
+
+Start it yourself to keep it running, to choose the port, or to connect a phone when it starts.
+
 `agboard serve` starts the board on `127.0.0.1`. `--port` chooses the port (default 7420). To also connect a phone through ngrok when the server starts, add `--monitor ngrok`:
 
 | Option | Meaning |
@@ -156,11 +166,13 @@ agboard serve -d
 agboard stop
 ```
 
-`agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve` or `serve -d`. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
+`agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve`, with `serve -d`, or by a command. After `stop`, the hook does not start the server again until a command that waits, `serve`, or `serve -d` starts one. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
 
 The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
 
-If a server is already running, `serve -d` asks in the terminal whether to stop it and start a new one. Answer `y` to replace it; the new server uses the `--port` and `--monitor` of this command, not those of the old server, and with `--monitor ngrok` it gets a new passcode. Any other answer leaves the running server as it is and exits with code 0. With `--json`, or when the command does not run in a terminal, nothing is asked and `serve -d` exits with code 1 (`already_serving`).
+If a command started the running server, `serve -d` keeps that server running instead of starting a new one: it no longer stops by itself, and nothing it serves is interrupted. This needs no `--port` or `--monitor` that differs from the running server. A foreground `agboard serve` exits with `already_serving` and points to `serve -d`.
+
+If a server you started is already running, or the options differ, `serve -d` asks in the terminal whether to stop it and start a new one. Answer `y` to replace it; the new server uses the `--port` and `--monitor` of this command, not those of the old server, and with `--monitor ngrok` it gets a new passcode. Any other answer leaves the running server as it is and exits with code 0. With `--json`, or when the command does not run in a terminal, nothing is asked and `serve -d` exits with code 1 (`already_serving`).
 
 ## Set up the shared folder
 

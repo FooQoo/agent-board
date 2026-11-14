@@ -77,7 +77,7 @@ Three ideas run through the whole design:
 
 - **Every operation names its project.** Projects are identified by an immutable ProjectId, and commands never guess the target from the working folder or a selection. Folder bindings exist only to help the hook find the right project.
 - **A task is saved as a pair.** `task.json` (state) and `TASK.md` (body, conditions, history) are committed together under a lock, so nobody ever sees one without the other. See [Storage and consistency](./saving-and-recovery.md).
-- **The server is a cache, not an owner.** `serve` keeps an in-memory index for fast reads, but the files decide. If the server is stopped, the CLI still works; when it starts again, it reads the files.
+- **The server is a cache, not an owner.** `serve` keeps an in-memory index for fast reads, but the files decide. If the server is stopped, the CLI still works; when it starts again, it reads the files. A command that needs the server (a wait, or a question that waits) starts it, and a server started that way stops by itself after it has gone unused.
 
 ## Follow one change
 
