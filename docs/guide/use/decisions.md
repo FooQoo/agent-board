@@ -63,7 +63,7 @@ If you close the sheet with an answer that is not sent, and the question is then
 
 ## Answer in the chat
 
-While you are talking with an agent, it shows the same question in the chat as well. Answer there in your own words, or choose an option in the agent's question tool. The agent records your answer on the board with `qa answer --via chat`, and the history notes that it came from the chat. Whichever answer is recorded first counts: if the board already has a different answer, the agent tells you and asks again. See [Questions](../automation/agents#questions) for how agents wait.
+While you are talking with an agent, it writes the same question in the chat as plain text, with its choices and recommendation. Answer there in your own words, or give the id or label of a choice. The agent records your answer on the board with `qa answer --via chat`, and the history notes that it came from the chat. Whichever answer is recorded first counts: if the board already has a different answer, the agent tells you which one was recorded and continues with it. The agent does not ask the question again in the other place. See [Questions](../automation/agents#questions) for how agents wait.
 
 ## Approve a plan
 

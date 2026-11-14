@@ -121,14 +121,19 @@ A task you put on the board yourself needs no start approval.
 
 ### Questions
 
-Every question an agent asks is on the board, with choices, so that the record stays in one place. While you are talking with the agent, it also shows the same question in the chat, sometimes with its own question tool, such as AskUserQuestion in Claude Code. Answer wherever is easier:
+Every question an agent asks is on the board, with choices, so that the record stays in one place. While you are talking with the agent, it also writes the same question in the chat as plain text, with its choices and its recommendation, and says that the question is on the board. It does not open a question dialog of its own, because that would keep the agent from noticing an answer you give on the board. Answer wherever is easier:
 
-- **In the chat.** The agent records your words on the board as your answer with `qa answer --via chat`. It never answers a question itself.
+- **In the chat.** Reply in your own words. The agent records them on the board as your answer with `qa answer --via chat` and continues. It never answers a question itself.
 - **On the board or your phone.** See [Decisions](../use/decisions).
 
-The first answer recorded is the one that counts. If you answer on the board and then differently in the chat, the agent tells you and asks again. When you answered on the board while a chat question is still open, you can dismiss the chat question.
+Whichever answer is recorded first is the one that counts, and the agent does not ask the same question again in the other place. If you answer on the board and then differently in the chat, the agent tells you which answer was recorded and continues with it.
 
-The agent keeps `qa ask` running until every question is answered, up to 10 minutes at a time, and after a timeout waits again for the same questions. Claude Code waits in the background, so you can keep talking; Codex waits in the foreground and still takes your chat messages. The board never wakes an agent on its own. If an agent stopped waiting and ended its turn, it notices an answer you gave on the board the next time you write to it, so send it a short message. When nobody is in the conversation, such as while it listens for tasks, the agent asks only on the board.
+The agent keeps `qa ask` running until every question is answered, up to 10 minutes at a time, and after a timeout waits again for the same questions. The two agents differ in how they wait:
+
+- **Claude Code** waits in the background and ends its turn. An answer on the board finishes the wait and wakes the agent, so it continues without a message from you. If you reply in the chat instead, the agent records your reply and continues.
+- **Codex** waits in the foreground after writing the question in the chat. Answer on the board, or interrupt the agent and reply in the chat; it then records your reply.
+
+The agent writes its chat replies in the language you use with it. When nobody is in the conversation, such as while it listens for tasks, the agent asks only on the board.
 
 The agent uses `--no-wait` only when you explicitly ask it to register a question and return immediately. If the board is unavailable, it reports the problem and waits to ask there.
 

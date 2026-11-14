@@ -177,8 +177,20 @@ fn the_skill_asks_on_the_board_and_in_the_chat() {
         "every question must go to the board"
     );
     assert!(
-        skill.contains("your agent's question tool"),
-        "the Skill must allow the agent's question tool in a conversation"
+        skill.contains("Do not use your agent's question tool"),
+        "the Skill must keep the agent's question tool out of a conversation"
+    );
+    assert!(
+        skill.contains("show the question in the chat as plain text"),
+        "the question must be shown in the chat as plain text"
+    );
+    assert!(
+        skill.contains("never ask the same question again in the other place"),
+        "an answered question must not be asked again in the other channel"
+    );
+    assert!(
+        skill.contains("in the language the user speaks with you"),
+        "chat replies must follow the user's language"
     );
     assert!(
         skill.contains("qa answer <Q-id> --actor human --via chat"),
