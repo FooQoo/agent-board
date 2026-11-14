@@ -38,6 +38,7 @@ struct Waiter {
 impl Waiter {
     fn spawn(home: &Path, args: &[&str]) -> Waiter {
         let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+            .env("AGBOARD_AUTOSTART", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")
@@ -73,7 +74,7 @@ impl Drop for Waiter {
 }
 
 #[test]
-fn ask_without_waiting_needs_no_server_and_a_wait_needs_one() {
+fn ask_without_waiting_needs_no_server_and_a_wait_without_autostart_needs_one() {
     let home = tempdir().unwrap();
     demo_project(home.path());
     let request = decision_json("Which plan?");
