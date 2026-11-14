@@ -20,7 +20,7 @@ You answer the questions one after another and send them together at the end. No
    - **Answer them** in the band starts at the first question without an answer. It reads **Continue answering** once you have answered some.
    - An item in the band opens that question.
    - **Answer the question** on a card opens the first question of that task.
-2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**.
+2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**. When several tasks share the question, such as a plan or a start approval, the header lists their IDs and reads **3 tasks** instead of naming only the first.
 3. Select **Next** to go on, or **Previous** to go back. The steps under the header show which questions you have answered; select a step to jump to it.
 4. After the last question, the **Review and send** step lists every question with your answer. Select **Change** to edit one, or **Answer** for one you skipped.
 5. Select **Send all**. The answers you gave are sent together, and the questions you skipped stay open.

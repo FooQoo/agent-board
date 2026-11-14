@@ -1,6 +1,7 @@
 export const questionFlowJa = {
   questions: {
     flow: {
+      taskCount: '{{count}} 件のタスク',
       position: '{{index}} / {{total}}',
       progress: '回答の進み具合',
       step: '{{label}}（{{state}}）',

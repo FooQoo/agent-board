@@ -170,7 +170,10 @@ export function useAnswerFlow({
 
   return {
     identity: current ? taskRefs(refs, t('questions.band.noTask')) : '',
-    title: firstTask?.title ?? (current ? plainTitle(current.title) : ''),
+    title:
+      refs.length > 1
+        ? t('questions.flow.taskCount', { count: refs.length })
+        : (firstTask?.title ?? (current ? plainTitle(current.title) : '')),
     steps,
     current: shownIndex,
     answeredCount: sendable.length,

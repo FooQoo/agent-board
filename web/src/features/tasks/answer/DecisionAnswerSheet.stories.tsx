@@ -78,6 +78,16 @@ export const Step: Story = {
   },
 };
 
+/** A plan question for three cards: the title counts the cards rather than naming the first. */
+export const SeveralTasks: Story = {
+  args: { start: { kind: 'question', questionId: 'Q-5' } },
+  play: async () => {
+    await expect(await page().findByRole('dialog', { name: /3 tasks/ })).toBeInTheDocument();
+    await expect(page().getByText('5 / 5')).toBeInTheDocument();
+    await expect(page().getByText('#14 #15 #16')).toBeInTheDocument();
+  },
+};
+
 /** Every question answered: the review, then Send all. */
 export const Review: Story = {
   args: { input: { held: 5 }, start: { kind: 'review' } },

@@ -1,6 +1,7 @@
 export const questionFlowEn = {
   questions: {
     flow: {
+      taskCount: '{{count}} tasks',
       position: '{{index}} / {{total}}',
       progress: 'Answering progress',
       step: '{{label}} ({{state}})',

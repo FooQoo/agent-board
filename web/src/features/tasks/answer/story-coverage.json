@@ -12,6 +12,11 @@
               "id": "task-answer-decisionanswerdialogcontainer--open",
               "states": ["resume at the first open question", "answer", "review", "send all"],
               "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialogcontainer--several-tasks",
+              "states": ["question for several cards", "heading counts the cards"],
+              "interaction": true
             }
           ]
         }
@@ -176,6 +181,11 @@
             {
               "id": "task-answer-decisionanswersheet--step",
               "states": ["question 2 of 5", "dots", "two equal buttons"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--several-tasks",
+              "states": ["question for several cards", "title counts the cards"],
               "interaction": true
             },
             {

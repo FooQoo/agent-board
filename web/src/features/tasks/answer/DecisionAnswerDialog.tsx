@@ -16,7 +16,7 @@ import './answer-dialog.css';
 export interface AnswerFlowViewProps {
   /** The cards of the question shown: `#11`, `#14 #15`, or the no-task label. */
   identity: string;
-  /** The card's title, or the question's when no card refers to it. */
+  /** The card's title; the number of cards when several refer to the question; else the question's. */
   title: string;
   steps: readonly AnswerStep[];
   /** The step shown: an index into `steps`, or `steps.length` for the review. */

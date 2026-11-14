@@ -108,6 +108,9 @@ describe('answering the questions in a row', () => {
     await userEvent.click(button('Next'));
     expect(await screen.findByText('2 / 3')).toBeTruthy();
     expect(screen.getByText('#14 #15')).toBeTruthy();
+    // Several cards share the question: the heading counts them instead of naming the first.
+    expect(screen.getByRole('dialog', { name: /2 tasks/ })).toBeTruthy();
+    expect(screen.queryByText('Prepare the build')).toBeNull();
     await userEvent.click(button('Previous'));
     expect(await screen.findByRole('radio', { name: 'Yes' })).toHaveProperty('ariaChecked', 'true');
     // The progress marks the answered question and can jump to any step.
