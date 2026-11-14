@@ -156,6 +156,23 @@ command -v agboard
 
 The installed `agboard` and your development build are separate files. Hooks call the installed one, while `cargo build`, `cargo run`, and `target/debug/agboard` use the working tree. Reinstall before checking a change through a hook.
 
+### Keep the Keychain grant on macOS
+
+On macOS, the mobile monitor's token lives in the Keychain, and the "Always Allow" grant belongs to one exact binary. A binary built by `cargo install` is ad-hoc signed with an identifier that changes on every build, so each reinstall asks again. `scripts/dev/install-local.sh` runs `cargo install --path . --locked --force` (extra arguments go to `cargo install`) and then re-signs the result with the release identifier and a certificate of your own, so the grant carries over.
+
+```sh
+security find-identity -v -p codesigning   # list your signing identities
+export AGBOARD_CODESIGN_IDENTITY="<identity name or SHA-1>"
+scripts/dev/install-local.sh
+```
+
+Without `AGBOARD_CODESIGN_IDENTITY`, or on another OS, the script installs without signing and prints a note.
+
+- The first run after signing still asks once. Choose **Always Allow**.
+- `codesign` may ask once for permission to use the signing key. Enter your login password and choose **Always Allow**. Run the script from a terminal app: from a non-GUI context, `codesign` can fail with `errSecInternalComponent`.
+
+macOS can also slow down development. Gatekeeper scans every freshly built test binary, so `cargo nextest` may crawl. In System Settings, open Privacy & Security, then Developer Tools, and turn on your terminal app.
+
 To try an installation without touching `~/.cargo/bin` or your board:
 
 ```sh

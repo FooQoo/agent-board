@@ -156,6 +156,23 @@ command -v agboard
 
 インストールした`agboard`と開発中のビルドは別のファイルです。Hookはインストールした方を呼び、`cargo build`・`cargo run`・`target/debug/agboard`は作業ツリーを使います。Hookで変更を確かめる前に、インストールし直してください。
 
+### macOSでキーチェーンの許可を保つ
+
+macOSでは、モバイルモニターのトークンをキーチェーンに保存します。「常に許可」は特定の実行ファイル1つに対するものです。`cargo install`でビルドした実行ファイルは、ビルドのたびに識別子が変わるアドホック署名になるため、入れ直すたびに確認が出ます。`scripts/dev/install-local.sh`は、`cargo install --path . --locked --force`を実行し（追加の引数は`cargo install`に渡します）、そのあとで実行ファイルをリリースと同じ識別子と自分の証明書で署名し直します。これで許可が引き継がれます。
+
+```sh
+security find-identity -v -p codesigning   # 署名に使えるIDの一覧
+export AGBOARD_CODESIGN_IDENTITY="<IDの名前またはSHA-1>"
+scripts/dev/install-local.sh
+```
+
+`AGBOARD_CODESIGN_IDENTITY`を設定していないとき、またはmacOS以外では、署名せずにインストールし、その旨を表示します。
+
+- 署名後の最初の実行では、確認が1回出ます。**常に許可**を選んでください。
+- `codesign`が署名用の鍵を使う許可を1回求めることがあります。ログインパスワードを入力し、**常に許可**を選んでください。ターミナルのアプリから実行してください。GUIのない環境から実行すると、`codesign`が`errSecInternalComponent`で失敗することがあります。
+
+macOSでは、開発中の動作が遅くなることもあります。Gatekeeperがビルドしたての試験用実行ファイルを毎回検査するため、`cargo nextest`が極端に遅くなる場合があります。システム設定の「プライバシーとセキュリティ」から「開発者ツール」を開き、使っているターミナルのアプリをオンにしてください。
+
 `~/.cargo/bin`や自分のボードに触れずにインストールを試すには:
 
 ```sh
