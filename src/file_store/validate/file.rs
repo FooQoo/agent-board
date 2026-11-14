@@ -4,8 +4,8 @@ use std::collections::HashSet;
 
 use serde_json::Value;
 
-use super::body::{normalize_answer_text, normalize_question};
-use super::choice::{choice_defect, choice_items_defect};
+use super::body::normalize_answer_text;
+use super::choice::choice_items_defect;
 use super::{Defect, defect, is_hex32};
 use crate::domain::{RunState, check_work_state, validate_project_name, validate_title};
 use crate::error::AgboardError;
@@ -89,65 +89,16 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
     if check_work_state(task.assignee, task.task_status, task.agent_status).is_err() {
         out.push(defect(
             "agentStatus",
-            "Running and pending need an AI-owned task in Doing.",
+            "Running needs an AI-owned task in Doing.",
         ));
     }
-    if task.is_draft && !matches!(task.agent_status, RunState::Idle | RunState::Pending) {
-        out.push(defect(
-            "isDraft",
-            "Only idle or pending tasks can be drafts.",
-        ));
-    }
-    match (task.agent_status, task.pending_request_id.as_deref()) {
-        (RunState::Pending, None) => out.push(defect(
-            "pendingRequestId",
-            "A pending task needs a request ID.",
-        )),
-        (RunState::Pending, Some(id)) => {
-            if !is_hex32(id) {
-                out.push(defect(
-                    "pendingRequestId",
-                    "Request IDs are 32 lowercase hexadecimal characters.",
-                ));
-            }
-        }
-        (_, Some(_)) => out.push(defect(
-            "pendingRequestId",
-            "Only a pending task has a request ID.",
-        )),
-        (_, None) => {}
-    }
-    match (&task.pending_request, task.agent_status) {
-        (Some(request), RunState::Pending) => {
-            if normalize_question(&request.question).ok().as_deref()
-                != Some(request.question.as_str())
-            {
-                out.push(defect(
-                    "pendingRequest.question",
-                    "A pending request needs a valid question.",
-                ));
-            }
-            if let Some(d) = choice_defect(&request.choices) {
-                out.push(defect(format!("pendingRequest.{}", d.field), d.reason));
-            }
-        }
-        (None, RunState::Pending) => out.push(defect(
-            "pendingRequest",
-            "A pending task needs its question and choices.",
-        )),
-        (Some(_), _) => out.push(defect(
-            "pendingRequest",
-            "Only a pending task has a request.",
-        )),
-        (None, _) => {}
+    if task.is_draft && task.agent_status != RunState::Idle {
+        out.push(defect("isDraft", "Only idle tasks can be drafts."));
     }
     let mut answer_ids = HashSet::new();
     for (index, answer) in task.request_answers.iter().enumerate() {
         let field = |name: &str| format!("requestAnswers[{index}].{name}");
-        if !is_hex32(&answer.request_id)
-            || !answer_ids.insert(&answer.request_id)
-            || task.pending_request_id.as_deref() == Some(&answer.request_id)
-        {
+        if !is_hex32(&answer.request_id) || !answer_ids.insert(&answer.request_id) {
             out.push(defect(
                 field("requestId"),
                 "Answer request IDs must be valid, unique, and already resolved.",
@@ -182,13 +133,8 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
             out.push(defect(field("text"), "An answer needs a choice or text."));
         }
     }
-    if task.archived_at.is_some()
-        && (task.agent_status != RunState::Idle || task.pending_request_id.is_some())
-    {
-        out.push(defect(
-            "archivedAt",
-            "An archived task is idle and has no request.",
-        ));
+    if task.archived_at.is_some() && task.agent_status != RunState::Idle {
+        out.push(defect("archivedAt", "An archived task is idle."));
     }
     out
 }

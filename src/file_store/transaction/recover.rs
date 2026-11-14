@@ -21,6 +21,7 @@ pub fn recover_with_hook_locked(
     project: &Path,
     mut hook: impl FnMut(Stage) -> Result<(), Fault>,
 ) -> Result<Recovery, AgboardError> {
+    super::batch::recover_batches_locked(project)?;
     let dir = journal_dir(project)?;
     let entries = match fs::read_dir(&dir) {
         Ok(entries) => entries,

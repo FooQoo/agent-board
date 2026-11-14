@@ -1,11 +1,12 @@
+#[path = "support/qa.rs"]
+mod qa;
+
 use std::fs;
 use std::path::Path;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
-use agent_board::file_store::Answer;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use chrono::{TimeZone, Utc};
 
 struct Fixture {
@@ -158,7 +159,7 @@ fn malformed_history_keeps_body_and_acceptance_but_blocks_updates() {
 }
 
 #[test]
-fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
+fn state_history_and_questions_survive_reopen() {
     let fx = fixture();
     let id = fx.create("");
     let moved = fx
@@ -175,74 +176,30 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
         )
         .unwrap();
     assert!(moved.changed);
-    let asked = fx
-        .store
-        .request_decision(
-            &fx.project,
-            id,
-            Actor::Ai,
-            "Continue?",
-            vec![
-                Choice {
-                    id: "yes".into(),
-                    label: "Proceed".into(),
-                },
-                Choice {
-                    id: "other".into(),
-                    label: "Other".into(),
-                },
-            ],
-            Utc.with_ymd_and_hms(2026, 10, 14, 0, 2, 0).unwrap(),
-        )
-        .unwrap();
-    assert!(asked.changed);
-    let before = fs::read(fx.task_dir(id).join("TASK.md")).unwrap();
-    let repeated = fx
-        .store
-        .request_decision(
-            &fx.project,
-            id,
-            Actor::Ai,
-            "A different question",
-            vec![
-                Choice {
-                    id: "choice".into(),
-                    label: "Choice".into(),
-                },
-                Choice {
-                    id: "other".into(),
-                    label: "Other".into(),
-                },
-            ],
-            Utc.with_ymd_and_hms(2026, 10, 14, 0, 3, 0).unwrap(),
-        )
-        .unwrap();
-    assert!(!repeated.changed);
-    assert_eq!(fs::read(fx.task_dir(id).join("TASK.md")).unwrap(), before);
+    qa::ask(
+        &fx.store,
+        &fx.project,
+        &[id],
+        "Continue?",
+        &[("yes", "Proceed"), ("other", "Other")],
+    );
 
     let reopened = FileStore::open(&fx.shared);
     let pending = reopened.task(&fx.project, id).unwrap();
     assert_eq!(pending.agent_status, RunState::Pending);
     assert_eq!(pending.pending_reason.as_deref(), Some("Continue?"));
     assert_eq!(pending.pending_choices.len(), 2);
-    let request_id = pending.pending_request_id.unwrap();
-    let answered = reopened
-        .answer_request(
-            &fx.project,
-            id,
-            &request_id,
-            Answer {
-                actor: Actor::Human,
-                choice_id: None,
-                text: Some("Proceed".into()),
-            },
-            Utc.with_ymd_and_hms(2026, 10, 14, 0, 4, 0).unwrap(),
-        )
-        .unwrap();
+    assert_eq!(pending.question_ids, vec!["Q-1".to_string()]);
+    qa::answer(&reopened, &fx.project, "Q-1", None, Some("Proceed"));
+    let answered = reopened.task(&fx.project, id).unwrap();
     assert_eq!(answered.agent_status, RunState::Idle);
     let json: serde_json::Value =
         serde_json::from_slice(&fs::read(fx.task_dir(id).join("task.json")).unwrap()).unwrap();
     assert!(json.get("history").is_none());
+    assert!(
+        json.get("requestAnswers")
+            .is_none_or(|answers| answers == &serde_json::json!([]))
+    );
     let history = agent_board::file_store::history::parse_task(
         &fs::read_to_string(fx.task_dir(id).join("TASK.md")).unwrap(),
         agent_board::file_store::history::ParseMode::Stored,
@@ -251,5 +208,4 @@ fn state_history_and_pending_request_survive_reopen_and_noops_add_nothing() {
     assert_eq!(history.history[1].reason, "Start");
     assert!(history.history[2].reason.contains("Continue?"));
     assert!(history.history[3].reason.contains("Proceed"));
-    assert_eq!(json["requestAnswers"][0]["text"], "Proceed");
 }

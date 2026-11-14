@@ -116,7 +116,14 @@ fn check_summary(body: &str, project: &ProjectId) -> Summary {
     let value: Value = serde_json::from_str(body).unwrap();
     assert_eq!(
         keys(&value),
-        set(&["project", "version", "tasks", "epics", "problems"])
+        set(&[
+            "project",
+            "version",
+            "tasks",
+            "epics",
+            "problems",
+            "questions"
+        ])
     );
     assert_eq!(keys(&value["project"]), set(&["id", "name"]));
     for task in value["tasks"].as_array().unwrap() {
@@ -138,6 +145,8 @@ fn check_summary(body: &str, project: &ProjectId) -> Summary {
                 "pendingRequestId",
                 "pendingReason",
                 "pendingChoices",
+                "questionIds",
+                "openQuestionIds",
                 "taskStatusChangedAt",
                 "agentStatusChangedAt",
                 "detailVersions",

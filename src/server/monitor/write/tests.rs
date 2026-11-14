@@ -13,7 +13,7 @@ use crate::server::monitor_connection::lifecycle::{MonitorConnections, MonitorEn
 const ORIGIN: &str = "https://m.ngrok.app";
 const HOST: &str = "m.ngrok.app";
 const TOKEN: &str = "0123456789abcdef";
-const PATH: &str = "/monitor/api/projects/p/tasks/1/answer";
+const PATH: &str = "/monitor/api/projects/p/qa/answers";
 
 /// The write router on a loopback port, behind a guard with a known token.
 async fn serve() -> (String, tempfile::TempDir, Watch) {
@@ -64,7 +64,7 @@ async fn post(base: &str, headers: &[(&str, &str)]) -> (u16, String) {
     let mut request = reqwest::Client::new()
         .post(format!("{base}{PATH}"))
         .header("Content-Type", "application/json")
-        .body(r#"{"requestId":"stale","text":"answer"}"#);
+        .body(r#"{"answers":[{"questionId":"Q-1","text":"answer"}]}"#);
     for (name, value) in headers {
         request = request.header(*name, *value);
     }

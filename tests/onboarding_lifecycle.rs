@@ -214,8 +214,8 @@ fn the_scripted_steps_run_in_order_and_the_answer_gates_the_second_card() {
         .store
         .task(&f.project, second)
         .unwrap()
-        .pending_request_id
-        .unwrap();
+        .open_question_ids
+        .remove(0);
 
     // Resuming before the answer is saved is refused.
     let early = f
@@ -233,15 +233,14 @@ fn the_scripted_steps_run_in_order_and_the_answer_gates_the_second_card() {
     assert!(matches!(early, AgboardError::OnboardingInvalid { .. }));
 
     f.store
-        .answer_request(
+        .answer_questions(
             &f.project,
-            second,
-            &request,
-            agent_board::file_store::Answer {
-                actor: agent_board::domain::Actor::Human,
+            vec![agent_board::file_store::AnswerItem {
+                question_id: request,
                 choice_id: Some("brief".into()),
                 text: None,
-            },
+            }],
+            agent_board::file_store::qa::AnswerVia::Ui,
             at(6),
         )
         .unwrap();
@@ -353,18 +352,17 @@ fn finish_archives_only_the_two_samples_and_marks_the_guide_completed() {
         .store
         .task(&f.project, samples[1])
         .unwrap()
-        .pending_request_id
-        .unwrap();
+        .open_question_ids
+        .remove(0);
     f.store
-        .answer_request(
+        .answer_questions(
             &f.project,
-            samples[1],
-            &request,
-            agent_board::file_store::Answer {
-                actor: agent_board::domain::Actor::Human,
+            vec![agent_board::file_store::AnswerItem {
+                question_id: request,
                 choice_id: Some("brief".into()),
                 text: None,
-            },
+            }],
+            agent_board::file_store::qa::AnswerVia::Ui,
             at(10),
         )
         .unwrap();

@@ -11,6 +11,7 @@ pub mod ls;
 pub mod mv;
 pub mod progress;
 pub mod project;
+pub mod qa;
 pub mod rm;
 pub mod serve;
 pub mod show;

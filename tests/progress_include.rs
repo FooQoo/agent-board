@@ -89,13 +89,14 @@ fn board() -> Board {
     out(agboard(
         home.path(),
         &[
-            "state",
-            &w,
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            &w,
             "--request-json",
-            r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            r#"{"questions":[{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}]}"#,
             "--no-wait",
         ],
     ));

@@ -25,6 +25,13 @@ fn change(resource: Resource, id: ResourceId, facets: &[Facet]) -> ResourceChang
 /// counts as present, with the digest of its raw files as its content.
 pub fn diff(old: &Projection, new: &Projection) -> Vec<ResourceChange> {
     let mut changes = Vec::new();
+    if old.qa_hash != new.qa_hash {
+        changes.push(change(
+            Resource::Qa,
+            ResourceId::Named(new.project_id.clone()),
+            &[Facet::Summary],
+        ));
+    }
 
     let task_ids: BTreeSet<i64> = [old, new]
         .iter()

@@ -234,7 +234,7 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
     let request_file = home.path().join("request.json");
     std::fs::write(
         &request_file,
-        json!({"question": "Which plan?", "choices": [{"id": "proceed", "label": "Proceed"}, {"id": "revise", "label": "Revise"}]})
+        json!({"questions": [{"question": "Which plan?", "choices": [{"id": "proceed", "label": "Proceed"}, {"id": "revise", "label": "Revise"}]}]})
             .to_string(),
     )
     .unwrap();
@@ -243,11 +243,12 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
         &[
             "--project",
             "Demo",
-            "state",
-            "1",
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            "1",
             "--request-json",
             &std::fs::read_to_string(request_file).unwrap(),
             "--no-wait",
@@ -256,44 +257,30 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
     assert_eq!(code, 0, "{err}");
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let request = shown["task"]["pendingRequestId"]
-        .as_str()
-        .unwrap()
-        .to_string();
-    let path = format!("/api/projects/{pid}/tasks/1/answer");
+    let path = format!("/api/projects/{pid}/qa/answers");
+    let answer =
+        |body: Value| server.write("POST", &path, Some(&json!({"answers": [body]}).to_string()));
 
-    let unknown = server.write(
-        "POST",
-        &path,
-        Some(&json!({"requestId": request, "choiceId": "nope"}).to_string()),
-    );
+    let unknown = answer(json!({"questionId": "Q-1", "choiceId": "nope"}));
     assert_eq!(unknown.status, 422);
     assert_eq!(unknown.code(), "request_choice_unknown");
 
-    let empty = server.write(
-        "POST",
-        &path,
-        Some(&json!({"requestId": request}).to_string()),
-    );
+    let empty = answer(json!({"questionId": "Q-1"}));
     assert_eq!(empty.status, 422, "{}", empty.body);
 
-    let stale = server.write(
-        "POST",
-        &path,
-        Some(&json!({"requestId": "0".repeat(32), "choiceId": "proceed"}).to_string()),
-    );
-    assert_eq!(stale.status, 409);
-    assert_eq!(stale.code(), "request_changed");
+    let missing = answer(json!({"questionId": "Q-9", "choiceId": "proceed"}));
+    assert_eq!(missing.status, 404);
+    assert_eq!(missing.code(), "question_not_found");
 
-    let answered = server.write(
-        "POST",
-        &path,
-        Some(&json!({"requestId": request, "choiceId": "proceed", "text": "Go."}).to_string()),
-    );
+    let answered = answer(json!({"questionId": "Q-1", "choiceId": "proceed", "text": "Go."}));
     assert_eq!(answered.status, 200, "{}", answered.body);
-    assert_eq!(answered.json()["task"]["agentStatus"], "idle");
-    let last = answered.json()["task"]["history"]
+    assert_eq!(
+        answered.json()["questions"][0]["answer"]["choiceLabel"],
+        "Proceed"
+    );
+    let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(shown["task"]["agentStatus"], "idle");
+    let last = shown["task"]["history"]
         .as_array()
         .unwrap()
         .last()
@@ -301,6 +288,14 @@ fn an_answer_names_a_choice_or_a_note_and_an_unknown_choice_is_422() {
         .clone();
     assert!(last["reason"].as_str().unwrap().contains("Go."));
     assert_eq!(last.as_object().unwrap().len(), 2);
+
+    let again = answer(json!({"questionId": "Q-1", "choiceId": "revise"}));
+    assert_eq!(again.status, 409, "{}", again.body);
+    assert_eq!(again.code(), "question_answered");
+    assert_eq!(
+        again.json()["questions"][0]["answer"]["choiceId"],
+        "proceed"
+    );
     server.stop();
 }
 

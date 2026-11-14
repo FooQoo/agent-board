@@ -223,7 +223,7 @@ fn a_full_run_over_http_archives_its_samples_and_completes_the_guide() {
         .unwrap()
         .iter()
         .find(|task| task["id"] == second)
-        .and_then(|task| task["pendingRequestId"].as_str())
+        .and_then(|task| task["openQuestionIds"][0].as_str())
         .unwrap()
         .to_string();
 
@@ -236,8 +236,8 @@ fn a_full_run_over_http_archives_its_samples_and_completes_the_guide() {
     assert_eq!(status, 422);
 
     let (status, _) = server.post(
-        &format!("/api/projects/{project}/tasks/{second}/answer"),
-        json!({"requestId": request, "choiceId": "brief"}),
+        &format!("/api/projects/{project}/qa/answers"),
+        json!({"answers": [{"questionId": request, "choiceId": "brief"}]}),
     );
     assert_eq!(status, 200);
 

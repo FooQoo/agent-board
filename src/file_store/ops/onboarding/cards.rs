@@ -163,7 +163,6 @@ impl FileStore {
                 id,
                 RunState::Running,
                 ai_context("Guide: the card resumes."),
-                None,
                 now,
             )?;
         }
@@ -229,10 +228,22 @@ impl FileStore {
                 label: (*label).to_string(),
             })
             .collect();
-        let changed = self.request_decision(project, id, Actor::Ai, question, choices, now)?;
-        changed
-            .value
-            .pending_request_id
-            .ok_or_else(|| conflict("The question was not recorded."))
+        let request = self.ask_questions(
+            project,
+            crate::file_store::AskInput {
+                actor: Actor::Ai,
+                questions: vec![crate::file_store::AskQuestion {
+                    kind: crate::file_store::qa::QuestionKind::Task,
+                    question: question.to_string(),
+                    choices,
+                    recommended_choice_id: None,
+                    approving_choice_ids: Vec::new(),
+                    tasks: Vec::new(),
+                }],
+                tasks: vec![id],
+            },
+            now,
+        )?;
+        Ok(request.request_id)
     }
 }

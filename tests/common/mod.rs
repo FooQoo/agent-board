@@ -331,15 +331,15 @@ pub fn multipart(
     out
 }
 
-/// A decision request as the `state ... pending --request-json` argument: a question and two choices.
+/// A request as the `qa ask --request-json` argument: one question with two choices.
 pub fn decision_json(question: &str) -> String {
-    serde_json::json!({
+    serde_json::json!({"questions": [{
         "question": question,
         "choices": [
             {"id": "a", "label": "Plan A"},
             {"id": "b", "label": "Plan B"}
         ]
-    })
+    }]})
     .to_string()
 }
 

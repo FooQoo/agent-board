@@ -1,9 +1,9 @@
 mod common;
+#[path = "support/qa.rs"]
+mod qa;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, RunState};
-use agent_board::file_store::{
-    Answer, FileStore, history_language::HistoryLanguage, model::Choice,
-};
+use agent_board::file_store::{FileStore, history_language::HistoryLanguage};
 use chrono::Utc;
 
 fn new_task(body: &str) -> NewTask {
@@ -43,7 +43,7 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
             .contains("移動しました")
     );
     let running = store
-        .set_agent_status(&project, id, RunState::Running, ctx(), None, Utc::now())
+        .set_agent_status(&project, id, RunState::Running, ctx(), Utc::now())
         .unwrap()
         .value;
     assert!(
@@ -67,63 +67,28 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
         .add_history(&project, id, Some(explicit), Utc::now())
         .unwrap();
     assert_eq!(note.history.last().unwrap().reason, explicit);
-    let pending = store
-        .request_decision(
-            &project,
-            id,
-            Actor::Ai,
-            "進めますか？",
-            vec![
-                Choice {
-                    id: "yes".into(),
-                    label: "進める".into(),
-                },
-                Choice {
-                    id: "no".into(),
-                    label: "止める".into(),
-                },
-            ],
-            Utc::now(),
-        )
-        .unwrap()
-        .value;
-    assert!(
-        pending
-            .history
-            .last()
-            .unwrap()
-            .reason
-            .starts_with("判断を依頼しました")
+    qa::ask(
+        &store,
+        &project,
+        &[id],
+        "進めますか？",
+        &[("yes", "進める"), ("no", "止める")],
     );
-    let answered = store
-        .answer_request(
-            &project,
-            id,
-            pending.pending_request_id.as_deref().unwrap(),
-            Answer {
-                actor: Actor::Human,
-                choice_id: Some("yes".into()),
-                text: Some("お願いします".into()),
-            },
-            Utc::now(),
-        )
-        .unwrap();
+    let pending = store.task(&project, id).unwrap();
+    let reasons: Vec<&str> = pending.history.iter().map(|r| r.reason.as_str()).collect();
     assert!(
-        answered
-            .history
-            .last()
-            .unwrap()
-            .reason
-            .starts_with("判断依頼に回答しました")
+        reasons.iter().any(|r| r.starts_with("質問しました（Q-1）")),
+        "{reasons:?}"
     );
     assert!(
-        answered
-            .history
-            .last()
-            .unwrap()
-            .reason
-            .contains("選択: 進める")
+        reasons.last().unwrap().contains("回答を待ちます"),
+        "{reasons:?}"
     );
+    qa::answer(&store, &project, "Q-1", Some("yes"), Some("お願いします"));
+    let answered = store.task(&project, id).unwrap();
+    let last = &answered.history.last().unwrap().reason;
+    assert!(last.starts_with("質問に回答しました（Q-1）"), "{last}");
+    assert!(last.contains("選択: 進める"), "{last}");
     let draft = store
         .set_draft(&project, id, true, false, Utc::now())
         .unwrap()

@@ -38,6 +38,22 @@ impl RunStateArg {
     }
 }
 
+/// The run states an agent or a person reports. Waiting is read from the questions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum ReportStateArg {
+    Idle,
+    Running,
+}
+
+impl ReportStateArg {
+    pub fn run_state(self) -> RunState {
+        match self {
+            ReportStateArg::Idle => RunState::Idle,
+            ReportStateArg::Running => RunState::Running,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum ActorArg {
     Ai,

@@ -22,9 +22,51 @@ pub(super) fn save_task_with_markdown(
     task: &TaskFile,
     replacement: Option<&str>,
 ) -> Result<(), AgboardError> {
+    use crate::file_store::transaction::save_pair_locked;
+    let (targets, old, new) = task_pair(shared, project_dir, task, replacement)?;
+    save_pair_locked(project_dir, &targets, &old, &new)
+}
+
+/// The two files of a task as one change of a batch.
+pub(super) fn task_pair_changes(
+    shared: &Path,
+    project_dir: &Path,
+    task: &TaskFile,
+    replacement: Option<&str>,
+) -> Result<Vec<crate::file_store::transaction::FileChange>, AgboardError> {
+    use crate::file_store::transaction::FileChange;
+    let (targets, old, new) = task_pair(shared, project_dir, task, replacement)?;
+    Ok(vec![
+        FileChange {
+            target: targets.metadata,
+            old: Some(old.metadata),
+            new: Some(new.metadata),
+        },
+        FileChange {
+            target: targets.markdown,
+            old: Some(old.markdown),
+            new: Some(new.markdown),
+        },
+    ])
+}
+
+/// The targets of a task's pair, their current bytes, and the bytes that hold `task`.
+fn task_pair(
+    shared: &Path,
+    project_dir: &Path,
+    task: &TaskFile,
+    replacement: Option<&str>,
+) -> Result<
+    (
+        crate::file_store::transaction::PairTargets,
+        crate::file_store::transaction::PairBytes,
+        crate::file_store::transaction::PairBytes,
+    ),
+    AgboardError,
+> {
     use crate::file_store::history::{ParseMode, compose_task, parse_task};
     use crate::file_store::model::TaskMetadata;
-    use crate::file_store::transaction::{PairBytes, PairTargets, save_pair_locked};
+    use crate::file_store::transaction::{PairBytes, PairTargets};
 
     let dir = layout::task_dir(project_dir, task.id);
     let json_path = layout::task_json(&dir);
@@ -80,16 +122,15 @@ pub(super) fn save_task_with_markdown(
     let mut json = serde_json::to_vec_pretty(&TaskMetadata::from(task))
         .map_err(|error| io::write_error(&json_label, error))?;
     json.push(b'\n');
-    save_pair_locked(
-        project_dir,
-        &PairTargets {
+    Ok((
+        PairTargets {
             metadata: std::path::PathBuf::from(format!("tasks/{}/task.json", task.id)),
             markdown: std::path::PathBuf::from(format!("tasks/{}/TASK.md", task.id)),
         },
-        &old,
-        &PairBytes {
+        old,
+        PairBytes {
             metadata: json,
             markdown,
         },
-    )
+    ))
 }

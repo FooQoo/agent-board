@@ -13,6 +13,7 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
+mod qa;
 mod summary;
 mod task_acceptance;
 mod task_attachments;
@@ -48,6 +49,7 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
+use qa::*;
 use summary::summary;
 use task_acceptance::*;
 use task_attachments::*;
@@ -162,9 +164,15 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/tasks/{id}/agent-status",
             post(set_agent_status),
         )
+        .route("/api/projects/{project_id}/qa", get(qa_list))
+        .route("/api/projects/{project_id}/qa/answers", post(qa_answers))
         .route(
-            "/api/projects/{project_id}/tasks/{id}/answer",
-            post(answer_request),
+            "/api/projects/{project_id}/qa/{question_id}",
+            get(qa_question),
+        )
+        .route(
+            "/api/projects/{project_id}/qa/requests/{request_id}/withdraw",
+            post(qa_withdraw),
         )
         .route("/api/monitor-connections", get(get_connections))
         .route(

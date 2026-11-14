@@ -1,5 +1,5 @@
 //! The monitor's Summary and Detail routes: the same contract as the PC's, under
-//! `/monitor/api/`. All three routes answer through the PC's functions.
+//! `/monitor/api/`. Every route answers through the PC's functions.
 
 use std::sync::Arc;
 
@@ -48,4 +48,12 @@ pub(super) async fn epic_detail(
         query,
     )
     .await
+}
+
+/// One question, read as the PC reads it.
+pub(super) async fn question(
+    State(state): State<Arc<MonitorState>>,
+    Path((project, id)): Path<(String, String)>,
+) -> Response {
+    crate::server::qa::question_response(state.shared().to_path_buf(), project, id).await
 }

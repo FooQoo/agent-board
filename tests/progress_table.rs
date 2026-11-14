@@ -201,13 +201,14 @@ fn epics_without_listed_tasks_are_left_out_and_done_and_pending_tasks_are_not_li
         &[
             "--project",
             "Demo",
-            "state",
-            &waiting.to_string(),
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            &waiting.to_string(),
             "--request-json",
-            r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            r#"{"questions":[{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}]}"#,
             "--no-wait",
         ],
     ));
@@ -262,39 +263,30 @@ fn a_pending_task_returns_to_the_table_once_it_is_idle_again() {
         &[
             "--project",
             "Demo",
-            "state",
-            &task.to_string(),
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            &task.to_string(),
             "--request-json",
-            r#"{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}"#,
+            r#"{"questions":[{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}]}"#,
             "--no-wait",
         ],
     ));
     assert!(epic_task_ids(&progress(home.path()), "ALPHA").is_empty());
-    let shown = ok_json(agboard(
-        home.path(),
-        &["--project", "Demo", "show", &task.to_string(), "--json"],
-    ));
-    let request = shown["task"]["pendingRequestId"]
-        .as_str()
-        .unwrap()
-        .to_string();
     ok(agboard(
         home.path(),
         &[
             "--project",
             "Demo",
-            "state",
-            &task.to_string(),
-            "idle",
+            "qa",
+            "answer",
+            "Q-1",
             "--actor",
             "human",
-            "--reason",
-            "answered",
-            "--request",
-            &request,
+            "--via",
+            "chat",
             "--choice",
             "y",
         ],

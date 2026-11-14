@@ -83,11 +83,12 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let pending = agboard(
         home.path(),
         &[
-            "state",
-            "1",
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            "1",
             "--request-json",
             &common::decision_json("Need the user's direction"),
             "--no-wait",
@@ -96,7 +97,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     );
     assert!(pending.status.success());
     let pending: Value = serde_json::from_slice(&pending.stdout).unwrap();
-    let request_id = pending["task"]["pendingRequestId"].as_str().unwrap();
+    assert_eq!(pending["type"], "registered");
     let baseline = agboard(home.path(), &["snapshot", "--json"]);
     assert!(baseline.status.success());
     let baseline: Value = serde_json::from_slice(&baseline.stdout).unwrap();
@@ -124,14 +125,14 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let answer = agboard(
         home.path(),
         &[
-            "state",
-            "1",
-            "idle",
+            "qa",
+            "answer",
+            "Q-1",
             "--actor",
             "human",
-            "--request",
-            request_id,
-            "--reason",
+            "--via",
+            "chat",
+            "--text",
             "Keep the current behavior and explain the tradeoff.",
         ],
     );

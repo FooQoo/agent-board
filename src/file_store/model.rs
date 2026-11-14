@@ -39,6 +39,14 @@ pub struct ProjectFile {
     /// epic that was deleted is not created again. Absent in older files.
     #[serde(default)]
     pub default_epics_seeded: bool,
+    /// The number of the next question (`Q-<n>`). It only increases. Absent in older files,
+    /// which read it as 1.
+    #[serde(default = "first_question_id")]
+    pub next_question_id: i64,
+}
+
+fn first_question_id() -> i64 {
+    1
 }
 
 /// One option of a decision request.
@@ -58,15 +66,7 @@ pub struct HistoryRecord {
     pub reason: String,
 }
 
-/// The current decision request, independent of the history log.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PendingRequest {
-    pub question: String,
-    pub choices: Vec<Choice>,
-}
-
-/// A workflow response retained for request-ID lookup after restart.
+/// An answer to a decision request of an earlier version, kept in `task.json` as a record.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct RequestAnswer {

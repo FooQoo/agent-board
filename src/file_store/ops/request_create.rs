@@ -103,8 +103,6 @@ impl FileStore {
             position,
             is_draft: false,
             archived_at: None,
-            pending_request_id: None,
-            pending_request: None,
             request_answers: Vec::new(),
             created_at: at,
             updated_at: at,

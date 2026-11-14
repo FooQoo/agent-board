@@ -16,6 +16,23 @@ pub struct Summary {
     pub tasks: Vec<SummaryTask>,
     pub epics: Vec<SummaryEpic>,
     pub problems: Vec<SummaryProblem>,
+    /// The open questions of the project, in ID order.
+    pub questions: Vec<SummaryQuestion>,
+}
+
+/// An open question: enough to list it; the full text is read with `GET …/qa/{questionId}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct SummaryQuestion {
+    pub id: String,
+    pub request_id: String,
+    pub kind: crate::file_store::qa::QuestionKind,
+    /// The first line of the question, up to 200 characters.
+    pub title: String,
+    pub recommended_choice_id: Option<String>,
+    /// The unarchived tasks that wait on the question.
+    pub referenced_by: Vec<i64>,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,6 +63,9 @@ pub struct SummaryTask {
     pub pending_request_id: Option<String>,
     pub pending_reason: Option<String>,
     pub pending_choices: Vec<PendingChoice>,
+    /// The questions the task refers to, and those of them still open.
+    pub question_ids: Vec<String>,
+    pub open_question_ids: Vec<String>,
     pub task_status_changed_at: String,
     pub agent_status_changed_at: String,
     /// The first-run guide's sample identity; absent for ordinary cards.

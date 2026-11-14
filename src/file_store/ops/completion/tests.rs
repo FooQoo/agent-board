@@ -168,27 +168,33 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
             at(2),
         )
         .unwrap();
-    let pending = f
-        .store
-        .request_decision(
+    f.store
+        .ask_questions(
             &f.project,
-            id,
-            Actor::Ai,
-            "Question",
-            vec![
-                crate::file_store::model::Choice {
-                    id: "a".into(),
-                    label: "A".into(),
-                },
-                crate::file_store::model::Choice {
-                    id: "b".into(),
-                    label: "B".into(),
-                },
-            ],
+            crate::file_store::AskInput {
+                actor: Actor::Ai,
+                questions: vec![crate::file_store::AskQuestion {
+                    kind: crate::file_store::qa::QuestionKind::Task,
+                    question: "Question".into(),
+                    choices: vec![
+                        crate::file_store::model::Choice {
+                            id: "a".into(),
+                            label: "A".into(),
+                        },
+                        crate::file_store::model::Choice {
+                            id: "b".into(),
+                            label: "B".into(),
+                        },
+                    ],
+                    recommended_choice_id: None,
+                    approving_choice_ids: Vec::new(),
+                    tasks: Vec::new(),
+                }],
+                tasks: vec![id],
+            },
             at(3),
         )
-        .unwrap()
-        .value;
+        .unwrap();
 
     f.store.auto_complete_all(at(4)).unwrap();
     assert_eq!(
@@ -196,15 +202,14 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
         RunState::Pending
     );
     f.store
-        .answer_request(
+        .answer_questions(
             &f.project,
-            id,
-            pending.pending_request_id.as_deref().unwrap(),
-            crate::file_store::Answer {
-                actor: Actor::Human,
+            vec![crate::file_store::AnswerItem {
+                question_id: "Q-1".into(),
                 choice_id: Some("a".into()),
                 text: None,
-            },
+            }],
+            crate::file_store::qa::AnswerVia::Ui,
             at(5),
         )
         .unwrap();

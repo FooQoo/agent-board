@@ -5,6 +5,7 @@ mod prepare;
 use std::ffi::OsString;
 use std::io::Write;
 
+pub(crate) use self::prepare::prepare;
 use self::prepare::prepare_and_run;
 use crate::cli::args::{self, Command, Parsed, SetupAgentArg};
 use crate::cli::{Context, Env, commands, errors, output};
@@ -175,6 +176,10 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
+    // `qa` prints its own lines: a wait streams events and ends with its own exit code.
+    if let Command::Qa(args) = &cli.command {
+        return commands::qa::execute(&cli, env, args);
+    }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {
             let text = if cli.json {
@@ -200,7 +205,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
 }
 
-fn fail(env: &mut Env, error: &AgboardError, json: bool) -> i32 {
+pub(crate) fn fail(env: &mut Env, error: &AgboardError, json: bool) -> i32 {
     let text = if json {
         errors::json(error)
     } else {
@@ -211,7 +216,7 @@ fn fail(env: &mut Env, error: &AgboardError, json: bool) -> i32 {
 }
 
 /// Print and flush; a closed pipe (`agboard ls | head`) is not an error.
-fn write_text(out: &mut dyn Write, text: &str) {
+pub(crate) fn write_text(out: &mut dyn Write, text: &str) {
     let _ = out.write_all(text.as_bytes());
     if !text.ends_with('\n') {
         let _ = out.write_all(b"\n");

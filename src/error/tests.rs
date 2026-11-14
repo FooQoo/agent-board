@@ -37,7 +37,20 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
             id: 6,
             state: RunState::Running,
         },
-        AgboardError::RequestChanged,
+        AgboardError::QuestionsUnanswered { id: 5 },
+        AgboardError::QuestionAnswered {
+            ids: vec!["Q-1".into()],
+        },
+        AgboardError::QuestionWithdrawn {
+            ids: vec!["Q-2".into()],
+        },
+        AgboardError::QuestionNotFound { id: "Q-3".into() },
+        AgboardError::RequestNotFound {
+            id: "0123456789abcdef0123456789abcdef".into(),
+        },
+        AgboardError::RequestAnswered {
+            id: "0123456789abcdef0123456789abcdef".into(),
+        },
         AgboardError::TaskStatusChanged {
             id: 5,
             current: Column::Done,
@@ -129,7 +142,12 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("acceptance_unmet", 2),
             ("task_not_draft", 1),
             ("invalid_state_for_draft", 1),
-            ("request_changed", 1),
+            ("questions_unanswered", 1),
+            ("question_answered", 1),
+            ("question_withdrawn", 1),
+            ("question_not_found", 3),
+            ("request_not_found", 3),
+            ("request_answered", 1),
             ("task_status_changed", 1),
             ("confirmation_required", 1),
             ("file_error", 1),

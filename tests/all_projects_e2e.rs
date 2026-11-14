@@ -185,11 +185,12 @@ fn state(home: &Path, project: &str, id: &str, run_state: &str, reason: &str) {
             home,
             project,
             &[
-                "state",
-                id,
-                run_state,
+                "qa",
+                "ask",
                 "--actor",
                 "ai",
+                "--task",
+                id,
                 "--request-json",
                 &common::decision_json(reason),
                 "--no-wait",
@@ -412,13 +413,13 @@ fn build(home: &Path) {
     // Apple's request is answered by a person in the web.
     let server = serve(home);
     let apple = snapshot_of(home, "Apple");
-    let request = task(&apple, 1)["pendingRequestId"].as_str().unwrap();
+    let question = task(&apple, 1)["openQuestionIds"][0].as_str().unwrap();
     let (status, body) = server.write(
         &format!(
-            "/api/projects/{}/tasks/1/answer",
+            "/api/projects/{}/qa/answers",
             apple["project"]["id"].as_str().unwrap()
         ),
-        &json!({ "requestId": request, "text": "Apple: use the MIT license." }),
+        &json!({ "answers": [{ "questionId": question, "text": "Apple: use the MIT license." }] }),
     );
     assert_eq!(status, 200, "{body}");
 }

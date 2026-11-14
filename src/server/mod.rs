@@ -4,7 +4,6 @@
 //! The server listens on 127.0.0.1 only and reads the shared files per request.
 
 mod acceptance;
-mod answer;
 mod api;
 pub mod assets;
 pub(crate) mod change_feed;
@@ -15,6 +14,7 @@ pub mod guard;
 mod instance;
 pub mod monitor;
 pub(crate) mod preferences;
+mod qa;
 pub mod monitor_auth {
     pub mod contracts;
     pub mod guard;

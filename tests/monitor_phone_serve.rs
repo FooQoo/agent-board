@@ -14,6 +14,8 @@
 
 #![allow(dead_code)]
 
+#[path = "support/qa.rs"]
+mod qa;
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
@@ -22,9 +24,7 @@ mod harness;
 
 use std::io::BufRead;
 
-use agent_board::domain::Actor;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use harness::*;
 use serde_json::json;
 use support::home;
@@ -58,25 +58,13 @@ fn serve_the_phone_backend_until_told_to_quit() {
     if temp.is_some() {
         let store = FileStore::open(&path.join("shared"));
         let project = store.project_by_name("monitor").unwrap().id;
-        store
-            .request_decision(
-                &project,
-                1,
-                Actor::Ai,
-                "Choose the first path",
-                vec![
-                    Choice {
-                        id: "keep".into(),
-                        label: "Keep".into(),
-                    },
-                    Choice {
-                        id: "reset".into(),
-                        label: "Reset".into(),
-                    },
-                ],
-                chrono::Utc::now(),
-            )
-            .unwrap();
+        qa::ask(
+            &store,
+            &project,
+            &[1],
+            "Choose the first path",
+            &[("keep", "Keep"), ("reset", "Reset")],
+        );
         println!("PROJECT {project}");
     }
     let s = Server::start(

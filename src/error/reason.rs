@@ -66,8 +66,23 @@ impl AgboardError {
             AgboardError::InvalidStateForDraft { id, .. } => format!(
                 "Only tasks whose agent status is idle can become drafts. #{id} is not idle."
             ),
-            AgboardError::RequestChanged => {
-                "Read the latest board before answering this request.".into()
+            AgboardError::QuestionsUnanswered { .. } => {
+                "Wait for the answers with \"agboard qa wait\", or see the questions with \"agboard qa ls --task ID\".".into()
+            }
+            AgboardError::QuestionAnswered { .. } => {
+                "The first recorded answer is kept. Compare it with the answer you have, and ask again if they differ.".into()
+            }
+            AgboardError::QuestionWithdrawn { .. } => {
+                "A withdrawn question takes no answer. Ask a new question if one is still needed.".into()
+            }
+            AgboardError::QuestionNotFound { .. } => {
+                "Run \"agboard qa ls --status all\" to see the questions of the project.".into()
+            }
+            AgboardError::RequestNotFound { .. } => {
+                "Use the request ID that \"agboard qa ask\" printed.".into()
+            }
+            AgboardError::RequestAnswered { .. } => {
+                "Every question of the request has an answer; there is nothing to withdraw.".into()
             }
             AgboardError::TaskStatusChanged { .. } => {
                 "Another change moved the task first. Check its current status and move it again."
@@ -92,7 +107,7 @@ impl AgboardError {
                 "Only formatVersion {expected} is supported, found {version}. The file is not converted."
             ),
             AgboardError::RequestChoiceUnknown { .. } => {
-                "Choose one of the choices in the pending request.".into()
+                "Choose one of the choices of the question.".into()
             }
             AgboardError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),
             AgboardError::DatabaseError { reason } => reason.clone(),

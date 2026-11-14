@@ -7,6 +7,8 @@
 
 #[path = "support/detail_lines.rs"]
 mod detail_lines;
+#[path = "support/qa.rs"]
+mod qa;
 #[path = "support/server_thread.rs"]
 mod server_thread;
 
@@ -21,7 +23,6 @@ use std::time::{Duration, Instant};
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use agent_board::file_store::watch::WatchMode;
 use agent_board::server::{ServeConfig, run_until_in};
 use chrono::{DateTime, TimeZone, Utc};
@@ -391,28 +392,16 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     store
         .move_work_task(&project, pending_task.id, Column::Doing, ctx("Start"), t(2))
         .unwrap();
-    let request = store
-        .request_decision(
-            &project,
-            pending_task.id,
-            Actor::Ai,
-            "Choose",
-            vec![
-                Choice {
-                    id: "a".into(),
-                    label: "A".into(),
-                },
-                Choice {
-                    id: "b".into(),
-                    label: "B".into(),
-                },
-            ],
-            t(3),
-        )
-        .unwrap()
-        .value
-        .pending_request_id
-        .unwrap();
+    let request = qa::ask_choices(
+        &store,
+        &project,
+        pending_task.id,
+        "Choose",
+        qa::choices(&[("a", "A"), ("b", "B")]),
+    )
+    .questions[0]
+        .id
+        .clone();
     let task_path = |id: i64| {
         home.path()
             .join("shared")
@@ -464,14 +453,8 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
         "POST",
-        &format!("/api/projects/{project}/tasks/{}/answer", pending_task.id),
-        Some(
-            &json!({
-                "requestId": request,
-                "choiceId": "a"
-            })
-            .to_string(),
-        ),
+        &format!("/api/projects/{project}/qa/answers"),
+        Some(&json!({"answers": [{"questionId": request, "choiceId": "a"}]}).to_string()),
     );
     assert_eq!(answer.status, 200, "{}", answer.body);
     let board = read_until(&server, &board_path, |board| {
@@ -756,48 +739,38 @@ fn pending_request(home: &Path, id: &ProjectId) -> String {
     let s = store(home);
     s.move_work_task(id, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
-    let result = s
-        .request_decision(
-            id,
-            2,
-            agent_board::domain::Actor::Ai,
-            "Need direction",
-            two_choices(),
-            t(5),
-        )
-        .unwrap();
-    result.value.pending_request_id.unwrap()
+    qa::ask_choices(&s, id, 2, "Need direction", two_choices()).questions[0]
+        .id
+        .clone()
 }
 
 #[test]
-fn answering_uses_the_request_of_that_project_and_a_wrong_request_changes_nothing() {
+fn answering_uses_the_questions_of_that_project_and_a_missing_question_changes_nothing() {
     let (home, a, b) = two_projects();
-    let request_a = pending_request(home.path(), &a);
-    let request_b = pending_request(home.path(), &b);
+    let question_a = pending_request(home.path(), &a);
     let before_a = snapshot_json(home.path(), &a);
     let before_b = snapshot_json(home.path(), &b);
     let server = Running::start(home.path());
 
-    // beta's request does not answer alpha's task.
-    let body = json!({"requestId": request_b, "text": "Go"}).to_string();
+    // beta has no questions: alpha's question ID does not answer anything there.
+    let body = json!({"answers": [{"questionId": question_a, "text": "Go"}]}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/tasks/2/answer"),
+        &format!("/api/projects/{b}/qa/answers"),
         Some(&body),
     );
-    assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "request_changed");
+    assert_eq!(reply.status, 404, "{}", reply.body);
+    assert_eq!(reply.code(), "question_not_found");
     assert_eq!(snapshot_json(home.path(), &a), before_a);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 
-    let body = json!({"requestId": request_a, "text": "Go"}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/tasks/2/answer"),
+        &format!("/api/projects/{a}/qa/answers"),
         Some(&body),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["agentStatus"], "idle");
+    assert_eq!(reply.json()["questions"][0]["status"], "answered");
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 }
 
@@ -917,12 +890,12 @@ fn write_routes() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
         (
             "POST",
             "/tasks/2/agent-status",
-            Some(r#"{"agentStatus":"pending","reason":"r"}"#),
+            Some(r#"{"agentStatus":"running","reason":"r"}"#),
         ),
         (
             "POST",
-            "/tasks/2/answer",
-            Some(r#"{"requestId":"x","text":"r"}"#),
+            "/qa/answers",
+            Some(r#"{"answers":[{"questionId":"Q-1","text":"r"}]}"#),
         ),
         ("DELETE", "/tasks/1", None),
     ]
@@ -1163,10 +1136,10 @@ fn changes_that_do_not_change_anything_send_nothing() {
     assert_eq!(invalid.status, 422);
     let wrong_request = server.write(
         "POST",
-        &format!("/api/projects/{a}/tasks/2/answer"),
-        Some(r#"{"requestId":"nope","text":"Go"}"#),
+        &format!("/api/projects/{a}/qa/answers"),
+        Some(r#"{"answers":[{"questionId":"Q-9","text":"Go"}]}"#),
     );
-    assert_eq!(wrong_request.status, 409);
+    assert_eq!(wrong_request.status, 404);
     assert!(events.stays_quiet(), "{}", events.received);
 }
 
@@ -1556,7 +1529,7 @@ fn put_draft_refuses_running_but_allows_pending_tasks() {
     let s = store(home.path());
     s.move_work_task(&a, 2, Column::Doing, ctx("Start"), t(3))
         .unwrap();
-    s.set_agent_status(&a, 2, RunState::Running, ctx("Go"), None, t(4))
+    s.set_agent_status(&a, 2, RunState::Running, ctx("Go"), t(4))
         .unwrap();
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
@@ -1565,15 +1538,7 @@ fn put_draft_refuses_running_but_allows_pending_tasks() {
     assert_eq!(reply.status, 409, "{}", reply.body);
     assert_eq!(reply.code(), "invalid_state_for_draft");
 
-    s.request_decision(
-        &a,
-        2,
-        agent_board::domain::Actor::Ai,
-        "Ask",
-        two_choices(),
-        t(5),
-    )
-    .unwrap();
+    qa::ask_choices(&s, &a, 2, "Ask", two_choices());
     let before_pending = snapshot_json(home.path(), &a);
     let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);

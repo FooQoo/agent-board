@@ -2,6 +2,8 @@
 
 #[path = "support/detail_lines.rs"]
 mod detail_lines;
+#[path = "support/qa.rs"]
+mod qa;
 #[path = "support/serve_process.rs"]
 mod serve_process;
 #[path = "support/server_thread.rs"]
@@ -206,20 +208,10 @@ fn board_home() -> tempfile::TempDir {
             second.id,
             RunState::Running,
             context("Inspect"),
-            None,
             t(6),
         )
         .unwrap();
-    store
-        .request_decision(
-            &main,
-            third.id,
-            agent_board::domain::Actor::Ai,
-            "Waiting for review",
-            two_choices(),
-            t(7),
-        )
-        .unwrap();
+    qa::ask_choices(&store, &main, third.id, "Waiting for review", two_choices());
     home
 }
 
@@ -611,7 +603,7 @@ fn summary_reflects_changes_made_after_the_server_started() {
 }
 
 #[test]
-fn protected_api_creates_moves_requests_and_answers_with_full_history() {
+fn protected_api_creates_moves_and_answers_questions_with_full_history() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let mut events = server.events();
@@ -640,34 +632,67 @@ fn protected_api_creates_moves_requests_and_answers_with_full_history() {
     let pending = server.send_json(
         "POST",
         &server.api("/tasks/4/agent-status"),
-        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction","choices":[{"id":"a","label":"Plan A"},{"id":"b","label":"Plan B"}]}"#,
+        r#"{"agentStatus":"pending","actor":"ai","reason":"Need direction"}"#,
         Some(&token),
     );
-    assert_eq!(pending.status, 200, "{}", pending.body);
-    let no_choices = server.send_json(
+    assert_eq!(pending.status, 422, "{}", pending.body);
+    let choices = server.send_json(
         "POST",
         &server.api("/tasks/4/agent-status"),
-        r#"{"agentStatus":"pending","actor":"ai","reason":"A question with no choices"}"#,
+        r#"{"agentStatus":"idle","actor":"ai","reason":"r","choices":[{"id":"a","label":"Plan A"}]}"#,
         Some(&token),
     );
-    assert_eq!(no_choices.status, 422, "{}", no_choices.body);
-    assert!(
-        no_choices.body.contains("2 to 10 choices"),
-        "{}",
-        no_choices.body
+    assert_eq!(choices.status, 422, "{}", choices.body);
+    let store = store_in(home.path());
+    qa::ask_choices(
+        &store,
+        &main_id(home.path()),
+        4,
+        "Need direction",
+        qa::choices(&[("a", "Plan A"), ("b", "Plan B")]),
     );
-    let request: serde_json::Value = serde_json::from_str(&pending.body).unwrap();
-    let request_id = request["task"]["pendingRequestId"].as_str().unwrap();
-    let body = serde_json::json!({"requestId":request_id,"actor":"human","text":"Proceed with A"})
-        .to_string();
-    let answered = server.send_json("POST", &server.api("/tasks/4/answer"), &body, Some(&token));
+    let body = r#"{"answers":[{"questionId":"Q-2","text":"Proceed with A"}]}"#;
+    let answered = server.send_json("POST", &server.api("/qa/answers"), body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"][3]["agentStatus"], "idle");
+
+    // Reads and withdrawal of project questions.
+    let listed = server.get(&server.api("/qa?status=answered"));
+    assert_eq!(listed.status, 200, "{}", listed.body);
+    let listed: serde_json::Value = serde_json::from_str(&listed.body).unwrap();
+    assert!(
+        listed["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|q| q["id"] == "Q-2")
+    );
+    let one = server.get(&server.api("/qa/Q-2"));
+    assert_eq!(one.status, 200, "{}", one.body);
+    assert!(one.body.contains("Proceed with A"), "{}", one.body);
+    assert_eq!(server.get(&server.api("/qa/Q-99")).status, 404);
+    let open = qa::ask_choices(
+        &store,
+        &main_id(home.path()),
+        4,
+        "Ship now?",
+        qa::choices(&[("a", "Yes"), ("b", "No")]),
+    );
+    let path = format!("/qa/requests/{}/withdraw", open.request_id);
+    let withdrawn = server.send_json(
+        "POST",
+        &server.api(&path),
+        r#"{"reason":"Decided elsewhere."}"#,
+        Some(&token),
+    );
+    assert_eq!(withdrawn.status, 200, "{}", withdrawn.body);
+    let again = server.send_json("POST", &server.api(&path), "", Some(&token));
+    assert_eq!(again.status, 200, "{}", again.body);
     let detail = server.get(&server.api("/tasks/4/detail?sections=history"));
     assert_eq!(detail.status, 200, "{}", detail.body);
-    assert_eq!(detail_lines::history(&detail.body).len(), 4);
+    assert_eq!(detail_lines::history(&detail.body).len(), 6);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 

@@ -29,6 +29,9 @@ pub enum ChangeResource {
     Epic,
     /// The project list changed: a project was created, renamed or deleted.
     Project,
+    /// The project's questions changed: one was asked, answered, withdrawn, or its references
+    /// changed. The ID is the project's; the facet is `summary`.
+    Qa,
 }
 
 /// A task ID is an integer; an epic ID and a project ID are strings.
@@ -63,7 +66,7 @@ impl Changed {
                 (change.resource, &change.id),
                 (ChangeResource::Task, ChangeId::Task(_))
                     | (
-                        ChangeResource::Epic | ChangeResource::Project,
+                        ChangeResource::Epic | ChangeResource::Project | ChangeResource::Qa,
                         ChangeId::Named(_)
                     )
             );
@@ -80,6 +83,9 @@ impl Changed {
                 let project_facet = matches!(facet, Facet::Summary | Facet::Deleted);
                 if change.resource == ChangeResource::Project && !project_facet {
                     return Some("a project change has only summary or deleted".into());
+                }
+                if change.resource == ChangeResource::Qa && *facet != Facet::Summary {
+                    return Some("a qa change has only summary".into());
                 }
                 if *facet == Facet::Request {
                     if change.resource != ChangeResource::Task {

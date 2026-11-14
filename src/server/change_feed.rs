@@ -99,6 +99,7 @@ fn contract_change(change: &projection::ResourceChange) -> Change {
             projection::Resource::Task => ChangeResource::Task,
             projection::Resource::Epic => ChangeResource::Epic,
             projection::Resource::Project => ChangeResource::Project,
+            projection::Resource::Qa => ChangeResource::Qa,
         },
         id: match &change.id {
             ResourceId::Task(id) => ChangeId::Task(*id),

@@ -52,11 +52,12 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     let running = invoke(
         home.path(),
         &[
-            "state",
-            "1",
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            "1",
             "--request-json",
             &common::decision_json("Need input"),
             "--no-wait",
@@ -67,28 +68,37 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     .get_output()
     .stdout
     .clone();
-    let pending: Value = serde_json::from_slice(&running).unwrap();
-    let request = pending["task"]["pendingRequestId"].as_str().unwrap();
-    assert_eq!(pending["task"]["agentStatus"], "pending");
-    let request_arg = format!("--request={request}");
-    let answered = invoke(
+    let registered: Value = serde_json::from_slice(&running).unwrap();
+    assert_eq!(registered["type"], "registered");
+    assert_eq!(registered["questions"][0]["id"], "Q-1");
+    let shown = invoke(home.path(), &["show", "1", "--json"])
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let shown: Value = serde_json::from_slice(&shown).unwrap();
+    assert_eq!(shown["task"]["agentStatus"], "pending");
+    invoke(
         home.path(),
         &[
-            "state",
-            "1",
-            "idle",
+            "qa",
+            "answer",
+            "Q-1",
             "--actor",
             "human",
-            "--reason",
+            "--via",
+            "chat",
+            "--text",
             "Proceed with A",
-            &request_arg,
             "--json",
         ],
     )
-    .success()
-    .get_output()
-    .stdout
-    .clone();
+    .success();
+    let answered = invoke(home.path(), &["show", "1", "--json"])
+        .success()
+        .get_output()
+        .stdout
+        .clone();
     let answered: Value = serde_json::from_slice(&answered).unwrap();
     assert_eq!(answered["task"]["agentStatus"], "idle");
     assert_eq!(answered["task"]["history"].as_array().unwrap().len(), 4);

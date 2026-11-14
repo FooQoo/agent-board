@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{Choice, HistoryRecord, PendingRequest, RequestAnswer};
+use super::{Choice, HistoryRecord, RequestAnswer};
 use crate::domain::{Assignee, Attachment, AttachmentInput, Column, RunState};
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::onboarding_model::OnboardingSample;
@@ -25,8 +25,7 @@ pub struct TaskFile {
     pub is_draft: bool,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
-    pub pending_request_id: Option<String>,
-    pub pending_request: Option<PendingRequest>,
+    /// Answers to decision requests of earlier versions. Kept as a record; never added to.
     pub request_answers: Vec<RequestAnswer>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
@@ -78,8 +77,13 @@ pub struct TaskMetadata {
     pub is_draft: bool,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
-    pub pending_request_id: Option<String>,
-    pub pending_request: Option<PendingRequest>,
+    /// The decision request of earlier versions. Read and ignored; never written again.
+    #[serde(default, skip_serializing)]
+    pub pending_request_id: Option<serde_json::Value>,
+    /// The question of that request. Read and ignored; never written again.
+    #[serde(default, skip_serializing)]
+    pub pending_request: Option<serde_json::Value>,
+    #[serde(default)]
     pub request_answers: Vec<RequestAnswer>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
@@ -109,8 +113,8 @@ impl From<&TaskFile> for TaskMetadata {
             position: task.position,
             is_draft: task.is_draft,
             archived_at: task.archived_at,
-            pending_request_id: task.pending_request_id.clone(),
-            pending_request: task.pending_request.clone(),
+            pending_request_id: None,
+            pending_request: None,
             request_answers: task.request_answers.clone(),
             created_at: task.created_at,
             updated_at: task.updated_at,
@@ -124,8 +128,13 @@ impl From<&TaskFile> for TaskMetadata {
 }
 
 impl TaskMetadata {
-    /// Join persisted metadata with validated TASK.md events for operations.
+    /// Join persisted metadata with validated TASK.md events for operations. A `pending` run
+    /// state stored by an earlier version reads as idle: waiting is derived from the questions.
     pub fn with_history(self, history: Vec<HistoryRecord>) -> TaskFile {
+        let agent_status = match self.agent_status {
+            RunState::Pending => RunState::Idle,
+            other => other,
+        };
         TaskFile {
             format_version: self.format_version,
             id: self.id,
@@ -133,12 +142,10 @@ impl TaskMetadata {
             assignee: self.assignee,
             epic_id: self.epic_id,
             task_status: self.task_status,
-            agent_status: self.agent_status,
+            agent_status,
             position: self.position,
             is_draft: self.is_draft,
             archived_at: self.archived_at,
-            pending_request_id: self.pending_request_id,
-            pending_request: self.pending_request,
             request_answers: self.request_answers,
             created_at: self.created_at,
             updated_at: self.updated_at,
@@ -152,12 +159,6 @@ impl TaskMetadata {
     }
 }
 
-/// The request currently awaiting an answer.
-pub fn current_request(task: &TaskFile) -> Option<&PendingRequest> {
-    task.pending_request_id.as_ref()?;
-    task.pending_request.as_ref()
-}
-
 /// The epic a task belongs to, resolved from the epic's own file. Renaming or
 /// recoloring the epic changes this; the task file keeps only the ID.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -168,8 +169,8 @@ pub struct TaskEpic {
     pub color: String,
 }
 
-/// A task as callers receive it: `task.json` plus `TASK.md`, with the pending
-/// question and choices resolved from workflow metadata, and the epic resolved from its file.
+/// A task as callers receive it: `task.json` plus `TASK.md`, with the epic resolved from its
+/// file and the run state derived from the questions it refers to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskView {
@@ -185,8 +186,16 @@ pub struct TaskView {
     pub epic: Option<TaskEpic>,
     pub task_status: Column,
     pub position: i64,
+    /// The run state as shown: `pending` while an AI task in Todo or Doing waits for a person.
     pub agent_status: RunState,
     pub is_draft: bool,
+    /// The question IDs in the `questions` frontmatter.
+    pub question_ids: Vec<String>,
+    /// The `questions` frontmatter cannot be read; the task then counts as waiting.
+    pub questions_error: bool,
+    /// The referenced questions that are still open, lowest number first.
+    pub open_question_ids: Vec<String>,
+    /// The request, question and choices of the first open question while the task waits.
     pub pending_request_id: Option<String>,
     pub pending_reason: Option<String>,
     pub pending_choices: Vec<Choice>,

@@ -54,8 +54,6 @@ impl FileStore {
         })?;
         task.archived_at = Some(at);
         task.agent_status = RunState::Idle;
-        task.pending_request_id = None;
-        task.pending_request = None;
         task.updated_at = at;
         if old_agent != RunState::Idle {
             task.agent_status_changed_at = at;
@@ -178,8 +176,6 @@ impl FileStore {
             })?;
             task.archived_at = Some(at);
             task.agent_status = RunState::Idle;
-            task.pending_request_id = None;
-            task.pending_request = None;
             task.updated_at = at;
             if old_agent != RunState::Idle {
                 task.agent_status_changed_at = at;

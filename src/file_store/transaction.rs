@@ -5,12 +5,14 @@
 //! journals retain the new pair. Unexpected bytes block recovery rather than
 //! overwriting a direct edit. The module never sends notifications.
 
+mod batch;
 mod journal;
 mod paths;
 mod recover;
 mod save;
 mod stage;
 
+pub use self::batch::*;
 pub use self::recover::*;
 pub use self::save::*;
 pub use self::stage::*;

@@ -9,11 +9,13 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use super::{
-    EpicProgress, EpicProjection, EpicSummaryFields, Projection, TaskProjection, TaskSummaryFields,
+    EpicProgress, EpicProjection, EpicSummaryFields, Projection, QuestionSummary, TaskProjection,
+    TaskSummaryFields,
 };
 use crate::file_store::index::hex_prefix;
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
+use crate::file_store::qa::{QuestionStatus, QuestionView};
 use crate::file_store::reader::ProjectSnapshot;
 use crate::file_store::validate::EpicId;
 
@@ -41,6 +43,8 @@ fn task_fields(task: &TaskView) -> TaskSummaryFields {
         pending_request_id: task.pending_request_id.clone(),
         pending_reason: task.pending_reason.clone(),
         pending_choices: task.pending_choices.clone(),
+        question_ids: task.question_ids.clone(),
+        open_question_ids: task.open_question_ids.clone(),
         task_status_changed_at: crate::clock::format_utc(task.task_status_changed_at),
         agent_status_changed_at: crate::clock::format_utc(task.agent_status_changed_at),
         onboarding_sample: task
@@ -123,6 +127,19 @@ fn raw_digest(files: &[std::path::PathBuf]) -> String {
     digest(&parts)
 }
 
+fn question_summary(question: &QuestionView) -> QuestionSummary {
+    let first = question.question.lines().next().unwrap_or_default();
+    QuestionSummary {
+        id: question.id.clone(),
+        request_id: question.request_id.clone(),
+        kind: question.kind,
+        title: first.chars().take(200).collect(),
+        recommended_choice_id: question.recommended_choice_id.clone(),
+        referenced_by: question.referenced_by.clone(),
+        created_at: crate::clock::format_utc(question.created_at),
+    }
+}
+
 /// Build the projection of a snapshot. `shared` is read only for the files of a task or an epic
 /// that the snapshot could not read at all.
 pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
@@ -182,7 +199,16 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         .collect();
 
     let problems = snapshot.problems.clone();
+    let questions: Vec<QuestionSummary> = snapshot
+        .questions
+        .iter()
+        .filter(|q| q.status == QuestionStatus::Open)
+        .map(question_summary)
+        .collect();
+    // Every question counts, so an answer or a withdrawal is a change of the QA.
+    let qa_hash = digest(&snapshot.questions);
     let version = digest(&(
+        &qa_hash,
         &project_id,
         &snapshot.project.name,
         tasks
@@ -220,6 +246,8 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         tasks,
         epics,
         problems,
+        questions,
+        qa_hash,
         broken_tasks,
         broken_epics,
     }

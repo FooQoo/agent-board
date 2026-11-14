@@ -80,7 +80,8 @@ impl FileStore {
                         .question_request_id
                         .clone()
                         .ok_or_else(|| invalid("The question has not been asked."))?;
-                    if self.request_answer(project, second, &request_id)?.is_none() {
+                    let (request, _) = self.request(project, &request_id)?;
+                    if request.status() != crate::file_store::qa::RequestStatus::Answered {
                         return Err(invalid("The answer is not saved yet."));
                     }
                     self.set_running(project, second, now)?;

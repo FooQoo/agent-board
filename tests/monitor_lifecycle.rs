@@ -8,6 +8,8 @@
 //! anything. A session is opened with the passcode of the start, as the phone's
 //! page does.
 
+#[path = "support/qa.rs"]
+mod qa;
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
@@ -17,9 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use agent_board::domain::Actor;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use serde_json::{Value, json};
 use support::home;
 
@@ -34,25 +34,13 @@ fn fixture() -> tempfile::TempDir {
     let home = home();
     let store = FileStore::open(&home.path().join("shared"));
     let project = store.project_by_name("monitor").unwrap().id;
-    store
-        .request_decision(
-            &project,
-            1,
-            Actor::Ai,
-            "Choose the first path",
-            vec![
-                Choice {
-                    id: "keep".into(),
-                    label: "Keep".into(),
-                },
-                Choice {
-                    id: "reset".into(),
-                    label: "Reset".into(),
-                },
-            ],
-            chrono::Utc::now(),
-        )
-        .unwrap();
+    qa::ask(
+        &store,
+        &project,
+        &[1],
+        "Choose the first path",
+        &[("keep", "Keep"), ("reset", "Reset")],
+    );
     home
 }
 
@@ -197,7 +185,7 @@ impl Tunnel {
             .unwrap()
             .iter()
             .find(|task| task["id"] == 1)
-            .unwrap()["pendingRequestId"]
+            .unwrap()["openQuestionIds"][0]
             .as_str()
             .expect("the first task still waits for an answer")
             .to_string()
@@ -206,7 +194,7 @@ impl Tunnel {
     fn answer(&self, session: &Session, origin: &str, request_id: &str) -> Reply {
         self.call(
             "POST",
-            &format!("{}/tasks/1/answer", self.base()),
+            &format!("{}/qa/answers", self.base()),
             &[
                 ("Cookie", &session.cookie),
                 ("Origin", origin),
@@ -214,7 +202,8 @@ impl Tunnel {
                 ("X-Agboard-Csrf", &session.csrf),
                 ("Content-Type", "application/json"),
             ],
-            &json!({"requestId": request_id, "choiceId": "keep", "text": "ok"}).to_string(),
+            &json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
+                .to_string(),
         )
     }
 
@@ -227,7 +216,7 @@ impl Tunnel {
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|task| task["id"] == 1 && task["pendingRequestId"].is_string())
+                .any(|task| task["id"] == 1 && task["openQuestionIds"][0].is_string())
         }
     }
 
@@ -370,8 +359,9 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
         .take_while(|c| *c != '"' && *c != '\'')
         .collect();
     let base = t.base();
-    let answer = format!("{base}/tasks/1/answer");
-    let body = json!({"requestId": request_id, "choiceId": "keep", "text": "ok"}).to_string();
+    let answer = format!("{base}/qa/answers");
+    let body = json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
+        .to_string();
     let kinds: Vec<(&str, String)> = vec![
         ("GET", "/monitor/".into()),
         ("GET", asset.clone()),

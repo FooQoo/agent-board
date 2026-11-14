@@ -1,5 +1,5 @@
 //! Lane moves and agent run states on the shared files: the rules of the
-//! state table (MODEL.md), reasons, request release on a move, and AC-6
+//! state table (MODEL.md), reasons, open questions on a move, and AC-6
 //! (a completion report stays in Doing; a Done task's text stays editable).
 
 use std::fs;
@@ -8,8 +8,10 @@ use std::path::PathBuf;
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId, RunState};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use chrono::{TimeZone, Utc};
+
+#[path = "support/qa.rs"]
+mod qa;
 
 fn now() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 4, 0, 0, 0).unwrap()
@@ -101,7 +103,6 @@ fn reporting_running_on_a_todo_task_is_refused_and_changes_nothing() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "Start"),
-            None,
             later(),
         )
         .unwrap_err();
@@ -146,7 +147,6 @@ fn running_on_a_human_task_in_doing_is_refused() {
             id,
             RunState::Running,
             ctx(Actor::Human, "x"),
-            None,
             later(),
         )
         .unwrap_err();
@@ -179,7 +179,6 @@ fn a_running_and_idle_task_in_doing_keeps_its_lane_and_records_each_reason() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "Inspecting"),
-            None,
             later(),
         )
         .unwrap();
@@ -190,7 +189,6 @@ fn a_running_and_idle_task_in_doing_keeps_its_lane_and_records_each_reason() {
             id,
             RunState::Idle,
             ctx(Actor::Ai, "Report done"),
-            None,
             later(),
         )
         .unwrap();
@@ -211,7 +209,7 @@ fn a_running_and_idle_task_in_doing_keeps_its_lane_and_records_each_reason() {
 }
 
 #[test]
-fn a_lane_move_returns_the_task_to_idle_and_releases_its_request() {
+fn a_lane_move_keeps_the_open_question_and_a_person_can_move_a_waiting_task() {
     let fx = fixture();
     let id = fx.ai_task("work");
     fx.store
@@ -223,23 +221,36 @@ fn a_lane_move_returns_the_task_to_idle_and_releases_its_request() {
             later(),
         )
         .unwrap();
-    let pending = fx
+    qa::ask(
+        &fx.store,
+        &fx.project,
+        &[id],
+        "Which way?",
+        &[("a", "Plan A"), ("b", "Plan B")],
+    );
+    let waiting = fx.store.task(&fx.project, id).unwrap();
+    assert_eq!(waiting.agent_status, RunState::Pending);
+    assert_eq!(waiting.open_question_ids, vec!["Q-1".to_string()]);
+    assert_eq!(waiting.pending_reason.as_deref(), Some("Which way?"));
+
+    let err = fx
         .store
-        .request_decision(
+        .move_work_task(
             &fx.project,
             id,
-            Actor::Ai,
-            "Which way?",
-            vec![choice("a", "Plan A"), choice("b", "Plan B")],
+            Column::Done,
+            ctx(Actor::Ai, "Finished"),
             later(),
         )
-        .unwrap();
-    assert!(pending.value.pending_request_id.is_some());
-    assert_eq!(pending.value.pending_reason.as_deref(), Some("Which way?"));
+        .unwrap_err();
+    assert!(
+        matches!(err, AgboardError::QuestionsUnanswered { .. }),
+        "{err:?}"
+    );
 
     let done = fx
         .store
-        .move_work_task(
+        .move_work_task_for_user(
             &fx.project,
             id,
             Column::Done,
@@ -248,11 +259,13 @@ fn a_lane_move_returns_the_task_to_idle_and_releases_its_request() {
         )
         .unwrap();
     assert_eq!(done.value.task_status, Column::Done);
-    assert_eq!(done.value.agent_status, RunState::Idle);
-    assert!(done.value.pending_request_id.is_none());
+    let question = fx.store.question(&fx.project, "Q-1").unwrap();
+    assert_eq!(
+        question.status,
+        agent_board::file_store::qa::QuestionStatus::Open
+    );
     let last = fx.history(id).as_array().unwrap().last().unwrap().clone();
     assert_eq!(last["reason"], "Verified");
-    assert_eq!(last.as_object().unwrap().len(), 2);
 }
 
 #[test]
@@ -320,7 +333,7 @@ fn a_draft_task_refuses_agent_moves_and_accepts_user_moves() {
 }
 
 #[test]
-fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
+fn running_is_refused_while_a_referenced_question_is_open() {
     let fx = fixture();
     let id = fx.ai_task("work");
     fx.store
@@ -332,37 +345,46 @@ fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
             later(),
         )
         .unwrap();
-    let pending = fx
+    qa::ask(
+        &fx.store,
+        &fx.project,
+        &[id],
+        "Question",
+        &[("a", "Plan A"), ("b", "Plan B")],
+    );
+    let before = fx.bytes(id);
+    let err = fx
         .store
-        .request_decision(
+        .set_agent_status(
             &fx.project,
             id,
-            Actor::Ai,
-            "Question",
-            vec![choice("a", "Plan A"), choice("b", "Plan B")],
+            RunState::Running,
+            ctx(Actor::Ai, "Resume"),
             later(),
         )
-        .unwrap();
-    let request = pending.value.pending_request_id.unwrap();
+        .unwrap_err();
+    assert!(
+        matches!(err, AgboardError::QuestionsUnanswered { .. }),
+        "{err:?}"
+    );
+    assert_eq!(fx.bytes(id), before);
 
-    for expected in [None, Some("ffffffffffffffffffffffffffffffff")] {
-        let err = fx
-            .store
-            .set_agent_status(
-                &fx.project,
-                id,
-                RunState::Running,
-                ctx(Actor::Ai, "Resume"),
-                expected,
-                later(),
-            )
-            .unwrap_err();
-        assert!(
-            matches!(err, AgboardError::RequestChanged),
-            "{expected:?}: {err:?}"
-        );
-    }
+    let pending = fx
+        .store
+        .set_agent_status(
+            &fx.project,
+            id,
+            RunState::Pending,
+            ctx(Actor::Ai, "Wait"),
+            later(),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(pending, AgboardError::InvalidValue { .. }),
+        "{pending:?}"
+    );
 
+    qa::answer(&fx.store, &fx.project, "Q-1", Some("a"), None);
     let resumed = fx
         .store
         .set_agent_status(
@@ -370,12 +392,10 @@ fn a_stale_or_missing_request_id_is_refused_when_leaving_pending() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "Resume"),
-            Some(&request),
             later(),
         )
         .unwrap();
     assert_eq!(resumed.value.agent_status, RunState::Running);
-    assert!(resumed.value.pending_request_id.is_none());
 }
 
 #[test]
@@ -397,7 +417,6 @@ fn a_repeated_state_is_not_a_change_even_with_another_reason() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "first"),
-            None,
             later(),
         )
         .unwrap();
@@ -409,7 +428,6 @@ fn a_repeated_state_is_not_a_change_even_with_another_reason() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "second"),
-            None,
             later(),
         )
         .unwrap();
@@ -437,7 +455,6 @@ fn a_blank_reason_generates_a_state_aware_default() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "   "),
-            None,
             later(),
         )
         .unwrap();
@@ -520,7 +537,6 @@ fn running_on_a_done_task_is_refused_by_the_state_table() {
             id,
             RunState::Running,
             ctx(Actor::Ai, "x"),
-            None,
             later(),
         )
         .unwrap_err();
@@ -528,11 +544,4 @@ fn running_on_a_done_task_is_refused_by_the_state_table() {
         matches!(err, AgboardError::TaskIsDone { id: done } if done == id),
         "{err:?}"
     );
-}
-
-fn choice(id: &str, label: &str) -> Choice {
-    Choice {
-        id: id.into(),
-        label: label.into(),
-    }
 }

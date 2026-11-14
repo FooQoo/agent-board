@@ -23,6 +23,7 @@ pub mod onboarding_state;
 mod ops;
 pub mod project;
 pub mod projection;
+pub mod qa;
 pub mod reader;
 pub mod transaction;
 pub mod validate;
@@ -34,7 +35,7 @@ use std::path::{Path, PathBuf};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 use model::TaskView;
-pub use ops::Answer;
+pub use ops::{AnswerItem, AskInput, AskQuestion};
 use reader::ProjectSnapshot;
 
 /// Optional TASK.md fields applied together to the latest stored Markdown.

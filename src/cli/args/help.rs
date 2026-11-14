@@ -18,7 +18,8 @@ Commands:
   edit    Change a task's title or description
   mv      Move a task to todo, doing, or done
   history Append a work note
-  state   Report a task's run state: idle, running, or pending
+  state   Report a task's run state: idle or running
+  qa      Ask the user questions, wait for the answers, and record answers
   rm      Delete a task (humans only; asks for confirmation)
   ls      List tasks
   show    Show a task and its history
@@ -44,11 +45,12 @@ Workflow for agents:
   agboard ls --all-projects --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
-  agboard --project NAME state <id> pending --actor ai --request-json '{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}'
+  agboard --project NAME qa ask --actor ai --task <id> --json --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'
 
 Rules for agents:
-  - Move a task to doing before you report running. A task in todo can ask a decision with pending.
-  - Ask a decision with --request-json: a question and 2 to 10 choices. pending needs it.
+  - Move a task to doing before you report running.
+  - Ask the user with qa ask: 1 to 20 questions, each with 2 to 10 choices. The
+    tasks named with --task wait until the questions are answered.
   - Moving a task to todo or done resets it to idle.
   - You cannot delete tasks or projects, or replace a board. Ask a human to do it.
   - Get the shared folder from workspace --json; do not assume its location.

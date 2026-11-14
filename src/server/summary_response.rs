@@ -104,6 +104,8 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                             label: c.label.clone(),
                         })
                         .collect(),
+                    question_ids: f.question_ids.clone(),
+                    open_question_ids: f.open_question_ids.clone(),
                     task_status_changed_at: f.task_status_changed_at.clone(),
                     agent_status_changed_at: f.agent_status_changed_at.clone(),
                     onboarding_sample: f.onboarding_sample.as_ref().map(|(run_id, ordinal)| {
@@ -148,6 +150,19 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 file: p.file.clone(),
                 field: p.field.clone(),
                 reason: p.reason.clone(),
+            })
+            .collect(),
+        questions: projection
+            .questions
+            .iter()
+            .map(|q| super::contracts::summary::SummaryQuestion {
+                id: q.id.clone(),
+                request_id: q.request_id.clone(),
+                kind: q.kind,
+                title: q.title.clone(),
+                recommended_choice_id: q.recommended_choice_id.clone(),
+                referenced_by: q.referenced_by.clone(),
+                created_at: q.created_at.clone(),
             })
             .collect(),
     }

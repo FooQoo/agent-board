@@ -85,6 +85,10 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
             "/monitor/api/projects/{project_id}/epics/{epic_id}/attachments/{attachment_id}",
             get(attachments::epic_attachment).head(attachments::epic_attachment),
         )
+        .route(
+            "/monitor/api/projects/{project_id}/qa/{question_id}",
+            get(data::question),
+        )
         .route("/monitor/api/{*path}", any(not_found))
         .layer(middleware::from_fn_with_state(state.clone(), method_guard))
         .layer(middleware::from_fn_with_state(state.clone(), host_guard))
@@ -94,9 +98,8 @@ pub(crate) fn router(state: Arc<MonitorState>) -> Router {
 
 async fn method_guard(request: Request, next: Next) -> Response {
     let path = request.uri().path();
-    let monitor_answer = path.starts_with("/monitor/api/projects/")
-        && path.ends_with("/answer")
-        && matches!(*request.method(), Method::POST);
+    let monitor_answer =
+        super::write::is_answers_path(path) && matches!(*request.method(), Method::POST);
     let monitor_acceptance =
         super::write::is_acceptance_path(path) && matches!(*request.method(), Method::PUT);
     if !path.starts_with("/monitor/api/")

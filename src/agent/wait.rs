@@ -12,7 +12,6 @@ use crate::{
     error::AgboardError,
     file_store::{
         FileStore,
-        model::TaskView,
         reader::{FetchedSnapshot, ProjectSnapshot},
     },
 };
@@ -100,83 +99,6 @@ pub async fn wait_for_change(
     .await?;
     match result {
         WaitResult::Satisfied(json) => Ok(json),
-        WaitResult::DeadlineReached(_) => Err(AgboardError::WaitTimeout),
-    }
-}
-
-struct PendingSnapshot {
-    task: TaskView,
-    answered: bool,
-}
-
-struct PendingReader<'a> {
-    shared: &'a Path,
-    project_name: &'a str,
-    project_id: ProjectId,
-    task_id: i64,
-    request_id: &'a str,
-}
-
-impl WaitReader for PendingReader<'_> {
-    type Snapshot = PendingSnapshot;
-
-    fn read(&self) -> Result<Self::Snapshot, AgboardError> {
-        let store = FileStore::open(self.shared);
-        let task = store
-            .task(&self.project_id, self.task_id)
-            .map_err(|error| match error {
-                AgboardError::ProjectNotFound { .. } => AgboardError::ProjectNotFound {
-                    project: self.project_name.to_string(),
-                },
-                other => other,
-            })?;
-        let answered = if task.pending_request_id.as_deref() == Some(self.request_id) {
-            false
-        } else {
-            store
-                .request_answer(&self.project_id, self.task_id, self.request_id)?
-                .is_some()
-        };
-        Ok(PendingSnapshot { task, answered })
-    }
-}
-
-/// Wait for one request to be answered or withdrawn using the same event
-/// engine as cursor waits. The original request remains stored on timeout.
-pub fn wait_for_pending_resolution(
-    shared: &Path,
-    project_name: &str,
-    project_id: ProjectId,
-    task_id: i64,
-    request_id: &str,
-    timeout_secs: Option<u64>,
-) -> Result<TaskView, AgboardError> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|error| AgboardError::BoardUnavailable {
-            reason: error.to_string(),
-        })?;
-    let deadline =
-        timeout_secs.map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
-    let reader = PendingReader {
-        shared,
-        project_name,
-        project_id,
-        task_id,
-        request_id,
-    };
-    match runtime.block_on(wait_until(shared, &reader, deadline, |snapshot| {
-        if snapshot.task.pending_request_id.as_deref() == Some(request_id) {
-            return Ok(Evaluation::Continue);
-        }
-        if snapshot.answered {
-            Ok(Evaluation::Ready(snapshot.task.clone()))
-        } else {
-            Err(AgboardError::RequestChanged)
-        }
-    }))? {
-        WaitResult::Satisfied(task) => Ok(task),
         WaitResult::DeadlineReached(_) => Err(AgboardError::WaitTimeout),
     }
 }

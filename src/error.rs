@@ -99,7 +99,28 @@ pub enum AgboardError {
         id: i64,
         state: RunState,
     },
-    RequestChanged,
+    /// An agent tried to run or finish a task that waits for answers to its questions.
+    QuestionsUnanswered {
+        id: i64,
+    },
+    /// These questions were answered before; nothing was written.
+    QuestionAnswered {
+        ids: Vec<String>,
+    },
+    /// These questions belong to a withdrawn request; nothing was written.
+    QuestionWithdrawn {
+        ids: Vec<String>,
+    },
+    QuestionNotFound {
+        id: String,
+    },
+    RequestNotFound {
+        id: String,
+    },
+    /// The request has every answer, so it can no longer be withdrawn.
+    RequestAnswered {
+        id: String,
+    },
     /// A move named the status it started from, and the task is no longer there.
     TaskStatusChanged {
         id: i64,
@@ -139,7 +160,7 @@ pub enum AgboardError {
         version: String,
         expected: u32,
     },
-    /// The answer names a choice that is not part of the pending request.
+    /// The answer names a choice that is not part of the question.
     RequestChoiceUnknown {
         request_id: String,
         choice_id: String,

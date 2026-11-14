@@ -39,8 +39,13 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         AgboardError::TaskNotFound { .. }
         | AgboardError::ProjectNotFound { .. }
         | AgboardError::AttachmentNotFound { .. }
-        | AgboardError::EpicNotFound { .. } => StatusCode::NOT_FOUND,
-        AgboardError::RequestChanged
+        | AgboardError::EpicNotFound { .. }
+        | AgboardError::QuestionNotFound { .. }
+        | AgboardError::RequestNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::QuestionsUnanswered { .. }
+        | AgboardError::QuestionAnswered { .. }
+        | AgboardError::QuestionWithdrawn { .. }
+        | AgboardError::RequestAnswered { .. }
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
         | AgboardError::EpicIsDraft { .. }

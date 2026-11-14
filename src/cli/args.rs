@@ -7,6 +7,7 @@ mod epic;
 mod help;
 mod history;
 mod project;
+mod qa;
 mod task;
 mod validate;
 
@@ -16,6 +17,7 @@ pub use self::enums::*;
 pub use self::epic::*;
 pub use self::history::*;
 pub use self::project::*;
+pub use self::qa::*;
 pub use self::task::*;
 pub use self::validate::*;
 
@@ -57,10 +59,12 @@ pub enum Command {
     Edit(EditArgs),
     /// Move a task to todo, doing, or done
     Mv(MvArgs),
-    /// Report a task's run state: idle, running, or pending
+    /// Report a task's run state: idle or running
     State(StateArgs),
     /// Append a work note to a task history
     History(HistoryArgs),
+    /// Ask the user questions, wait for the answers, and record answers
+    Qa(QaArgs),
     /// Delete a task (humans only; asks for confirmation)
     Rm(RmArgs),
     /// List tasks
@@ -110,6 +114,7 @@ impl Command {
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
             Command::History(_) => "history",
+            Command::Qa(_) => "qa",
             Command::Rm(_) => "rm",
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
@@ -129,7 +134,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 22] = [
+pub const SUBCOMMAND_NAMES: [&str; 23] = [
     "project",
     "init",
     "add",
@@ -137,6 +142,7 @@ pub const SUBCOMMAND_NAMES: [&str; 22] = [
     "mv",
     "state",
     "history",
+    "qa",
     "rm",
     "ls",
     "show",

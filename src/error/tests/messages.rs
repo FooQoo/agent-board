@@ -57,8 +57,28 @@ fn messages_and_reasons_follow_the_design_table() {
             "Only tasks whose agent status is idle can become drafts. #6 is not idle.",
         ),
         (
-            "the pending request has changed.",
-            "Read the latest board before answering this request.",
+            "task #5 waits for answers to its questions.",
+            "Wait for the answers with \"agboard qa wait\", or see the questions with \"agboard qa ls --task ID\".",
+        ),
+        (
+            "Q-1 already answered.",
+            "The first recorded answer is kept. Compare it with the answer you have, and ask again if they differ.",
+        ),
+        (
+            "Q-2 withdrawn.",
+            "A withdrawn question takes no answer. Ask a new question if one is still needed.",
+        ),
+        (
+            "question Q-3 not found.",
+            "Run \"agboard qa ls --status all\" to see the questions of the project.",
+        ),
+        (
+            "request 0123456789abcdef0123456789abcdef not found.",
+            "Use the request ID that \"agboard qa ask\" printed.",
+        ),
+        (
+            "request 0123456789abcdef0123456789abcdef is already answered.",
+            "Every question of the request has an answer; there is nothing to withdraw.",
         ),
         (
             "task #5 is now done.",
@@ -85,8 +105,8 @@ fn messages_and_reasons_follow_the_design_table() {
             "Only formatVersion 1 is supported, found 2. The file is not converted.",
         ),
         (
-            "the choice is not part of this request.",
-            "Choose one of the choices in the pending request.",
+            "the choice is not part of this question.",
+            "Choose one of the choices of the question.",
         ),
         (
             "the board is busy.",

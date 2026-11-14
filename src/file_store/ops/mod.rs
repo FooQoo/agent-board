@@ -7,18 +7,20 @@
 //! do not take the lock.
 
 mod agent;
-mod answer;
+
 mod attachment;
 mod completion;
 mod epic;
 mod history_event;
 mod onboarding;
+mod qa;
 mod request_create;
 mod save;
 mod task;
 mod text;
 
-pub use answer::Answer;
+use qa::task_waits;
+pub use qa::{AnswerItem, AskInput, AskQuestion};
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};
 use self::save::{save_task, save_task_with_markdown};

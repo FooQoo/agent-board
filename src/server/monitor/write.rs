@@ -1,4 +1,4 @@
-//! The monitor's narrowly scoped write surface: answer a pending question,
+//! The monitor's narrowly scoped write surface: answer questions,
 //! and check or uncheck an acceptance condition.
 
 use std::sync::Arc;
@@ -12,9 +12,9 @@ use axum::routing::get;
 
 use crate::server::AppState;
 use crate::server::acceptance::{AcceptanceInput, set_project_task_acceptance};
-use crate::server::answer::{AnswerInput, answer_project_task};
 use crate::server::guard::{self, BoardWriteGuard};
 use crate::server::monitor::assets;
+use crate::server::qa::{AnswersInput, answer_questions};
 use crate::server::request::ApiJson;
 use crate::server::response::{forbidden, page_out_of_date};
 
@@ -30,7 +30,7 @@ pub(crate) fn router(app: Arc<AppState>, guard: BoardWriteGuard) -> Router {
         .route("/monitor", get(redirect_monitor).head(redirect_monitor))
         .route("/monitor/", get(index).head(index))
         .route(
-            "/monitor/api/projects/{project_id}/tasks/{id}/answer",
+            "/monitor/api/projects/{project_id}/qa/answers",
             axum::routing::post(answer),
         )
         .route(
@@ -70,10 +70,10 @@ async fn index(State(state): State<Arc<WriteState>>) -> Response {
 async fn answer(
     headers: HeaderMap,
     State(state): State<Arc<WriteState>>,
-    Path((project_id, id)): Path<(String, String)>,
-    ApiJson(input): ApiJson<AnswerInput>,
+    Path(project_id): Path<String>,
+    ApiJson(input): ApiJson<AnswersInput>,
 ) -> Response {
-    answer_project_task(headers, state.app.clone(), project_id, id, input).await
+    answer_questions(headers, state.app.clone(), project_id, input).await
 }
 
 async fn acceptance(
@@ -135,7 +135,7 @@ async fn write_guard(
         };
     }
     let page_path = matches!(path, "/monitor" | "/monitor/");
-    let answer_path = path.starts_with("/monitor/api/projects/") && path.ends_with("/answer");
+    let answer_path = is_answers_path(path);
     let acceptance_path = is_acceptance_path(path);
     if !page_path && !answer_path && !acceptance_path {
         return next.run(request).await;
@@ -230,4 +230,13 @@ pub(crate) fn is_acceptance_path(path: &str) -> bool {
     };
     let parts: Vec<&str> = rest.split('/').collect();
     matches!(parts.as_slice(), [_, "tasks", _, "acceptance", condition] if !condition.is_empty())
+}
+
+/// `POST /monitor/api/projects/{projectId}/qa/answers`, the one answer path of the monitor.
+pub(crate) fn is_answers_path(path: &str) -> bool {
+    let Some(rest) = path.strip_prefix("/monitor/api/projects/") else {
+        return false;
+    };
+    let parts: Vec<&str> = rest.split('/').collect();
+    matches!(parts.as_slice(), [project, "qa", "answers"] if !project.is_empty())
 }

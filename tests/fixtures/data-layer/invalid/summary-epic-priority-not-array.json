@@ -24,6 +24,8 @@
       "pendingRequestId": null,
       "pendingReason": null,
       "pendingChoices": [],
+      "questionIds": [],
+      "openQuestionIds": [],
       "taskStatusChangedAt": "2026-10-22T09:57:52Z",
       "agentStatusChangedAt": "2026-10-22T09:57:53Z",
       "detailVersions": {
@@ -59,6 +61,8 @@
           "label": "WebSocket"
         }
       ],
+      "questionIds": [],
+      "openQuestionIds": [],
       "taskStatusChangedAt": "2026-10-22T09:58:00Z",
       "agentStatusChangedAt": "2026-10-22T10:01:00Z",
       "onboardingSample": {
@@ -97,5 +101,6 @@
       "field": "acceptance",
       "reason": "The list is not valid YAML."
     }
-  ]
+  ],
+  "questions": []
 }

@@ -18,6 +18,8 @@
       "pendingRequestId": null,
       "pendingReason": null,
       "pendingChoices": [],
+      "questionIds": [],
+      "openQuestionIds": [],
       "taskStatusChangedAt": "2026-10-22T09:57:52Z",
       "agentStatusChangedAt": "2026-10-22T09:57:53Z",
       "detailVersions": { "document": "1a2b3c4d5e6f7081", "history": "8091a2b3c4d5e6f7" }
@@ -35,12 +37,14 @@
       "acceptanceError": true,
       "createdAt": "2026-10-22T09:58:00Z",
       "updatedAt": "2026-10-22T10:01:00Z",
-      "pendingRequestId": "req-7",
+      "pendingRequestId": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
       "pendingReason": "Pick the transport.",
       "pendingChoices": [
         { "id": "a", "label": "NDJSON" },
         { "id": "b", "label": "WebSocket" }
       ],
+      "questionIds": ["Q-1"],
+      "openQuestionIds": ["Q-1"],
       "taskStatusChangedAt": "2026-10-22T09:58:00Z",
       "agentStatusChangedAt": "2026-10-22T10:01:00Z",
       "onboardingSample": { "runId": "run-1", "ordinal": 1 },
@@ -61,5 +65,16 @@
   ],
   "problems": [
     { "file": "tasks/9/TASK.md", "field": "acceptance", "reason": "The list is not valid YAML." }
+  ],
+  "questions": [
+    {
+      "id": "Q-1",
+      "requestId": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      "kind": "task",
+      "title": "Pick the transport.",
+      "recommendedChoiceId": "a",
+      "referencedBy": [303],
+      "createdAt": "2026-10-22T10:01:00Z"
+    }
   ]
 }

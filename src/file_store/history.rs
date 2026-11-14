@@ -19,9 +19,12 @@ pub enum ParseMode {
 pub struct ParsedTask {
     pub body: String,
     pub acceptance: Vec<AcceptanceItem>,
+    /// The question IDs the task refers to (`questions`).
+    pub questions: Vec<String>,
     pub history: Vec<HistoryRecord>,
     pub frontmatter_defects: Vec<Defect>,
     pub acceptance_defects: Vec<Defect>,
+    pub questions_defects: Vec<Defect>,
     pub history_defects: Vec<Defect>,
 }
 
@@ -31,6 +34,7 @@ impl ParsedTask {
         self.frontmatter_defects
             .iter()
             .chain(&self.acceptance_defects)
+            .chain(&self.questions_defects)
             .chain(&self.history_defects)
             .cloned()
             .collect()
@@ -51,11 +55,17 @@ pub fn parse_task(text: &str, mode: ParseMode) -> ParsedTask {
     let mut parsed = ParsedTask {
         body: acceptance.body,
         acceptance: acceptance.acceptance,
+        questions: Vec::new(),
         history: Vec::new(),
         frontmatter_defects: Vec::new(),
         acceptance_defects: Vec::new(),
+        questions_defects: Vec::new(),
         history_defects: Vec::new(),
     };
+    match frontmatter::questions_of(text) {
+        Ok(ids) => parsed.questions = ids,
+        Err(d) => parsed.questions_defects.push(d),
+    }
     for d in acceptance.defects {
         if d.field == "frontmatter" {
             parsed.frontmatter_defects.push(d);

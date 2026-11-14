@@ -13,6 +13,8 @@ pub enum Resource {
     Task,
     Epic,
     Project,
+    /// The questions of a project: asked, answered, withdrawn, or referred to differently.
+    Qa,
 }
 
 /// The ID of a changed resource: a task number, or the name of an epic or a project.

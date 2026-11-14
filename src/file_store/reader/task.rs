@@ -17,9 +17,8 @@ use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::io;
 use crate::file_store::layout;
 use crate::file_store::lock::WriteLock;
-use crate::file_store::model::{
-    EpicView, Problem, TaskEpic, TaskFile, TaskMetadata, TaskView, current_request,
-};
+use crate::file_store::model::{EpicView, Problem, TaskEpic, TaskFile, TaskMetadata, TaskView};
+use crate::file_store::qa::{self, QaIndex};
 use crate::file_store::transaction;
 use crate::file_store::validate;
 
@@ -92,6 +91,7 @@ pub(crate) fn read_task_lenient(
                 .frontmatter_defects
                 .iter()
                 .chain(&parsed.acceptance_defects)
+                .chain(&parsed.questions_defects)
                 .map(|d| Problem {
                     file: md_label.clone(),
                     field: d.field.clone(),
@@ -122,12 +122,9 @@ pub(crate) fn task_view(
     description: String,
     body_modified: Option<DateTime<Utc>>,
 ) -> TaskView {
-    let (pending_reason, pending_choices) = match current_request(&task) {
-        Some(event) => (Some(event.question.clone()), event.choices.clone()),
-        None => (None, Vec::new()),
-    };
     let updated_at = body_modified.map_or(task.updated_at, |m| m.max(task.updated_at));
     let parts = frontmatter::parse(&description);
+    let questions = frontmatter::questions_of(&description);
     TaskView {
         id: task.id,
         title: task.title,
@@ -142,9 +139,12 @@ pub(crate) fn task_view(
         position: task.position,
         agent_status: task.agent_status,
         is_draft: task.is_draft,
-        pending_request_id: task.pending_request_id,
-        pending_reason,
-        pending_choices,
+        questions_error: questions.is_err(),
+        question_ids: questions.unwrap_or_default(),
+        open_question_ids: Vec::new(),
+        pending_request_id: None,
+        pending_reason: None,
+        pending_choices: Vec::new(),
         archived_at: task.archived_at,
         attachments: task.attachments,
         created_at: task.created_at,
@@ -260,5 +260,6 @@ pub(crate) fn read_task_locked(
     let md_path = layout::task_md(&layout::task_dir(&project_dir, task_id));
     let mut view = task_view(task, body, file_time(&md_path));
     attach_epic(&mut view, &read_epics(shared, &project_dir).0);
+    qa::apply(&mut view, &QaIndex::load(shared, &project_dir)?);
     Ok(view)
 }

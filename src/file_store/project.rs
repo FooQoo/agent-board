@@ -115,6 +115,7 @@ impl FileStore {
                 created_at,
                 next_task_id: 1,
                 default_epics_seeded: false,
+                next_question_id: 1,
             };
             io::write_json(
                 &layout::project_file(&temp),
@@ -219,9 +220,9 @@ impl FileStore {
 }
 
 impl FileStore {
-    /// Empty one project's board. The ID, name, creation time and next task
-    /// number stay, so task numbers are never reused. The tasks and epics
-    /// folders are moved aside and replaced by empty ones. `changed` is false
+    /// Empty one project's board. The ID, name, creation time and the next task
+    /// and question numbers stay, so numbers are never reused. The tasks, epics
+    /// and qa folders are moved aside and replaced by empty ones. `changed` is false
     /// when there was nothing to remove.
     pub fn reset_project(&self, id: &ProjectId) -> Result<Changed<BoardMeta>, AgboardError> {
         let shared = self.shared_dir();
@@ -232,11 +233,19 @@ impl FileStore {
             next_task_id: file.next_task_id,
             created_at: file.created_at,
         };
-        let had_content = !reader::task_ids(&dir)?.is_empty()
-            || fs::read_dir(layout::epics_dir(&dir))
+        let has_entries = |folder: std::path::PathBuf| {
+            fs::read_dir(folder)
                 .map(|mut entries| entries.next().is_some())
-                .unwrap_or(false);
-        for folder in [layout::tasks_dir(&dir), layout::epics_dir(&dir)] {
+                .unwrap_or(false)
+        };
+        let had_content = !reader::task_ids(&dir)?.is_empty()
+            || has_entries(layout::epics_dir(&dir))
+            || has_entries(crate::file_store::qa::qa_dir(&dir));
+        for folder in [
+            layout::tasks_dir(&dir),
+            layout::epics_dir(&dir),
+            crate::file_store::qa::qa_dir(&dir),
+        ] {
             let label = layout::shared_label(shared, &folder);
             let trash = dir.join(format!(
                 ".deleting-{}",

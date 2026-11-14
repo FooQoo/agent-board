@@ -1,6 +1,6 @@
 //! Agent operations: lane moves and run states.
 //!
-//! A lane move returns the task to idle and releases its request. A run-state
+//! A lane move returns the task to idle; the questions a task refers to stay. A run-state
 //! change keeps the lane. A completion report is an idle state in Doing, so
 //! the task stays in Doing until the coordinator moves it.
 
@@ -9,11 +9,11 @@ use chrono::{DateTime, Utc};
 use super::super::FileStore;
 use super::super::frontmatter;
 use super::super::layout;
-use super::super::model::{Choice, PendingRequest, TaskView};
+use super::super::model::TaskView;
 use super::super::reader;
 use super::{
-    HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, new_id, save_task,
-    stamp, transition_event,
+    HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, save_task, stamp,
+    task_waits, transition_event,
 };
 use crate::domain::{Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state};
 use crate::error::AgboardError;
@@ -119,6 +119,9 @@ impl FileStore {
         }
         if ctx.actor == Actor::Ai && to == Column::Done && task.task_status != Column::Done {
             ensure_acceptance_met(shared, project, id)?;
+            if task_waits(shared, project, id)? {
+                return Err(AgboardError::QuestionsUnanswered { id });
+            }
         }
         if task.task_status == to {
             return Ok(Changed {
@@ -145,8 +148,6 @@ impl FileStore {
         task.task_status_changed_at = at;
         task.position = position;
         task.agent_status = RunState::Idle;
-        task.pending_request_id = None;
-        task.pending_request = None;
         task.updated_at = at;
         task.history.push(event);
         save_task(shared, &project_dir, &task)?;
@@ -156,50 +157,21 @@ impl FileStore {
         })
     }
 
-    /// Change a task's run state. Only an AI-owned task in Doing can run or
-    /// wait. A state that is already set is not a change, whatever the reason.
-    /// Leaving pending needs the current request ID in `expected_request`.
+    /// Change a task's run state. Only an AI-owned task in Doing can run, and an agent cannot
+    /// run a task that waits for answers. A state that is already set is not a change,
+    /// whatever the reason. Waiting is never stored: it is read from the questions.
     pub fn set_agent_status(
         &self,
         project: &ProjectId,
         id: i64,
         state: RunState,
         ctx: ChangeContext,
-        expected_request: Option<&str>,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.change_state(
-            project,
-            id,
-            state,
-            ctx.actor,
-            &ctx.reason,
-            expected_request,
-            Vec::new(),
-            now,
-        )
-    }
-
-    /// The shared body of a run-state change. A change to pending records the
-    /// reason as the question and `choices` as the options, with a new request ID.
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn change_state(
-        &self,
-        project: &ProjectId,
-        id: i64,
-        state: RunState,
-        actor: Actor,
-        reason: &str,
-        expected_request: Option<&str>,
-        choices: Vec<Choice>,
-        now: DateTime<Utc>,
-    ) -> Result<Changed<TaskView>, AgboardError> {
-        if state == RunState::Pending
-            && let Some(defect) = super::super::validate::choice_defect(&choices)
-        {
+        if state == RunState::Pending {
             return Err(AgboardError::InvalidValue {
-                field: defect.field,
-                reason: defect.reason,
+                field: "agentStatus".into(),
+                reason: "The run state is idle or running. Ask questions with qa ask.".into(),
             });
         }
         let shared = self.shared_dir();
@@ -208,63 +180,33 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        ensure_ai_task_not_done(&task, actor)?;
+        ensure_ai_task_not_done(&task, ctx.actor)?;
         if task.is_draft {
             return Err(AgboardError::TaskIsDraft { id });
         }
         check_work_state(task.assignee, task.task_status, state)?;
+        if ctx.actor == Actor::Ai && state == RunState::Running && task_waits(shared, project, id)?
+        {
+            return Err(AgboardError::QuestionsUnanswered { id });
+        }
         if task.agent_status == state {
             return Ok(Changed {
                 value: reader::read_task_locked(shared, project, id)?,
                 changed: false,
             });
         }
-        if task.agent_status == RunState::Pending
-            && expected_request != task.pending_request_id.as_deref()
-        {
-            return Err(AgboardError::RequestChanged);
-        }
-        let reason = if state == RunState::Pending {
-            super::super::validate::normalize_question(reason)?
-        } else {
-            reason.to_owned()
-        };
         let at = stamp(now);
-        let request_id = if state == RunState::Pending {
-            Some(new_id()?)
-        } else {
-            None
-        };
-        let language = self.history_language(project, &task)?;
-        let event_reason = if state == RunState::Pending {
-            let options = choices
-                .iter()
-                .map(|choice| format!("{}: {}", choice.id, choice.label))
-                .collect::<Vec<_>>()
-                .join("; ");
-            // History is drawn as Markdown, so the question stands as its own block.
-            let english = format!("Requested decision:\n\n{reason}\n\nOptions: {options}");
-            let japanese = format!("判断を依頼しました:\n\n{reason}\n\n選択肢: {options}");
-            language.text(&english, &japanese).to_owned()
-        } else {
-            reason.to_owned()
-        };
         let event = transition_event(Transition {
             language: self.history_language(project, &task)?,
             kind: HistoryKind::Agent,
-            reason: Some(&event_reason),
+            reason: Some(&ctx.reason),
             from_task: Some(task.task_status),
             to_task: task.task_status,
             from_agent: Some(task.agent_status),
             to_agent: state,
             at,
         })?;
-        task.pending_request = (state == RunState::Pending).then(|| PendingRequest {
-            question: reason.to_owned(),
-            choices,
-        });
         task.agent_status = state;
-        task.pending_request_id = request_id;
         task.agent_status_changed_at = at;
         task.updated_at = at;
         task.history.push(event);

@@ -8,6 +8,8 @@
 //! and is exercised here end to end. A passing test shows the backend's
 //! refusals, not that a real Edge forwards anything.
 
+#[path = "support/qa.rs"]
+mod qa;
 #[path = "support/mobile_monitor.rs"]
 mod support;
 
@@ -18,7 +20,6 @@ use std::time::{Duration, Instant};
 
 use agent_board::domain::{Actor, Assignee, NewTask};
 use agent_board::file_store::FileStore;
-use agent_board::file_store::model::Choice;
 use serde_json::{Value, json};
 use support::home;
 
@@ -36,25 +37,13 @@ fn fixture() -> tempfile::TempDir {
     let home = home();
     let store = FileStore::open(&home.path().join("shared"));
     let project = store.project_by_name("monitor").unwrap().id;
-    store
-        .request_decision(
-            &project,
-            1,
-            Actor::Ai,
-            "Choose the first path",
-            vec![
-                Choice {
-                    id: "keep".into(),
-                    label: "Keep".into(),
-                },
-                Choice {
-                    id: "reset".into(),
-                    label: "Reset".into(),
-                },
-            ],
-            chrono::Utc::now(),
-        )
-        .unwrap();
+    qa::ask(
+        &store,
+        &project,
+        &[1],
+        "Choose the first path",
+        &[("keep", "Keep"), ("reset", "Reset")],
+    );
     store
         .create_task(
             &project,
@@ -733,7 +722,7 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
         assert_eq!(t.call("GET", r, &[], "").status, 401, "{r}");
     }
     assert_eq!(
-        t.call("POST", &format!("{base}/tasks/1/answer"), &[], "{}")
+        t.call("POST", &format!("{base}/qa/answers"), &[], "{}")
             .status,
         401
     );
@@ -753,9 +742,7 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     let board = t.call("GET", &format!("{base}/summary"), &with, "");
     assert_eq!(board.status, 200);
     assert_eq!(board.header("cache-control").as_deref(), Some("no-store"));
-    assert!(
-        board.body.contains("Choose the first path") || board.body.contains("pendingRequestId")
-    );
+    assert!(board.body.contains("Choose the first path") && board.body.contains("openQuestionIds"));
     // An attachment that is not the task's is not found, not served.
     assert_eq!(
         t.call(
@@ -788,7 +775,7 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     for (m, p) in [
         ("POST", "/monitor/api/projects".to_string()),
         ("DELETE", format!("{base}/summary")),
-        ("PUT", format!("{base}/tasks/1/answer")),
+        ("PUT", format!("{base}/qa/answers")),
         ("PATCH", "/monitor/api/events".to_string()),
         ("POST", format!("{base}/tasks/1/move")),
         ("POST", "/monitor/".to_string()),
@@ -850,12 +837,13 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
         .unwrap()
         .iter()
         .find(|task| task["id"] == 1)
-        .unwrap()["pendingRequestId"]
+        .unwrap()["openQuestionIds"][0]
         .as_str()
         .unwrap()
         .to_string();
-    let path = format!("{base}/tasks/1/answer");
-    let body = json!({"requestId": request_id, "choiceId": "keep", "text": "ok"}).to_string();
+    let path = format!("{base}/qa/answers");
+    let body = json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
+        .to_string();
     let good = write_headers(&cookie, &csrf);
     let without = |name: &str| -> Vec<(&str, &str)> {
         good.iter()
@@ -954,7 +942,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
             .unwrap()
             .iter()
             .find(|x| x["id"] == 1)
-            .unwrap()["pendingRequestId"],
+            .unwrap()["openQuestionIds"][0],
         request_id.as_str()
     );
 
@@ -965,7 +953,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     ok.push(("X-Forwarded-Host", "evil.example"));
     let r = t.call("POST", &path, &ok, &body);
     assert_eq!(r.status, 200, "{}", r.body);
-    assert_eq!(r.json()["changed"], true);
+    assert_eq!(r.json()["questions"][0]["status"], "answered");
     let done: Value = t
         .call(
             "GET",
@@ -981,7 +969,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
         .find(|x| x["id"] == 1)
         .unwrap()
         .clone();
-    assert!(task["pendingRequestId"].is_null(), "{task}");
+    assert_eq!(task["openQuestionIds"], json!([]), "{task}");
     // The saved answer is in the shared files, through the usual path.
     let text = all_files_text(&t.home.path().join("shared"));
     assert!(text.contains("ok"));
@@ -1128,7 +1116,7 @@ fn disconnect_ends_the_session_and_leaves_no_logout_path() {
         assert_eq!(t.call("GET", &p, &[("Cookie", &cookie)], "").status, 401);
     }
     assert_eq!(
-        t.call("POST", &format!("{base}/tasks/1/answer"), &w, "{}")
+        t.call("POST", &format!("{base}/qa/answers"), &w, "{}")
             .status,
         401
     );

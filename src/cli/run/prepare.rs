@@ -1,7 +1,7 @@
 //! Resolving the target project for a command and dispatching it to its
 //! handler, for the commands that work on a board.
 
-use crate::cli::args::{Cli, Command, EpicCommand, ProjectCommand};
+use crate::cli::args::{Cli, Command, EpicCommand, ProjectCommand, QaCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -42,6 +42,10 @@ fn access(command: &Command) -> Access {
             ProjectCommand::Create(_) | ProjectCommand::Bind(_) => Access::Catalog,
             ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
         },
+        Command::Qa(args) => match args.command {
+            QaCommand::Ls(_) | QaCommand::Show(_) | QaCommand::Wait(_) => Access::ReadProject,
+            _ => Access::ChangeProject,
+        },
         Command::Init(_) => Access::ChangeOrCreateProject,
         Command::Add(_)
         | Command::Attachment(_)
@@ -65,6 +69,13 @@ pub(super) fn prepare_and_run(
     cli: &Cli,
     env: &mut Env,
 ) -> Result<(Option<Context>, Outcome), AgboardError> {
+    let mut ctx = prepare(cli, env)?;
+    let outcome = dispatch(&mut ctx, &cli.command)?;
+    Ok((Some(ctx), outcome))
+}
+
+/// Resolve the command's project and build its context.
+pub(crate) fn prepare(cli: &Cli, env: &mut Env) -> Result<Context, AgboardError> {
     // The name is normalized once. `--project` is absent only for commands
     // that work on the catalog; nothing is chosen for a command that lacks it.
     let name = match cli.project() {
@@ -91,7 +102,7 @@ pub(super) fn prepare_and_run(
         }
         None => Target::Catalog,
     };
-    let mut ctx = Context {
+    Ok(Context {
         files,
         target,
         // The clock moves into the context; a second run with the same Env
@@ -99,9 +110,7 @@ pub(super) fn prepare_and_run(
         clock: std::mem::replace(&mut env.clock, Box::new(SystemClock)),
         json: cli.json,
         interactive: false,
-    };
-    let outcome = dispatch(&mut ctx, &cli.command)?;
-    Ok((Some(ctx), outcome))
+    })
 }
 
 fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardError> {
@@ -122,6 +131,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
         Command::Hook(_)
+        | Command::Qa(_)
         | Command::Wait(_)
         | Command::Serve(_)
         | Command::Stop(_)

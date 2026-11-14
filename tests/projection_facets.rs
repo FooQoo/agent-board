@@ -3,19 +3,20 @@
 //! change set and the versions the index reports.
 
 mod common;
+#[path = "support/qa.rs"]
+mod qa;
 
 use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, ProjectId};
+use agent_board::file_store::FileStore;
 use agent_board::file_store::TaskTextParts;
 use agent_board::file_store::frontmatter::AcceptanceItem;
 use agent_board::file_store::index::{ProjectEntry, ProjectIndex};
-use agent_board::file_store::model::Choice;
 use agent_board::file_store::model::{EpicUpdate, NewEpic};
 use agent_board::file_store::projection::{ChangeSet, Facet, Projection, Resource, ResourceId};
 use agent_board::file_store::validate::EpicId;
-use agent_board::file_store::{Answer, FileStore};
 use chrono::{DateTime, TimeZone, Utc};
 
 fn at(minute: u32) -> DateTime<Utc> {
@@ -156,42 +157,36 @@ fn projection_a_status_change_is_summary_and_history_and_leaves_the_document_ver
 }
 
 #[test]
-fn projection_asking_and_answering_a_decision_add_the_request_facet() {
+fn projection_asking_and_answering_a_question_add_the_request_facet_and_a_qa_change() {
     let mut fx = Fx::new();
     fx.doing();
     fx.reload();
-    let choices = vec![
-        Choice {
-            id: "a".into(),
-            label: "Plan A".into(),
-        },
-        Choice {
-            id: "b".into(),
-            label: "Plan B".into(),
-        },
-    ];
-    let asked = fx
-        .store
-        .request_decision(&fx.project, 1, Actor::Ai, "Which plan?", choices, at(11))
-        .unwrap();
+    let project = fx.project.as_str().to_string();
+    let qa_change =
+        |sets: &[ChangeSet]| facets_of(sets, Resource::Qa, ResourceId::Named(project.clone()));
+    qa::ask(
+        &fx.store,
+        &fx.project,
+        &[1],
+        "Which plan?",
+        &[("a", "Plan A"), ("b", "Plan B")],
+    );
+    let sets = fx.reload();
     assert_eq!(
-        task_facets(&fx.reload(), 1),
+        task_facets(&sets, 1),
         Some(vec![Facet::Summary, Facet::Request, Facet::History])
     );
+    assert_eq!(qa_change(&sets), Some(vec![Facet::Summary]));
+    assert_eq!(fx.projection().questions.len(), 1);
 
-    let request = asked.value.pending_request_id.unwrap();
-    let answer = Answer {
-        actor: Actor::Human,
-        choice_id: Some("a".into()),
-        text: None,
-    };
-    fx.store
-        .answer_request(&fx.project, 1, &request, answer, at(12))
-        .unwrap();
+    qa::answer(&fx.store, &fx.project, "Q-1", Some("a"), None);
+    let sets = fx.reload();
     assert_eq!(
-        task_facets(&fx.reload(), 1),
+        task_facets(&sets, 1),
         Some(vec![Facet::Summary, Facet::Request, Facet::History])
     );
+    assert_eq!(qa_change(&sets), Some(vec![Facet::Summary]));
+    assert!(fx.projection().questions.is_empty());
 }
 
 #[test]

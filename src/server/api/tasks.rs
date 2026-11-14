@@ -1,4 +1,4 @@
-//! Task routes: create, move, reorder, the run state, and answers.
+//! Task routes: create, move, reorder, and the run state.
 
 use std::sync::Arc;
 
@@ -11,10 +11,8 @@ use super::epics::whole_text;
 use crate::domain::{Actor, Assignee, ChangeContext, Column, NewTask, RunState};
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::AcceptanceItem;
-use crate::file_store::model::Choice;
 use crate::file_store::validate::{self};
 use crate::server::AppState;
-use crate::server::answer::{AnswerInput, answer_project_task};
 use crate::server::request::ApiJson;
 use crate::server::response::{agboard_error_response, error_response, json_response};
 use crate::server::store::{parse_project_id, refresh_index, with_files, with_request_files};
@@ -65,10 +63,6 @@ pub(super) struct AgentStateInput {
     _actor: Option<serde_json::Value>,
     #[serde(default)]
     reason: String,
-    request_id: Option<String>,
-    /// The choices of a pending request; `reason` is its question.
-    #[serde(default)]
-    choices: Vec<Choice>,
 }
 
 pub(super) async fn create_task(
@@ -235,16 +229,6 @@ pub(super) async fn set_agent_status(
         );
     };
     match with_request_files(&state, &headers, move |store| {
-        if input.agent_status == RunState::Pending {
-            return store.request_decision(
-                &project_id,
-                id,
-                Actor::Human,
-                &input.reason,
-                input.choices,
-                chrono::Utc::now(),
-            );
-        }
         store.set_agent_status(
             &project_id,
             id,
@@ -253,7 +237,6 @@ pub(super) async fn set_agent_status(
                 actor: Actor::Human,
                 reason: input.reason,
             },
-            input.request_id.as_deref(),
             chrono::Utc::now(),
         )
     })
@@ -270,13 +253,4 @@ pub(super) async fn set_agent_status(
         }
         Err(error) => agboard_error_response(&error),
     }
-}
-
-pub(super) async fn answer_request(
-    headers: HeaderMap,
-    State(state): State<Arc<AppState>>,
-    Path((raw_project, raw_id)): Path<(String, String)>,
-    ApiJson(input): ApiJson<AnswerInput>,
-) -> Response {
-    answer_project_task(headers, state, raw_project, raw_id, input).await
 }

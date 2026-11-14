@@ -41,6 +41,9 @@ pub struct TaskSummaryFields {
     pub pending_request_id: Option<String>,
     pub pending_reason: Option<String>,
     pub pending_choices: Vec<Choice>,
+    /// The questions the task refers to, and those of them still open.
+    pub question_ids: Vec<String>,
+    pub open_question_ids: Vec<String>,
     pub task_status_changed_at: String,
     pub agent_status_changed_at: String,
     /// The first-run guide's sample identity: `(runId, ordinal)`.
@@ -93,6 +96,20 @@ pub struct EpicProjection {
     pub document_version: String,
 }
 
+/// An open question as the Summary lists it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuestionSummary {
+    pub id: String,
+    pub request_id: String,
+    pub kind: crate::file_store::qa::QuestionKind,
+    /// The first line of the question, up to 200 characters.
+    pub title: String,
+    pub recommended_choice_id: Option<String>,
+    pub referenced_by: Vec<i64>,
+    pub created_at: String,
+}
+
 /// What the index keeps of one project's Summary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Projection {
@@ -103,6 +120,9 @@ pub struct Projection {
     pub tasks: Vec<TaskProjection>,
     pub epics: Vec<EpicProjection>,
     pub problems: Vec<Problem>,
+    /// The open questions, in ID order, and a hash of every question's state.
+    pub questions: Vec<QuestionSummary>,
+    pub qa_hash: String,
     /// Tasks and epics that could not be read at all, with a digest of their raw files.
     broken_tasks: BTreeMap<i64, String>,
     broken_epics: BTreeMap<String, String>,

@@ -53,8 +53,9 @@ pub fn scan_ids(shared: &Path) -> Result<Vec<ProjectId>, AgboardError> {
 
 /// The content version of one project folder: 32 lowercase hexadecimal
 /// digits. It covers `project.json`, every epic's `epic.json` and `EPIC.md`,
-/// every task's `task.json` and `TASK.md`, and the names (not the contents)
-/// of the files in `assets/`. Dot-prefixed names are skipped.
+/// every task's `task.json` and `TASK.md`, every question request's
+/// `qa/<request-id>/request.json`, and the names (not the contents) of the
+/// files in `assets/`. Dot-prefixed names are skipped.
 pub fn project_version(project_dir: &Path) -> String {
     let mut items: Vec<(String, Option<String>)> = Vec::new();
     let project_file = layout::project_file(project_dir);
@@ -83,6 +84,12 @@ pub fn project_version(project_dir: &Path) -> String {
                     items.push((layout::project_label(project_dir, &path), None));
                 }
             }
+        }
+    }
+    for folder in child_folders(&super::qa::qa_dir(project_dir)) {
+        let path = super::qa::request_json(&folder);
+        if path.is_file() {
+            items.push(content_item(project_dir, &path));
         }
     }
     items.sort_by(|a, b| a.0.cmp(&b.0));
@@ -179,6 +186,19 @@ mod tests {
         assert_ne!(named, empty);
         fs::write(project.join("tasks/1/assets/a1.png"), b"two").unwrap();
         assert_eq!(project_version(&project), named);
+    }
+
+    #[test]
+    fn question_requests_count_but_staging_folders_do_not() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path().join("p");
+        fs::create_dir_all(project.join("qa/.new-1")).unwrap();
+        let empty = project_version(&project);
+        fs::write(project.join("qa/.new-1/request.json"), "{}").unwrap();
+        assert_eq!(project_version(&project), empty);
+        fs::create_dir_all(project.join("qa/r1")).unwrap();
+        fs::write(project.join("qa/r1/request.json"), "{}").unwrap();
+        assert_ne!(project_version(&project), empty);
     }
 
     #[test]

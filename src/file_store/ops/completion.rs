@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 
 use super::super::FileStore;
 use super::super::frontmatter;
+use super::super::qa::QaIndex;
 use super::super::reader;
 use super::HistoryKind;
 use super::{Transition, lane_end, lock_project, save_task, stamp, transition_event};
@@ -34,6 +35,8 @@ impl FileStore {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut changed = false;
+        // A task that waits for answers is not completed. The index is read once under the lock.
+        let index = QaIndex::load(shared, &project_dir)?;
 
         for id in reader::task_ids(&project_dir)? {
             let Ok(loaded) = reader::read_task_lenient(shared, project, id) else {
@@ -44,7 +47,7 @@ impl FileStore {
                 || task.is_draft
                 || task.archived_at.is_some()
                 || !matches!(task.task_status, Column::Todo | Column::Doing)
-                || task.agent_status == RunState::Pending
+                || index.is_waiting(&task.question_ids, task.questions_error)
                 || task.acceptance_error
                 || task.acceptance.is_empty()
                 || task.acceptance.iter().any(|item| !item.done)
@@ -68,7 +71,6 @@ impl FileStore {
                 || task.is_draft
                 || task.archived_at.is_some()
                 || !matches!(task.task_status, Column::Todo | Column::Doing)
-                || task.agent_status == RunState::Pending
             {
                 continue;
             }
@@ -94,8 +96,6 @@ impl FileStore {
             task.task_status = Column::Done;
             task.task_status_changed_at = at;
             task.agent_status = RunState::Idle;
-            task.pending_request_id = None;
-            task.pending_request = None;
             task.position = position;
             task.updated_at = at;
             task.history.push(event);

@@ -49,7 +49,20 @@ impl AgboardError {
             AgboardError::InvalidStateForDraft { id, state } => {
                 format!("cannot make #{id} a draft while it is {}.", state.as_str())
             }
-            AgboardError::RequestChanged => "the pending request has changed.".into(),
+            AgboardError::QuestionsUnanswered { id } => {
+                format!("task #{id} waits for answers to its questions.")
+            }
+            AgboardError::QuestionAnswered { ids } => {
+                format!("{} already answered.", ids.join(", "))
+            }
+            AgboardError::QuestionWithdrawn { ids } => {
+                format!("{} withdrawn.", ids.join(", "))
+            }
+            AgboardError::QuestionNotFound { id } => format!("question {id} not found."),
+            AgboardError::RequestNotFound { id } => format!("request {id} not found."),
+            AgboardError::RequestAnswered { id } => {
+                format!("request {id} is already answered.")
+            }
             AgboardError::TaskStatusChanged { id, current } => {
                 format!("task #{id} is now {}.", current.as_str())
             }
@@ -68,7 +81,7 @@ impl AgboardError {
                 format!("{file} has an unsupported format version.")
             }
             AgboardError::RequestChoiceUnknown { .. } => {
-                "the choice is not part of this request.".into()
+                "the choice is not part of this question.".into()
             }
             AgboardError::DatabaseBusy => "the board is busy.".to_string(),
             AgboardError::DatabaseError { .. } => "cannot open the board.".to_string(),
