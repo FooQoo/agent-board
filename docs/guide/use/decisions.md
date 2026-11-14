@@ -47,6 +47,14 @@ Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Sw
 
 If you close the sheet with an unsent answer, and the question is then withdrawn or the task leaves the board, the monitor lists that answer under **Unsent answers**. Nothing is sent from it. Select **Discard answer draft** to remove it.
 
+## Answer in the chat
+
+While you are talking with an agent, it shows the same question in the chat as well. Answer there in your own words, or choose an option in the agent's question tool. The agent records your answer on the board with `qa answer --via chat`, and the history notes that it came from the chat. Whichever answer is recorded first counts: if the board already has a different answer, the agent tells you and asks again. See [Questions](../automation/agents#questions) for how agents wait.
+
+## Approve a plan
+
+When an agent plans a request of several tasks, it asks approval to start with a question of the kind `start_approval`. Every task of the plan refers to it and stays Pending until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
+
 ## How an agent asks
 
 This section is for people who write or configure agents. The exchange looks like this:

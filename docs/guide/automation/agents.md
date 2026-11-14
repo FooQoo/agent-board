@@ -101,13 +101,35 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it breaks the request down before creating anything. It shows you the proposed tasks, each with its owner, scope, acceptance conditions, and order, and the epic they go in. For new work, that can be a new epic, shown with its proposed ID and name. Then it asks whether to put them on the board. It creates the cards, and any new epic, only after you say yes. Any other reply, including a request for changes, leaves the board unchanged until you agree to a revised breakdown.
+When you ask an agent for work that is more than one task, it puts a provisional plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. You can open the cards and read the plan while the agent asks about it.
 
-If the request is already a task on the board, the agent asks on that task with choices to register, revise, or cancel. If you asked in conversation and no task exists yet, it asks in the conversation. That confirmation is the only question an agent asks outside the board.
+1. **Questions and one start approval.** The agent asks what it cannot settle itself about the plan, with choices and a recommendation, together with one question that asks approval to start. The plan's tasks refer to that approval, so they show **Pending** and no agent starts them until you approve.
+2. **Revisions.** The agent changes the epic and the tasks as your answers say. If you chose to change the plan, or your answers leave something open, it asks again with a new start approval.
+3. **Work.** After you approve, the agent works through the tasks in the epic's order without asking each time.
+
+After the start, the agent calls you only when:
+
+- your intent is unclear and the reading changes the result;
+- your preference decides it, such as the look, the wording, or what comes first;
+- an action cannot be undone, such as deleting, publishing, or sending something outside;
+- the work turns out bigger than you asked for.
+
+It decides everything else itself and records each decision in the task's history. While it waits for you, it can still work on parts that do not depend on the answer.
+
+A task you put on the board yourself needs no start approval.
 
 ### Questions
 
-Apart from that confirmation, agents ask task-related questions only on the board, including clarification and approval. Each question includes choices, and `qa ask` waits for your answer, up to 10 minutes at a time; after a timeout the agent waits again for the same questions. The agent uses `--no-wait` only when you explicitly ask it to register the question and return immediately. Chat may point you to the waiting question. If you answer in the chat instead, the agent records your words as the answer with `qa answer --via chat`; it never answers a question itself. If the board is unavailable, the agent reports the problem and waits to ask there.
+Every question an agent asks is on the board, with choices, so that the record stays in one place. While you are talking with the agent, it also shows the same question in the chat, sometimes with its own question tool, such as AskUserQuestion in Claude Code. Answer wherever is easier:
+
+- **In the chat.** The agent records your words on the board as your answer with `qa answer --via chat`. It never answers a question itself.
+- **On the board or your phone.** See [Decisions](../use/decisions).
+
+The first answer recorded is the one that counts. If you answer on the board and then differently in the chat, the agent tells you and asks again. When you answered on the board while a chat question is still open, you can dismiss the chat question.
+
+The agent keeps `qa ask` running until every question is answered, up to 10 minutes at a time, and after a timeout waits again for the same questions. Claude Code waits in the background, so you can keep talking; Codex waits in the foreground and still takes your chat messages. The board never wakes an agent on its own. If an agent stopped waiting and ended its turn, it notices an answer you gave on the board the next time you write to it, so send it a short message. When nobody is in the conversation, such as while it listens for tasks, the agent asks only on the board.
+
+The agent uses `--no-wait` only when you explicitly ask it to register a question and return immediately. If the board is unavailable, it reports the problem and waits to ask there.
 
 ## Wait for changes
 
