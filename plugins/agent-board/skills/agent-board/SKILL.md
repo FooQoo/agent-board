@@ -109,9 +109,9 @@ When the user asks for work that is more than one task, such as a feature, a cha
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
 2. **Register the provisional plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner, plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Start none of the tasks.
-3. **Ask the plan questions.** Ask what you cannot settle yourself in one `qa ask` request of `plan` questions (section 7), each with choices and a recommendation. List every AI task of the plan in their `tasks`, so the plan stays Pending while you ask; when the request came from a board task, add that task too. With no plan questions, go to step 5.
+3. **Ask the plan questions.** Ask what you cannot settle yourself in one `qa ask` request of `plan` questions (section 7), each with choices and a recommendation. List every AI task of the plan in their `tasks`: a task that refers to a `plan` question stays Pending until it also refers to an approved start approval, even after the plan questions are answered. When the request came from a board task, add that task too. With no plan questions, go to step 5.
 4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. If the answers leave something open, ask more `plan` questions the same way.
-5. **Ask one start approval.** Right after revising, before anything else, ask one `start_approval` question that shows the revised plan, linked to the same tasks. They stay Pending until it is approved.
+5. **Ask one start approval.** Ask one `start_approval` question that shows the revised plan, linked to the same tasks. They stay Pending until it is approved.
 
    ```json
    { "questions": [ { "kind": "start_approval", "question": "Start this plan?\n\n- #21 …\n- #22 …",

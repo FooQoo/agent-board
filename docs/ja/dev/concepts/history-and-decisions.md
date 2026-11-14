@@ -19,7 +19,7 @@
 
 ### 人の判断待ち
 
-タスクが人の判断待ちになるのは、参照している質問に`open`のものがあるとき、参照している`start_approval`の質問が`approvingChoiceIds`にない選択肢で答えられたとき、参照を確かめられないとき（`request.json`が壊れている、またはfrontmatterの`questions`が壊れている）です。取り下げた質問では待ちになりません。すべてのリクエストのファイルが読める状態で、存在しない質問を指す参照も待ちにはならず、`problems`に載せます。
+タスクが人の判断待ちになるのは、参照している質問に`open`のものがあるとき、参照している`start_approval`の質問が`approvingChoiceIds`にない選択肢で答えられたとき、取り下げていない`plan`の質問を参照しているのに、`approvingChoiceIds`にある選択肢で答えられた`start_approval`の質問を参照していないとき、参照を確かめられないとき（`request.json`が壊れている、またはfrontmatterの`questions`が壊れている）です。`plan`の規則により、計画の質問に答えたあとも、開始が承認されるまで計画のタスクは待ちのままです。取り下げた質問では待ちになりません。すべてのリクエストのファイルが読める状態で、存在しない質問を指す参照も待ちにはならず、`problems`に載せます。
 
 `task.json`に保存するのは`idle`か`running`だけです。TodoかDoingのAIタスクが判断待ちのときは、Summary、snapshot、`show`、進捗表、hookのどれも`agentStatus`を`pending`として返し、`openQuestionIds`と、IDが最も小さい未回答の質問から`pendingReason`と`pendingChoices`を返します。判断待ちの間、AIによる`state <id> running`とDoneへの移動は`questions_unanswered`で失敗します。`idle`への変更と人の移動は通します。Done、アーカイブ済み、人のタスクは保存した状態を表示し、参照は記録として残ります。
 

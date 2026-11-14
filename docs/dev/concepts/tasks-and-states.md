@@ -26,7 +26,7 @@ A task's lane says where the work is; its run state says what the agent is doing
 | human | any | idle only |
 
 - **Running** is self-reported, not liveness monitoring. It is never reset automatically, and agents do not change it just because a session started or paused.
-- **Pending** means the task refers to a project question that still waits for a person's answer; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Questions and answers](./history-and-decisions.md#questions-and-answers)).
+- **Pending** means the task refers to a project question that still waits for a person's answer, or belongs to a plan whose start is not approved yet; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Questions and answers](./history-and-decisions.md#questions-and-answers)).
 - Invalid combinations are never saved. A draft task is Idle or Pending in any lane.
 
 How operations move a task between states:

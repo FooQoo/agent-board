@@ -53,7 +53,7 @@ While you are talking with an agent, it shows the same question in the chat as w
 
 ## Approve a plan
 
-When an agent plans a request of several tasks, it first asks its questions about the plan and revises the plan. It then asks approval to start the revised plan with a question of the kind `start_approval`. Every task of the plan refers to it and stays Pending until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
+When an agent plans a request of several tasks, it first asks its questions about the plan and revises the plan. It then asks approval to start the revised plan with a question of the kind `start_approval`. Every task of the plan refers to both and stays Pending, from the first question until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
 
 ## How an agent asks
 
@@ -97,7 +97,7 @@ cat question.json | agboard --project "My project" qa ask --actor ai --task 1 --
 - `question` is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. Images from `http` or `https` addresses are shown too.
 - `choices` takes 2 to 10 options. Each `id` is 1 to 64 characters of letters, digits, `_`, or `-`, and each `label` is 1 to 200 characters.
 - `recommendedChoiceId` is optional and names the option the agent recommends.
-- `kind` is `task` unless given. `plan` marks a question asked while planning. `start_approval` asks approval to start and needs `approvingChoiceIds`, the options that count as approval. Until such a question is answered with one of them, the tasks that refer to it stay Pending.
+- `kind` is `task` unless given. `plan` marks a question asked while planning. `start_approval` asks approval to start and needs `approvingChoiceIds`, the options that count as approval. Until such a question is answered with one of them, the tasks that refer to it stay Pending. A task that refers to a `plan` question also stays Pending, even after that question is answered, until it refers to an approved `start_approval` question; a withdrawn `plan` question does not count.
 - `tasks` in a question, such as `"tasks": [421, 422]`, links that question only to those tasks.
 
 The answer note takes up to 2,000 characters.
