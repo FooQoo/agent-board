@@ -56,11 +56,14 @@ try {
       await server.open(page, `${remote}/monitor/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
       const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
-      // The monitor's card list, with the waiting card and its answer button.
-      await expect(waiting.getByRole('button', { name: answerLabel, exact: true })).toBeInViewport();
+      // The monitor's card list, under the band that lists the waiting question.
+      const band = page.getByRole('region', { name: locale === 'ja' ? '未回答の質問' : 'Unanswered questions', exact: true });
+      await expect(band.getByRole('listitem')).toHaveCount(1);
+      await expect(band).toBeInViewport();
       await settle(page);
       await page.screenshot({ path: path.join(output, `mobile-cards${suffix}.png`) });
       // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
+      await waiting.getByRole('button', { name: answerLabel, exact: true }).scrollIntoViewIfNeeded();
       await waiting.getByRole('button', { name: answerLabel, exact: true }).click();
       const sheet = page.getByRole('dialog', { name: text.titles[2], exact: true });
       await expect(sheet.getByText(text.question, { exact: true })).toBeVisible();

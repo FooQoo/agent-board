@@ -8,44 +8,58 @@ A decision is a question an agent asks when it cannot continue without you. This
 
 ## How you notice a question
 
-A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card shows an **Answer the question** button. The button reads **Continue answering** when you have typed something and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+
+Every open question of the project is also listed in the **Unanswered questions** band above the lanes, with the count in its header. Each item shows the tasks that refer to the question, or **No task**, and its title in up to two lines. An item you have answered but not sent is marked **Answered, not sent**. When there are no questions, the band keeps its place and says **No unanswered questions**. When the items do not fit, scroll the band sideways.
 
 ## Answer in the browser
 
-Select **Answer the question** on the card to open the answer dialog. The question is on the left, and your answer is on the right. Choose one of the offered options, write a note, or do both, then select **Send**. The answer is recorded, and the task stays in its current column. When the task refers to another open question, the card shows that one next; otherwise the agent state becomes Idle. The agent reads your response before it decides how to resume.
+You answer the questions one after another and send them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**.
+
+1. Open the answer dialog in one of these ways:
+   - **Answer them** in the band starts at the first question without an answer. It reads **Continue answering** once you have answered some.
+   - An item in the band opens that question.
+   - **Answer the question** on a card opens the first question of that task.
+2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**.
+3. Select **Next** to go on, or **Previous** to go back. The steps under the header show which questions you have answered; select a step to jump to it.
+4. After the last question, the **Review and send** step lists every question with your answer. Select **Change** to edit one, or **Answer** for one you skipped.
+5. Select **Send all**. The answers you gave are sent together, and the questions you skipped stay open.
 
 On a window narrower than 900 px, the question and the answer stack in one column.
 
 ![The answer dialog, with the question on the left and the options and note on the right](../../images/guide/question.png){.screenshot}
 
-The answer is saved to the history of every task that refers to the question. The question and each part of your answer appear as separate blocks there.
+Each answer is saved to the history of every task that refers to its question. The question and each part of your answer appear as separate blocks there. A task stays in its current column. When none of its questions is open any more, its agent state becomes Idle, and the agent reads your response before it decides how to resume.
 
-- **Close** the dialog at any time with the close button, Escape, or a click outside it. Closing never asks for confirmation, and your input stays. Select **Continue answering** on the card to return to it.
-- Your input is kept while the page stays open. Reloading the page clears it.
-- Moving the task to Done clears whatever you typed.
+- **Close** the dialog at any time with the close button, Escape, or a click outside it. Closing never asks for confirmation, and your answers stay. Open the dialog again from the band or the card to go on, or select **Review and send** in the band.
+- While you have answers that are not sent, you cannot switch to another project. Send them, or clear them with **Clear**, first.
+- Your answers are kept while the page stays open. Reloading the page clears them.
 - A question has no expiry. It stays open until it is answered or the agent withdraws it. Moving or archiving the task does not withdraw it.
 
-### If the question changes
+### If a question is answered elsewhere or withdrawn
 
-If the question you are answering is answered somewhere else, for example in the chat, or the card moves on to another question while the dialog is open, the dialog shows **The question has changed. Review it and answer again.** The options you chose are cleared, so choose again. Your note stays.
+A question can be answered somewhere else, for example in the chat, while you are answering it. An agent can also withdraw a question it no longer needs. The dialog then marks that question:
 
-### If the question is withdrawn
+- On its step, the dialog shows **This question was withdrawn. You can no longer answer it.**, or that it was answered elsewhere. You can still read the question and your input, but you cannot change them.
+- In the review, the answer is marked as one that cannot be sent, and **Discard** removes it. **Send all** sends only the others.
 
-An agent can withdraw a question it no longer needs. The dialog then shows **This question was withdrawn. You can no longer answer it.** It keeps the question and your input so you can read them, but **Send** and **Clear** are hidden, and only **Close** remains.
+A question the agent asks while the dialog is open is added at the end of the steps.
 
 ### If sending fails
 
-The dialog keeps your input and shows **Could not save. Try again.** Try again from the dialog.
+The dialog keeps your answers and shows **Could not save. Try again.** Select **Retry**. When some of the questions were answered or withdrawn elsewhere in the meantime, nothing is sent. Those questions are marked, and sending again sends the others.
 
 ## Answer on your phone
 
-On the mobile monitor, a Pending task shows the same **Answer the question** button. Tap it to open the answer sheet, which slides up from the bottom. The question comes first, then your answer. **Send** stays at the bottom, so it is in reach as you scroll.
+On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band has one button: **Answer them**, or **Review and send** while you have answers that are not sent.
 
-![Answer sheet on the phone with the question, choices, note, and Send](../../images/mobile-question.png){.screenshot .screenshot--narrow}
+The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them.
+
+![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
 Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
 
-If you close the sheet with an unsent answer, and the question is then withdrawn or the task leaves the board, the monitor lists that answer under **Unsent answers**. Nothing is sent from it. Select **Discard answer draft** to remove it.
+If you close the sheet with an answer that is not sent, and the question is then answered elsewhere or withdrawn, the review keeps that answer, marked as one that cannot be sent. Select **Discard** to remove it.
 
 ## Answer in the chat
 
