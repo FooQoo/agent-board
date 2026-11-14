@@ -4,7 +4,7 @@ import { waitForSync } from '../helpers/ui';
 import { answerButton, answerDialog, answerNote, answerSend, openAnswer } from '../helpers/answer';
 
 // An AI card in Todo can ask a decision before the work starts. It shows as pending in Todo, answers there, and
-// returns to Todo idle; a move cancels its request.
+// returns to Todo idle. A move keeps the question open; withdrawing it is what ends the wait.
 
 const details = (page: Page) => page.getByRole('complementary', { name: 'Task details' });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
@@ -44,15 +44,31 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).not.toContainText('Pending');
 });
 
-test('moving a task out of Todo cancels its pending question', async ({ page }) => {
+test('moving a task out of Todo keeps its question pending until the question is withdrawn', async ({ page }) => {
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
-  agboardOk(mainProject, askArgs(String(id), decisionJson('Still wanted?')));
+  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout) as {
+    requestId: string;
+    questions: { id: string }[];
+  };
+  const question = asked.questions[0].id;
   await page.reload();
   await waitForSync(page);
+  const card = () => lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+
+  // The lane move leaves the question open: the card waits in Doing on the same question.
   agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'human', '--reason', 'Start now.']);
   await page.reload();
   await waitForSync(page);
+  expect(show(id)).toMatchObject({ taskStatus: 'doing', agentStatus: 'pending', pendingRequestId: question });
+  await expect(card()).toContainText('Pending');
+  await expect(answerButton(page, id)).toBeVisible();
+
+  // Withdrawing the question ends the wait.
+  agboardOk(mainProject, ['qa', 'withdraw', asked.requestId, '--actor', 'ai', '--reason', 'No longer needed.']);
+  await page.reload();
+  await waitForSync(page);
   expect(show(id)).toMatchObject({ taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null });
-  await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).not.toContainText('Pending');
+  await expect(card()).not.toContainText('Pending');
+  await expect(answerButton(page, id)).toHaveCount(0);
 });

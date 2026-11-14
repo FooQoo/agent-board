@@ -21,9 +21,9 @@ function show(id: number): Shown {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
-/** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait. */
-function ask(question: string): void {
-  agboardOk(mainProject, askArgs('13', decisionJson(question)));
+/** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait; returns the request id. */
+function ask(question: string): string {
+  return JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson(question))]).stdout).requestId as string;
 }
 
 const png = Buffer.from(
@@ -105,12 +105,12 @@ test('a closed dialog keeps its input while the board keeps updating', async ({ 
 
 // DM-3: a withdrawn question stays readable, and only closing is left.
 test('a withdrawn question stays readable in the open dialog and cannot be sent', async ({ page }) => {
-  ask('Will this stay?');
+  const request = ask('Will this stay?');
   const dialog = await openAnswer(page, 13);
   await answerNote(page).fill('Typed before it was withdrawn.');
 
-  // A person's move cancels the request.
-  agboardOk(mainProject, ['mv', '13', 'todo', '--actor', 'human', '--reason', 'Back to Todo.']);
+  // The agent withdraws the request while the dialog is open.
+  agboardOk(mainProject, ['qa', 'withdraw', request, '--actor', 'ai', '--reason', 'The plan changed.']);
   await expect(dialog).toContainText('This question was withdrawn. You can no longer answer it.');
   await expect(dialog).toContainText('Will this stay?');
   await expect(answerNote(page)).toHaveValue('Typed before it was withdrawn.');

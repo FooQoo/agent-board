@@ -111,12 +111,12 @@ test('a move after an external lane change is refused, shows the current status,
   await notReloaded(page);
 });
 
-test('agboard state updates the run state and reason without reloading', async ({ page }) => {
+test('agboard state and the question it waits on update the run state without reloading', async ({ page }) => {
   const doing = lane(page, 'Doing');
   agboardOk(mainProject, ['state', '13', 'running']);
   await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
-  agboardOk(mainProject, askArgs('13', decisionJson('Waiting for a review')));
+  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Waiting for a review'))]).stdout);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   // The card offers the button only; the question is read in the dialog.
@@ -124,7 +124,8 @@ test('agboard state updates the run state and reason without reloading', async (
   await expect(await openAnswer(page, 13)).toContainText('Waiting for a review');
   await page.keyboard.press('Escape');
 
-  agboardOk(mainProject, ['state', '13', 'idle']);
+  // Pending comes from the open question, so the wait ends when the question is withdrawn.
+  agboardOk(mainProject, ['qa', 'withdraw', asked.requestId, '--actor', 'ai', '--reason', 'Review no longer needed.']);
   await expect(doing.getByRole('button', { name: /^#13 AI Idle Check the board display / })).toBeVisible();
   await expect(doing.getByText('Waiting for a review')).toHaveCount(0);
   await notReloaded(page);
