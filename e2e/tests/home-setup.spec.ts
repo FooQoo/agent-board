@@ -5,9 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test } from '../helpers/fixtures';
 import { agboardBinary, replaceFileAtomically } from '../helpers/agboard';
+import { fakeAgents } from '../helpers/fake-agents';
 
 // `agboard setup` and a CLI project that uses the shared folder it prepares, run with the real binary.
-// Every run has a cleared environment (only HOME and TZ), a temporary HOME, and no server or port.
+// Every run has a cleared environment (only HOME, TZ, and a PATH that holds only fake `codex` and `claude`
+// commands), a temporary HOME, and no server or port.
 
 const CODEX_SENTINEL = [
 	'# keep this comment',
@@ -54,7 +56,12 @@ interface SetupJson {
 	sharedDir: string;
 	dryRun: boolean;
 	restartRequired: boolean;
-	agents: { agent: string; status: string; changes: string[]; backupPath: string | null }[];
+	agents: {
+		agent: string;
+		status: string;
+		manualSteps: string[];
+		files: { path: string; status: string; changes: string[]; backupPath: string | null }[];
+	}[];
 }
 
 interface TaskJson {
@@ -70,6 +77,7 @@ let home: string;
 let dataRoot: string;
 let codexConfig: string;
 let claudeSettings: string;
+let fakeBin: string;
 
 test.beforeEach(() => {
 	root = mkdtempSync(path.join(os.tmpdir(), 'agent-board-e2e-home-setup-'));
@@ -81,20 +89,30 @@ test.beforeEach(() => {
 	mkdirSync(path.dirname(claudeSettings), { recursive: true });
 	writeFileSync(codexConfig, CODEX_SENTINEL);
 	writeFileSync(claudeSettings, CLAUDE_SENTINEL);
+	fakeBin = fakeAgents(root, agboardVersion());
 });
+
+/** The version of the binary, which the fake agents report as the installed plugin version. */
+function agboardVersion(): string {
+	const result = spawnSync(agboardBinary(), ['--version'], { env: {}, encoding: 'utf8' });
+	const version = /\d+\.\d+\.\d+\S*/.exec(result.stdout)?.[0];
+	if (!version) throw new Error(`agboard --version printed no version: ${result.stdout}${result.stderr}`);
+	return version;
+}
 
 test.afterEach(() => {
 	rmSync(root, { recursive: true, force: true });
 });
 
 /**
- * Run the binary with a cleared environment: only HOME and TZ, plus `env`. Nothing from the developer's shell
- * (AGBOARD_HOME, CODEX_HOME, CLAUDE_CONFIG_DIR) reaches the run unless the test passes it.
+ * Run the binary with a cleared environment: HOME, TZ, a PATH with only the fake agents, and no automatic
+ * server, plus `env`. Nothing from the developer's shell (AGBOARD_HOME, CODEX_HOME, CLAUDE_CONFIG_DIR) reaches
+ * the run unless the test passes it.
  */
 function cli(args: string[], options: { cwd?: string; env?: Record<string, string> } = {}): CliResult {
 	const result = spawnSync(agboardBinary(), args, {
 		cwd: options.cwd ?? home,
-		env: { HOME: home, TZ: 'UTC', ...options.env },
+		env: { HOME: home, TZ: 'UTC', PATH: fakeBin, AGBOARD_AUTOSTART: '0', ...options.env },
 		encoding: 'utf8',
 		input: '',
 	});
@@ -108,9 +126,10 @@ function cliOk(args: string[], options: { cwd?: string; env?: Record<string, str
 	return result;
 }
 
-/** `agboard --json setup`, which must succeed; `env` adds variables to the cleared environment. */
+/** `agboard --json setup --agent all`, with `--yes` unless it is a dry run; it must succeed. `env` adds variables. */
 function setup(args: string[] = [], env?: Record<string, string>): SetupJson {
-	return JSON.parse(cliOk(['--json', 'setup', ...args], { env }).stdout) as SetupJson;
+	const confirm = args.includes('--dry-run') ? [] : ['--yes'];
+	return JSON.parse(cliOk(['--json', 'setup', '--agent', 'all', ...confirm, ...args], { env }).stdout) as SetupJson;
 }
 
 /** The SHA-256 of every file under `dir`, keyed by its path relative to `dir`. */
@@ -166,11 +185,13 @@ test('the default root is <HOME>/.agent-board, AGBOARD_HOME overrides it, and an
 test('a dry run prints the planned change and leaves every file in HOME unchanged', () => {
 	const before = hashes(home);
 
-	const result = cliOk(['setup', '--dry-run']);
+	const result = cliOk(['setup', '--agent', 'all', '--dry-run']);
 
-	expect(result.stdout).toContain('Dry run: no files, folders, or backups were created.');
-	expect(result.stdout).toContain(`Codex: planned ${codexConfig}`);
-	expect(result.stdout).toContain(`Claude Code: planned ${claudeSettings}`);
+	expect(result.stdout).toContain('Dry run: nothing was installed, created, or changed.');
+	expect(result.stdout).toContain('Codex: planned');
+	expect(result.stdout).toContain('Claude Code: planned');
+	expect(result.stdout).toContain(`planned ${codexConfig}`);
+	expect(result.stdout).toContain(`planned ${claudeSettings}`);
 	expect(result.stdout).toContain(`add "${dataRoot}" to sandbox_workspace_write.writable_roots`);
 	expect(result.stdout).toContain(`add "${dataRoot}" to permissions.additionalDirectories`);
 	expect(hashes(home)).toEqual(before);
@@ -228,25 +249,29 @@ test('a second apply is a no-op: statuses unchanged, no new backup, and no file 
 	const again = setup();
 
 	expect(again.agents.map((agent) => agent.status)).toEqual(['unchanged', 'unchanged']);
-	expect(again.agents.every((agent) => agent.changes.length === 0 && agent.backupPath === null)).toBe(true);
+	for (const agent of again.agents) {
+		expect(agent.files.every((file) => file.status === 'unchanged' && file.changes.length === 0 && file.backupPath === null)).toBe(true);
+	}
 	expect(again.restartRequired).toBe(false);
 	expect(backupsOf(codexConfig)).toHaveLength(1);
 	expect(backupsOf(claudeSettings)).toHaveLength(1);
 	expect(hashes(home)).toEqual(after);
 });
 
-test('a Codex config that is not workspace-write is refused with the manual step, and neither config changes', () => {
-	writeFileSync(codexConfig, CODEX_SENTINEL.replace('sandbox_mode = "workspace-write"', 'sandbox_mode = "read-only"'));
-	const before = hashes(home);
+test('a Codex config that is not workspace-write is left as it is and named as a manual step', () => {
+	const readOnly = CODEX_SENTINEL.replace('sandbox_mode = "workspace-write"', 'sandbox_mode = "read-only"');
+	writeFileSync(codexConfig, readOnly);
 
-	const result = cli(['setup']);
+	const json = setup();
 
-	expect(result.code).not.toBe(0);
-	expect(result.stderr).toContain('sandbox_mode is "read-only"');
-	expect(result.stderr).toContain('Nothing was written');
-	expect(result.stderr).toContain('Manual setup: set sandbox_mode = "workspace-write"');
-	expect(hashes(home)).toEqual(before);
-	expect(existsSync(dataRoot)).toBe(false);
+	const [codex, claude] = json.agents;
+	expect(codex.agent).toBe('codex');
+	expect(codex.files[0]).toMatchObject({ path: codexConfig, status: 'unchanged', backupPath: null });
+	expect(codex.manualSteps).toHaveLength(1);
+	expect(codex.manualSteps[0]).toContain('Codex');
+	expect(readFileSync(codexConfig, 'utf8')).toBe(readOnly);
+	expect(backupsOf(codexConfig)).toHaveLength(0);
+	expect(claude.files[0].status).toBe('updated');
 });
 
 test('after setup, a CLI project hands out a shared folder whose TASK.md can be read, edited, and given history', () => {
