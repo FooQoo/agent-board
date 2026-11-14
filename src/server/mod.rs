@@ -43,8 +43,9 @@ use crate::error::AgboardError;
 use crate::file_store::index::ProjectIndex;
 use crate::file_store::watch::{Reloader, WatchMode};
 use crate::paths;
+pub(crate) use events::WAITING_COMMAND_HEADER;
 pub use idle::IdleStop;
-pub use launch::{Ended, Ready};
+pub use launch::{BoardPages, Ended, Ready};
 use monitor_connection::lifecycle::{MonitorConnections, MonitorEnv};
 pub use monitor_connection::lifecycle::{MonitorOptions, MonitorReady};
 

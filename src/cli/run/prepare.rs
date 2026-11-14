@@ -54,7 +54,7 @@ fn access(command: &Command) -> Access {
         | Command::State(_)
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
-        Command::Progress(_) => Access::ReadBoundProject,
+        Command::Progress(_) | Command::Open(_) => Access::ReadBoundProject,
         Command::Serve(_)
         | Command::Stop(_)
         | Command::Setup(_)
@@ -129,6 +129,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Snapshot(_) => commands::snapshot::run(ctx),
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
+        Command::Open(args) => commands::open::run(ctx, args),
         Command::Hook(_)
         | Command::Qa(_)
         | Command::Wait(_)

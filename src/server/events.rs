@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
@@ -20,6 +21,10 @@ use crate::domain::ProjectId;
 /// keep it open.
 const KEEP_ALIVE: Duration = Duration::from_secs(15);
 
+/// The header a command that waits sends with its stream request, so that its
+/// stream is not taken for a board page in a browser.
+pub(crate) const WAITING_COMMAND_HEADER: &str = "x-agboard-wait";
+
 /// `ready` right after connecting, carrying the board's build ID, then
 /// `changed` for every change, with the project, the changed resources and their facets, the
 /// server start's `instanceId` and the running number `seq`. A page whose own build ID differs
@@ -30,6 +35,7 @@ const KEEP_ALIVE: Duration = Duration::from_secs(15);
 /// behind gets `resync`, which asks it to fetch everything again.
 pub(crate) async fn events(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let feed = state.changed.clone();
     let changes = BroadcastStream::new(feed.subscribe())
@@ -45,7 +51,8 @@ pub(crate) async fn events(
     let docs = BroadcastStream::new(state.docs_changed.subscribe())
         .map(|project| Ok(docs_event(project.unwrap_or(None).as_ref())));
     // The stream is use for as long as it is open, so an automatic server keeps running.
-    let held = state.activity.open_stream();
+    let board = !headers.contains_key(WAITING_COMMAND_HEADER);
+    let held = state.activity.open_stream(board);
     let stream = tokio_stream::once(Ok(Event::default()
         .event("ready")
         .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))

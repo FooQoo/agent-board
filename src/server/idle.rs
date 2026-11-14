@@ -68,6 +68,8 @@ pub fn describe(timeout: Duration) -> String {
 struct Usage {
     last_used: Instant,
     open_streams: usize,
+    /// A board page in a browser has opened an event stream since the start.
+    board_seen: bool,
     stopping: bool,
 }
 
@@ -82,6 +84,7 @@ impl Activity {
             usage: Mutex::new(Usage {
                 last_used: Instant::now(),
                 open_streams: 0,
+                board_seen: false,
                 stopping: false,
             }),
         })
@@ -105,10 +108,19 @@ impl Activity {
         self.touch_at(Instant::now())
     }
 
-    /// Count an open event stream until the returned hold is dropped.
-    pub(crate) fn open_stream(self: &Arc<Self>) -> StreamHold {
-        self.lock().open_streams += 1;
+    /// Count an open event stream until the returned hold is dropped. `board`
+    /// says that a board page opened it, not a command that waits.
+    pub(crate) fn open_stream(self: &Arc<Self>, board: bool) -> StreamHold {
+        let mut usage = self.lock();
+        usage.open_streams += 1;
+        usage.board_seen |= board;
+        drop(usage);
         StreamHold(self.clone())
+    }
+
+    /// Whether a board page has connected since the server started.
+    pub(crate) fn board_seen(&self) -> bool {
+        self.lock().board_seen
     }
 
     /// Whether to stop at `now`. Open streams and `busy` (a mobile monitor
@@ -192,13 +204,28 @@ mod tests {
     fn an_open_stream_keeps_the_server_running_and_its_close_counts_as_use() {
         let activity = Activity::new();
         let start = Instant::now();
-        let stream = activity.open_stream();
+        let stream = activity.open_stream(true);
         let far = start + Duration::from_secs(3600);
         assert!(!activity.decide_stop(far, TIMEOUT, false));
         drop(stream);
         // The idle time counts from the close, not from the start.
         assert!(!activity.decide_stop(far + Duration::from_secs(30), TIMEOUT, false));
         assert!(activity.decide_stop(far + TIMEOUT, TIMEOUT, false));
+    }
+
+    #[test]
+    fn only_a_board_page_counts_as_a_connected_board() {
+        let activity = Activity::new();
+        assert!(!activity.board_seen());
+        let wait = activity.open_stream(false);
+        assert!(
+            !activity.board_seen(),
+            "a waiting command is not a board page"
+        );
+        drop(wait);
+        drop(activity.open_stream(true));
+        // A page that connected and left still counts: it may reconnect.
+        assert!(activity.board_seen());
     }
 
     #[test]

@@ -112,7 +112,7 @@ test.afterEach(() => {
 function cli(args: string[], options: { cwd?: string; env?: Record<string, string> } = {}): CliResult {
 	const result = spawnSync(agboardBinary(), args, {
 		cwd: options.cwd ?? home,
-		env: { HOME: home, TZ: 'UTC', PATH: fakeBin, AGBOARD_AUTOSTART: '0', ...options.env },
+		env: { HOME: home, TZ: 'UTC', PATH: fakeBin, AGBOARD_AUTOSTART: '0', AGBOARD_OPEN_BROWSER: '0', ...options.env },
 		encoding: 'utf8',
 		input: '',
 	});

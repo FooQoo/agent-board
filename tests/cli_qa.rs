@@ -39,6 +39,7 @@ impl Waiter {
     fn spawn(home: &Path, args: &[&str]) -> Waiter {
         let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")

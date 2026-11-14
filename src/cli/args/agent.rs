@@ -122,6 +122,10 @@ pub struct ServeArgs {
     /// port, and stop after a time without use. Not for people.
     #[arg(long, hide = true, conflicts_with_all = ["port", "monitor", "daemon"])]
     pub auto: bool,
+    /// With --auto: the project whose board to open in the browser once the
+    /// server is ready. Not for people.
+    #[arg(long, hide = true, value_name = "PROJECT_ID", requires = "auto")]
+    pub open_board: Option<String>,
 }
 
 impl ServeArgs {
@@ -133,3 +137,13 @@ impl ServeArgs {
 
 #[derive(Args, Debug)]
 pub struct StopArgs {}
+
+#[derive(Args, Debug)]
+#[command(
+    after_help = "The project is the one bound to the current folder unless --project names one.\nThe server is started in the background when none runs.\n\nExamples:\n  agboard open\n  agboard --project \"My project\" open\n  agboard open --print\n  agboard open --json"
+)]
+pub struct OpenArgs {
+    /// Print the board's address without opening the browser
+    #[arg(long)]
+    pub print: bool,
+}

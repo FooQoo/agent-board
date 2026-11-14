@@ -1631,6 +1631,7 @@ use std::process::{Child, Stdio};
 fn spawn_serve(home: &Path, args: &[&str]) -> ServeProcess {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .arg("serve")
         .args(args)
         .env("AGBOARD_WATCH", "poll")

@@ -7,6 +7,8 @@ import { repoRoot } from './helpers/agboard';
 // Every `agboard` the suite runs inherits this environment. A command that would start a server in the background
 // (a wait, the hook) must not do so: the specs start the servers they need, and an automatic one would try port 7420.
 process.env.AGBOARD_AUTOSTART = '0';
+// No command opens a real browser window during the suite.
+process.env.AGBOARD_OPEN_BROWSER = '0';
 
 // Each worker starts its own `agboard serve` on a port the system picks, with its own data area (see
 // helpers/fixtures.ts), so workers and separate checkouts never share a port or a board. Specs in a file still run

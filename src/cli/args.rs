@@ -83,6 +83,8 @@ pub enum Command {
     Wait(WaitArgs),
     /// Show the board in your browser
     Serve(ServeArgs),
+    /// Open the project's board in your browser, starting the server when needed
+    Open(OpenArgs),
     /// Stop the running server (the one started with serve, or serve -d)
     #[command(after_help = "Examples:\n  agboard stop\n  agboard stop --json")]
     Stop(StopArgs),
@@ -120,6 +122,7 @@ impl Command {
             Command::Hook(_) => "hook",
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
+            Command::Open(_) => "open",
             Command::Stop(_) => "stop",
             Command::Setup(_) => "setup",
             Command::Update(_) => "update",
@@ -129,7 +132,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 22] = [
+pub const SUBCOMMAND_NAMES: [&str; 23] = [
     "project",
     "init",
     "add",
@@ -145,6 +148,7 @@ pub const SUBCOMMAND_NAMES: [&str; 22] = [
     "epic",
     "snapshot",
     "serve",
+    "open",
     "stop",
     "hook",
     "wait",

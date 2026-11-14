@@ -23,6 +23,7 @@ fn agboard(home: &Path, args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("agboard")
         .unwrap()
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
@@ -255,6 +256,7 @@ fn every_project_command_refuses_a_missing_project() {
         let output = Command::cargo_bin("agboard")
             .unwrap()
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .current_dir(home.path())
@@ -398,6 +400,7 @@ fn project_rm_and_task_rm_refuse_without_a_human_terminal() {
         let output = Command::cargo_bin("agboard")
             .unwrap()
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .args(&args)
@@ -426,6 +429,7 @@ mod terminal {
             std::process::Command::new(Command::cargo_bin("agboard").unwrap().get_program());
         command
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")

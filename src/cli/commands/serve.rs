@@ -22,7 +22,9 @@ use crate::server::{self, MonitorOptions, MonitorReady, ServeConfig};
 /// or task, and changes nothing that needs a notification.
 pub fn run(json: bool, args: &ServeArgs) -> Result<(), AgboardError> {
     if args.auto {
-        return super::serve_auto::run();
+        // A value that is not a project ID opens nothing.
+        let open = args.open_board.as_deref().and_then(|id| id.parse().ok());
+        return super::serve_auto::run(open);
     }
     if args.daemon {
         return daemonize(json, args);

@@ -6,10 +6,10 @@ agboard - a shared local work board for users and agents
 
 Usage: agboard [--project NAME] [--json] <COMMAND>
 
-Most board commands name a project with --project NAME. `progress` and `hook`
-resolve the nearest registered folder binding when omitted; an explicit name
-overrides that binding. The read-only `serve` command operates on the whole
-data area.
+Most board commands name a project with --project NAME. `progress`, `open`,
+and `hook` resolve the nearest registered folder binding when omitted; an
+explicit name overrides that binding. The read-only `serve` command operates
+on the whole data area.
 
 Commands:
   project Create, list, rename, or delete projects
@@ -31,6 +31,7 @@ Commands:
   wait    Wait for a board change or the next task
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser (-d runs it in the background)
+  open    Open the project's board in your browser
   stop    Stop the running server
   setup   Install the Agent Board plugin for Codex and Claude Code
   update  Update the installed Agent Board plugin to this version

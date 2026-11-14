@@ -32,7 +32,10 @@ impl Board {
         let home = tempfile::tempdir().unwrap();
         let folder = home.path().join("project-folder");
         std::fs::create_dir_all(&folder).unwrap();
-        let mut env = vec![("AGBOARD_AUTOSTART_PORT", "0".to_string())];
+        let mut env = vec![
+            ("AGBOARD_AUTOSTART_PORT", "0".to_string()),
+            ("AGBOARD_OPEN_BROWSER", "0".to_string()),
+        ];
         env.extend(extra.iter().map(|(k, v)| (*k, v.to_string())));
         let board = Self { home, folder, env };
         let created = board.run(&[

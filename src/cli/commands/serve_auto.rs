@@ -7,19 +7,26 @@ use std::time::{Duration, Instant};
 
 use serde_json::json;
 
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
+use crate::interact::browser;
 use crate::paths::{ServeInfo, ServeMode};
 use crate::server::monitor_connection::lifecycle::MonitorEnv;
-use crate::server::{self, Ended, IdleStop, MonitorOptions, idle};
+use crate::server::{self, BoardPages, Ended, IdleStop, MonitorOptions, idle};
 
 /// How long `serve -d` waits for an automatic server to record that it is manual.
 const SWITCH_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// How long a new automatic server waits for a board page that is already
+/// open to reconnect before it opens one.
+const OPEN_GRACE: Duration = Duration::from_secs(3);
+
 /// Serve as a server another command started: prefer `AGBOARD_AUTOSTART_PORT`
 /// (7420), and stop after `AGBOARD_IDLE_TIMEOUT` without use. The startup line
 /// is JSON, for the command that waits for it; the command's lock is let go of
-/// once the server is ready.
-pub fn run() -> Result<(), AgboardError> {
+/// once the server is ready. With `open`, the project's board is opened in the
+/// browser once, unless a board page connects within a short time.
+pub fn run(open: Option<ProjectId>) -> Result<(), AgboardError> {
     let lock = crate::autostart::inherited_lock();
     let env = |name: &str| std::env::var(name).ok();
     let port = crate::autostart::preferred_port(&env);
@@ -39,6 +46,11 @@ pub fn run() -> Result<(), AgboardError> {
             let _ = writeln!(stdout, "{line}");
             let _ = stdout.flush();
             drop(lock);
+            if let Some(project) = open {
+                let url = browser::board_url(ready.addr.port(), &project);
+                let grace = open_grace(&env);
+                std::thread::spawn(move || open_unless_connected(&url, &ready.board, grace));
+            }
         },
     )?;
     if ended == Ended::Idle {
@@ -48,6 +60,31 @@ pub fn run() -> Result<(), AgboardError> {
         );
     }
     Ok(())
+}
+
+/// The wait before opening: `AGBOARD_OPEN_GRACE_MS` for the tests, up to a
+/// minute, or three seconds.
+fn open_grace(env: &dyn Fn(&str) -> Option<String>) -> Duration {
+    env("AGBOARD_OPEN_GRACE_MS")
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .filter(|ms| *ms <= 60_000)
+        .map_or(OPEN_GRACE, Duration::from_millis)
+}
+
+/// After `grace`, open `url` unless a board page has connected meanwhile. The
+/// outcome goes to `serve.log`.
+fn open_unless_connected(url: &str, board: &BoardPages, grace: Duration) {
+    std::thread::sleep(grace);
+    if board.connected() {
+        return;
+    }
+    match browser::opener(&|name| std::env::var(name).ok()) {
+        Ok(opener) => match opener.open(url) {
+            Ok(()) => eprintln!("Opened {url} in the browser."),
+            Err(reason) => eprintln!("Could not open {url} in the browser. {reason}"),
+        },
+        Err(why) => eprintln!("Did not open {url} in the browser. {}", why.reason()),
+    }
 }
 
 /// Whether `serve -d` with `port` and `monitor` asks for something the running
@@ -105,6 +142,18 @@ mod tests {
             mode: ServeMode::Auto,
             idle_timeout_seconds: Some(1800),
         }
+    }
+
+    #[test]
+    fn the_wait_before_opening_comes_from_the_environment() {
+        let with = |value: &'static str| {
+            open_grace(&move |name| (name == "AGBOARD_OPEN_GRACE_MS").then(|| value.into()))
+        };
+        assert_eq!(open_grace(&|_| None), Duration::from_secs(3));
+        assert_eq!(with("200"), Duration::from_millis(200));
+        assert_eq!(with("0"), Duration::ZERO);
+        assert_eq!(with("60001"), Duration::from_secs(3));
+        assert_eq!(with("soon"), Duration::from_secs(3));
     }
 
     #[test]

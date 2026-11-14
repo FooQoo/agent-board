@@ -10,6 +10,7 @@ fn hook_adds_the_progress_table_for_supported_events_without_mutating_data() {
     for project in ["Agent Board", "Other"] {
         let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .args(["--project", project, "init"])
@@ -23,6 +24,7 @@ fn hook_adds_the_progress_table_for_supported_events_without_mutating_data() {
         };
         let add = Command::new(env!("CARGO_BIN_EXE_agboard"))
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home.path())
             .args([
@@ -237,6 +239,7 @@ fn installed_binary_handles_hook_json_on_stdin() {
     let home = tempdir().unwrap();
     let init = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .args(["--project", "Agent Board", "init"])
@@ -245,6 +248,7 @@ fn installed_binary_handles_hook_json_on_stdin() {
     assert!(init.status.success());
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home.path())
         .args(["--project", "Agent Board", "hook", "--agent", "codex"])
@@ -289,6 +293,7 @@ fn hook_process(
     use std::io::Write;
     let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")

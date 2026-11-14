@@ -13,6 +13,7 @@ use std::path::Path;
 use std::process::{self, Child};
 use std::time::{Duration, Instant};
 
+use crate::domain::ProjectId;
 use crate::error::{AgboardError, PortHolder};
 use crate::file_store::lock::AutostartLock;
 
@@ -81,11 +82,13 @@ impl Failure {
 
 /// Start `agboard serve --auto` for `data_dir`, detached from the terminal,
 /// working in the data directory, with its output in `log` (truncated, and
-/// readable only by the user). The child holds `lock` until it is ready.
+/// readable only by the user). The child holds `lock` until it is ready, and
+/// then opens the board of `open`.
 pub(super) fn spawn_server(
     data_dir: &Path,
     log: &Path,
     lock: &AutostartLock,
+    open: Option<&ProjectId>,
 ) -> Result<Child, AgboardError> {
     let unavailable = |what: &str, e: std::io::Error| AgboardError::BoardUnavailable {
         reason: format!("{what}: {e}."),
@@ -108,6 +111,7 @@ pub(super) fn spawn_server(
     let mut command = process::Command::new(exe);
     command
         .args(["--json", "serve", "--auto"])
+        .args(open.map(|project| format!("--open-board={project}")))
         .current_dir(data_dir)
         .env(LOCK_FD, fd.to_string())
         .stdin(process::Stdio::null())

@@ -229,6 +229,11 @@ pub enum AgboardError {
     DocsOpenFailed {
         reason: String,
     },
+    /// `agboard open` could not start the program that opens the browser.
+    BrowserOpenFailed {
+        url: String,
+        reason: String,
+    },
 }
 
 mod code;

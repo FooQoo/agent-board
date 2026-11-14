@@ -12,6 +12,7 @@ use eventsource_stream::Eventsource;
 use futures_util::StreamExt;
 
 use super::wait_connect::{Connected, connect};
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
 
 /// A source that keeps reading exactly one project after its name is resolved.
@@ -19,6 +20,9 @@ pub(crate) trait WaitReader {
     type Snapshot;
 
     fn read(&self) -> Result<Self::Snapshot, AgboardError>;
+
+    /// The project followed, whose board a server started for the wait opens.
+    fn project(&self) -> &ProjectId;
 }
 
 /// Result of applying a wait's purpose-specific predicate to a snapshot.
@@ -94,7 +98,7 @@ where
     let mut retried = false;
     let response = loop {
         if crate::autostart::enabled() {
-            crate::autostart::ensure_serving(dir)?;
+            crate::autostart::ensure_serving(dir, Some(reader.project()))?;
         }
         match connect(dir, deadline).await {
             Ok(Connected::Stream(response)) => break response,
@@ -144,7 +148,11 @@ mod tests {
 
     use super::*;
 
-    struct SequenceReader(AtomicUsize);
+    fn project() -> ProjectId {
+        "0123456789abcdef0123456789abcdef".parse().unwrap()
+    }
+
+    struct SequenceReader(AtomicUsize, ProjectId);
 
     impl WaitReader for SequenceReader {
         type Snapshot = usize;
@@ -152,11 +160,15 @@ mod tests {
         fn read(&self) -> Result<Self::Snapshot, AgboardError> {
             Ok(self.0.fetch_add(1, Ordering::SeqCst))
         }
+
+        fn project(&self) -> &ProjectId {
+            &self.1
+        }
     }
 
     #[tokio::test]
     async fn an_already_satisfied_condition_does_not_need_a_server() {
-        let reader = SequenceReader(AtomicUsize::new(7));
+        let reader = SequenceReader(AtomicUsize::new(7), project());
         let result = wait_until(Path::new("/missing"), &reader, None, |snapshot| {
             Ok(Evaluation::Ready(*snapshot))
         })
@@ -169,7 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn deadline_rechecks_once_and_accepts_a_condition_arriving_at_the_boundary() {
-        let reader = SequenceReader(AtomicUsize::new(0));
+        let reader = SequenceReader(AtomicUsize::new(0), project());
         let deadline = tokio::time::Instant::now();
         let result = wait_until(Path::new("/missing"), &reader, Some(deadline), |snapshot| {
             if *snapshot == 1 {

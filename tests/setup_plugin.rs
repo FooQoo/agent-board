@@ -50,6 +50,7 @@ impl Fixture {
             .env("PATH", &self.fakes.bin)
             .env("TZ", "UTC")
             .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_OPEN_BROWSER", "0")
             .current_dir(&self.home)
             .args(args)
             .envs(extra.iter().copied())

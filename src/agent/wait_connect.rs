@@ -130,6 +130,7 @@ pub(crate) async fn connect(
         client
             .get(format!("{base}/api/events"))
             .header("Host", format!("127.0.0.1:{}", info.port))
+            .header(crate::server::WAITING_COMMAND_HEADER, "1")
             .send(),
     )
     .await;

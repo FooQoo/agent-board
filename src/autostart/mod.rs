@@ -15,6 +15,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::lock::AutostartLock;
 use crate::lifecycle::LifecycleGuard;
@@ -46,10 +47,16 @@ pub fn allow_in_this_process() {
     ALLOWED.store(true, Ordering::SeqCst);
 }
 
+/// Whether this process is the `agboard` command line, not the library
+/// embedded in a test.
+pub fn in_command_line() -> bool {
+    ALLOWED.load(Ordering::SeqCst)
+}
+
 /// Whether a command may start a server: only in the `agboard` command line,
 /// and not with `AGBOARD_AUTOSTART=0`.
 pub fn enabled() -> bool {
-    ALLOWED.load(Ordering::SeqCst)
+    in_command_line()
         && std::env::var("AGBOARD_AUTOSTART").map_or(true, |value| value.trim() != "0")
 }
 
@@ -79,8 +86,12 @@ pub fn is_paused(data_dir: &Path) -> bool {
 
 /// The running server of `data_dir`, started now if there is none. Returns
 /// once it accepts connections. One line on standard error says when a server
-/// was started; standard output stays the command's own.
-pub fn ensure_serving(data_dir: &Path) -> Result<ServeInfo, AgboardError> {
+/// was started; standard output stays the command's own. A server started now
+/// opens the board of `open` in the browser, unless a board page connects.
+pub fn ensure_serving(
+    data_dir: &Path,
+    open: Option<&ProjectId>,
+) -> Result<ServeInfo, AgboardError> {
     if let Some(info) = running(data_dir)? {
         return Ok(info);
     }
@@ -91,7 +102,7 @@ pub fn ensure_serving(data_dir: &Path) -> Result<ServeInfo, AgboardError> {
     }
     resume(data_dir);
     let log = data_dir.join("serve.log");
-    let mut child = spawn::spawn_server(data_dir, &log, &lock)?;
+    let mut child = spawn::spawn_server(data_dir, &log, &lock, open)?;
     let outcome = spawn::wait_ready(&mut child, &log, READY_TIMEOUT);
     drop(lock);
     match outcome {
@@ -132,7 +143,8 @@ pub fn ensure_serving(data_dir: &Path) -> Result<ServeInfo, AgboardError> {
 /// Start the server in the background without waiting, for the agent hook.
 /// Nothing happens when a server process is alive, after `agboard stop`, or
 /// while another command is starting one. Failures are left in `serve.log`.
-pub fn start_in_background(data_dir: &Path) {
+/// The server opens the board of `open` as [`ensure_serving`] does.
+pub fn start_in_background(data_dir: &Path, open: Option<&ProjectId>) {
     if !enabled() || is_paused(data_dir) || process_named(data_dir) {
         return;
     }
@@ -143,7 +155,7 @@ pub fn start_in_background(data_dir: &Path) {
         return;
     }
     // The child keeps the lock until it is ready, so nobody starts a second one meanwhile.
-    let _ = spawn::spawn_server(data_dir, &data_dir.join("serve.log"), &lock);
+    let _ = spawn::spawn_server(data_dir, &data_dir.join("serve.log"), &lock, open);
 }
 
 /// Whether `serve.json` names a process that is alive. Reads one file and
@@ -250,7 +262,7 @@ mod tests {
         // Only `cli::run` allows it; tests embed the library.
         assert!(!enabled());
         let dir = tempfile::tempdir().unwrap();
-        start_in_background(dir.path());
+        start_in_background(dir.path(), None);
         assert!(!dir.path().join("serve.log").exists());
     }
 

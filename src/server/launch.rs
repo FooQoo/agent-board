@@ -44,6 +44,19 @@ pub struct Ready {
     pub monitor: Option<MonitorReady>,
     /// Why an automatic server listens on another port than it preferred.
     pub notice: Option<String>,
+    /// Whether a board page has connected since the start.
+    pub board: BoardPages,
+}
+
+/// Tells whether a board page in a browser has opened an event stream since
+/// the server started. A command that waits is not a board page.
+#[derive(Clone)]
+pub struct BoardPages(Arc<Activity>);
+
+impl BoardPages {
+    pub fn connected(&self) -> bool {
+        self.0.board_seen()
+    }
 }
 
 /// How a run ended.
@@ -178,6 +191,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             addr,
             monitor: monitor_ready,
             notice,
+            board: BoardPages(activity.clone()),
         });
         let idle_stop = wait_until_unused(&state, launch.auto, auto, &serve_path, pid);
         let result = tokio::select! {

@@ -20,6 +20,7 @@ const RUN_ID: &str = "0123456789abcdef0123456789abcdef";
 fn agboard(home: &Path, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
@@ -66,6 +67,7 @@ fn project(home: &Path, name: &str) -> ProjectId {
 fn serve(home: &Path) -> (ServeProcess, String) {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")

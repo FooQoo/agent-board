@@ -16,6 +16,7 @@ use axum::response::{IntoResponse, Response};
 use super::{PathQuery, failure};
 use crate::docs::{DocsPath, DocsRoot};
 use crate::error::AgboardError;
+use crate::interact::browser::Platform;
 use crate::server::AppState;
 use crate::server::store::{indexed_view, parse_project_id};
 
@@ -50,24 +51,6 @@ pub(crate) async fn open_docs_path(
     }
 }
 
-/// The operating systems whose file manager the board can start.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Platform {
-    MacOs,
-    Windows,
-    Other,
-}
-
-impl Platform {
-    const CURRENT: Platform = if cfg!(target_os = "macos") {
-        Platform::MacOs
-    } else if cfg!(target_os = "windows") {
-        Platform::Windows
-    } else {
-        Platform::Other
-    };
-}
-
 /// The file at `raw`, checked as a read checks it: a valid path inside the
 /// Docs, no links on the way, and an existing file.
 fn checked_file(root: &DocsRoot, raw: &str) -> Result<std::path::PathBuf, AgboardError> {
@@ -81,13 +64,8 @@ fn checked_file(root: &DocsRoot, raw: &str) -> Result<std::path::PathBuf, Agboar
 
 /// The program and arguments that open `target` (a folder or a file) on
 /// `platform`. The path is one argument of its own and never goes through a shell.
-pub(super) fn open_command(platform: Platform, dir: &FsPath) -> (&'static str, Vec<&FsPath>) {
-    let program = match platform {
-        Platform::MacOs => "open",
-        Platform::Windows => "explorer",
-        Platform::Other => "xdg-open",
-    };
-    (program, vec![dir])
+fn open_command(platform: Platform, dir: &FsPath) -> (&'static str, Vec<&FsPath>) {
+    (platform.opener(), vec![dir])
 }
 
 /// Start the opener on an existing folder or file, without waiting for it to finish.

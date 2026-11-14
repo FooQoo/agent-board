@@ -43,6 +43,10 @@ impl WaitReader for RequestReader<'_> {
         let project_dir = reader::project_dir_checked(self.shared, &self.project)?;
         read_request(self.shared, &project_dir, self.request_id)
     }
+
+    fn project(&self) -> &ProjectId {
+        &self.project
+    }
 }
 
 /// Wait until request `request_id` is answered or withdrawn, or `timeout_secs` pass.

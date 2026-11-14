@@ -149,11 +149,12 @@ impl Events<'_> {
 
 /// A wait needs the server's event stream; it is checked before anything is
 /// saved. When it is not running and starting is allowed, it is started now,
-/// so a server that cannot start leaves no question behind.
+/// so a server that cannot start leaves no question behind. A server started
+/// now opens the project's board.
 fn ensure_serving(ctx: &Context) -> Result<(), AgboardError> {
     let dir = data_dir(ctx.files.shared_dir());
     if crate::autostart::enabled() {
-        return crate::autostart::ensure_serving(&dir).map(|_| ());
+        return crate::autostart::ensure_serving(&dir, Some(ctx.project_id()?)).map(|_| ());
     }
     let running =
         crate::paths::read_serve_info_in(&dir).is_some_and(|info| crate::server::is_serving(&info));

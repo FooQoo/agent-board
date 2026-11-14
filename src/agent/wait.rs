@@ -38,6 +38,10 @@ impl WaitReader for Reader<'_> {
                 },
             })
     }
+
+    fn project(&self) -> &ProjectId {
+        &self.id
+    }
 }
 
 /// Resolve `name` to its project, once, and check that the cursor belongs to it.

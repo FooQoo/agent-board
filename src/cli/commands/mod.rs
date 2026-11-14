@@ -8,6 +8,7 @@ pub mod epic;
 pub mod init;
 pub mod ls;
 pub mod mv;
+pub mod open;
 pub mod progress;
 pub mod project;
 pub mod qa;

@@ -145,6 +145,9 @@ impl AgboardError {
                 "The Docs API is still being built. Try again in a later version.".to_string()
             }
             AgboardError::DocsOpenFailed { reason } => reason.clone(),
+            AgboardError::BrowserOpenFailed { url, reason } => {
+                format!("{reason} Open {url} in your browser yourself.")
+            }
         }
     }
 }

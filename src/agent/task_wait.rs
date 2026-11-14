@@ -40,6 +40,10 @@ impl WaitReader for Reader<'_> {
         }
         Ok(snapshot)
     }
+
+    fn project(&self) -> &ProjectId {
+        &self.project_id
+    }
 }
 
 #[derive(Debug, Serialize)]

@@ -125,8 +125,8 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         }
         // An agent is working on a board: keep its server running, so that
         // automatic Done and live updates follow its direct file edits.
-        if run.board {
-            crate::autostart::start_in_background(&data_dir_of(&env.shared_dir));
+        if let Some(project) = &run.board {
+            crate::autostart::start_in_background(&data_dir_of(&env.shared_dir), Some(project));
         }
         return 0;
     }

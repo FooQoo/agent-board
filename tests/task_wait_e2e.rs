@@ -18,6 +18,7 @@ use serve_process::ServeProcess;
 fn run(home: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
@@ -61,6 +62,7 @@ fn fixture() -> TempDir {
 fn serve(home: &Path) -> ServeProcess {
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
@@ -81,6 +83,7 @@ fn serve(home: &Path) -> ServeProcess {
 fn wait(home: &Path, timeout: &str) -> Child {
     Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")
