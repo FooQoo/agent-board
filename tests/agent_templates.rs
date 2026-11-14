@@ -131,16 +131,57 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
 }
 
 #[test]
-fn the_skill_registers_a_breakdown_only_after_the_user_agrees() {
+fn the_skill_plans_first_and_starts_after_one_approval() {
     let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
+    // A request becomes a provisional plan on the board before any question.
     assert!(
-        skill.contains("Break a request into tasks, and register them only after a yes"),
-        "the Skill must break a request down before registering it"
+        skill.contains("put a provisional plan on the board first"),
+        "the Skill must register a provisional plan first"
     );
     assert!(
-        skill.contains(
-            "Silence, a timeout, an unclear reply, or a request for changes is not a yes"
-        ),
-        "the Skill must register only on an explicit yes"
+        skill.contains("Do not ask before registering it"),
+        "the Skill must not ask before registering the plan"
+    );
+    // The plan's tasks wait on one start approval.
+    for needed in ["\"start_approval\"", "approvingChoiceIds", "qa unlink"] {
+        assert!(skill.contains(needed), "the Skill omits {needed}");
+    }
+    // After the start, only four cases call the user.
+    for case in [
+        "**Intent**",
+        "**Preference**",
+        "**cannot be undone**",
+        "**scope**",
+    ] {
+        assert!(skill.contains(case), "the Skill omits the case {case}");
+    }
+    // The old flow that registered only after a yes in the chat is gone.
+    assert!(!skill.contains("register them only after a yes"));
+    assert!(!skill.contains("Do not ask in chat"));
+}
+
+#[test]
+fn the_skill_asks_on_the_board_and_in_the_chat() {
+    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
+    assert!(
+        skill.contains("Every question goes on the board with `qa ask`, never only in chat"),
+        "every question must go to the board"
+    );
+    assert!(
+        skill.contains("your agent's question tool"),
+        "the Skill must allow the agent's question tool in a conversation"
+    );
+    assert!(
+        skill.contains("qa answer <Q-id> --actor human --via chat"),
+        "a chat answer must be written back to the board"
+    );
+    assert!(skill.contains("question_answered"));
+    assert!(
+        skill.contains("qa wait <request-id>"),
+        "the Skill must wait again after a timeout"
+    );
+    assert!(
+        skill.contains("Never ask the same questions a second time"),
+        "a re-wait must not ask again"
     );
 }
