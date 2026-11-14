@@ -236,38 +236,20 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 - `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中のrun、直近のコマンドID。[保存と復旧](../concepts/saving-and-recovery.md)を参照してください。
 - `tasks/<id>/task.json`の`onboardingSample`: `{ "runId": "<32桁の小文字の16進数>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
 
-## 連携の導入記録 {#integration-records}
+## setupが書き込むファイル {#agent-settings}
 
-`<data-dir>/integrations.json`（通常は`~/.agent-board/integrations.json`）は、`connect`と`update`が書きます。`shared/`の外にあるので、どのプロジェクトにも含まれません。原子的に書き込まれます。隣には`integrations-<agent>.lock`と、実行が終わっていない間だけ、`integrations-journal-<agent>.json`（所有者だけが読める）があります。
+`agboard setup`は独自の記録を持ちません。何が導入されているかは各エージェントのプラグインの一覧が示し、データ領域の外で変更するのは次のファイルだけです。
 
-```json
-{
-  "schemaVersion": 1,
-  "installations": [
-    {
-      "agent": "claude",
-      "component": "hook",
-      "scope": "project",
-      "projectId": "<project-id>",
-      "boundRoot": "<bindのルートの絶対パス>",
-      "configuredPath": "<設定ファイルの絶対パス>",
-      "resolvedPath": "<リンクをたどった同じパス>",
-      "installedVersion": "1.0.0",
-      "managedHash": "<sha256>",
-      "managedEntries": [
-        { "event": "PostToolUse", "matcher": null, "command": "agboard hook --agent claude", "sha256": "<sha256>" }
-      ],
-      "files": []
-    }
-  ]
-}
-```
+| ファイル | 変更 |
+| --- | --- |
+| `$CODEX_HOME/config.toml`（通常は`~/.codex/config.toml`） | `sandbox_workspace_write.writable_roots`にデータフォルダを加えます。`workspace-write`で、権限プロファイルがないときだけです。 |
+| `$CODEX_HOME/rules/agboard.rules` | 存在しないときに、`prefix_rule(pattern=["agboard"], decision="allow")`を書いて作ります。フルアクセスでは書きません。 |
+| `$CLAUDE_CONFIG_DIR/settings.json`（通常は`~/.claude/settings.json`） | `permissions.additionalDirectories`にデータフォルダを加えます。 |
 
-- `agent`は`claude`か`codex`、`component`は`skill`か`hook`、`scope`は`global`か`project`です。
-- `projectId`と`boundRoot`は、Projectの記録にだけあります。
-- Skillの記録は`files`（Skillのフォルダからの相対`path`と`sha256`）を、Hookの記録は`managedEntries`を持ちます。もう一方は空です。`managedHash`は、[同梱するバンドル](../concepts/agents.md#同梱するバンドル)にあるmanifestのハッシュか、項目のハッシュです。
-- 読むのは`schemaVersion` 1だけです。未知のフィールド、別の版、壊れたJSONは拒否し、ファイルを書き換えません。変更したファイルのバックアップは、隣に`<name>.agboard-backup-<txn>-<index>`として置かれます。Skillのフォルダのバックアップと作業用フォルダ（`.<name>.agboard-stage-<txn>-<index>`）は、Skillの置き場の親にある`.agboard-backups/`（`~/.claude/.agboard-backups/`、`~/.agents/.agboard-backups/`、`<root>/.claude/.agboard-backups/`、`<root>/.agents/.agboard-backups/`）に置かれます。名前の付け替えが同じファイルシステム内で済み、Skillとして読み込まれることもありません。Projectスコープではこれらがリポジトリの中になるので、`.gitignore`に加えてください。
-- ファイルの中のパスは、このマシンの絶対パスです。ドキュメントでは、プレースホルダーで書きます。
+- 変更するファイルは、先に同じ場所へ`<file>.agboard-backup…`として、元のファイルのアクセス権のままバックアップします。新しく作るファイルは所有者だけが読み書きできます。
+- Codexのhookの信頼は、`codex app-server`を通して、Codex自身が設定の`hooks.state`に保存します。
+- 導入したプラグインは、各エージェントがプラグインを置く場所にあり、agboardはそこに書き込みません。
+- `agboard update`は、これらのファイルを変更しません。
 
 ## フォルダの紐付け
 

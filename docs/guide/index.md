@@ -59,4 +59,4 @@ New here? Read the first three pages in order.
 | Know where files live, back them up | [Data and backups](./operations/data) |
 | Fix something that does not work | [Troubleshooting](./operations/troubleshooting) |
 
-For the Claude Code and Codex hook setup, see the [integration guide](https://github.com/FooQoo/agent-board/blob/main/integrations/README.md). If you want to change Agent Board itself, read the [developer guide](../dev/).
+For what the Agent Board plugin installs in Claude Code and Codex, see the [plugin guide](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/README.md). If you want to change Agent Board itself, read the [developer guide](../dev/).

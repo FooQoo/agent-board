@@ -68,17 +68,17 @@ agboard --version
 
 Homebrew has its own requirements, such as the Command Line Tools on some Macs; see its documentation. To build from source, see the [developer guide](https://fooqoo.github.io/agent-board/dev/getting-started/setup).
 
-## Connect
+## Set up
 
-Create a project for your working folder, then connect your agents:
+Set up your agents once, then create a project for your working folder:
 
 ```sh
+agboard setup
 cd my-project
 agboard project create "My project"
-agboard connect
 ```
 
-`project create` binds the current folder to the project; for an existing project, run `agboard project bind "My project"`. `connect` asks which agents to set up (Claude Code, Codex, or both) and where: one scope for the Skill and one for the Hook, Global or Project. It shows every change before it writes, keeps backups, and never overwrites your own edits. Afterwards, review the Hook with `/hooks` in your agent. See [Working with agents](https://fooqoo.github.io/agent-board/guide/automation/agents#connect-your-agent).
+`setup` creates the data folder and asks which agents you use (Codex, Claude Code, or both). It shows the plan, and after you answer `y` it installs the Agent Board plugin (the Skill and the Hook) with each agent's own plugin command, lets the agents use the shared folder, and, for Codex, trusts the plugin's hooks. It works in any folder and needs no project. `project create` binds the current folder to a project; for an existing project, run `agboard project bind "My project"`. See [Working with agents](https://fooqoo.github.io/agent-board/guide/automation/agents#set-up-your-agents).
 
 ## Start
 
@@ -92,14 +92,14 @@ To check progress and answer questions from your phone, open **Settings** → **
 
 ## Update
 
-Updating takes two steps. First update the command, then update the Skill and Hook that `connect` installed:
+Updating takes two steps. First update the command, then move the Agent Board plugin to the same version:
 
 ```sh
 brew upgrade fooqoo/tap/agboard
 agboard update
 ```
 
-`agboard update` shows what will change and asks before it writes; `agboard update --yes` skips only the question and never overwrites your own edits. Restart `agboard serve` after an upgrade.
+`agboard update` shows what will change and asks before it runs; `agboard update --yes` answers the question in advance. When the plugin and the command differ, a new agent session tells you to run `agboard update`. Restart `agboard serve` after an upgrade.
 
 ## Feature stages
 
@@ -116,5 +116,5 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
 - [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
 - [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
-- [Claude Code and Codex integration](integrations/README.md) — what `connect` installs and how the hooks work.
+- [The Agent Board plugin](plugins/agent-board/README.md) — what `setup` installs for Claude Code and Codex, and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.

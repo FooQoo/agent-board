@@ -59,4 +59,4 @@ flowchart LR
 | ファイルの場所を知る、バックアップを取る | [データとバックアップ](./operations/data) |
 | うまくいかないことを直す | [トラブルシューティング](./operations/troubleshooting) |
 
-Claude CodeとCodexのHookの設定は、[連携ガイド](https://github.com/FooQoo/agent-board/blob/main/integrations/README.md)を参照してください。Agent Board自体を変更したいときは、[開発者ガイド](../dev/)を読んでください。
+Agent BoardプラグインがClaude CodeとCodexに導入するものは、[プラグインのガイド（英語）](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/README.md)を参照してください。Agent Board自体を変更したいときは、[開発者ガイド](../dev/)を読んでください。

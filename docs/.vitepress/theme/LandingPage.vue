@@ -20,7 +20,7 @@ import docsJa from '../../images/guide/docs.ja.png'
 // The copy lives in the `landing` frontmatter of each language's index.md; this component only lays it out.
 type Link = { text: string; link: string }
 type Step = { actor: 'ai' | 'human' | 'auto'; title: string; text: string }
-// One line of the connect sample: the command, a frame line, a question, its answer, or a result.
+// One line of the setup sample: the command, a frame line, a question, its answer, or a result.
 type TerminalLine = { kind: 'command' | 'frame' | 'question' | 'answer' | 'result'; text: string }
 // `alts` holds one description per phone screen; the other features show one image with `alt`.
 type Feature = { image: string; title: string; text: string; link: Link; preview?: string; alt?: string; alts?: string[] }
@@ -210,7 +210,7 @@ onMounted(() => {
 
     <section class="lp-section lp-section--soft">
       <div class="lp-container lp-connect">
-        <!-- A sample connect session, drawn after the real prompts; the text never changes with the language. -->
+        <!-- A sample setup session, drawn after the real prompts; the text never changes with the language. -->
         <figure class="lp-connect__demo">
           <p class="lp-compare__label"><LandingIcon name="terminal" :size="16" />{{ c.agents.terminal.label }}</p>
           <div class="lp-terminal lp-terminal--connect" aria-hidden="true">

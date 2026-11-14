@@ -4,15 +4,15 @@ title: インストールと起動
 
 # インストールと起動
 
-このページを読み終えると、Homebrewで`agboard`をインストールし、作業フォルダにプロジェクトを作り、エージェントをつなぎ、ブラウザでボードを開けます。続いて[クイックスタート](./quickstart)で基本操作を試してください。
+このページを読み終えると、Homebrewで`agboard`をインストールし、作業フォルダにプロジェクトを作り、エージェントを設定し、ブラウザでボードを開けます。続いて[クイックスタート](./quickstart)で基本操作を試してください。
 
-手順は、インストール、プロジェクトの作成またはフォルダの登録、エージェントの接続、サーバーの起動の順です。
+手順は、インストール、プロジェクトの作成またはフォルダの登録、エージェントの設定、サーバーの起動の順です。
 
 ## 始める前に
 
 - macOS 15以降を搭載した、Apple SiliconまたはIntelのMac。
 - [Homebrew](https://brew.sh)。Homebrew自体にも、環境によってはCommand Line Toolsなどの前提があります。その内容はHomebrewのドキュメントに従ってください。
-- 接続の手順で使う、`PATH`上のClaude CodeまたはCodex（`claude`か`codex`のコマンド）。
+- 設定の手順で使う、`PATH`上のClaude CodeまたはCodex（`claude`か`codex`のコマンド）と、GitHubへのネットワーク接続。
 
 Agent Boardを自分でビルドする必要はありません。Homebrewで入るのは、Web画面を内蔵したビルド済みのコマンドです。Rust、Node.js、pnpmは不要で、リポジトリをcloneすることもありません。ソースからビルドする場合は、[開発環境のセットアップ](../dev/getting-started/setup)を参照してください。
 
@@ -44,13 +44,13 @@ agboard project bind "My project"
 
 プロジェクトの名前変更や、ほかのフォルダの登録は、[データとバックアップ](./operations/data#projects-and-folders)を参照してください。
 
-## エージェントをつなぐ
+## エージェントを設定する
 
 ```sh
-agboard connect
+agboard setup
 ```
 
-`connect`は、ターミナルで質問に答えながら進める設定です。Claude Code、Codex、または両方に、SkillとHookを導入します。HookとProjectスコープは、フォルダのプロジェクトに依存するため、登録済みのフォルダで実行する必要があります。聞かれる内容、書き込み先、その後の操作は、[エージェントをつなぐ](./automation/agents#connect-your-agent)を参照してください。
+`setup`は、使うエージェントを尋ねて計画を表示し、`y`と答えると、Claude Code、Codex、または両方にAgent Boardプラグイン（SkillとHook）を導入します。コンピューターごとに一度実行すればよく、どのフォルダでも実行できます。尋ねる内容、変更するもの、その後の操作は、[エージェントを設定する](./automation/agents#set-up-your-agents)を参照してください。
 
 ## ボードを開始する
 
@@ -70,7 +70,7 @@ agboard serve
 
 ## 更新する
 
-Homebrewでコマンドを更新し、続けて`connect`が導入したSkillとHookを更新します。
+Homebrewでコマンドを更新し、続けてAgent Boardプラグインを同じ版にそろえます。
 
 ```sh
 brew upgrade fooqoo/tap/agboard
@@ -78,16 +78,16 @@ agboard --version
 agboard update
 ```
 
-`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントの設定にあるSkillやHookは変わりません。それを更新するのが`agboard update`で、対象は`connect`が導入したものだけです。変更内容を表示して確認を求めます。`agboard update --yes`は質問を省きますが、あなた自身の編集は上書きしません。詳しくは[連携を更新する](./automation/agents#refresh-the-integrations)を参照してください。
+`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントのプラグインは変わりません。それを更新するのが`agboard update`で、プラグインがあるすべてのエージェントが対象です。変更内容を表示して確認を求めます。`agboard update --yes`は、その質問にあらかじめ答えます。詳しくは[プラグインを更新する](./automation/agents#update-the-plugin)を参照してください。
 
 更新したら、新しいコマンドと画面を使うために、`agboard serve`を止めて起動し直します。開いているボードやモニターは、サーバーが戻ると自動で再読み込みします。編集中や回答の入力中は、それが終わるまで待ちます。
 
-更新後、ターミナルで通常のコマンドを実行すると、導入済みのSkillとHookがコマンドより古いときに知らせます。通知は一度だけエラー出力に出て、コマンドの結果は変わりません。
+忘れても、新しいエージェントのセッションが知らせます。プラグインとコマンドの版が違うと、エージェントが`agboard update`の実行を促します。
 
 Hookとエージェントのスキルは、`PATH`の`agboard`を実行するので、インストールした版を使います。開発中のビルド（`cargo build`、`cargo run`、`target/debug/agboard`）は別の実行ファイルです。
 
 ## 次に読む
 
 - [クイックスタート](./quickstart): 一つのタスクを作成から完了まで進めます。
-- [エージェントとの連携](./automation/agents): `connect`が尋ねる内容と、エージェントがボードで作業する流れです。
+- [エージェントとの連携](./automation/agents): `setup`が尋ねる内容と、エージェントがボードで作業する流れです。
 - [機能の提供段階](./feature-stages): 一般提供の機能と、パブリックプレビューの機能を確認します。

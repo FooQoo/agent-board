@@ -1,12 +1,12 @@
 # エージェント連携
 
-エージェント連携は、作業手順を定める**スキル**、進行表を渡す**Hook**、変更や回答を待つコマンドで構成されます。このページでは、それぞれの役割と、`agboard setup`によるアクセス設定を説明します。利用者向けの作業の流れは[エージェントとの連携](../../guide/automation/agents.md)、エージェントが受け取るJSONは[Hook・進行表・waitの出力](../reference/agent-output.md)にあります。
+エージェント連携は、作業手順を定める**スキル**、進行表を渡す**Hook**、変更や回答を待つコマンドで構成されます。このページでは、それぞれの役割と、`agboard setup`がこれらをAgent Boardプラグインとして導入する仕組みを説明します。利用者向けの作業の流れは[エージェントとの連携](../../guide/automation/agents.md)、エージェントが受け取るJSONは[Hook・進行表・waitの出力](../reference/agent-output.md)にあります。
 
 ## 各部分の関係
 
 | 部分 | 場所 | 役割 |
 | --- | --- | --- |
-| スキル`agent-board` | `.agents/skills/agent-board/SKILL.md` | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
+| スキル`agent-board` | `plugins/agent-board/skills/agent-board/SKILL.md` | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
 | Hook | `agboard hook`（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
 | `wait` | `src/agent/wait.rs`、`src/agent/task_wait.rs` | プロジェクトが変わるか、次のタスクが用意できるまで待つ。 |
@@ -26,8 +26,8 @@
 
 Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登録済みの祖先からプロジェクトを識別します。セッションIDは使わず、登録がないときに全プロジェクトを選ぶことも、最も近い登録が壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。登録がまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
 
-- **Claude Code。** `integrations/claude-code/`のテンプレートが、プロジェクト名を固定せずに`agboard hook`をPostToolUseに、失敗の後はPostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。スキルは最初の読み込み時にスナップショットを読み、コンテキスト圧縮後（SessionStartの`compact`）か次のツールの完了時に一覧を取り直します。
-- **Codex。** `integrations/codex/`のテンプレートが`agboard hook --agent codex`をPostToolUseに登録し、最初の利用時とコンテキスト圧縮後にも取得します。既存の設定に自動で書き込むことはなく、利用者がテンプレートを確認して信頼します。
+- **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude --plugin-version <version>`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
+- **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex --plugin-version <version>`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。
 - **上限。** 入力はUTF-8で64 KiB、一覧は256 KiB、一回の実行は10秒が上限です。Codexの`additionalContextLimit`は0にし、Hookが自分の上限を守ります。超えたら`context_too_large`を報告し、切り詰めて成功として報告することはありません。一覧を作れない、または入力の全体が届かなかったときは、Hookがそれを伝え、元のツールの結果を保ちます。
 - **安全性。** コマンドは固定で、タスクのテキストや`tool_input`から何も組み立てません。Hookがエージェントのツールを呼ぶことも、自分自身を起動することも、ボードのファイルを変えることもありません。進行表を加えるとき、サーバーが動いていなければ、待たずに裏で起動します。`agboard stop`で止めた後と`AGBOARD_AUTOSTART=0`のときは起動しません（[サーバーと画面](./server-and-ui.md#コマンドがサーバーを起動する手順)を参照）。エージェントがファイルを編集するだけでも、自動Doneが働くようにするためです。パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出しません。
 
@@ -65,7 +65,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 対象の順序には進行表と同じ`ordered_tasks`を使います。エピックID順に、各エピックの保存済み優先順とタスクID、最後に未所属タスクのID順です。返すのはAI担当でTodoまたはDoing、かつ表示上の稼働状態がIdle（人の判断待ちのタスクはPendingと表示され、返りません）で、下書きでもアーカイブでもないタスク一件です。開始前の初回読み込みで、リッスン前に作成されたタスクも対象になります。結果には、そのsnapshotのcursor、タスク、ローカルの`TASK.md`パス、エピックに所属する場合は`EPIC.md`のパスが含まれます。取得は読み取りだけでタスクを占有しないため、操作を始める前に最新状態を読み直します。リッスン手順では全体snapshotを確認し、既存AIタスクの`running`または`pending`を先に解決します。DoingのタスクもIdleなら再開候補です。対象なしでの期限到達は正常な結果ですが、読取不備・サーバー停止・プロジェクト削除はエラーです。
 
-一つのセッションで続けて作業する手順として、タスク情報の補完、承認確認、回答待ち、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md)に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
+一つのセッションで続けて作業する手順として、タスク情報の補完、承認確認、回答待ち、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md)に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
 ## 自動Done
 
@@ -87,28 +87,19 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 識別は案内だけが書き込みます。作成と編集の要求には識別のフィールドがなく、移動・履歴の更新・アーカイブ・復元のあいだも識別は保たれます。ボードにはカードが表示されます。利用者から見た動きは[始める前に](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
 
-## 同梱するバンドル
+## プラグイン
 
-`connect`と`update`は、実行時にGitのclone、Node.js、Rustを必要としません。SkillとHookのテンプレートが、バイナリの中にあるためです。
+SkillとHookは、このリポジトリのマーケットプレイスから、1つのプラグイン`agent-board`として配布します。どちらのエージェントも自分のプラグインのコマンドで導入するので、agboardはファイルの写しを埋め込みません。
 
-- **同梱するもの。** `build.rs`（と`src/integrations/build_bundle.rs`）が、許可リストにあるファイルを取り込みます。`.agents/skills/agent-board/`の`SKILL.md`、`references/`、`assets/`と、`integrations/claude-code/`、`integrations/codex/`のHookのJSONです。参照切れ、個人の絶対パス、シンボリックリンクは拒否し、`node_modules`は読みません。`assets::bundle()`は、クレートの版と、各項目の相対パス、バイト列、そのSHA-256を持つ`EmbeddedBundle`を返します。Skillのフォルダがないときは、ビルドが警告して何も埋め込みません。その場合、`connect`と`update`は実行時に失敗するので、リリースビルドでは埋め込んだファイルの数を確認してください。
-- **配置先。** `paths.rs`は、環境（`AGBOARD_HOME`、`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、ホームフォルダ）と登録済みのフォルダから、[スコープを選ぶ](../../guide/automation/agents.md#choose-scopes)にある4つの配置先を求める純粋な関数です。Claude CodeのGlobalのSkillは`CLAUDE_CONFIG_DIR`に従います。CodexのSkillは`~/.agents/skills`を使い、`CODEX_HOME`を無視します。空の環境変数は未設定として扱います。Projectの配置先は、`FileStore::resolve_binding`が返す登録済みのフォルダを起点にし、作業フォルダは使いません。
-- **導入記録。** `registry.rs`が`<data-dir>/integrations.json`（`schemaVersion` 1）を読み書きします。それ以外の版や、規則に反する記録は、拒否し、移行も書き換えもしません。項目は[共有ファイル](../reference/files.md#integration-records)にあります。
-- **ハッシュ。** ファイルのハッシュは、バイト列のSHA-256（小文字の16進）です。Skillの管理ハッシュは、ファイルごとに`path<TAB>sha256<LF>`の1行をpath順に並べたもののSHA-256です。Hookの項目のハッシュは、`hooks[event][i]`のグループを正規化したJSON（全階層でキーを並べ替え、空白なし）のSHA-256です。Hookの管理ハッシュは、項目ごとに`event<TAB>matcher<TAB>command<TAB>sha256<LF>`の1行（matcherがなければ空欄）を並べたもののSHA-256です。設定ファイル全体のハッシュは、実行中の変更に気づくためだけに使います。Agent Boardのものではないキーの変更は、競合になりません。
+| パス | 内容 |
+| --- | --- |
+| `.agents/plugins/marketplace.json` | Codexのマーケットプレイスのカタログ。名前は`agent-board`。 |
+| `.claude-plugin/marketplace.json` | Claude Codeのマーケットプレイスのカタログ。名前は`agent-board`。 |
+| `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | プラグインのマニフェスト。 |
+| `plugins/agent-board/skills/agent-board/` | Skill。`SKILL.md`、`references/`、`assets/`。 |
+| `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | 各エージェントのHook。 |
 
-ハッシュが見つけるのは、うっかりした上書きや編集です。ファイルの出どころを認証するものではなく、配布するバイナリの署名の代わりにもなりません。
-
-## 計画と適用
-
-`connect`と`update`は`src/integrations/`の同じ処理を使うので、所有と競合の規則が食い違いません。
-
-1. **計画（読み取りのみ）。** `plan::plan_agent`が、1つのエージェントの`AgentPlan`を作ります。内容は、操作、追加と削除、権限の編集、競合、手作業の手順、警告です。状態は`Ready`、`Unchanged`、`Blocked`のいずれかです。`connect`は、権限と、利用者が選んだスコープで計画します。`update`は、記録されている対象だけを、権限なしで計画します。
-2. **所有。** Hookは、エージェント、イベント、matcher、正規化した固定コマンドで識別します。編集された、または消えた管理対象の項目、管理外の同等のHook、識別できない`agboard`のコマンドは、いずれもそのエージェントを止めます。ただし`connect`は、このプロジェクト向けに手で書かれたHook（イベントとmatcherが同じで、グループの中にそれだけがあり、コマンドが`agboard hook --agent <agent>`か、`--project`でこのプロジェクトの名前かIDを指定したもの）を引き取ります。`update`は引き取りません。調べるのは、Globalのファイル、登録済みのフォルダとその祖先（`settings.json`と`settings.local.json`、または`hooks.json`と`config.toml`。Codexのinline hookを含む）、導入記録にあるProjectのパスです。ディスクを走査することはありません。Skillは、管理しているファイルが編集または削除された、ファイルが足された、ファイルがリンクに置き換えられたときに、競合になります。
-3. **適用。** `apply::apply_agent`は、エージェントを1つずつ、Claude Code、Codexの順に処理するので、片方の失敗がもう片方を取り消すことはありません。エージェントごとに、ロック（`integrations-<agent>.lock`。保持されていれば、待たずに失敗）を取り、ジャーナルが残っていれば開始を拒否し、すべての対象を検証し、元とこれから書くハッシュとバックアップ名を持つジャーナルを書き、変更するファイルを`<name>.agboard-backup-<txn>-<index>`へバックアップし（Skillのフォルダは代わりに、Skillの置き場の親にある`.agboard-backups/`へ移すので、エージェントが2つ目のSkillを見ることはありません）、同じファイルシステム上の一時ファイルまたはフォルダへ新しい内容を書き、元のものと原子的に置き換え、最後に導入記録をコミットします。Skillのフォルダは、作業用のフォルダで完成させてから、古いものと入れ替えます。
-4. **結果。** 各エージェントは、`Applied`、`Unchanged`、`Blocked`、`Failed`、`Interrupted`のいずれかで終わります。失敗したときは、そのエージェントを開始前の状態へ戻します。他の人が変更したファイルは上書きしません。戻せないときは、ジャーナルが残ります。
-5. **復旧。** `recovery::recover_pending`は、`connect`と`update`が計画する前に呼ばれます。ジャーナル、元と新しいハッシュ、バックアップを突き合わせ、安全なものを戻します。ジャーナルを読む前に、エージェントのロックを取ります。他の人が変更したファイルがあるとき、または戻すのに失敗したときは、ジャーナルを残してそのエージェントを止め、該当する各パスをバックアップとジャーナルの場所とあわせて標準エラーへ表示します。利用者が対処してジャーナルを削除します。通常のコマンドとHookは、復旧も設定の書き込みもしません。
-
-導入記録が読めない、または未知のときは、両コマンドとも理由を示して止まります。競合とバックアップに対して利用者が行うことは、[エージェントとの連携](../../guide/automation/agents.md#connect-your-agent)と[データとバックアップ](../../guide/operations/data.md#integration-records-backups-and-manual-permissions)にあります。
+両方のマニフェストのプラグインの版と、両方のHookのコマンドの`--plugin-version`は、クレートの版と同じです。`tests/plugin_layout.rs`と`scripts/release/check-version.py`がこれを確かめるので、リリースのタグには、常にバイナリと同じ版のプラグインが入っています。
 
 ## Hookのスキップとエラー
 
@@ -117,7 +108,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 | 入力・状態 | 動作 |
 | --- | --- |
 | `cwd`が登録済みのフォルダ、そのサブフォルダ、またはより近い入れ子の登録済みフォルダの中 | 最も近いプロジェクトだけを、`AGBOARD_PROGRESS`として返します。 |
-| フォルダの登録情報が正常で、`cwd`が読め、一致する登録がない | stdoutにもstderrにも出力せず、終了コード0。ボードも導入記録も読みません。 |
+| フォルダの登録情報が正常で、`cwd`が読め、一致する登録がない | stdoutにもstderrにも出力せず、終了コード0。ボードは読みません。 |
 | 最も近い登録のプロジェクトが存在しない | `bound_project_missing`。親へ戻りません。 |
 | フォルダの登録情報が壊れている、または読めない | 原因を付けた`AGBOARD_ERROR`。未登録とは扱いません。 |
 | 入力がJSONでない、型が違う、大きすぎる | これまでどおり`invalid_hook_input`。 |
@@ -126,28 +117,28 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 | `cwd`が存在しない、または読めない | `hook_cwd_unavailable`。スキップにはしません。 |
 | 明示した`--project` | 指定したプロジェクトを優先します。見つからなければ`project_not_found`。 |
 
-入力64 KiB、一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、更新通知の表示、設定の復旧、ネットワークの利用、設定の書き込みをしません。サーバーの起動だけが、Hookが起こす変化です。
+入力64 KiB、一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、ネットワークの利用も設定の書き込みもしません。サーバーの起動だけが、Hookが起こす変化です。出す通知は、セッション開始時の[プラグインの版の確認](#プラグインの版の確認)だけです。
 
-## 更新通知
+## プラグインの版の確認
 
-通常のコマンドが出力を終えたあとに、`notice::stale_line`が標準エラー出力へ1行を出すことがあります。`update`が対象とする記録（Global、および最も近い登録済みフォルダのProject）の`installedVersion`と、このビルドの版を比べるだけで、アセットの走査も、ネットワークの利用も、書き込みもしません。標準出力と標準エラー出力がどちらも端末で、出力がJSONでないときだけ出します。`hook`、`wait`、`serve`、`stop`、`setup`、`connect`、`update`、helpとバージョン表示は、この処理より前に戻ります。導入記録がない、読めない、未知のときは、通知を出さず、コマンドの出力と終了コードも変えません。その問題は`update`が報告します。文言は[エージェントとの連携](../../guide/automation/agents.md#refresh-the-integrations)にあります。
+Hookのコマンドは、`--plugin-version`でプラグインの版を示します。`src/agent/hook_version.rs`は、これを実行中の`agboard`の版と比べます。違うときは、SessionStartの出力に`AGBOARD_NOTICE`を加え、`agboard update`を実行して新しいセッションを始めるよう利用者に伝えることをエージェントに求めます。ほかのイベントには通知を付けないので、通知はセッションごとに一度だけ出ます。この確認では何も読み書きせず、通常のコマンドが更新通知を出すこともありません。
 
-## setupでアクセスを準備する
+## setupとupdate
 
-`agboard setup`は、エージェントが共有ファイルを編集できるよう、Agent Boardのデータ領域をエージェントの許可されたフォルダに加えます。利用者が一度だけ実行する手順で、プロジェクトの作成やHookの登録はしません。`agboard connect`は同じ権限の変更を行い、SkillとHookも導入します。
+`agboard setup`と`agboard update`は`src/setup/`を共有し、`src/cli/commands/setup.rs`が両方を扱います。通常のストアの処理より前に分岐し、プロジェクトを必要とせず、共通のパス解決でデータ領域を一度だけ解決します。利用者から見た動きは、[エージェントを設定する](../../guide/automation/agents.md#set-up-your-agents)と[setupとupdate](../../guide/automation/cli.md#setup-and-update)を参照してください。
 
-内部処理は次のように分かれています。
+実行は2つの段階に分かれます。
 
-- 通常のストアの処理より前に分岐し、共通のパス解決でデータ領域を一度だけ解決します。
-- 環境とパスの解決、変更計画、CodexのTOMLの編集（`toml_edit`でコメント・ほかのキー・配列を保つ）、Claude CodeのJSONの編集（未知のキーを保つ）、退避と適用を別の段階に分けます。変更計画は各ファイルの元の内容と更新後の内容を持ち、dry runも同じ検証を使います。
-- 許可モードや管理設定は切り替えません。現在の方式で変更できるかを確かめ、書き込む前にすべての対象を検証し、その間に元のファイルが変わっていないことを確かめます。ファイルを書いたことと、エージェントがそれを読み込んだことは分けて報告します。
+1. **準備（読み取りのみ）。** `prepare.rs`が、各エージェントのコマンドを`PATH`から探し、導入済みのプラグインの版を`plugin list --json`で読み、`setup`のときは設定ファイルを読んで変更を計画します。コマンドがないエージェントは、理由を付けて飛ばします。`update`は、プラグインがないエージェントを飛ばします。使えない設定ファイルがあれば、何も書く前に実行全体を止めます。dry runはこの段階で終わるので、同じ検証を使います。
+2. **実行。** 利用者が同意したら、`execute.rs`が共有フォルダを作り、設定ファイルをすべて書くか、1つも書きません。続いて各エージェントのプラグインのコマンドを実行し、Codexではhookを信頼します。この段階での失敗は、そのエージェントだけを止めます。書き終えたファイルはそれだけで正しく、コマンドを実行し直せるので、そのまま残します。
 
-失敗したとき:
+各部分の役割は次のとおりです。
 
-- 不正なJSONやTOML、対応しない権限の方式、並行する変更があれば、何も書く前に止まり、対象・理由・次の手順を報告します。
-- 変更するファイルは、同じフォルダの一意なファイルに退避してから、一時ファイルで置き換えます。変わらないファイルは退避も書き込みもしません。
-- 実行が途中で失敗したら、その実行が書いたものだけを、外部の変更を上書きせずに戻します。戻せなければ完了として報告せず、何が変わり、退避先がどこかを示します。
-- シンボリックリンクは解決して実体のファイルを編集します。解決できないパスは、推測せずに止まります。
-- dry runはフォルダ・設定ファイル・退避を作りません。setupは古いデータや、稼働中のサーバーの通知先を変えません。
+- **エージェントのコマンド。** `agent_cli.rs`は、`codex`と`claude`をシェルを使わずに`PATH`から探し、入力なしで時間制限を付けて実行し、出力を受け取ります。テストは偽のコマンドを`PATH`の先頭に置くので（`tests/support/fake_agents.rs`）、本物のエージェントやネットワークに触れることはありません。
+- **プラグインの導入。** `plugin.rs`は、`https://github.com/FooQoo/agent-board.git`のタグ`v<version>`でマーケットプレイスを追加し、`codex plugin add agent-board@agent-board`、または`claude plugin install`と`claude plugin update`を実行します。マーケットプレイスがすでに別の取得元から追加されているとき（Codexは別の取得元から追加済みであることを、Claude Codeは失敗コード`declared`を報告します）は、マーケットプレイスを削除して追加し直します。どちらのエージェントでも、これがマーケットプレイスを新しいタグへ移す方法です。開発では、`AGBOARD_PLUGIN_MARKETPLACE`で取得元をローカルのチェックアウトなど別の場所に差し替えられます。
+- **設定ファイル。** `plan.rs`、`codex.rs`、`claude.rs`が各ファイルの新しい内容を求めます。CodexのTOMLは`toml_edit`で編集し、コメント・ほかのキー・配列を保ちます。Claude CodeのJSONは未知のキーを保ちます。Codexには`sandbox_workspace_write.writable_roots`へのデータフォルダの追加と、ルールファイル`$CODEX_HOME/rules/agboard.rules`を、Claude Codeには`permissions.additionalDirectories`へのデータフォルダの追加を行います。`update`は設定ファイルを変えません。
+- **書き込み。** `apply.rs`と`apply/files.rs`は、既存の各ファイルを同じフォルダの`<file>.agboard-backup…`に退避し、一時ファイルと名前の変更で置き換え、後の書き込みが失敗したときは、その実行が書いたものを戻します。計画の後に変わったファイルは上書きしません。シンボリックリンクは解決して実体のファイルを編集します。
+- **hookの信頼。** `trust.rs`は`codex app-server`を起動し、`hooks/list`でhookの一覧を受け取り、Agent Boardの各hookの現在のハッシュを`config/value/write`で`hooks.state`に保存します。触れるのはこのプラグインのhookだけです。Codexは信頼をプラグインの内容に結び付けるので、導入や更新のたびにhookを信頼し直します。
+- **報告。** `report.rs`が、各エージェントの結果を`updated`、`unchanged`、`planned`、`skipped`、`failed`のいずれかとして、テキストかJSONで示します。終了コードは、失敗したエージェントがあるとき、または`setup`が1つのエージェントも設定できなかったときに1です。
 
-付与するアクセス権の範囲は、[セキュリティモデル](./security.md#エージェントのアクセス設定)の一部です。
+setupは、許可モードや管理設定を切り替えません。付与するアクセス権の範囲は、[セキュリティモデル](./security.md#エージェントのアクセス設定)の一部です。

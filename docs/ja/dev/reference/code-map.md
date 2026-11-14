@@ -16,7 +16,7 @@
 | `autostart` | コマンドが必要とするときに共有のサーバーを起動する。確認、`autostart.lock`、切り離した`serve --auto`の子プロセス（`spawn`）、`autostart.paused`の目印。 |
 | `progress` | `agboard progress`とHookが共有する進行表を組み立てる。 |
 | `interact` | 人による確認（端末の判定、y/N入力）と通知のクライアント。 |
-| `setup` | データ領域へのエージェントのアクセスを準備する。 |
+| `setup` | Agent Boardプラグインを導入・更新し、データ領域へのエージェントのアクセスを準備する。 |
 | `paths`<br>`lifecycle`<br>`clock`<br>`error` | データ領域の解決、`serve`のロック、UTCの時刻、`AgboardError`（コード・終了コード・message・reason）。 |
 
 依存は一方向です。
@@ -74,16 +74,16 @@
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
-- `integrations/`: Hookのテンプレートを置きます。
-- `src/cli/commands/connect.rs`: 対話式の`agboard connect`の流れです。`src/integrations/detect.rs`（PATH上のエージェントとversion）と`ui/`を、計画とエージェントごとの適用の前後で使います。`ui/`には`Ui`トレイトと2つの実装があります。`ClackUi`（`clack.rs`と`clack_view.rs`、ターミナルでのcliclackの質問と色分けした行）と、`PlainUi`（`plain.rs`、`prompt.rs`と`report.rs`による文字だけの表示。ターミナルがないときと、行を送り込む試験で使います）です。`update`も同じ`ui/`を使います。
-- `.agents/skills/agent-board/`: エージェントのスキルを置きます。
+- `plugins/agent-board/`: Agent Boardプラグインです。マニフェスト、`skills/agent-board/`のエージェントのスキル、`hooks/`の各エージェントのHookを置きます。
+- `.agents/plugins/marketplace.json`と`.claude-plugin/marketplace.json`: CodexとClaude Codeのマーケットプレイスのカタログです。
 
-### SkillとHookの導入
+### プラグインのsetupとupdate
 
-- `src/integrations/`: `assets.rs`と`build_bundle.rs`（同梱するバンドル）、`paths.rs`（配置先）、`registry.rs`（導入記録）、`plan.rs`・`compose.rs`・`merge.rs`・`skill.rs`・`duplicates.rs`・`adopt.rs`・`toml_json.rs`（読み取りだけの計画と所有。`adopt.rs`は、connectが引き取る、このプロジェクト向けの手書きのHookを判定します）、`apply.rs`・`ops.rs`・`journal.rs`・`recovery.rs`（書き込み、バックアップ、ジャーナル、復旧）、`update.rs`と`update_report.rs`（`update`が選ぶものと表示）、`notice.rs`（更新通知）。
+- `src/setup/`: `mod.rs`（エージェントとオプション）、`prepare.rs`（読み取りだけの計画）、`execute.rs`（計画の実行）、`report.rs`（テキストとJSONの結果、終了コード）。`plan.rs`・`codex.rs`・`claude.rs`が設定の変更を求め、`apply.rs`と`apply/files.rs`がバックアップを取りながら書き込みます。`env.rs`はパスを解決し、`agent_cli.rs`はエージェントのコマンドを実行し、`plugin.rs`はマーケットプレイスからプラグインを導入し、`trust.rs`は`codex app-server`を通してCodexのhookを信頼します。
+- `src/cli/commands/setup.rs`: `agboard setup`と`agboard update`のオプション、エージェントの選択、確認の質問。
+- `src/agent/hook_version.rs`: Hookによるプラグインの版の確認。
+- `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
 - `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
-- `src/cli/commands/update.rs`: `agboard update`と、通知を表示する処理。
-- `tests/integration_*.rs`: バンドル、配置先、導入、復旧、connect、update、通知の焦点テスト。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
 ### プロジェクトのドキュメント

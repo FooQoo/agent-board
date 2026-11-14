@@ -81,49 +81,41 @@ agboard project bind "My project" --folder ./docs
 
 ## 共有フォルダをセットアップする
 
-`agboard setup`は、CodexとClaude Codeのためにデータフォルダを準備します。プロジェクトは不要で、次を行います。
+`agboard setup`は、CodexとClaude Codeのためにデータフォルダを準備し、Agent Boardプラグインを導入します（[エージェントとの連携](../automation/agents#set-up-your-agents)を参照）。プロジェクトは不要です。データフォルダについては、次のことを行います。
 
 - データフォルダと、その中の`shared/`フォルダを作成します。
-- Codexの`config.toml`にある`sandbox_workspace_write.writable_roots`へ、データフォルダを追加します。対象は`$CODEX_HOME`、なければ`~/.codex`です。
-- Claude Codeの`settings.json`にある`permissions.additionalDirectories`へ、データフォルダを追加します。対象は`$CLAUDE_CONFIG_DIR`、なければ`~/.claude`です。
+- `$CODEX_HOME`または`~/.codex`にあるCodexの`config.toml`で、`sandbox_workspace_write.writable_roots`にデータフォルダを追加します。
+- 同じCodexのフォルダに`rules/agboard.rules`を書き込み、Codexが確認なしで`agboard`を実行できるようにします。ファイルがすでにあるときは書き込みません。
+- `$CLAUDE_CONFIG_DIR`または`~/.claude`にあるClaude Codeの`settings.json`で、`permissions.additionalDirectories`にデータフォルダを追加します。
 
 ```sh
-agboard setup --dry-run
+agboard setup --agent all --dry-run
 agboard setup
 ```
 
-`--agent codex|claude|all`で更新する設定を選びます。既定は`all`です。`--dry-run`は変更内容を表示するだけで、何も変更しません。`--json`は同じ結果をJSON形式で表示します。ドライランの出力は次のようになります(`<home>`はホームフォルダを表します)。
+`--dry-run`は予定の変更を表示するだけで、何も変更しません。`--json`は同じ結果を機械可読のJSONで表示します。ドライランの出力は次のようになります（`<home>`はホームディレクトリ、`X.Y.Z`は版を表します）。
 
 ```text
-Dry run: no files, folders, or backups were created.
+Dry run: nothing was installed, created, or changed.
 Data directory: <home>/.agent-board
 Shared folder: <home>/.agent-board/shared
-Codex: planned <home>/.codex/config.toml
-  - add "<home>/.agent-board" to sandbox_workspace_write.writable_roots
-Claude Code: planned <home>/.claude/settings.json
-  - add "<home>/.agent-board" to permissions.additionalDirectories
+Codex: planned
+  plugin: install version X.Y.Z from https://github.com/FooQoo/agent-board.git at vX.Y.Z
+  planned <home>/.codex/config.toml
+    - add "<home>/.agent-board" to sandbox_workspace_write.writable_roots
+  planned <home>/.codex/rules/agboard.rules
+    - allow the agboard command (prefix_rule)
+Claude Code: planned
+  plugin: install version X.Y.Z from https://github.com/FooQoo/agent-board.git at vX.Y.Z
+  planned <home>/.claude/settings.json
+    - add "<home>/.agent-board" to permissions.additionalDirectories
 ```
 
-セットアップは既存の設定をすべて残し、上の配列だけを変更します。既存の設定ファイルを変更する前に、同じフォルダへ`<file>.agboard-backup-<id>`という名前のバックアップを作成します。もう一度実行しても何も変更されず、各ファイルは`unchanged`と表示されます。
+setupは既存の設定をすべて残し、上の配列だけを変更します。既存の設定ファイルを変更する前に、そのファイルの隣へ`<file>.agboard-backup…`という名前でバックアップを書き込みます。バックアップには元の設定が入っているので、共有フォルダには置かないでください。もう一度実行しても何も変わらず、各ファイルは`unchanged`と表示されます。読めない、または形の誤った設定ファイルがあるときは、何も書き込まずにそのファイルを示します。
 
-Codexの設定を更新できるのは、`sandbox_mode`が`"workspace-write"`の場合だけです。権限プロファイル（`default_permissions`、`permissions`、`profile`、`profiles`）には対応していません。セットアップが`sandbox_mode`を変更することもありません。
+setupがCodexの`config.toml`を変更するのは、`sandbox_mode`が`"workspace-write"`で、権限プロファイル（`default_permissions`、`permissions`、`profile`、`profiles`）を設定していないときだけです。そうでないときは、ファイルをそのままにして、手作業の手順を表示します。プラグインは導入します。setupが`sandbox_mode`自体を変えることはありません。`sandbox_mode = "danger-full-access"`では、Codexはすでにすべてのフォルダを扱えるので、権限もルールファイルも書き込みません。
 
-設定の更新が拒否された場合は、`config.toml`に`sandbox_mode = "workspace-write"`を自分で設定してから、再実行してください。拒否された実行では、ファイルは変更されません。既定の`--agent all`では、Codexの設定を更新できなければClaude Codeの設定も変更しません。Codexを使わない場合は、`agboard setup --agent claude`でClaude Codeだけを対象にできます。
-
-HookとエージェントのSkillは、セットアップでは導入しません。導入するのは`agboard connect`で、同じ権限の変更も行います（[エージェントとの連携](../automation/agents#connect-your-agent)を参照）。
-
-セットアップは、利用者自身が一度だけ実行する手順です。通常の作業中にエージェントへ実行させないでください。プロジェクトや組織の設定によってアクセスが制限される場合もあるため、セットアップ後は新しいセッションで共有フォルダを読み書きできることを確認してください。
-
-## 連携の記録、バックアップ、手作業の権限設定 {#integration-records-backups-and-manual-permissions}
-
-`connect`と`update`は、専用のファイルをいくつか保持します。これらは`shared/`の外にあるため、プロジェクトのバックアップには含まれません。
-
-- **連携の記録。** データフォルダの`integrations.json`（通常は`~/.agent-board/integrations.json`）に、`connect`が導入したものを記録します。エージェント、SkillかHookか、スコープ、ファイルとその場所、導入した版、管理する各部分のハッシュです。`update`と更新の通知がこれを読みます。手で編集しないでください。壊れている、または未知の`schemaVersion`の記録は書き換えません。コマンドは止まって、その旨を表示します。
-- **バックアップ。** `connect`や`update`は、ファイルを変更する前に、元のものを隣へ`<name>.agboard-backup-<id>-<n>`（例: `settings.json.agboard-backup-...`）としてコピーします。記録そのものを変更するときも同様です。置き換えたり削除したりするSkillのフォルダは、Skillを置くフォルダの中ではなく、その親にある隠しフォルダ`.agboard-backups`（例: `~/.claude/.agboard-backups/`）へ移します。エージェントが古いコピーを2つ目のSkillとして読み込まないようにするためです。コピーが自動で削除されることはありません。元の設定が入っているので、共有フォルダには置かず、アクセス権も保ってください。元に戻すには、エージェントを止めて、バックアップを元のファイルへコピーします。
-- **Projectスコープとgit。** Projectスコープでは、バックアップのファイルと`.agboard-backups`フォルダが、リポジトリの中（`.claude/`、`.codex/`、`.agents/`の下）に作られます。コミットされないように、`.gitignore`へ`*.agboard-backup-*`と`.agboard-backups/`を追加してください。
-- **競合。** `connect`が導入したSkillのファイルを編集した、そのフォルダにファイルを足した、管理しているHookを削除または変更した場合、コマンドは競合として報告し、そのエージェントには何も書き込みません。あなたの変更を残してエージェントをそのままにするか、編集を別の場所へ退避してからコマンドをやり直してください。
-- **中断された実行。** 書き込み中は、エージェントごとに小さなジャーナル（`integrations-journal-<agent>.json`）とロック（`integrations-<agent>.lock`）がデータフォルダにあります。実行が途中で止まったときは、次の`connect`か`update`が、バックアップからファイルを元に戻します。その間に変わったファイルはそのままにして、ジャーナルも残し、そのエージェントについてコマンドは止まり、終了コード`1`で終わります（確認の質問で取り消した場合は、これまでどおり`0`です）。変わったファイルとそのバックアップ、ジャーナルの場所を、標準エラーへ表示します。もう一方のエージェントには影響しません。それらのファイルをバックアップから自分で戻し、ジャーナルを削除してから、もう一度実行してください。
-- **手作業の権限設定。** Codexにデータフォルダの権限を加えるのは、`config.toml`が`sandbox_mode = "workspace-write"`で、権限プロファイルを使っていない場合だけです。そうでないと、`connect`はCodexを飛ばして、すべきことを表示します。自分で設定してから、もう一度`connect`を実行してください。`PATH`上に見つからなかったエージェントは設定されません。インストールしてから、もう一度`connect`を実行してください。
+setupはあなたが実行する手順です。通常の作業中にエージェントへ実行させないでください。プロジェクトや管理者の設定でフォルダへのアクセスが制限されることもあるので、新しいセッションで確認してください。
 
 ## バックアップと復元
 

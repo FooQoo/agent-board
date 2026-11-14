@@ -1,12 +1,12 @@
 # Agent integration
 
-Agents use Agent Board through three pieces: the skill that tells them how to work, the hook that hands them the progress table, and the waiting commands that let them block until the project changes or a person answers. This page explains each piece and what `agboard setup` prepares. The user-facing workflow is in [Working with agents](../../guide/automation/agents.md); the JSON they receive is in [Hook, progress, and wait output](../reference/agent-output.md).
+Agents use Agent Board through three pieces: the skill that tells them how to work, the hook that hands them the progress table, and the waiting commands that let them block until the project changes or a person answers. This page explains each piece and how `agboard setup` installs them as the Agent Board plugin. The user-facing workflow is in [Working with agents](../../guide/automation/agents.md); the JSON they receive is in [Hook, progress, and wait output](../reference/agent-output.md).
 
 ## How the pieces fit together
 
 | Piece | Lives in | Job |
 | --- | --- | --- |
-| Skill `agent-board` | `.agents/skills/agent-board/SKILL.md` | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
+| Skill `agent-board` | `plugins/agent-board/skills/agent-board/SKILL.md` | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
 | Hook | `agboard hook` (`src/agent/hook.rs`) | Fetching and formatting: after tool calls, attach the current progress table to the agent's context. |
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
 | `wait` | `src/agent/wait.rs`, `src/agent/task_wait.rs` | Block until the project changes or the next task is ready. |
@@ -26,8 +26,8 @@ The progress table lists Todo and Doing tasks that do not wait for a person, gro
 
 The hook identifies the project from the nearest bound ancestor of the input `cwd` (or the process cwd), never from a session ID, and never selects all projects when the folder is unbound, and never falls back to a parent when the nearest binding is broken. It returns the table as `AGBOARD_PROGRESS` JSON in `hookSpecificOutput.additionalContext`, or an `AGBOARD_ERROR` such as `bound_project_missing`. A folder with no binding at all is not an error; see [Hook skip and errors](#hook-skip-and-errors).
 
-- **Claude Code.** The template in `integrations/claude-code/` registers `agboard hook` on PostToolUse, and on PostToolUseFailure after failures, without a fixed project name. Generic skill frontmatter hooks are not used. The skill reads a snapshot when first loaded; the table is fetched again after compaction (SessionStart `compact`) or on the next tool completion.
-- **Codex.** The template in `integrations/codex/` registers `agboard hook --agent codex` on PostToolUse and also fetches at first use and after compaction. Existing settings are never written automatically; users review and trust the template.
+- **Claude Code.** The plugin's `hooks/claude.json` registers `agboard hook --agent claude --plugin-version <version>` on SessionStart (`startup`, `resume`, `clear`, and `compact`), PostToolUse, and PostToolUseFailure, without a fixed project name. Generic skill frontmatter hooks are not used.
+- **Codex.** The plugin's `hooks/codex.json` registers `agboard hook --agent codex --plugin-version <version>` on SessionStart and PostToolUse. Codex runs a plugin's hooks only once they are trusted; `agboard setup` and `agboard update` trust them (see [Setup and update](#setup-and-update)).
 - **Limits.** Input is limited to 64 KiB of UTF-8, the table to 256 KiB, and a run to 10 seconds. Codex's `additionalContextLimit` is set to 0 so the hook enforces its own limit. Exceeding it reports `context_too_large`; output is never truncated and reported as success. When the table cannot be produced or the full input did not arrive, the hook says so and keeps the original tool result.
 - **Safety.** Commands are fixed; nothing is built from task text or `tool_input`. The hook never calls agent tools, never triggers itself, and changes no board file. When it adds a progress table, it starts the server in the background if none runs, without waiting, unless `agboard stop` paused that or `AGBOARD_AUTOSTART=0` is set (see [Server and web UI](./server-and-ui.md#how-a-command-starts-a-server)). This keeps automatic Done working while an agent only edits files. Paths appear only in local CLI and hook output, never in remote JSON.
 
@@ -65,7 +65,7 @@ Asking returns a Running task to Idle. After the answers arrive, the agent reads
 
 The selector uses `ordered_tasks`, the same ordering as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It returns one AI-owned Todo or Doing task whose shown run state is Idle (a task that waits for a person shows Pending and is never returned), provided it is not a draft or archived. The initial read means tasks created before listening are eligible. The result contains the snapshot cursor, the task, its local `TASK.md` path, and its `EPIC.md` path when it has an epic. Selection is read-only and does not claim a task; callers must re-read its state before acting. The listener procedure checks the complete snapshot first and resolves any existing AI work in `running` or `pending`; an idle task in Doing is eligible to resume. A timeout is a normal idle result, while a read defect, unavailable server, or deleted project remains an error.
 
-For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) describes task enrichment, approval checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
+For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md) describes task enrichment, approval checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
 
 ## Automatic Done
 
@@ -87,28 +87,19 @@ The first-run guide creates two sample cards. Each carries an `onboardingSample`
 
 Only the guide writes the identity. Create and edit requests have no field for it, and moves, history updates, archiving, and restoring keep it. The board still shows the cards. For what the user sees, see [Before you start](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 
-## Embedded bundle
+## The plugin
 
-`connect` and `update` need no Git clone, Node.js, or Rust at run time, because the Skill and the Hook templates are inside the binary.
+The Skill and the Hook are distributed as one plugin, `agent-board`, from a marketplace in this repository. Both agents install it with their own plugin commands, so agboard embeds no copy of the files.
 
-- **What is embedded.** `build.rs` (with `src/integrations/build_bundle.rs`) takes an allowlist: `SKILL.md`, `references/`, and `assets/` of `.agents/skills/agent-board/`, and the Hook JSON of `integrations/claude-code/` and `integrations/codex/`. It rejects dangling references, personal absolute paths, and symbolic links, and never reads `node_modules`. `assets::bundle()` returns an `EmbeddedBundle` with the crate version and, for each entry, a relative path, the bytes, and their SHA-256. If the Skill folder is missing, the build warns and embeds nothing; `connect` and `update` then fail at run time, so check the embedded file count of a release build.
-- **Where it is placed.** `paths.rs` holds pure functions from the environment (`AGBOARD_HOME`, `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, the home folder) and the bound root to the four targets in [Choose scopes](../../guide/automation/agents.md#choose-scopes). The Claude Code Global Skill follows `CLAUDE_CONFIG_DIR`. The Codex Skill uses `~/.agents/skills` and ignores `CODEX_HOME`. An empty variable counts as unset. Project paths start from the bound root that `FileStore::resolve_binding` returns, never from the working folder.
-- **The registry.** `registry.rs` reads and writes `<data-dir>/integrations.json`, `schemaVersion` 1. Anything else, or a record that breaks the rules, is refused and never migrated or rewritten. The fields are in [Shared files](../reference/files.md#integration-records).
-- **Hashes.** A file's hash is the SHA-256 of its bytes, in lowercase hex. A Skill's managed hash is the SHA-256 of one line `path<TAB>sha256<LF>` per file, in path order. A Hook entry's hash is the SHA-256 of the canonical JSON of its `hooks[event][i]` group (keys sorted at every level, no whitespace). The Hook's managed hash is the SHA-256 of one line `event<TAB>matcher<TAB>command<TAB>sha256<LF>` per entry, with an empty matcher when there is none. A hash of a whole settings file is used only to notice a change during the run. A change to a key that is not Agent Board's is never a conflict.
+| Path | Contents |
+| --- | --- |
+| `.agents/plugins/marketplace.json` | The Codex marketplace catalog, named `agent-board`. |
+| `.claude-plugin/marketplace.json` | The Claude Code marketplace catalog, named `agent-board`. |
+| `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | The plugin manifests. |
+| `plugins/agent-board/skills/agent-board/` | The Skill: `SKILL.md`, `references/`, and `assets/`. |
+| `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | The Hook of each agent. |
 
-The hashes find accidental overwrites and edits. They do not authenticate where the files came from, and they do not replace the signature of the distributed binary.
-
-## Plan and apply
-
-`connect` and `update` share one engine in `src/integrations/`, so the ownership and conflict rules cannot differ.
-
-1. **Plan (read-only).** `plan::plan_agent` builds an `AgentPlan` for one agent: the operations, what is added or removed, the permission edits, conflicts, manual steps, and warnings. Its state is `Ready`, `Unchanged`, or `Blocked`. `connect` plans with permissions and the scope the user chose. `update` plans only the recorded targets, with permissions off.
-2. **Ownership.** A Hook is identified by agent, event, matcher, and the normalized fixed command. Edited or missing managed entries, an unmanaged equal Hook, and an `agboard` command that cannot be identified each block the agent, except that `connect` takes over a Hook written by hand for this project (the same event and matcher, alone in its group, with the command `agboard hook --agent <agent>` or the same with `--project` naming this project); `update` does not. The scan covers the Global files, the bound root and its ancestors (`settings.json` and `settings.local.json`, or `hooks.json` and `config.toml`, including Codex inline hooks), and the Project paths in the registry. It never walks the disk. A Skill is a conflict when a managed file was edited or removed, a file was added, or a link replaced a file.
-3. **Apply.** `apply::apply_agent` runs one agent at a time, Claude Code before Codex, so one failure never undoes the other. For each agent it takes a lock (`integrations-<agent>.lock`, which fails at once if held), refuses to start while a journal exists, validates every target, writes a journal that holds the original and planned hashes and the backup names, backs up each changed file as `<name>.agboard-backup-<txn>-<index>` (a Skill folder is moved into `.agboard-backups/` in the parent of the skills root instead, so the agent never sees a second Skill), writes the new content to a temporary file or folder on the same filesystem, replaces the original atomically, and commits the registry last. A Skill folder is finished in a staging folder before it replaces the old one.
-4. **Result.** Each agent ends as `Applied`, `Unchanged`, `Blocked`, `Failed`, or `Interrupted`. A failure rolls that agent back to its start without overwriting a file that someone else changed; if that is not possible, the journal stays.
-5. **Recovery.** `recovery::recover_pending` is called by `connect` and `update` before they plan. It compares the journal, the original and new hashes, and the backups, then restores what is safe. It takes the agent lock before it reads the journal. When a file was changed by someone else, or an undo fails, the journal stays, that agent is stopped, and the command prints each such path with its backup and the journal path on standard error; the user resolves it and removes the journal. Ordinary commands and the Hook never recover and never write settings.
-
-An unreadable or unknown registry stops both commands with the reason. For what users do about conflicts and backups, see [Working with agents](../../guide/automation/agents.md#connect-your-agent) and [Data and backups](../../guide/operations/data.md#integration-records-backups-and-manual-permissions).
+The plugin versions in both manifests and the `--plugin-version` in both Hook commands equal the crate version. `tests/plugin_layout.rs` and `scripts/release/check-version.py` check this, so a release tag always holds a plugin of the same version as the binary.
 
 ## Hook skip and errors
 
@@ -117,7 +108,7 @@ The Hook resolves the project with `FileStore::resolve_binding`, which returns a
 | Input or state | Behavior |
 | --- | --- |
 | The `cwd` is a bound root, a subfolder, or inside a nearer nested binding | The nearest project only, as `AGBOARD_PROGRESS`. |
-| The bindings are valid, the `cwd` is readable, and no binding matches | Nothing on stdout or stderr, exit code 0. The board and the registry are not read. |
+| The bindings are valid, the `cwd` is readable, and no binding matches | Nothing on stdout or stderr, exit code 0. The board is not read. |
 | The nearest binding names a project that is gone | `bound_project_missing`. It never falls back to a parent. |
 | The bindings file is malformed or unreadable | `AGBOARD_ERROR` with the cause. It is not treated as unbound. |
 | The input is not valid JSON, has the wrong type, or is too large | `invalid_hook_input`, as before. |
@@ -126,28 +117,28 @@ The Hook resolves the project with `FileStore::resolve_binding`, which returns a
 | The `cwd` does not exist or cannot be read | `hook_cwd_unavailable`. It is never turned into a skip. |
 | An explicit `--project` | The named project wins. A name that is not found is `project_not_found`. |
 
-The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never shows an update notice, recovers a settings file, uses the network, or writes settings. Starting the server is the one side effect it has.
+The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never uses the network or writes settings. Starting the server is the one side effect it has, and its only notice is the [version check](#the-plugin-version-check) at session start.
 
-## The update notice
+## The plugin version check
 
-After an ordinary command prints its output, `notice::stale_line` may print one line to stderr. It compares the `installedVersion` of the records `update` would touch (Global, and the nearest bound root's Project) with this build's version. It scans no asset, uses no network, and writes nothing. It prints only when stdout and stderr are both terminals and the output is not JSON. `hook`, `wait`, `serve`, `stop`, `setup`, `connect`, `update`, help, and version return before it. A missing, unreadable, or unknown registry means no notice and no change to the command's output or exit code; `update` is where such a problem is reported. The text is in [Working with agents](../../guide/automation/agents.md#refresh-the-integrations).
+The Hook command names the plugin's version with `--plugin-version`. `src/agent/hook_version.rs` compares it with the version of the running `agboard`. When they differ, the SessionStart output gets an `AGBOARD_NOTICE` that tells the agent to ask the user to run `agboard update` and start a new session. Other events never carry the notice, so it appears once per session. The check reads and writes nothing, and ordinary commands print no update notice.
 
-## Preparing access with setup
+## Setup and update
 
-`agboard setup` adds the Agent Board data area to the agents' allowed folders so they can edit shared files. It is a one-time step the user runs; it never creates projects or registers hooks. `agboard connect` makes the same permission change and also installs the Skill and the Hook.
+`agboard setup` and `agboard update` share `src/setup/`, and `src/cli/commands/setup.rs` handles both. They branch before normal store handling, need no project, and resolve the data area once through the shared path resolution. For what users see, see [Set up your agents](../../guide/automation/agents.md#set-up-your-agents) and [Setup and update](../../guide/automation/cli.md#setup-and-update).
 
-How it is built:
+A run has two phases:
 
-- It branches before normal store handling and resolves the data area once through the shared path resolution.
-- Environment and path resolution, the change plan, Codex TOML editing (`toml_edit`, preserving comments, other keys, and arrays), Claude Code JSON editing (preserving unknown keys), and backup and apply are separate steps. The change plan holds each file's original and updated content; dry runs use the same validation.
-- It never switches permission modes or managed settings. It checks whether the change is possible under the current scheme, validates every target before writing, and confirms originals did not change meanwhile. Writing a file is reported separately from an agent loading it.
+1. **Prepare (read-only).** `prepare.rs` finds each agent's command on `PATH`, reads the installed plugin version with `plugin list --json`, and, for `setup`, reads and plans the settings files. An agent whose command is missing is skipped with the reason. `update` skips an agent that has no plugin. A settings file that cannot be used stops the whole run before anything is written. A dry run stops after this phase, so it uses the same checks.
+2. **Execute.** After the user agrees, `execute.rs` creates the shared folder and writes the settings files, all or none. It then runs each agent's plugin commands and, for Codex, trusts the hooks. A failure in this step stops only that agent; the files already written stay, because they are correct on their own and the command can be run again.
 
-When something fails:
+The pieces:
 
-- Invalid JSON or TOML, an unsupported permission scheme, or a concurrent change stops setup before anything is written, with the target, reason, and next step.
-- Each file to change is backed up to a unique file in the same folder, then replaced from a temporary file. Unchanged files are neither backed up nor written.
-- If a run fails partway, only what that run wrote is restored, without overwriting external changes. If restoring is impossible, the run is not reported as complete; it states what changed and where the backups are.
-- Symbolic links are resolved and the real file is edited. Unresolvable paths stop setup instead of guessing.
-- A dry run creates no folders, settings files, or backups. Setup never changes old data or a running server's notification target.
+- **Agent commands.** `agent_cli.rs` finds `codex` and `claude` on `PATH` without a shell, runs them with no input and a time limit, and captures their output. Tests put fake commands first on `PATH` (`tests/support/fake_agents.rs`), so no test reaches a real agent or the network.
+- **Plugin install.** `plugin.rs` adds the marketplace at the tag `v<version>` of `https://github.com/FooQoo/agent-board.git`, then runs `codex plugin add agent-board@agent-board`, or `claude plugin install` and `claude plugin update`. When the marketplace was already added from another source (Codex reports that it is added from a different source; Claude Code reports the failure code `declared`), it removes the marketplace and adds it again. This is how both agents move a marketplace to a new tag. `AGBOARD_PLUGIN_MARKETPLACE` replaces the source with another location, such as a local checkout, for development.
+- **Settings files.** `plan.rs`, `codex.rs`, and `claude.rs` compute the new bytes of each file. Codex TOML is edited with `toml_edit`, preserving comments, other keys, and arrays; Claude Code JSON keeps unknown keys. Codex gets the data folder in `sandbox_workspace_write.writable_roots` and the rules file `$CODEX_HOME/rules/agboard.rules`; Claude Code gets it in `permissions.additionalDirectories`. `update` changes no settings file.
+- **Writing.** `apply.rs` and `apply/files.rs` back up each existing file to `<file>.agboard-backup…` in the same folder, replace it through a temporary file and a rename, and undo what this run wrote when a later write fails. A file that changed after planning is never overwritten. Symbolic links are resolved and the real file is edited.
+- **Hook trust.** `trust.rs` starts `codex app-server`, lists the hooks with `hooks/list`, and stores the current hash of each Agent Board hook under `hooks.state` with `config/value/write`. Only the plugin's own hooks are touched. Codex ties trust to the plugin's content, so every install or update trusts the hooks again.
+- **Report.** `report.rs` gives each agent `updated`, `unchanged`, `planned`, `skipped`, or `failed`, as text or JSON. The exit code is 1 when an agent failed, or when `setup` could set up no agent.
 
-What it may and may not grant is part of the [Security model](./security.md#agent-access-setup).
+Setup never switches permission modes or managed settings. What it may and may not grant is part of the [Security model](./security.md#agent-access-setup).

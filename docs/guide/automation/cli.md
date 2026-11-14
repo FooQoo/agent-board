@@ -19,8 +19,8 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
-| Run the server and agent access | `serve`, `stop`, `setup`, `hook` |
-| Install and update the Skill and Hook | `connect`, `update` |
+| Run the server and the hook | `serve`, `stop`, `hook` |
+| Install and update the Agent Board plugin | `setup`, `update` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
 
 ## Add and inspect tasks
@@ -174,38 +174,31 @@ If a command started the running server, `serve -d` keeps that server running in
 
 If a server you started is already running, or the options differ, `serve -d` asks in the terminal whether to stop it and start a new one. Answer `y` to replace it; the new server uses the `--port` and `--monitor` of this command, not those of the old server, and with `--monitor ngrok` it gets a new passcode. Any other answer leaves the running server as it is and exits with code 0. With `--json`, or when the command does not run in a terminal, nothing is asked and `serve -d` exits with code 1 (`already_serving`).
 
-## Set up the shared folder
+## Setup and update {#setup-and-update}
 
-`agboard setup` creates the data folder and its `shared/` folder, then adds the data folder to the Codex and Claude Code user settings so that agents can write there. It needs no project, and you run it yourself; it does not install hooks or the agent skill.
-
-```sh
-agboard setup --dry-run
-agboard setup --agent claude --json
-```
-
-`--agent codex|claude|all` chooses the settings to update (default `all`). `--dry-run` changes nothing, and `--json` prints machine-readable output. The command refuses a Codex configuration that is not `sandbox_mode = "workspace-write"` and changes nothing when it refuses. See [Data and backups](../operations/data#set-up-the-shared-folder) for the settings it changes and how it backs them up.
-
-## Connect and update
-
-`connect` and `update` install and refresh the Skill and the Hook for Claude Code and Codex. The questions, the files written, and the conflict rules are in [Working with agents](./agents#connect-your-agent).
+`setup` creates the data folder and installs the Agent Board plugin (the Skill and the Hook) for Codex, Claude Code, or both. `update` moves an installed plugin to the version of the command. What they ask and change is in [Working with agents](./agents#set-up-your-agents).
 
 ```sh
-agboard connect
+agboard setup
+agboard setup --agent codex --dry-run
+agboard setup --agent all --yes --json
 agboard update
 agboard update --yes
 ```
 
 | Command | What it does | Exit codes |
 | --- | --- | --- |
-| `agboard connect` | Asks which agents, one Skill scope, and one Hook scope, shows the plan, and writes after you answer `y`. Needs a terminal and a folder bound to a project. It takes no options. | `0` success, nothing to change, or a cancel. `1` an agent could not be configured, or the folder is not bound. `2` bad command line, or no terminal. |
-| `agboard update` | Updates what `connect` recorded: the Global installations and the Project installations of the nearest bound root. Shows the changes and asks **Apply these updates?**. | `0` success, nothing to update, or a cancel. `1` failure, conflict, or partial failure. `2` bad command line, or no terminal without `--yes`. |
-| `agboard update --yes` | The same, without the question. Conflicts still fail; your own edits are never overwritten. | The same as `update`. |
+| `agboard setup` | Creates the data folder, asks which agents to set up, shows the plan, and after you answer `y` installs the plugin, lets the agents use the shared folder, and trusts the Agent Board hooks in Codex. Needs no project. | `0` success, nothing to change, or a cancel. `1` an agent failed, or no agent could be set up. `2` bad command line, or missing options without a terminal. |
+| `agboard update` | Moves the plugin of every agent that has it to this version and trusts the new Codex hooks. Shows the plan and asks first. | `0` success, nothing to update, or a cancel. `1` an agent failed. `2` bad command line, or missing options without a terminal. |
 
-- Neither command waits on a pipe. Without a terminal, `connect` and `update` exit with `2` and ask you to run them in a terminal. `update --yes` also works without one.
-- `--json` is refused for both, and `--dry-run` for `update`. `connect` and `update` have no other options.
-- Failure reasons go to the error output.
-- `connect` in a folder that is not bound exits with `1` after printing `agboard project create "My project"` and `agboard project bind "My project"`.
-- `setup` stays a separate command that only adds the data folder to the agent settings. `connect` makes the same permission change, so you do not need to run `setup` first.
+Both commands take these options:
+
+- `--agent codex|claude|all` chooses the agents. Without it, `setup` asks on a terminal, and `update` takes every agent that has the plugin.
+- `--yes` agrees in advance, including the trust of the Codex hooks.
+- `--dry-run` shows the plan and installs, creates, and changes nothing.
+- `--json` prints machine-readable output.
+
+Neither command waits on a pipe. Without a terminal, or with `--json`, `setup` needs `--agent`, and both need `--yes` or `--dry-run`; otherwise they exit with `2`. An agent whose command is not on `PATH` is skipped with the reason. Failure reasons go to the error output. See [Data and backups](../operations/data#set-up-the-shared-folder) for the settings files they change and how they back them up.
 
 ## Output and confirmation
 

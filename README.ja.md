@@ -68,17 +68,17 @@ agboard --version
 
 Homebrew自体にも、環境によってはCommand Line Toolsなどの前提があります。詳しくはHomebrewのドキュメントを参照してください。ソースからビルドする場合は、[開発者ガイド](https://fooqoo.github.io/agent-board/ja/dev/getting-started/setup)を参照してください。
 
-## 連携する
+## セットアップする
 
-作業フォルダにプロジェクトを作成し、エージェントをつなぎます。
+最初に一度だけエージェントを設定し、作業フォルダにプロジェクトを作成します。
 
 ```sh
+agboard setup
 cd my-project
 agboard project create "My project"
-agboard connect
 ```
 
-`project create`は、現在のフォルダをプロジェクトに登録します。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。`connect`は、設定するエージェント（Claude Code、Codex、または両方）と、置き場所を尋ねます。Skillに1つ、Hookに1つ、GlobalかProjectのスコープを選びます。書き込む前にすべての変更を表示し、バックアップを残し、あなたの編集を上書きしません。終わったら、エージェントの`/hooks`でHookを確認してください。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#connect-your-agent)を参照してください。
+`setup`はデータフォルダを作成し、使うエージェント（Codex、Claude Code、または両方）を尋ねます。計画を表示し、`y`と答えると、各エージェント自身のプラグインコマンドでAgent Boardプラグイン（SkillとHook）を導入し、エージェントが共有フォルダを使えるようにします。Codexでは、プラグインのHookを信頼済みにします。どのフォルダでも実行でき、プロジェクトは不要です。`project create`は、現在のフォルダをプロジェクトに登録します。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#set-up-your-agents)を参照してください。
 
 ## 使い始める
 
@@ -92,14 +92,14 @@ agboard serve
 
 ## 更新する
 
-更新は2段階です。先にコマンドを更新し、続けて`connect`が導入したSkillとHookを更新します。
+更新は2段階です。先にコマンドを更新し、続けてAgent Boardプラグインを同じ版にそろえます。
 
 ```sh
 brew upgrade fooqoo/tap/agboard
 agboard update
 ```
 
-`agboard update`は、変更内容を表示して、書き込む前に確認します。`agboard update --yes`が省くのは質問だけで、あなたの編集は上書きしません。更新したら、`agboard serve`を再起動してください。
+`agboard update`は、変更内容を表示して、実行する前に確認します。`agboard update --yes`は、その質問にあらかじめ答えます。プラグインとコマンドの版が違うときは、新しいエージェントのセッションが`agboard update`の実行を促します。更新したら、`agboard serve`を再起動してください。
 
 ## 機能の提供段階
 
@@ -114,5 +114,5 @@ Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱�
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
 - [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
 - [リリース](https://github.com/FooQoo/agent-board/releases) — 公開した各版の変更点。
-- [Claude Code・Codexとの連携（英語）](integrations/README.md) — `connect`が導入するものと、Hookの仕組み。
+- [Agent Boardプラグイン（英語）](plugins/agent-board/README.md) — `setup`がClaude CodeとCodexに導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

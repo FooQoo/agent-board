@@ -236,38 +236,20 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 - `shared/.internal/onboarding.json`: the guide's status, lease owner, active run, and recent command IDs. See [saving and recovery](../concepts/saving-and-recovery.md).
 - `tasks/<id>/task.json` `onboardingSample`: `{ "runId": "<32 lowercase hex>", "ordinal": 1 | 2 }`. Present only on the guide's sample cards.
 
-## Integration records
+## Files that setup writes {#agent-settings}
 
-`<data-dir>/integrations.json` (normally `~/.agent-board/integrations.json`) is written by `connect` and `update`. It lives outside `shared/`, so it is not part of any project. It is written atomically. Next to it are `integrations-<agent>.lock` and, only while a run is unfinished, `integrations-journal-<agent>.json` (owner-only).
+`agboard setup` keeps no record of its own. Each agent's plugin list says what is installed, and these files outside the data area are the only ones it changes:
 
-```json
-{
-  "schemaVersion": 1,
-  "installations": [
-    {
-      "agent": "claude",
-      "component": "hook",
-      "scope": "project",
-      "projectId": "<project-id>",
-      "boundRoot": "<absolute bound root>",
-      "configuredPath": "<absolute path of the settings file>",
-      "resolvedPath": "<the same path with links resolved>",
-      "installedVersion": "1.0.0",
-      "managedHash": "<sha256>",
-      "managedEntries": [
-        { "event": "PostToolUse", "matcher": null, "command": "agboard hook --agent claude", "sha256": "<sha256>" }
-      ],
-      "files": []
-    }
-  ]
-}
-```
+| File | Change |
+| --- | --- |
+| `$CODEX_HOME/config.toml` (normally `~/.codex/config.toml`) | The data folder is added to `sandbox_workspace_write.writable_roots`, only with `workspace-write` and no permission profile. |
+| `$CODEX_HOME/rules/agboard.rules` | Created with `prefix_rule(pattern=["agboard"], decision="allow")` when it does not exist. Not written under full access. |
+| `$CLAUDE_CONFIG_DIR/settings.json` (normally `~/.claude/settings.json`) | The data folder is added to `permissions.additionalDirectories`. |
 
-- `agent` is `claude` or `codex`; `component` is `skill` or `hook`; `scope` is `global` or `project`.
-- `projectId` and `boundRoot` appear only on Project records.
-- A Skill record lists `files` (`path` relative to the Skill folder, and `sha256`); a Hook record lists `managedEntries`. The other list is empty. `managedHash` is the manifest hash or the entries hash described in [Embedded bundle](../concepts/agents.md#embedded-bundle).
-- Only `schemaVersion` 1 is read. Unknown fields, a different version, and malformed JSON are refused and the file is never rewritten. Backups of changed files sit next to them as `<name>.agboard-backup-<txn>-<index>`. A Skill folder's backup and staging folder (`.<name>.agboard-stage-<txn>-<index>`) live in `.agboard-backups/`, in the parent of the skills root (`~/.claude/.agboard-backups/`, `~/.agents/.agboard-backups/`, `<root>/.claude/.agboard-backups/`, `<root>/.agents/.agboard-backups/`), so they are on the same file system for the rename and are never loaded as a Skill. With Project scope these paths are inside the repository and belong in `.gitignore`.
-- Paths in the file are absolute for this machine; in documentation they are written with placeholders.
+- Each changed file is first backed up next to itself as `<file>.agboard-backup…`, with the original file's access rights. A new file is created owner-only.
+- Codex's hook trust is stored by Codex itself, under `hooks.state` in its configuration, through `codex app-server`.
+- The installed plugin lives where each agent keeps its plugins; agboard does not write there.
+- `agboard update` changes none of these files.
 
 ## Folder bindings
 

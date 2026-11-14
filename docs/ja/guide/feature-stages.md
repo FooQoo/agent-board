@@ -45,7 +45,7 @@ GAの機能には、この表示はありません。
 | データの保存と復旧 | macOS | `formatVersion`が1のファイルだけに対応します。 | [データとバックアップ](./operations/data) |
 | 表示言語とテーマ | パソコン、モバイルモニター | 日本語と英語、24のテーマです。 | [設定](./use/board#settings) |
 | エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | HookとSkillは、インストールした`agboard`の版に合わせます。本体を更新したら`agboard update`を実行します。エージェントの起動は人が行います。 | [エージェントとの連携](./automation/agents) |
-| `connect`と`update` | macOS。`PATH`上にClaude CodeやCodexが見つかる環境 | `update --yes`を除き、どちらのコマンドも対話式です。Hookが変わったときは、エージェントで信頼し直す必要があります。`update`が古い版を入れ直すことはありません。 | [エージェントとの連携](./automation/agents#connect-your-agent)、[CLIリファレンス](./automation/cli#connect-and-update) |
+| `setup`と`update` | macOS。`PATH`上にClaude CodeかCodexがあり、GitHubへ接続できる環境 | ターミナルでは、どちらのコマンドも先に確認します。`--yes`はあらかじめ同意します。Claude CodeとCodexのプラグインコマンドに依存します。 | [エージェントとの連携](./automation/agents#set-up-your-agents)、[CLIリファレンス](./automation/cli#setup-and-update) |
 | 初回の案内 | パソコンのブラウザ | データ領域にすでにプロジェクトがあるときと、モバイルモニターでは表示しません。 | [初回の案内](./use/board#the-first-run-guide) |
 
 ## パブリックプレビューの機能

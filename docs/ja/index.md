@@ -93,30 +93,25 @@ landing:
   agents:
     eyebrow: 連携
     title: いつものエージェントから、そのまま。
-    lead: agboard connectが、Claude CodeとCodexにSkillとHookを対話で導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
+    lead: agboard setupが、Claude CodeとCodexにSkillとHookを含むAgent Boardプラグインを導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
     supportedLabel: 対応エージェント
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
       - { text: Codex, link: https://developers.openai.com/codex }
     trademark: Claude CodeはAnthropic、CodexはOpenAIの製品で、各名称は各社の商標です。Agent Boardは独立したプロジェクトで、両社と提携しておらず、推奨も受けていません。
-    command: agboard connect
+    command: agboard setup
     terminal:
       label: ターミナルで
-      caption: いくつかの質問に答えるだけで、SkillとHookが入ります。
+      caption: エージェントを選んで確認するだけで、プラグインが入ります。
       lines:
-        - { kind: command, text: $ agboard connect }
-        - { kind: frame, text: "┌  agboard connect" }
-        - { kind: question, text: "◇  Select agents to connect" }
-        - { kind: answer, text: "│  Claude Code, Codex" }
-        - { kind: question, text: "◇  Skill scope" }
-        - { kind: answer, text: "│  Global" }
-        - { kind: question, text: "◇  Hook scope" }
-        - { kind: answer, text: "│  Global" }
-        - { kind: question, text: "◇  Apply these changes?" }
+        - { kind: command, text: $ agboard setup }
+        - { kind: frame, text: "┌  agboard setup" }
+        - { kind: question, text: "◇  Which agent do you use with Agent Board?" }
+        - { kind: answer, text: "│  Both" }
+        - { kind: question, text: "◇  Apply these changes? …" }
         - { kind: answer, text: "│  Yes" }
-        - { kind: result, text: "◆  Claude Code: configured" }
-        - { kind: result, text: "◆  Codex: configured" }
-        - { kind: frame, text: "└  Setup finished." }
+        - { kind: result, text: "◆  Codex: updated" }
+        - { kind: result, text: "◆  Claude Code: updated" }
     link: { text: エージェントとの連携, link: /ja/guide/automation/agents }
   trust:
     title: 手元で動き、データはあなたのもの。
@@ -131,7 +126,7 @@ landing:
     lead: macOS 15以降とHomebrew、Claude CodeかCodexがあれば始められます。
     steps:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
-      - { title: プロジェクトとエージェントをつなぐ, commands: ['agboard project create "My project"', agboard connect] }
+      - { title: エージェントとプロジェクトを設定する, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: ボードを開く, commands: [agboard serve] }
     note: "バージョン1.0.0には、ドキュメントやモバイルモニターなど、パブリックプレビューの機能が含まれます。詳しくは"
     noteLinks:

@@ -45,7 +45,7 @@ Features that are GA show no notice.
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
 | Language and themes | PC, mobile monitor | English and Japanese, and 24 themes. | [Settings](./use/board#settings) |
 | Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the Skill must match the installed `agboard`; run `agboard update` after upgrading it. You start the agent yourself. | [Working with agents](./automation/agents) |
-| `connect` and `update` | macOS, with Claude Code and Codex found on your `PATH` | Both commands are interactive, except `update --yes`. After the Hook changes, you trust it again in the agent. `update` never installs an older version. | [Working with agents](./automation/agents#connect-your-agent), [CLI reference](./automation/cli#connect-and-update) |
+| `setup` and `update` | macOS, with Claude Code or Codex found on your `PATH` and a network connection to GitHub | On a terminal both commands ask first; `--yes` agrees in advance. They depend on the plugin commands of Claude Code and Codex. | [Working with agents](./automation/agents#set-up-your-agents), [CLI reference](./automation/cli#setup-and-update) |
 | First-run welcome | PC browser | It does not appear when the data area already has a project, and it does not appear on the mobile monitor. | [The first-run guide](./use/board#the-first-run-guide) |
 
 ## Features in public preview

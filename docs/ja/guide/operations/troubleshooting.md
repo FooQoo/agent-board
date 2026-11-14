@@ -53,19 +53,20 @@ title: トラブルシューティング
 | ページは開くが、回答が拒否される | 開いたアドレスが、現在の接続の公開アドレスではない。 | 接続が示すアドレスを開きます。接続を再起動すると、新しいセッションになります。 |
 | モニターが、データが古いと表示する | 自動更新が止まった、または一部のプロジェクトを読めなかった。 | ページを再読み込みするか、開き直します。モニターは、再び表示されると取得し直します。 |
 
-## connectやupdateが問題を報告する {#connect-or-update-reports-a-problem}
+## setupやupdateが問題を報告する {#setup-or-update-reports-a-problem}
 
 | 表示 | 原因 | 対処 |
 | --- | --- | --- |
-| `connect is interactive and needs a terminal`（終了コード2） | パイプ、スクリプト、エージェントから`connect`を起動した。 | 自分でターミナルから実行してください。`update`も、`--yes`を付けない限りターミナルが必要です。 |
-| `This folder is not bound to a project`（終了コード1） | フォルダも親フォルダも登録されていない。 | `agboard project create "My project"`または`agboard project bind "My project"`を実行してから、`connect`をやり直してください。 |
-| エージェントが見つからないと表示される | `claude`や`codex`が`PATH`にない。 | インストールするか`PATH`を直して、もう一度`connect`を実行してください。 |
-| `was edited after Agent Board installed it`、`was added to the Skill directory by someone else`、`is already registered and Agent Board did not install it` | 競合です。`connect`が導入したファイルをあなたが変更した、または同等のHookが手作業で登録されています。そのエージェントには何も書き込まれていません。 | 変更を残すか退避し、重複した登録を削除してから、もう一度実行してください。`--yes`でも競合は上書きされません。[競合](./data#integration-records-backups-and-manual-permissions)を参照してください。 |
-| `sandbox_mode is not set`、または`workspace-write`以外のモード | Codexの権限設定では、データフォルダへ書けません。`connect`は変更しません。 | Codexの`config.toml`で`sandbox_mode = "workspace-write"`を自分で設定してから、もう一度`connect`を実行してください。 |
-| 前回の未完了の実行を安全に元へ戻せなかった | 実行が途中で止まり、その後にファイルが変わった。 | メッセージが示すバックアップからファイルを戻し、示されたジャーナルを削除してから、もう一度実行してください。 |
-| エージェントがHookを実行しない | Hookは書き込まれたが信頼されていない、またはエージェントを再起動していない。 | 新しいセッション（Claude Code）を開始するか、Codexを再起動して、`/hooks`でHookを確認してください。`update`でHookが変わったときも、信頼し直します。 |
+| `setup asks which agent to set up and needs a terminal`や`asks for a confirmation and needs a terminal`（終了コード2） | パイプ、スクリプト、エージェントから、または`--json`付きで、質問の代わりになるオプションなしに起動されました。 | ターミナルで自分で実行するか、`--agent`と`--yes`（または`--dry-run`）を付けてください。 |
+| `The codex command was not found on PATH`（または`claude`）と表示され、エージェントが`skipped`になる | エージェントがインストールされていないか、コマンドが`PATH`上にありません。 | インストールするか`PATH`を直してから、もう一度実行してください。 |
+| `update`が`The Agent Board plugin is not installed`と表示する | `update`は、導入済みのプラグインだけを更新します。 | そのエージェントで`agboard setup`を実行してください。 |
+| エージェントが`failed`になり、理由に`codex plugin …`や`claude plugin …`がある | エージェント自身のプラグインコマンドが失敗しました。たとえばGitHubへのネットワーク接続がない場合です。メッセージの末尾に、そのコマンドの出力があります。 | 原因を取り除いてから、もう一度実行してください。すでに書き込んだ設定ファイルは、そのままで正しく使えます。 |
+| `sandbox_mode`や権限プロファイルについての手作業の手順 | Codexの権限設定では、データフォルダに書き込めません。setupはその設定を変えません。 | Codexの`config.toml`で`sandbox_mode = "workspace-write"`を自分で設定するか、権限プロファイルにデータフォルダを追加してから、もう一度`agboard setup`を実行してください。 |
+| `Codex lists no hooks of the Agent Board plugin`や`still does not trust the hook` | Codexでプラグインが有効になっていないか、Codexが信頼の設定を受け付けませんでした。 | `codex plugin list`でプラグインを確認し、Codexの`/hooks`でHookを確認してください。 |
+| エージェントがHookを実行しない | エージェントを再起動していないか、Claude CodeのHookを確認していません。 | 新しいセッションを始める（Claude Code）かCodexを再起動してから、`/hooks`でHookを確認してください。 |
+| 新しいセッションで、プラグインの版が違うと言われる | `agboard`を更新しましたが、プラグインは更新していません。 | `agboard update`を実行してから、新しいセッションを始めてください。 |
 
-両コマンドの終了コードは、[CLIリファレンス](../automation/cli#connect-and-update)にあります。
+両コマンドの終了コードは、[CLIリファレンス](../automation/cli#setup-and-update)にあります。
 
 ## macOSがagboardの実行を拒否する {#macos-will-not-run-agboard}
 

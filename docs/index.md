@@ -93,30 +93,25 @@ landing:
   agents:
     eyebrow: Integrations
     title: Works with the agents you already use.
-    lead: agboard connect walks you through installing the Skill and the Hook for Claude Code and Codex. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
+    lead: agboard setup installs the Agent Board plugin, with the Skill and the Hook, for Claude Code and Codex. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
     supportedLabel: Supported agents
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
       - { text: Codex, link: https://developers.openai.com/codex }
     trademark: Claude Code is a product of Anthropic and Codex is a product of OpenAI; their names are trademarks of their respective owners. Agent Board is an independent project and is not affiliated with or endorsed by either company.
-    command: agboard connect
+    command: agboard setup
     terminal:
       label: In your terminal
-      caption: Answer a few questions, and the Skill and the Hook are in place.
+      caption: Choose your agents and confirm, and the plugin is in place.
       lines:
-        - { kind: command, text: $ agboard connect }
-        - { kind: frame, text: "┌  agboard connect" }
-        - { kind: question, text: "◇  Select agents to connect" }
-        - { kind: answer, text: "│  Claude Code, Codex" }
-        - { kind: question, text: "◇  Skill scope" }
-        - { kind: answer, text: "│  Global" }
-        - { kind: question, text: "◇  Hook scope" }
-        - { kind: answer, text: "│  Global" }
-        - { kind: question, text: "◇  Apply these changes?" }
+        - { kind: command, text: $ agboard setup }
+        - { kind: frame, text: "┌  agboard setup" }
+        - { kind: question, text: "◇  Which agent do you use with Agent Board?" }
+        - { kind: answer, text: "│  Both" }
+        - { kind: question, text: "◇  Apply these changes? …" }
         - { kind: answer, text: "│  Yes" }
-        - { kind: result, text: "◆  Claude Code: configured" }
-        - { kind: result, text: "◆  Codex: configured" }
-        - { kind: frame, text: "└  Setup finished." }
+        - { kind: result, text: "◆  Codex: updated" }
+        - { kind: result, text: "◆  Claude Code: updated" }
     link: { text: Working with agents, link: /guide/automation/agents }
   trust:
     title: Runs on your machine. Your data stays yours.
@@ -131,7 +126,7 @@ landing:
     lead: You need macOS 15 or later, Homebrew, and Claude Code or Codex.
     steps:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
-      - { title: Connect a project and your agent, commands: ['agboard project create "My project"', agboard connect] }
+      - { title: Set up your agent and a project, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: Open the board, commands: [agboard serve] }
     note: "Version 1.0.0 includes features in public preview, such as Docs and the mobile monitor. See "
     noteLinks:

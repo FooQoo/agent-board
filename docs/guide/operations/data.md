@@ -81,45 +81,41 @@ Registrations live separately in `bindings.json` in the data folder and contain 
 
 ## Set up the shared folder
 
-`agboard setup` prepares the data folder for Codex and Claude Code. It needs no project, and it does the following:
+`agboard setup` prepares the data folder for Codex and Claude Code, and installs the Agent Board plugin (see [Working with agents](../automation/agents#set-up-your-agents)). It needs no project. For the data folder it does the following:
 
 - creates the data folder and its `shared/` folder;
 - adds the data folder to `sandbox_workspace_write.writable_roots` in Codex's `config.toml`, in `$CODEX_HOME` or `~/.codex`;
+- writes `rules/agboard.rules` in the same Codex folder, so that Codex runs `agboard` without asking, unless the file exists already;
 - adds the data folder to `permissions.additionalDirectories` in Claude Code's `settings.json`, in `$CLAUDE_CONFIG_DIR` or `~/.claude`.
 
 ```sh
-agboard setup --dry-run
+agboard setup --agent all --dry-run
 agboard setup
 ```
 
-`--agent codex|claude|all` chooses which settings to update; the default is `all`. `--dry-run` prints the planned changes and changes nothing. `--json` prints the same result as machine-readable JSON. A dry run prints output like this (`<home>` stands for your home directory):
+`--dry-run` prints the planned changes and changes nothing. `--json` prints the same result as machine-readable JSON. A dry run prints output like this (`<home>` stands for your home directory, and `X.Y.Z` for the version):
 
 ```text
-Dry run: no files, folders, or backups were created.
+Dry run: nothing was installed, created, or changed.
 Data directory: <home>/.agent-board
 Shared folder: <home>/.agent-board/shared
-Codex: planned <home>/.codex/config.toml
-  - add "<home>/.agent-board" to sandbox_workspace_write.writable_roots
-Claude Code: planned <home>/.claude/settings.json
-  - add "<home>/.agent-board" to permissions.additionalDirectories
+Codex: planned
+  plugin: install version X.Y.Z from https://github.com/FooQoo/agent-board.git at vX.Y.Z
+  planned <home>/.codex/config.toml
+    - add "<home>/.agent-board" to sandbox_workspace_write.writable_roots
+  planned <home>/.codex/rules/agboard.rules
+    - allow the agboard command (prefix_rule)
+Claude Code: planned
+  plugin: install version X.Y.Z from https://github.com/FooQoo/agent-board.git at vX.Y.Z
+  planned <home>/.claude/settings.json
+    - add "<home>/.agent-board" to permissions.additionalDirectories
 ```
 
-Setup keeps every existing setting and changes only the array above. Before it changes an existing settings file, it writes a backup next to that file, named `<file>.agboard-backup-<id>`. Running setup again changes nothing, and each file is reported as `unchanged`.
+Setup keeps every existing setting and changes only the arrays above. Before it changes an existing settings file, it writes a backup next to that file, named `<file>.agboard-backup…`. The backup holds your original settings, so keep it out of shared folders. Running setup again changes nothing, and each file is reported as `unchanged`. If a settings file cannot be read or has the wrong shape, setup writes nothing at all and names the file.
 
-Setup refuses to write Codex settings unless `sandbox_mode` is `"workspace-write"`. Only that mode is supported, and permission profiles (`default_permissions`, `permissions`, `profile`, or `profiles`) are refused as well. Setup never changes `sandbox_mode` itself. If it refuses, set `sandbox_mode = "workspace-write"` in `config.toml` yourself, then run setup again. A refusal writes nothing, and with the default `--agent all`, a refused Codex target also blocks the Claude Code change. If you do not use Codex, run `agboard setup --agent claude`.
+Setup changes Codex's `config.toml` only when `sandbox_mode` is `"workspace-write"` and no permission profile (`default_permissions`, `permissions`, `profile`, or `profiles`) is set. Otherwise it leaves the file as it is and shows the manual step; the plugin is still installed. Setup never changes `sandbox_mode` itself. With `sandbox_mode = "danger-full-access"`, Codex already reaches every folder, so setup writes neither the permission nor the rule file.
 
-Setup does not install the Hook or the `agent-board` Skill. `agboard connect` does, and it makes the same permission change (see [Working with agents](../automation/agents#connect-your-agent)). Setup is a one-time step that you run; do not ask an agent to run it during normal work. Project or managed settings can still limit access to the folder, so confirm it in a new session.
-
-## Integration records, backups, and manual permissions
-
-`connect` and `update` keep a few files of their own. They are outside `shared/`, so a backup of a project does not carry them.
-
-- **Integration record.** `integrations.json` in the data folder (normally `~/.agent-board/integrations.json`) lists what `connect` installed: the agent, the Skill or Hook, its scope, the files and where they are, the installed version, and a hash of each managed part. `update` and the update notice read it. Do not edit it by hand. A record that is broken or has an unknown `schemaVersion` is never rewritten; the commands stop and say so.
-- **Backups.** Before `connect` or `update` changes a file, it copies the original next to it as `<name>.agboard-backup-<id>-<n>`, for example `settings.json.agboard-backup-...`. A change to the record itself is backed up the same way. A Skill folder that is replaced or removed is moved to a hidden `.agboard-backups` folder beside the folder that holds your Skills (for example `~/.claude/.agboard-backups/`), not into the Skills folder, so an agent never loads the old copy as a second Skill. The copies are never deleted for you. They contain your original settings, so keep them out of shared folders and keep their permissions. To go back, stop your agents and copy the backup over the file.
-- **Project scope and Git.** With Project scope, the backup files and the `.agboard-backups` folder are created inside your repository, under `.claude/` or `.codex/` and `.agents/`. Add `*.agboard-backup-*` and `.agboard-backups/` to your `.gitignore` so they are not committed.
-- **Conflicts.** If you edited a Skill file `connect` installed, added a file to that folder, removed a managed Hook, or changed one, the commands report a conflict and write nothing for that agent. Keep your change and leave the agent as it is, or move your edit aside and run the command again.
-- **Interrupted runs.** While it writes, each agent has a small journal (`integrations-journal-<agent>.json`) and a lock (`integrations-<agent>.lock`) in the data folder. If a run was cut off, the next `connect` or `update` puts the files back from the backups. When a file changed in the meantime, it stays as it is, the journal stays, and the command stops for that agent and exits with code `1` (cancelling at the confirmation still exits with `0`). It prints each changed file with its backup, and the journal path, on standard error. The other agent is not affected. Restore those files yourself from the backups, remove the journal, and run the command again.
-- **Manual permissions.** Codex only gets the data folder permission when `config.toml` sets `sandbox_mode = "workspace-write"` and uses no permission profile. Otherwise `connect` skips Codex and shows what to do. Set it yourself, then run `connect` again. An agent that Agent Board could not find on your `PATH` is not configured; install it and run `connect` again.
+Setup is a step that you run; do not ask an agent to run it during normal work. Project or managed settings can still limit access to the folder, so confirm it in a new session.
 
 ## Back up and restore
 
@@ -129,5 +125,5 @@ Copying `shared/` does not include `.internal/`, so a project backup does not ca
 
 ## Next
 
-- [Working with agents](../automation/agents): connect an agent to this folder.
+- [Working with agents](../automation/agents): set up an agent to use this folder.
 - [Troubleshooting](./troubleshooting): a project or folder that cannot be found.

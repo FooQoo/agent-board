@@ -115,5 +115,5 @@ agboard --project "Quickstart" project rm
 ## Next
 
 - [Core concepts](./concepts): the ideas behind what you just did.
-- [Working with agents](./automation/agents): connect a real agent, so that it runs the loop for you.
+- [Working with agents](./automation/agents): set up a real agent, so that it runs the loop for you.
 - [The board](./use/board): everything you can do in the browser.

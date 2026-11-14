@@ -53,19 +53,20 @@ Find what you see, read the cause, and do what the last column says. The command
 | The page loads but answers are refused | The address you opened is not the public address of the current connection. | Open the address the connection reports. Restarting the connection issues a new session. |
 | The monitor says the data is out of date | Auto-update stopped, or some projects could not be read. | Reload or reopen the page. The monitor re-fetches when it becomes visible again. |
 
-## connect or update reports a problem
+## setup or update reports a problem {#setup-or-update-reports-a-problem}
 
 | What you see | Cause | What to do |
 | --- | --- | --- |
-| `connect is interactive and needs a terminal` (exit 2) | `connect` was started from a pipe, a script, or an agent. | Run it yourself in a terminal. `update` needs a terminal too, unless you add `--yes`. |
-| `This folder is not bound to a project` (exit 1) | The folder, or a parent, is not bound. | Run `agboard project create "My project"` or `agboard project bind "My project"`, then `connect` again. |
-| An agent is listed as not found | `claude` or `codex` is not on your `PATH`. | Install it or fix `PATH`, then run `connect` again. |
-| `was edited after Agent Board installed it`, `was added to the Skill directory by someone else`, or `is already registered and Agent Board did not install it` | A conflict: a file `connect` installed was changed by you, or an equivalent Hook was registered by hand. Nothing was written for that agent. | Keep or move your edit, remove the duplicate registration, then run the command again. `--yes` does not override a conflict. See [Conflicts](./data#integration-records-backups-and-manual-permissions). |
-| `sandbox_mode is not set` or a mode that is not `workspace-write` | Codex's permission settings do not let the data folder be written. `connect` never changes them. | Set `sandbox_mode = "workspace-write"` in Codex's `config.toml` yourself, then run `connect` again. |
-| An unfinished earlier run could not be undone safely | A run was cut off and a file changed afterwards. | Restore the files from the backups the message names, remove the journal file it names, then run the command again. |
-| The agent does not run the Hook | The Hook is written but not trusted, or the agent was not restarted. | Start a new session (Claude Code) or restart Codex, then review the Hook with `/hooks`. Trust it again after `update` changes a Hook. |
+| `setup asks which agent to set up and needs a terminal` or `asks for a confirmation and needs a terminal` (exit 2) | The command was started from a pipe, a script, or an agent, or with `--json`, without the options that replace the questions. | Run it yourself in a terminal, or add `--agent` and `--yes` (or `--dry-run`). |
+| `The codex command was not found on PATH` (or `claude`), and the agent is `skipped` | The agent is not installed, or its command is not on your `PATH`. | Install it or fix `PATH`, then run the command again. |
+| `The Agent Board plugin is not installed` from `update` | `update` only moves a plugin that is installed. | Run `agboard setup` for that agent. |
+| An agent is `failed` with `codex plugin …` or `claude plugin …` in the reason | The agent's own plugin command failed, for example without a network connection to GitHub. The message ends with that command's output. | Fix the cause and run the command again. The settings files already written stay correct. |
+| A manual step about `sandbox_mode` or a permission profile | Codex's permission settings do not let the data folder be written, and setup never changes them. | Set `sandbox_mode = "workspace-write"` in Codex's `config.toml` yourself, or add the data folder to your permission profile, then run `agboard setup` again. |
+| `Codex lists no hooks of the Agent Board plugin` or `still does not trust the hook` | The plugin is not enabled in Codex, or Codex refused the trust. | Check the plugin with `codex plugin list`, then review the hooks with `/hooks` in Codex. |
+| The agent does not run the Hook | The agent was not restarted, or the Claude Code Hook is not reviewed. | Start a new session (Claude Code) or restart Codex, then review the Hook with `/hooks`. |
+| A new session says the plugin is of another version | `agboard` was upgraded, but the plugin was not. | Run `agboard update`, then start a new session. |
 
-Exit codes of both commands are in the [CLI reference](../automation/cli#connect-and-update).
+Exit codes of both commands are in the [CLI reference](../automation/cli#setup-and-update).
 
 ## macOS will not run agboard
 

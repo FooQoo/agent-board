@@ -16,7 +16,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `autostart` | Starting the shared server when a command needs it: the check, `autostart.lock`, the detached `serve --auto` child (`spawn`), and the `autostart.paused` marker. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
 | `interact` | Human confirmation (terminal detection, y/N) and the notify client. |
-| `setup` | Prepares agent access to the data area. |
+| `setup` | Installs and updates the Agent Board plugin and prepares agent access to the data area. |
 | `paths`<br>`lifecycle`<br>`clock`<br>`error` | Data area resolution, the `serve` lock, UTC time, and `AgboardError` (code, exit code, message, reason). |
 
 Dependencies point one way.
@@ -74,16 +74,16 @@ The main files and directories outside `src/` are:
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
-- `integrations/`: hook templates.
-- `src/cli/commands/connect.rs`: the interactive `agboard connect` flow. It uses `src/integrations/detect.rs` (agents on PATH and their versions) and `ui/` around the planner and the per-agent apply. `ui/` holds the `Ui` trait with two sides: `ClackUi` (`clack.rs` and `clack_view.rs`, the cliclack prompts and styled lines on a terminal) and `PlainUi` (`plain.rs`, plain text through `prompt.rs` and `report.rs`, used without a terminal and by tests that feed lines). `update` uses the same `ui/`.
-- `.agents/skills/agent-board/`: the agent skill.
+- `plugins/agent-board/`: the Agent Board plugin: the manifests, the agent skill in `skills/agent-board/`, and the Hook of each agent in `hooks/`.
+- `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json`: the marketplace catalogs of Codex and Claude Code.
 
-### Skill and Hook installation
+### Plugin setup and update
 
-- `src/integrations/`: `assets.rs` and `build_bundle.rs` (the embedded bundle), `paths.rs` (placement), `registry.rs` (the records), `plan.rs`, `compose.rs`, `merge.rs`, `skill.rs`, `duplicates.rs`, `adopt.rs`, and `toml_json.rs` (the read-only plan and ownership; `adopt.rs` decides which hand-written Hook for this project connect takes over), `apply.rs`, `ops.rs`, `journal.rs`, and `recovery.rs` (writing, backups, journal, and recovery), `update.rs` and `update_report.rs` (what `update` selects and shows), and `notice.rs` (the update notice).
+- `src/setup/`: `mod.rs` (the agents and options), `prepare.rs` (the read-only plan), `execute.rs` (carrying it out), and `report.rs` (the text and JSON result and the exit code). `plan.rs`, `codex.rs`, and `claude.rs` compute the settings changes, and `apply.rs` with `apply/files.rs` writes them with backups. `env.rs` resolves the paths, `agent_cli.rs` runs the agents' commands, `plugin.rs` installs the plugin from the marketplace, and `trust.rs` trusts the Codex hooks through `codex app-server`.
+- `src/cli/commands/setup.rs`: `agboard setup` and `agboard update`: the options, the agent choice, and the confirmation question.
+- `src/agent/hook_version.rs`: the plugin version check of the Hook.
+- `tests/setup.rs` and `tests/setup_plugin.rs`: setup and update against fake agent commands (`tests/support/fake_agents.rs`). `tests/plugin_layout.rs` checks the marketplace and plugin files and their versions.
 - `src/cli/commands/qa/` and `src/cli/args/qa.rs`: the `agboard qa` commands, their JSON input, and the JSON Lines events of `qa ask` and `qa wait` (`stream.rs`). The wait itself is `src/agent/qa_wait.rs`, built on the shared wait engine.
-- `src/cli/commands/update.rs`: `agboard update` and the glue that prints the notice.
-- `tests/integration_*.rs`: the focused tests of the bundle, paths, install, recovery, connect, update, and notice.
 - `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).
 
 ### Project docs
