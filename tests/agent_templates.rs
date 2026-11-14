@@ -4,11 +4,11 @@
 use serde_json::Value;
 
 fn claude() -> Value {
-    serde_json::from_str(include_str!("../integrations/claude-code/settings.json")).unwrap()
+    serde_json::from_str(include_str!("../plugins/agent-board/hooks/claude.json")).unwrap()
 }
 
 fn codex() -> Value {
-    serde_json::from_str(include_str!("../integrations/codex/hooks.json")).unwrap()
+    serde_json::from_str(include_str!("../plugins/agent-board/hooks/codex.json")).unwrap()
 }
 
 /// Every `(event, handler)` of a template.
@@ -45,7 +45,10 @@ fn templates_cover_the_documented_events() {
 fn every_template_command_uses_cwd_resolution_and_is_fixed() {
     for (agent, template) in [("claude", claude()), ("codex", codex())] {
         for (event, hook) in handlers(&template) {
-            let expected = format!("agboard hook --agent {agent}");
+            let expected = format!(
+                "agboard hook --agent {agent} --plugin-version {}",
+                env!("CARGO_PKG_VERSION")
+            );
             assert_eq!(command(&hook), expected, "{agent} {event}");
             assert_eq!(hook["type"], "command");
             assert_eq!(hook["timeout"], 10, "{agent} {event}");
@@ -77,9 +80,9 @@ fn every_template_command_uses_cwd_resolution_and_is_fixed() {
 #[test]
 fn templates_hold_no_personal_or_machine_specific_paths() {
     for text in [
-        include_str!("../integrations/claude-code/settings.json"),
-        include_str!("../integrations/codex/hooks.json"),
-        include_str!("../integrations/README.md"),
+        include_str!("../plugins/agent-board/hooks/claude.json"),
+        include_str!("../plugins/agent-board/hooks/codex.json"),
+        include_str!("../plugins/agent-board/README.md"),
     ] {
         for personal in [
             "/Users/",
@@ -98,11 +101,11 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_connect_run() {
     for (name, text) in [
         (
             "SKILL.md",
-            include_str!("../.agents/skills/agent-board/SKILL.md"),
+            include_str!("../plugins/agent-board/skills/agent-board/SKILL.md"),
         ),
         (
             "listening.md",
-            include_str!("../.agents/skills/agent-board/references/listening.md"),
+            include_str!("../plugins/agent-board/skills/agent-board/references/listening.md"),
         ),
     ] {
         assert!(
@@ -111,7 +114,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_connect_run() {
         );
         assert!(text.contains("agboard connect"), "{name} omits connect");
     }
-    let skill = include_str!("../.agents/skills/agent-board/SKILL.md");
+    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
     assert!(
         skill.contains("never run it"),
         "the Skill must not run connect itself"
@@ -128,7 +131,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_connect_run() {
 
 #[test]
 fn the_skill_registers_a_breakdown_only_after_the_user_agrees() {
-    let skill = include_str!("../.agents/skills/agent-board/SKILL.md");
+    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
     assert!(
         skill.contains("Break a request into tasks, and register them only after a yes"),
         "the Skill must break a request down before registering it"

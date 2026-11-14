@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 /// Writes `integration_bundle.rs` into `out_dir`.
 pub fn write(manifest_dir: &Path, out_dir: &Path) {
-    let skill = manifest_dir.join(".agents/skills/agent-board");
+    let skill = manifest_dir.join("plugins/agent-board/skills/agent-board");
     println!("cargo:rerun-if-changed={}", skill.display());
     if !skill.is_dir() {
         // A crate root without the Skill sources, such as the build-script
@@ -28,13 +28,13 @@ pub fn write(manifest_dir: &Path, out_dir: &Path) {
             .expect("the build script can write to OUT_DIR");
         return;
     }
-    let hooks = manifest_dir.join("integrations");
+    let hooks = manifest_dir.join("plugins/agent-board/hooks");
     let mut files: BTreeMap<String, PathBuf> = BTreeMap::new();
     files.insert(
         "hooks/claude.json".into(),
-        hooks.join("claude-code/settings.json"),
+        hooks.join("claude.json"),
     );
-    files.insert("hooks/codex.json".into(), hooks.join("codex/hooks.json"));
+    files.insert("hooks/codex.json".into(), hooks.join("codex.json"));
     files.insert("skill/SKILL.md".into(), skill.join("SKILL.md"));
     for folder in ["references", "assets"] {
         let dir = skill.join(folder);

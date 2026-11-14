@@ -50,7 +50,40 @@ fn fixture_root(manifest_version: &str, lock_version: &str) -> tempfile::TempDir
         ),
     )
     .unwrap();
+    write_plugin(dir.path(), manifest_version);
     dir
+}
+
+/// The plugin files that check-version.py compares with the crate version.
+fn write_plugin(root: &Path, version: &str) {
+    let plugin = root.join("plugins/agent-board");
+    for (path, text) in [
+        (
+            plugin.join(".codex-plugin/plugin.json"),
+            format!(r#"{{"name":"agent-board","version":"{version}"}}"#),
+        ),
+        (
+            plugin.join(".claude-plugin/plugin.json"),
+            format!(r#"{{"name":"agent-board","version":"{version}"}}"#),
+        ),
+        (
+            root.join(".claude-plugin/marketplace.json"),
+            format!(r#"{{"plugins":[{{"name":"agent-board","version":"{version}"}}]}}"#),
+        ),
+    ] {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    for agent in ["claude", "codex"] {
+        fs::create_dir_all(plugin.join("hooks")).unwrap();
+        fs::write(
+            plugin.join(format!("hooks/{agent}.json")),
+            format!(
+                r#"{{"hooks":{{"SessionStart":[{{"hooks":[{{"type":"command","command":"agboard hook --agent {agent} --plugin-version {version}"}}]}}]}}}}"#
+            ),
+        )
+        .unwrap();
+    }
 }
 
 #[test]
@@ -141,6 +174,37 @@ fn check_version_rejects_a_fixture_tag_that_differs_from_the_manifest() {
         &["--tag", "v1.0.0", "--root", root],
     );
     assert_eq!(bad.status.code(), Some(1), "{}", text(&bad));
+}
+
+#[test]
+fn check_version_rejects_a_plugin_of_another_version() {
+    let fixture = fixture_root("1.2.3", "1.2.3");
+    let root = fixture.path();
+    fs::write(
+        root.join("plugins/agent-board/.claude-plugin/plugin.json"),
+        r#"{"name":"agent-board","version":"1.2.2"}"#,
+    )
+    .unwrap();
+    let out = python(
+        "scripts/release/check-version.py",
+        &["--tag", "v1.2.3", "--root", root.to_str().unwrap()],
+    );
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    assert!(text(&out).contains(".claude-plugin/plugin.json"), "{}", text(&out));
+
+    let fixture = fixture_root("1.2.3", "1.2.3");
+    let root = fixture.path();
+    write_plugin(root, "1.2.3");
+    fs::write(
+        root.join("plugins/agent-board/hooks/codex.json"),
+        r#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"agboard hook --agent codex"}]}]}}"#,
+    )
+    .unwrap();
+    let out = python(
+        "scripts/release/check-version.py",
+        &["--tag", "v1.2.3", "--root", root.to_str().unwrap()],
+    );
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
 }
 
 /// Components for the notices fixture: a plain MIT crate, a crate with an AND

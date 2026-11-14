@@ -1,0 +1,13 @@
+{
+  "name": "agent-board",
+  "version": "1.1.1",
+  "description": "The Agent Board Skill and the Hook that shows the progress table.",
+  "skills": "./skills/",
+  "hooks": "./hooks/codex.json",
+  "interface": {
+    "displayName": "Agent Board",
+    "shortDescription": "Plan and track work on Agent Board",
+    "developerName": "FooQoo",
+    "category": "Productivity"
+  }
+}

@@ -32,7 +32,7 @@ const LEGACY_TASK: &str = "---\nhistory:\n- at: 2026-01-02T03:04:05Z\n  reason: 
 const LEGACY_EPIC: &str = "---\npriority: [1]\nowner: bob\nunknown_metadata:\n  nested: true\n---\n\n# Shipping plan\n\nKept as written.\n";
 
 fn skill_bundle() -> BTreeMap<PathBuf, Vec<u8>> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join(".agents/skills/agent-board");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/agent-board/skills/agent-board");
     let files = world(&root);
     assert!(files.len() >= 7, "the repository bundle looks incomplete");
     files

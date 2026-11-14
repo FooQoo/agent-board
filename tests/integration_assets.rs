@@ -25,30 +25,30 @@ fn expected_sources() -> Vec<(&'static str, &'static str)> {
             "integrations/claude-code/settings.json",
         ),
         ("hooks/codex.json", "integrations/codex/hooks.json"),
-        ("skill/SKILL.md", ".agents/skills/agent-board/SKILL.md"),
+        ("skill/SKILL.md", "plugins/agent-board/skills/agent-board/SKILL.md"),
         (
             "skill/assets/BUG-EPIC.md",
-            ".agents/skills/agent-board/assets/BUG-EPIC.md",
+            "plugins/agent-board/skills/agent-board/assets/BUG-EPIC.md",
         ),
         (
             "skill/assets/ENHANCEMENT-EPIC.md",
-            ".agents/skills/agent-board/assets/ENHANCEMENT-EPIC.md",
+            "plugins/agent-board/skills/agent-board/assets/ENHANCEMENT-EPIC.md",
         ),
         (
             "skill/assets/EPIC.md",
-            ".agents/skills/agent-board/assets/EPIC.md",
+            "plugins/agent-board/skills/agent-board/assets/EPIC.md",
         ),
         (
             "skill/assets/TASK.md",
-            ".agents/skills/agent-board/assets/TASK.md",
+            "plugins/agent-board/skills/agent-board/assets/TASK.md",
         ),
         (
             "skill/references/file-format.md",
-            ".agents/skills/agent-board/references/file-format.md",
+            "plugins/agent-board/skills/agent-board/references/file-format.md",
         ),
         (
             "skill/references/listening.md",
-            ".agents/skills/agent-board/references/listening.md",
+            "plugins/agent-board/skills/agent-board/references/listening.md",
         ),
     ]
 }

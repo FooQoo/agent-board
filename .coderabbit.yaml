@@ -36,9 +36,7 @@ reviews:
         restores the documented behavior.
     - path: "web/src/**"
       instructions: *docs
-    - path: "integrations/**"
-      instructions: *docs
-    - path: ".agents/skills/**"
+    - path: "plugins/**"
       instructions: *docs
     # A changed test means a changed specification only when that change is intended.
     - path: "tests/**"
