@@ -37,8 +37,8 @@
 }
 ```
 
-- 既定では、Pending以外のTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
-- `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに200文字までの`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
+- 既定では、人の判断待ちでないTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
+- `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
 - 本文も履歴もありません。エージェントは、必要な`documentPath`と`taskPath`のファイルを読みます。
 - `cursor`は`wait --after`に渡す値です。
 - パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出ません。
@@ -79,28 +79,43 @@ taskの項目を省略した例です。
 
 待機秒数は必須で、1〜86,400秒です。接続・プロジェクト・データ・引数のエラーは、`idle_timeout`にはなりません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
 
-## 判断依頼
+## qaのイベント
 
-`agboard state <id> pending --request-json <json>`は、次の形を受け取ります。
+`agboard qa ask --request-json <json> --task <id>…`は、次の形を受け取ります。
 
 ```json
 {
-  "question": "Should existing records be deleted or kept?",
-  "choices": [
-    { "id": "delete", "label": "Delete them and start clean" },
-    { "id": "keep", "label": "Keep them and migrate" }
-  ],
-  "wait": {}
+  "questions": [
+    {
+      "question": "Should existing records be deleted or kept?",
+      "choices": [
+        { "id": "delete", "label": "Delete them and start clean" },
+        { "id": "keep", "label": "Keep them and migrate" }
+      ],
+      "recommendedChoiceId": "keep"
+    }
+  ]
 }
 ```
 
-- `question`: 1〜5,000文字（Markdown）。`choices`: 2〜10件。各`id`は`[A-Za-z0-9_-]`の1〜64文字で依頼内で一意、各`label`は1〜200文字。
-- `wait`を省略しても既定で回答まで待ちます。`wait: {}`も互換の明示形式です。`wait: null`と`timeoutSeconds: null`は期限なしです。整数の`timeoutSeconds`（1〜86400）はコマンドの待機だけを制限し、質問はPendingのままです。`--no-wait`は保存と通知の後に待機せず終了します。
-- 待機したコマンドは、更新されたタスクと回答を別々に返します。
+- `questions`: 1〜20件。各項目は`question`（Markdown、1〜5,000文字）と2〜10件の`choices`を持ちます。選択肢の`id`は`[A-Za-z0-9_-]`の1〜64文字で質問内で一意、`label`は1〜200文字です。
+- 質問ごとに任意で、`kind`（既定は`task`、ほかに`plan`・`start_approval`）、`recommendedChoiceId`、`approvingChoiceIds`（`start_approval`では必須）、その質問だけを参照させるタスクのID`tasks`を指定できます。`--task`のタスクはすべての質問を参照します。未知のフィールドは拒否します。
+- `--timeout`は1〜86,400秒か`none`（既定600）、`--heartbeat`は10〜600秒（既定60）です。`qa wait <request-id>`も同じ2つのオプションを取ります。
 
-```json
-{ "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
-```
+`--json`を付けると、`qa ask`と`qa wait`は1行に1つのJSONオブジェクトを書きます。どれも`type`を持ちます。
+
+| `type` | フィールド | 出るとき |
+| --- | --- | --- |
+| `registered` | `requestId`・`questions`（`id`・`kind`）・`resumed` | 最初。`qa wait`では`resumed`が`true`。`--no-wait`ではこの1行だけを書き、終了コード0で終わる。 |
+| `waiting` | `requestId`・`elapsed`・`remaining`（期限なしなら`null`）・`answered`・`total` | `--heartbeat`秒ごと。タイマーから出し、ボードは読まない。 |
+| `answered` | `requestId`・`answers`（`id`・`choiceId`・`choiceLabel`・`text`・`via`・`at`） | 最後。すべての質問に回答が付いたとき。終了コード0。 |
+| `timeout` | `requestId`・`answered`・`total` | 最後。先に`--timeout`が過ぎたとき。質問は未回答のまま。終了コード5。 |
+| `withdrawn` | `requestId`・`reason` | 最後。リクエストが取り下げられたとき。終了コード6。 |
+| `error` | `error`（`code`・`message`・`reason`） | 最後。`board_unavailable`などで待機に失敗したとき。 |
+
+回答を待つ`qa ask`は、何かを保存する前にサーバーを確認します。`--no-wait`はサーバーなしで保存します。
+
+`qa answer --json`は、記録した質問を`{questions}`で出力します。すでに回答済みの質問があれば、エラーの出力に記録済みの回答を含む`questions`を加えます。
 
 ## 初回案内のサンプルカード
 

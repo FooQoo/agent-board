@@ -6,7 +6,7 @@ Start here. This page gives you the mental model: what runs, where the data live
 
 Agent Board is a single Rust executable, `agboard`. The same binary is the CLI that agents and people run, and the web server (`agboard serve`) that shows the board in a browser.
 
-There is no database. Every project lives as plain files in the shared area, `.agent-board/shared/` in the user's home directory (or under `AGBOARD_HOME`). Markdown holds what people and agents write: task bodies, acceptance conditions, history, and epic details. JSON holds the operational state: lanes, run states, and open questions. Because the files are the source of truth, agents may also edit `TASK.md` and `EPIC.md` directly, and the server notices.
+There is no database. Every project lives as plain files in the shared area, `.agent-board/shared/` in the user's home directory (or under `AGBOARD_HOME`). Markdown holds what people and agents write: task bodies, acceptance conditions, history, and epic details. JSON holds the operational state: lanes, run states, and the project's questions and answers. Because the files are the source of truth, agents may also edit `TASK.md` and `EPIC.md` directly, and the server notices.
 
 ### Reading and writing data
 
@@ -94,10 +94,10 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 
 ### A person answers a question in the browser
 
-1. The browser sends `POST /api/projects/{projectId}/tasks/{id}/answer` with the request ID and the chosen option, plus the write token embedded in the page.
-2. The server checks Host, Origin, `Sec-Fetch-Site`, and the token before it even looks up the task.
-3. Under the write lock it confirms that the task still has the same open request, stores the answer in `requestAnswers`, clears the request, appends history, and commits the pair.
-4. The version changes, browsers update through SSE, and a default-waiting `state ... pending --request-json` command wakes on the same SSE stream and reads the answer. The command saves the request, notifies the server, then waits; its wait settings are process-local. `--no-wait` returns after saving and notifying.
+1. The browser sends `POST /api/projects/{projectId}/qa/answers` with the question ID and the chosen option, plus the write token embedded in the page.
+2. The server checks Host, Origin, `Sec-Fetch-Site`, and the token before it reads any file.
+3. Under the write lock it confirms that the question is still open, stores the answer in `qa/<request-id>/request.json`, appends history to each task that refers to the question, and commits these files as one change.
+4. The version changes, browsers update through SSE, and a waiting `qa ask` or `qa wait` command wakes on the same SSE stream and reads the request. It ends with the answers once every question of the request is answered. `--no-wait` returns after saving and notifying.
 
 ### An agent edits TASK.md directly
 
@@ -109,7 +109,7 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 
 - [Follow your first change](../getting-started/first-change.md): trace one rule from the command to the file and its test.
 - [Tasks and states](./tasks-and-states.md): what a task is and which states are valid.
-- [History and decisions](./history-and-decisions.md): history, Pending, and automatic Done.
+- [History and decisions](./history-and-decisions.md): history, questions and answers, and automatic Done.
 - [Saving and recovery](./saving-and-recovery.md): locks, atomic saves, and failures.
 - [Change notifications](./notifications.md): how a change reaches browsers and waiting agents.
 - [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [The mobile monitor](./remote-access.md), and [Security model](./security.md).

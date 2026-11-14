@@ -21,13 +21,18 @@
 | `invalid_state_for_draft` | 稼働中のタスクを下書きにした。 | 1 | 409 |
 | `archive_targets_changed` | 確認を開いた後に、一括アーカイブの対象が移動または削除された。 | 1 | 409 |
 
-## 判断依頼
+## 質問と回答
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `request_changed` | 回答対象の依頼がすでに現在のものではない、または待機中の依頼がタスクの移動で取り下げられた。 | 1 | 409 |
+| `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | 1 | 409 |
+| `question_answered` | 回答が、すでに回答済みの質問を指している。何も保存せず、記録済みの質問を出力に含める。 | 1 | 409 |
+| `question_withdrawn` | 回答が、リクエストごと取り下げられた質問を指している。何も保存しない。 | 1 | 409 |
+| `question_not_found` | 質問のIDがプロジェクトにない。 | 3 | 404 |
+| `request_not_found` | リクエストのIDがプロジェクトにない。 | 3 | 404 |
+| `request_answered` | 取り下げようとしたリクエストの質問が、すべて回答済み。 | 1 | 409 |
 | `task_status_changed` | 移動が元の状態（`fromStatus`）を指定したが、タスクがもうその状態にいない。何も書かず、本文に`currentStatus`を加える。 | 1 | 409 |
-| `request_choice_unknown` | 回答が、依頼にない選択肢を指している。 | 2 | 422 |
+| `request_choice_unknown` | 回答が、質問にない選択肢を指している。 | 2 | 422 |
 
 ## プロジェクト・エピック・添付
 
@@ -64,9 +69,9 @@
 | --- | --- | --- | --- |
 | `already_serving` | このデータ領域で、すでに別の`serve`が動いている。 | 1 | なし |
 | `port_in_use` | ポートが使われている。 | 1 | なし |
-| `board_unavailable` | 回答待機中のPending依頼、`wait`、Hookがサーバーに届かない。Pending依頼は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。 | 1 | なし |
+| `board_unavailable` | 回答を待つ`qa ask`、`qa wait`、`wait`、Hookがサーバーに届かない。回答を待つ`qa ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
-| `wait_timeout` | 変更待ち（`wait --after`）が任意の`--timeout`に達した、またはPending依頼の`wait.timeoutSeconds`に達した。回答ではなく、質問はPendingのまま。 | 1 | なし |
+| `wait_timeout` | 変更待ち（`wait --after`）が、変更のないまま任意の`--timeout`に達した。`qa ask`や`qa wait`が`--timeout`に達するのはエラーではなく、`timeout`イベントを出して終了コード5で終わる。 | 1 | なし |
 | `hook_cwd_unavailable` | Hookの入力の`cwd`が、存在しない、または読めない絶対パス。`AGBOARD_ERROR`として返す。確認できないフォルダを未登録とは扱わない。 | なし（Hookの出力） | なし |
 | `invalid_hook_input` | Hookの入力がJSONでない、大きすぎる、または`cwd`が文字列でない、絶対パスでない。`AGBOARD_ERROR`として返す。 | なし（Hookの出力） | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
@@ -126,8 +131,10 @@
 | 0 | 成功。 |
 | 1 | 今の状態では操作が許されない、または何かが失敗した。 |
 | 2 | 入力が誤っている。 |
-| 3 | タスクが見つからない。 |
+| 3 | タスク・質問・リクエストが見つからない。 |
 | 4 | プロジェクトが見つからない、またはフォルダが紐付いていない。 |
+| 5 | `qa ask`や`qa wait`が、すべての質問に回答が付く前に`--timeout`に達した。質問は未回答のまま残る。 |
+| 6 | `qa ask`や`qa wait`が待っていたリクエストが取り下げられた。 |
 
 そのほかのHTTPステータス: 壊れたJSONは400、1 MiBを超える本文は413です。保護は対象を探す前に行うので、拒否された要求から何が存在するかは分かりません。
 

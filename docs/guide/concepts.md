@@ -39,11 +39,11 @@ An AI-owned task also shows what its agent is doing:
 | **Running** | The agent is working on it. | Doing only. |
 | **Pending** | The agent is waiting for your answer. | Todo and Doing. |
 
-Running is what the agent last reported; it is not a live check. If an agent crashes, its task stays Running until someone changes it. Moving a task to another column resets it to Idle and withdraws an open question.
+Running is what the agent last reported; it is not a live check. If an agent crashes, its task stays Running until someone changes it. Moving a task to another column resets it to Idle. An open question stays open.
 
 ## Decisions
 
-When an agent cannot continue without you, it asks a **decision**: a question, usually with a few options. The task becomes **Pending** and shows the question. You choose an option, write a note, or both; the answer goes into the history and the agent reads it before continuing. A question stays open until it is answered. See [Decisions](./use/decisions).
+When an agent cannot continue without you, it asks a **decision**: a question, usually with a few options. Questions belong to the project, and the task that refers to one becomes **Pending** and shows the question. You choose an option, write a note, or both; the answer goes into the history and the agent reads it before continuing. A question stays open until it is answered. See [Decisions](./use/decisions).
 
 ## Acceptance conditions and automatic Done
 

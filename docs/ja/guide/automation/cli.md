@@ -45,7 +45,7 @@ agboard --project "My project" mv 1 doing --actor ai --reason "Start implementat
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
 
-列の移動や、待機中以外への状態変更では、`--reason`で理由を指定できます。指定は任意で、上限は10,000 Unicode文字です。理由を省略するか空白にすると、現在の状態から生成します。これらの操作は履歴を自動で追加するので、同じ操作の履歴を重複して追加しないでください。質問は5,000文字まで、回答のメモは2,000文字までです。
+列の移動や状態の変更では、`--reason`で理由を指定できます。指定は任意で、上限は10,000 Unicode文字です。理由を省略するか空白にすると、現在の状態から生成します。これらの操作は履歴を自動で追加するので、同じ操作の履歴を重複して追加しないでください。質問は5,000文字まで、回答のメモは2,000文字までです。
 
 列や状態を変えない、意味のある進捗を記録します。
 
@@ -62,7 +62,13 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### 質問する
 
-判断を求めるには、`state ... pending --request-json`を使います。回答まで待つのが既定です。質問を登録してすぐに戻るよう明示された場合だけ`--no-wait`を付けます。待機には`agboard serve`が必要ですが、`--no-wait`には不要です。`--no-wait`と整数の`wait.timeoutSeconds`は併用できず、`invalid_argument`（終了コード2）で終わり、質問やタスクは変更されません。3つのコマンド例は[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
+ユーザーに質問するには`qa ask`を使います。1回で複数の質問を出せます。質問はプロジェクトに属し、`--task <id>`を付けるとそのタスクが質問を参照して、回答されるまで待機中になります。コマンドは1行に1つのイベントを出力し（`--json`ならJSON Lines）、全問の回答が揃うまで待ちます。既定の待機時間は600秒です。
+
+```sh
+agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
+```
+
+`answered`（終了コード0）、`timeout`（終了コード5。質問は未回答のまま残る）、`withdrawn`（終了コード6）のいずれかで終わります。待ち直すには`qa wait <request-id>`を使います。待機には`agboard serve`が必要です。`--no-wait`を付けると、質問を登録してすぐに戻り、サーバーも要りません。回答の記録、質問の確認、リクエストの取り下げ、タスクからの参照の変更には、それぞれ`qa answer`、`qa ls`と`qa show`、`qa withdraw`、`qa link`と`qa unlink`を使います。リクエストの形式と各コマンドは[判断依頼](../use/decisions)を参照してください。エピックと進行表は[エピックと進行表](../use/epics)を参照してください。
 
 ## ファイルを使って本文を編集する
 
@@ -127,7 +133,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
-指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。待機中の質問への回答にはなりません。
+指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。質問への回答にはなりません。
 
 ## サーバーを起動する
 

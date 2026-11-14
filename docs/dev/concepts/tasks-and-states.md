@@ -26,19 +26,19 @@ A task's lane says where the work is; its run state says what the agent is doing
 | human | any | idle only |
 
 - **Running** is self-reported, not liveness monitoring. It is never reset automatically, and agents do not change it just because a session started or paused.
-- **Pending** means the agent is waiting for a person's decision; it may continue other tasks meanwhile.
+- **Pending** means the task refers to a project question that still waits for a person's answer; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Questions and answers](./history-and-decisions.md#questions-and-answers)).
 - Invalid combinations are never saved. A draft task is Idle or Pending in any lane.
 
 How operations move a task between states:
 
 - **Create** puts the task in Todo, Idle, at the end of the lane, and records a creation entry. Without a body, the product writes an empty `acceptance` and an empty body; a supplied body must pass frontmatter validation.
-- **Lane move** requires `actor`; `reason` is optional. The task goes to the end of the target lane. A real move resets the run state to Idle, withdraws any open request (a withdrawal is not an answer), appends history, and updates `taskStatusChangedAt`. Moving to the same lane changes nothing.
-- **Run state change** requires `actor` and keeps the lane. AI Todo allows Idle↔Pending; AI Doing allows changes among Idle, Running, and Pending. Re-reporting the same state is not a change.
+- **Lane move** requires `actor`; `reason` is optional. The task goes to the end of the target lane. A real move resets the stored run state to Idle, appends history, and updates `taskStatusChangedAt`. Moving to the same lane changes nothing.
+- **Run state change** requires `actor` and keeps the lane. `state` accepts Idle and Running; only AI Doing can be Running. An AI change to Running is refused with `questions_unanswered` while the task waits for an answer. Questions are asked with `qa ask`, which also returns a Running task to Idle. Moving the lane or archiving keeps the task's questions and references. Re-reporting the same state is not a change.
 - **Edit** changes only the title, body, and acceptance conditions; the assignee never changes. CLI `--desc`/`--desc-file` take the whole file but keep the history of the latest stored `TASK.md`. `epic edit --document-file` replaces the whole `EPIC.md` text. The web UI sends `body` and `acceptance`, applied to the latest file under the lock.
 - **Epic membership** sets or clears `epicId`; only real changes append history. People can change it on draft and archived tasks.
 - **Delete** removes the task folder. The web UI deletes only archived tasks; the CLI asks for terminal confirmation.
 
-Ordinary updates are last-write-wins: there is no content check or edit lock. Only answer matching, AI writes to drafts, writes to archived tasks, and bulk-archive targets are validated against the latest `task.json` under the write lock.
+Ordinary updates are last-write-wins: there is no content check or edit lock. Only answers, AI writes to drafts, writes to archived tasks, and bulk-archive targets are validated against the latest `task.json` under the write lock.
 
 ## Epics and priority
 
@@ -70,7 +70,7 @@ A draft is a task a person is still writing.
 
 ## Archive
 
-- Archiving keeps the lane, `isDraft`, `epicId`, and position; resets the run state to Idle; withdraws the request; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
+- Archiving keeps the lane, `isDraft`, `epicId`, and position; resets the stored run state to Idle; keeps the task's question references; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
 - Restoring places the task at the end of its original lane.
 - Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images remain readable. The archive list is sorted by `archivedAt`, newest first.
 

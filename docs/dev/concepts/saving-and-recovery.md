@@ -6,7 +6,7 @@ Several agents, the CLI, the web server, and text editors may touch the same fil
 
 | Lock | Scope | Used for |
 | --- | --- | --- |
-| `.internal/write.lock` | One project | Every CLI and web write: `task.json`, `epic.json`, `project.json`, `TASK.md`, and `EPIC.md`. |
+| `.internal/write.lock` | One project | Every CLI and web write: `task.json`, `epic.json`, `project.json`, `TASK.md`, `EPIC.md`, and `qa/<request-id>/request.json`. |
 | `shared/.internal/catalog.lock` | All projects | Project create, rename, and delete, after checking name uniqueness. |
 | `lifecycle.lock` | The data area | Held by `serve` from start to exit so only one server runs (see [Server and web UI](./server-and-ui.md#starting-and-stopping-serve)). |
 
@@ -36,12 +36,16 @@ Recovery follows from the commit point:
 
 Everything that changes a task goes through this path: state changes, answers, draft toggles, epic changes, archive, restore, automatic Done, and `history add`. Each keeps the latest body, acceptance, and unknown frontmatter keys. `history add` checks the AI guards (Done, draft, archive) under the lock and refuses invalid history without changing anything.
 
-Only the `TASK.md`/`task.json` pair is atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
+### Saving questions and answers
+
+Asking, answering, withdrawing, and linking questions can change one `request.json` and several task pairs at once. These are committed as one change through a journal in `.internal/batches/` that lists every target file with its old and new contents (none for a file that does not exist before or after). The phases and recovery match the task journal: `prepared` rolls back to the old files, `committed` keeps the new ones, and bytes that no longer match block recovery rather than overwrite a direct edit. A new request is written to `qa/.new-<random>/` and renamed to `qa/<request-id>/`. The question numbers are reserved in `project.json` before the files are written, so a failed ask can leave numbers unused.
+
+Only the `TASK.md`/`task.json` pair, and a question change with the task pairs it touches, are atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
 
 ## Creating and deleting
 
 - Creating a task reserves `nextTaskId` under the lock, writes `task.json` and `TASK.md` (with its generated creation entry) into `tasks/.new-<random>/`, and renames the folder to `tasks/<task-id>/`. Epics work the same way. A failure never exposes a half-created task; the reserved number stays unused.
-- `init` renames the project's `tasks/` and `epics/` to temporary names before deleting them, keeping the ID, name, and `nextTaskId`.
+- `init` renames the project's `tasks/`, `epics/`, and `qa/` to temporary names before deleting them, keeping the ID, name, `nextTaskId`, and `nextQuestionId`.
 - `init` and `project rm` delete the named project's data, including archived tasks and images, and nothing else.
 - Bulk archive commits task by task; there is no rollback across tasks.
 

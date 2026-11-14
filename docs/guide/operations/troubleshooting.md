@@ -15,7 +15,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | The board does not update after an agent changed something | The server is not running, or the files are on a network drive. | Reload the page. Keep `agboard serve` running. Network drives may not report file changes. |
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
-| A question disappeared | Moving the task to another column withdraws an open question, or the agent asked a new one. | Open the task's History tab, and answer the current question if there is one. |
+| A question disappeared | It was answered elsewhere, for example in the chat, or the agent withdrew it. Moving a task does not withdraw its questions. | Open the task's History tab, or run `agboard qa ls --status all`, and answer the current question if there is one. |
 | A task or epic stays **Draft** after I closed its preview | A window closed with unsaved changes leaves the draft behind, and it stays until someone finalizes it. | Open the task's or epic's details and choose **Finalize**. Saving or discarding in a new preview keeps the draft. |
 
 ## An agent cannot do something
@@ -26,7 +26,8 @@ Find what you see, read the cause, and do what the last column says. The command
 | `epic_is_draft` | The epic is a draft; agents may not change its details or task order. | Wait for the person to save or discard the epic's draft, or ask them to finalize it. Attachments and task membership still work. |
 | `task_is_done` | The task is Done; agents may not change it. | Reopen the task in the browser if more work is needed. |
 | `acceptance_unmet` | The agent tried to move a task to Done while a condition is unmet. | Have the agent verify the conditions and mark them done; the task then finishes by itself. |
-| `request_changed` | The question was already answered, withdrawn, or replaced. | Read the task again and answer the current question. |
+| `question_answered` or `question_withdrawn` | The question was already answered, or its request was withdrawn. The first recorded answer is kept. | Read the question again with `agboard qa show`, and answer the current question if there is one. |
+| `questions_unanswered` | The task waits for an answer, so the agent cannot set it to Running or move it to Done. | Answer the question on the board, or have the agent withdraw it. |
 | `folder_unbound` or `bound_project_missing` | The agent's folder is not registered to a project, or the project was deleted. (The hook itself stays silent in a folder with no binding; this error comes from `agboard progress` and from a deleted project.) | Register the folder: `agboard project bind "My project"`. See [Data and backups](./data#register-a-folder). |
 | `confirmation_required` | Deleting something needs a person's confirmation in a terminal. | Run the command yourself. |
 | The hook shows `AGBOARD_ERROR` | The progress table cannot be built (no project, table larger than 256 KiB, or the server is unreachable). | Fix the cause named in the message. The agent must not change the board until the table works. |

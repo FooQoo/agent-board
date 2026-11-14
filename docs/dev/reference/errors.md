@@ -21,13 +21,18 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `invalid_state_for_draft` | A running task is made a draft. | 1 | 409 |
 | `archive_targets_changed` | A bulk archive target moved or was deleted since the confirmation opened. | 1 | 409 |
 
-## Decision requests
+## Questions and answers
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `request_changed` | The answer names a request that is no longer current, or a waiting request was withdrawn by a task move. | 1 | 409 |
+| `questions_unanswered` | An agent tried to set a task to Running, or to move it to Done, while the task waits for a person. | 1 | 409 |
+| `question_answered` | An answer names a question that already has an answer. Nothing is saved; the output includes the recorded questions. | 1 | 409 |
+| `question_withdrawn` | An answer names a question whose request was withdrawn. Nothing is saved. | 1 | 409 |
+| `question_not_found` | The question ID does not exist in the project. | 3 | 404 |
+| `request_not_found` | The request ID does not exist in the project. | 3 | 404 |
+| `request_answered` | A withdrawal names a request whose questions are all answered. | 1 | 409 |
 | `task_status_changed` | A move named the status it started from (`fromStatus`), and the task is no longer in it. Nothing is written; the body adds `currentStatus`. | 1 | 409 |
-| `request_choice_unknown` | The answer names a choice that is not in the request. | 2 | 422 |
+| `request_choice_unknown` | The answer names a choice that is not in the question. | 2 | 422 |
 
 ## Projects, epics, and attachments
 
@@ -64,9 +69,9 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | --- | --- | --- | --- |
 | `already_serving` | Another `serve` already runs on this data area. | 1 | n/a |
 | `port_in_use` | The port is taken. | 1 | n/a |
-| `board_unavailable` | A waiting Pending request, `wait`, or the hook cannot reach the server. A Pending request checks the server before saving, so an unavailable server leaves no question. | 1 | n/a |
+| `board_unavailable` | A waiting `qa ask`, `qa wait`, `wait`, or the hook cannot reach the server. A waiting `qa ask` checks the server before saving, so an unavailable server leaves no question; `--no-wait` needs no server. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
-| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, or a Pending request reached its integer `wait.timeoutSeconds`. It is not an answer; the question stays Pending. | 1 | n/a |
+| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, with no change. A `qa ask` or `qa wait` that reaches its `--timeout` is not an error: it prints a `timeout` event and exits 5. | 1 | n/a |
 | `hook_cwd_unavailable` | The hook's input `cwd` is an absolute path that does not exist or cannot be read. It is reported as `AGBOARD_ERROR`; a folder that cannot be checked is never treated as unbound. | n/a (hook output) | n/a |
 | `invalid_hook_input` | The hook input is not valid JSON, is too large, or has a `cwd` that is not a string or not an absolute path. Reported as `AGBOARD_ERROR`. | n/a (hook output) | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
@@ -126,8 +131,10 @@ These are returned by the `/api/preferences` and `/monitor/api/preferences` rout
 | 0 | Success. |
 | 1 | The operation is not allowed in the current state, or something failed. |
 | 2 | The input is wrong. |
-| 3 | The task was not found. |
+| 3 | The task, question, or request was not found. |
 | 4 | The project was not found or the folder is not bound. |
+| 5 | `qa ask` or `qa wait` reached its `--timeout` before every question was answered. The questions stay open. |
+| 6 | The request `qa ask` or `qa wait` was waiting on was withdrawn. |
 
 Other web statuses: 400 for malformed JSON and 413 for a body over 1 MiB. Guards run before the target is looked up, so a refused request never reveals what exists.
 

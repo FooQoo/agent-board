@@ -8,30 +8,30 @@ title: 判断依頼
 
 ## 質問に気づくには
 
-質問のあるタスクは**待機中**です。未着手や進行中のタスクでは、カードに**質問に回答する**ボタンが表示されます。回答を入力したものの送っていない場合は、ボタンの表示が**回答を続ける**に変わります。待機中のタスクは[モバイルモニター](../operations/mobile-monitor)でも見られます。
+質問はプロジェクトに属し、タスクはその質問を参照します。未回答の質問を参照しているAI担当のタスクは**待機中**です。未着手や進行中のタスクでは、カードに**質問に回答する**ボタンが表示されます。回答を入力したものの送っていない場合は、ボタンの表示が**回答を続ける**に変わります。待機中のタスクは[モバイルモニター](../operations/mobile-monitor)でも見られます。
 
 ## ブラウザで回答する
 
-カードの**質問に回答する**を選ぶと、回答のダイアログが開きます。左に質問、右に回答の欄が並びます。選択肢を選ぶか、メモを入力して、両方を入力することもできます。入力したら**送信**を選びます。回答すると、タスクの列は変わらず、エージェントの状態が未稼働に戻ります。エージェントは、あなたの返事を読んでから、どう再開するかを決めます。
+カードの**質問に回答する**を選ぶと、回答のダイアログが開きます。左に質問、右に回答の欄が並びます。選択肢を選ぶか、メモを入力して、両方を入力することもできます。入力したら**送信**を選びます。回答してもタスクの列は変わりません。タスクがほかにも未回答の質問を参照していれば、カードには次の質問が表示されます。なければ、エージェントの状態が未稼働に戻ります。エージェントは、あなたの返事を読んでから、どう再開するかを決めます。
 
 ウィンドウの幅が900pxより狭いときは、質問と回答を縦に一列に並べます。
 
 ![左に質問、右に選択肢とメモの欄がある回答のダイアログ](../../../images/guide/question.ja.png){.screenshot}
 
-回答は、タスクの履歴に保存されます。履歴では、質問と回答の各部分が別々のブロックとして表示されます。
+回答は、その質問を参照しているすべてのタスクの履歴に保存されます。履歴では、質問と回答の各部分が別々のブロックとして表示されます。
 
 - **閉じる**は、いつでも閉じるボタン、Escキー、ダイアログの外側のクリックで行えます。確認は出ず、入力は残ります。次に開くときは、カードの**回答を続ける**を選びます。
 - 入力は、ページを開いている間は残ります。ページを再読み込みすると消えます。
 - タスクを完了に移すと、入力した内容は消えます。
-- 質問に有効期限はありません。回答されるか、タスクを移動するか、アーカイブで取り下げられるまで、未回答のまま残ります。
+- 質問に有効期限はありません。回答されるか、エージェントが取り下げるまで、未回答のまま残ります。タスクを移動しても、アーカイブしても、質問は取り下げられません。
 
 ### 質問が差し替えられたとき
 
-ダイアログを開いている間に、エージェントが新しい質問を出すと、「質問が新しくなりました。内容を確認して、もう一度回答してください。」と表示されます。選んでいた選択肢は外れるので、選び直してください。メモは残ります。
+ダイアログを開いている間に、回答中の質問がチャットなど別の場所で回答されたり、カードが次の質問に移ったりすると、「質問が新しくなりました。内容を確認して、もう一度回答してください。」と表示されます。選んでいた選択肢は外れるので、選び直してください。メモは残ります。
 
 ### 質問が取り下げられたとき
 
-タスクを別の列に移したり、アーカイブしたりすると、質問は取り下げられます。ダイアログには「この質問は取り下げられました。回答は送れません。」と表示されます。質問と入力は読めるように残りますが、**送信**と**入力をクリア**は表示されず、**閉じる**だけが使えます。
+エージェントは、不要になった質問を取り下げることがあります。取り下げられると、ダイアログには「この質問は取り下げられました。回答は送れません。」と表示されます。質問と入力は読めるように残りますが、**送信**と**入力をクリア**は表示されず、**閉じる**だけが使えます。
 
 ### 送信に失敗したとき
 
@@ -56,85 +56,93 @@ sequenceDiagram
     participant A as エージェント
     participant B as ボード
     participant U as ユーザー
-    A->>B: 質問と選択肢つきでstate pending
+    A->>B: 質問とタスクを指定してqa ask
     Note over B: タスクが待機中になり、回答ボタンが表示される
     U->>B: 選択肢を選ぶ、またはメモを書く
-    Note over B: 回答が履歴に保存され、状態が未稼働になる
-    A->>B: 返事と履歴を読む
+    Note over B: 回答が保存され、タスクの履歴に残る
+    B-->>A: qa askが回答を出力して終わる
     A->>B: 理由つきでstate running
 ```
 
-AI担当のタスクは、未着手でも進行中でも質問できますが、稼働中にできるのは進行中だけです。エージェントは、2〜10件の選択肢で尋ねます。CLIは、質問と2〜10件の選択肢を、`--request-json`でJSONとして受け取ります。引数に直接書くことも、標準入力から`-`で読むこともできます。
+エージェントは`qa ask`で質問します。1回のコマンドで出す質問のまとまりを「リクエスト」と呼び、コマンドはその中の質問すべてに回答が揃うまで待ちます。`--task`を付けると、そのタスクがまとまりの質問すべてを参照します。複数のタスクに付けるときは繰り返します。質問は`--request-json`でJSONとして渡します。引数に直接書くことも、標準入力から`-`で読むこともできます。
 
 ```json
 {
-  "question": "Which launch approach should we use?",
-  "choices": [
-    { "id": "preview", "label": "Publish a preview first" },
-    { "id": "public", "label": "Launch publicly" }
+  "questions": [
+    {
+      "question": "Which launch approach should we use?",
+      "choices": [
+        { "id": "preview", "label": "Publish a preview first" },
+        { "id": "public", "label": "Launch publicly" }
+      ],
+      "recommendedChoiceId": "preview"
+    }
   ]
 }
 ```
 
-引数に直接書いて送ります。
-
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
+cat question.json | agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json
 ```
 
-標準入力から読むこともできます。
+- `questions`は1〜20件です。質問には、プロジェクトの中で連番の`Q-12`のようなIDが付きます。
+- `question`はMarkdownで書け、上限は5,000文字です。タスク本文と同じ部品で表示されるので、見出し、リスト、コード、リンク、同じタスクに添付した画像が本文と同じように表示されます。`http`か`https`のURLの画像も表示されます。
+- `choices`は2〜10件です。`id`は英数字と`_`、`-`による1〜64文字、`label`は1〜200文字です。
+- `recommendedChoiceId`は任意で、エージェントがおすすめする選択肢を示します。
+- `kind`を省くと`task`です。`plan`は計画を立てるときの質問を表します。`start_approval`は開始の承認を求める質問で、承認にあたる選択肢を`approvingChoiceIds`で指定します。そのどれかで回答されるまで、参照しているタスクは待機中のままです。
+- 質問ごとに`"tasks": [421, 422]`のように書くと、その質問だけを指定したタスクに参照させます。
+
+回答のメモの上限は2,000文字です。
+
+質問できるのは、未着手か進行中にあるAI担当のタスクです。待っている間、そのタスクを稼働中にはできません。タスクを別の列へ移動しても、アーカイブしても、質問は取り下げられません。
+
+### コマンドの出力
+
+`--json`を付けると、1行に1つのJSONを出力します。付けなければ、同じ流れを短い英文で出力します。
+
+| イベント | 意味 | 終了コード |
+| --- | --- | --- |
+| `registered` | 質問を保存した。リクエストIDと質問IDを含む。 | — |
+| `waiting` | まだ全問の回答が揃っていない。60秒ごとに出力する（`--heartbeat`で10〜600秒を指定できる）。 | — |
+| `answered` | 全問の回答が揃った。すべての回答を含む。 | 0 |
+| `timeout` | 待機時間が終わった。質問は未回答のまま残る。 | 5 |
+| `withdrawn` | リクエストが取り下げられた。 | 6 |
+| `error` | 質問を保存したあと、サーバーが止まったなどの理由で待機に失敗した。質問は未回答のまま残る。 | 1 |
+
+既定の待機時間は600秒です。`--timeout`には1〜86,400秒か、無期限を表す`none`を指定できます。待機には`agboard serve`の起動が必要で、CLIは何かを保存する前に確認し、起動していなければ`board_unavailable`で終わります。`--no-wait`を付けると、質問を保存して`registered`を出力し、すぐに戻ります。この場合はサーバーが要りません。
+
+時間切れやエラーのあとに待ち直すときは、リクエストIDを渡します。質問は出し直しません。
 
 ```sh
-cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
+agboard --project "My project" qa wait "<request-id>" --json
 ```
 
-`choices`は2〜10件です。1件以下や11件以上、`--request-json`のない待機中の指定は拒否します。依頼にはIDが付き、`show`や`snapshot`で読めます。
-
-質問はMarkdownで書け、上限は5,000文字です。タスク本文と同じ部品で表示されるので、見出し、リスト、コード、リンク、同じタスクに添付した画像が本文と同じように表示されます。`http`か`https`のURLの画像も、本文と同じように表示されます。回答のメモの上限は2,000文字です。
-
-### 質問を差し替える
-
-待機中のタスクは、今の質問を保ちます。待機中のタスクにもう一度`state pending`を実行しても、質問は差し替わりません。別の質問を出すには、先にタスクを別の列へ移動して、今の質問を取り下げます。移動すると依頼が消えるので、そのあとで新しい質問を出してください。
-
-### 質問の回答を待つ
-
-`pending --request-json`は、JSONに`wait`がなくても既定で回答まで待ちます。この待機には`agboard serve`の起動が必要です。依頼に回答されると、コマンドはタスクと回答を表示します。既存互換の`"wait": {}`も無期限待機になります。
-
-用途に応じて、次の3通りで実行します。
-
-waitを省略して、回答まで既定で待機します。
+### 質問を読む・取り下げる・参照する
 
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
+agboard --project "My project" qa ls --json
+agboard --project "My project" qa show Q-12 --json
+agboard --project "My project" qa withdraw "<request-id>" --actor ai --reason "No longer needed"
+agboard --project "My project" qa link Q-12 --task 3
+agboard --project "My project" qa unlink Q-12 --task 3
 ```
 
-質問を登録してすぐに戻る場合は、`--no-wait`を付けます。
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}' --no-wait
-```
-
-600秒まで待つ例です（1〜86,400秒を指定できます）。
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}],"wait":{"timeoutSeconds":600}}'
-```
-
-`--no-wait`では`agboard serve`は不要です。待機する2つの形式では`agboard serve`が必要で、CLIは質問を保存する前に起動状態を確認します。`--no-wait`と`wait: {}`は併用できますが、整数の`timeoutSeconds`との併用は`invalid_argument`（終了コード2）になり、質問・状態・履歴を変更しません。`wait: null`と`timeoutSeconds: null`は期限なしとして扱います。不正なJSON、未知の項目、型違い、範囲外timeoutは`invalid_value`（終了コード2）、`pending --request-json`以外での`--no-wait`は`invalid_argument`（終了コード2）です。
-
-- 時間切れやCtrl+Cで待機は終了しますが、質問はPendingのままです。
-- サーバーとの接続が切れると`board_unavailable`を返します。これは技術的なエラーで、質問はPendingのままです。
-- タスクの移動で質問が取り下げられると、コマンドは`request_changed`で終わります。
+- `qa ls`は未回答の質問を一覧にします。`--status answered`、`withdrawn`、`all`でほかの質問も出せます。`--task`を付けると、そのタスクが参照する質問に絞ります。
+- `qa show`は質問IDかリクエストIDを受け取り、質問の全文、選択肢、回答、参照しているタスクを表示します。
+- `qa withdraw`はリクエストのうち未回答の質問をすべて取り下げます。待っている`qa ask`は`withdrawn`で終わります。全問に回答済みのリクエストは取り下げられません。
+- `qa link`と`qa unlink`は、タスクに質問を加えたり外したりします。タスクの`TASK.md`にある`questions`の一覧が変わります。
 
 ### コマンドラインで回答する
 
-人はCLIからも、依頼IDを渡して回答できます。
+人はCLIからも、質問IDを指定して回答できます。
 
 ```sh
-agboard --project "My project" state 1 idle --actor human --request "<request-id>" --choice preview --reason "Get feedback before the public launch"
+agboard --project "My project" qa answer Q-12 --actor human --via cli --choice preview --text "Get feedback before the public launch"
 ```
 
-選択肢か、`--reason`によるメモの少なくとも一方を指定します。両方の指定も可能です。エージェントは、返事と履歴をすべて読んでから、再開します。
+選択肢か、`--text`や`--text-file`によるメモの少なくとも一方を指定します。両方の指定も可能です。`--answers-json`を使うと、複数の質問にまとめて回答できます。まとめた回答は、すべて保存されるか、何も保存されないかのどちらかです。ユーザーがチャットで答えたときは、エージェントがその言葉を`--via chat`で記録します。最初に記録された回答が確定します。回答済みの質問に答えようとすると`question_answered`で失敗し、記録済みの回答を表示します。
+
+エージェントは、回答と履歴を読んでから再開します。
 
 ```sh
 agboard --project "My project" state 1 running --actor ai --reason "Preparing the preview requested by the user"

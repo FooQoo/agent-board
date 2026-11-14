@@ -11,7 +11,8 @@
 | `epic_is_draft` | エピックが下書きで、CLIはその詳細や作業順序を変更できない。 | 人が保存か破棄をするまで待つか、確定を頼みます。`epic attachment`と所属の変更は使えます。`EPIC.md`は編集しません。 |
 | `task_is_done` | タスクがDoneで、エージェントは変更できない。 | 人に再開してもらいます。 |
 | `acceptance_unmet` | 受入条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
-| `request_changed` | 質問がすでに回答された、移動で取り下げられた、または置き換えられた。 | タスクを読み直し（`show`）、現在の依頼に回答します。 |
+| `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `qa wait <request-id>`で回答を待つか、人にボードで回答してもらいます。 |
+| `question_answered`・`question_withdrawn` | 質問にすでに回答がある、またはリクエストが取り下げられた。最初の回答が確定です。 | 質問を読み直し（`qa show <question-id>`）、記録済みの回答に従います。 |
 | `folder_unbound`・`bound_project_missing` | 作業フォルダがプロジェクトに紐付いていない、またはプロジェクトが削除された。 | `--project`でプロジェクトを明示するか、利用者にフォルダの紐付けを頼みます。 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 人に実行してもらいます。確認を省くオプションはありません。 |
 
@@ -31,9 +32,10 @@
 | --- | --- | --- |
 | `already_serving` | 同じデータ領域で別の`serve`が動いている。 | そちらを使うか、先に止めます。 |
 | `port_in_use` | 別のプログラムがそのポートを使っている。 | `--port`でほかのポートを選びます。7420は通常の利用のために空けておき、テストでは別のポートかポート0を使います。 |
-| `wait`やHookの`board_unavailable` | `serve`が動いていない、または接続に失敗した。技術的な失敗で、回答ではない。 | `serve`を起動し、`wait`を実行し直します。 |
+| `wait`・`qa ask`・`qa wait`・Hookの`board_unavailable` | `serve`が動いていない、または接続に失敗した。技術的な失敗で、回答ではない。 | `serve`を起動し、`wait`を実行し直します。保存済みの質問は`qa wait <request-id>`で待ち直します。 |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 同じプロジェクトの`snapshot`から新しい`cursor`を取ります。 |
-| `wait_timeout` | 任意の`--timeout`が経過しても変更がなかった。 | もう一度待ちます。質問はPendingのままです。 |
+| `wait_timeout` | `wait --after`の任意の`--timeout`が経過しても変更がなかった。 | もう一度待ちます。 |
+| `qa ask`や`qa wait`が終了コード5で終わる | すべての質問に回答が付く前に`--timeout`が過ぎた。質問は未回答のまま残る。 | `qa wait <request-id>`をもう一度実行します。 |
 
 ## Hook
 

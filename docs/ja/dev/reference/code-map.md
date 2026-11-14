@@ -10,7 +10,7 @@
 | `cli` | 引数、コマンド、出力の整形、エラーの表示。 |
 | `file_store` | 共有領域のデータ形式と読み書き全般。<br>パス、保存、ロック、検証、操作、索引、監視。 |
 | `docs` | プロジェクトのドキュメント。パスの規則（`paths`）、共通の型（`model`）、ツリー・ファイル・画像の読み込み（`reader`）、ファイルの内容の`revision`の計算（`revision`）、新しい`docs/`に置くREADME（`templates`）。 |
-| `domain` | タスク・レーン・稼働状態・エピック・判断依頼・入力の上限・規則。<br>I/Oなし。 |
+| `domain` | タスク・レーン・稼働状態・エピック・質問・入力の上限・規則。<br>I/Oなし。 |
 | `server` | axumのアプリ、API、SSE、書き込みの保護、埋め込んだWeb資産、モニターの入口。 |
 | `agent` | Hookと`wait`。 |
 | `progress` | `agboard progress`とHookが共有する進行表を組み立てる。 |
@@ -33,11 +33,12 @@
 | `model` | 永続形式のserdeの型（`deny_unknown_fields`、camelCase、`formatVersion`）。 |
 | `layout` | 検証済みのIDだけから所有パスを組み立てる。<br>文字列を直接パスにしない。 |
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、受入条件と履歴の解析、未知のキーを保ったファイルの検証。 |
-| `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。 |
+| `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。複数のファイルをまとめて保存するバッチのジャーナル（`batch.rs`）も持つ。 |
+| `qa/` | 質問。`request.json`のモデル、その読み込みと検証、タスクに導く状態と判断待ち（`derive.rs`）。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
 | `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
-| `ops/` | タスク・稼働状態・回答・人による受入条件のチェック・エピック・画像・自動完了の操作。 |
+| `ops/` | タスク・稼働状態・質問（`qa/`: 質問・回答・取り下げ・参照）・人による受入条件のチェック・エピック・画像・自動完了の操作。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -47,13 +48,13 @@
 | モジュール | 責務 |
 | --- | --- |
 | `api/` | ボードのルーター、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
-| `monitor/` | モニターの読み取り用ルーター、回答と受入条件のチェックのエンドポイント、資産。 |
+| `monitor/` | モニターの読み取り用ルーター、質問・回答・受入条件のチェックのエンドポイント、資産。 |
 | `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、PCとモニターで共有する`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | モニターのアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルとモニターの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認と、HTTPSのoriginの正規化。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
-| `store`<br>`answer`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する、回答の保存と、人による受入条件1件の設定。 |
+| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する、質問の読み出しと回答の保存、人による受入条件1件の設定（ボードのハンドラーは`api/qa.rs`）。 |
 | `web_assets` | 埋め込んだボードとモニターのスクリプトとスタイルシート、それぞれのビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
 | `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
 | `change_feed.rs` | このサーバーの実行で変更の組に番号（`seq`、実行ごとの`instanceId`）を付け、まだ送っていないイベントを保持する。遅れすぎたストリームには`resync`を送る。 |
@@ -78,6 +79,7 @@
 ### SkillとHookの導入
 
 - `src/integrations/`: `assets.rs`と`build_bundle.rs`（同梱するバンドル）、`paths.rs`（配置先）、`registry.rs`（導入記録）、`plan.rs`・`compose.rs`・`merge.rs`・`skill.rs`・`duplicates.rs`・`adopt.rs`・`toml_json.rs`（読み取りだけの計画と所有。`adopt.rs`は、connectが引き取る、このプロジェクト向けの手書きのHookを判定します）、`apply.rs`・`ops.rs`・`journal.rs`・`recovery.rs`（書き込み、バックアップ、ジャーナル、復旧）、`update.rs`と`update_report.rs`（`update`が選ぶものと表示）、`notice.rs`（更新通知）。
+- `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
 - `src/cli/commands/update.rs`: `agboard update`と、通知を表示する処理。
 - `tests/integration_*.rs`: バンドル、配置先、導入、復旧、connect、update、通知の焦点テスト。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。

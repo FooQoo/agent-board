@@ -17,10 +17,10 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |
 | `taskStatus` | レーン。`todo`・`doing`・`done`。 |
 | `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
-| `agentStatus` | AIの稼働状態。`idle`・`running`・`pending`。 |
+| `agentStatus` | AIの稼働状態。`task.json`には`idle`か`running`を保存します。TodoかDoingのAIタスクが人の判断待ちのとき、読み出すと`pending`になります（[質問と回答](../concepts/history-and-decisions.md#質問と回答)）。保存された`pending`は`idle`として読みます。 |
 | `isDraft` | 既定は`false`。人が準備中のタスク（下書き）。エピックの場合、CLIの`epic edit`は下書きを`epic_is_draft`で拒否する。 |
-| `pendingRequestId`・`pendingRequest` | Pendingの間の未回答の判断依頼。それ以外は`null`。 |
-| `requestAnswers` | 再起動後も依頼IDで引けるよう保存する回答。 |
+| `questions` | `TASK.md`のfrontmatterにあり、タスクが参照するプロジェクトの質問のIDを`[Q-12, Q-15]`のように並べます。省略・`null`・空はどれも0件で、重複は拒否します。 |
+| `requestAnswers` | 以前のAgent Boardが記録した回答。記録として残し、新しくは追加しません。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
 | `attachments` | 画像のID・名前・サイズ・MIME型・作成日時。 |
 | `simpleRequest` | 過去の簡易依頼フォームが保存した任意のメタデータ`{requestId, payloadHash}`。新規タスクでは保存・利用しない。 |
@@ -45,8 +45,10 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
         docs/<任意のフォルダ>/<名前>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
+        qa/<request-id>/request.json
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
+        .internal/batches/<batch-id>.json
   bindings.json
   serve.json
   serve.log
@@ -63,7 +65,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
 `docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログがこれを読みます（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。
 
-`project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`defaultEpicsSeeded`を持ちます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
+`project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`nextQuestionId`・`defaultEpicsSeeded`を持ちます。`nextQuestionId`は次の質問の番号で、この項目がないファイルは`1`として読みます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
 
 `EPIC.md`には、エピックの詳細をMarkdownで保存します。frontmatterを含み、frontmatterには作業順の`priority`（タスクIDのリスト）を置けます。APIと`epic show --json`は、全文を`document`、frontmatterを除いた本文を`body`、解析した作業順を`priority`として返します。
 
@@ -81,8 +83,6 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   "position": 1,
   "isDraft": false,
   "archivedAt": null,
-  "pendingRequestId": null,
-  "pendingRequest": null,
   "requestAnswers": [],
   "createdAt": "2026-10-10T00:00:00Z",
   "updatedAt": "2026-10-10T00:00:00Z",
@@ -92,8 +92,8 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 }
 ```
 
-- `pendingRequest`は`{question, choices}`で、choicesは`[{"id":"proceed","label":"Proceed"}]`のような形です。
-- `requestAnswers`の各項目は`{requestId, actor, choiceId, choiceLabel, text, at}`です。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か有効な回答で、選択と文の少なくとも一方があります。`requestId`は一意で、現在の`pendingRequestId`とは異なります。
+- `requestAnswers`の各項目は`{requestId, actor, choiceId, choiceLabel, text, at}`です。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か有効な回答で、選択と文の少なくとも一方があります。
+- 以前の版が書いた`pendingRequestId`と`pendingRequest`は、読むときに無視し、次の保存では書きません。
 - 過去の簡易依頼タスクには`simpleRequest`メタデータが残っている場合があります。互換性のため読み込みますが、新規タスクでは保存せず、再送の判定にも使いません。
 
 `TASK.md`では`history`が必須です（`history: []`も有効）。新規タスクの入力では省略するか空のリストにでき、作成の入力に空でない履歴があれば拒否します。本文と受入条件の編集は最新の履歴を保ち、`edit --desc-file`は履歴を追加しません。直接編集で履歴を追記する場合は、既存の内容を保ち、`at`/`reason`の項目だけを追加します。ただし、日時の付与と原子的な追記を行うCLIの利用を推奨します。
@@ -101,11 +101,67 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 ```yaml
 ---
 acceptance: []
+questions: [Q-12]
 history:
   - at: "2026-10-15T01:30:00Z"
     reason: "Verified the setup guide links and recorded the result in the task body."
 ---
 ```
+
+## 質問
+
+プロジェクトの質問は`qa/<request-id>/request.json`に保存します。まとめて出した質問の束ごとに1ファイルで、フォルダ名がリクエストIDです。
+
+```json
+{
+  "formatVersion": 1,
+  "requestId": "3f2a9c0d6b1e4f7a8c5d2e1f0a9b8c7d",
+  "createdAt": "2026-11-14T02:30:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-12",
+      "kind": "task",
+      "question": "既存の記録は消しますか、残しますか？",
+      "choices": [
+        { "id": "delete", "label": "消して作り直す" },
+        { "id": "keep", "label": "残して移す" }
+      ],
+      "recommendedChoiceId": "keep",
+      "approvingChoiceIds": [],
+      "answer": {
+        "choiceId": "keep",
+        "choiceLabel": "残して移す",
+        "text": null,
+        "actor": "human",
+        "via": "ui",
+        "at": "2026-11-14T02:41:10Z"
+      }
+    }
+  ]
+}
+```
+
+| 項目 | 決まり |
+| --- | --- |
+| `formatVersion` | 常に`1`。ほかの値は`format_unsupported`です。 |
+| `requestId` | 32桁の小文字16進で、フォルダ名と同じです。 |
+| `createdAt`・`createdBy` | 質問した時刻とactor（`ai`か`human`）。 |
+| `withdrawnAt`・`withdrawReason` | リクエスト全体を取り下げた時刻と、任意の理由（1〜2,000文字）。 |
+| `questions` | 1〜20問。質問した順に並びます。 |
+| `questions[].id` | `Q-<正の整数>`。プロジェクト内で一意で、`nextQuestionId`から振ります。 |
+| `questions[].kind` | `task`・`plan`・`start_approval`のどれか。 |
+| `questions[].question` | Markdownで1〜5,000文字。 |
+| `questions[].choices` | 2〜10件。質問内で一意のID（`[A-Za-z0-9_-]`の1〜64文字）と1〜200文字のラベルを持ちます。 |
+| `questions[].recommendedChoiceId` | `null`か、選択肢のどれか。 |
+| `questions[].approvingChoiceIds` | 承認にあたる選択肢。`start_approval`では1件以上、ほかの種類では空です。 |
+| `questions[].answer` | 未回答の間は`null`。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か1〜2,000文字で、選択と文の少なくとも一方があります。`actor`は常に`human`、`via`は`ui`・`chat`・`cli`のどれかです。 |
+
+状態は保存しません。質問は、回答がなくリクエストが取り下げられていない間は`open`、回答があれば`answered`、回答の前にリクエストが取り下げられたら`withdrawn`です。記録した回答を書き換えることはありません。質問を参照しているタスク（`referencedBy`）は、このファイルではなくタスクの`questions`から求めます。
+
+壊れた`request.json`や、`formatVersion`が違うものは、どの一覧からも外し、`problems`に`projects/<id>/qa/<request-id>/request.json`として載せます。そのファイルへの書き込みは`file_invalid`で失敗します。
 
 プロジェクトは`shared/projects/<project-id>/`を複製してバックアップし、`serve`を止めてフォルダを戻して復元します。エクスポートやインポートのコマンドはありません。[データのガイド](../../guide/operations/data.md)を参照してください。
 
@@ -157,13 +213,13 @@ ngrokのモバイル接続は、秘密ではない設定を`<データ領域>/.i
 
 ## タスクのJSONとスナップショット
 
-CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。`task.json`のメタデータに、`history`・`description`・`body`・`acceptance`・`acceptanceError`、解決した`pendingReason`と`pendingChoices`、表示用の`updatedAt`、`epic`（`{id, name, color}`または`null`）を加えたものです。`pendingRequest`と`requestAnswers`が履歴に現れることはありません。待機する`state ... --request-json`は、解決した回答を別の`answer`で返します。
+CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。`task.json`のメタデータに、`history`・`description`・`body`・`acceptance`・`acceptanceError`、表示用の`updatedAt`、`epic`（`{id, name, color}`または`null`）を加えたものです。読むときに導く項目は、`agentStatus`、`questionIds`（タスクの`questions`）・`questionsError`（そのfrontmatterが不正か）・`openQuestionIds`、そして`pendingRequestId`・`pendingReason`・`pendingChoices`です。最後の3つは、タスクが`pending`と表示される間、IDが最も小さい未回答の質問から取り、それ以外は`null`と空です。`pendingRequestId`にはその質問のID（`Q-12`など）が入り、ボードは回答するときにこのIDを送ります。`requestAnswers`が履歴に現れることはありません。
 
 - スナップショットは、`project`・`version`・`cursor`・`epics`・`tasks`（それぞれ全履歴を持つ）・`problems`を一度の読み込みから返します。CLIのスナップショットは`nextTaskId`も含み、CLIのスナップショット・Hook・`wait`は`fetchedAt`を含みます。
 - プロジェクト一覧は`projects`（id・name・createdAt）と`catalogVersion`を返し、タスクは含みません。
 - `ls --all-projects --json`は、`catalogVersion`と、プロジェクトごとのスナップショットを名前順に返します。cursorはそれぞれのプロジェクトのものです。
 
-`problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`は`frontmatter`・`acceptance[<index>].<key>`・`history`・`history[<index>].<key>`のいずれか、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
+`problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`はタスクのファイルなら`frontmatter`・`acceptance[<index>].<key>`・`questions`・`history`・`history[<index>].<key>`のいずれか、`request.json`ならその項目、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
 
 ## 初回の案内
 

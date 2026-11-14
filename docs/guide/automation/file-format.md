@@ -8,9 +8,10 @@ Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Age
 
 | File | Holds | Edit it? |
 | --- | --- | --- |
-| `TASK.md` | The task's body, acceptance conditions, and history. | Yes, unless the task is a draft. |
+| `TASK.md` | The task's body, acceptance conditions, the questions it refers to, and history. | Yes, unless the task is a draft. |
 | `EPIC.md` | The epic's details and the order of its tasks. | Yes. |
 | `task.json`, `epic.json`, `project.json` | State and metadata. | No. Use the CLI. |
+| `qa/<request-id>/request.json` | A set of questions an agent asked, and their answers. | No. Use `qa` commands or the board. |
 
 ## TASK.md
 
@@ -48,6 +49,19 @@ Any headings and text you need.
 
 Add a condition with the next free number; do not renumber. Other keys in the frontmatter are kept when the board writes the file.
 
+### Questions
+
+`questions` lists the project questions the task refers to:
+
+```yaml
+questions: [Q-12, Q-15]
+```
+
+- Each value is a question ID such as `Q-12`, and a list must not repeat one. Leaving the key out, `null`, and an empty list all mean no questions.
+- `qa ask --task` and `qa link`/`qa unlink` change this list for you. You can also edit it like any other part of the file.
+- An AI-owned task in Todo or Doing shows Pending while any question it lists is open. Answered and withdrawn questions do not keep it waiting.
+- The questions themselves are stored in the project, not in the task; see [Decisions](../use/decisions).
+
 ### History
 
 `history` lists what happened, oldest first. Each entry has exactly two keys:
@@ -75,7 +89,7 @@ While `agboard serve` is running, a task finishes by itself when it is:
 - AI-owned, not a draft, not archived, and in Todo or Doing;
 - carrying at least one valid condition, with every condition `done: true`.
 
-The server also checks existing tasks when it starts. Pending tasks wait until they are answered. User-owned tasks, drafts, tasks with invalid conditions, and tasks with no conditions do not finish automatically. A Done task is read-only for agents and never reopens by itself. If you reopen one without unchecking a condition, it can finish again.
+The server also checks existing tasks when it starts. Tasks that wait for an answer are skipped until it arrives. User-owned tasks, drafts, tasks with invalid conditions, and tasks with no conditions do not finish automatically. A Done task is read-only for agents and never reopens by itself. If you reopen one without unchecking a condition, it can finish again.
 
 ## EPIC.md
 

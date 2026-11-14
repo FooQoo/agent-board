@@ -17,8 +17,11 @@
 | `PUT /api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | `{"done": true\|false}`で、条件を1件、人として設定する。版は送らず、ロックの中で最新の`TASK.md`を変え、その選択を優先する。`{task, changed}`を返す。アーカイブ済みのタスクは409 `task_archived`、存在しない条件は422 `invalid_argument`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
 | `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードの移動のダイアログは、いつも`fromStatus`を送る。 |
-| `POST /api/projects/{projectId}/tasks/{id}/answer` | `requestId`と任意の`choiceId`・`text`をロックの中で照合する。両方空は422、未知の選択肢は422 `request_choice_unknown`、依頼が変わっていれば409 `request_changed`。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
+| `GET /api/projects/{projectId}/qa/{questionId}` | 質問1件を`{question}`で返す。`id`・`requestId`・`kind`・`question`・`choices`・`recommendedChoiceId`・`approvingChoiceIds`・`answer`・`status`・`referencedBy`・`createdAt`・`createdBy`を持つ。未知のIDは404 `question_not_found`。 |
+| `GET /api/projects/{projectId}/qa` | 質問の一覧を`{questions}`で、新しい順に返す。`status`は`open`・`answered`（既定）・`withdrawn`・`all`、`limit`は1〜500（既定50）。 |
+| `POST /api/projects/{projectId}/qa/answers` | `{answers: [{questionId, choiceId?, text?}]}`。未知のフィールドは拒否する。各回答には選択か文、または両方が必要で、未知の選択肢は422 `request_choice_unknown`。回答はまとめて保存し、一部だけ保存することはない。すでに回答済み、または取り下げ済みの質問があれば何も保存せず、409で`error`、`questionAnswered`と`questionWithdrawn`（ID）、`questions`（記録済みの質問）を返す。未知の質問は404 `question_not_found`。 |
+| `POST /api/projects/{projectId}/qa/requests/{requestId}/withdraw` | リクエストの未回答の質問を取り下げる。本文は任意の`{reason}`。すべて回答済みのリクエストは409 `request_answered`、未知のものは404 `request_not_found`。 |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | アーカイブ済みのタスクだけを削除する。それ以外は409 `task_not_archived`。204、すでにないときは404。 |
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・isDraft・documentまたはbody）。`acceptance`の入力は受け付けない。201。 |
@@ -46,12 +49,13 @@
 
 以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
-**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
+**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`questions`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
 
 | 項目 | フィールド |
 | --- | --- |
-| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
+| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
 | エピック | `id`（文字列）、`name`、`color`、`isDraft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
+| 質問 | 未回答の質問をID順に並べる。`id`・`requestId`・`kind`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/qa/{questionId}`で読む。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
 
 versionはすべて不透明な文字列で、解析済みデータの内容ハッシュです。サーバーの起動回に依存しないため、再起動後も保存済みの値と比べられます。versionは等しいかどうかだけを比べてください。
@@ -92,7 +96,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId` | 変更が属するプロジェクト。モニターのストリームは、要求したプロジェクトの変更だけを送る。PCのストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
 | `changes[].resource` | `task`、`epic`、`project`（プロジェクト一覧の変化: 作成・名前の変更・削除）。 |
 | `changes[].id` | タスクは整数、エピックとプロジェクトは文字列。 |
-| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・Pendingの質問・受入条件の件数。`request`は判断の依頼が出された・回答された・取り下げられたこと（タスクだけで、必ず`summary`と一緒）。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
+| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・判断待ちの質問・受入条件の件数。`request`はタスクが待っている質問が変わったこと（質問・回答・取り下げ・参照の追加や削除）。タスクだけで、必ず`summary`と一緒。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
 
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 
@@ -189,8 +193,8 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | --- | --- |
 | 400 | 壊れたJSON、不正な`sections`クエリ（`invalid_sections`）、または不正なドキュメントのパス（`docs_path_invalid`）。 |
 | 403 | 保護に失敗した。 |
-| 404 | プロジェクト・タスク・エピックがない。またはドキュメントのファイルがない。 |
-| 409 | `request_changed`・`task_status_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 404 | プロジェクト・タスク・エピック・質問・リクエストがない。またはドキュメントのファイルがない。 |
+| 409 | `question_answered`・`question_withdrawn`・`request_answered`・`task_status_changed`・`task_not_draft`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
 | 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
 | 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |
@@ -212,4 +216,4 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | `POST /api/projects/{projectId}/onboarding/{runId}/finish` | runのカードをアーカイブし、案内を完了する。 |
 | `POST /api/projects/{projectId}/onboarding/{runId}/abort` | runを途中で終え、カードをアーカイブする。 |
 
-書き込みは、ほかの書き込みと同じ書き込みの保護を通り、未知のフィールドは拒否します。サンプルの質問への回答は、既存の`/api/projects/{projectId}/tasks/{id}/answer`を使います。
+書き込みは、ほかの書き込みと同じ書き込みの保護を通り、未知のフィールドは拒否します。サンプルの質問への回答は、`POST /api/projects/{projectId}/qa/answers`を使います。

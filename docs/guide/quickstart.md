@@ -73,10 +73,10 @@ In the browser, task #2 moves to Doing and shows **Running**. Select it and open
 When an agent needs a decision, it asks a question with choices:
 
 ```sh
-agboard --project "Quickstart" state 2 pending --actor ai --request-json '{"question":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}'
+agboard --project "Quickstart" qa ask --actor ai --task 2 --request-json '{"questions":[{"question":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
 ```
 
-This command waits for your answer by default; `agboard serve` must be running. Task #2 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command returns with the answer, and the task returns to **Idle**.
+This command waits for your answer, up to 10 minutes by default; `agboard serve` must be running. Task #2 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command prints the answer and ends, and the task returns to **Idle**.
 
 The agent reads the answer in the task's history and resumes:
 

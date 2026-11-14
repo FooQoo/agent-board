@@ -1,6 +1,6 @@
 # Agent integration
 
-Agents use Agent Board through three pieces: the skill that tells them how to work, the hook that hands them the progress table, and `wait` that lets them block until a person answers. This page explains each piece and what `agboard setup` prepares. The user-facing workflow is in [Working with agents](../../guide/automation/agents.md); the JSON they receive is in [Hook, progress, and wait output](../reference/agent-output.md).
+Agents use Agent Board through three pieces: the skill that tells them how to work, the hook that hands them the progress table, and the waiting commands that let them block until the project changes or a person answers. This page explains each piece and what `agboard setup` prepares. The user-facing workflow is in [Working with agents](../../guide/automation/agents.md); the JSON they receive is in [Hook, progress, and wait output](../reference/agent-output.md).
 
 ## How the pieces fit together
 
@@ -9,9 +9,10 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | Skill `agent-board` | `.agents/skills/agent-board/SKILL.md` | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
 | Hook | `agboard hook` (`src/agent/hook.rs`) | Fetching and formatting: after tool calls, attach the current progress table to the agent's context. |
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
-| `wait` | `src/agent/wait.rs` | Block until the project changes or a decision is answered. |
+| `wait` | `src/agent/wait.rs`, `src/agent/task_wait.rs` | Block until the project changes or the next task is ready. |
+| `qa ask`, `qa wait` | `src/cli/commands/qa/`, `src/agent/qa_wait.rs` | Ask the user questions and block until every one is answered. |
 
-The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `EPIC.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks a decision and waits by default when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
+The skill is named `agent-board`; the executable is `agboard`. A typical loop: the hook shows the progress table → the agent reads only the `EPIC.md` and `TASK.md` it needs → it clarifies an unclear title through `agboard edit --title`, preserving the original request → it moves the task to Doing and Running → it records progress with `history add` → it asks questions with `qa ask` and waits for the answers when blocked → it checks conditions off, and automatic Done finishes the task. Title refinement is a skill instruction shared by the ordinary loop and listener, not a server-side summarization feature.
 
 Agents append progress at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without per-entry approval, and never duplicate entries that operations already appended. The body keeps the plan and concise verification results. Images can be attached when visual proof is useful.
 
@@ -19,7 +20,7 @@ The skill gives `BUG` and `ENHANCEMENT` a fixed-body exception: they are ongoing
 
 ## The progress table and the hook
 
-The progress table lists non-Pending Todo and Doing tasks, grouped by epic in `priority` order, with each task's ID, title, owner, status, acceptance counts, and the paths of its `EPIC.md` and `TASK.md`. It never includes bodies or history. A Pending task higher in the order does not block lower tasks, and an answered task that is still unfinished returns to the table.
+The progress table lists Todo and Doing tasks that do not wait for a person, grouped by epic in `priority` order, with each task's ID, title, owner, status, acceptance counts, and the paths of its `EPIC.md` and `TASK.md`. It never includes bodies or history. A waiting task higher in the order does not block lower tasks, and a task whose questions are answered returns to the table while it is unfinished. The `pending` section's `question` is the first 200 characters of the open question with the smallest ID.
 
 `src/progress.rs` builds the optional `pending` and `done` sections from `Include`, which `agboard progress` and `agboard hook` fill from `--include-pending` and `--include-done`. The default `Include` adds nothing, so the default table is unchanged. See [Epics and progress](../../guide/use/epics.md#read-the-progress-table) for the options.
 
@@ -32,9 +33,9 @@ The hook identifies the project from the nearest bound ancestor of the input `cw
 
 Agents make no board-dependent changes until the table can be read, and they read a fresh table after context compaction.
 
-The skill requires all task-related questions to use board decision requests with choices. `pending --request-json` waits indefinitely by default, even when `wait` is omitted; `wait: {}` remains compatible. The skill uses `--no-wait` only when the user explicitly asks to register a question and return immediately. It forbids substituting chat or native agent question tools, including when the board is unavailable.
+The skill requires all task-related questions to be project questions with choices, asked with `qa ask --task <id>`. The skill uses `--no-wait` only when the user explicitly asks to register a question and return immediately. When the user answers in the chat instead, the agent records the user's words with `qa answer --via chat`. It forbids substituting native agent question tools, including when the board is unavailable.
 
-The skill also has the agent break a multi-task request into proposed tasks and register them only after the user agrees. A request that is already a task is confirmed with a decision request on it; a request made in conversation, with no task to hold the question, is confirmed in chat. That confirmation is the one exception to board-only questions. This is a skill instruction; the CLI and the server do not enforce it. See [Break a request into tasks](../../guide/automation/agents.md#break-a-request-into-tasks) for what the user sees.
+The skill also has the agent break a multi-task request into proposed tasks and register them only after the user agrees. A request that is already a task is confirmed with a question that the task refers to; a request made in conversation, with no task to hold the question, is confirmed in chat. That confirmation is the one exception to board-only questions. This is a skill instruction; the CLI and the server do not enforce it. See [Break a request into tasks](../../guide/automation/agents.md#break-a-request-into-tasks) for what the user sees.
 
 ## Waiting for changes
 
@@ -50,17 +51,21 @@ The skill also has the agent break a multi-task request into proposed tasks and 
 - Disconnects, timeouts, and Ctrl+C never change tasks or history, never count as "no change", and never restart a finished agent.
 - Because CLI notifications are best effort, a missed one is caught on the next connection, a real `changed`, or the final read at a timeout.
 
-**Decision requests** are saved before the CLI notifies `serve` and waits on the existing SSE event stream. The default wait needs a running `serve`; a preflight check runs before the save, so an unavailable server does not create the question. Omitting `wait` and using `wait: {}` both wait indefinitely; an integer `timeoutSeconds` from 1 to 86,400 limits only that CLI process. `wait: null` and `timeoutSeconds: null` mean no timeout. The wait settings are not saved with the task.
+### Waiting for answers
 
-On success, the waiting command returns `{task, answer}`; `--no-wait` returns `{task}` after saving and notifying and does not need `serve`. It can be combined with `wait: {}`, but not an integer timeout. A timeout, interruption, or lost connection leaves the question Pending; `request_changed` means it was withdrawn. After a browser answer the task becomes Idle; the agent reads the answer and history, then explicitly resumes Running with a reason. See [Decision requests](../../guide/use/decisions.md) for the user workflow.
+`qa ask` saves the request, notifies `serve`, and then waits for its answers on the same SSE stream (`src/agent/qa_wait.rs` on top of `wait_engine`). A wait needs a running `serve`; a preflight check runs before the save, so an unavailable server stores nothing and fails with `board_unavailable`. `qa wait <request-id>` waits again for a request that is already stored and never asks a second time.
+
+The output is JSON Lines with `--json`, or the same events as English sentences without it. The first line is `registered`; the last is `answered` (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`. In between, `waiting` lines come every `--heartbeat` seconds (default 60, 10 to 600). The heartbeat is a timer and never reads the board; the board is read only when the server reports a change. `answered` comes only when every question of the request is answered. The wait lasts 600 seconds by default; `--timeout` takes 1 to 86,400 seconds, or `none` for no limit. A timeout, interruption, or lost connection leaves the questions open. `--no-wait` prints `registered` after saving and notifying and needs no `serve`.
+
+Asking returns a Running task to Idle. After the answers arrive, the agent reads them and the history, then explicitly resumes Running with a reason. The event fields are in [Agent output](../reference/agent-output.md#qa-events). See [Decision requests](../../guide/use/decisions.md) for the user workflow.
 
 ### Waiting for the next task
 
 `agboard --project <name> wait --until task --idle-timeout <seconds> --json` uses the same event-driven wait engine. It reads eligible tasks immediately before subscribing, checks again after the SSE `ready`, and checks after each `changed` event. A single monotonic deadline starts when the initial snapshot has no eligible task; unrelated project changes and keep-alives do not extend it. At the deadline it reads once more, returning a task if one arrived at the boundary, otherwise `idle_timeout` with exit code 0.
 
-The selector uses `ordered_tasks`, the same ordering as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It returns one AI-owned Todo or Doing task whose run state is Idle, provided it is not a draft or archived. The initial read means tasks created before listening are eligible. The result contains the snapshot cursor, the task, its local `TASK.md` path, and its `EPIC.md` path when it has an epic. Selection is read-only and does not claim a task; callers must re-read its state before acting. The listener procedure checks the complete snapshot first and resolves any existing AI work in `running` or `pending`; an idle task in Doing is eligible to resume. A timeout is a normal idle result, while a read defect, unavailable server, or deleted project remains an error.
+The selector uses `ordered_tasks`, the same ordering as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It returns one AI-owned Todo or Doing task whose shown run state is Idle (a task that waits for a person shows Pending and is never returned), provided it is not a draft or archived. The initial read means tasks created before listening are eligible. The result contains the snapshot cursor, the task, its local `TASK.md` path, and its `EPIC.md` path when it has an epic. Selection is read-only and does not claim a task; callers must re-read its state before acting. The listener procedure checks the complete snapshot first and resolves any existing AI work in `running` or `pending`; an idle task in Doing is eligible to resume. A timeout is a normal idle result, while a read defect, unavailable server, or deleted project remains an error.
 
-For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) describes task enrichment, approval checks, Pending answers, sequential work, and interruption recovery. A Pending task blocks that session until its existing request is answered; listener mode does not skip it or treat its time as idle.
+For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/.agents/skills/agent-board/references/listening.md) describes task enrichment, approval checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
 
 ## Automatic Done
 
@@ -69,7 +74,7 @@ The rule is defined in [Data model](./history-and-decisions.md#acceptance-condit
 - It re-reads the latest `TASK.md` and task fields under the FileStore project lock and applies one shared eligibility check.
 - `serve` evaluates existing tasks at startup, before publishing the first snapshot. During operation it evaluates after FileStore saves and after atomic file updates seen by the watcher. It never re-triggers from its own notification, and re-evaluating the same task never duplicates history.
 - A CLI edit that also changes the epic is evaluated after all changes apply. AI-facing CLI and FileStore entry points apply the Done guard.
-- Pending tasks are skipped and re-evaluated after the answer. Done tasks never reopen automatically.
+- Tasks that wait for a person are skipped and re-evaluated after the answer. Done tasks never reopen automatically.
 - Agents record verification in history, put concise results in the body, and only then set the last condition to `done: true`.
 - Starting a new version of `serve` completes existing eligible tasks. Before adopting it for normal use, list those tasks and take a backup.
 

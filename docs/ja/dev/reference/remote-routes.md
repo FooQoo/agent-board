@@ -19,7 +19,8 @@ ngrokのモニター入口の背後で配信する経路です（モバイルモ
 | GET `/monitor/api/events?project=<projectId>` | `ready`（モニターのビルドIDを含む）・`changed`・`resync`・`heartbeat`・`preferences`（保存した言語とテーマ。変更のあとに送る）の専用SSE。`project`は必須で、欠落または形式の誤りは422 `invalid_value`、存在しないプロジェクトは404 `project_not_found`。そのプロジェクトの変更だけを送る。 |
 | GET `/monitor/api/preferences` | 保存した言語とカラーテーマ。PCの`GET /api/preferences`と同じJSON。 |
 | PUT `/monitor/api/preferences` | 言語とテーマだけを保存する。`locale`・`theme`・両方のいずれか。回答と同じく、公開Origin・`Sec-Fetch-Site: same-origin`・CSRFトークンが必要。未知の項目と不正な値は422 `invalid_preferences`。 |
-| POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | 現在の依頼への回答だけ。 |
+| GET `/monitor/api/projects/{projectId}/qa/{questionId}` | 質問1件。ボードと同じ。 |
+| POST `/monitor/api/projects/{projectId}/qa/answers` | 質問に回答する。本文と結果はボードと同じ。質問を取り下げる経路はない。 |
 | PUT `/monitor/api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | 条件を1件付け外しする。ボードと同じ動き。PUTだけ。 |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | 所有する画像だけ。 |
 | GET/HEAD `/monitor/api/projects/{projectId}/epics/{epicId}/attachments/{attachmentId}` | 所有するエピックの画像だけ。 |

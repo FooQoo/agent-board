@@ -19,7 +19,8 @@ The routes served behind the ngrok monitor entry, including the mobile monitor. 
 | GET `/monitor/api/events?project=<projectId>` | Dedicated SSE with `ready` (carrying the monitor's build ID), `changed`, `resync`, `heartbeat`, and `preferences` (the saved language and theme, after a change). `project` is required: a missing or malformed value is 422 `invalid_value` and an unknown project is 404 `project_not_found`. Only that project's changes are sent. |
 | GET `/monitor/api/preferences` | The saved language and color theme, the same JSON as the PC's `GET /api/preferences`. |
 | PUT `/monitor/api/preferences` | Saves the language and theme only: `locale`, `theme`, or both. It needs the public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token, like an answer. Unknown fields and invalid values are 422 `invalid_preferences`. |
-| POST `/monitor/api/projects/{projectId}/tasks/{id}/answer` | Answers the current request only. |
+| GET `/monitor/api/projects/{projectId}/qa/{questionId}` | One question, as on the board. |
+| POST `/monitor/api/projects/{projectId}/qa/answers` | Answers questions, with the same body and results as the board. There is no route to withdraw a question. |
 | PUT `/monitor/api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | Checks or unchecks one condition, as on the board. Only PUT. |
 | GET `/monitor/api/projects/{projectId}/tasks/{id}/attachments/{attachmentId}` | Owned images only. |
 | GET/HEAD `/monitor/api/projects/{projectId}/epics/{epicId}/attachments/{attachmentId}` | Owned epic images only. |

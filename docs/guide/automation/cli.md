@@ -45,7 +45,7 @@ agboard --project "My project" mv 1 doing --actor ai --reason "Start implementat
 agboard --project "My project" state 1 running --actor ai --reason "Writing and checking the guide"
 ```
 
-Moves and non-Pending state changes accept an optional `--reason` of up to 10,000 Unicode characters. A missing or blank reason is generated from the current state. These operations add history by themselves; do not add a second entry for the same change. A question can be up to 5,000 characters, and an answer note up to 2,000 characters.
+Moves and state changes accept an optional `--reason` of up to 10,000 Unicode characters. A missing or blank reason is generated from the current state. These operations add history by themselves; do not add a second entry for the same change. A question can be up to 5,000 characters, and an answer note up to 2,000 characters.
 
 Record meaningful progress that does not change the column or state:
 
@@ -62,7 +62,13 @@ To finish, record the verification in `TASK.md` and set each verified acceptance
 
 ### Ask a question
 
-Use `state ... pending --request-json` to ask a decision. The command waits for an answer by default; use `--no-wait` only when you explicitly want to register the question and return immediately. Waiting requires a running `agboard serve`; `--no-wait` does not. Do not combine `--no-wait` with an integer `wait.timeoutSeconds`: it returns `invalid_argument` (exit 2) without changing the question or task. See [Decisions](../use/decisions) for the three command forms. For epics and the progress table, see [Epics and progress](../use/epics).
+Use `qa ask` to ask the user one or more questions. Questions belong to the project; `--task <id>` makes a task refer to them, and the task shows Pending until they are answered. The command prints one event per line (JSON Lines with `--json`) and waits until every question is answered, 600 seconds by default:
+
+```sh
+agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
+```
+
+It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting requires a running `agboard serve`; `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../use/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../use/epics).
 
 ## Edit long text from a file
 
@@ -127,7 +133,7 @@ On success, task mode prints one JSON object and exits 0:
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
-When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a Pending question.
+When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a question.
 
 ## Run the server
 

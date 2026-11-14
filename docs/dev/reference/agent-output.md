@@ -37,8 +37,8 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 }
 ```
 
-- Only non-Pending Todo and Doing tasks appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
-- With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question` of up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
+- Only Todo and Doing tasks that are not waiting for a person appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
+- With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question`: the open question with the smallest ID, up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - The paths appear only in local CLI and hook output, never in remote JSON.
@@ -79,28 +79,43 @@ If the requested interval passes with no eligible task, the command returns a su
 
 The timeout is required and ranges from 1 to 86,400 seconds. Connection, project, data, and argument errors remain errors; they are not encoded as `idle_timeout`. See [Error codes](./errors.md#server-and-waiting).
 
-## Decision requests
+## qa events
 
-`agboard state <id> pending --request-json <json>` takes:
+`agboard qa ask --request-json <json> --task <id>…` takes:
 
 ```json
 {
-  "question": "Should existing records be deleted or kept?",
-  "choices": [
-    { "id": "delete", "label": "Delete them and start clean" },
-    { "id": "keep", "label": "Keep them and migrate" }
-  ],
-  "wait": {}
+  "questions": [
+    {
+      "question": "Should existing records be deleted or kept?",
+      "choices": [
+        { "id": "delete", "label": "Delete them and start clean" },
+        { "id": "keep", "label": "Keep them and migrate" }
+      ],
+      "recommendedChoiceId": "keep"
+    }
+  ]
 }
 ```
 
-- `question`: 1 to 5,000 characters, in Markdown. `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the request; each `label` is 1 to 200 characters.
-- The command waits for an answer by default, including when `wait` is omitted; `wait: {}` is a compatible explicit form. `wait: null` and `timeoutSeconds: null` mean no timeout. An integer `timeoutSeconds` (1 to 86400) limits only the waiting command; the question stays Pending. `--no-wait` returns after saving and notifying, without waiting.
-- The waiting command returns the updated task and the answer separately:
+- `questions`: 1 to 20 items. Each has a `question` (Markdown, 1 to 5,000 characters) and 2 to 10 `choices`; each choice `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the question, and each `label` is 1 to 200 characters.
+- Optional per question: `kind` (`task` by default, `plan`, or `start_approval`), `recommendedChoiceId`, `approvingChoiceIds` (required for `start_approval`), and `tasks`, the IDs of extra tasks that refer to that question only. `--task` tasks refer to every question. Unknown fields are refused.
+- `--timeout` is 1 to 86,400 seconds, or `none` (default 600). `--heartbeat` is 10 to 600 seconds (default 60). `qa wait <request-id>` takes the same two options.
 
-```json
-{ "task": { "…": "…" }, "answer": { "actor": "human", "choiceId": "keep", "choiceLabel": "Keep them and migrate", "text": null } }
-```
+With `--json`, `qa ask` and `qa wait` write one JSON object per line. Each has a `type`:
+
+| `type` | Fields | When |
+| --- | --- | --- |
+| `registered` | `requestId`, `questions` (`id`, `kind`), `resumed` | First. `resumed` is `true` for `qa wait`. With `--no-wait` it is the only line, and the command exits 0. |
+| `waiting` | `requestId`, `elapsed`, `remaining` (`null` without a timeout), `answered`, `total` | Every `--heartbeat` seconds. It comes from a timer and never reads the board. |
+| `answered` | `requestId`, `answers` (`id`, `choiceId`, `choiceLabel`, `text`, `via`, `at`) | Last, once every question has an answer. Exit 0. |
+| `timeout` | `requestId`, `answered`, `total` | Last, when `--timeout` passes first. The questions stay open. Exit 5. |
+| `withdrawn` | `requestId`, `reason` | Last, when the request was withdrawn. Exit 6. |
+| `error` | `error` (`code`, `message`, `reason`) | Last, when waiting fails, for example with `board_unavailable`. |
+
+A waiting `qa ask` checks the server before it saves anything. `--no-wait` saves without the server.
+
+`qa answer --json` prints the recorded questions as `{questions}`. When a question already has an answer, the error output adds `questions` with the recorded answer.
 
 ## Sample cards of the first-run guide
 

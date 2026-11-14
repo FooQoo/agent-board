@@ -17,10 +17,10 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `epicId` | An EPIC-ID in the same project, or `null`. |
 | `taskStatus` | The lane: `todo`, `doing`, or `done`. |
 | `position` | Positive integer, unique among unarchived tasks in the same lane. |
-| `agentStatus` | The AI run state: `idle`, `running`, or `pending`. |
+| `agentStatus` | The AI run state. `task.json` stores `idle` or `running`; reads return `pending` while an AI task in Todo or Doing waits for a person (see [Questions and answers](../concepts/history-and-decisions.md#questions-and-answers)). A stored `pending` reads as `idle`. |
 | `isDraft` | Defaults to `false`. A draft is being prepared by a person. For an epic, the CLI `epic edit` refuses a draft with `epic_is_draft`. |
-| `pendingRequestId`, `pendingRequest` | The open decision request while Pending; otherwise `null`. |
-| `requestAnswers` | Answers kept for lookup by request ID, including after a restart. |
+| `questions` | In `TASK.md` frontmatter: the IDs of the project questions the task refers to, such as `[Q-12, Q-15]`. Omitted, `null`, and empty all mean none; duplicates are rejected. |
+| `requestAnswers` | Answers recorded by earlier versions of Agent Board, kept as a record. Nothing adds to it. |
 | `archivedAt` | `null`, or the archive time. |
 | `attachments` | ID, name, size, MIME type, and creation time of each image. |
 | `simpleRequest` | Legacy optional metadata `{requestId, payloadHash}` from older short-request submissions. New tasks do not write or use it. |
@@ -45,8 +45,10 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
         docs/<any folders>/<name>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
+        qa/<request-id>/request.json
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
+        .internal/batches/<batch-id>.json
   bindings.json
   serve.json
   serve.log
@@ -63,7 +65,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
 `docs/` holds the project's own Markdown documents, which the Docs dialog reads (see [Project docs](#project-docs)).
 
-`project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, and `defaultEpicsSeeded`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
+`project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, `nextQuestionId`, and `defaultEpicsSeeded`. `nextQuestionId` is the number of the next question; a file without it is read as `1`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
 `EPIC.md` holds the epic's details in Markdown, frontmatter included. Its frontmatter may hold `priority`, the list of task IDs in work order. The API and `epic show --json` return the whole text as `document`, the text without frontmatter as `body`, and the parsed order as `priority`.
 
@@ -81,8 +83,6 @@ A `task.json` looks like this:
   "position": 1,
   "isDraft": false,
   "archivedAt": null,
-  "pendingRequestId": null,
-  "pendingRequest": null,
   "requestAnswers": [],
   "createdAt": "2026-10-10T00:00:00Z",
   "updatedAt": "2026-10-10T00:00:00Z",
@@ -92,8 +92,8 @@ A `task.json` looks like this:
 }
 ```
 
-- `pendingRequest` is `{question, choices}` with choices like `[{"id":"proceed","label":"Proceed"}]`.
-- Each `requestAnswers` item is `{requestId, actor, choiceId, choiceLabel, text, at}`. `choiceId` and `choiceLabel` are both `null` or both set; `text` is `null` or a valid answer; at least one of choice or text is present. `requestId` is unique and differs from the current `pendingRequestId`.
+- Each `requestAnswers` item is `{requestId, actor, choiceId, choiceLabel, text, at}`. `choiceId` and `choiceLabel` are both `null` or both set; `text` is `null` or a valid answer; at least one of choice or text is present.
+- `pendingRequestId` and `pendingRequest`, written by earlier versions, are ignored when read and are not written on the next save.
 - Older short-request tasks may contain `simpleRequest` metadata. It remains readable for compatibility but new tasks do not write or use it to detect repeats.
 
 In `TASK.md`, `history` is required (`history: []` is valid). New-task input may omit it or pass an empty list; non-empty history in creation input is rejected. Body and acceptance edits keep the latest history, and `edit --desc-file` never appends. A direct append may add only `at`/`reason` entries while keeping everything else; the CLI is preferred because it handles time and atomicity.
@@ -101,11 +101,67 @@ In `TASK.md`, `history` is required (`history: []` is valid). New-task input may
 ```yaml
 ---
 acceptance: []
+questions: [Q-12]
 history:
   - at: "2026-10-15T01:30:00Z"
     reason: "Verified the setup guide links and recorded the result in the task body."
 ---
 ```
+
+## Questions
+
+A project's questions live in `qa/<request-id>/request.json`, one file for each set of questions asked together. The folder name is the request ID.
+
+```json
+{
+  "formatVersion": 1,
+  "requestId": "3f2a9c0d6b1e4f7a8c5d2e1f0a9b8c7d",
+  "createdAt": "2026-11-14T02:30:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-12",
+      "kind": "task",
+      "question": "Should existing records be deleted or kept?",
+      "choices": [
+        { "id": "delete", "label": "Delete them" },
+        { "id": "keep", "label": "Keep them" }
+      ],
+      "recommendedChoiceId": "keep",
+      "approvingChoiceIds": [],
+      "answer": {
+        "choiceId": "keep",
+        "choiceLabel": "Keep them",
+        "text": null,
+        "actor": "human",
+        "via": "ui",
+        "at": "2026-11-14T02:41:10Z"
+      }
+    }
+  ]
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `1`; any other value is `format_unsupported`. |
+| `requestId` | 32 lowercase hexadecimal characters, equal to the folder name. |
+| `createdAt`, `createdBy` | When the request was asked, and the actor (`ai` or `human`). |
+| `withdrawnAt`, `withdrawReason` | When the whole request was withdrawn, and the optional reason (1 to 2,000 characters). |
+| `questions` | 1 to 20 questions in the order they were asked. |
+| `questions[].id` | `Q-<positive integer>`, unique in the project, numbered from `nextQuestionId`. |
+| `questions[].kind` | `task`, `plan`, or `start_approval`. |
+| `questions[].question` | Markdown, 1 to 5,000 characters. |
+| `questions[].choices` | 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. |
+| `questions[].recommendedChoiceId` | `null`, or one of the choices. |
+| `questions[].approvingChoiceIds` | Choices that approve. At least one for `start_approval`; empty for other kinds. |
+| `questions[].answer` | `null` while unanswered. `choiceId` and `choiceLabel` are both `null` or both set, `text` is `null` or 1 to 2,000 characters, and at least one of choice or text is present. `actor` is always `human`; `via` is `ui`, `chat`, or `cli`. |
+
+Statuses are not stored. A question is `open` while it has no answer and its request is not withdrawn, `answered` once it has an answer, and `withdrawn` when its request was withdrawn before it was answered. A recorded answer is never rewritten. The tasks that refer to a question (`referencedBy`) are found from the tasks' `questions`, not from this file.
+
+A broken `request.json`, or one with another `formatVersion`, is left out of every list and reported in `problems` as `projects/<id>/qa/<request-id>/request.json`; writes to it fail with `file_invalid`.
 
 Back up a project by copying `shared/projects/<project-id>/`; restore it by stopping `serve` and putting the folder back. There are no export or import commands. See the [data guide](../../guide/operations/data.md).
 
@@ -157,13 +213,13 @@ A save changes only the fields it sends; the others keep their saved values. The
 
 ## Task JSON and snapshots
 
-The CLI, web API, and hook share one camelCase task representation: the `task.json` metadata plus `history`, `description`, `body`, `acceptance`, `acceptanceError`, the resolved `pendingReason` and `pendingChoices`, the displayed `updatedAt`, and `epic` (`{id, name, color}` or `null`). `pendingRequest` and `requestAnswers` never appear in history. A waiting `state ... --request-json` returns the resolved answer separately as `answer`.
+The CLI, web API, and hook share one camelCase task representation: the `task.json` metadata plus `history`, `description`, `body`, `acceptance`, `acceptanceError`, the displayed `updatedAt`, and `epic` (`{id, name, color}` or `null`). The derived fields are `agentStatus`; `questionIds` (the task's `questions`), `questionsError` (whether that frontmatter is invalid), and `openQuestionIds`; and `pendingRequestId`, `pendingReason`, and `pendingChoices`, taken from the open question with the smallest ID while the task shows `pending` (otherwise `null` and empty). `pendingRequestId` holds that question's ID, such as `Q-12`, which is what the board sends when it answers. `requestAnswers` never appears in history.
 
 - A snapshot returns `project`, `version`, `cursor`, `epics`, `tasks` (each with full history), and `problems` from a single read. The CLI snapshot also includes `nextTaskId`; CLI snapshots, the hook, and `wait` include `fetchedAt`.
 - The project list returns `projects` (id, name, createdAt) and `catalogVersion`, without tasks.
 - `ls --all-projects --json` returns `catalogVersion` and one snapshot per project, sorted by name, each with its own cursor.
 
-`problems` report format defects: `[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`. `field` is `frontmatter`, `acceptance[<index>].<key>`, `history`, or `history[<index>].<key>`; `file` is relative to `shared/`; `reason` is English. How defects affect reads and writes is described in [Storage and consistency](../concepts/saving-and-recovery.md#when-files-are-invalid).
+`problems` report format defects: `[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`. `field` is `frontmatter`, `acceptance[<index>].<key>`, `questions`, `history`, or `history[<index>].<key>` for a task file, or the item of a `request.json`; `file` is relative to `shared/`; `reason` is English. How defects affect reads and writes is described in [Storage and consistency](../concepts/saving-and-recovery.md#when-files-are-invalid).
 
 ## First-run guide
 

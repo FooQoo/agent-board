@@ -108,7 +108,7 @@ flowchart TD
     R --> D["Move to Doing, report Running"]
     D --> L["Record work and verification results"]
     L --> Q{"Decision needed?"}
-    Q -- yes --> PE["Ask: Pending with choices"]
+    Q -- yes --> PE["Ask with qa ask (task is Pending)"]
     PE --> A["You answer on the task"]
     A --> RE["Read the answer, resume with a reason"]
     RE --> L
@@ -121,7 +121,7 @@ flowchart TD
 1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `EPIC.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
 2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
 3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan and concise results in the body; attach images when visual proof is useful. Moves and state changes already add history, so do not duplicate them.
-4. **Ask when blocked.** Ask a question with Pending when you need a decision (see [Decisions](../use/decisions)).
+4. **Ask when blocked.** Ask with `qa ask` when you need a decision; the task shows Pending until you answer (see [Decisions](../use/decisions)).
 5. **Resume.** After an answer, read the task and history, reconsider the plan, and resume with a reason.
 6. **Finish.** Mark acceptance conditions done only after verifying them. Eligible AI tasks move to Done automatically when all conditions are complete.
 7. **Wait.** If no work can proceed, wait for a change (see below).
@@ -138,7 +138,7 @@ If the request is already a task on the board, the agent asks on that task with 
 
 ### Questions
 
-Apart from that confirmation, agents ask task-related questions only on the board, including clarification and approval. Each request includes choices and waits for your answer by default. The agent uses `--no-wait` only when you explicitly ask it to register the question and return immediately. Chat may point you to the pending request. If the board is unavailable, the agent reports the problem and waits to ask there.
+Apart from that confirmation, agents ask task-related questions only on the board, including clarification and approval. Each question includes choices, and `qa ask` waits for your answer, up to 10 minutes at a time; after a timeout the agent waits again for the same questions. The agent uses `--no-wait` only when you explicitly ask it to register the question and return immediately. Chat may point you to the waiting question. If you answer in the chat instead, the agent records your words as the answer with `qa answer --via chat`; it never answers a question itself. If the board is unavailable, the agent reports the problem and waits to ask there.
 
 ## Wait for changes
 

@@ -17,8 +17,11 @@ Task writes accept optional `X-Agboard-Language: en` or `ja` for generated histo
 | `PUT /api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | `{"done": true\|false}` sets one condition as a person, with no version: the latest `TASK.md` is changed under the lock and the choice wins. Answers `{task, changed}`. An archived task is 409 `task_archived`; an unknown condition is 422 `invalid_argument`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`. Unknown EPIC-ID is 404 `epic_not_found`. |
 | `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`, optional `reason`, and optional `fromStatus`, the status the page showed when the user chose the move. With `fromStatus`, a task that is no longer in that status is 409 `task_status_changed` and nothing is written; the body adds `currentStatus`, the status the task has now, so the page can show it and the user can move again from there. The board's move dialog always sends `fromStatus`. |
-| `POST /api/projects/{projectId}/tasks/{id}/answer` | `requestId`, optional `choiceId` and `text`, matched under the lock. Both empty is 422; an unknown choice is 422 `request_choice_unknown`; a changed request is 409 `request_changed`. |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | Changes the run state within the state rules. The UI has no entry point for it. |
+| `GET /api/projects/{projectId}/qa/{questionId}` | One question as `{question}`: `id`, `requestId`, `kind`, `question`, `choices`, `recommendedChoiceId`, `approvingChoiceIds`, `answer`, `status`, `referencedBy`, `createdAt`, and `createdBy`. An unknown ID is 404 `question_not_found`. |
+| `GET /api/projects/{projectId}/qa` | Questions as `{questions}`, newest first. `status` is `open`, `answered` (the default), `withdrawn`, or `all`; `limit` is 1 to 500 (default 50). |
+| `POST /api/projects/{projectId}/qa/answers` | `{answers: [{questionId, choiceId?, text?}]}`, with unknown fields refused. Each answer needs a choice, a text, or both; an unknown choice is 422 `request_choice_unknown`. All answers are saved together or none. When a question already has an answer or was withdrawn, nothing is saved and the response is 409 with `error`, `questionAnswered` and `questionWithdrawn` (the IDs), and `questions` (the recorded questions). An unknown question is 404 `question_not_found`. |
+| `POST /api/projects/{projectId}/qa/requests/{requestId}/withdraw` | Withdraws the open questions of a request, with an optional `{reason}`. A request with every question answered is 409 `request_answered`; an unknown one is 404 `request_not_found`. |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | Deletes archived tasks only; others are 409 `task_not_archived`. 204, or 404 when already gone. |
 | `…/tasks/{id}/attachments`, `…/attachments/{attachmentId}` | Task images (GET, POST, DELETE), matched by ProjectId, task ID, and attachment ID. |
 | `GET`/`POST /api/projects/{projectId}/epics` | List and create epics (id, name, color, isDraft, document or body). No `acceptance` input. 201. |
@@ -46,12 +49,13 @@ The board and the monitor read a project in two steps. The Summary lists everyth
 
 The shapes below are fixed by the Rust types in `src/server/contracts/` and by the golden examples in `tests/fixtures/data-layer/`, which the Rust and TypeScript tests both read.
 
-**Summary.** `GET …/summary` returns `project` (`id`, `name`), `version`, `tasks`, `epics`, and `problems`. The response never holds a body, acceptance text, history, epic document, or image bytes. It is built from the projection in the index, so no file is read for it. Archived tasks are not listed (the epics count them). `version` is a hash of the parsed data and is also the `ETag` (`"<version>"`); a request whose `If-None-Match` names it (a list, a weak tag, or `*` also match) gets `304` with no body. A missing project is 404 `project_not_found`, a malformed ID is 422 `invalid_value`, and a project whose `project.json` cannot be read gets that file's error.
+**Summary.** `GET …/summary` returns `project` (`id`, `name`), `version`, `tasks`, `epics`, `questions`, and `problems`. The response never holds a body, acceptance text, history, epic document, or image bytes. It is built from the projection in the index, so no file is read for it. Archived tasks are not listed (the epics count them). `version` is a hash of the parsed data and is also the `ETag` (`"<version>"`); a request whose `If-None-Match` names it (a list, a weak tag, or `*` also match) gets `304` with no body. A missing project is 404 `project_not_found`, a malformed ID is 422 `invalid_value`, and a project whose `project.json` cannot be read gets that file's error.
 
 | Item | Fields |
 | --- | --- |
-| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on guide samples), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
+| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `questionIds`, `openQuestionIds`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on guide samples), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
 | Epic | `id` (string), `name`, `color`, `isDraft`, `priority` (the task IDs in the order the epic sets; empty when it sets none), `priorityError` (the stored order cannot be read, so `priority` is ignored), `progress` (`todo`, `doing`, `done`, `archived`, `total`), and `detailVersions` (`document`). |
+| Question | The open questions in ID order: `id`, `requestId`, `kind`, `title` (the first line, up to 200 characters), `recommendedChoiceId`, `referencedBy` (the unarchived tasks that refer to it), and `createdAt`. The full text is read with `GET …/qa/{questionId}`. |
 | Problem | `file`, `field`, `reason`, as in the board. |
 
 Every version is an opaque string: a content hash of the parsed data. It does not depend on the server run, so a cached value can be compared after a restart. Compare versions for equality only.
@@ -92,7 +96,7 @@ The order is `start`, then for each requested section `section-start`, its items
 | `projectId` | The project the changes belong to. The monitor stream carries only the requested project; the PC stream carries every project and the page ignores the others. |
 | `changes[].resource` | `task`, `epic`, or `project` (the project list changed: created, renamed, deleted). |
 | `changes[].id` | An integer for a task, a string for an epic and for a project. |
-| `changes[].facets` | A non-empty list without repeats. `summary`: title, status, position, epic, pending question, acceptance counts. `request`: a decision request was asked, answered, or withdrawn; only for a task, always with `summary`. `document`: the body and acceptance text. `history`: the history. `deleted`: the resource is gone. A project has only `summary` or `deleted`. Moving a task to the archive, or restoring it, is a `summary` change. |
+| `changes[].facets` | A non-empty list without repeats. `summary`: title, status, position, epic, pending question, acceptance counts. `request`: the question the task waits on changed (asked, answered, withdrawn, linked, or unlinked); only for a task, always with `summary`. `document`: the body and acceptance text. `history`: the history. `deleted`: the resource is gone. A project has only `summary` or `deleted`. Moving a task to the archive, or restoring it, is a `summary` change. |
 
 A client that sees a gap in `seq`, a new `instanceId`, or an event it does not know drops the Summary and the related cached details. `ready` and `preferences` are unchanged.
 
@@ -189,8 +193,8 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 | --- | --- |
 | 400 | Malformed JSON, an invalid `sections` query (`invalid_sections`), or an invalid docs path (`docs_path_invalid`). |
 | 403 | A guard failed. |
-| 404 | Project, task, or epic not found, or a docs file not found. |
-| 409 | `request_changed`, `task_status_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
+| 404 | Project, task, epic, question, or request not found, or a docs file not found. |
+| 409 | `question_answered`, `question_withdrawn`, `request_answered`, `task_status_changed`, `task_not_draft`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
 | 413 | Body over 1 MiB, or a docs file over its limit (`docs_too_large`). |
 | 415 | A docs file that is not Markdown, or an image type the docs do not serve (`docs_not_markdown`, `docs_asset_type`). |
 | 422 | Invalid ID syntax, input, or state rule; a docs file that is not UTF-8 (`docs_not_utf8`); or an invalid source file (`file_invalid`) with path, field, and reason. |
@@ -212,4 +216,4 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 | `POST /api/projects/{projectId}/onboarding/{runId}/finish` | Archive the run's cards and complete the guide. |
 | `POST /api/projects/{projectId}/onboarding/{runId}/abort` | End the run early and archive its cards. |
 
-The writes pass the write guard, and unknown fields are refused. The answer to a sample's question uses the existing `/api/projects/{projectId}/tasks/{id}/answer` route.
+The writes pass the write guard, and unknown fields are refused. The answer to a sample's question uses `POST /api/projects/{projectId}/qa/answers`.

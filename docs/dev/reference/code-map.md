@@ -10,7 +10,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `cli` | Arguments, commands, output formatting, and error display. |
 | `file_store` | The shared-area format and everything that reads or writes it: paths, saving, locking, validation, operations, the index, and watching. |
 | `docs` | The project docs: path rules (`paths`), the shared types (`model`), the tree, file and image reads (`reader`), the revision of a file's content (`revision`), and the README placed in a new `docs/` folder (`templates`). |
-| `domain` | Tasks, lanes, run states, epics, decision requests, input limits, and rules.<br>No I/O. |
+| `domain` | Tasks, lanes, run states, epics, questions, input limits, and rules.<br>No I/O. |
 | `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
 | `agent` | The hook and `wait`. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
@@ -33,11 +33,12 @@ Inside `file_store`, the pieces you will touch most often are:
 | `model` | Persistent serde types (`deny_unknown_fields`, camelCase, `formatVersion`). |
 | `layout` | Builds owned paths only from validated IDs.<br>Strings never become paths directly. |
 | `frontmatter`<br>`history`<br>`validate` | Split body and frontmatter, parse acceptance and history, and validate files while keeping unknown keys. |
-| `transaction` | Saves and recovers the `task.json`/`TASK.md` pair with a durable journal. |
+| `transaction` | Saves and recovers the `task.json`/`TASK.md` pair with a durable journal, and saves several files together with the batch journal (`batch.rs`). |
+| `qa/` | Questions: the `request.json` model, reading and checking it, and the statuses and waiting state derived for tasks (`derive.rs`). |
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
 | `projection` | The Summary of a project, built from a parsed snapshot, and the change sets between two projections. It holds the versions of each task and epic. |
 | `detail` | The data of one Detail stream, copied from a snapshot, and the NDJSON events built from it. Only the image headers are read from files. |
-| `ops/` | Task, run state, answer, a person's acceptance check, epic, image, and automatic completion operations. |
+| `ops/` | Task, run state, question (`qa/`: ask, answer, withdraw, link), a person's acceptance check, epic, image, and automatic completion operations. |
 | `io`, `lock` | Replace-by-rename saves; `write.lock` and `lifecycle.lock`. |
 | `project`, `bindings` | The project catalog and folder bindings. |
 | `index`, `watch` | The in-memory index inside `serve`, and OS event watching. |
@@ -47,13 +48,13 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | Module | Responsibility |
 | --- | --- |
 | `api/` | The board router, its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, a person's acceptance check (`task_acceptance`), multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `assets`, `open`), and the mobile connection (`monitor_connections`). |
-| `monitor/` | The monitor's read router, its answer and acceptance-check endpoints, and its assets. |
+| `monitor/` | The monitor's read router, its question, answer, and acceptance-check endpoints, and its assets. |
 | `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
 | `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling shared by the PC and the monitor, and the change notice. |
 | `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
-| `store`<br>`answer`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; saving an answer, and setting one acceptance condition as a person, both shared by the board and the monitor. |
+| `store`<br>`qa`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; reading questions and saving answers, and setting one acceptance condition as a person, both shared by the board and the monitor (`api/qa.rs` holds the board's handlers). |
 | `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
 | `contracts/` | The data layer's wire types: the Summary, the Detail NDJSON lines, and the `changed` event. The golden examples in `tests/fixtures/data-layer/` pin their shapes. |
 | `change_feed.rs` | Numbers each change set of this server run (`seq`, with an `instanceId` for the run) and holds the events a stream has not yet sent. A stream that falls too far behind gets `resync`. |
@@ -78,6 +79,7 @@ The main files and directories outside `src/` are:
 ### Skill and Hook installation
 
 - `src/integrations/`: `assets.rs` and `build_bundle.rs` (the embedded bundle), `paths.rs` (placement), `registry.rs` (the records), `plan.rs`, `compose.rs`, `merge.rs`, `skill.rs`, `duplicates.rs`, `adopt.rs`, and `toml_json.rs` (the read-only plan and ownership; `adopt.rs` decides which hand-written Hook for this project connect takes over), `apply.rs`, `ops.rs`, `journal.rs`, and `recovery.rs` (writing, backups, journal, and recovery), `update.rs` and `update_report.rs` (what `update` selects and shows), and `notice.rs` (the update notice).
+- `src/cli/commands/qa/` and `src/cli/args/qa.rs`: the `agboard qa` commands, their JSON input, and the JSON Lines events of `qa ask` and `qa wait` (`stream.rs`). The wait itself is `src/agent/qa_wait.rs`, built on the shared wait engine.
 - `src/cli/commands/update.rs`: `agboard update` and the glue that prints the notice.
 - `tests/integration_*.rs`: the focused tests of the bundle, paths, install, recovery, connect, update, and notice.
 - `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).

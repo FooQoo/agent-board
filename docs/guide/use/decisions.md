@@ -8,30 +8,30 @@ A decision is a question an agent asks when it cannot continue without you. This
 
 ## How you notice a question
 
-A task with a question is **Pending**. In Todo or Doing, its card shows an **Answer the question** button. The button reads **Continue answering** when you have typed something and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card shows an **Answer the question** button. The button reads **Continue answering** when you have typed something and have not sent it yet. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
 
 ## Answer in the browser
 
-Select **Answer the question** on the card to open the answer dialog. The question is on the left, and your answer is on the right. Choose one of the offered options, write a note, or do both, then select **Send**. The answer is recorded, and the agent state becomes Idle in the task's current column. The agent reads your response before it decides how to resume.
+Select **Answer the question** on the card to open the answer dialog. The question is on the left, and your answer is on the right. Choose one of the offered options, write a note, or do both, then select **Send**. The answer is recorded, and the task stays in its current column. When the task refers to another open question, the card shows that one next; otherwise the agent state becomes Idle. The agent reads your response before it decides how to resume.
 
 On a window narrower than 900 px, the question and the answer stack in one column.
 
 ![The answer dialog, with the question on the left and the options and note on the right](../../images/guide/question.png){.screenshot}
 
-The answer is saved to the task's history. The question and each part of your answer appear as separate blocks there.
+The answer is saved to the history of every task that refers to the question. The question and each part of your answer appear as separate blocks there.
 
 - **Close** the dialog at any time with the close button, Escape, or a click outside it. Closing never asks for confirmation, and your input stays. Select **Continue answering** on the card to return to it.
 - Your input is kept while the page stays open. Reloading the page clears it.
 - Moving the task to Done clears whatever you typed.
-- A question has no expiry. It stays open until it is answered, or until moving or archiving the task withdraws it.
+- A question has no expiry. It stays open until it is answered or the agent withdraws it. Moving or archiving the task does not withdraw it.
 
 ### If the question changes
 
-If the agent asks a new question while the dialog is open, the dialog shows **The question has changed. Review it and answer again.** The options you chose are cleared, so choose again. Your note stays.
+If the question you are answering is answered somewhere else, for example in the chat, or the card moves on to another question while the dialog is open, the dialog shows **The question has changed. Review it and answer again.** The options you chose are cleared, so choose again. Your note stays.
 
 ### If the question is withdrawn
 
-Moving the task to another column, or archiving it, withdraws the question. The dialog then shows **This question was withdrawn. You can no longer answer it.** It keeps the question and your input so you can read them, but **Send** and **Clear** are hidden, and only **Close** remains.
+An agent can withdraw a question it no longer needs. The dialog then shows **This question was withdrawn. You can no longer answer it.** It keeps the question and your input so you can read them, but **Send** and **Clear** are hidden, and only **Close** remains.
 
 ### If sending fails
 
@@ -56,85 +56,93 @@ sequenceDiagram
     participant A as Agent
     participant B as Board
     participant U as User
-    A->>B: state pending with question and choices
+    A->>B: qa ask with questions and a task
     Note over B: Task is Pending and shows an answer button
     U->>B: Choose an option and/or write a note
-    Note over B: Answer saved to history, state becomes Idle
-    A->>B: Read the response and history
+    Note over B: Answer saved, history added to the task
+    B-->>A: qa ask prints the answers and ends
     A->>B: state running with a reason
 ```
 
-An AI-owned task can ask in Todo or Doing, but it must be in Doing to become Running. The agent skill asks with two to ten choices. The CLI accepts a question and two to ten options as JSON with `--request-json`, either inline or from standard input with `-`:
+An agent asks with `qa ask`. One command asks one set of questions, called a request, and waits until every question in it is answered. `--task` makes a task refer to every question in the set; repeat it for more tasks. The questions are written as JSON with `--request-json`, either inline or from standard input with `-`:
 
 ```json
 {
-  "question": "Which launch approach should we use?",
-  "choices": [
-    { "id": "preview", "label": "Publish a preview first" },
-    { "id": "public", "label": "Launch publicly" }
+  "questions": [
+    {
+      "question": "Which launch approach should we use?",
+      "choices": [
+        { "id": "preview", "label": "Publish a preview first" },
+        { "id": "public", "label": "Launch publicly" }
+      ],
+      "recommendedChoiceId": "preview"
+    }
   ]
 }
 ```
 
-Send it inline:
-
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
+cat question.json | agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json
 ```
 
-Or read it from standard input:
+- `questions` takes 1 to 20 questions. Each question gets an ID such as `Q-12`, numbered in the project.
+- `question` is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. Images from `http` or `https` addresses are shown too.
+- `choices` takes 2 to 10 options. Each `id` is 1 to 64 characters of letters, digits, `_`, or `-`, and each `label` is 1 to 200 characters.
+- `recommendedChoiceId` is optional and names the option the agent recommends.
+- `kind` is `task` unless given. `plan` marks a question asked while planning. `start_approval` asks approval to start and needs `approvingChoiceIds`, the options that count as approval. Until such a question is answered with one of them, the tasks that refer to it stay Pending.
+- `tasks` in a question, such as `"tasks": [421, 422]`, links that question only to those tasks.
+
+The answer note takes up to 2,000 characters.
+
+The task must be AI-owned and in Todo or Doing. While it waits, it cannot be set to Running. Moving the task to another column or archiving it does not withdraw its questions.
+
+### What the command prints
+
+With `--json`, the command prints one JSON object per line. Without it, it prints the same events as short sentences.
+
+| Event | Meaning | Exit code |
+| --- | --- | --- |
+| `registered` | The questions were saved. It holds the request ID and the question IDs. | — |
+| `waiting` | Not every question is answered yet. It is printed every 60 seconds (`--heartbeat` sets 10 to 600). | — |
+| `answered` | Every question is answered. It holds all the answers. | 0 |
+| `timeout` | The wait ended. The questions stay open. | 5 |
+| `withdrawn` | The request was withdrawn. | 6 |
+| `error` | Waiting failed after the questions were saved, for example when the server stopped. The questions stay open. | 1 |
+
+The command waits 600 seconds by default. `--timeout` takes 1 to 86,400 seconds, or `none` to wait without a limit. Waiting needs a running `agboard serve`; the CLI checks it before saving anything and fails with `board_unavailable` if it is not running. `--no-wait` saves the questions, prints `registered`, and returns at once, without a server.
+
+To wait again after a timeout or an error, pass the request ID. The questions are not asked a second time:
 
 ```sh
-cat question.json | agboard --project "My project" state 1 pending --actor ai --request-json -
+agboard --project "My project" qa wait "<request-id>" --json
 ```
 
-`choices` takes 2 to 10 options; a request with fewer than 2 or more than 10 is refused, and so is a pending state without `--request-json`. The request gets an ID, which you can read with `show` or `snapshot`.
-
-The question is Markdown, up to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. Images from `http` or `https` addresses are shown too. The answer note takes up to 2,000 characters.
-
-### Replace a question
-
-A Pending task keeps its question. Running `state pending` again on that task does not replace the question. To ask something else, withdraw the current question first by moving the task to another column, which clears the request. Then ask the new question.
-
-### Ask and wait for the answer
-
-A `pending --request-json` command waits for the answer by default, even when the JSON omits `wait`. A running `agboard serve` is required for this waiting path. When the request is answered, the command prints the task and answer. Existing requests with `"wait": {}` still wait indefinitely.
-
-Use these three forms as needed:
-
-Default wait until an answer, with no `wait` field:
+### Read, withdraw, and link questions
 
 ```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}'
+agboard --project "My project" qa ls --json
+agboard --project "My project" qa show Q-12 --json
+agboard --project "My project" qa withdraw "<request-id>" --actor ai --reason "No longer needed"
+agboard --project "My project" qa link Q-12 --task 3
+agboard --project "My project" qa unlink Q-12 --task 3
 ```
 
-To register a question and return immediately, use `--no-wait`:
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}]}' --no-wait
-```
-
-Add a timeout to wait for at most 600 seconds (1 to 86,400 seconds is allowed):
-
-```sh
-agboard --project "My project" state 1 pending --actor ai --request-json '{"question":"Which launch approach should we use?","choices":[{"id":"preview","label":"Publish a preview first"},{"id":"public","label":"Launch publicly"}],"wait":{"timeoutSeconds":600}}'
-```
-
-`--no-wait` does not need a running server. Both waiting forms require `agboard serve`; the CLI checks that it is available before saving the question. `--no-wait` can be combined with `wait: {}`, but combining it with an integer `timeoutSeconds` is an `invalid_argument` error (exit 2) and leaves the question, state, and history unchanged. `wait: null` and `timeoutSeconds: null` mean no timeout. Invalid JSON, unknown fields, wrong types, or an out-of-range timeout return `invalid_value` (exit 2); `--no-wait` on a command other than `pending --request-json` returns `invalid_argument` (exit 2).
-
-- A timeout or Ctrl+C stops waiting but leaves the question Pending.
-- A lost server connection returns `board_unavailable`, a technical error that also leaves the question Pending.
-- If moving the task withdraws the question, the command exits with `request_changed`.
+- `qa ls` lists open questions; `--status answered`, `withdrawn`, or `all` lists others, and `--task` limits the list to one task's questions.
+- `qa show` takes a question ID or a request ID and prints the full question, the options, the answer, and the tasks that refer to it.
+- `qa withdraw` withdraws every unanswered question of a request. A waiting `qa ask` ends with `withdrawn`. A request whose questions are all answered cannot be withdrawn.
+- `qa link` and `qa unlink` add questions to a task or remove them. They change the `questions` list in the task's `TASK.md`.
 
 ### Answer from the command line
 
-A person can also answer from the CLI by passing the request ID:
+A person can also answer from the CLI with the question ID:
 
 ```sh
-agboard --project "My project" state 1 idle --actor human --request "<request-id>" --choice preview --reason "Get feedback before the public launch"
+agboard --project "My project" qa answer Q-12 --actor human --via cli --choice preview --text "Get feedback before the public launch"
 ```
 
-You can supply a choice, a note with `--reason`, or both. After reading the full response and history, the agent resumes:
+Give a choice, a note with `--text` or `--text-file`, or both. `--answers-json` answers several questions at once; they are saved together, or not at all. When the user answers in the chat, the agent records the user's words with `--via chat`. The first recorded answer is final: answering an answered question fails with `question_answered` and prints the recorded answer.
+
+After reading the answers and history, the agent resumes:
 
 ```sh
 agboard --project "My project" state 1 running --actor ai --reason "Preparing the preview requested by the user"

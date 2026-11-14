@@ -11,7 +11,8 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | `epic_is_draft` | The epic is marked as a draft; the CLI may not edit its details or task order. | Wait for the person to save or discard the draft, or ask them to finalize it. `epic attachment` and membership changes still work. Do not edit its `EPIC.md`. |
 | `task_is_done` | The task is Done; agents may not change it. | Ask the person to reopen it. |
 | `acceptance_unmet` | An agent tried to move a task to Done while an acceptance condition is unmet or the frontmatter is invalid. | Verify the conditions and set `done: true` (the server then moves the task by itself), or fix the frontmatter. |
-| `request_changed` | The question was answered, withdrawn by a move, or replaced. | Read the task again (`show`) and answer the current request. |
+| `questions_unanswered` | An agent tried to set a task to Running, or move it to Done, while it waits for a person. | Wait for the answers with `qa wait <request-id>`, or ask the person to answer on the board. |
+| `question_answered` or `question_withdrawn` | The question already has an answer, or its request was withdrawn. The first answer is final. | Read the question again (`qa show <question-id>`) and use the recorded answer. |
 | `folder_unbound` or `bound_project_missing` | The working folder is not bound to a project, or the project was deleted. | Name the project explicitly with `--project`, or ask the user to bind the folder. |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | Ask a person to run it. There is no option to skip the question. |
 
@@ -31,9 +32,10 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | --- | --- | --- |
 | `already_serving` | Another `serve` runs on the same data area. | Use that one, or stop it first. |
 | `port_in_use` | Another program uses the port. | Pick another port with `--port`. Keep 7420 free for normal use; tests must use another port or port 0. |
-| `board_unavailable` from `wait` or the hook | `serve` is not running, or the connection failed. It is a technical failure, not an answer. | Start `serve`, then run `wait` again. |
+| `board_unavailable` from `wait`, `qa ask`, `qa wait`, or the hook | `serve` is not running, or the connection failed. It is a technical failure, not an answer. | Start `serve`, then run `wait` again. For questions already saved, run `qa wait <request-id>`. |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | Take a fresh `cursor` from `snapshot` for the same project. |
-| `wait_timeout` | The optional `--timeout` elapsed with no change. | Wait again. The question stays Pending. |
+| `wait_timeout` | The optional `--timeout` of `wait --after` elapsed with no change. | Wait again. |
+| `qa ask` or `qa wait` exits 5 | The `--timeout` passed before every question was answered. The questions stay open. | Run `qa wait <request-id>` again. |
 
 ## Hooks
 
