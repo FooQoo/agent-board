@@ -8,7 +8,7 @@ import { TaskCard } from '../../../features/tasks/card/TaskCard';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { TaskAnswerController } from '../../../features/tasks/answer/model/useTaskAnswers';
+import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 export interface LaneProps {
   column: ColumnName;
@@ -18,7 +18,7 @@ export interface LaneProps {
   onArchive?: () => void;
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: TaskAnswerController;
+  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
 }
 

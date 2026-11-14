@@ -34,12 +34,6 @@ export const detailJa = {
     finalize: '確定する',
     epicDescription: 'AIはこのエピックを変更できません。確定すると、AIが変更できます。',
   },
-  request: {
-    saveHint: '回答は履歴に保存されます。調整役が確認して作業を再開します。',
-    send: '送信',
-    sending: '送信中…',
-    changed: '判断依頼が変わりました。最新のボードを確認してください。',
-  },
   answer: {
     open: '質問に回答する',
     continue: '回答を続ける',
@@ -48,7 +42,6 @@ export const detailJa = {
     notePlaceholder: '補足があれば書く…',
     guide: '選択肢を選ぶか、メモだけでも回答できます。',
     clear: '入力をクリア',
-    close: '閉じる',
     sheetClose: '回答を閉じる',
     sheetDismiss: '下にスワイプして回答を閉じる',
     changed: '質問が新しくなりました。内容を確認して、もう一度回答してください。',

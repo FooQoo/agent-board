@@ -1,3 +1,4 @@
+import '@/shared/i18n/question-flow-strings';
 import { InfoIcon } from 'lucide-react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,9 +30,11 @@ export function DecisionAnswerFields({
   const noticeText =
     view.notice === 'changed'
       ? t('answer.changed')
-      : view.notice === 'withdrawn'
-        ? t('answer.withdrawn')
-        : null;
+      : view.notice === 'answered'
+        ? t('questions.flow.closedAnswered')
+        : view.notice === 'withdrawn'
+          ? t('answer.withdrawn')
+          : null;
   return (
     <section
       className="decision-answer"

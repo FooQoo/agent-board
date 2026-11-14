@@ -260,10 +260,9 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     expect(bare.statusCode).toBe(403);
     bare.resume();
 
-    const result = await monitorClient.answerRequest(projectId, pendingRequest.taskId, {
-      requestId: pendingRequest.requestId,
-      choiceId: pendingRequest.choice,
-    });
+    const result = await monitorClient.answerQuestions(projectId, [
+      { questionId: pendingRequest.requestId, choiceId: pendingRequest.choice },
+    ]);
     expect((result as { questions: { status: string }[] }).questions[0]?.status).toBe('answered');
     expect(browser.wrote).toBe(2); // the unlock and the answer
   });
@@ -278,10 +277,9 @@ describe.skipIf(!live)('the phone client against the real backend', () => {
     await command('rotate', 'READY'); // the old session no longer counts
     browser.wrote = 0;
     await expect(
-      monitorClient.answerRequest(projectId, pendingRequest.taskId, {
-        requestId: pendingRequest.requestId,
-        choiceId: pendingRequest.choice,
-      }),
+      monitorClient.answerQuestions(projectId, [
+        { questionId: pendingRequest.requestId, choiceId: pendingRequest.choice },
+      ]),
     ).rejects.toMatchObject({ status: 401, code: 'session_required' });
     expect(browser.wrote).toBe(1);
     expect(losses).toContain('session_required');

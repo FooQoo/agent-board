@@ -1,5 +1,6 @@
 // The monitor's way into the data layer: one project's routes under `/monitor/api/`.
 import type { ProjectId } from '../../shared/api/contracts';
+import { parseQuestionDetail, type QuestionDetail } from '../../features/tasks/answer/model/qa';
 import type { DetailEvent } from '../../shared/data/api';
 import { parseChanged, parseSummary } from '../../shared/data/api';
 import { ndjsonEvents, type DataAdapter, type EventHandlers } from '../../shared/data/core';
@@ -135,6 +136,18 @@ async function* readDetailEvents(path: string, signal: AbortSignal): AsyncGenera
     throw new MonitorClientError(`GET ${path} had no body.`, 200, 'unexpected_response');
   }
   yield* ndjsonEvents(body);
+}
+
+/** One question of the project, read through the monitor's routes when the answer sheet shows it. */
+export async function readMonitorQuestion(
+  projectId: ProjectId,
+  questionId: string,
+): Promise<QuestionDetail> {
+  return parseQuestionDetail(
+    await readJson<unknown>(
+      `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/qa/${encodeURIComponent(questionId)}`,
+    ),
+  );
 }
 
 /**

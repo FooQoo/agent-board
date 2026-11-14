@@ -10,9 +10,8 @@ import { epicForEditor, taskForEditor, toBoardView, toTaskSummary } from './data
 import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
-import { useAnswerTarget } from './model/useAnswerTarget';
+import { useQuestionAnswers } from './model/useQuestionAnswers';
 import { useStreamSubscriptions } from './model/useStreamSubscriptions';
-import { useTaskAnswers } from '../features/tasks/answer/model/useTaskAnswers';
 import { findTask, nextSelection } from '../features/tasks/model/board';
 import { isProjectId } from './model/projectSession';
 import { STALE_PAGE_EVENT } from './api';
@@ -38,13 +37,11 @@ export function useAppController(initial: AppInitial | undefined): AppController
     initial?.select ?? null,
   );
   const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
-  const taskAnswers = useTaskAnswers(answerLeaseControls.set);
   const projects = useProjects();
   const activeId = session.activeProjectId;
   useEffect(() => {
     if (docsOpenFor !== null && docsOpenFor !== activeId) setDocsOpenFor(null);
   }, [docsOpenFor, activeId]);
-  const { answerTarget, openAnswer, closeAnswer } = useAnswerTarget(activeId);
   const known =
     isProjectId(activeId) && projects.projects.some((project) => project.id === activeId);
   const core = useDataCore();
@@ -90,12 +87,12 @@ export function useAppController(initial: AppInitial | undefined): AppController
     [board.summary],
   );
   const boardData = view === 'board' ? boardView : null;
-  const tasks = isProjectId(activeId)
-    ? taskAnswers.withSavedAnswers(activeId, boardData?.tasks ?? [], board.lastSyncedAt)
-    : [];
-  useEffect(() => {
-    if (boardData && isProjectId(activeId)) taskAnswers.reconcileTasks(activeId, boardData.tasks);
-  }, [activeId, boardData, taskAnswers.reconcileTasks]);
+  const tasks = isProjectId(activeId) ? (boardData?.tasks ?? []) : [];
+  const answers = useQuestionAnswers(
+    activeId,
+    boardData?.questions ?? null,
+    answerLeaseControls.set,
+  );
 
   const selected = findTask(tasks, session.selectedId);
   const archivedSelected =
@@ -211,7 +208,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
   useBuildReload(
     serverBuild,
-    session.operation !== null || session.answerLeases.length > 0 || taskAnswers.hasAnyDraft(),
+    session.operation !== null || session.answerLeases.length > 0 || answers.book.hasAnyHeld(),
     core.gate,
   );
   useEffect(preloadBoardCode, []);
@@ -246,7 +243,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     projects,
     board,
     archive,
-    answerSession: taskAnswers,
+    answers,
     tasks,
     selected,
     archivedSelected,
@@ -283,9 +280,6 @@ export function useAppController(initial: AppInitial | undefined): AppController
     setRequested,
     restoreFailure,
     setRestoreFailure,
-    answerTarget,
-    openAnswer,
-    closeAnswer,
     projectName: (projectId) => projects.projects.find((project) => project.id === projectId)?.name,
     viewMode: session.viewMode,
     docsProjectId: docsOpenFor === activeId ? docsOpenFor : null,

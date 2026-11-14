@@ -1,8 +1,8 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TaskCard } from '../../src/features/tasks/card/TaskCard';
-import { useTaskAnswers } from '../../src/features/tasks/answer/model/useTaskAnswers';
+import { AnswerBook } from '../../src/features/tasks/answer/model/answerBook';
 import { i18n } from '../../src/shared/i18n';
 import { fixtureTask, makeTask } from '../fixtures';
 
@@ -92,7 +92,7 @@ describe('Task', () => {
   it('shows only the answer button on the pending task and keeps its click from selecting the task', async () => {
     const onSelect = vi.fn();
     const onAnswer = vi.fn();
-    const { result } = renderHook(() => useTaskAnswers(vi.fn(), vi.fn()));
+    const book = new AnswerBook();
     const task = makeTask({
       id: 41,
       taskStatus: 'todo',
@@ -107,12 +107,12 @@ describe('Task', () => {
         selected={false}
         onSelect={onSelect}
         projectId="project-1"
-        answers={result.current}
+        answers={book}
         onAnswer={onAnswer}
       />,
     );
 
-    expect(screen.queryByText('Choose a direction')).toBeNull();
+    expect(screen.getByText('Choose a direction')).toBeTruthy();
     expect(screen.queryByRole('textbox')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Answer the question' }));
     expect(onAnswer).toHaveBeenCalledWith(41);
@@ -124,8 +124,36 @@ describe('Task', () => {
     expect(onSelect).toHaveBeenCalledWith(41);
   });
 
+  it('counts the open questions of a card, and offers to continue once an answer is held', () => {
+    const book = new AnswerBook();
+    const task = makeTask({
+      id: 43,
+      taskStatus: 'todo',
+      agentStatus: 'pending',
+      pendingReason: 'Choose a direction',
+      openQuestionIds: ['Q-1', 'Q-2'],
+    });
+    const card = () => (
+      <TaskCard
+        task={task}
+        selected={false}
+        onSelect={noop}
+        projectId="project-1"
+        answers={book}
+        onAnswer={noop}
+      />
+    );
+    const { rerender } = render(card());
+    expect(screen.getByText('Unanswered questions: 2')).toBeTruthy();
+    expect(screen.queryByText('Choose a direction')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Answer the question' })).toBeTruthy();
+    act(() => book.setText('project-1' as never, 'Q-2', 'Later'));
+    rerender(card());
+    expect(screen.getByRole('button', { name: 'Continue answering' })).toBeTruthy();
+  });
+
   it('keeps the waiting reason visible when no decision request is active', () => {
-    const { result } = renderHook(() => useTaskAnswers(vi.fn(), vi.fn()));
+    const book = new AnswerBook();
     const task = makeTask({
       id: 42,
       taskStatus: 'doing',
@@ -140,7 +168,7 @@ describe('Task', () => {
         selected={false}
         onSelect={noop}
         projectId="project-1"
-        answers={result.current}
+        answers={book}
       />,
     );
 

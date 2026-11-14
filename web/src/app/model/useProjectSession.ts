@@ -2,7 +2,6 @@ import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { initSession, sessionReducer } from './projectSession';
 import type { OperationControls, OperationKind } from '../../shared/lib/operations/operations';
 import type { DialogAction, ProjectId } from '../../shared/api/contracts';
-import type { AnswerFormKey } from '../../features/tasks/answer/model/answer';
 
 /** Owns project-bound view state and operation controls shared by the board and archive views. */
 export function useProjectSession(
@@ -51,7 +50,7 @@ export function useProjectSession(
 
   const answerLeaseControls = useMemo(
     () => ({
-      set: (key: AnswerFormKey, projectId: ProjectId, active: boolean) =>
+      set: (key: string, projectId: ProjectId, active: boolean) =>
         dispatch({
           type: active ? 'ANSWER_LEASE_STARTED' : 'ANSWER_LEASE_ENDED',
           key,

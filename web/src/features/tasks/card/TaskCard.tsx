@@ -8,7 +8,7 @@ import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { StatusLabel } from '../status/StatusLabel';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
-import type { TaskAnswerController } from '../answer/model/useTaskAnswers';
+import type { AnswerBook } from '../answer/model/answerBook';
 import type { ProjectId } from '../../../shared/api/contracts';
 import './card-answer.css';
 
@@ -21,8 +21,9 @@ export interface TaskCardProps {
   /** Draws the card's EPIC-ID label. The page that composes the board supplies it; without it no label shows. */
   renderEpic?: (epic: EpicRef) => ReactNode;
   projectId?: ProjectId;
-  answers?: TaskAnswerController;
-  /** Opens the answer dialog of the card; the dialog lives above the board. */
+  /** The answers held on the page; the button says "continue" when one of the card's is held. */
+  answers?: AnswerBook;
+  /** Opens the answer dialog at the card's first question; the dialog lives above the board. */
   onAnswer?: (taskId: number) => void;
 }
 
@@ -70,11 +71,26 @@ export function TaskCardContent({
         <span className={titleClassName}>{task.title}</span>
       )}
       {children}
-      {showPendingReason && task.pendingReason && (
-        <span className={reasonClassName}>{task.pendingReason}</span>
-      )}
+      {showPendingReason && <PendingReason task={task} className={reasonClassName} />}
     </>
   );
+}
+
+/**
+ * Why a pending card waits: the number of its open questions, or the older single question's text
+ * for a card that does not list them.
+ */
+function PendingReason({ task, className }: { task: TaskModel; className: string }) {
+  const { t } = useTranslation();
+  const open = task.openQuestionIds?.length ?? 0;
+  if (open > 0)
+    return <span className={className}>{t('questions.card.waiting', { count: open })}</span>;
+  return task.pendingReason ? <span className={className}>{task.pendingReason}</span> : null;
+}
+
+/** Whether a pending card offers the answer button: it waits on at least one open question. */
+export function waitsOnQuestion(task: TaskModel): boolean {
+  return (task.openQuestionIds?.length ?? 0) > 0 || task.pendingRequestId !== null;
 }
 
 /** Visual card shell, independent of drag-and-drop and inline answer controllers. */
@@ -155,7 +171,7 @@ export function TaskCard({
   const showsState = stateLabel(task, t) !== null;
   const pending = showsState && task.agentStatus === 'pending';
   const showInlineAnswer = Boolean(
-    projectId && answers && onAnswer && pending && task.pendingRequestId !== null,
+    projectId && answers && onAnswer && pending && waitsOnQuestion(task),
   );
   const { ref, isDragging } = useSortable({
     id: `card-${task.id}`,
@@ -171,13 +187,15 @@ export function TaskCard({
       onSelect={onSelect}
       cardRef={ref}
       renderEpic={renderEpic}
-      showPendingReason={!showInlineAnswer}
+      showPendingReason
     >
       {projectId && answers && onAnswer && showInlineAnswer && (
         <div className="card__answer">
           <DecisionAnswerButton
             taskId={task.id}
-            continuing={answers.hasDraft(projectId, task.id)}
+            continuing={(task.openQuestionIds ?? []).some(
+              (id) => answers.held(projectId, id) !== null,
+            )}
             onClick={() => onAnswer(task.id)}
           />
         </div>

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
-import type { TaskAnswerController } from '../../features/tasks/answer/model/useTaskAnswers';
+import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import { TaskCard } from '../../features/tasks/card/TaskCard';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
 import { OnboardingGuidePanel } from '../../features/onboarding/ui/OnboardingGuidePanel';
@@ -90,7 +90,7 @@ export function GuideLayer({
   projectId: ProjectId | null;
   eligible: boolean;
   tasks: TaskSummary[];
-  answers: TaskAnswerController;
+  answers: AnswerBook;
   onAnswer: (taskId: number) => void;
   onAnswerChanged: () => void;
 }) {

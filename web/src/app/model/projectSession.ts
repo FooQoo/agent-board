@@ -1,5 +1,4 @@
 import type { TaskSummary, DialogAction, ProjectId } from '../../shared/api/contracts';
-import type { AnswerFormKey } from '../../features/tasks/answer/model/answer';
 import type { OperationKind } from '../../shared/lib/operations/operations';
 import type { ViewMode } from '../../shared/ui/app-header/Header';
 
@@ -18,7 +17,7 @@ export interface PendingTarget {
 }
 
 export interface AnswerLease {
-  key: AnswerFormKey;
+  key: string;
   projectId: ProjectId;
 }
 
@@ -57,8 +56,8 @@ export type SessionAction =
   | { type: 'OPERATION_FINISHED'; operationId: number }
   | { type: 'OPERATION_CANCELLED'; operationId: number }
   | { type: 'CARD_REMOVED'; operationId: number; projectId: ProjectId; taskId: number }
-  | { type: 'ANSWER_LEASE_STARTED'; key: AnswerFormKey; projectId: ProjectId }
-  | { type: 'ANSWER_LEASE_ENDED'; key: AnswerFormKey; projectId: ProjectId };
+  | { type: 'ANSWER_LEASE_STARTED'; key: string; projectId: ProjectId }
+  | { type: 'ANSWER_LEASE_ENDED'; key: string; projectId: ProjectId };
 
 export function initSession(
   activeProjectId: ProjectId | null,
@@ -105,11 +104,7 @@ function finishOperation(state: SessionState): SessionState {
     : ended;
 }
 
-function finishAnswerLease(
-  state: SessionState,
-  key: AnswerFormKey,
-  projectId: ProjectId,
-): SessionState {
+function finishAnswerLease(state: SessionState, key: string, projectId: ProjectId): SessionState {
   const answerLeases = state.answerLeases.filter(
     (lease) => lease.key !== key || lease.projectId !== projectId,
   );

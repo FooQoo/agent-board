@@ -258,6 +258,22 @@ ol {
   padding: 24px;
 }
 
+/* The band of unanswered questions sits above the lanes; the lanes take the height left. */
+.board--with-band {
+  display: flex;
+  flex-direction: column;
+}
+
+.board--with-band > .question-band {
+  margin: 24px 24px 0;
+}
+
+.board--with-band > .board__lanes {
+  flex: 1 1 0;
+  height: auto;
+  padding-top: 12px;
+}
+
 .board--centered {
   display: flex;
   align-items: center;

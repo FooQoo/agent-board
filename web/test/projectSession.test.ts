@@ -6,7 +6,6 @@ import {
   type SessionAction,
   type SessionState,
 } from '../src/app/model/projectSession';
-import type { AnswerFormKey } from '../src/features/tasks/answer/model/answer';
 import { makeTask } from './fixtures';
 
 const A = 'a'.repeat(32);
@@ -129,8 +128,8 @@ describe('sessionReducer: operations hold the switch', () => {
   );
 
   it('holds a URL switch until every answer draft lease and modal operation has ended', () => {
-    const keyA = `${A}:12:req-a` as AnswerFormKey;
-    const keyB = `${A}:13:req-b` as AnswerFormKey;
+    const keyA = `qa:${A}`;
+    const keyB = `qa:${A}:other`;
     const held = run(
       initSession(A, 12),
       { type: 'ANSWER_LEASE_STARTED', key: keyA, projectId: A },

@@ -1,42 +1,31 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, within } from 'storybook/test';
-import { makeProject, makeTask } from '../../../../.storybook/support/fixtures';
+import { useTranslation } from 'react-i18next';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
-import { noOperations } from '@/shared/lib/operations/operations';
 import { DecisionAnswerDialogContainer } from './DecisionAnswerDialogContainer';
-import { useTaskAnswers } from './model/useTaskAnswers';
-
-const TITLE = 'API refactor';
-const task = makeTask({
-  id: 11,
-  title: TITLE,
-  taskStatus: 'doing',
-  agentStatus: 'pending',
-  pendingRequestId: 'request-11',
-  pendingReason: 'Which way should the board go?',
-  pendingChoices: [
-    { id: 'keep', label: 'Keep the data' },
-    { id: 'reset', label: 'Start over' },
-  ],
-});
+import type { AnswersWriter } from './model/qa';
+import { SAMPLE_PROJECT, useSampleQuestions } from './questionSamples';
 
 interface HarnessProps {
-  /** The card as the board lists it; null once it is gone. */
-  listed: typeof task | null;
+  write: AnswersWriter;
+  onSent: () => void;
   onClose: () => void;
 }
 
-/** The dialog with the board's answer drafts behind it, as the app holds them. */
-function Harness({ listed, onClose }: HarnessProps) {
-  const answers = useTaskAnswers(() => {});
+/** The dialog wired as the board wires it, from the first question without an answer. */
+function Harness({ write, onSent, onClose }: HarnessProps) {
+  const { i18n } = useTranslation();
+  const sample = useSampleQuestions(i18n.language, { held: 0 });
   return (
     <DecisionAnswerDialogContainer
-      projectId={makeProject().id}
-      taskId={task.id}
-      task={listed}
-      answers={answers}
-      operations={noOperations}
-      syncedAt={null}
+      projectId={SAMPLE_PROJECT}
+      questions={sample.questions}
+      tasks={sample.cards}
+      book={sample.book}
+      start={{ kind: 'resume' }}
+      read={sample.read}
+      write={write}
+      onSent={onSent}
       onClose={onClose}
     />
   );
@@ -45,7 +34,7 @@ function Harness({ listed, onClose }: HarnessProps) {
 const meta = {
   title: 'Task/Answer/DecisionAnswerDialogContainer',
   component: Harness,
-  args: { listed: task, onClose: fn() },
+  args: { write: fn(async () => {}), onSent: fn(), onClose: fn() },
   parameters: { ...modalDocsParameters, layout: 'fullscreen' },
 } satisfies Meta<typeof Harness>;
 
@@ -54,11 +43,19 @@ type Story = StoryObj<typeof meta>;
 
 const page = () => within(document.body);
 
-/** The card's question and options are drawn in the dialog. */
+/** Answer the first question, go to the review, and send: the answer goes to the project. */
 export const Open: Story = {
-  play: async () => {
-    await expect(await page().findByRole('dialog', { name: /API refactor/ })).toBeInTheDocument();
-    await expect(await page().findByText('Which way should the board go?')).toBeInTheDocument();
-    await expect(page().getAllByRole('radio')).toHaveLength(2);
+  play: async ({ args }) => {
+    await expect(await page().findByText('1 / 5')).toBeInTheDocument();
+    await userEvent.click(await page().findByRole('radio', { name: /Cover both/ }));
+    await userEvent.click(page().getByRole('button', { name: /^Review and send/ }));
+    await userEvent.click(await page().findByRole('button', { name: 'Send all' }));
+    await waitFor(() =>
+      expect(args.write).toHaveBeenCalledWith(SAMPLE_PROJECT, [
+        { questionId: 'Q-1', choiceId: 'both' },
+      ]),
+    );
+    await waitFor(() => expect(args.onSent).toHaveBeenCalledTimes(1));
+    await expect(args.onClose).toHaveBeenCalledTimes(1);
   },
 };

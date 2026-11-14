@@ -745,7 +745,7 @@ describe('switching while a form is open', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
     const dialog = await screen.findByRole('dialog');
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Go ahead');
+    await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
     // Typing in the open dialog holds the project, as the lease does.
     expect(
       (screen.getByRole('button', { name: 'agent-board', hidden: true }) as HTMLButtonElement)
@@ -757,7 +757,9 @@ describe('switching while a form is open', () => {
     expect((screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement).value).toBe(
       'Go ahead',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    // The answer is sent from the review, after the last question.
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Send all' }));
 
     await screen.findByText('Same number elsewhere');
     const posts = writes();
@@ -768,7 +770,7 @@ describe('switching while a form is open', () => {
     });
   });
 
-  it('lets the project switch once the answer dialog is closed, and keeps the input for the card', async () => {
+  it('keeps the project while an answer waits to be sent, even with the dialog closed, and lets it go once cleared', async () => {
     const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
     expect(pendingA).toBeTruthy();
     backend.boards[PROJECT_B.id] = boardOf(
@@ -780,24 +782,27 @@ describe('switching while a form is open', () => {
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
     const dialog = await screen.findByRole('dialog');
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Go ahead');
+    await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(answerButtonOf(pendingA?.id ?? 0).textContent).toBe('Continue answering');
+    // The answer is held, not sent: the project stays, and the band says so.
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
-    ).toBe(false);
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Review and send' })).toBeTruthy();
 
     app.navigate(urlOf(PROJECT_B.id));
-    await screen.findByText('Same number elsewhere');
-    expect(writes()).toHaveLength(0);
-    app.navigate(urlOf(PROJECT_A.id));
-    await screen.findByRole('region', { name: 'Todo' });
-    expect(answerButtonOf(pendingA?.id ?? 0).textContent).toBe('Continue answering');
+    await act(async () => {});
+    expect(screen.queryByText('Same number elsewhere')).toBeNull();
     await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
     expect(
       (await screen.findByRole('textbox', { name: 'Note' })) as HTMLTextAreaElement,
     ).toHaveProperty('value', 'Go ahead');
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    await userEvent.keyboard('{Escape}');
+    await screen.findByText('Same number elsewhere');
+    expect(writes()).toHaveLength(0);
   });
 
   it('keeps the project and the confirmation open while an archive confirmation is open, and archives in that project', async () => {

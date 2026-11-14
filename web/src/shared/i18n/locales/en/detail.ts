@@ -35,12 +35,6 @@ export const detailEn = {
     finalize: 'Finalize',
     epicDescription: 'Agents cannot change this epic. Once you finalize it, they can.',
   },
-  request: {
-    saveHint: 'Saved to the history. The coordinator reviews it and resumes the work.',
-    send: 'Send',
-    sending: 'Sending…',
-    changed: 'This request has changed. Review the latest board.',
-  },
   answer: {
     open: 'Answer the question',
     continue: 'Continue answering',
@@ -49,7 +43,6 @@ export const detailEn = {
     notePlaceholder: 'Add a note if you need to…',
     guide: 'Choose an option, or answer with a note alone.',
     clear: 'Clear',
-    close: 'Close',
     sheetClose: 'Close the answer',
     sheetDismiss: 'Swipe down to close the answer',
     changed: 'The question has changed. Review it and answer again.',

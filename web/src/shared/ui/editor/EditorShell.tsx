@@ -39,6 +39,10 @@ export interface EditorShellProps {
   footerStart?: ReactNode;
   /** The buttons at the right of the footer, after Cancel. */
   actions: ReactNode;
+  /** A line between the status and the buttons (a count of what the buttons act on). */
+  footerEnd?: ReactNode;
+  /** False leaves Cancel out of the footer, for a dialog that closes only from its header. */
+  footerClose?: boolean;
   /** Cmd+S and Ctrl+S run this. It checks for itself whether a save can start. */
   onSave?: () => void;
   /** Extra class on the dialog, for a screen that restyles the shell (the docs dialog). */
@@ -74,6 +78,8 @@ export function EditorShell({
   status,
   footerStart,
   actions,
+  footerEnd,
+  footerClose = true,
   onSave,
   className,
   dialogData,
@@ -181,10 +187,13 @@ export function EditorShell({
           <span className="editor__status" role="status">
             {saving ? (savingStatus ?? t('editor.savingStatus')) : status}
           </span>
+          {footerEnd}
           <DialogActions>
-            <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
-              {closeLabel ?? t('dialog.cancel')}
-            </Button>
+            {footerClose && (
+              <Button type="button" variant="outline" disabled={saving} onClick={requestClose}>
+                {closeLabel ?? t('dialog.cancel')}
+              </Button>
+            )}
             {actions}
           </DialogActions>
         </div>

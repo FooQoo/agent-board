@@ -39,8 +39,8 @@ function props(): MonitorViewProps {
 
 /** The view with the answer controller the page gives it. */
 function Connected() {
-  const answerController = useMonitorInteractions();
-  return <MonitorView {...props()} answerController={answerController} />;
+  const { book } = useMonitorInteractions();
+  return <MonitorView {...props()} answerController={{ book, read: vi.fn(), write: vi.fn() }} />;
 }
 
 describe('MonitorView', () => {

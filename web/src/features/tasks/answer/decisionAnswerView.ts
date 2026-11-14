@@ -1,6 +1,6 @@
 /**
- * What the answer panel draws: the answer typed so far and how the send is going. The form state
- * (`useDecisionRequestForm`) returns the same fields, so a screen passes them on as they are.
+ * What the answer panel draws: the answer held so far and how the send is going. The run through
+ * the questions (`useAnswerFlow`) builds it from the page's book of held answers.
  */
 export interface DecisionAnswerView {
   /** The chosen option, or null while none is chosen. */
@@ -9,8 +9,11 @@ export interface DecisionAnswerView {
   text: string;
   /** `sending` stops the input and the close; `failed` keeps the input and shows the retry. */
   phase: 'editing' | 'sending' | 'failed';
-  /** `changed`: the question was replaced while the panel was open. `withdrawn`: it is gone. */
-  notice: 'changed' | 'withdrawn' | null;
+  /**
+   * `changed`: the question was replaced while the panel was open. `answered`: it was answered
+   * elsewhere. `withdrawn`: it is gone. The last two keep the input readable and unsendable.
+   */
+  notice: 'changed' | 'answered' | 'withdrawn' | null;
   /** Why the last send failed; shown while `phase` is `failed`. */
   failure: string | null;
   /** The note is over the limit. */

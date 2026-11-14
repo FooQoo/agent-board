@@ -4,138 +4,167 @@ import { useTranslation } from 'react-i18next';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { DecisionAnswerSheet } from './DecisionAnswerSheet';
-import {
-  resolveSampleAttachment,
-  sampleFor,
-  useSampleAnswer,
-  type SampleAnswerInput,
-} from './decisionAnswerSamples';
+import { resolveSampleAttachment } from './decisionAnswerSamples';
+import type { AnswersWriter } from './model/qa';
+import { SAMPLE_PROJECT, type SampleFlowInput, useSampleQuestions } from './questionSamples';
+import { type AnswerStart, useAnswerFlow } from './useAnswerFlow';
 
 interface HarnessProps {
-  initial: SampleAnswerInput;
-  onSubmit: () => void;
-  onRetry: () => void;
+  input: SampleFlowInput;
+  start: AnswerStart;
+  write: AnswersWriter;
   onOpenChange: (open: boolean) => void;
 }
 
-/** The sheet with an answer that can be typed into, as the monitor would hold it. */
-function Harness({ initial, onSubmit, onRetry, onOpenChange }: HarnessProps) {
+/** The sheet running through the five sample questions, as the monitor holds them. */
+function Harness({ input, start, write, onOpenChange }: HarnessProps) {
   const { i18n } = useTranslation();
-  const sample = sampleFor(i18n.language);
-  const answer = useSampleAnswer(initial, sample);
+  const sample = useSampleQuestions(i18n.language, { ...input, sheet: true });
   const [open, setOpen] = useState(true);
-  return (
-    <DecisionAnswerSheet
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        onOpenChange(next);
-      }}
-      identity="#11"
-      title={sample.title}
-      question={sample.sheetQuestion}
-      choices={sample.choices}
-      resolveAttachment={resolveSampleAttachment}
-      onSubmit={onSubmit}
-      onRetry={onRetry}
-      {...answer}
-    />
-  );
+  const change = (next: boolean) => {
+    setOpen(next);
+    onOpenChange(next);
+  };
+  const { goTo: _goTo, ...flow } = useAnswerFlow({
+    projectId: SAMPLE_PROJECT,
+    questions: sample.questions,
+    tasks: sample.cards,
+    book: sample.book,
+    start,
+    read: sample.read,
+    write,
+    attachmentUrl: (_taskId, id) => resolveSampleAttachment(id),
+    onSent: () => change(false),
+  });
+  return <DecisionAnswerSheet {...flow} open={open} onOpenChange={change} />;
 }
 
 const meta = {
   title: 'Task/Answer/DecisionAnswerSheet',
   component: Harness,
-  args: { initial: {}, onSubmit: fn(), onRetry: fn(), onOpenChange: fn() },
+  args: {
+    input: { held: 1 },
+    start: { kind: 'question', questionId: 'Q-2' },
+    write: fn(async () => {}),
+    onOpenChange: fn(),
+  },
   // The sheet is the monitor's, so the monitor stylesheet is loaded for these Stories.
   parameters: { ...modalDocsParameters, storyFrame: 'monitor', layout: 'fullscreen' },
-  globals: { width: 'phone-390' },
+  globals: { width: 'phone-375' },
 } satisfies Meta<typeof Harness>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const page = () => within(document.body);
-const NOTE_EN = 'I want to keep it until v3 ships. The CLI fix can wait until next week.';
 
-/** The question, then the answer; Send is pinned below and waits for an input. */
-export const Normal: Story = {
-  args: { initial: { choiceId: 'keep' } },
-  play: async ({ args }) => {
+/** The second of five: the position and the card on top, dots below, two equal buttons at the foot. */
+export const Step: Story = {
+  play: async () => {
     await expect(await page().findByRole('dialog', { name: 'API refactor' })).toBeInTheDocument();
+    await expect(page().getByText('2 / 5')).toBeInTheDocument();
     await expect(page().getByText('#11')).toBeInTheDocument();
-    await expect(await page().findByRole('table')).toBeInTheDocument();
-    await waitFor(() => expect(page().getAllByRole('radio')[0]).toHaveFocus());
-    await expect(page().getByRole('radio', { name: /Keep compatibility/ })).toBeChecked();
-    await expect(page().getByRole('button', { name: 'Send' })).toBeEnabled();
-    await userEvent.click(page().getByRole('radio', { name: /Allow the breaking change/ }));
-    await expect(page().getByRole('radio', { name: /Allow the breaking change/ })).toBeChecked();
-    await userEvent.click(page().getByRole('button', { name: 'Send' }));
-    await expect(args.onSubmit).toHaveBeenCalledTimes(1);
+    await expect(page().getByText('1 answered, not sent')).toBeInTheDocument();
+    const prev = page().getByRole('button', { name: 'Previous' });
+    const next = page().getByRole('button', { name: 'Next' });
+    await waitFor(() =>
+      expect(Math.round(prev.getBoundingClientRect().width)).toBe(
+        Math.round(next.getBoundingClientRect().width),
+      ),
+    );
+    await expect(Math.round(next.getBoundingClientRect().height)).toBe(44);
+    await userEvent.click(await page().findByRole('radio', { name: /Keep compatibility/ }));
+    await expect(page().getByText('2 answered, not sent')).toBeInTheDocument();
   },
 };
 
-/** The input is kept and the send failed: a band with Retry sits above Send. */
-export const InputAndFailed: Story = {
-  args: {
-    initial: { choiceId: 'keep', note: true, phase: 'failed' },
-  },
+/** Every question answered: the review, then Send all. */
+export const Review: Story = {
+  args: { input: { held: 5 }, start: { kind: 'review' } },
   play: async ({ args }) => {
-    // The answer field is below the question: scroll to it once the picture has its size.
-    const picture = await page().findByRole('img');
-    await waitFor(() => expect((picture as HTMLImageElement).complete).toBe(true));
-    const dialog = page().getByRole('dialog');
-    const panel = dialog.querySelector<HTMLElement>('.decision-panel');
-    const answer = dialog.querySelector<HTMLElement>('.decision-panel__answer');
-    if (panel !== null && answer !== null) {
-      panel.scrollTop = answer.getBoundingClientRect().top - panel.getBoundingClientRect().top;
-    }
-    await expect(await page().findByRole('alert')).toHaveTextContent('Could not save. Try again.');
-    await expect(page().getByRole('textbox', { name: 'Note' })).toHaveValue(NOTE_EN);
-    await userEvent.click(page().getByRole('button', { name: 'Retry' }));
-    await expect(args.onRetry).toHaveBeenCalledTimes(1);
+    await expect(
+      await page().findByRole('dialog', { name: 'Review your answers' }),
+    ).toBeInTheDocument();
+    await expect(page().getByText('All 5 answered')).toBeInTheDocument();
+    await expect(page().getAllByRole('button', { name: /^Change:/ })).toHaveLength(5);
+    await userEvent.click(page().getByRole('button', { name: 'Send all' }));
+    await waitFor(() => expect(args.write).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(args.onOpenChange).toHaveBeenCalledWith(false));
   },
 };
 
-/** Sending stops the input; the sheet does not close until it is done. */
+/** While sending, the input stops and the sheet does not close. */
 export const Sending: Story = {
-  args: { initial: { choiceId: 'keep', phase: 'sending' } },
+  args: {
+    input: { held: 5 },
+    start: { kind: 'review' },
+    write: fn(() => new Promise<void>(() => {})),
+  },
   play: async ({ args }) => {
+    await userEvent.click(await page().findByRole('button', { name: 'Send all' }));
     await expect(await page().findByRole('button', { name: 'Sending…' })).toBeDisabled();
-    await expect(page().getByRole('textbox', { name: 'Note' })).toBeDisabled();
     await userEvent.keyboard('{Escape}');
     await expect(args.onOpenChange).not.toHaveBeenCalled();
   },
 };
 
-/** The question changed while the sheet was open. */
-export const Changed: Story = {
-  args: { initial: { note: true, notice: 'changed' } },
+/** The send failed: a band with the reason, and the answers kept. */
+export const SendFailed: Story = {
+  args: {
+    input: { held: 5 },
+    start: { kind: 'review' },
+    write: fn(async () => {
+      throw new Error('offline');
+    }),
+  },
   play: async () => {
-    await expect(
-      await page().findByText('The question has changed. Review it and answer again.'),
-    ).toBeVisible();
-    await expect(page().getByRole('radio', { name: /Keep compatibility/ })).not.toBeChecked();
+    await userEvent.click(await page().findByRole('button', { name: 'Send all' }));
+    await expect(await page().findByRole('alert')).toHaveTextContent('Could not save');
+    await expect(page().getByRole('button', { name: 'Send all' })).toBeEnabled();
   },
 };
 
-/** The question was withdrawn: it can be read, and the send is gone. */
+/** One question was withdrawn while the sheet was open: it can be read, not answered. */
 export const Withdrawn: Story = {
-  args: { initial: { note: true, notice: 'withdrawn' } },
+  args: { input: { held: 1, closed: [{ id: 'Q-2', reason: 'withdrawn' }] } },
   play: async () => {
     await expect(
       await page().findByText('This question was withdrawn. You can no longer answer it.'),
     ).toBeVisible();
-    await expect(page().queryByRole('button', { name: 'Send' })).toBeNull();
+    await expect(page().getByRole('textbox', { name: 'Note' })).toBeDisabled();
+  },
+};
+
+/** The step in Japanese, as the mock shows it. */
+export const Japanese: Story = {
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    await expect(await page().findByRole('button', { name: '次へ' })).toBeEnabled();
+  },
+};
+
+/** The review in Japanese. */
+export const JapaneseReview: Story = {
+  args: { input: { held: 5 }, start: { kind: 'review' } },
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();
   },
 };
 
 /** Dark mode takes only the existing tokens. */
 export const Dark: Story = {
-  args: { initial: { choiceId: 'keep' } },
-  globals: { mode: 'dark', width: 'phone-390' },
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async () => {
     await expect(await page().findByRole('dialog')).toBeVisible();
-    await expect(page().getByRole('button', { name: 'Send' })).toBeEnabled();
+  },
+};
+
+/** The review in dark mode. */
+export const DarkReview: Story = {
+  args: { input: { held: 5 }, start: { kind: 'review' } },
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();
   },
 };

@@ -16,7 +16,7 @@ import type { ViewMode } from '../shared/ui/app-header/Header';
 import type { StatusBarProps } from '../shared/ui/status-bar/StatusBar';
 import type { BoardMessageKind } from '../pages/board/ui/BoardMessage';
 import type { UseProjectsResult } from '../features/projects/model/useProjects';
-import type { TaskAnswerController } from '../features/tasks/answer/model/useTaskAnswers';
+import type { QuestionAnswerController } from './model/useQuestionAnswers';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
 import type { ArchivedTask } from '../features/tasks/api/read';
 import type { EpicApi } from '../features/epics/editor/epicApi';
@@ -40,7 +40,8 @@ export interface AppControllerModel {
   projects: UseProjectsResult;
   board: UseBoardResult;
   archive: ReturnType<typeof useArchive>;
-  answerSession: TaskAnswerController;
+  /** The held answers and the answer dialog. */
+  answers: QuestionAnswerController;
   tasks: TaskSummary[];
   selected: TaskSummary | null;
   archivedSelected: ArchivedTask | null;
@@ -84,10 +85,6 @@ export interface AppControllerModel {
   ) => Promise<unknown>;
   restoreFailure: { projectId: ProjectId; taskId: number } | null;
   setRestoreFailure: (value: { projectId: ProjectId; taskId: number } | null) => void;
-  /** The card whose answer dialog is open in the active project, or null. */
-  answerTarget: { projectId: ProjectId; taskId: number } | null;
-  openAnswer: (taskId: number) => void;
-  closeAnswer: () => void;
   projectName: (projectId: ProjectId) => string | undefined;
   viewMode: ViewMode;
   /** The project whose docs dialog is open, or null. */

@@ -306,7 +306,7 @@ describe('monitor answer client', () => {
     const { monitorClient } = await import('../../src/pages/monitor/client');
 
     await expect(
-      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', choiceId: 'yes' }),
+      monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'request-7', choiceId: 'yes' }]),
     ).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
@@ -336,7 +336,7 @@ describe('monitor answer client', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');
     await expect(
-      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
+      monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'request-7', text: 'answer' }]),
     ).rejects.toMatchObject({ status: 403, code: 'page_out_of_date' });
   });
 
@@ -356,7 +356,7 @@ describe('monitor answer client', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');
     await expect(
-      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'request-7', text: 'answer' }),
+      monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'request-7', text: 'answer' }]),
     ).rejects.toMatchObject({ status: 409, code: 'question_withdrawn' });
   });
 });
@@ -420,7 +420,7 @@ describe('monitor session client', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');
-    await monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' });
+    await monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'r', choiceId: 'yes' }]);
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       '/monitor/api/session',
       `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
@@ -595,7 +595,7 @@ describe('monitor passcode client', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { monitorClient } = await import('../../src/pages/monitor/client');
     await monitorClient.unlock('1234');
-    await monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' });
+    await monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'r', choiceId: 'yes' }]);
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
       '/monitor/api/unlock',
       `/monitor/api/projects/${PROJECT_ID}/qa/answers`,
@@ -613,7 +613,7 @@ describe('monitor passcode client', () => {
     const seen: string[] = [];
     const off = onMonitorAuthLoss((loss) => seen.push(loss));
     await expect(
-      monitorClient.answerRequest(PROJECT_ID, 7, { requestId: 'r', choiceId: 'yes' }),
+      monitorClient.answerQuestions(PROJECT_ID, [{ questionId: 'r', choiceId: 'yes' }]),
     ).rejects.toMatchObject({ status: 401, code: 'session_required' });
     off();
     expect(seen).toEqual(['session_required']);

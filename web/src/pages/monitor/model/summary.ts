@@ -42,6 +42,7 @@ function taskOf(task: SummaryTask, epics: ReadonlyMap<string, EpicRef>): Task {
     pendingReason: task.pendingReason,
     pendingRequestId: task.pendingRequestId,
     pendingChoices: task.pendingChoices,
+    openQuestionIds: task.openQuestionIds ?? [],
     epic,
     // The Summary has no creation time; the time the card entered its lane stands in for it.
     createdAt: task.taskStatusChangedAt,

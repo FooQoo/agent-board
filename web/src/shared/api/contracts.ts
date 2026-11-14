@@ -91,6 +91,8 @@ export interface TaskSummary {
   pendingReason: string | null;
   pendingRequestId: string | null;
   pendingChoices: Choice[];
+  /** The open questions the card waits on; a card read from an older source leaves it out. */
+  openQuestionIds?: string[];
   /** The first-run guide's sample cards carry this; ordinary cards do not. */
   onboardingSample?: { runId: string; ordinal: number } | null;
   epic: EpicRef | null;
@@ -125,6 +127,8 @@ export interface Task {
   /** The first-run guide's sample cards carry this; ordinary cards do not. */
   onboardingSample?: { runId: string; ordinal: 1 | 2 } | null;
   pendingChoices: Choice[];
+  /** The open questions the card waits on; a card read from an older source leaves it out. */
+  openQuestionIds?: string[];
   epic: EpicRef | null;
   createdAt: string;
   updatedAt: string;

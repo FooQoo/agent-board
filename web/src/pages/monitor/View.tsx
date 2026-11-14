@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/shared/ui/button';
 import { Header } from '../../shared/ui/app-header/Header';
 import { monitorLogo } from './logo';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
@@ -12,6 +11,9 @@ import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
+import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
+import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
+import type { AnswerStart } from '../../features/tasks/answer/useAnswerFlow';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
 /** The monitor saves the language and theme on the PC's board; the sample-data mode has no board. */
@@ -40,8 +42,14 @@ export function MonitorView(props: MonitorViewProps) {
     answerSheet.preload().catch(() => {});
   }, []);
   // The sheet is drawn outside the cards: a card that moves or leaves does not close it.
-  const [answering, setAnswering] = useState<{ projectId: string; taskId: number } | null>(null);
+  const [answering, setAnswering] = useState<{ start: AnswerStart; key: number } | null>(null);
   const [answerOpen, setAnswerOpen] = useState(false);
+  const book = props.answerController?.book;
+  const projectId = props.projectId ?? '';
+  const openAnswer = (start: AnswerStart) => {
+    setAnswering((current) => ({ start, key: (current?.key ?? 0) + 1 }));
+    setAnswerOpen(true);
+  };
   const { summary, todo, doing, done, freshness } = props;
   const ordered = {
     todo: sortLane(todo),
@@ -81,28 +89,17 @@ export function MonitorView(props: MonitorViewProps) {
           <span>{t('monitor.status.done')}</span>
         </button>
       </section>
-      {props.answerController &&
-        (() => {
-          const drafts = props.answerController.orphanDrafts([...todo, ...doing, ...done]);
-          return drafts.length > 0 ? (
-            <section className="monitor-stale-drafts" aria-label={t('monitor.staleDrafts')}>
-              {drafts.map((draft) => (
-                <article key={draft.key} role="alert" className="monitor-stale-drafts__item">
-                  <p>{t('monitor.staleDraft', { project: draft.projectName, id: draft.taskId })}</p>
-                  {draft.choiceId && <p>{t('monitor.staleChoice', { choice: draft.choiceId })}</p>}
-                  {draft.text && <pre>{draft.text}</pre>}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => props.answerController?.clearOrphanDraft(draft.key)}
-                  >
-                    {t('monitor.clearStaleDraft')}
-                  </Button>
-                </article>
-              ))}
-            </section>
-          ) : null;
-        })()}
+      {props.answerController && props.projectId && props.questions && (
+        <QuestionBand
+          questions={props.questions.filter((question) => !book?.isSent(projectId, question.id))}
+          held={new Set(book?.heldIds(projectId))}
+          sendableCount={book?.sendableIds(projectId).length ?? 0}
+          variant="phone"
+          onOpen={(questionId) => openAnswer({ kind: 'question', questionId })}
+          onAnswer={() => openAnswer({ kind: 'resume' })}
+          onReview={() => openAnswer({ kind: 'review' })}
+        />
+      )}
       <TaskList
         ref={listRef}
         id={listId}
@@ -115,22 +112,24 @@ export function MonitorView(props: MonitorViewProps) {
           props.onOpenDetail?.(item, tab);
         }}
         onOpenAnswer={(item) => {
-          setAnswering({ projectId: item.projectId, taskId: item.task.id });
-          setAnswerOpen(true);
+          const first = firstQuestionOf(props.questions ?? [], item.task.id);
+          openAnswer(first ? { kind: 'question', questionId: first.id } : { kind: 'resume' });
         }}
         answerController={props.answerController}
       />
-      {props.answerController && answering && (
+      {props.answerController && props.projectId && answering && (
         <Suspense fallback={null}>
           <answerSheet.Component
-            key={`${answering.projectId}:${answering.taskId}`}
+            key={answering.key}
+            projectId={props.projectId}
+            questions={props.questions ?? []}
             items={tasks}
-            projectId={answering.projectId}
-            taskId={answering.taskId}
+            start={answering.start}
             open={answerOpen}
             onOpenChange={setAnswerOpen}
             controller={props.answerController}
             resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
+            onSent={props.onAnswersSent ?? (() => {})}
           />
         </Suspense>
       )}

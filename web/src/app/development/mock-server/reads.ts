@@ -1,6 +1,7 @@
 import {
   epicDetailEvents,
   ndjson,
+  questionOf,
   requestedSections,
   summaryOfBoard,
   taskDetailEvents,
@@ -13,7 +14,7 @@ import { boardView, error, json, ndjsonResponse, projectNotFound, wireBoard } fr
 export const SLOW_MS = 60 * 60 * 1000;
 
 const READ_PATH =
-  /^\/api\/projects\/([^/]+)\/(board|summary|archive|(?:tasks|epics)\/[^/]+\/detail)$/;
+  /^\/api\/projects\/([^/]+)\/(board|summary|archive|qa\/[^/]+|(?:tasks|epics)\/[^/]+\/detail)$/;
 
 /** The board, the Summary, the archive and the Detail streams of a project. */
 export const readRoutes: Routes = (context, request) => {
@@ -34,6 +35,27 @@ export const readRoutes: Routes = (context, request) => {
       version: archive.version,
       cursor: archive.cursor,
       tasks: archive.tasks,
+    });
+  }
+
+  if (rest.startsWith('qa/')) {
+    const id = decodeURIComponent(rest.slice(3));
+    const task = found.tasks.find((item) => questionOf(item)?.id === id);
+    if (!task) return error(404, 'question_not_found', `question ${id} not found.`, 'Refresh.');
+    return json(200, {
+      question: {
+        id,
+        requestId: id,
+        kind: 'task',
+        question: task.pendingReason ?? '',
+        choices: task.pendingChoices,
+        recommendedChoiceId: null,
+        approvingChoiceIds: [],
+        answer: null,
+        status: 'open',
+        referencedBy: [task.id],
+        createdAt: task.agentStatusChangedAt,
+      },
     });
   }
 

@@ -4,8 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MonitorClientError } from '../../src/pages/monitor/client';
 import { MonitorProject } from '../../src/pages/monitor/MonitorProject';
 import { selectLocale } from '../../src/shared/i18n';
-import type { AnswerWriter } from '../../src/features/tasks/answer/model/answer';
-import { makeTask } from '../fixtures';
+import type { AnswersWriter, QuestionReader } from '../../src/features/tasks/answer/model/qa';
 import {
   changed,
   FakeAdapter,
@@ -26,16 +25,30 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const readQuestion: QuestionReader = async (_projectId, id) => ({
+  id,
+  question: 'Which one?',
+  choices: [{ id: 'a', label: 'A' }],
+  recommendedChoiceId: null,
+  status: 'open',
+  referencedBy: [1],
+});
+
 const tick = (ms = 0) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
 
 function mount(
-  extra: { onNotFound?: () => void; useBuildReload?: () => void; writeAnswer?: AnswerWriter } = {},
+  extra: {
+    onNotFound?: () => void;
+    useBuildReload?: () => void;
+    writeAnswers?: AnswersWriter;
+  } = {},
 ) {
   return render(
     <MonitorProject
       projectId={P}
       adapter={adapter}
-      writeAnswer={extra.writeAnswer ?? (async () => Promise.reject(new Error('no answer')))}
+      readQuestion={readQuestion}
+      writeAnswers={extra.writeAnswers ?? (async () => Promise.reject(new Error('no answer')))}
       useBuildReload={extra.useBuildReload ?? (() => undefined)}
       onNotFound={extra.onNotFound ?? (() => undefined)}
     />,
@@ -171,13 +184,22 @@ describe('MonitorProject', () => {
       pendingRequestId: 'r1',
       pendingReason: 'Which one?',
       pendingChoices: [{ id: 'a', label: 'A' }],
+      questionIds: ['r1'],
+      openQuestionIds: ['r1'],
     });
+    summary.questions = [
+      {
+        id: 'r1',
+        requestId: 'r1',
+        kind: 'task',
+        title: 'Which one?',
+        recommendedChoiceId: null,
+        referencedBy: [1],
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ];
     return summary;
   };
-  const answered = () => ({
-    task: makeTask({ id: 1, taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null }),
-    changed: true,
-  });
 
   it('does not hold the list while the answer sheet is open with input: a change is read at once', async () => {
     mount();
@@ -189,7 +211,7 @@ describe('MonitorProject', () => {
         name: 'Answer the question',
       }),
     );
-    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
     expect(adapter.summaryCalls).toHaveLength(1);
 
     // The sheet is open and has input; a change that arrives now is not made to wait.
@@ -201,8 +223,8 @@ describe('MonitorProject', () => {
   });
 
   it('holds the list only while the answer is on its way', async () => {
-    const writeAnswer = vi.fn(() => new Promise<never>(() => undefined));
-    mount({ writeAnswer });
+    const writeAnswers = vi.fn(() => new Promise<never>(() => undefined));
+    mount({ writeAnswers });
     await openAndLoad(pendingSummary());
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
     await user.click(
@@ -210,9 +232,10 @@ describe('MonitorProject', () => {
         name: 'Answer the question',
       }),
     );
-    await user.type(await screen.findByRole('textbox'), 'Go with A');
-    await user.click(screen.getByRole('button', { name: 'Send' }));
-    expect(writeAnswer).toHaveBeenCalledTimes(1);
+    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(await screen.findByRole('button', { name: 'Send all' }));
+    expect(writeAnswers).toHaveBeenCalledTimes(1);
 
     act(() =>
       adapter.handlers?.onChanged(changed(1, [{ resource: 'task', id: 1, facets: ['summary'] }])),
@@ -222,8 +245,8 @@ describe('MonitorProject', () => {
   });
 
   it('shows an answer at once: the Summary is read again without waiting for the hold', async () => {
-    const writeAnswer = vi.fn(async () => answered());
-    mount({ writeAnswer });
+    const writeAnswers = vi.fn(async () => undefined);
+    mount({ writeAnswers });
     await openAndLoad(pendingSummary());
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
     await user.click(
@@ -231,10 +254,11 @@ describe('MonitorProject', () => {
         name: 'Answer the question',
       }),
     );
-    await user.type(await screen.findByRole('textbox'), 'Go with A');
-    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(await screen.findByRole('button', { name: 'Send all' }));
     await tick();
-    expect(writeAnswer).toHaveBeenCalledTimes(1);
+    expect(writeAnswers).toHaveBeenCalledTimes(1);
     expect(adapter.summaryCalls).toHaveLength(2);
   });
 
@@ -251,7 +275,7 @@ describe('MonitorProject', () => {
         name: 'Answer the question',
       }),
     );
-    await user.type(await screen.findByRole('textbox'), 'Go with A');
+    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
     expect(reloads.at(-1)).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Close the answer' }));
     await tick(500);

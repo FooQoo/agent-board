@@ -1,5 +1,10 @@
 import type { Board, Epic, Task } from '../../shared/api/contracts.ts';
-import type { DetailEvent, DetailSection, Summary } from '../../shared/data/api/contracts.ts';
+import type {
+  DetailEvent,
+  DetailSection,
+  Summary,
+  SummaryQuestion,
+} from '../../shared/data/api/contracts.ts';
 
 /**
  * Sample-data and test helpers: the Summary and the Detail streams a server would write for a
@@ -19,6 +24,23 @@ const documentVersion = (task: Pick<Task, 'body' | 'acceptance' | 'attachments'>
 const historyVersion = (task: Pick<Task, 'history'>) => digest(task.history);
 const epicVersion = (epic: Pick<Epic, 'body' | 'attachments'>) =>
   digest({ body: epic.body, attachments: epic.attachments });
+
+/**
+ * The sample data has no question files: a card's decision request stands for one open question,
+ * with the request's ID and the first line of its reason as the title.
+ */
+export function questionOf(task: Task): SummaryQuestion | null {
+  if (task.agentStatus !== 'pending' || !task.pendingRequestId || task.archivedAt) return null;
+  return {
+    id: task.pendingRequestId,
+    requestId: task.pendingRequestId,
+    kind: 'task',
+    title: (task.pendingReason ?? '').split('\n')[0]?.slice(0, 200) ?? '',
+    recommendedChoiceId: null,
+    referencedBy: [task.id],
+    createdAt: task.agentStatusChangedAt,
+  };
+}
 
 export function summaryOfBoard(board: Board): Summary {
   const summary: Summary = {
@@ -49,7 +71,16 @@ export function summaryOfBoard(board: Board): Summary {
         detailVersions: { document: documentVersion(task), history: historyVersion(task) },
       };
       if (task.onboardingSample) entry.onboardingSample = task.onboardingSample;
+      const asked = questionOf(task);
+      if (asked) {
+        entry.questionIds = [asked.id];
+        entry.openQuestionIds = [asked.id];
+      }
       return entry;
+    }),
+    questions: board.tasks.flatMap((task) => {
+      const asked = questionOf(task);
+      return asked ? [asked] : [];
     }),
     epics: board.epics.map((epic) => ({
       id: epic.id,

@@ -3,7 +3,11 @@ import type { ProjectId } from '../../shared/api/contracts';
 import { DataProvider, usePresentationHold, useSummary } from '../../shared/data/react';
 import type { ConnectionState, DataAdapter } from '../../shared/data/core';
 import { applyPreferenceEvent, syncPreferences } from '../../shared/preferences';
-import type { AnswerWriter } from '../../features/tasks/answer/model/answer';
+import type {
+  AnswersWriter,
+  BandQuestion,
+  QuestionReader,
+} from '../../features/tasks/answer/model/qa';
 import { monitorErrorStatus, monitorReadResolvers } from './client';
 import type { MonitorViewProps } from './contracts';
 import { MonitorView } from './View';
@@ -20,7 +24,9 @@ export interface MonitorProjectProps {
   projectId: ProjectId;
   /** How this project is read. Stable for the life of the screen. */
   adapter: DataAdapter;
-  writeAnswer: AnswerWriter;
+  /** Reads one question of the project for the answer sheet. */
+  readQuestion: QuestionReader;
+  writeAnswers: AnswersWriter;
   useBuildReload: BuildReloadHook;
   /** The project is gone: the screen is replaced by the error screen, which also ends the stream. */
   onNotFound(): void;
@@ -53,14 +59,15 @@ export function MonitorProject(props: MonitorProjectProps) {
 
 function MonitorBoard({
   projectId,
-  writeAnswer,
+  readQuestion,
+  writeAnswers,
   useBuildReload,
   onNotFound,
   build,
   stream,
 }: MonitorProjectProps & { build: string | null; stream: ConnectionState }) {
   const summary = useSummary(projectId);
-  const answers = useMonitorInteractions({ writeAnswer });
+  const answers = useMonitorInteractions();
   const [detailOpen, setDetailOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
@@ -71,7 +78,7 @@ function MonitorBoard({
   // drawer, a send, and any input left in memory, which a reload would lose.
   usePresentationHold(detailOpen, 'drawer');
   usePresentationHold(answers.sending, 'answer');
-  useBuildReload(build, answers.locked || detailOpen || answers.hasAnyDraft());
+  useBuildReload(build, answers.sending || detailOpen || answers.held);
 
   const gone = monitorErrorStatus(summary.error) === 404;
   useEffect(() => {
@@ -84,9 +91,23 @@ function MonitorBoard({
   }, [data]);
 
   const tasks = useMemo(() => (data === null ? [] : monitorTasksOf(data)), [data]);
+  const questions = useMemo<BandQuestion[] | null>(
+    () =>
+      data?.questions?.map(({ id, title, referencedBy }) => ({ id, title, referencedBy })) ?? null,
+    [data],
+  );
+  const { book } = answers;
+  // A held question that leaves the open list is closed; reading it says why.
   useEffect(() => {
-    answers.reconcileTasks(tasks);
-  }, [answers.reconcileTasks, tasks]);
+    if (questions === null) return;
+    for (const id of book.reconcile(projectId, questions))
+      readQuestion(projectId, id).then(
+        (detail) => {
+          if (detail.status !== 'open') book.markClosed(projectId, id, detail.status);
+        },
+        () => {},
+      );
+  }, [book, projectId, questions, readQuestion]);
 
   const freshness = monitorFreshness({
     state: summary.state,
@@ -96,9 +117,7 @@ function MonitorBoard({
     stream,
     lastFetchedAt,
   });
-  const visible = selectMonitorTasks(
-    answers.tasksWithSavedAnswers(tasks, freshness.state === 'fresh'),
-  );
+  const visible = selectMonitorTasks(tasks);
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -117,14 +136,11 @@ function MonitorBoard({
             done: visible.done.length,
           },
     ...visible,
-    answerController: {
-      ...answers,
-      onAnswered: (item, requestId, result) => {
-        answers.onAnswered(item, requestId, result);
-        // An answer is shown at once: the Summary is read again without waiting for the hold.
-        void summary.refresh();
-      },
-    },
+    answerController: { book, read: readQuestion, write: writeAnswers },
+    projectId,
+    questions: questions ?? undefined,
+    // Answers are shown at once: the Summary is read again without waiting for the hold.
+    onAnswersSent: () => void summary.refresh(),
     readResolvers: monitorReadResolvers,
     freshness,
     onRefresh: () => void refresh(),

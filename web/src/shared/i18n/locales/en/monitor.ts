@@ -18,11 +18,6 @@ export const monitorEn = {
     epicPartial: 'Some epic details could not be loaded.',
     retry: 'Try again',
     drawer: { dismiss: 'Swipe down to close details' },
-    staleDrafts: 'Unsent answers',
-    staleDraft:
-      'The question on {{project}} #{{id}} is no longer available. This answer was kept and will not be sent.',
-    staleChoice: 'Selected choice: {{choice}}',
-    clearStaleDraft: 'Discard answer draft',
     completedUnknown: 'Completion time unknown',
     lastFetched: 'Last updated {{time}}',
     status: {

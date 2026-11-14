@@ -13,8 +13,28 @@ import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice'
 import { guideLayer } from './onboarding/lazyGuide';
 import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
+import { QuestionBand } from '../features/tasks/answer/QuestionBand';
 import type { EpicRef, ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
+
+/** The board's band of unanswered questions, with the answers held for the project. */
+function boardBand(model: AppControllerModel) {
+  const { answers, activeId, boardData } = model;
+  if (boardData === null || !isProjectId(activeId)) return null;
+  const { book } = answers;
+  const questions = boardData.questions.filter((question) => !book.isSent(activeId, question.id));
+  return (
+    <QuestionBand
+      questions={questions}
+      held={new Set(book.heldIds(activeId))}
+      sendableCount={book.sendableIds(activeId).length}
+      variant="board"
+      onOpen={(questionId) => answers.open({ kind: 'question', questionId })}
+      onAnswer={() => answers.open({ kind: 'resume' })}
+      onReview={() => answers.open({ kind: 'review' })}
+    />
+  );
+}
 
 /** The epic label of the task detail's epic tab heading. */
 const renderEpicLabel = (epic: EpicRef) => <EpicBadge epic={epic} className="detail__epic-label" />;
@@ -125,8 +145,9 @@ export function BoardWorkspace({
             onRetry={retry}
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
-            answers={model.answerSession}
-            onAnswer={model.openAnswer}
+            answers={model.answers.book}
+            onAnswer={model.answers.openForTask}
+            band={boardBand(model)}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}
             onReorder={actions.onReorder}
@@ -208,8 +229,8 @@ export function BoardWorkspace({
             !isMockTask
           }
           tasks={tasks}
-          answers={model.answerSession}
-          onAnswer={model.openAnswer}
+          answers={model.answers.book}
+          onAnswer={model.answers.openForTask}
           onAnswerChanged={actions.onAnswerChanged}
         />
       </Suspense>

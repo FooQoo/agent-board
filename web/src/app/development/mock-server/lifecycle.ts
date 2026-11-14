@@ -1,5 +1,6 @@
 import type { Assignee, ColumnName, Task } from '../../../shared/api/contracts.ts';
 import type { MockBoard } from './boards.ts';
+import { answerQuestion } from './answers.ts';
 import type { MockContext, MockResponse, RouteRequest, Routes } from './types.ts';
 import {
   error,
@@ -230,53 +231,4 @@ function moveTask(
   };
   context.replaceTasks(found, [updated], [taskChangeOf(task, updated, ['summary', 'history'])]);
   return json(200, { task: updated, changed: true });
-}
-
-/** `POST .../qa/answers` with one answer: the mock keeps one question per waiting card. */
-function answerQuestion(
-  context: MockContext,
-  found: MockBoard,
-  body: Record<string, unknown>,
-): MockResponse {
-  const answers = Array.isArray(body.answers) ? body.answers : [];
-  const input = answers[0] as Record<string, unknown> | undefined;
-  if (answers.length !== 1 || typeof input !== 'object' || input === null)
-    return error(422, 'validation', 'invalid answers.', 'Send one answer.');
-  const id = input.questionId;
-  const task = found.tasks.find((t) => t.agentStatus === 'pending' && t.pendingRequestId === id);
-  if (!task)
-    return error(404, 'question_not_found', `question ${String(id)} not found.`, 'Refresh.');
-  const choiceId = typeof input.choiceId === 'string' ? input.choiceId : undefined;
-  const text = typeof input.text === 'string' ? input.text.trim() : '';
-  if (text.length > 2000)
-    return error(
-      422,
-      'validation',
-      'invalid text.',
-      'An answer up to 2,000 characters is allowed.',
-    );
-  if (choiceId === undefined && text === '')
-    return error(422, 'validation', 'answer_empty.', 'Choose an option or write an answer.');
-  const choice =
-    choiceId === undefined ? undefined : task.pendingChoices.find((item) => item.id === choiceId);
-  if (choiceId !== undefined && !choice)
-    return error(
-      422,
-      'request_choice_unknown',
-      'the choice is not part of this request.',
-      'Choose one of the options of the request.',
-    );
-  const at = context.now();
-  const updated: Task = {
-    ...task,
-    agentStatus: 'idle',
-    pendingReason: null,
-    pendingRequestId: null,
-    pendingChoices: [],
-    updatedAt: at,
-    agentStatusChangedAt: at,
-    history: [...task.history, { at, reason: [choice?.label, text].filter(Boolean).join(' — ') }],
-  };
-  context.replaceTasks(found, [updated], [taskChangeOf(task, updated, ['summary', 'history'])]);
-  return json(200, { questions: [{ id, status: 'answered' }] });
 }

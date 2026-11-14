@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
+import { AnswerBook } from '../features/tasks/answer/model/answerBook';
+import type { BandQuestion } from '../features/tasks/answer/model/qa';
+import {
+  SAMPLE_PROJECT,
+  sampleBook,
+  sampleQuestions,
+} from '../features/tasks/answer/questionSamples';
 import { initSession } from './model/projectSession';
 import type { AppControllerModel, AppView } from './contracts';
 import { detailFixtureOf, withDetailFixture } from '../features/tasks/detail/detailFixture';
@@ -78,7 +85,13 @@ const boardData = {
   epics: [epic],
   problems: [],
   epicTaskCounts: { release: { todo: 0, doing: 1, done: 0 } },
+  questions: [] as BandQuestion[],
 };
+
+/** The answer side of the model, with a book that may hold answers. */
+function answersOf(book: AnswerBook): AppControllerModel['answers'] {
+  return { book, target: null, open: () => {}, openForTask: () => {}, close: () => {} };
+}
 
 function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppControllerModel {
   const session = { ...initSession(project.id, task.id), viewMode, epicSelectedId: 'release' };
@@ -116,18 +129,7 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
       lastSyncedAt: null,
       reload: () => {},
     },
-    answerSession: {
-      stateStore: undefined,
-      writeAnswer: async () => {
-        throw new Error('No decision request is active in this Story.');
-      },
-      onAnswered: () => {},
-      wasAnswered: () => false,
-      withSavedAnswers: (_id: string, tasks: typeof boardData.tasks) => tasks,
-      reconcileTasks: () => {},
-      clearTask: () => {},
-      hasSavedAnswers: () => false,
-    },
+    answers: answersOf(new AnswerBook()),
     tasks: boardTasks,
     selected: task,
     archivedSelected: task,
@@ -162,9 +164,6 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
     setRestoreFailure: () => {},
     projectName: () => project.name,
     viewMode,
-    answerTarget: null,
-    openAnswer: () => {},
-    closeAnswer: () => {},
     docsProjectId: null,
     setDocsProjectId: () => {},
     subscribeDocs: () => () => {},
@@ -303,3 +302,86 @@ export const BoardErrorWholeScreen: Story = {
   },
 };
 export const Disconnected: Story = { args: { model: makeStateModel('disconnected') } };
+
+/** The board of the approved mock: five questions wait, from five cards and one with none. */
+function makeQuestionModel(held: number, empty = false): AppControllerModel {
+  const base = makeModel();
+  const questions = empty ? [] : sampleQuestions('ja');
+  const waiting = (id: number) =>
+    questions.filter((question) => question.referencedBy.includes(id)).map((q) => q.id);
+  const card = (
+    id: number,
+    title: string,
+    taskStatus: 'todo' | 'doing' | 'done',
+    agentStatus: 'idle' | 'pending' = 'idle',
+  ) => {
+    const open = waiting(id);
+    return {
+      ...makeBoardTask(id, title, taskStatus, open.length > 0 ? 'pending' : agentStatus),
+      openQuestionIds: open,
+      questionIds: open,
+    };
+  };
+  const tasks = [
+    card(14, 'Prepare the Windows build', 'todo'),
+    card(15, 'Write the setup guide', 'todo'),
+    card(16, 'Refine the empty board', 'todo'),
+    card(11, 'APIリファクタリング', 'doing'),
+    card(12, 'Restore a board from JSON', 'doing'),
+    card(13, 'Check the board display', 'doing'),
+    card(9, 'Return the card list as JSON', 'done'),
+    card(8, 'Initialize the board', 'done'),
+  ];
+  const project = makeProject({ id: SAMPLE_PROJECT, name: 'agent-board' });
+  const data = { ...boardData, tasks, questions };
+  return {
+    ...base,
+    session: { ...base.session, projectId: SAMPLE_PROJECT },
+    projects: { ...base.projects, projects: [project] },
+    board: { ...base.board, board: data },
+    activeId: SAMPLE_PROJECT,
+    boardData: data,
+    tasks,
+    selected: null,
+    detailShown: false,
+    answers: answersOf(sampleBook(questions, held)),
+  } as unknown as AppControllerModel;
+}
+
+/** The band above the lanes, with five questions to answer. */
+export const QuestionBandOpen: Story = {
+  args: { model: makeQuestionModel(0) },
+  globals: { locale: 'ja' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('region', { name: '未回答の質問' })).toBeInTheDocument();
+    await expect(canvas.getByText('未回答の質問 2 件')).toBeInTheDocument();
+  },
+};
+
+/** Two answers held: the band and the card say so. */
+export const QuestionBandHeld: Story = {
+  args: { model: makeQuestionModel(2) },
+  globals: { locale: 'ja' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: '確認して送る' })).toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: '回答を続ける' })).toBeInTheDocument();
+  },
+};
+
+/** No questions: the band keeps its place above the lanes. */
+export const QuestionBandEmpty: Story = {
+  args: { model: makeQuestionModel(0, true) },
+  globals: { locale: 'ja' },
+  play: async ({ canvasElement }) => {
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getByRole('status')).toHaveTextContent('未回答の質問はありません');
+  },
+};
+
+/** The board with its band in dark mode. */
+export const QuestionBandDark: Story = {
+  args: { model: makeQuestionModel(2) },
+  globals: { locale: 'ja', mode: 'dark' },
+};

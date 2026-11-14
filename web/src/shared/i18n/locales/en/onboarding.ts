@@ -37,7 +37,7 @@ export const onboardingEn = {
       },
       pending: {
         title: 'AI needs your decision',
-        body: 'Choose an option and press Send. When your answer arrives, AI resumes the work.',
+        body: 'Choose an option, then review your answer and press Send all. When your answer arrives, AI resumes the work.',
       },
       resumed: {
         title: 'Your answer arrived and AI resumed',

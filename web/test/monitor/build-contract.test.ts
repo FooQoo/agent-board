@@ -188,7 +188,9 @@ const bytes = (folder: string, names: string[]) =>
 // The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
 // The board's budget is 700 KB: the Docs entry, the condition checkboxes of the details, the preview's strings and entrances,
 // and the answer dialog's strings (all languages load with the page) fit in the room that removing the old answer form left.
-const FIRST_LOAD_BUDGET = { board: 700_000, monitor: 520_000 };
+// The band of unanswered questions above the lanes and the page's book of held answers take about 3.7 KB over that;
+// the dialog's run through the questions and its strings load on first use.
+const FIRST_LOAD_BUDGET = { board: 705_000, monitor: 520_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 // The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
 const VIRTUAL_CHUNK_BUDGET = 40_000;

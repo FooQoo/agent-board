@@ -82,6 +82,26 @@
               "id": "app-board-workspace--disconnected",
               "states": ["board remains visible while live updates are disconnected"],
               "interaction": false
+            },
+            {
+              "id": "app-board-workspace--question-band-open",
+              "states": ["question band above the lanes", "cards with unanswered questions"],
+              "interaction": true
+            },
+            {
+              "id": "app-board-workspace--question-band-held",
+              "states": ["answers held", "review and send", "continue answering"],
+              "interaction": true
+            },
+            {
+              "id": "app-board-workspace--question-band-empty",
+              "states": ["empty band keeps its place"],
+              "interaction": true
+            },
+            {
+              "id": "app-board-workspace--question-band-dark",
+              "states": ["band in dark mode"],
+              "interaction": false
             }
           ]
         }

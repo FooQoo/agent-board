@@ -7,6 +7,8 @@ import {
   docsDialog,
 } from './dialogs/lazyDialogs';
 import type { AppDialogsProps } from './contracts';
+import { fetchQuestion } from '../features/tasks/api/read';
+import { answerQuestions } from '../features/tasks/api/edit';
 
 export function AppDialogs({
   model,
@@ -23,7 +25,7 @@ export function AppDialogs({
   const dialog = session.dialog;
   const operation = session.operation;
   const bulkArchive = session.bulkArchive;
-  const answerTarget = model.answerTarget;
+  const answerTarget = model.answers.target;
 
   return (
     <>
@@ -52,15 +54,15 @@ export function AppDialogs({
       {answerTarget !== null ? (
         <Suspense fallback={null}>
           <decisionAnswerDialog.Component
-            key={`${answerTarget.projectId}:${answerTarget.taskId}`}
             projectId={answerTarget.projectId}
-            taskId={answerTarget.taskId}
-            task={tasks.find((task) => task.id === answerTarget.taskId) ?? null}
-            answers={model.answerSession}
-            operations={model.operations}
-            syncedAt={board.lastSyncedAt}
-            onAnswerChanged={() => model.refreshProject(answerTarget.projectId)}
-            onClose={model.closeAnswer}
+            questions={boardData?.questions ?? []}
+            tasks={tasks}
+            book={model.answers.book}
+            start={answerTarget.start}
+            read={fetchQuestion}
+            write={answerQuestions}
+            onSent={() => model.refreshProject(answerTarget.projectId)}
+            onClose={model.answers.close}
           />
         </Suspense>
       ) : null}

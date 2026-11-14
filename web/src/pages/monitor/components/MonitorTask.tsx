@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { formatShort } from '../../../features/tasks/model/format';
-import { TaskCardContent } from '../../../features/tasks/card/TaskCard';
+import { TaskCardContent, waitsOnQuestion } from '../../../features/tasks/card/TaskCard';
 import { StatusLabel } from '../../../features/tasks/status/StatusLabel';
 import { AcceptanceProgress } from '../../../features/tasks/acceptance/AcceptanceProgress';
 import { DecisionAnswerButton } from '../../../features/tasks/answer/DecisionAnswerButton';
@@ -58,7 +58,7 @@ export function MonitorTask({
       </span>
       <TaskCardContent
         task={task}
-        showPendingReason={pending && task.pendingRequestId === null}
+        showPendingReason={pending && !waitsOnQuestion(task)}
         titleClassName="monitor-card__title"
         reasonClassName="monitor-card__reason"
         titleActionDisabled={!onOpenDetail}
@@ -83,10 +83,12 @@ export function MonitorTask({
               : formatShort(task.agentStatusChangedAt)}
         </span>
       </span>
-      {pending && task.pendingRequestId !== null && answerController && (
+      {pending && waitsOnQuestion(task) && answerController && (
         <div className="monitor-card__request">
           <DecisionAnswerButton
-            continuing={answerController.hasDraft(item.projectId, task.id)}
+            continuing={(task.openQuestionIds ?? []).some(
+              (id) => answerController.book.held(item.projectId, id) !== null,
+            )}
             taskId={task.id}
             onClick={() => onOpenAnswer?.(item)}
           />

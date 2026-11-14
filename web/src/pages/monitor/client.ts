@@ -1,11 +1,13 @@
 import { i18n } from '../../shared/i18n';
 import type { MonitorReadResolvers } from './contracts';
 import type { Task, ProjectId } from '../../shared/api/contracts';
-import {
-  type AnswerInput,
-  type AnswerResult,
-  answersBody,
-} from '../../features/tasks/answer/model/answer';
+import { type AnswerItem, answersBody } from '../../features/tasks/answer/model/qa';
+
+/** The changed card a write returns. */
+interface AnswerResult {
+  task: Task;
+  changed: boolean;
+}
 import { writeFailure } from '../../shared/api/writeErrors';
 import { attachmentSegment, epicSegment, projectSegment, taskSegment } from './segments';
 import {
@@ -34,21 +36,20 @@ export {
   type MonitorSession,
 } from './session';
 
-export { createMonitorAdapter, monitorErrorStatus } from './adapter';
+export { createMonitorAdapter, monitorErrorStatus, readMonitorQuestion } from './adapter';
 
 function taskPath(projectId: ProjectId, taskId: number, rest: string) {
   return `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/tasks/${taskSegment(taskId)}/${rest}`;
 }
 
-function answerRequest(
+function answerQuestions(
   projectId: ProjectId,
-  _taskId: number,
-  input: AnswerInput,
+  answers: AnswerItem[],
   options: MonitorRequestOptions = {},
 ): Promise<unknown> {
   const path = `${MONITOR_API_BASE}projects/${projectSegment(projectId)}/qa/answers`;
   // The answer route returns the recorded questions, not a task; only success is read.
-  return writeTask('answer', 'POST', path, answersBody(input), options, false);
+  return writeTask('answer', 'POST', path, answersBody(answers), options, false);
 }
 
 /** Checks (`done: true`) or unchecks one acceptance condition, as the person. */
@@ -159,6 +160,8 @@ async function writeTask(
       task?: Task & { epicId?: string | null };
       changed?: boolean;
       error?: ErrorBody['error'];
+      questionAnswered?: string[];
+      questionWithdrawn?: string[];
     } = {};
     try {
       body = (await response.json()) as typeof body;
@@ -173,6 +176,7 @@ async function writeTask(
         response.status,
         body.error?.code ?? null,
         body.error?.message ?? null,
+        body,
       );
     }
     if (body.task === undefined) return null;
@@ -185,7 +189,7 @@ async function writeTask(
 }
 
 export const monitorClient = {
-  answerRequest,
+  answerQuestions,
   setAcceptance,
   openSession,
   unlock,

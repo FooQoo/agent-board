@@ -1,7 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { expect, within } from 'storybook/test';
 import { makeMonitorTask, makeProject, makeTask } from '../../../../.storybook/support/fixtures';
+import type { BandQuestion } from '../../../features/tasks/answer/model/qa';
+import {
+  SAMPLE_PROJECT,
+  sampleQuestions,
+  sampleReader,
+} from '../../../features/tasks/answer/questionSamples';
 import { useMonitorInteractions } from '../hooks/useMonitorInteractions';
 import { MonitorView } from '../View';
 import type { MonitorViewProps } from '../contracts';
@@ -18,43 +25,87 @@ type MonitorGalleryVariant =
   | 'stale'
   | 'section-headers'
   | 'answer'
-  | 'answer-continuing';
+  | 'answer-continuing'
+  | 'band'
+  | 'band-empty';
 
 // The Story-ID collector reads the first `title:` literal of a file, so this one is kept out of it.
 const ANSWER_TITLE = 'API refactoring';
-const answerTask = makeTask({
-  id: 11,
-  title: ANSWER_TITLE,
-  taskStatus: 'doing',
-  agentStatus: 'pending',
-  pendingReason: 'How much compatibility should v2 keep?',
-  pendingRequestId: 'request-11',
-  pendingChoices: [
-    { id: 'keep', label: 'Keep compatibility' },
-    { id: 'break', label: 'Allow the breaking change' },
-  ],
-});
 
-/** One decision card with the monitor's answer button; with `continuing` an answer is already started. */
-function AnswerCard({ continuing }: { continuing: boolean }) {
-  const project = useMemo(() => makeProject(), []);
+/** A card of the mock's board; with questions referring to it, it waits for them. */
+function questionCard(
+  id: number,
+  title: string,
+  taskStatus: 'todo' | 'doing' | 'done',
+  questions: readonly BandQuestion[],
+) {
+  const open = questions.filter((q) => q.referencedBy.includes(id)).map((q) => q.id);
+  return {
+    ...makeTask({
+      id,
+      title,
+      taskStatus,
+      agentStatus: open.length > 0 ? 'pending' : 'idle',
+      pendingReason: open.length > 0 ? 'How much compatibility should v2 keep?' : null,
+      pendingRequestId: open.length > 0 ? `request-${id}` : null,
+    }),
+    openQuestionIds: open,
+    questionIds: open,
+  };
+}
+
+/**
+ * The monitor with questions waiting. `answer`: one card with its button. `band`: the mock's board
+ * under the band of five questions; `band-empty`: the same board with none.
+ */
+function QuestionScreen({ variant }: { variant: MonitorGalleryVariant }) {
+  const { i18n } = useTranslation();
+  const project = useMemo(() => makeProject({ id: SAMPLE_PROJECT, name: 'agent-board' }), []);
   const answerController = useMonitorInteractions();
-  const { stateStore } = answerController;
+  const { book } = answerController;
+  const questions = useMemo(
+    () => (variant === 'band-empty' ? [] : sampleQuestions(i18n.language)),
+    [variant, i18n.language],
+  );
+  useMemo(() => book.reconcile(SAMPLE_PROJECT, questions), [book, questions]);
   useEffect(() => {
-    if (!continuing) return;
-    const key = `${project.id}:${answerTask.id}:request-11` as const;
-    stateStore.getSnapshot(key);
-    stateStore.update(key, (state) => ({ ...state, text: 'Keep it until v3.' }));
-  }, [continuing, project.id, stateStore]);
+    if (variant !== 'answer-continuing') return;
+    book.setText(SAMPLE_PROJECT, 'Q-2', 'Keep it until v3.');
+  }, [variant, book]);
   const data = useMemo(() => createMonitorFixture(), []);
   const base = useMemo(() => createMonitorFixtureProps(data), [data]);
+  const card = (id: number, title: string, status: 'todo' | 'doing' | 'done') =>
+    makeMonitorTask(questionCard(id, title, status, questions), project);
+  const single = variant === 'answer' || variant === 'answer-continuing';
+  const lists = single
+    ? { todo: [], doing: [card(11, ANSWER_TITLE, 'doing')], done: [] }
+    : {
+        todo: [
+          card(14, 'Prepare the Windows build', 'todo'),
+          card(15, 'Write the setup guide', 'todo'),
+          card(16, 'Refine the empty board', 'todo'),
+        ],
+        doing: [
+          card(11, ANSWER_TITLE, 'doing'),
+          card(12, 'Restore a board from JSON', 'doing'),
+          card(13, 'Check the board display', 'doing'),
+        ],
+        done: [
+          card(9, 'Return the card list as JSON', 'done'),
+          card(8, 'Initialize the board', 'done'),
+        ],
+      };
   const props: MonitorViewProps = {
     ...base,
-    summary: { todo: 0, doing: 1, done: 0 },
-    todo: [],
-    doing: [makeMonitorTask(answerTask, project)],
-    done: [],
-    answerController,
+    ...lists,
+    summary: { todo: lists.todo.length, doing: lists.doing.length, done: lists.done.length },
+    answerController: {
+      book,
+      read: sampleReader(sampleQuestions(i18n.language, true)),
+      write: async () => {},
+    },
+    projectId: SAMPLE_PROJECT,
+    questions: single ? undefined : questions,
   };
   return withMonitorFixtureData(data, <MonitorView {...props} />);
 }
@@ -63,8 +114,13 @@ function MonitorGallery({ variant = 'loaded' }: { variant?: MonitorGalleryVarian
   const data = useMemo(() => createMonitorFixture(), []);
   const fixture = useMemo(() => createMonitorFixtureProps(data), [data]);
 
-  if (variant === 'answer' || variant === 'answer-continuing') {
-    return <AnswerCard continuing={variant === 'answer-continuing'} />;
+  if (
+    variant === 'answer' ||
+    variant === 'answer-continuing' ||
+    variant === 'band' ||
+    variant === 'band-empty'
+  ) {
+    return <QuestionScreen variant={variant} />;
   }
 
   if (variant === 'section-headers') {
@@ -192,4 +248,31 @@ export const AnswerContinuing: Story = {
   args: { variant: 'answer-continuing' },
   globals: { locale: 'en', mode: 'dark', accent: 'blue', width: 'phone-375' },
   play: answerPlay('Continue answering'),
+};
+
+/** The band of five questions under the counts, as the approved mock shows it. */
+export const QuestionBand: Story = {
+  args: { variant: 'band' },
+  globals: mobileJapaneseLight,
+  play: async ({ canvasElement }) => {
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getAllByRole('listitem')).toHaveLength(5);
+    await expect(within(band).getByRole('button', { name: 'まとめて答える' })).toBeVisible();
+  },
+};
+
+/** No questions: the band keeps its place and says so. */
+export const QuestionBandEmpty: Story = {
+  args: { variant: 'band-empty' },
+  globals: mobileJapaneseLight,
+  play: async ({ canvasElement }) => {
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getByRole('status')).toHaveTextContent('未回答の質問はありません');
+  },
+};
+
+/** The band in dark mode. */
+export const QuestionBandDark: Story = {
+  args: { variant: 'band' },
+  globals: { ...mobileJapaneseLight, mode: 'dark' },
 };

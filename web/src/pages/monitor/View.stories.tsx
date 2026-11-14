@@ -36,7 +36,10 @@ function ConnectedProjectStory() {
     <MonitorProject
       projectId={fixture.projectId}
       adapter={adapter}
-      writeAnswer={async () => {
+      readQuestion={async () => {
+        throw new Error('The story has no questions.');
+      }}
+      writeAnswers={async () => {
         throw new Error('The story takes no answers.');
       }}
       useBuildReload={() => undefined}

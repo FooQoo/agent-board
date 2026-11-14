@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { groupTasks } from '../../../features/tasks/model/board';
 import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
@@ -5,7 +6,7 @@ import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable } from '@dnd-kit/react/sortable';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { TaskAnswerController } from '../../../features/tasks/answer/model/useTaskAnswers';
+import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
@@ -23,9 +24,11 @@ export interface BoardProps {
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: TaskAnswerController;
+  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
+  /** The band of unanswered questions above the lanes. */
+  band?: ReactNode;
 }
 
 export function Board({
@@ -42,6 +45,7 @@ export function Board({
   answers,
   onAnswer,
   layoutRef,
+  band,
 }: BoardProps) {
   if (message !== null) {
     return (
@@ -87,7 +91,8 @@ export function Board({
         onReorder(task, others[index]?.id ?? null);
       }}
     >
-      <main className="board">
+      <main className={band ? 'board board--with-band' : 'board'}>
+        {band}
         <div className="board__lanes" ref={layoutRef}>
           {COLUMNS.map((column) => (
             <Lane

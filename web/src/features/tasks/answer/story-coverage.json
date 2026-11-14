@@ -10,20 +10,10 @@
           "stories": [
             {
               "id": "task-answer-decisionanswerdialogcontainer--open",
-              "states": ["question and options drawn from the card"],
+              "states": ["resume at the first open question", "answer", "review", "send all"],
               "interaction": true
             }
           ]
-        }
-      ]
-    },
-    {
-      "file": "features/tasks/answer/useDecisionRequestForm.ts",
-      "exports": [
-        {
-          "name": "useDecisionRequestForm",
-          "stories": [],
-          "exclusion": "Internal hook exercised through the DecisionAnswerDialogContainer and DecisionAnswerSheet interaction stories."
         }
       ]
     },
@@ -119,58 +109,58 @@
           "name": "DecisionAnswerDialog",
           "stories": [
             {
-              "id": "task-answer-decisionanswerdialog--normal",
-              "states": ["two columns", "first option focused", "send off", "clear"],
+              "id": "task-answer-decisionanswerdialog--step-two",
+              "states": [
+                "question 2 of 5",
+                "progress steps",
+                "previous and next",
+                "answered count"
+              ],
               "interaction": true
             },
             {
-              "id": "task-answer-decisionanswerdialog--filled",
-              "states": ["choice and note", "send on", "clear link"],
-              "interaction": false
-            },
-            {
-              "id": "task-answer-decisionanswerdialog--note-only",
-              "states": ["note alone is an answer"],
+              "id": "task-answer-decisionanswerdialog--answer-and-move",
+              "states": ["answer held between steps"],
               "interaction": true
             },
             {
-              "id": "task-answer-decisionanswerdialog--sending",
-              "states": ["sending", "input stopped", "close stopped"],
-              "interaction": false
-            },
-            {
-              "id": "task-answer-decisionanswerdialog--failed",
-              "states": ["failure band", "input kept", "retry"],
+              "id": "task-answer-decisionanswerdialog--review",
+              "states": ["review", "every question answered", "send all"],
               "interaction": true
             },
             {
-              "id": "task-answer-decisionanswerdialog--changed",
-              "states": ["question changed", "note kept"],
-              "interaction": false
+              "id": "task-answer-decisionanswerdialog--review-some",
+              "states": ["some questions unanswered", "partial send"],
+              "interaction": true
             },
             {
-              "id": "task-answer-decisionanswerdialog--withdrawn",
-              "states": ["question withdrawn", "close only"],
-              "interaction": false
+              "id": "task-answer-decisionanswerdialog--review-closed",
+              "states": ["answered elsewhere", "discard", "left out of the send"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--send-failed",
+              "states": ["failure", "answers kept"],
+              "interaction": true
             },
             {
               "id": "task-answer-decisionanswerdialog--japanese",
-              "states": ["Japanese"],
+              "states": ["Japanese step"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--japanese-review",
+              "states": ["Japanese review"],
               "interaction": false
             },
             {
               "id": "task-answer-decisionanswerdialog--dark",
-              "states": ["dark mode"],
+              "states": ["dark mode step"],
               "interaction": false
             },
             {
-              "id": "task-answer-decisionanswerdialog--long-question",
-              "states": ["left column scrolls by itself"],
-              "interaction": false
-            },
-            {
-              "id": "task-answer-decisionanswerdialog--narrow",
-              "states": ["stacked below 900px"],
+              "id": "task-answer-decisionanswerdialog--dark-review",
+              "states": ["dark mode review"],
               "interaction": false
             }
           ]
@@ -184,13 +174,13 @@
           "name": "DecisionAnswerSheet",
           "stories": [
             {
-              "id": "task-answer-decisionanswersheet--normal",
-              "states": ["bottom sheet", "first option focused", "send pinned"],
+              "id": "task-answer-decisionanswersheet--step",
+              "states": ["question 2 of 5", "dots", "two equal buttons"],
               "interaction": true
             },
             {
-              "id": "task-answer-decisionanswersheet--input-and-failed",
-              "states": ["failure band", "input kept", "retry"],
+              "id": "task-answer-decisionanswersheet--review",
+              "states": ["review", "send all", "closes when sent"],
               "interaction": true
             },
             {
@@ -199,18 +189,33 @@
               "interaction": true
             },
             {
-              "id": "task-answer-decisionanswersheet--changed",
-              "states": ["question changed"],
-              "interaction": false
+              "id": "task-answer-decisionanswersheet--send-failed",
+              "states": ["failure", "answers kept"],
+              "interaction": true
             },
             {
               "id": "task-answer-decisionanswersheet--withdrawn",
-              "states": ["question withdrawn", "no send"],
+              "states": ["question withdrawn", "input stopped"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswersheet--japanese",
+              "states": ["Japanese step"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswersheet--japanese-review",
+              "states": ["Japanese review"],
               "interaction": false
             },
             {
               "id": "task-answer-decisionanswersheet--dark",
-              "states": ["dark mode"],
+              "states": ["dark mode step"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-decisionanswersheet--dark-review",
+              "states": ["dark mode review"],
               "interaction": false
             }
           ]
@@ -239,6 +244,141 @@
               "interaction": false
             }
           ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/QuestionBand.tsx",
+      "exports": [
+        {
+          "name": "QuestionBand",
+          "stories": [
+            {
+              "id": "task-answer-questionband--items",
+              "states": ["five questions", "count", "hint", "open one", "answer them"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-questionband--held",
+              "states": ["answers held", "held mark", "continue", "review and send"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-questionband--long-title",
+              "states": ["two-line clamp", "fixed item size"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--empty",
+              "states": ["no questions", "same height"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--english",
+              "states": ["English"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--dark",
+              "states": ["dark mode"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--phone",
+              "states": ["phone items", "one button"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--phone-held",
+              "states": ["phone review button"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--phone-empty",
+              "states": ["phone empty"],
+              "interaction": false
+            },
+            {
+              "id": "task-answer-questionband--phone-dark",
+              "states": ["phone dark mode"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/AnswerProgress.tsx",
+      "exports": [
+        {
+          "name": "AnswerSteps",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerdialog--step-two",
+              "states": ["current step", "answered check", "review step"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--review",
+              "states": ["review current"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "AnswerDots",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswersheet--step",
+              "states": ["current dot", "answered dots"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--review",
+              "states": ["review current"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/AnswerReview.tsx",
+      "exports": [
+        {
+          "name": "AnswerReview",
+          "stories": [
+            {
+              "id": "task-answer-decisionanswerdialog--review",
+              "states": ["answered rows", "change"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--review-some",
+              "states": ["unanswered rows", "answer"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswerdialog--review-closed",
+              "states": ["closed row", "discard"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--review",
+              "states": ["sheet rows"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/answer/QuestionLoading.tsx",
+      "exports": [
+        {
+          "name": "QuestionLoading",
+          "stories": [],
+          "exclusion": "A placeholder the dialog and the sheet show for the moment a question is read; its failed state and retry are covered by the useAnswerFlow unit tests."
         }
       ]
     }

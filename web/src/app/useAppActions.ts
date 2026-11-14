@@ -169,7 +169,6 @@ export function useAppActions(model: AppControllerModel) {
           data.reason ?? '',
           data.fromStatus,
         );
-        if (dialog.target === 'done') model.answerSession.clearTask(projectId, dialog.task.id);
       } else if (dialog.kind === 'edit') {
         if (data.attachments || data.removedAttachmentIds?.length)
           await editTaskMultipart(projectId, dialog.task.id, {
@@ -191,7 +190,7 @@ export function useAppActions(model: AppControllerModel) {
       }
       refreshProject(projectId);
     },
-    [model.answerSession, refreshProject, session.dialog, session.operation],
+    [refreshProject, session.dialog, session.operation],
   );
 
   const confirmBulkArchive = useCallback(async () => {

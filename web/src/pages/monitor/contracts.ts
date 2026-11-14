@@ -1,11 +1,10 @@
 import type { Task, ProjectId } from '../../shared/api/contracts';
+import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import type {
-  AnswerFormKey,
-  AnswerFormStateStore,
-  AnswerResult,
-  AnswerWriter,
-} from '../../features/tasks/answer/model/answer';
-import type { OperationControls } from '../../shared/lib/operations/operations';
+  AnswersWriter,
+  BandQuestion,
+  QuestionReader,
+} from '../../features/tasks/answer/model/qa';
 
 export interface MonitorTask {
   projectId: ProjectId;
@@ -59,6 +58,11 @@ export interface MonitorViewProps {
   /** True while that request runs; the button waits. */
   refreshing?: boolean;
   answerController?: MonitorAnswerController;
+  /** The project on the screen, and its open questions for the band; no band without them. */
+  projectId?: ProjectId;
+  questions?: readonly BandQuestion[];
+  /** The answers were saved: the screen reads the project again without waiting. */
+  onAnswersSent?(): void;
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
@@ -66,33 +70,9 @@ export interface MonitorViewProps {
   onDetailOpenChange?(open: boolean): void;
 }
 
-export interface OrphanAnswerDraft {
-  key: AnswerFormKey;
-  projectName: string;
-  taskId: number;
-  text: string;
-  choiceId: string | null;
-}
-
+/** What the monitor needs to answer questions: its book of held answers and its two routes. */
 export interface MonitorAnswerController {
-  writeAnswer: AnswerWriter;
-  stateStore: AnswerFormStateStore;
-  operationsFor(projectId: ProjectId, taskId: number, requestId: string | null): OperationControls;
-  onAnswered(item: MonitorTask, requestId: string, result: AnswerResult): void;
-  markRequestStale(projectId: ProjectId, taskId: number, requestId: string): void;
-  orphanDrafts(tasks: readonly MonitorTask[]): OrphanAnswerDraft[];
-  clearOrphanDraft(key: AnswerFormKey): void;
-  reconcileTasks(tasks: readonly MonitorTask[]): void;
-  tasksWithSavedAnswers(tasks: readonly MonitorTask[], snapshotIsFresh: boolean): MonitorTask[];
-  wasAnswered(projectId: ProjectId, taskId: number, requestId: string | null): boolean;
-  /** Tells the controller whether the answer sheet of a task is open. */
-  setAnswerOpen(projectId: ProjectId, taskId: number, open: boolean): void;
-  /** True while any request of the task has unsent input, open or closed. */
-  hasDraft(projectId: ProjectId, taskId: number): boolean;
-  /** True while any task has unsent input. */
-  hasAnyDraft(): boolean;
-  /** True while an answer with input is open, or a send is in flight. */
-  locked: boolean;
-  /** True only while a send is in flight; the screen holds its updates for that. */
-  sending: boolean;
+  book: AnswerBook;
+  read: QuestionReader;
+  write: AnswersWriter;
 }

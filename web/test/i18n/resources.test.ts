@@ -18,7 +18,7 @@ describe('dialog texts', () => {
     expect(resources.ja.translation.editor.save).toBe('保存');
     expect(resources.ja.translation.editor.discardAndMove).toBe('破棄して移動');
     expect(resources.en.translation.dialog.submitMove).toBe('Move');
-    expect(resources.en.translation.request.send).toBe('Send');
+    expect(resources.en.translation.answer.open).toBe('Answer the question');
     expect(resources.ja.translation.draft.finalize).toBe('確定する');
   });
 });

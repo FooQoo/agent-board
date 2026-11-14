@@ -23,7 +23,7 @@ export function Drawer({
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
-  identity: string;
+  identity: ReactNode;
   title: string;
   label?: ReactNode;
   /** The close button's name; the details wording unless a sheet gives its own. */

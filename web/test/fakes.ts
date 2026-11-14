@@ -4,6 +4,7 @@ import {
   epicDetailEvents,
   ndjson,
   requestedSections,
+  questionOf,
   summaryOfBoard,
   taskDetailEvents,
 } from '../src/app/development/boardWire';
@@ -132,6 +133,28 @@ export function stubBackend(backend: FakeBackend) {
       return found === undefined
         ? errorResponse(404, 'project_not_found')
         : answer(found, summaryOfBoard);
+    }
+    const qa = /^\/api\/projects\/([0-9a-f]{32})\/qa\/([^/?]+)$/.exec(url);
+    if (qa?.[1]) {
+      const board = backend.boards[qa[1]];
+      if (board === undefined) return errorResponse(404, 'project_not_found');
+      // A waiting card's request stands for one open question, as in the sample data.
+      return answer(board, (b) => {
+        const id = decodeURIComponent(qa[2] ?? '');
+        const task = b.tasks.find((item) => questionOf(item)?.id === id);
+        return task
+          ? {
+              question: {
+                id,
+                question: task.pendingReason ?? '',
+                choices: task.pendingChoices,
+                recommendedChoiceId: null,
+                status: 'open',
+                referencedBy: [task.id],
+              },
+            }
+          : null;
+      });
     }
     const detail =
       /^\/api\/projects\/([0-9a-f]{32})\/(tasks|epics)\/([^/?]+)\/detail(?:\?(.*))?$/.exec(url);

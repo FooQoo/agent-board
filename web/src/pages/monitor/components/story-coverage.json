@@ -191,6 +191,21 @@
               "id": "pages-monitor-components-monitorgallery--answer-continuing",
               "states": ["input kept", "continue answering button", "dark theme"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--question-band",
+              "states": ["band under the counts", "five questions", "answer them"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--question-band-empty",
+              "states": ["empty band"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--question-band-dark",
+              "states": ["band in dark mode"],
+              "interaction": false
             }
           ]
         }
