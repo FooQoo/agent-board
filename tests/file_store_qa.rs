@@ -469,3 +469,81 @@ fn a_broken_request_file_or_reference_list_makes_the_task_wait() {
     assert!(broken.questions_error);
     assert_eq!(broken.agent_status, RunState::Pending);
 }
+
+/// A plan task: answered plan questions do not release it; only an approval that was given does.
+fn plan_fixture() -> (Fixture, i64, String) {
+    let fx = fixture();
+    let id = fx.task("planned work");
+    fx.doing(id);
+    let request = qa::ask_kind(
+        &fx.store,
+        &fx.project,
+        &[id],
+        QuestionKind::Plan,
+        "Which size?",
+        &[("s", "Small"), ("l", "Large")],
+        &[],
+    );
+    (fx, id, request.request_id)
+}
+
+fn status(fx: &Fixture, id: i64) -> RunState {
+    fx.store.task(&fx.project, id).unwrap().agent_status
+}
+
+fn ask_approval(fx: &Fixture, id: i64) {
+    qa::ask_kind(
+        &fx.store,
+        &fx.project,
+        &[id],
+        QuestionKind::StartApproval,
+        "Start this plan?",
+        &[("go", "Start"), ("revise", "Change the plan")],
+        &["go"],
+    );
+}
+
+#[test]
+fn an_answered_plan_question_keeps_the_task_waiting_until_an_approval_is_given() {
+    let (fx, id, _) = plan_fixture();
+    assert_eq!(status(&fx, id), RunState::Pending);
+    fx.answer("Q-1", Some("s")).unwrap();
+    let task = fx.store.task(&fx.project, id).unwrap();
+    assert_eq!(task.agent_status, RunState::Pending);
+    assert!(task.open_question_ids.is_empty());
+    let err = fx
+        .store
+        .set_agent_status(&fx.project, id, RunState::Running, ctx("Start"), Utc::now())
+        .unwrap_err();
+    assert!(
+        matches!(err, AgboardError::QuestionsUnanswered { .. }),
+        "{err:?}"
+    );
+
+    ask_approval(&fx, id);
+    assert_eq!(status(&fx, id), RunState::Pending);
+    fx.answer("Q-2", Some("go")).unwrap();
+    assert_eq!(status(&fx, id), RunState::Idle);
+    fx.store
+        .set_agent_status(&fx.project, id, RunState::Running, ctx("Start"), Utc::now())
+        .unwrap();
+}
+
+#[test]
+fn a_refused_approval_keeps_a_plan_task_waiting() {
+    let (fx, id, _) = plan_fixture();
+    fx.answer("Q-1", Some("l")).unwrap();
+    ask_approval(&fx, id);
+    fx.answer("Q-2", Some("revise")).unwrap();
+    assert_eq!(status(&fx, id), RunState::Pending);
+}
+
+#[test]
+fn a_withdrawn_plan_question_does_not_hold_the_task() {
+    let (fx, id, request_id) = plan_fixture();
+    assert_eq!(status(&fx, id), RunState::Pending);
+    fx.store
+        .withdraw_request(&fx.project, &request_id, Actor::Ai, None, Utc::now())
+        .unwrap();
+    assert_eq!(status(&fx, id), RunState::Idle);
+}

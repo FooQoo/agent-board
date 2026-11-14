@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::check::check_request;
-use super::model::{QaQuestion, QaRequestFile, question_number};
+use super::model::{QaQuestion, QaRequestFile, QuestionKind, question_number};
 use crate::error::AgboardError;
 use crate::file_store::io;
 use crate::file_store::layout;
@@ -128,19 +128,29 @@ impl QaIndex {
     }
 
     /// Whether a task with these references waits for a person: an open question, an
-    /// approval that was not given, a reference that may name a broken file, or references
-    /// that cannot be read.
+    /// approval that was not given, a plan question without an approval that was given, a
+    /// reference that may name a broken file, or references that cannot be read.
     pub fn is_waiting(&self, question_ids: &[String], questions_error: bool) -> bool {
         if questions_error {
             return true;
         }
-        question_ids.iter().any(|id| match self.find(id) {
+        let found: Vec<_> = question_ids.iter().map(|id| self.find(id)).collect();
+        let blocked = found.iter().any(|entry| match entry {
             Some((request, question)) => {
                 request.question_status(question) == super::QuestionStatus::Open
                     || question.is_rejected_approval()
             }
             None => self.broken,
-        })
+        });
+        let planned = found.iter().flatten().any(|(request, question)| {
+            question.kind == QuestionKind::Plan
+                && request.question_status(question) != super::QuestionStatus::Withdrawn
+        });
+        let approved = found
+            .iter()
+            .flatten()
+            .any(|(_, question)| question.is_given_approval());
+        blocked || (planned && !approved)
     }
 
     /// The open questions among these references, lowest number first.

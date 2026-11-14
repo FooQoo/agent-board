@@ -146,6 +146,17 @@ impl QaRequestFile {
 }
 
 impl QaQuestion {
+    /// A start approval answered with a choice that approves.
+    pub fn is_given_approval(&self) -> bool {
+        self.kind == QuestionKind::StartApproval
+            && self.answer.as_ref().is_some_and(|answer| {
+                answer
+                    .choice_id
+                    .as_ref()
+                    .is_some_and(|choice| self.approving_choice_ids.contains(choice))
+            })
+    }
+
     /// An answered start approval whose choice does not approve.
     pub fn is_rejected_approval(&self) -> bool {
         self.kind == QuestionKind::StartApproval
