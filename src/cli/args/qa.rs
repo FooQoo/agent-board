@@ -49,7 +49,7 @@ impl QaCommand {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "The command prints one event per line: registered first, then waiting every --heartbeat seconds, and last answered (exit 0), timeout (exit 5), withdrawn (exit 6), or error. With --json each line is JSON. A wait needs a running agboard serve; --no-wait does not.\n\nExamples:\n  agboard --project demo qa ask --actor ai --task 12 --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}' --json\n  cat questions.json | agboard --project demo qa ask --actor ai --request-json - --timeout none --json\n  agboard --project demo qa ask --actor ai --task 12 --request-json - --no-wait"
+    after_help = "The command prints one event per line: registered first, then waiting every --heartbeat seconds, and last answered (exit 0), timeout (exit 5), withdrawn (exit 6), or error. With --json each line is JSON. A wait starts the local server in the background when none runs; --no-wait needs no server.\n\nExamples:\n  agboard --project demo qa ask --actor ai --task 12 --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}' --json\n  cat questions.json | agboard --project demo qa ask --actor ai --request-json - --timeout none --json\n  agboard --project demo qa ask --actor ai --task 12 --request-json - --no-wait"
 )]
 pub struct QaAskArgs {
     /// Who asks

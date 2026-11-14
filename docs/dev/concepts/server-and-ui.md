@@ -6,7 +6,7 @@
 
 A data area has at most one server. It runs in one of two modes, recorded as `mode` in `serve.json`:
 
-- **Automatic.** A command that cannot work without a server starts one in the background: `wait --after`, `wait --until task`, and `state ... pending` unless `--no-wait`. The agent hook starts one too, without waiting. The server stops by itself after it has gone unused.
+- **Automatic.** A command that cannot work without a server starts one in the background: `wait --after`, `wait --until task`, `qa ask` unless `--no-wait`, and `qa wait` for an open request. The agent hook starts one too, without waiting. The server stops by itself after it has gone unused.
 - **Manual.** A person runs `agboard serve` (in the foreground) or `agboard serve -d` (in the background). It runs until Ctrl+C or `agboard stop`.
 
 Every other command works on the files alone and starts nothing.

@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 const STARTED_PREFIX: &str = "Started the Agent Board server at http://127.0.0.1:";
+const QUESTION: &str = r#"{"questions":[{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]}"#;
 const STARTED_SUFFIX: &str = "/ in the background. It stops by itself after ";
 
 struct Board {
@@ -255,14 +256,15 @@ fn commands_that_do_not_need_the_server_start_none() {
         vec![
             "--project",
             "Auto",
-            "state",
-            "1",
-            "pending",
+            "qa",
+            "ask",
             "--actor",
             "ai",
+            "--task",
+            "1",
             "--no-wait",
             "--request-json",
-            r#"{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}"#,
+            QUESTION,
         ],
     ] {
         let output = board.run(&args);
@@ -288,12 +290,31 @@ fn a_question_that_waits_starts_the_server_before_it_is_saved() {
     ]);
     assert!(added.status.success(), "{added:?}");
     let asked = board.run(&[
-        "--project", "Auto", "--json", "state", "1", "pending", "--actor", "ai", "--request-json",
-        r#"{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}],"wait":{"timeoutSeconds":1}}"#,
+        "--project",
+        "Auto",
+        "qa",
+        "ask",
+        "--actor",
+        "ai",
+        "--task",
+        "1",
+        "--timeout",
+        "1",
+        "--request-json",
+        QUESTION,
+        "--json",
     ]);
     let stderr = text(&asked.stderr);
     started_port(&stderr);
     assert_eq!(board.serve_info().unwrap()["mode"], "auto");
+    // The question was saved once the server was there, and the wait ran.
+    assert_eq!(asked.status.code(), Some(5), "{asked:?}");
+    let events: Vec<Value> = text(&asked.stdout)
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(events.first().unwrap()["type"], "registered");
+    assert_eq!(events.last().unwrap()["type"], "timeout");
 }
 
 #[test]
