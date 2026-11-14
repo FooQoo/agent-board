@@ -53,7 +53,7 @@
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | コマンドの引数がない、または形式が誤っている（例: `--no-wait`と整数の`timeoutSeconds`の併用）。 | 2 | 422 |
+| `invalid_argument` | コマンドの引数がない、または形式が誤っている（例: `qa answer`での`--answers-json`と`--choice`の併用）。 | 2 | 422 |
 | `invalid_value` | 値が規則（長さ、形式など）に違反している。 | 2 | 422 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 1 | なし |
 | `file_invalid` | 共有ファイルが壊れている、または形式に違反している。 | 1 | 422 |

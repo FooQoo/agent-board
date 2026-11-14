@@ -53,7 +53,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | A command argument is missing or malformed; for example, `--no-wait` with an integer `timeoutSeconds`. | 2 | 422 |
+| `invalid_argument` | A command argument is missing or malformed; for example, `qa answer` with both `--answers-json` and `--choice`. | 2 | 422 |
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |

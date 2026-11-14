@@ -27,7 +27,7 @@ flowchart LR
 The boards are made fresh from `web/test/fixtures/board.json` each time a server starts. The demo build reads that fixture at build time through the `virtual:agboard-demo-seed` module (`web/demo-build.ts`). Besides reads, the server handles the writes a visitor can make:
 
 - creating, editing, and moving cards, and reordering them within a lane
-- answering a decision request
+- answering a question
 - checking an acceptance condition, followed by the automatic Done that the server's watcher performs for an AI task whose conditions are all met (`completion.ts`)
 
 Each change is reported to subscribers in the shape of the SSE `changed` event, so the screens update as they would against a real server.
