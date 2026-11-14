@@ -77,9 +77,9 @@ agboard --project "My project" snapshot --json
 agboard --project "My project" wait --after <cursor> --json
 ```
 
-`wait` resolves the project name once, checks that the cursor belongs to that project, and then follows that same project. Changes to other projects do not end it. If the project is renamed while waiting, it keeps following the same project and returns its latest snapshot. If the project is deleted it fails with `project_not_found`, and it never switches to a project created later with the same name. It listens for a local board-change event from a running `agboard serve` in the same data area; it does not poll or update tasks. When it returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
+`wait` resolves the project name once, checks that the cursor belongs to that project, and then follows that same project. Changes to other projects do not end it. If the project is renamed while waiting, it keeps following the same project and returns its latest snapshot. If the project is deleted it fails with `project_not_found`, and it never switches to a project created later with the same name. It listens for a local board-change event from the server of the same data area, which it starts in the background when none runs; it does not poll or update tasks. The Hook also starts that server, without waiting, so automatic Done works while an agent only edits files. After `agboard stop`, the Hook does not start it until a waiting command or `agboard serve` does. Set `AGBOARD_AUTOSTART=0` to turn this off. When it returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
 
-`wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, not answers.
+`wait_timeout`, `board_unavailable`, `local_network_denied`, `cursor_invalid`, and `project_not_found` are errors, not answers.
 
 ## Verification status
 

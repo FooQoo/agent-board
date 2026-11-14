@@ -33,6 +33,7 @@ When the task is resolved or intentionally paused with its current state and rea
 
 - `{"kind":"idle_timeout", ...}` is a successful exit (code 0). Finish the listener loop and report that the chosen interval passed with no eligible task. It does not mean any earlier task succeeded.
 - `{"kind":"task", ...}` is a successful single-task result. Inspect and process it before calling wait again.
+- `local_network_denied` means the environment does not allow local network connections. Stop and tell the user the reason it gives; do not retry.
 - `board_unavailable`, malformed project data, a mismatched server, or `project_not_found` is an error, not an empty board. Stop and report the error and its recovery step; do not start another wait as an automatic retry.
 - Invalid arguments are usage errors. Fix the command rather than interpreting them as idle completion.
 - If the wait or agent session is interrupted, do not report normal idle completion. On a human-started resumption, fetch a fresh complete snapshot and task history, inspect every AI task by `agentStatus`, and resolve any `running` or `pending` work before listening again. When all AI tasks are `idle`, Doing tasks remain eligible. A closed session is not resumed automatically.

@@ -1,7 +1,7 @@
 ---
 name: agent-board
 description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, report AI progress, ask the user for decisions with choices, wait for their answers, and automatically record work progress in task history.
-compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Waiting for user answers requires a running agboard serve.
+compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Commands that wait for user answers start the local agboard server when it is not running.
 ---
 
 # Agent Board
@@ -191,8 +191,8 @@ cat <path> | agboard --project "<name>" qa ask --actor ai --task <id> --request-
 
 - `questions`: 1 to 20 questions, asked together and answered together. `question`: 1 to 5,000 characters, written in Markdown and drawn like the task body. An image attached to the same task uses the reference form in [`references/file-format.md`](references/file-format.md). `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the question; each `label` is 1 to 200 characters. `recommendedChoiceId` is optional. `kind` is `task` unless given: use `plan` for a question while planning and `start_approval`, with `approvingChoiceIds`, to ask approval to start.
 - The command prints one JSON line per event. The first line is `registered`, with the request ID and the question IDs (`Q-<n>`). It then waits until every question is answered and prints `answered` with all answers (exit 0). While it waits it prints a short `waiting` line every 60 seconds. It waits 600 seconds by default; `--timeout <1 to 86400>` changes this and `--timeout none` waits without a limit.
-- `timeout` (exit 5) means only that the wait ended; the questions stay open. Wait again with `agboard --project "<name>" qa wait <request-id> --json`; it never asks a second time. `withdrawn` (exit 6) means the request was withdrawn. `board_unavailable` means a technical connection problem; start `agboard serve` and wait again. None of these is an answer.
-- Waiting needs a running `agboard serve`. Use `--no-wait` only when the user explicitly asks to register a question and return immediately.
+- `timeout` (exit 5) means only that the wait ended; the questions stay open. Wait again with `agboard --project "<name>" qa wait <request-id> --json`; it never asks a second time. `withdrawn` (exit 6) means the request was withdrawn. `board_unavailable` means a technical connection problem; wait again. None of these is an answer.
+- A command that waits starts the server itself; do not start `agboard serve` yourself first. Use `--no-wait` only when the user explicitly asks to register a question and return immediately; it needs no server.
 - Continue independent work while a question is open; dependent work must wait for the actual answer.
 - The task must be an AI task in `todo` or `doing`. While it waits, `state <id> running` is refused with `questions_unanswered`.
 
@@ -208,7 +208,7 @@ When no work can proceed in the ordinary work loop, wait for a change using the 
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A question remains open until it is answered or its request is withdrawn with `qa withdraw`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
+Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A command that waits starts the server itself; do not start `agboard serve` yourself first. `local_network_denied` means this environment does not allow local network connections: tell the user the reason it gives (in Codex, `agboard setup` allows `agboard` to run outside the sandbox) and make no board-dependent changes until it is fixed. A question remains open until it is answered or its request is withdrawn with `qa withdraw`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
 After `wait` or `qa ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `qa ask`. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
