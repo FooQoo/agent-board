@@ -594,3 +594,32 @@ fn normal_progress_keeps_folder_unbound_for_an_unbound_folder() {
     let err: Value = serde_json::from_str(&run.stderr).unwrap();
     assert_eq!(err["error"]["code"], "folder_unbound");
 }
+
+#[test]
+fn hook_tells_a_new_session_to_update_a_plugin_of_another_version() {
+    let home = tempdir().unwrap();
+    let folders = tempdir().unwrap();
+    let bound = folders.path().join("bound");
+    create_project(home.path(), &bound, "Alpha");
+    let context = |extra: &[&str], event: &str| {
+        let input = serde_json::json!({"hook_event_name": event}).to_string();
+        let run = hook(home.path(), &bound, extra, &input);
+        assert_eq!(run.status, 0, "{}", run.stderr);
+        let parsed: Value = serde_json::from_str(&run.stdout).unwrap();
+        parsed["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let current = env!("CARGO_PKG_VERSION");
+    let same = context(&["--plugin-version", current], "SessionStart");
+    assert!(same.starts_with("AGBOARD_PROGRESS\n"));
+    assert!(!same.contains("AGBOARD_NOTICE"));
+    let older = context(&["--plugin-version", "0.0.1"], "SessionStart");
+    assert!(older.starts_with("AGBOARD_PROGRESS\n"));
+    assert!(older.contains("AGBOARD_NOTICE"), "{older}");
+    assert!(older.contains("`agboard update`"), "{older}");
+    // After each tool the notice is not repeated.
+    let after_tool = context(&["--plugin-version", "0.0.1"], "PostToolUse");
+    assert!(!after_tool.contains("AGBOARD_NOTICE"));
+}

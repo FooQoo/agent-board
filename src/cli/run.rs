@@ -121,6 +121,11 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             },
         );
         if let Some(output) = run.output {
+            let output = crate::agent::hook_version::with_notice(
+                output,
+                args.plugin_version.as_deref(),
+                env!("CARGO_PKG_VERSION"),
+            );
             write_text(env.stdout, &output);
         }
         // An agent is working on a board: keep its server running, so that

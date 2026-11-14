@@ -31,6 +31,9 @@ pub struct HookArgs {
     pub agent: AgentArg,
     #[command(flatten)]
     pub progress: ProgressArgs,
+    /// Version of the plugin that runs the Hook; set by the plugin's Hook command
+    #[arg(long, value_name = "VERSION", hide = true)]
+    pub plugin_version: Option<String>,
 }
 
 #[derive(Args, Debug)]
