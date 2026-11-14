@@ -39,6 +39,7 @@ pub const BODY: &str = "## 作業内容\n\nDetails\n\n## 完了条件と確認�
 /// Returns the exit code, standard output, and standard error.
 pub fn agboard(home: &Path, args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_AUTOSTART", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")

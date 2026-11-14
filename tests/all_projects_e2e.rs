@@ -22,7 +22,9 @@ use tempfile::tempdir;
 // ---------------------------------------------------------------- harness
 
 fn bin() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_agboard"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
+    command.env("AGBOARD_AUTOSTART", "0");
+    command
 }
 
 fn run(home: &Path, args: &[&str]) -> Output {

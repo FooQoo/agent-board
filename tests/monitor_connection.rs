@@ -23,6 +23,7 @@ use support::home;
 
 fn agboard(home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("agboard").unwrap();
+    cmd.env("AGBOARD_AUTOSTART", "0");
     cmd.env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")

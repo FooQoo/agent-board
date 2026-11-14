@@ -23,6 +23,7 @@ const CLAUDE_SENTINEL: &str = r#"{"model":"sentinel-model","permissions":{"allow
 fn setup(home: &Path, extra: &[(&str, &str)], args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env_clear()
+        .env("AGBOARD_AUTOSTART", "0")
         .env("HOME", home)
         .env("TZ", "UTC")
         .current_dir(home)
@@ -621,6 +622,7 @@ fn serve_and_the_cli_share_the_default_root_created_by_setup() {
     setup_json(&home, &[], &[]);
     let child = Command::new(env!("CARGO_BIN_EXE_agboard"))
         .env_clear()
+        .env("AGBOARD_AUTOSTART", "0")
         .env("HOME", &home)
         .env("TZ", "UTC")
         .current_dir(&home)

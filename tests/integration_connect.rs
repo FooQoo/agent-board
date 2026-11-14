@@ -85,6 +85,7 @@ impl Fx {
         command
             .current_dir(cwd)
             .env_clear()
+            .env("AGBOARD_AUTOSTART", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", self.data())
             .env("HOME", self.home())
@@ -146,6 +147,7 @@ impl Fx {
             .args(args)
             .current_dir(cwd)
             .env_clear()
+            .env("AGBOARD_AUTOSTART", "0")
             .envs(agboard.get_envs().filter_map(|(k, v)| v.map(|v| (k, v))));
         let mut session = expectrl::Session::spawn(command).unwrap();
         session.set_expect_timeout(Some(Duration::from_secs(20)));

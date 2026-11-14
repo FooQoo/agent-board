@@ -18,6 +18,7 @@ struct Server {
 impl Server {
     fn start(home: &Path) -> Server {
         let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
+            .env("AGBOARD_AUTOSTART", "0")
             .env("AGBOARD_WATCH", "poll")
             .env("AGBOARD_HOME", home)
             .env("TZ", "UTC")
@@ -99,6 +100,7 @@ impl Drop for Server {
 
 fn cli(home: &Path, args: &[&str]) {
     let output = Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_AUTOSTART", "0")
         .env("AGBOARD_WATCH", "poll")
         .env("AGBOARD_HOME", home)
         .env("TZ", "UTC")

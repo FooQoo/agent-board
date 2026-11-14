@@ -12,7 +12,9 @@ use serde_json::Value;
 use tempfile::tempdir;
 
 fn bin() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_agboard"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
+    command.env("AGBOARD_AUTOSTART", "0");
+    command
 }
 
 fn agboard(home: &Path, project: &str, args: &[&str]) -> Output {
