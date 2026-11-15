@@ -24,8 +24,8 @@ pub(super) struct Inner {
     pub(super) token_source: Option<TokenSource>,
     /// Whether the keychain holds a token; `None` until it was first looked at.
     pub(super) keychain_saved: Option<bool>,
-    /// Whether the startup restore is still reading the keychain in the
-    /// background; other readers leave the keychain alone until it is done.
+    /// Whether the keychain is being read in the background; nobody else
+    /// reads it until that read is done.
     pub(super) probing: bool,
     pub(super) generation: u64,
     pub(super) run: Option<Run>,
@@ -40,6 +40,8 @@ pub struct MonitorConnections {
     /// The server's state, given once it exists; the monitor routes read it.
     pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
+    /// Woken when a keychain read finishes, for those waiting on it.
+    pub(super) probed: tokio::sync::Notify,
 }
 
 impl MonitorConnections {
@@ -81,6 +83,7 @@ impl MonitorConnections {
                 run: None,
                 passcode: None,
             }),
+            probed: tokio::sync::Notify::new(),
         })
     }
 
@@ -167,20 +170,30 @@ impl MonitorConnections {
     /// cannot take it nothing is started and nothing is changed. A start is an
     /// explicit request to stay on, so a disabled setting is saved as enabled
     /// first; nothing starts if that save fails.
-    pub fn start(
+    /// The keychain is read and written without holding the lock, so only
+    /// this request waits if the keychain stops to ask the user.
+    pub async fn start(
         self: &Arc<Self>,
         token: Option<Secret>,
         save: bool,
     ) -> Result<Snapshot, StartError> {
+        if self.lock().failure == Some(FailureCode::ConfigUnreadable) {
+            return Err(StartError::SettingsUnreadable);
+        }
+        self.probed().await;
+        if save && let Some(token) = &token {
+            let vault = self.vault.clone();
+            let token = token.clone();
+            tokio::task::spawn_blocking(move || vault.save(&token))
+                .await
+                .unwrap_or(Err(super::keychain::VaultError::Failed))
+                .map_err(|_| StartError::KeychainUnavailable)?;
+        }
         let mut inner = self.lock();
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
-        self.probe_keychain(&mut inner);
-        if save && let Some(token) = &token {
-            self.vault
-                .save(token)
-                .map_err(|_| StartError::KeychainUnavailable)?;
+        if save && token.is_some() {
             inner.keychain_saved = Some(true);
         }
         if let Some(token) = token {

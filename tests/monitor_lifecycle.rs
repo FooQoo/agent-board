@@ -378,6 +378,60 @@ fn a_keychain_that_waits_for_the_user_does_not_hold_up_startup() {
     assert_eq!(vault.loads.load(Ordering::SeqCst), 1);
 }
 
+#[test]
+fn asking_for_the_settings_while_the_keychain_waits_for_the_user_holds_up_nothing() {
+    // The setting is disabled (nothing restores at startup) and the token is
+    // only in the keychain, which does not answer: a prompt nobody has clicked.
+    let home = fixture();
+    let vault = FakeVault::new(Some(TOKEN), true);
+    let (release, held) = std::sync::mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(held);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(vault.loads.load(Ordering::SeqCst), 0);
+    // The settings answer at once and say what is known so far.
+    let began = Instant::now();
+    let first = s.get();
+    assert!(began.elapsed() < Duration::from_secs(5));
+    assert_eq!(first["status"], "disabled");
+    assert_eq!(first["keychainTokenSaved"], false);
+    // A start that needs the saved token waits for the keychain; nothing else does.
+    let (local, token) = (s.local, s.token.clone());
+    let starting = std::thread::spawn(move || {
+        let origin = format!("http://127.0.0.1:{}", local.port());
+        request(
+            local,
+            "POST",
+            "/api/monitor-connections/transports/ngrok/start",
+            &[
+                ("Origin", &origin),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("X-Agboard-Token", &token),
+                ("Content-Type", "application/json"),
+            ],
+            "{}",
+        )
+    });
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(!starting.is_finished());
+    let began = Instant::now();
+    assert_eq!(request(s.local, "GET", "/api/health", &[], "").status, 200);
+    assert_eq!(s.get()["keychainTokenSaved"], false);
+    assert!(began.elapsed() < Duration::from_secs(5));
+    // Once the keychain answers, the start goes on with the saved token.
+    drop(release);
+    assert_eq!(starting.join().unwrap().status, 202);
+    let ready = s.wait_status("ready");
+    assert_eq!(ready["keychainTokenSaved"], true);
+    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(vault.loads.load(Ordering::SeqCst), 1);
+}
+
 // ----------------------------------------------------------- every entrance
 
 #[test]

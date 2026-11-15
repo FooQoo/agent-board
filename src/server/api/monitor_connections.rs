@@ -52,7 +52,7 @@ pub(super) async fn get_connections(
     if let Err(r) = local_read(request.headers(), state.port) {
         return *r;
     }
-    snapshot_response(StatusCode::OK, &state.monitor.snapshot())
+    snapshot_response(StatusCode::OK, &state.monitor.snapshot().await)
 }
 
 #[derive(Deserialize)]
@@ -135,7 +135,7 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
             Some(Secret::new(token))
         }
     };
-    match state.monitor.start(token, save) {
+    match state.monitor.start(token, save).await {
         Ok(snapshot) => snapshot_response(StatusCode::ACCEPTED, &snapshot),
         Err(StartError::TokenRequired) => error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -167,7 +167,7 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
 
 /// Remove the token saved in the OS keychain.
 pub(super) async fn delete_saved_token(State(state): State<Arc<AppState>>) -> Response {
-    match state.monitor.forget_token() {
+    match state.monitor.forget_token().await {
         Ok(snapshot) => snapshot_response(StatusCode::OK, &snapshot),
         Err(ForgetError::KeychainUnavailable) => keychain_unavailable(),
     }

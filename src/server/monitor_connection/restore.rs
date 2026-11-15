@@ -3,9 +3,7 @@
 use std::sync::Arc;
 
 use super::contracts::ConnectionStatus;
-use super::keychain::VaultError;
 use super::lifecycle::{Inner, MonitorConnections, failure_of, idle_status};
-use super::types::TokenSource;
 
 impl MonitorConnections {
     /// Start the saved connection with the token in hand. A failure is shown
@@ -30,20 +28,9 @@ impl MonitorConnections {
         let generation = inner.generation;
         let this = self.clone();
         tokio::spawn(async move {
-            let vault = this.vault.clone();
-            let loaded = tokio::task::spawn_blocking(move || vault.load())
-                .await
-                .unwrap_or(Err(VaultError::Failed));
+            let loaded = this.read_keychain().await;
             let mut inner = this.lock();
-            inner.probing = false;
-            let saved = matches!(loaded, Ok(Some(_)));
-            if let Ok(Some(token)) = loaded
-                && inner.token.is_none()
-            {
-                inner.token = Some(token);
-                inner.token_source = Some(TokenSource::Keychain);
-            }
-            inner.keychain_saved = Some(saved);
+            this.apply_probe(&mut inner, loaded);
             if inner.run.is_some() || inner.failure.is_some() {
                 return;
             }
