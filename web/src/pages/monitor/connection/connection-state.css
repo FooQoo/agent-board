@@ -19,12 +19,28 @@
 }
 
 /*
- * The same screen is the passcode entrance on a PC: keep the column phone-sized in the middle and
- * give the header the board's side margins, instead of stretching the action across the window.
+ * The same screen is the passcode entrance on a PC: keep the column phone-sized in the middle, and
+ * give it the PC board's header (full width, 56px, its surface and bottom line) instead of the
+ * phone's.
  */
 @media (min-width: 768px) {
   .monitor-shell:has(> .connection-state) {
-    padding: 8px 24px;
+    padding: 0 0 max(6px, env(safe-area-inset-bottom));
+  }
+  .monitor-shell:has(> .connection-state) > .header {
+    height: 56px;
+    padding: 0 24px;
+    background: var(--r-surface);
+    box-shadow: inset 0 -1px 0 var(--r-border);
+  }
+  .monitor-shell:has(> .connection-state) > .header .header__logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+  .monitor-shell:has(> .connection-state) > .header .header__app {
+    gap: 10px;
+    font-size: 15px;
   }
 }
 

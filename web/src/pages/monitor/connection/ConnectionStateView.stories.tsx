@@ -18,6 +18,8 @@ export const EnterPasscode: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Enter the passcode' })).toBeVisible();
+    // Nothing can be saved before the passcode, so the header has no settings button.
+    await expect(canvas.queryByRole('button', { name: 'Settings' })).toBeNull();
     const input = canvas.getByLabelText('Passcode');
     const connect = canvas.getByRole('button', { name: 'Connect' });
     await expect(connect).toBeDisabled();

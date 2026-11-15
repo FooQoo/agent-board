@@ -52,6 +52,8 @@ export interface HeaderProps {
   logoSrc?: string;
   /** The size of the settings button; the monitor uses a larger one for a thumb. */
   settingsSize?: ButtonSize;
+  /** Shows the settings button. The passcode screen leaves it out: nothing can be saved there. */
+  withSettings?: boolean;
 }
 
 export function Header({
@@ -69,6 +71,7 @@ export function Header({
   settings,
   logoSrc = `${import.meta.env.BASE_URL}logo-white.png`,
   settingsSize = 'm',
+  withSettings = true,
 }: HeaderProps) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -159,26 +162,30 @@ export function Header({
           </Button>
         </>
       ) : null}
-      <Button
-        ref={settingsButtonRef}
-        type="button"
-        variant="outline"
-        size={settingsSize}
-        iconOnly
-        className="header__settings"
-        aria-label={t('settings.title')}
-        aria-haspopup="dialog"
-        onClick={() => setSettingsOpen(true)}
-      >
-        <SettingsIcon aria-hidden="true" />
-      </Button>
-      <Suspense fallback={null}>
-        {settings?.render({
-          open: settingsOpen,
-          onOpenChange: setSettingsOpen,
-          restoreFocusRef: settingsButtonRef,
-        })}
-      </Suspense>
+      {withSettings && (
+        <>
+          <Button
+            ref={settingsButtonRef}
+            type="button"
+            variant="outline"
+            size={settingsSize}
+            iconOnly
+            className="header__settings"
+            aria-label={t('settings.title')}
+            aria-haspopup="dialog"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <SettingsIcon aria-hidden="true" />
+          </Button>
+          <Suspense fallback={null}>
+            {settings?.render({
+              open: settingsOpen,
+              onOpenChange: setSettingsOpen,
+              restoreFocusRef: settingsButtonRef,
+            })}
+          </Suspense>
+        </>
+      )}
     </header>
   );
 }

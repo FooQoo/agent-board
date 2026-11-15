@@ -163,6 +163,16 @@ export const NoProjectList: Story = {
   },
 };
 
+/** The passcode screen's header: the app name only, with no settings button. */
+export const WithoutSettings: Story = {
+  args: { projects: null, activeProjectId: null, canAdd: false, withSettings: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Agent Board' })).toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Settings' })).toBeNull();
+  },
+};
+
 /** The board header in Japanese: the labels come from the product's own `ja` resources. */
 export const JapaneseBoard: Story = {
   globals: { locale: 'ja' },

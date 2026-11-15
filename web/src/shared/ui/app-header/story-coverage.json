@@ -37,6 +37,11 @@
           "interaction": false
         },
         {
+          "id": "shared-ui-header--without-settings",
+          "states": ["passcode screen", "no settings button"],
+          "interaction": true
+        },
+        {
           "id": "shared-ui-header--japanese-board",
           "states": ["japanese", "board"],
           "interaction": false
