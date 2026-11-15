@@ -166,7 +166,7 @@ export AGBOARD_CODESIGN_IDENTITY="<IDの名前またはSHA-1>"
 scripts/dev/install-local.sh
 ```
 
-`AGBOARD_CODESIGN_IDENTITY`を設定していないとき、またはmacOS以外では、署名せずにインストールし、その旨を表示します。
+`just install`はweb UIをビルドしてからこのスクリプトを実行するので、`AGBOARD_CODESIGN_IDENTITY`を設定していれば同じように署名します。`AGBOARD_CODESIGN_IDENTITY`を設定していないとき、またはmacOS以外では、署名せずにインストールし、その旨を表示します。
 
 - 署名後の最初の実行では、確認が1回出ます。**常に許可**を選んでください。
 - `codesign`が署名用の鍵を使う許可を1回求めることがあります。ログインパスワードを入力し、**常に許可**を選んでください。ターミナルのアプリから実行してください。GUIのない環境から実行すると、`codesign`が`errSecInternalComponent`で失敗することがあります。

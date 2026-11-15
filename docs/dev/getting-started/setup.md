@@ -166,7 +166,7 @@ export AGBOARD_CODESIGN_IDENTITY="<identity name or SHA-1>"
 scripts/dev/install-local.sh
 ```
 
-Without `AGBOARD_CODESIGN_IDENTITY`, or on another OS, the script installs without signing and prints a note.
+`just install` builds the web UI and then runs this script, so it signs the same way when `AGBOARD_CODESIGN_IDENTITY` is set. Without `AGBOARD_CODESIGN_IDENTITY`, or on another OS, the script installs without signing and prints a note.
 
 - The first run after signing still asks once. Choose **Always Allow**.
 - `codesign` may ask once for permission to use the signing key. Enter your login password and choose **Always Allow**. Run the script from a terminal app: from a non-GUI context, `codesign` can fail with `errSecInternalComponent`.

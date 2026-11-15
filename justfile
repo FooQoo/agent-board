@@ -21,11 +21,12 @@ build:
     pnpm --dir web build
     cargo build
 
-# Install the current checkout's CLI and embedded web UI globally.
+# Install the current checkout's CLI and embedded web UI globally. On macOS it
+# is signed when AGBOARD_CODESIGN_IDENTITY is set (see scripts/dev/install-local.sh).
 install:
     pnpm --dir web install --frozen-lockfile
     pnpm --dir web build
-    cargo install --path . --locked --force
+    scripts/dev/install-local.sh
 
 # Watch the saved board server and serve the web UI with HMR.
 serve port="7420" backend_port="7421": build
