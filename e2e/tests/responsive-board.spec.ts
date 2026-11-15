@@ -116,11 +116,11 @@ for (const [name, size] of [
     await expect(toggle).toBeVisible();
     // The first measure can land before the header has settled, so take the height once it holds still.
     const bandHeight = async () => (await band(page).boundingBox())?.height ?? 0;
-    let closedHeight = 0;
+    let closedHeight = -1;
     await expect
       .poll(async () => {
         const height = await bandHeight();
-        const settled = height === closedHeight;
+        const settled = height > 0 && height === closedHeight;
         closedHeight = height;
         return settled;
       })
