@@ -105,7 +105,7 @@ describe('product request guard', () => {
   });
 
   it('refuses the live event stream of the product', () => {
-    expect(() => new EventSource('/monitor/api/events')).toThrow('product request');
-    expect(() => assertNoProductRequests()).toThrow('/monitor/api/events');
+    expect(() => new EventSource('/api/events')).toThrow('product request');
+    expect(() => assertNoProductRequests()).toThrow('/api/events');
   });
 });

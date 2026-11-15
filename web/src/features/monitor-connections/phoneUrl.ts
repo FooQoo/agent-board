@@ -4,14 +4,15 @@ export function isProjectIdValue(value: string | null): value is string {
 }
 
 /**
- * The address the phone opens for one project: the public origin of the connection, the monitor
- * path, and the project in the query. The connection reports only the origin. Gives nothing
+ * The address the phone opens for one project: the board at the public origin of the connection,
+ * with the project in the query, as the board itself names a project. The connection reports only
+ * the origin. Gives nothing
  * without a public address or without a ProjectId, so no QR code or copied URL is made then.
  */
 export function phoneUrl(origin: string | null, projectId: string | null): string | null {
   if (!origin || !isProjectIdValue(projectId)) return null;
   const url = new URL(origin);
-  url.pathname = '/monitor/';
+  url.pathname = '/';
   url.search = '';
   url.searchParams.set('project', projectId);
   return url.toString();

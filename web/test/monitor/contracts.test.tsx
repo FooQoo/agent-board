@@ -16,10 +16,10 @@ const props: MonitorViewProps = {
 describe('monitor contracts and view', () => {
   it('builds only read URLs beneath the dedicated API prefix', () => {
     expect(unconnectedMonitorReadResolvers.attachmentUrl('abc', 7, 'image-id')).toMatch(
-      /^\/monitor\/api\//,
+      /^\/api\/projects\//,
     );
     expect(unconnectedMonitorReadResolvers.epicAttachmentUrl('abc', 'epic-id', 'image-id')).toMatch(
-      /^\/monitor\/api\//,
+      /^\/api\/projects\//,
     );
   });
 

@@ -39,9 +39,6 @@ describe('layer rules', () => {
     expect(
       violation('src/pages/archive/ui/ArchiveList.tsx', 'src/pages/board/ui/Board.tsx'),
     ).not.toBeNull();
-    expect(
-      violation('src/pages/monitor/App.tsx', 'src/app/model/useBuildReload.ts'),
-    ).not.toBeNull();
   });
 });
 

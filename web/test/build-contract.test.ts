@@ -1,79 +1,11 @@
 // @vitest-environment node
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 
 const dist = resolve('dist');
 const read = (relative: string) => readFileSync(join(dist, relative), 'utf8');
 const files = (folder: string) => readdirSync(join(dist, folder)).sort();
-
-describe('isolated monitor build', () => {
-  it('emits a monitor entry with only its runtime placeholders', () => {
-    const monitor = read('monitor/index.html');
-    expect(monitor).toMatch(/src="\/monitor\/assets\/monitor\/monitor-[\w-]+\.js"/);
-    expect(monitor).toMatch(/href="\/monitor\/assets\/monitor\/monitor-[\w-]+\.css"/);
-    expect(monitor).toContain('name="agboard-monitor-token" content="{{AGBOARD_MONITOR_TOKEN}}"');
-    expect(monitor).toContain('name="agboard-build" content="{{AGBOARD_BUILD_ID}}"');
-    expect(monitor).not.toContain('name="agboard-token"');
-    expect(monitor).not.toMatch(/name="agboard-monitor-token" content="[a-f0-9]{64}"/);
-    expect(monitor).not.toMatch(/\/assets\/app[-.]/);
-  });
-
-  it('names every monitor script and stylesheet by content and lists them in its manifest', () => {
-    const monitorFiles = files('monitor');
-    const embedded = monitorFiles.filter((name) => /^(monitor|chunk)-.+\.(js|css)$/.test(name));
-    expect(embedded.filter((name) => name.startsWith('monitor-'))).toHaveLength(2);
-    expect(monitorFiles).not.toContain('monitor.js');
-    const monitorAssets = JSON.parse(read('monitor/manifest.json')).assets.map(
-      (asset: { name: string }) => asset.name,
-    );
-    expect([...monitorAssets].sort()).toEqual(embedded);
-    expect(read('monitor/manifest.json')).not.toMatch(/"app[-.]/);
-  });
-
-  it("reuses the board build's diagram chunks byte for byte", () => {
-    const graph = JSON.parse(read('chunk-graph.json')) as {
-      chunks: Record<string, { sources: string[] }>;
-    };
-    const shared = files('monitor').filter((name) => existsSync(join(dist, 'assets', name)));
-    expect(shared.some((name) => name.startsWith('chunk-mermaid.core-'))).toBe(true);
-    for (const name of shared.filter((file) => file.endsWith('.js'))) {
-      expect(
-        readFileSync(join(dist, 'monitor', name)).equals(readFileSync(join(dist, 'assets', name))),
-        name,
-      ).toBe(true);
-      expect(graph.chunks[`assets/${name}`]?.sources, name).toEqual([]);
-    }
-  });
-
-  it('writes a gzip copy of every embedded file', () => {
-    for (const folder of ['assets', 'monitor']) {
-      for (const name of files(folder).filter((file) =>
-        /^(app|monitor|chunk)-.+\.(js|css)$/.test(file),
-      )) {
-        const gzip = readFileSync(join(dist, folder, `${name}.gz`));
-        expect(gunzipSync(gzip).equals(readFileSync(join(dist, folder, name))), name).toBe(true);
-      }
-    }
-  });
-
-  it('keeps the monitor dependency graph independent of PC app and editor modules', () => {
-    const graph = read('monitor/dependency-graph.json');
-    expect(graph).not.toMatch(
-      /src\/app\/App|\/editor\/|src\/shared\/rich-editor|src\/app\/api\.ts/,
-    );
-    expect(graph).toContain('src/app/entry/monitor.tsx');
-    expect(graph).toContain('MonitorDetailDrawer');
-    expect(graph).not.toMatch(
-      /ReadOnlyDetail|ReadOnlyEpic|TaskDetailView|\/editor\/|src\/shared\/rich-editor/,
-    );
-    expect(graph).toContain('MonitorDocument');
-    expect(graph).not.toMatch(
-      /BodyDocumentView|AcceptanceView|MarkdownSections|tasks\/detail\/detail\.css/,
-    );
-  });
-});
 
 describe('board build', () => {
   it('names its scripts and stylesheets by content and loads them from the page', () => {
@@ -130,7 +62,6 @@ describe('board build', () => {
 describe('virtual Markdown list', () => {
   const pages = [
     { page: 'board', folder: 'assets', entry: () => entryOf('assets', 'app') },
-    { page: 'monitor', folder: 'monitor', entry: () => entryOf('monitor', 'monitor') },
   ] as const;
 
   for (const { page, folder, entry } of pages) {
@@ -158,7 +89,7 @@ describe('virtual Markdown list', () => {
   });
 });
 
-/** The entry script of a page: `app-*.js` in `assets/` or `monitor-*.js` in `monitor/`. */
+/** The entry script of a page: `app-*.js` in `assets/`. */
 function entryOf(folder: string, prefix: string): string {
   const entry = files(folder).find((name) => new RegExp(`^${prefix}-[\\w-]+\\.js$`).test(name));
   if (!entry) throw new Error(`no ${prefix} entry in ${folder}`);
@@ -185,12 +116,11 @@ const bytes = (folder: string, names: string[]) =>
 
 // Budgets for the scripts a page needs before its first screen, a little above their size today.
 // Raise one only with a reason: the first load is what a phone waits for on every new build.
-// The monitor's budget is 520 KB: the header logo (about 14 KB in base64) is inlined so it loads with the page.
 // The board's budget is 700 KB: the Docs entry, the condition checkboxes of the details, the preview's strings and entrances,
 // and the answer dialog's strings (all languages load with the page) fit in the room that removing the old answer form left.
 // The band of unanswered questions above the lanes and the page's book of held answers take about 3.7 KB over that;
 // the dialog's run through the questions and its strings load on first use.
-const FIRST_LOAD_BUDGET = { board: 706_000, monitor: 520_000 };
+const FIRST_LOAD_BUDGET = { board: 706_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 // The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
 const VIRTUAL_CHUNK_BUDGET = 40_000;
@@ -198,7 +128,6 @@ const VIRTUAL_CHUNK_BUDGET = 40_000;
 describe('script size', () => {
   const pages = [
     { page: 'board', folder: 'assets', entry: () => entryOf('assets', 'app') },
-    { page: 'monitor', folder: 'monitor', entry: () => entryOf('monitor', 'monitor') },
   ] as const;
 
   for (const { page, folder, entry } of pages) {
@@ -216,30 +145,4 @@ describe('script size', () => {
       expect(large.filter((name) => first.has(name) && name !== entry())).toEqual([]);
     });
   }
-  it('does not ship the editor stylesheet in the monitor CSS', () => {
-    expect(read('monitor/dependency-graph.json')).not.toMatch(/styles\/editor\.css|\.cm-/);
-    const cssName = files('monitor').find((name) => /^monitor-.+\.css$/.test(name));
-    expect(cssName).toBeDefined();
-    const css = read(`monitor/${cssName}`);
-    const sheet = (path: string) => readFileSync(resolve('src', path), 'utf8');
-    const classes = (text: string) => new Set(text.match(/\.[a-zA-Z][\w-]*/g) ?? []);
-    // The classes only editor.css defines: none of the stylesheets the monitor imports has them.
-    const shared = [
-      'shared/styles/tokens.css',
-      'shared/styles/app.css',
-      'shared/styles/ui.css',
-      'shared/styles/modal.css',
-      'shared/styles/theme.css',
-      'features/tasks/answer/decision-answer.css',
-      'pages/monitor/monitor.css',
-      'pages/monitor/monitor-screen.css',
-    ].map((path) => classes(sheet(path)));
-    const editorOnly = [...classes(sheet('shared/styles/editor.css'))].filter(
-      (name) => !shared.some((known) => known.has(name)),
-    );
-    expect(editorOnly.length).toBeGreaterThan(10);
-    const shipped = classes(css);
-    expect(editorOnly.filter((name) => shipped.has(name))).toEqual([]);
-    expect(css).not.toContain('.cm-editor');
-  });
 });

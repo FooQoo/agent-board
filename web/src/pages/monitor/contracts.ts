@@ -43,12 +43,10 @@ export interface MonitorReadResolvers {
 /** Resolvers for pages that are not connected to a server (stories, the sample-data mode). */
 export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
   attachmentUrl: (projectId, taskId, attachmentId) =>
-    `/monitor/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/attachments/${encodeURIComponent(attachmentId)}`,
+    `/api/projects/${encodeURIComponent(projectId)}/tasks/${taskId}/attachments/${encodeURIComponent(attachmentId)}`,
   epicAttachmentUrl: (projectId, epicId, attachmentId) =>
-    `/monitor/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    `/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
 };
-
-export const MONITOR_API_BASE = '/monitor/api/';
 
 /** The project switcher the header shows when the app lets the person change project. */
 export type MonitorHeaderProps = Pick<

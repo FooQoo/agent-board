@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  MonitorClientError,
-  monitorClient,
-  onMonitorAuthLoss,
-  usesMonitorSession,
-  type MonitorAuthLoss,
-} from '../client';
+import { MonitorClientError, onMonitorAuthLoss, type MonitorAuthLoss } from '../session';
 
 /** Why the phone is asked for the passcode again instead of being shown the monitor. */
 export type MonitorConnectionFailure = 'expired' | 'unavailable' | 'unreachable';
@@ -23,12 +17,12 @@ export type MonitorConnectionState =
 export type UnlockFailure = 'wrong' | 'locked' | 'unavailable' | 'unreachable';
 
 export interface UseMonitorConnectionOptions {
-  /** Ask whether the app session is live. Defaults to the monitor client. */
-  openSession?: () => Promise<unknown>;
-  /** Trade a passcode for the app session. Defaults to the monitor client. */
+  /** Ask whether the app session is live. */
+  openSession: () => Promise<unknown>;
+  /** Trade a passcode for the app session. */
   unlock?: (code: string) => Promise<unknown>;
   /** Whether this page uses the app session at all. */
-  usesSession?: () => boolean;
+  usesSession: () => boolean;
 }
 
 export interface UseMonitorConnectionResult {
@@ -73,10 +67,11 @@ function unlockFailureOf(cause: unknown): UnlockFailure {
  * on its own: only `unlock` does, when a person submits one.
  */
 export function useMonitorConnection({
-  openSession = () => monitorClient.openSession(),
-  unlock: unlockWith = (code) => monitorClient.unlock(code),
-  usesSession = usesMonitorSession,
-}: UseMonitorConnectionOptions = {}): UseMonitorConnectionResult {
+  openSession,
+  unlock: unlockWith = () =>
+    Promise.reject(new MonitorClientError('No passcode route.', 0, 'unavailable')),
+  usesSession,
+}: UseMonitorConnectionOptions): UseMonitorConnectionResult {
   const session = usesSession();
   const [state, setState] = useState<MonitorConnectionState>(
     session ? { status: 'checking' } : { status: 'ready' },

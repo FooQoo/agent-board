@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
 import { MonitorView } from '../../src/pages/monitor/View';
-import { MonitorClientError } from '../../src/pages/monitor/client';
+import { MonitorClientError } from '../../src/pages/monitor/session';
 import { createMonitorFixture, createMonitorFixtureProps } from '../../src/pages/monitor/mock';
 import {
   createMonitorFixtureAdapter,

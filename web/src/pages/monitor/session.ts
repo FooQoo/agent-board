@@ -1,10 +1,7 @@
-// The phone's access to the monitor: its error type, the app session and the CSRF token.
+// The phone's access to the board through the ngrok entrance: its error type, the app session and
+// the CSRF token.
 
-export const MONITOR_API_BASE = '/monitor/api/';
 export const MONITOR_REQUEST_TIMEOUT_MS = 10_000;
-const MONITOR_TOKEN_META = 'agboard-monitor-token';
-const SESSION_URL = `${MONITOR_API_BASE}session`;
-const UNLOCK_URL = `${MONITOR_API_BASE}unlock`;
 
 export interface MonitorRequestOptions {
   signal?: AbortSignal;
@@ -28,12 +25,6 @@ export class MonitorClientError extends Error {
   }
 }
 
-export function readMonitorToken(): string {
-  return (
-    document.querySelector<HTMLMetaElement>(`meta[name="${MONITOR_TOKEN_META}"]`)?.content ?? ''
-  );
-}
-
 /**
  * Why the monitor lost its access.
  * - `session_required`: the app session is gone; the page asked for data without a live one.
@@ -47,10 +38,6 @@ let csrfToken: string | null = null;
 
 /** The CSRF token of the current session, if one was fetched. */
 export const currentCsrf = (): string | null => csrfToken;
-/** Drop the token so the next write fetches a new one. */
-export const forgetCsrf = (): void => {
-  csrfToken = null;
-};
 
 /** Be told whenever a request shows the phone no longer has access. Returns the unsubscribe. */
 export function onMonitorAuthLoss(listener: (loss: MonitorAuthLoss) => void): () => void {
@@ -61,15 +48,6 @@ export function onMonitorAuthLoss(listener: (loss: MonitorAuthLoss) => void): ()
 export function reportAuthLoss(loss: MonitorAuthLoss): void {
   csrfToken = null;
   for (const listener of [...authListeners]) listener(loss);
-}
-
-/**
- * True when the page came through the ngrok entrance: its HTML carries no token, so reads and
- * answers rely on the app session cookie, which the passcode opens, and the CSRF token from
- * `GET /monitor/api/session`. A page with a token keeps sending it and has no session.
- */
-export function usesMonitorSession(): boolean {
-  return readMonitorToken() === '';
 }
 
 export interface MonitorSession {
@@ -172,15 +150,11 @@ async function takeSession(response: Response): Promise<MonitorSession> {
 }
 
 /**
- * Ask whether the app session is live, and keep its CSRF token in memory only. Nothing starts a
- * session here: without one the monitor says `session_required` and the page asks for the
- * passcode. Anything that is not the monitor's JSON is `unexpected_response`.
+ * Ask whether the app session is live at the session route (the board app's
+ * `/api/remote/session`), and keep its CSRF token in memory only. Nothing starts a session here:
+ * without one the server says `session_required` and the page asks for the passcode. Anything
+ * that is not the server's JSON is `unexpected_response`.
  */
-export function openSession(options: MonitorRequestOptions = {}): Promise<MonitorSession> {
-  return openSessionAt(SESSION_URL, options);
-}
-
-/** [`openSession`] against another session route, such as the board app's `/api/remote/session`. */
 export function openSessionAt(
   url: string,
   options: MonitorRequestOptions = {},
@@ -189,15 +163,11 @@ export function openSessionAt(
 }
 
 /**
- * Trade the four-digit passcode shown on the PC for a session. The monitor sets the session cookie;
- * the CSRF token is kept in memory. A wrong passcode is `unlock_failed`, and after too many in a
- * row `unlock_locked`; the monitor never says how many tries are left.
+ * Trade the four-digit passcode shown on the PC for a session at the unlock route (the board app's
+ * `/api/remote/unlock`). The server sets the session cookie; the CSRF token is kept in memory. A
+ * wrong passcode is `unlock_failed`, and after too many in a row `unlock_locked`; the server never
+ * says how many tries are left.
  */
-export function unlock(code: string, options: MonitorRequestOptions = {}): Promise<MonitorSession> {
-  return unlockAt(UNLOCK_URL, code, options);
-}
-
-/** [`unlock`] against another unlock route, such as the board app's `/api/remote/unlock`. */
 export function unlockAt(
   url: string,
   code: string,

@@ -7,16 +7,16 @@ const ORIGIN = `${'https'}://example.ngrok.app`;
 const PROJECT = '0123456789abcdef0123456789abcdef';
 
 describe('phone URL of a project', () => {
-  it('points the phone at the monitor of the selected project', () => {
-    expect(phoneUrl(ORIGIN, PROJECT)).toBe(`${ORIGIN}/monitor/?project=${PROJECT}`);
+  it('points the phone at the board root with the selected project', () => {
+    expect(phoneUrl(ORIGIN, PROJECT)).toBe(`${ORIGIN}/?project=${PROJECT}`);
   });
 
-  it('keeps the monitor path when the connection reports an address that already has one', () => {
-    expect(phoneUrl(`${ORIGIN}/monitor/`, PROJECT)).toBe(`${ORIGIN}/monitor/?project=${PROJECT}`);
+  it('never keeps the old monitor path, whatever address the connection reports', () => {
+    expect(phoneUrl(`${ORIGIN}/monitor/`, PROJECT)).toBe(`${ORIGIN}/?project=${PROJECT}`);
   });
 
   it('keeps a port of the public address', () => {
-    expect(phoneUrl(`${ORIGIN}:8443`, PROJECT)).toBe(`${ORIGIN}:8443/monitor/?project=${PROJECT}`);
+    expect(phoneUrl(`${ORIGIN}:8443`, PROJECT)).toBe(`${ORIGIN}:8443/?project=${PROJECT}`);
   });
 
   it('gives no address when no project is selected', () => {

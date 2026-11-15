@@ -48,17 +48,17 @@ function decode(url: string): string | undefined {
 
 describe('connection QR code', () => {
   it('decodes to exactly the public URL', () => {
-    const url = `${ORIGIN}example.ngrok.app/monitor/`;
+    const url = `${ORIGIN}example.ngrok.app/`;
     expect(decode(url)).toBe(url);
   });
 
   it('decodes a longer public URL with a port and path', () => {
-    const url = `${ORIGIN}quiet-river-1234.trycloudflare.com:8443/monitor/`;
+    const url = `${ORIGIN}quiet-river-1234.trycloudflare.com:8443/`;
     expect(decode(url)).toBe(url);
   });
 
   it('draws the same modules as the encoder matrix', () => {
-    const url = `${ORIGIN}example.ngrok.app/monitor/`;
+    const url = `${ORIGIN}example.ngrok.app/`;
     const code = qrcode(0, 'M');
     code.addData(url);
     code.make();
@@ -74,7 +74,7 @@ describe('connection QR code', () => {
   });
 
   it('carries only the public URL, never a token or an allowed email', () => {
-    const url = `${ORIGIN}example.ngrok.app/monitor/`;
+    const url = `${ORIGIN}example.ngrok.app/`;
     const decoded = decode(url) ?? '';
     expect(decoded).toBe(url);
     expect(decoded).not.toMatch(/token|@|[a-f0-9]{32,}/i);

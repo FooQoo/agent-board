@@ -35,19 +35,14 @@
               "interaction": true
             }
           ]
+        },
+        {
+          "name": "MonitorScreen",
+          "stories": [],
+          "exclusion": "MonitorScreen is the connected body of MonitorProject, whose Story draws it; the board app's mobile screen is exercised by the App responsive tests and the product E2E."
         }
       ],
       "owner": "U7"
-    },
-    {
-      "file": "pages/monitor/App.tsx",
-      "exports": [
-        {
-          "name": "App",
-          "stories": [],
-          "exclusion": "The routing and app bootstrap wrapper is exercised by the product E2E suite; MonitorView has direct Stories in this folder."
-        }
-      ]
     }
   ]
 }

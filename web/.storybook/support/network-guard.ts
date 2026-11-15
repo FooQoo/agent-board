@@ -2,7 +2,7 @@
 // Storybook preview and in the browser tests: a request to a product API path fails, and the attempt
 // is recorded so that the test which made it can fail too.
 
-const PRODUCT_API_PATHS = ['/api', '/monitor/api'];
+const PRODUCT_API_PATHS = ['/api'];
 
 /** Requests to product API paths made while the guard was installed, as `METHOD url` strings. */
 export const blockedRequests: string[] = [];

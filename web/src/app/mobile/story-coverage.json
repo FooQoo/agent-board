@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "owner": "U5",
+  "files": [
+    {
+      "file": "app/mobile/MobileBoard.tsx",
+      "exports": [
+        {
+          "name": "default",
+          "stories": [],
+          "exclusion": "MobileBoard is the board controller's narrow-width screen, which wires the monitor parts to the board's data layer; those parts have their own Stories and the screen is exercised by the App responsive tests and the product E2E."
+        }
+      ]
+    }
+  ]
+}

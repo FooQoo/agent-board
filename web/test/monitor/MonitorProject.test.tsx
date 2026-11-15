@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MonitorClientError } from '../../src/pages/monitor/client';
+import { MonitorClientError } from '../../src/pages/monitor/session';
 import { unconnectedMonitorReadResolvers } from '../../src/pages/monitor/contracts';
 import { MonitorProject } from '../../src/pages/monitor/MonitorProject';
 import { selectLocale } from '../../src/shared/i18n';

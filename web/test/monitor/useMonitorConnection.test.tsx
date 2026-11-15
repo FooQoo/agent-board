@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MonitorClientError } from '../../src/pages/monitor/client';
+import { MonitorClientError } from '../../src/pages/monitor/session';
 import { useMonitorConnection } from '../../src/pages/monitor/hooks/useMonitorConnection';
 
 const visibility = (value: DocumentVisibilityState) =>
