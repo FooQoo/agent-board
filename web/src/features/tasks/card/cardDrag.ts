@@ -17,7 +17,7 @@ function onGrip(target: EventTarget | null): boolean {
 export function cardActivationConstraints(event: PointerEvent, source: Draggable) {
   if (event.pointerType === 'touch') {
     if (onGrip(event.target)) return undefined;
-    return [new PointerActivationConstraints.Delay({ value: 150, tolerance: 10 })];
+    return [new PointerActivationConstraints.Delay({ value: 100, tolerance: 10 })];
   }
   const fallback = PointerSensor.defaults.activationConstraints;
   return typeof fallback === 'function' ? fallback(event, source) : fallback;

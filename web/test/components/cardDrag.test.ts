@@ -30,7 +30,7 @@ describe('card drag activation', () => {
     const result = cardActivationConstraints(press('touch', grip().body), source);
     expect(result).toHaveLength(1);
     expect(result?.[0]).toBeInstanceOf(PointerActivationConstraints.Delay);
-    expect(result?.[0]).toMatchObject({ options: { value: 150, tolerance: 10 } });
+    expect(result?.[0]).toMatchObject({ options: { value: 100, tolerance: 10 } });
   });
 
   it('leaves the mouse and the pen to the library defaults', () => {
