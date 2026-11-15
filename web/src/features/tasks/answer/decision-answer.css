@@ -13,6 +13,7 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--r-surface);
 }
 
@@ -302,7 +303,13 @@
 
 .decision-answer-button {
   width: 100%;
-  height: 34px;
+  /* The label wraps in a narrow lane instead of being clipped. */
+  height: auto;
+  min-height: 34px;
+  padding-block: 6px;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
   gap: 6px;
   border-radius: 8px;
   font-weight: 600;

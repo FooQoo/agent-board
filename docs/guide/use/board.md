@@ -42,6 +42,8 @@ Each tab loads its text when you open it. The number on the **History** tab appe
 
 On a touch screen, press the grip at the left of the card's header and move your finger to drag at once. Pressing elsewhere on the card and holding for a moment also drags it, and a quick swipe scrolls the column instead.
 
+On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, and a dialog opens without raising the on-screen keyboard. Tap a field to start typing.
+
 Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move.
 
 If an agent or another browser moves the task while the dialog is open, the move is not made. The dialog shows the column the task is in now and says so, and the reason you typed stays. Confirm again to move it from there.

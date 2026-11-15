@@ -12,6 +12,7 @@
   max-width: calc(100vw - 32px);
   max-height: calc(100svh - 32px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   /* The design measures the 28px padding from the outer edge; the 1px border takes one of it. */
   padding: 27px;
   border: 1px solid var(--r-border);
@@ -236,6 +237,7 @@
   margin: -4px;
   padding: 4px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
@@ -572,6 +574,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--r-border);
   border-radius: 8px;
 }

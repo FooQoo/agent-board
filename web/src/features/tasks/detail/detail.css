@@ -426,3 +426,10 @@
     font-size: 11px;
   }
 }
+
+/* Touch screens: the tabs are 44px high and the labels do not touch each other. */
+@media (pointer: coarse) {
+  .detail__tablist {
+    column-gap: 8px;
+  }
+}

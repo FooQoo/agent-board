@@ -267,3 +267,14 @@
   font-size: 14px;
   line-height: 18px;
 }
+
+/* Touch screens: the toggle and the header are finger-sized. */
+@media (pointer: coarse) {
+  .question-band__header {
+    min-height: var(--btn-l-h);
+  }
+
+  .question-band__toggle {
+    min-height: var(--btn-l-h);
+  }
+}

@@ -121,7 +121,8 @@ const bytes = (folder: string, names: string[]) =>
 // The band of unanswered questions above the lanes and the page's book of held answers take about 3.7 KB over that;
 // the dialog's run through the questions and its strings load on first use.
 // The band's open/close toggle and the header's option to leave out the settings button take about 0.3 KB more.
-const FIRST_LOAD_BUDGET = { board: 707_000 };
+// The touch-screen rules (44px targets, hit areas, wrapping badge) take about 0.4 KB more.
+const FIRST_LOAD_BUDGET = { board: 708_000 };
 const LAZY_ONLY_ABOVE = 500_000;
 // The virtual list chunk (the list and @tanstack/react-virtual) loads for a large document only.
 const VIRTUAL_CHUNK_BUDGET = 40_000;

@@ -38,6 +38,20 @@
   --btn-2xl-icon: 56px;
 }
 
+/*
+ * A finger needs 44px. On touch screens the S and M buttons grow to the L size through the tokens,
+ * so every control built on them (the header, the detail toolbar, the questions band) follows.
+ * The desktop mouse layout keeps the compact sizes.
+ */
+@media (pointer: coarse) {
+  :root {
+    --btn-s-h: var(--btn-l-h);
+    --btn-s-icon: var(--btn-l-icon);
+    --btn-m-h: var(--btn-l-h);
+    --btn-m-icon: var(--btn-l-icon);
+  }
+}
+
 /* Minimal base for the shadcn/ui sources, replacing the Tailwind preflight that is not imported. */
 @layer base {
   [data-slot] {

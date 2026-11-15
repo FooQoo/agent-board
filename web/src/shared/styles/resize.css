@@ -50,3 +50,12 @@ body.is-resizing {
   user-select: none;
   cursor: col-resize;
 }
+
+/* Touch screens: the visible handle stays 16px; a transparent area around it takes the finger. */
+@media (pointer: coarse) {
+  .resize-handle::after {
+    content: "";
+    position: absolute;
+    inset: -8px -14px;
+  }
+}
