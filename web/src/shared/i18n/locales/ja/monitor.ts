@@ -32,6 +32,14 @@ export const monitorJa = {
       doing: '進行中の作業はありません。',
       done: '完了した作業はありません。',
     },
+    lanes: {
+      tabs: 'レーン',
+      tab: '{{lane}} {{count}}件',
+      toNext: '→ {{lane}}',
+      toPrev: '← {{lane}}',
+      bulkArchive: 'まとめてアーカイブ',
+      archiveTask: '#{{id}} をアーカイブ',
+    },
     freshness: {
       loading: 'モニターを読み込んでいます…',
       syncing: '更新中…',

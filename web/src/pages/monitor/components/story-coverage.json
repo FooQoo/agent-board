@@ -332,6 +332,166 @@
         }
       ],
       "owner": "U7"
+    },
+    {
+      "file": "pages/monitor/components/LaneTabs.tsx",
+      "exports": [
+        {
+          "name": "LaneTabs",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--todo-lane",
+              "states": ["three tabs with counts", "current lane highlighted", "tab switches lane"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--tab-switches-lane",
+              "states": ["tap on a tab switches the lane"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/SwipeableCard.tsx",
+      "exports": [
+        {
+          "name": "SwipeableCard",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-revealed",
+              "states": ["card slid left", "archive button 44px"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--swipe-reveals-archive",
+              "states": ["swipe left reveals", "swipe back closes"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
+              "states": ["long press lifts the card"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--interactive",
+              "states": ["touch and mouse gestures"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/LaneEdges.tsx",
+      "exports": [
+        {
+          "name": "LaneEdges",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--card-lifted-at-edge",
+              "states": ["edge strip", "neighbour lane name", "active edge"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
+              "states": ["dwell switches lane"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorLanes.tsx",
+      "exports": [
+        {
+          "name": "MonitorLanes",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--todo-lane",
+              "states": ["todo lane"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--doing-lane",
+              "states": ["AI running card", "pending question card"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--done-lane",
+              "states": ["bulk archive in the done lane header"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--empty-done-lane",
+              "states": ["empty lane", "bulk archive disabled"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--swipe-switches-lane",
+              "states": ["sideways swipe on empty space"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--interactive",
+              "states": ["all gestures"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorLaneDialogs.tsx",
+      "exports": [
+        {
+          "name": "MonitorLaneDialogs",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-confirm",
+              "states": ["archive confirmation"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-confirm",
+              "states": ["bulk archive confirmation"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
+              "states": ["move confirmation after a drop"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/MonitorLanesScreen.tsx",
+      "exports": [
+        {
+          "name": "MonitorLanesScreen",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--todo-lane",
+              "states": ["header, band, tabs and lane"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--doing-lane",
+              "states": ["doing lane"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--interactive",
+              "states": ["whole screen"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

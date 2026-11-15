@@ -32,6 +32,14 @@ export const monitorEn = {
       doing: 'No work in progress.',
       done: 'No completed work.',
     },
+    lanes: {
+      tabs: 'Lanes',
+      tab: '{{lane}} {{count}}',
+      toNext: '→ {{lane}}',
+      toPrev: '← {{lane}}',
+      bulkArchive: 'Archive all',
+      archiveTask: 'Archive #{{id}}',
+    },
     freshness: {
       loading: 'Loading monitor…',
       syncing: 'Updating…',
