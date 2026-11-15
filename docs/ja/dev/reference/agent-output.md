@@ -90,6 +90,18 @@ taskの項目を省略した例です。
 
 `--print`のときと、ブラウザーを開いてはいけないときは`opened`が`false`になり、`notice`に理由が入ります。例：`"AGBOARD_OPEN_BROWSER=0 turns opening the browser off."`。サーバーに届かなければ`board_unavailable`、開くためのプログラムを起動できなければ`browser_open_failed`です。[エラーコード](./errors.md#サーバーと待機)を参照してください。
 
+## remote
+
+`agboard remote --json`は、動いているサーバーにngrok接続を問い合わせ、`ready`のときにオブジェクトを一つ出します。
+
+```json
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+```
+
+`url`は、登録されたプロジェクトか指定したプロジェクトのボードを開くアドレスで、`entrance`はプロジェクトを含まないアドレスです。プロジェクトが決まらないとき（フォルダがどのプロジェクトにも登録されておらず、`--project`もない）は、`url`は末尾に`/`が付いた入口のアドレスになり、`project`は`null`です。指定したプロジェクトがなければ`project_not_found`です。
+
+それ以外のときは、標準出力には何も出さず、終了コード1と`remote_unavailable`で終わります。サーバーが動いていないか、接続が`ready`ではない場合です。エラーにはアドレスも合言葉も含まれません。サーバーはこの情報をローカルのアドレスにだけ返すので、合言葉はこのコンピューターの前にいる人にだけ届き、トンネルは通りません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
+
 ## qaのイベント
 
 `agboard qa ask --request-json <json> --task <id>…`は、次の形を受け取ります。

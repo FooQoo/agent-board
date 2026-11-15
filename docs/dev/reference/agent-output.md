@@ -90,6 +90,18 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 
 `opened` is `false` with `--print`, and when the browser may not be opened; then `notice` says why, for example `"AGBOARD_OPEN_BROWSER=0 turns opening the browser off."`. A server that cannot be reached is `board_unavailable`, and a program that cannot be started is `browser_open_failed`. See [Error codes](./errors.md#server-and-waiting).
 
+## Remote
+
+`agboard remote --json` asks the running server for the ngrok connection and prints one object when it is `ready`:
+
+```json
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+```
+
+`url` opens the board of the bound or named project, and `entrance` is the address without a project. When no project resolves (the folder is bound to none and `--project` is not given), `url` is the entrance with a trailing `/` and `project` is `null`. A named project that does not exist is `project_not_found`.
+
+Anything else prints nothing on standard output and exits 1 with `remote_unavailable`: no server is running, or the connection is not `ready`. The error carries no address and no passcode. The server answers this only on its local address, so the passcode reaches the person at this computer and never passes through the tunnel. See [Error codes](./errors.md#server-and-waiting).
+
 ## qa events
 
 `agboard qa ask --request-json <json> --task <id>…` takes:

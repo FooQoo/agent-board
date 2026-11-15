@@ -20,6 +20,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
 | Open the board in the browser | `open` |
+| Get the phone address and passcode | `remote` |
 | Run the server and the hook | `serve`, `stop`, `hook` |
 | Install and update the Agent Board plugin | `setup`, `update` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
@@ -194,6 +195,29 @@ agboard stop
 ```
 
 `agboard stop` shuts down the running server and returns when it has exited. It stops a server started with `serve`, with `serve -d`, or by a command. After `stop`, the hook does not start the server again until a command that waits, `serve`, or `serve -d` starts one. If no server is running, it says so and exits with code 0. `stop` takes no `--project`.
+
+### Give the phone address and passcode
+
+While the ngrok connection is up, `agboard remote` prints its state, the public address, and the 4-digit passcode, so that an agent can hand you a link without you opening the connection dialog:
+
+```sh
+agboard remote
+agboard remote --json
+agboard --project "My project" remote
+```
+
+```text
+ngrok: ready
+URL: https://….ngrok-free.app/?project=<id>
+Passcode: 4821
+Project: My project
+```
+
+The address opens the project bound to the current folder, or the one `--project` names. When neither resolves, it prints the address without `?project=` and says that no project was selected. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`; `entrance` is the address without a project, and `project` is `null` when none was selected.
+
+`remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
+
+The server gives the passcode only to the local address of your PC, so it is printed to the person running the command and never travels through ngrok. If an agent pastes it into a chat, everyone who can read that chat can open the board for as long as the connection is up. Stop the connection when you are done; see the [mobile monitor guide](../operations/mobile-monitor).
 
 The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
 

@@ -32,6 +32,7 @@ Commands:
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser (-d runs it in the background)
   open    Open the project's board in your browser
+  remote  Show the ngrok state, public URL, and passcode for the phone
   stop    Stop the running server
   setup   Install the Agent Board plugin for Codex and Claude Code
   update  Update the installed Agent Board plugin to this version
@@ -43,6 +44,7 @@ Workflow for agents:
   agboard --project NAME progress --json
   agboard --project NAME ls --json
   agboard ls --all-projects --json
+  agboard remote --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
   agboard --project NAME qa ask --actor ai --task <id> --json --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'

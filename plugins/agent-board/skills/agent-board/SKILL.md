@@ -224,6 +224,10 @@ The waiting command then ends with `answered` on its own; do not record the answ
 
 If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead. To show the user the board, run `agboard open`; it prints the address and opens the project's board in their browser. Read a question and its answer with `agboard --project "<name>" qa show <Q-id> --json`, and the open questions with `qa ls --json`. An answer also appends a concise history reason to each task that refers to the question.
 
+### Open the board on the phone
+
+When the user wants to open the board on their phone, run `agboard remote --json` and give them the `url` and the `passcode`. The `url` opens the project of the current folder (or the one `--project` names); the passcode is the 4-digit code the phone asks for. The command starts nothing: if it fails with `remote_unavailable`, the ngrok connection is not ready, so tell the user why and that they can connect it from the board's **Settings** (or with `agboard serve --monitor ngrok`), and do not invent an address or passcode. The passcode is printed only to you on the user's PC; tell the user that anyone who reads the conversation with it can open the board while the connection is up.
+
 ## 8. Wait and resume
 
 When no work can proceed in the ordinary work loop, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes tasks or questions:
