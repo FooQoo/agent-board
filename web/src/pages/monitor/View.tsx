@@ -13,6 +13,8 @@ import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
 import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
 import type { AnswerStart } from '../../features/tasks/answer/useAnswerFlow';
+import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
+import { usePhoneGuideNotice } from '../../features/onboarding/model/phoneGuideLink';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
 const detailDrawer = preloadable(() =>
@@ -51,7 +53,22 @@ export function MonitorView(props: MonitorViewProps) {
     setAnswering((current) => ({ start, key: (current?.key ?? 0) + 1 }));
     setAnswerOpen(true);
   };
-  const { summary, todo, doing, done, freshness } = props;
+  const { summary, todo, doing, done, freshness, guideLink } = props;
+  const guideNotice = usePhoneGuideNotice(guideLink);
+  // The first-run guide opens the sheet of a sample card, and learns whether the sheet is open.
+  const answerRequest = useRef<(taskId: number) => void>(() => {});
+  answerRequest.current = (taskId) => {
+    const first = firstQuestionOf(props.questions ?? [], taskId);
+    openAnswer(first ? { kind: 'task', taskId } : { kind: 'resume' });
+  };
+  useEffect(
+    () => guideLink?.onAnswerRequest((taskId) => answerRequest.current(taskId)),
+    [guideLink],
+  );
+  useEffect(() => {
+    guideLink?.setSheetOpen(answerOpen);
+    return () => guideLink?.setSheetOpen(false);
+  }, [guideLink, answerOpen]);
   const ordered = {
     todo: sortLane(todo),
     doing: sortLane(doing),
@@ -90,6 +107,7 @@ export function MonitorView(props: MonitorViewProps) {
           <span>{t('monitor.status.done')}</span>
         </button>
       </section>
+      {guideNotice !== null && <OnboardingNotice message={guideNotice} inline />}
       {props.answerController && props.projectId && props.questions && (
         <QuestionBand
           questions={props.questions.filter((question) => !book?.isSent(projectId, question.id))}

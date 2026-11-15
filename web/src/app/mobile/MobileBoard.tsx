@@ -6,6 +6,7 @@ import type { MonitorHeaderProps } from '../../pages/monitor/contracts';
 import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
 import { Header } from '../../shared/ui/app-header/Header';
 import { monitorLogo } from '../../pages/monitor/logo';
+import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import { isProjectId } from '../model/projectSession';
 import type { AppControllerModel, AppWorkspaceActions } from '../contracts';
 import { boardEnvironment } from './boardEnvironment';
@@ -25,9 +26,12 @@ const stays = () => undefined;
 export default function MobileBoard({
   model,
   actions,
+  guideLink,
 }: {
   model: AppControllerModel;
   actions: AppWorkspaceActions;
+  /** The first-run guide's link to this screen. */
+  guideLink?: PhoneGuideLink;
 }) {
   const environment = useMemo(boardEnvironment, []);
   const { projects, session, activeId, known } = model;
@@ -63,6 +67,7 @@ export default function MobileBoard({
       stream={model.streamDown ? 'disconnected' : 'connected'}
       onNotFound={stays}
       header={header}
+      guideLink={guideLink}
     />
   );
 }

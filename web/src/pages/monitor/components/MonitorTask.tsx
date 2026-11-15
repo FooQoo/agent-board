@@ -47,6 +47,7 @@ export function MonitorTask({
     <article
       className={`monitor-card monitor-card--${section}`}
       aria-label={label}
+      data-task-id={task.id}
       data-agent-status={showsState ? task.agentStatus : undefined}
     >
       <span className="monitor-card__top">

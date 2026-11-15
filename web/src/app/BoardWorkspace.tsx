@@ -1,4 +1,4 @@
-import { type CSSProperties, Suspense } from 'react';
+import type { CSSProperties } from 'react';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
@@ -10,7 +10,6 @@ import { DetailPanel } from '../features/tasks/detail/DetailPanel';
 import { ResizeHandle } from '../shared/ui/resize-handle/ResizeHandle';
 import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
-import { guideLayer } from './onboarding/lazyGuide';
 import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
 import { QuestionBand } from '../features/tasks/answer/QuestionBand';
@@ -42,12 +41,9 @@ const renderEpicLabel = (epic: EpicRef) => <EpicBadge epic={epic} className="det
 export function BoardWorkspace({
   model,
   actions,
-  guide = true,
 }: {
   model: AppControllerModel;
   actions: AppWorkspaceActions;
-  /** Whether the first-run guide may run here; stories leave it off, since they make no requests. */
-  guide?: boolean;
 }) {
   const {
     session,
@@ -215,25 +211,6 @@ export function BoardWorkspace({
           </>
         ) : null}
       </div>
-      <Suspense fallback={null}>
-        <guideLayer.Component
-          projectId={known && isProjectId(activeId) ? activeId : null}
-          eligible={
-            guide &&
-            known &&
-            model.view === 'board' &&
-            operation === null &&
-            session.answerLeases.length === 0 &&
-            !epicsVisible &&
-            !archiveVisible &&
-            !isMockTask
-          }
-          tasks={tasks}
-          answers={model.answers.book}
-          onAnswer={model.answers.openForTask}
-          onAnswerChanged={actions.onAnswerChanged}
-        />
-      </Suspense>
       <StatusBar
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
         taskCount={

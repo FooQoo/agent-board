@@ -1,5 +1,6 @@
 import type { Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
+import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { HeaderProps } from '../../shared/ui/app-header/Header';
 import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import type {
@@ -78,6 +79,8 @@ export interface MonitorViewProps {
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
+  /** The first-run guide's link to this screen: it opens the answer sheet and shows the finish notice. */
+  guideLink?: PhoneGuideLink;
   /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
   onDetailOpenChange?(open: boolean): void;
 }

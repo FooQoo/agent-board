@@ -2,11 +2,18 @@
 // the lane the guide is pointing at, and shows the real task cards and answer form in
 // the spotlight. The view parts stay free of the board, so this file joins them.
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
 import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import { TaskCard } from '../../features/tasks/card/TaskCard';
+import {
+  type PhoneGuideLink,
+  usePhoneSheetOpen,
+} from '../../features/onboarding/model/phoneGuideLink';
+import { MonitorTask } from '../../pages/monitor/components/MonitorTask';
+import '../../pages/monitor/monitor-screen.css';
+import { boardEnvironment } from '../mobile/boardEnvironment';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
 import { OnboardingGuidePanel } from '../../features/onboarding/ui/OnboardingGuidePanel';
 import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
@@ -16,6 +23,7 @@ import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import '../../shared/i18n/onboarding-strings';
 import { newId } from './api';
 import type { GuidePhase } from './api';
+import { phoneItemOf, usePhoneTargetRect } from './phoneTarget';
 import { useGuide } from './useGuide';
 
 type Column = 'todo' | 'doing' | 'done';
@@ -79,6 +87,12 @@ const PANEL_INDEX: Record<GuidePhase, number> = {
   complete: 4,
 };
 
+/** What the guide needs to draw itself on the phone screen, which replaces the PC board below 768px. */
+export interface PhoneGuide {
+  link: PhoneGuideLink;
+  projectName: string;
+}
+
 export function GuideLayer({
   projectId,
   eligible,
@@ -86,7 +100,10 @@ export function GuideLayer({
   answers,
   onAnswer,
   onAnswerChanged,
+  phone = null,
 }: {
+  /** Set while the phone screen is shown; `null` on the PC board. One guide serves both. */
+  phone?: PhoneGuide | null;
   projectId: ProjectId | null;
   eligible: boolean;
   tasks: TaskSummary[];
@@ -118,19 +135,51 @@ export function GuideLayer({
     run && ['question', 'second-running', 'second-done', 'complete'].includes(run.phase) ? 2 : 1;
   const focus = samples.find((task) => task.onboardingSample?.ordinal === focusOrdinal) ?? null;
   const column: Column | null = focus ? (focus.taskStatus as Column) : null;
-  const rect = useLaneRect(screen.kind === 'step' ? column : null);
+  const sheetOpen = usePhoneSheetOpen(phone?.link);
+  const stepColumn = screen.kind === 'step' ? column : null;
   const inLane = samples.filter((task) => task.taskStatus === column);
-  const cards = inLane.map((task) => (
-    <TaskCard
-      key={task.id}
-      task={task}
-      selected={false}
-      onSelect={noop}
-      projectId={projectId ?? undefined}
-      answers={answers}
-      onAnswer={onAnswer}
-    />
-  ));
+  const laneRect = useLaneRect(phone ? null : stepColumn);
+  // While the answer sheet is open the stage frames nothing: the sheet has the screen.
+  const phoneRect = usePhoneTargetRect(
+    phone && stepColumn && !sheetOpen ? inLane.map((task) => task.id) : [],
+  );
+  const rect = phone ? phoneRect : laneRect;
+  const environment = useMemo(boardEnvironment, []);
+  const cards = inLane.map((task) =>
+    phone && projectId ? (
+      <MonitorTask
+        key={task.id}
+        item={phoneItemOf(task, projectId, phone.projectName)}
+        section={task.taskStatus as Column}
+        onOpenAnswer={(item) => phone.link.openAnswer(item.task.id)}
+        answerController={{
+          book: answers,
+          read: environment.readQuestion,
+          write: environment.writeAnswers,
+        }}
+      />
+    ) : (
+      <TaskCard
+        key={task.id}
+        task={task}
+        selected={false}
+        onSelect={noop}
+        projectId={projectId ?? undefined}
+        answers={answers}
+        onAnswer={onAnswer}
+      />
+    ),
+  );
+
+  // On the phone the finish notice sits in the screen's own flow, which the screen draws.
+  const phoneLink = phone?.link ?? null;
+  const showNotice = screen.kind === 'notice';
+  const noticeText = t('onboarding.archived');
+  useEffect(() => {
+    if (!phoneLink || !showNotice) return undefined;
+    phoneLink.setNotice(noticeText);
+    return () => phoneLink.setNotice(null);
+  }, [phoneLink, showNotice, noticeText]);
 
   if (screen.kind === 'hidden') return null;
 
@@ -145,7 +194,7 @@ export function GuideLayer({
   }
 
   if (screen.kind === 'notice') {
-    return <OnboardingNotice message={t('onboarding.archived')} />;
+    return phone ? null : <OnboardingNotice message={noticeText} />;
   }
 
   const phase: GuidePhase = run?.phase ?? 'samples';
@@ -160,7 +209,17 @@ export function GuideLayer({
       target={rect}
       onExit={guide.exit}
       renderTarget={
-        cards.length > 0 ? <div className="onboarding-stage__cards">{cards}</div> : null
+        cards.length > 0 ? (
+          <div
+            className={
+              phone
+                ? 'onboarding-stage__cards onboarding-stage__cards--phone'
+                : 'onboarding-stage__cards'
+            }
+          >
+            {cards}
+          </div>
+        ) : null
       }
       guide={
         <OnboardingGuidePanel
@@ -176,6 +235,7 @@ export function GuideLayer({
           error={error}
           onAction={failed ? guide.retry : guide.next}
           onExit={guide.exit}
+          compact={phone !== null && sheetOpen}
         />
       }
     />

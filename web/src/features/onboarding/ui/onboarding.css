@@ -56,8 +56,13 @@
 
 .onboarding-dialog__actions {
   display: flex;
-  justify-content: flex-end;
   gap: 12px;
+}
+
+/* Every button of the guide is full width; two in a row split the row evenly. */
+.onboarding-dialog__actions > button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .onboarding-dialog__error {
@@ -146,9 +151,15 @@
   margin-top: 10px;
 }
 
-/* The action row is 40px tall in the approved mock, which holds the button and the hint. */
+/* The hint sits on its own line above the full-width action. */
 .onboarding-panel__foot--action {
-  min-height: 40px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.onboarding-panel__foot--action > button {
+  width: 100%;
 }
 
 .onboarding-panel__hint {
@@ -184,6 +195,16 @@
   color: var(--r-text);
   font-size: 14px;
   box-shadow: 0 6px 18px rgb(15 23 42 / 0.12);
+}
+
+.onboarding-notice--inline {
+  position: static;
+  top: auto;
+  left: auto;
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+  transform: none;
 }
 
 .onboarding-notice__icon {
@@ -229,4 +250,79 @@
   .onboarding-overlay--stage {
     animation: none;
   }
+}
+
+/*
+ * The phone: below 768px the board shows the phone screen, and the guide follows it. The dialogs
+ * are centred cards 16px from the sides, and the explanation sits 24px above the bottom edge. While
+ * the answer sheet is open, the explanation shrinks to a strip over the screen's header.
+ */
+@media (max-width: 767px) {
+  .onboarding-dialog--card {
+    top: 50%;
+    left: 50%;
+    width: calc(100% - 32px);
+    max-width: none;
+    padding: 24px;
+    translate: -50% -50%;
+  }
+
+  .onboarding-dialog__actions > button,
+  .onboarding-panel__foot--action > button {
+    min-height: 44px;
+  }
+
+  .onboarding-dialog__title {
+    margin-top: 16px;
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .onboarding-dialog__body {
+    margin-top: 12px;
+  }
+
+  .onboarding-panel {
+    left: 16px;
+    right: 16px;
+    top: auto;
+    bottom: 24px;
+    width: auto;
+    padding: 16px;
+    transform: none;
+  }
+
+  .onboarding-panel--compact {
+    top: 8px;
+    bottom: auto;
+    left: 8px;
+    right: 8px;
+    pointer-events: auto;
+    padding: 10px 14px;
+  }
+
+  /*
+   * The answer sheet is drawn after the stage, so it would cover the strip. While the strip is up the
+   * stage sits above the sheet and lets every tap through but the strip's own; the sheet stops short
+   * of the strip.
+   */
+  .onboarding-dialog:has(.onboarding-panel--compact) {
+    z-index: 60;
+    pointer-events: none;
+  }
+
+  body:has(.onboarding-panel--compact)
+    .mobile-drawer.decision-sheet-popup[data-slot="drawer-popup"] {
+    height: calc(100dvh - 84px);
+  }
+
+  .onboarding-panel--compact .onboarding-panel__foot {
+    margin-top: 4px;
+  }
+}
+
+/* On the phone the frame hugs the screen's own cards: 4px around them, and the list's 5px between. */
+.onboarding-stage__cards--phone {
+  gap: 5px;
+  padding: 4px;
 }

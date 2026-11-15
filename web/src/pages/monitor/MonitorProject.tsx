@@ -14,6 +14,7 @@ import type {
   BandQuestion,
   QuestionReader,
 } from '../../features/tasks/answer/model/qa';
+import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { MonitorHeaderProps, MonitorReadResolvers, MonitorViewProps } from './contracts';
 import { MonitorView } from './View';
 import { monitorFreshness } from './model/freshness';
@@ -50,6 +51,8 @@ export interface MonitorScreenProps extends MonitorEnvironment {
   onNotFound(): void;
   /** The header's project switcher, when the app offers one. */
   header?: MonitorHeaderProps;
+  /** The first-run guide's link to this screen, when the app runs the guide. */
+  guideLink?: PhoneGuideLink;
 }
 
 export interface MonitorProjectProps extends MonitorEnvironment {
@@ -107,6 +110,7 @@ export function MonitorScreen({
   build,
   stream,
   header,
+  guideLink,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
   const answers = useAnswerBookState(book);
@@ -185,6 +189,7 @@ export function MonitorScreen({
     readResolvers,
     preferences,
     header,
+    guideLink,
     freshness,
     onRefresh: () => void refresh(),
     refreshing: refreshing || summary.state === 'refreshing',

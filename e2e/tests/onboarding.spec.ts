@@ -183,3 +183,69 @@ test('OB-05: a tutorial started in a second project puts its samples on that pro
 	expect(await serverTitles(url, targetId, 'archive')).toEqual(samples);
 	expect(await serverTitles(url, openedId, 'archive')).toEqual([]);
 });
+
+const PHONE = { width: 390, height: 844 };
+
+/** The answer sheet of the phone screen: the dialog that holds the note field. */
+function phoneSheet(page: Page) {
+	return page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
+}
+
+test('OB-06: at phone width the guide runs to the end, with the answer given in the sheet', async ({ page }) => {
+	const url = await openFreshBoard();
+	await page.setViewportSize(PHONE);
+	await page.goto(url);
+
+	await expect(page.getByText('Try Agent Board')).toBeVisible();
+	await page.getByRole('button', { name: 'Start guide' }).click();
+	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
+	await page.getByRole('button', { name: 'Watch it move' }).click();
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('The first card is done')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click();
+
+	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
+	await expect(page.locator('.onboarding-panel__badge')).toHaveText('Waiting for you');
+	const stage = page.getByRole('dialog', { name: 'Guide' });
+	await stage.getByRole('button', { name: 'Answer the question' }).click();
+	// While the sheet is open the explanation is a strip: its title and body are gone.
+	await expect(page.locator('.onboarding-panel--compact')).toBeVisible();
+	const sheet = phoneSheet(page);
+	await sheet.getByLabel('Keep it brief').check();
+	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+
+	await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
+	await expect(page.locator('.onboarding-panel--compact')).toHaveCount(0);
+	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Finish and get started' }).click();
+	// The notice sits in the phone screen's own flow.
+	await expect(page.locator('.monitor-shell .onboarding-notice--inline')).toHaveText(/archived/);
+
+	expect((await guideState(url)).status).toBe('completed');
+});
+
+test('OB-07: a change of width in the middle of the guide keeps the screen it is on', async ({ page }) => {
+	const url = await openFreshBoard();
+	await page.goto(url);
+	await page.getByRole('button', { name: 'Start guide' }).click();
+	await page.getByRole('button', { name: 'Watch it move' }).click();
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+
+	// To the phone: the same step, with the same run, now over the phone screen.
+	await page.setViewportSize(PHONE);
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
+	await expect(page.locator('.monitor-shell')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('The first card is done')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
+
+	// Back to the PC board: still step 3, the question still waits on its card.
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
+	await expect(page.locator('.monitor-shell')).toHaveCount(0);
+	await expect(page.getByRole('dialog', { name: 'Guide' }).getByRole('button', { name: 'Answer the question' })).toBeVisible();
+	expect((await guideState(url)).status).toBe('active');
+});

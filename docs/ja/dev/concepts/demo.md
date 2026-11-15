@@ -93,7 +93,7 @@ pnpm --dir e2e test:demo
 
 このスイート（`e2e/playwright.demo.config.ts`と`e2e/demo/`）は、`docs/.vitepress/dist/`を`vitepress preview`でポート8446（または`AGBOARD_DEMO_E2E_PORT`）から配信し、Chromiumで`/agent-board/demo/`を開きます。ドキュメントサイトのスイートと同じく、ボードがページの中にあるので、Rustのビルドも`AGBOARD_HOME`も要りません。確かめる内容は次のとおりです。
 
-- ページを開くと案内が始まり、質問への回答を含めて最後まで進む
+- ページを開くと案内が始まり、質問への回答を含めて、PC幅でもスマホ幅でも最後まで進む
 - 案内のあと、カードを別のレーンにドラッグで移動できる
 - 回答待ちのカードに回答し、残りの受入条件をチェックすると、自動でDoneに移る
 - Docsボタンとモバイル接続がなく、再読み込みするとサンプルデータから始まる

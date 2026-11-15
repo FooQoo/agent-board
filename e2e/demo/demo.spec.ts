@@ -105,6 +105,30 @@ test.describe('in an English browser', () => {
     expect(errors).toEqual([]);
   });
 
+  test('DEMO-01P: at phone width the guide runs to the end, with the answer given in the sheet', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const errors = await openDemo(page);
+    await page.getByRole('button', { name: 'Start guide' }).click();
+    await expect(page.getByText('Guide 1 / 4')).toBeVisible();
+    await page.getByRole('button', { name: 'Watch it move' }).click();
+    await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByText('Guide 3 / 4')).toBeVisible();
+    await page.getByRole('dialog', { name: 'Guide' }).getByRole('button', { name: 'Answer the question' }).click();
+    const sheet = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
+    await sheet.getByLabel('Keep it brief').check();
+    await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Finish and get started' }).click();
+    await expect(page.locator('.onboarding-notice--inline')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
   test('DEMO-02: skipping the guide shows the board without the features a static site cannot offer', async ({
     page,
   }) => {

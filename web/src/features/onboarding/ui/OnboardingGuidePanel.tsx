@@ -21,6 +21,7 @@ export function OnboardingGuidePanel({
   error,
   onAction,
   onExit,
+  compact = false,
 }: OnboardingGuidePanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLElement>(null);
@@ -35,7 +36,7 @@ export function OnboardingGuidePanel({
     <section
       ref={panelRef}
       tabIndex={-1}
-      className="onboarding-panel"
+      className={compact ? 'onboarding-panel onboarding-panel--compact' : 'onboarding-panel'}
       aria-live="polite"
       aria-busy={busy}
     >
@@ -47,8 +48,12 @@ export function OnboardingGuidePanel({
           {t('onboarding.guide.exit')}
         </button>
       </div>
-      <h2 className="onboarding-panel__title">{title}</h2>
-      <p className="onboarding-panel__body">{body}</p>
+      {compact ? null : (
+        <>
+          <h2 className="onboarding-panel__title">{title}</h2>
+          <p className="onboarding-panel__body">{body}</p>
+        </>
+      )}
       <div
         className={
           waitingBadge

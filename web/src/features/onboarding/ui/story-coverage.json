@@ -22,6 +22,11 @@
               "id": "features-onboarding-guide--welcome-japanese-dark-narrow",
               "states": ["japanese locale", "dark theme", "phone width", "no public preview badge"],
               "interaction": true
+            },
+            {
+              "id": "features-onboarding-guide--welcome-buttons-even-narrow",
+              "states": ["two buttons split the row evenly", "phone width"],
+              "interaction": true
             }
           ]
         }
@@ -67,6 +72,11 @@
               "id": "features-onboarding-guide--resumed-after-answer",
               "states": ["step 4 of 4", "action button"],
               "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--answer-sheet-strip-narrow",
+              "states": ["compact strip with step and waiting badge", "phone width"],
+              "interaction": true
             }
           ]
         }
@@ -111,6 +121,11 @@
             {
               "id": "features-onboarding-guide--archived",
               "states": ["archive confirmation on the board"],
+              "interaction": false
+            },
+            {
+              "id": "features-onboarding-guide--archived-inline-narrow",
+              "states": ["inline in the phone screen's flow", "phone width"],
               "interaction": false
             }
           ]

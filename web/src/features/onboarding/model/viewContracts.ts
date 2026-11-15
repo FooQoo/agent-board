@@ -31,4 +31,9 @@ export interface OnboardingGuidePanelProps extends OnboardingActionState {
   actionDisabled?: boolean;
   onAction: () => void;
   onExit: () => void;
+  /**
+   * A slim strip with the step and the waiting state only. The phone shows it at the top of the
+   * screen while the answer sheet is open, so the sheet keeps the room.
+   */
+  compact?: boolean;
 }

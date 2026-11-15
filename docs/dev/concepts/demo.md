@@ -93,7 +93,7 @@ pnpm --dir e2e test:demo
 
 The suite (`e2e/playwright.demo.config.ts` and `e2e/demo/`) serves `docs/.vitepress/dist/` with `vitepress preview` on port 8446, or on `AGBOARD_DEMO_E2E_PORT`, and opens `/agent-board/demo/` in Chromium. Like the documentation site suite, it needs no Rust build and no `AGBOARD_HOME`, because the board lives in the page. It checks that:
 
-- the guide starts on page load and runs to the end, including answering its question
+- the guide starts on page load and runs to the end, including answering its question, at desktop width and at phone width
 - after the guide, a card can be dragged to another lane
 - answering a waiting card and checking its last acceptance conditions moves it to Done automatically
 - the Docs button and the mobile connection are absent, and a reload starts again from the sample data

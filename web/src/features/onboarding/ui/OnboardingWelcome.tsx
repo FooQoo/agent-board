@@ -16,7 +16,7 @@ export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWe
       <DialogContent
         showCloseButton={false}
         overlayClassName="onboarding-overlay"
-        className={`onboarding-dialog ${WELCOME_DIALOG_CLASS}`}
+        className={`onboarding-dialog onboarding-dialog--card ${WELCOME_DIALOG_CLASS}`}
         aria-busy={busy}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
