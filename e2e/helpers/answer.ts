@@ -29,7 +29,7 @@ export const answerDialog = (page: Page): Locator => page.getByRole('dialog');
 export const answerNote = (page: Page): Locator =>
   answerDialog(page).getByRole('textbox', { name: 'Note' });
 
-/** The button that sends: "Send" on the last question of a card's run, "Send all" on the review of the band's run. */
+/** The button that sends: "Send" on the last question of a card's or a band item's run, "Send all" on the review of the band's full run. */
 export const sendLabel = /^(Send|Send all|送る|まとめて送る)$/;
 export const answerSend = (page: Page): Locator => answerDialog(page).getByRole('button', { name: sendLabel });
 
@@ -43,8 +43,8 @@ export async function openAnswer(page: Page, id = 12): Promise<Locator> {
 }
 
 /**
- * Goes to the step that sends: the last question of a card's run (button "Send", no review), or the
- * review of a run opened from the band (button "Send all"). Steps through Next, which is bounded so
+ * Goes to the step that sends: the last question of a card's or a band item's run (button "Send", no
+ * review), or the review of the band's full run, started by "Answer them" (button "Send all"). Steps through Next, which is bounded so
  * it cannot spin when there is none.
  */
 export async function reachSend(page: Page): Promise<Locator> {

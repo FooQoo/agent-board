@@ -15,7 +15,7 @@
             },
             {
               "id": "task-answer-decisionanswerdialogcontainer--several-tasks",
-              "states": ["question for several cards", "heading counts the cards"],
+              "states": ["question for several cards", "heading counts the cards", "single question"],
               "interaction": true
             }
           ]
@@ -129,6 +129,11 @@
               "interaction": true
             },
             {
+              "id": "task-answer-decisionanswerdialog--from-band",
+              "states": ["opened from the band", "only that question", "send without review"],
+              "interaction": true
+            },
+            {
               "id": "task-answer-decisionanswerdialog--from-card",
               "states": ["opened from a card", "only its questions", "send without review"],
               "interaction": true
@@ -191,6 +196,11 @@
             {
               "id": "task-answer-decisionanswersheet--several-tasks",
               "states": ["question for several cards", "title counts the cards"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--from-band",
+              "states": ["opened from the band", "only that question", "send without review"],
               "interaction": true
             },
             {

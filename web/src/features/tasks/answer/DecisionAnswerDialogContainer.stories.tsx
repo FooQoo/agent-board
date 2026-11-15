@@ -68,6 +68,6 @@ export const SeveralTasks: Story = {
   play: async () => {
     await expect(await page().findByRole('dialog', { name: /3 tasks/ })).toBeInTheDocument();
     await expect(page().getByText('#14 #15 #16')).toBeInTheDocument();
-    await expect(page().getByText('5 / 5')).toBeInTheDocument();
+    await expect(page().getByText('1 / 1')).toBeInTheDocument();
   },
 };

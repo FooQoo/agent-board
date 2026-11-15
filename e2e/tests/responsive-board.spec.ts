@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
-import { answerButton, bandCount, bandToggle, expandBand, fillAnswer, openAnswer, questionBand, send } from '../helpers/answer';
+import { answerButton, answerDialog, answerSend, bandCount, bandToggle, expandBand, fillAnswer, openAnswer, questionBand, send } from '../helpers/answer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // One app serves both layouts: below 768px the board shows the phone screen, at and above it the lanes.
@@ -114,19 +114,29 @@ for (const [name, size] of [
     await expect(band(page).getByRole('button', { name: 'Show the later questions' })).toHaveCount(0);
 
     await expect(toggle).toBeVisible();
-    const closedHeight = (await band(page).boundingBox())?.height ?? 0;
+    // The first measure can land before the header has settled, so take the height once it holds still.
+    const bandHeight = async () => (await band(page).boundingBox())?.height ?? 0;
+    let closedHeight = 0;
+    await expect
+      .poll(async () => {
+        const height = await bandHeight();
+        const settled = height === closedHeight;
+        closedHeight = height;
+        return settled;
+      })
+      .toBe(true);
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(band(page).getByRole('listitem')).toHaveCount(1);
     await expect(band(page).getByRole('listitem').first()).toBeVisible();
     await expect(bandCount(page)).toHaveText('1');
     await expect(band(page).getByRole('button', { name: 'Answer them' })).toBeVisible();
-    expect((await band(page).boundingBox())?.height ?? 0).toBeGreaterThan(closedHeight);
+    expect(await bandHeight()).toBeGreaterThan(closedHeight);
 
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(band(page).getByRole('listitem')).toHaveCount(0);
-    expect((await band(page).boundingBox())?.height).toBe(closedHeight);
+    await expect.poll(bandHeight).toBe(closedHeight);
 
     // A reload does not remember the choice: the band starts closed again.
     await toggle.click();
@@ -134,6 +144,40 @@ for (const [name, size] of [
     await expect(bandToggle(page)).toHaveAttribute('aria-expanded', 'false');
     await expect(questionBand(page).getByRole('listitem')).toHaveCount(0);
     await expandBand(page);
+    await page.setViewportSize(DESKTOP);
+    await waitForSync(page);
+  });
+}
+
+for (const [name, size] of [
+  ['desktop', DESKTOP],
+  ['phone', PHONE],
+] as const) {
+  test(`an item picked in the band opens only that question at ${name} width, and Send answers it alone`, async ({ page }) => {
+    await page.setViewportSize(size);
+    // The fixture's #12 already waits on a question; #13 gets a second one.
+    agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
+    await expect(bandCount(page)).toHaveText('2');
+    await expandBand(page);
+    await expect(band(page).getByRole('listitem')).toHaveCount(2);
+
+    await band(page).getByRole('button', { name: /Which way\?/ }).click();
+    const dialog = answerDialog(page);
+    await expect(dialog).toBeVisible();
+    // One question, no review: there is no Next and no Review and send, and the button is Send.
+    await expect(dialog).toContainText('1 / 1');
+    await expect(dialog.getByRole('button', { name: 'Next', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Review and send', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Send all', exact: true })).toHaveCount(0);
+    await fillAnswer(dialog, { text: 'Only this one.' });
+    await answerSend(page).click();
+    await expect(dialog).toBeHidden();
+
+    // Only #13 was answered; #12 still waits, and the header count dropped by one.
+    expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
+    expect(show(12).agentStatus).toBe('pending');
+    await expect(bandCount(page)).toHaveText('1');
+    await expect(answerButton(page, 12)).toBeVisible();
     await page.setViewportSize(DESKTOP);
     await waitForSync(page);
   });

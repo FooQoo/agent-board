@@ -122,6 +122,26 @@ describe('answering the questions in a row', () => {
     expect(screen.getByText('No task')).toBeTruthy();
   });
 
+  it('opens only the question picked in the band, and sends it at once without a review', async () => {
+    const book = new AnswerBook();
+    book.reconcile(PROJECT_A.id, QUESTIONS);
+    book.setChoice(PROJECT_A.id, 'Q-1', { id: 'no', label: 'No' });
+    const { write, onSent, onClose } = renderFlow({
+      start: { kind: 'question', questionId: 'Q-2' },
+      book,
+    });
+    expect(await screen.findByText('1 / 1')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Review and send' })).toBeNull();
+    await userEvent.click(await screen.findByRole('radio', { name: 'Yes' }));
+    await userEvent.click(button('Send'));
+    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
+    // The answer held for another question stays out of the send and stays held.
+    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-2', choiceId: 'yes' }]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(book.heldIds(PROJECT_A.id)).toEqual(['Q-1']);
+  });
+
   it('lists the answers in the review and sends the answered ones together', async () => {
     const { write, onSent, onClose, book } = renderFlow();
     await userEvent.click(await screen.findByRole('radio', { name: 'No' }));

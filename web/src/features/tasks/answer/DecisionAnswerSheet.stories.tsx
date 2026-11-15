@@ -44,7 +44,7 @@ const meta = {
   component: Harness,
   args: {
     input: { held: 1 },
-    start: { kind: 'question', questionId: 'Q-2' },
+    start: { kind: 'resume' },
     write: fn(async () => {}),
     onOpenChange: fn(),
   },
@@ -83,12 +83,11 @@ export const SeveralTasks: Story = {
   args: { start: { kind: 'question', questionId: 'Q-5' } },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: /3 tasks/ })).toBeInTheDocument();
-    await expect(page().getByText('5 / 5')).toBeInTheDocument();
+    await expect(page().getByText('1 / 1')).toBeInTheDocument();
     await expect(page().getByText('#14 #15 #16')).toBeInTheDocument();
   },
 };
 
-/** Every question answered: the review, then Send all. */
 /** Opened from a card: only its two questions, and the last one sends them, with no review. */
 export const FromCard: Story = {
   args: { input: { held: 1 }, start: { kind: 'task', taskId: 14 } },
@@ -109,6 +108,22 @@ export const FromCard: Story = {
   },
 };
 
+/** Opened from the band: only that question, and Send sends it at once, with no review. */
+export const FromBand: Story = {
+  args: { input: { held: 0 }, start: { kind: 'question', questionId: 'Q-2' } },
+  play: async ({ args }) => {
+    await expect(await page().findByText('1 / 1')).toBeInTheDocument();
+    await expect(page().queryByText('Review and send')).toBeNull();
+    await expect(page().queryByRole('button', { name: 'Next' })).toBeNull();
+    await userEvent.click(await page().findByRole('radio', { name: /Keep compatibility/ }));
+    await userEvent.click(page().getByRole('button', { name: /^Send$/ }));
+    await waitFor(() => expect(args.write).toHaveBeenCalledTimes(1));
+    await expect((args.write as ReturnType<typeof fn>).mock.calls[0]?.[1]).toHaveLength(1);
+    await waitFor(() => expect(args.onOpenChange).toHaveBeenCalledWith(false));
+  },
+};
+
+/** Every question answered: the review, then Send all. */
 export const Review: Story = {
   args: { input: { held: 5 }, start: { kind: 'review' } },
   play: async ({ args }) => {

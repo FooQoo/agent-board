@@ -33,7 +33,7 @@ function Harness({ input, start, write, onClose }: HarnessProps) {
   return <DecisionAnswerDialog {...flow} onStep={goTo} onClose={onClose} />;
 }
 
-const STEP_TWO: AnswerStart = { kind: 'question', questionId: 'Q-2' };
+const STEP_TWO: AnswerStart = { kind: 'resume' };
 
 const meta = {
   title: 'Task/Answer/DecisionAnswerDialog',
@@ -81,7 +81,6 @@ export const AnswerAndMove: Story = {
   },
 };
 
-/** Every question answered: the review lists them, and one button sends them all. */
 /** Opened from a card: only its two questions, and the last one sends them, with no review. */
 export const FromCard: Story = {
   args: { input: { held: 1 }, start: { kind: 'task', taskId: 14 } },
@@ -102,6 +101,22 @@ export const FromCard: Story = {
   },
 };
 
+/** Opened from the band: only that question, and Send sends it at once, with no review. */
+export const FromBand: Story = {
+  args: { input: { held: 0 }, start: { kind: 'question', questionId: 'Q-2' } },
+  play: async ({ args }) => {
+    await expect(await page().findByText('1 / 1')).toBeInTheDocument();
+    await expect(page().queryByText('Review and send')).toBeNull();
+    await expect(page().queryByRole('button', { name: 'Next' })).toBeNull();
+    await userEvent.click(await page().findByRole('radio', { name: /Keep compatibility/ }));
+    await userEvent.click(page().getByRole('button', { name: /^Send$/ }));
+    await waitFor(() => expect(args.write).toHaveBeenCalledTimes(1));
+    await expect((args.write as ReturnType<typeof fn>).mock.calls[0]?.[1]).toHaveLength(1);
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
+  },
+};
+
+/** Every question answered: the review lists them, and one button sends them all. */
 export const Review: Story = {
   args: { input: { held: 5 }, start: { kind: 'review' } },
   play: async ({ args }) => {

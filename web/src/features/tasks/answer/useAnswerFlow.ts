@@ -21,6 +21,7 @@ import { useQuestionDetail } from './useQuestionDetail';
 
 /** Where a run through the questions starts. */
 export type AnswerStart =
+  /** Only this question, opened from the band, sent from it without a review. */
   | { kind: 'question'; questionId: string }
   /** Only the questions of one card, sent from its last question without a review. */
   | { kind: 'task'; taskId: number }
@@ -65,9 +66,14 @@ export function useAnswerFlow({
 }: UseAnswerFlowOptions): AnswerFlowViewProps & { goTo: (index: number) => void } {
   const { t } = useTranslation();
   useSyncExternalStore(book.subscribe, book.revision);
-  const scope = start.kind === 'task' ? start.taskId : null;
+  // A band item and a card each open a run of their own questions only, sent without a review.
   const inScope = (question: BandQuestion) =>
-    scope === null || question.referencedBy.includes(scope);
+    start.kind === 'task'
+      ? question.referencedBy.includes(start.taskId)
+      : start.kind === 'question'
+        ? question.id === start.questionId
+        : true;
+  const direct = start.kind === 'task' || start.kind === 'question';
   const openIds = new Set(questions.map((question) => question.id));
 
   // The run's questions: what was open or held when it started, then what arrived.
@@ -187,7 +193,7 @@ export function useAnswerFlow({
         : (firstTask?.title ?? (current ? plainTitle(current.title) : '')),
     steps,
     current: shownIndex,
-    direct: scope !== null,
+    direct,
     answeredCount: sendable.length,
     panel:
       current === null || detail.detail === null
