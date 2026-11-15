@@ -44,8 +44,11 @@ async function mounted(value: string) {
   const ref = createRef<RichMarkdownEditorHandle>();
   const onChange = vi.fn();
   const utils = render(element(value, onChange, ref));
-  await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy());
-  await waitFor(() => expect(ref.current).not.toBeNull());
+  // The editor loads in steps; a busy CI runner can take more than the default second.
+  await waitFor(() => expect(document.querySelector('.ProseMirror')).toBeTruthy(), {
+    timeout: 5000,
+  });
+  await waitFor(() => expect(ref.current).not.toBeNull(), { timeout: 5000 });
   // The editor is live once its first markdown() is the original (it is before and after).
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
