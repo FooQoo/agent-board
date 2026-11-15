@@ -47,6 +47,8 @@ fn is_public(method: &Method, path: &str) -> bool {
     ) || path.starts_with("/assets/")
         || path.starts_with("/docs-sandbox/")
 }
+/// The most of a request body to an old monitor address that is read before its 404.
+const OLD_BODY_LIMIT: usize = 64 * 1024;
 /// The longest one event stream is kept open; the page reconnects after it.
 pub const EVENTS_MAX: Duration = Duration::from_secs(5 * 60);
 
@@ -75,6 +77,10 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     let path = request.uri().path().to_owned();
     // The old mobile monitor's addresses are gone: they are not found, session or none.
     if path == "/monitor" || path.starts_with("/monitor/") {
+        // Read a small body first: a reply that leaves it unread can close the
+        // connection while the client is still sending it, and the client sees
+        // a broken connection instead of the 404.
+        let _ = axum::body::to_bytes(request.into_body(), OLD_BODY_LIMIT).await;
         return not_found().await;
     }
     match path.as_str() {
