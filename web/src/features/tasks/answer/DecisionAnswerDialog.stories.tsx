@@ -6,7 +6,8 @@ import { DecisionAnswerDialog } from './DecisionAnswerDialog';
 import { resolveSampleAttachment } from './decisionAnswerSamples';
 import type { AnswersWriter } from './model/qa';
 import { SAMPLE_PROJECT, type SampleFlowInput, useSampleQuestions } from './questionSamples';
-import { type AnswerStart, useAnswerFlow } from './useAnswerFlow';
+import { type AnswerStart, answerStart } from './answerStart';
+import { useAnswerFlow } from './useAnswerFlow';
 
 interface HarnessProps {
   input: SampleFlowInput;
@@ -33,7 +34,7 @@ function Harness({ input, start, write, onClose }: HarnessProps) {
   return <DecisionAnswerDialog {...flow} onStep={goTo} onClose={onClose} />;
 }
 
-const STEP_TWO: AnswerStart = { kind: 'resume' };
+const STEP_TWO: AnswerStart = answerStart.resume();
 
 const meta = {
   title: 'Task/Answer/DecisionAnswerDialog',
@@ -83,7 +84,7 @@ export const AnswerAndMove: Story = {
 
 /** Opened from a card: only its two questions, and the last one sends them, with no review. */
 export const FromCard: Story = {
-  args: { input: { held: 1 }, start: { kind: 'task', taskId: 14 } },
+  args: { input: { held: 1 }, start: answerStart.task(14) },
   play: async ({ args }) => {
     await expect(await page().findByText('1 / 2')).toBeInTheDocument();
     await expect(page().queryByText('Review and send')).toBeNull();
@@ -103,7 +104,7 @@ export const FromCard: Story = {
 
 /** Opened from the band: only that question, and Send sends it at once, with no review. */
 export const FromBand: Story = {
-  args: { input: { held: 0 }, start: { kind: 'question', questionId: 'Q-2' } },
+  args: { input: { held: 0 }, start: answerStart.question('Q-2') },
   play: async ({ args }) => {
     await expect(await page().findByText('1 / 1')).toBeInTheDocument();
     await expect(page().queryByText('Review and send')).toBeNull();
@@ -118,7 +119,7 @@ export const FromBand: Story = {
 
 /** Every question answered: the review lists them, and one button sends them all. */
 export const Review: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   play: async ({ args }) => {
     await expect(
       await page().findByRole('dialog', { name: /Review your answers/ }),
@@ -135,7 +136,7 @@ export const Review: Story = {
 
 /** Some questions have no answer yet: the answered ones can still be sent. */
 export const ReviewSome: Story = {
-  args: { input: { held: 3 }, start: { kind: 'review' } },
+  args: { input: { held: 3 }, start: answerStart.review() },
   play: async () => {
     await expect(await page().findByText('3 of 5 answered')).toBeInTheDocument();
     await expect(page().getAllByRole('button', { name: /^Answer:/ })).toHaveLength(2);
@@ -147,7 +148,7 @@ export const ReviewSome: Story = {
 export const ReviewClosed: Story = {
   args: {
     input: { held: 5, closed: [{ id: 'Q-4', reason: 'answered' }] },
-    start: { kind: 'review' },
+    start: answerStart.review(),
   },
   play: async ({ args }) => {
     await expect(
@@ -166,7 +167,7 @@ export const ReviewClosed: Story = {
 export const SendFailed: Story = {
   args: {
     input: { held: 5 },
-    start: { kind: 'review' },
+    start: answerStart.review(),
     write: fn(async () => {
       throw new Error('offline');
     }),
@@ -192,7 +193,7 @@ export const Japanese: Story = {
 
 /** The review in Japanese. */
 export const JapaneseReview: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   globals: { locale: 'ja' },
   play: async () => {
     await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();
@@ -209,7 +210,7 @@ export const Dark: Story = {
 
 /** The review in dark mode. */
 export const DarkReview: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   globals: { locale: 'ja', mode: 'dark' },
   play: async () => {
     await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();

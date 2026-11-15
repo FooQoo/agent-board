@@ -4,7 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { DecisionAnswerDialogContainer } from './DecisionAnswerDialogContainer';
 import type { AnswersWriter } from './model/qa';
-import type { AnswerStart } from './useAnswerFlow';
+import { type AnswerStart, answerStart } from './answerStart';
 import { SAMPLE_PROJECT, useSampleQuestions } from './questionSamples';
 
 interface HarnessProps {
@@ -15,7 +15,7 @@ interface HarnessProps {
 }
 
 /** The dialog wired as the board wires it, from the first question without an answer. */
-function Harness({ write, start = { kind: 'resume' }, onSent, onClose }: HarnessProps) {
+function Harness({ write, start = answerStart.resume(), onSent, onClose }: HarnessProps) {
   const { i18n } = useTranslation();
   const sample = useSampleQuestions(i18n.language, { held: 0 });
   return (
@@ -64,7 +64,7 @@ export const Open: Story = {
 
 /** A plan question for three cards: the heading counts the cards rather than naming the first. */
 export const SeveralTasks: Story = {
-  args: { start: { kind: 'question', questionId: 'Q-5' } },
+  args: { start: answerStart.question('Q-5') },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: /3 tasks/ })).toBeInTheDocument();
     await expect(page().getByText('#14 #15 #16')).toBeInTheDocument();

@@ -16,18 +16,11 @@ import {
   isWithinLimit,
   plainTitle,
 } from './model/qa';
+import { type AnswerStart, runPlan } from './answerStart';
 import { taskRefs } from './QuestionBand';
 import { useQuestionDetail } from './useQuestionDetail';
 
-/** Where a run through the questions starts. */
-export type AnswerStart =
-  /** Only this question, opened from the band, sent from it without a review. */
-  | { kind: 'question'; questionId: string }
-  /** Only the questions of one card, sent from its last question without a review. */
-  | { kind: 'task'; taskId: number }
-  /** At the first open question with no answer held, or at the review when every one has one. */
-  | { kind: 'resume' }
-  | { kind: 'review' };
+export type { AnswerStart } from './answerStart';
 
 const REVIEW = '';
 
@@ -66,14 +59,7 @@ export function useAnswerFlow({
 }: UseAnswerFlowOptions): AnswerFlowViewProps & { goTo: (index: number) => void } {
   const { t } = useTranslation();
   useSyncExternalStore(book.subscribe, book.revision);
-  // A band item and a card each open a run of their own questions only, sent without a review.
-  const inScope = (question: BandQuestion) =>
-    start.kind === 'task'
-      ? question.referencedBy.includes(start.taskId)
-      : start.kind === 'question'
-        ? question.id === start.questionId
-        : true;
-  const direct = start.kind === 'task' || start.kind === 'question';
+  const { direct, includes: inScope, opening } = runPlan(start);
   const openIds = new Set(questions.map((question) => question.id));
 
   // The run's questions: what was open or held when it started, then what arrived.
@@ -94,13 +80,11 @@ export function useAnswerFlow({
       (question) => openIds.has(question.id) && !isAnswered(book.held(projectId, question.id)),
     )?.id ?? REVIEW;
   const [currentId, setCurrentId] = useState<string>(() =>
-    start.kind === 'question'
-      ? start.questionId
-      : start.kind === 'review'
-        ? REVIEW
-        : start.kind === 'task'
-          ? firstOpen() || (order[0]?.id ?? REVIEW)
-          : firstOpen(),
+    opening === 'review'
+      ? REVIEW
+      : opening === 'firstOpen'
+        ? firstOpen() || (direct ? (order[0]?.id ?? REVIEW) : REVIEW)
+        : opening.questionId,
   );
   const index = currentId === REVIEW ? order.length : order.findIndex((q) => q.id === currentId);
   const current = index >= 0 ? (order[index] ?? null) : null;

@@ -15,7 +15,11 @@
             },
             {
               "id": "task-answer-decisionanswerdialogcontainer--several-tasks",
-              "states": ["question for several cards", "heading counts the cards", "single question"],
+              "states": [
+                "question for several cards",
+                "heading counts the cards",
+                "single question"
+              ],
               "interaction": true
             }
           ]

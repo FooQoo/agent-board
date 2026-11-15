@@ -9,7 +9,7 @@ import type {
   QuestionDetail,
   QuestionStatus,
 } from '../../src/features/tasks/answer/model/qa';
-import type { AnswerStart } from '../../src/features/tasks/answer/useAnswerFlow';
+import { type AnswerStart, answerStart } from '../../src/features/tasks/answer/answerStart';
 import { selectLocale } from '../../src/shared/i18n';
 import { WriteError } from '../../src/shared/api/writeErrors';
 import { PROJECT_A } from '../fixtures';
@@ -57,7 +57,7 @@ interface Setup {
 }
 
 function renderFlow({
-  start = { kind: 'resume' },
+  start = answerStart.resume(),
   questions = QUESTIONS,
   write = vi.fn(async () => {}),
   read = reader(),
@@ -127,7 +127,7 @@ describe('answering the questions in a row', () => {
     book.reconcile(PROJECT_A.id, QUESTIONS);
     book.setChoice(PROJECT_A.id, 'Q-1', { id: 'no', label: 'No' });
     const { write, onSent, onClose } = renderFlow({
-      start: { kind: 'question', questionId: 'Q-2' },
+      start: answerStart.question('Q-2'),
       book,
     });
     expect(await screen.findByText('1 / 1')).toBeTruthy();
@@ -169,7 +169,7 @@ describe('answering the questions in a row', () => {
     const book = new AnswerBook();
     book.reconcile(PROJECT_A.id, QUESTIONS);
     book.setChoice(PROJECT_A.id, 'Q-1', CHOICES[0] ?? null);
-    const { onSent } = renderFlow({ start: { kind: 'review' }, write, book });
+    const { onSent } = renderFlow({ start: answerStart.review(), write, book });
     await userEvent.click(await screen.findByRole('button', { name: 'Send all' }));
     expect(await screen.findByText('Could not save. Try again.')).toBeTruthy();
     expect(book.heldIds(PROJECT_A.id)).toEqual(['Q-1']);
@@ -183,7 +183,7 @@ describe('answering the questions in a row', () => {
     book.reconcile(PROJECT_A.id, QUESTIONS);
     book.setChoice(PROJECT_A.id, 'Q-1', CHOICES[0] ?? null);
     book.setChoice(PROJECT_A.id, 'Q-2', CHOICES[0] ?? null);
-    const { update, write } = renderFlow({ start: { kind: 'review' }, book });
+    const { update, write } = renderFlow({ start: answerStart.review(), book });
     // The Summary no longer lists Q-1; reading it says it was answered.
     act(() => {
       book.reconcile(PROJECT_A.id, QUESTIONS.slice(1));
@@ -222,7 +222,7 @@ describe('answering the questions in a row', () => {
     book.reconcile(PROJECT_A.id, QUESTIONS);
     book.setChoice(PROJECT_A.id, 'Q-1', CHOICES[0] ?? null);
     book.setChoice(PROJECT_A.id, 'Q-2', CHOICES[0] ?? null);
-    renderFlow({ start: { kind: 'review' }, book, write: vi.fn().mockRejectedValue(conflict) });
+    renderFlow({ start: answerStart.review(), book, write: vi.fn().mockRejectedValue(conflict) });
     await userEvent.click(await screen.findByRole('button', { name: 'Send all' }));
     expect(
       await screen.findByText(/Some questions were answered or withdrawn elsewhere/),

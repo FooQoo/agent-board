@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { answerStart } from '../features/tasks/answer/answerStart';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
@@ -28,9 +29,9 @@ function boardBand(model: AppControllerModel) {
       held={new Set(book.heldIds(activeId))}
       sendableCount={book.sendableIds(activeId).length}
       variant="board"
-      onOpen={(questionId) => answers.open({ kind: 'question', questionId })}
-      onAnswer={() => answers.open({ kind: 'resume' })}
-      onReview={() => answers.open({ kind: 'review' })}
+      onOpen={(questionId) => answers.open(answerStart.question(questionId))}
+      onAnswer={() => answers.open(answerStart.resume())}
+      onReview={() => answers.open(answerStart.review())}
     />
   );
 }

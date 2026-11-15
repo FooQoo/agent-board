@@ -7,7 +7,8 @@ import { DecisionAnswerSheet } from './DecisionAnswerSheet';
 import { resolveSampleAttachment } from './decisionAnswerSamples';
 import type { AnswersWriter } from './model/qa';
 import { SAMPLE_PROJECT, type SampleFlowInput, useSampleQuestions } from './questionSamples';
-import { type AnswerStart, useAnswerFlow } from './useAnswerFlow';
+import { type AnswerStart, answerStart } from './answerStart';
+import { useAnswerFlow } from './useAnswerFlow';
 
 interface HarnessProps {
   input: SampleFlowInput;
@@ -44,7 +45,7 @@ const meta = {
   component: Harness,
   args: {
     input: { held: 1 },
-    start: { kind: 'resume' },
+    start: answerStart.resume(),
     write: fn(async () => {}),
     onOpenChange: fn(),
   },
@@ -80,7 +81,7 @@ export const Step: Story = {
 
 /** A plan question for three cards: the title counts the cards rather than naming the first. */
 export const SeveralTasks: Story = {
-  args: { start: { kind: 'question', questionId: 'Q-5' } },
+  args: { start: answerStart.question('Q-5') },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: /3 tasks/ })).toBeInTheDocument();
     await expect(page().getByText('1 / 1')).toBeInTheDocument();
@@ -90,7 +91,7 @@ export const SeveralTasks: Story = {
 
 /** Opened from a card: only its two questions, and the last one sends them, with no review. */
 export const FromCard: Story = {
-  args: { input: { held: 1 }, start: { kind: 'task', taskId: 14 } },
+  args: { input: { held: 1 }, start: answerStart.task(14) },
   play: async ({ args }) => {
     await expect(await page().findByText('1 / 2')).toBeInTheDocument();
     await expect(page().queryByText('Review and send')).toBeNull();
@@ -110,7 +111,7 @@ export const FromCard: Story = {
 
 /** Opened from the band: only that question, and Send sends it at once, with no review. */
 export const FromBand: Story = {
-  args: { input: { held: 0 }, start: { kind: 'question', questionId: 'Q-2' } },
+  args: { input: { held: 0 }, start: answerStart.question('Q-2') },
   play: async ({ args }) => {
     await expect(await page().findByText('1 / 1')).toBeInTheDocument();
     await expect(page().queryByText('Review and send')).toBeNull();
@@ -125,7 +126,7 @@ export const FromBand: Story = {
 
 /** Every question answered: the review, then Send all. */
 export const Review: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   play: async ({ args }) => {
     await expect(
       await page().findByRole('dialog', { name: 'Review your answers' }),
@@ -142,7 +143,7 @@ export const Review: Story = {
 export const Sending: Story = {
   args: {
     input: { held: 5 },
-    start: { kind: 'review' },
+    start: answerStart.review(),
     write: fn(() => new Promise<void>(() => {})),
   },
   play: async ({ args }) => {
@@ -157,7 +158,7 @@ export const Sending: Story = {
 export const SendFailed: Story = {
   args: {
     input: { held: 5 },
-    start: { kind: 'review' },
+    start: answerStart.review(),
     write: fn(async () => {
       throw new Error('offline');
     }),
@@ -190,7 +191,7 @@ export const Japanese: Story = {
 
 /** The review in Japanese. */
 export const JapaneseReview: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   globals: { locale: 'ja', width: 'phone-375' },
   play: async () => {
     await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();
@@ -207,7 +208,7 @@ export const Dark: Story = {
 
 /** The review in dark mode. */
 export const DarkReview: Story = {
-  args: { input: { held: 5 }, start: { kind: 'review' } },
+  args: { input: { held: 5 }, start: answerStart.review() },
   globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async () => {
     await expect(await page().findByRole('button', { name: 'まとめて送る' })).toBeEnabled();

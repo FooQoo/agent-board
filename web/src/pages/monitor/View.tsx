@@ -11,7 +11,7 @@ import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
 import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
-import type { AnswerStart } from '../../features/tasks/answer/useAnswerFlow';
+import { type AnswerStart, answerStart } from '../../features/tasks/answer/answerStart';
 import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
 import { usePhoneGuideNotice } from '../../features/onboarding/model/phoneGuideLink';
 
@@ -58,7 +58,7 @@ export function MonitorView(props: MonitorViewProps) {
   const answerRequest = useRef<(taskId: number) => void>(() => {});
   answerRequest.current = (taskId) => {
     const first = firstQuestionOf(props.questions ?? [], taskId);
-    openAnswer(first ? { kind: 'task', taskId } : { kind: 'resume' });
+    openAnswer(first ? answerStart.task(taskId) : answerStart.resume());
   };
   useEffect(
     () => guideLink?.onAnswerRequest((taskId) => answerRequest.current(taskId)),
@@ -113,9 +113,9 @@ export function MonitorView(props: MonitorViewProps) {
           held={new Set(book?.heldIds(projectId))}
           sendableCount={book?.sendableIds(projectId).length ?? 0}
           variant="phone"
-          onOpen={(questionId) => openAnswer({ kind: 'question', questionId })}
-          onAnswer={() => openAnswer({ kind: 'resume' })}
-          onReview={() => openAnswer({ kind: 'review' })}
+          onOpen={(questionId) => openAnswer(answerStart.question(questionId))}
+          onAnswer={() => openAnswer(answerStart.resume())}
+          onReview={() => openAnswer(answerStart.review())}
         />
       )}
       <TaskList
@@ -131,7 +131,7 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         onOpenAnswer={(item) => {
           const first = firstQuestionOf(props.questions ?? [], item.task.id);
-          openAnswer(first ? { kind: 'task', taskId: item.task.id } : { kind: 'resume' });
+          openAnswer(first ? answerStart.task(item.task.id) : answerStart.resume());
         }}
         answerController={props.answerController}
       />

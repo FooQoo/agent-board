@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { ProjectId } from '../../shared/api/contracts';
 import { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import type { BandQuestion } from '../../features/tasks/answer/model/qa';
-import type { AnswerStart } from '../../features/tasks/answer/useAnswerFlow';
+import { type AnswerStart, answerStart } from '../../features/tasks/answer/answerStart';
 import { fetchQuestion } from '../../features/tasks/api/read';
 import { isProjectId } from './projectSession';
 
@@ -83,7 +83,7 @@ export function useQuestionAnswers(
   const openForTask = useCallback(
     (taskId: number) => {
       const asked = questions?.some((question) => question.referencedBy.includes(taskId));
-      open(asked ? { kind: 'task', taskId } : { kind: 'resume' });
+      open(asked ? answerStart.task(taskId) : answerStart.resume());
     },
     [open, questions],
   );
