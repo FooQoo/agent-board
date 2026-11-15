@@ -570,12 +570,19 @@ fn the_old_monitor_addresses_are_not_found_through_the_entrance_with_or_without_
     let session = server.session();
     for path in OLD_MONITOR_PATHS {
         for method in ["GET", "HEAD", "POST", "PUT"] {
+            // A read carries no body: the 404 comes before any body is read,
+            // and an unread body on a read can break the connection.
+            let body = if matches!(method, "GET" | "HEAD") {
+                ""
+            } else {
+                "{}"
+            };
             // Without a session.
-            let bare = server.request(method, path, &[], "{}");
+            let bare = server.request(method, path, &[], body);
             assert_eq!(bare.status, 404, "{method} {path} (no session)");
             assert!(bare.header("location").is_none(), "{method} {path}");
             // With a live session and every header a change needs.
-            let with = server.write(&session, method, path, "{}");
+            let with = server.write(&session, method, path, body);
             assert_eq!(with.status, 404, "{method} {path} (session)");
             assert!(with.header("location").is_none(), "{method} {path}");
         }
