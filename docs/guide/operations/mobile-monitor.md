@@ -39,6 +39,8 @@ The monitor is guarded by a 4-digit passcode. Agent Board does not use Google au
 - The phone opens the address, asks for the passcode, and shows nothing of the board until the passcode is right. The connection then lasts up to 12 hours, after which the phone asks for the passcode again.
 - After 5 wrong passcodes in a row, the monitor stops accepting any passcode, even the right one. Stop the connection and connect again (or restart `serve`) to get a new passcode and a fresh count.
 
+Whoever enters the passcode can use the whole board for up to 12 hours, as on the PC: read every project, and add, edit, move, archive, and delete tasks and epics. Only the connection settings stay on the PC. Giving someone the passcode gives them that access.
+
 A 4-digit passcode has only 10,000 possibilities, so it is weaker than signing in with an account. The 5-attempt limit, the random address that ngrok chooses, and a new passcode at every start make guessing hard, but they are not a substitute for keeping the address private. Treat the address and the passcode like a password pair:
 
 - Do not share the address or the QR code in public places.
