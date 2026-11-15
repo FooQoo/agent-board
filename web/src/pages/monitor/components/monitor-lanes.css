@@ -35,6 +35,11 @@
   outline: 2px solid var(--r-accent);
   outline-offset: 1px;
 }
+.lane-tabs__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
 .lane-tabs__name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -120,9 +125,16 @@
 }
 .swipe-card__body {
   position: relative;
+  width: 100%;
+  overflow: hidden;
   transition:
-    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 120ms;
+}
+/* While the card is narrowed, its title keeps one line and ends in an ellipsis. */
+.swipe-card[data-dragging] .monitor-card__title,
+.swipe-card[data-revealed] .monitor-card__title {
+  -webkit-line-clamp: 1;
 }
 .swipe-card[data-dragging] .swipe-card__body {
   transition: none;
@@ -161,22 +173,22 @@
   align-items: center;
   justify-content: center;
   /* The tile grows with the uncovered space, so the three always fit: a dot first, a tile at the end. */
-  width: calc(56px * var(--reveal, 0));
-  height: calc(56px * var(--reveal, 0));
+  width: calc(48px * var(--reveal, 0));
+  height: calc(48px * var(--reveal, 0));
   min-width: 4px;
   /* biome-ignore lint/plugin: the dot a tile starts from, before the swipe has room for it */
   min-height: 4px;
   padding: 0;
   border: 0;
-  border-radius: calc(50% - (50% - 16px) * var(--reveal, 0));
+  border-radius: calc(50% - (50% - 14px) * var(--reveal, 0));
   background: #e5e5ea;
   color: #1c1c1e;
   cursor: pointer;
 }
 .swipe-card__tile svg {
   flex: none;
-  width: calc(24px * var(--reveal, 0));
-  height: calc(24px * var(--reveal, 0));
+  width: calc(22px * var(--reveal, 0));
+  height: calc(22px * var(--reveal, 0));
   opacity: clamp(0, calc(var(--reveal, 0) * 2 - 0.6), 1);
 }
 .swipe-card__tile--archive {

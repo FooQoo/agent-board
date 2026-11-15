@@ -10,7 +10,7 @@ export const LIFT_TOLERANCE = 10;
 /** How far (px) a press must move sideways before it counts as a swipe. */
 export const SWIPE_SLOP = 8;
 /** The size (px) of one swipe action tile, and the gap around the tiles. */
-export const ACTION_TILE = 56;
+export const ACTION_TILE = 48;
 export const ACTION_GAP = 8;
 /** The width (px) a card reveals: the two other lanes and the archive tile, with their gaps. */
 export const REVEAL_WIDTH = 3 * ACTION_TILE + 4 * ACTION_GAP;

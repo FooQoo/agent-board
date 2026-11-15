@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { LANES } from '../model/lanes';
-import type { MonitorSection } from './MonitorSectionHeader';
+import { type MonitorSection, SECTION_ICONS } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
 export type LaneCounts = Record<MonitorSection, number | '—'>;
@@ -26,6 +26,7 @@ export function LaneTabs({
     <div className="lane-tabs" role="tablist" aria-label={t('monitor.lanes.tabs')}>
       {LANES.map((name) => {
         const selected = name === lane;
+        const Icon = SECTION_ICONS[name];
         return (
           <button
             key={name}
@@ -42,6 +43,7 @@ export function LaneTabs({
             data-lane={name}
             onClick={() => onLaneChange(name)}
           >
+            <Icon className="lane-tabs__icon" aria-hidden="true" />
             <span className="lane-tabs__name">{t(`monitor.status.${name}`)}</span>
             <strong className="lane-tabs__count">{counts[name]}</strong>
           </button>
