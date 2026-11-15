@@ -31,6 +31,8 @@ agboard update
 
 The Skill and the Hook do not change, but `agboard update` is needed so that the plugin's version matches the command; otherwise a new agent session asks you to run it.
 
+If you are upgrading from v1.1.x, v1.2.0's changes apply as well. Answer any open questions on the board before you upgrade, run `agboard setup` instead of `agboard update`, and remove the Skill and the Hook that `agboard connect` installed. See [v1.2.0](#v1-2-0) for details.
+
 ## v1.2.0
 
 A release that lets you hand a request to an agent and answer its questions in one place, with a plugin that sets up your agents in one step.
