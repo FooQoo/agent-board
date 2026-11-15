@@ -5,7 +5,6 @@ import type { BuildReloadHook } from '../../pages/monitor/MonitorProject';
 import type { MonitorHeaderProps } from '../../pages/monitor/contracts';
 import { ProjectSwitcher } from '../../features/projects/switcher/ProjectSwitcher';
 import { Header } from '../../shared/ui/app-header/Header';
-import { monitorLogo } from '../../pages/monitor/logo';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import { isProjectId } from '../model/projectSession';
 import type { AppControllerModel, AppWorkspaceActions } from '../contracts';
@@ -52,7 +51,7 @@ export default function MobileBoard({
   if (!known || !isProjectId(activeId))
     return (
       <main className="monitor-shell">
-        <Header {...header} logoSrc={monitorLogo} settingsSize="l" />
+        <Header {...header} settingsSize="l" />
         {model.message !== null && <BoardMessage kind={model.message} onRetry={model.retry} />}
       </main>
     );

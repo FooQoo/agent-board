@@ -1,7 +1,6 @@
 import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../shared/ui/app-header/Header';
-import { monitorLogo } from './logo';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
 import type { MonitorViewProps } from './contracts';
 import { TaskList } from './components/TaskList';
@@ -92,7 +91,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header {...props.header} settings={settings} logoSrc={monitorLogo} settingsSize="l" />
+      <Header {...props.header} settings={settings} settingsSize="l" />
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
         <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
           <strong>{tile(ordered.todo.length)}</strong>

@@ -5,7 +5,6 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Header } from '../../../shared/ui/app-header/Header';
-import { monitorLogo } from '../logo';
 import './connection-state.css';
 
 /**
@@ -51,7 +50,7 @@ export function ConnectionStateView({
 
   return (
     <main className="monitor-shell">
-      <Header logoSrc={monitorLogo} settingsSize="l" />
+      <Header settingsSize="l" />
       <section className="connection-state" aria-live="polite">
         <Icon className="connection-state__icon" aria-hidden="true" strokeWidth={1.5} />
         <h2 className="connection-state__title">

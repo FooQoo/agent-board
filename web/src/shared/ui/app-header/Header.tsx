@@ -48,7 +48,7 @@ export interface HeaderProps {
   projectSwitcher?: ReactNode;
   /** The settings dialog; without it the settings button opens nothing. */
   settings?: HeaderSettings;
-  /** The logo the header shows. The monitor passes its own copy, so the logo loads with the page. */
+  /** The logo the header shows; the board's own logo file by default. */
   logoSrc?: string;
   /** The size of the settings button; the monitor uses a larger one for a thumb. */
   settingsSize?: ButtonSize;
