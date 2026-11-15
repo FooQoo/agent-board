@@ -1,4 +1,6 @@
 import type { Task, ProjectId } from '../../shared/api/contracts';
+import type { PreferencesEndpoint } from '../../shared/preferences';
+import type { HeaderProps } from '../../shared/ui/app-header/Header';
 import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import type {
   AnswersWriter,
@@ -47,7 +49,17 @@ export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
 
 export const MONITOR_API_BASE = '/monitor/api/';
 
+/** The project switcher the header shows when the app lets the person change project. */
+export type MonitorHeaderProps = Pick<
+  HeaderProps,
+  'projects' | 'activeProjectId' | 'projectSwitcher' | 'switchDisabled'
+>;
+
 export interface MonitorViewProps {
+  /** Where the language and theme are saved; without it they stay in this browser. */
+  preferences?: PreferencesEndpoint;
+  /** The project switcher in the header; the monitor app names its project in its address. */
+  header?: MonitorHeaderProps;
   summary: MonitorSummary;
   todo: MonitorTask[];
   doing: MonitorTask[];

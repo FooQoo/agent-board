@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MonitorClientError } from '../../src/pages/monitor/client';
+import { unconnectedMonitorReadResolvers } from '../../src/pages/monitor/contracts';
 import { MonitorProject } from '../../src/pages/monitor/MonitorProject';
 import { selectLocale } from '../../src/shared/i18n';
 import type { AnswersWriter, QuestionReader } from '../../src/features/tasks/answer/model/qa';
@@ -47,6 +48,7 @@ function mount(
     <MonitorProject
       projectId={P}
       adapter={adapter}
+      readResolvers={unconnectedMonitorReadResolvers}
       readQuestion={readQuestion}
       writeAnswers={extra.writeAnswers ?? (async () => Promise.reject(new Error('no answer')))}
       useBuildReload={extra.useBuildReload ?? (() => undefined)}

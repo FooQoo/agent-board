@@ -84,6 +84,12 @@ The Archive screen lists archived tasks with their ID, title, owner, date, and t
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
 
+## Narrow windows and phones {#narrow-windows-and-phones}
+
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes: the counts of Todo, Doing, and Done, the unanswered questions, and a list of tasks. Choose a task to read it in a drawer, check its conditions, and answer a decision. The project switcher and the settings button stay in the header. Adding, editing, moving, and archiving tasks are for a wider window.
+
+The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Mobile monitor](../operations/mobile-monitor).
+
 ## Updates
 
 The board updates itself when a change is saved, whether an agent made it or another browser on this PC did. There is no refresh button; reloading the page reads everything again.

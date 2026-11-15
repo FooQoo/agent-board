@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useEpicDetail } from '../../../shared/data/react';
-import { monitorErrorStatus } from '../client';
+import { httpStatusOf } from '../../../shared/api/httpStatus';
 import type { MonitorReadResolvers } from '../contracts';
 import { attachmentResolver } from './attachment-resolver';
 import { MonitorDocument } from './MonitorDocument';
@@ -26,7 +26,7 @@ export function MonitorEpicContent({
   if (epicId === null)
     return <p className="monitor-drawer__notice">{t('monitor.epicNotAssigned')}</p>;
   const { error, data } = detail.document;
-  if (monitorErrorStatus(error) === 404 && data === null) {
+  if (httpStatusOf(error) === 404 && data === null) {
     return (
       <p className="monitor-drawer__notice" role="status">
         {t('monitor.epicNotFound')}

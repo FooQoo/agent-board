@@ -5,6 +5,7 @@ import type { DetailEvent } from '../../shared/data/api';
 import { parseChanged, parseSummary } from '../../shared/data/api';
 import { ndjsonEvents, type DataAdapter, type EventHandlers } from '../../shared/data/core';
 import { readyBuildId } from '../../shared/lib/build/buildId';
+import { httpStatusOf } from '../../shared/api/httpStatus';
 import { epicSegment, projectSegment, taskSegment } from './segments';
 import {
   MONITOR_API_BASE,
@@ -16,18 +17,8 @@ import {
   type MonitorRequestOptions,
 } from './session';
 
-/**
- * The HTTP status a failure carries, if it came from the monitor's server. The data layer wraps a
- * failed Detail read, so the monitor's error may be the `cause` of what the cache holds.
- */
-export function monitorErrorStatus(error: unknown): number | null {
-  let current: unknown = error;
-  for (let depth = 0; depth < 3 && current instanceof Error; depth += 1) {
-    if (current instanceof MonitorClientError) return current.status;
-    current = current.cause;
-  }
-  return null;
-}
+/** The HTTP status a failure from the monitor's server carries (see `httpStatusOf`). */
+export const monitorErrorStatus = httpStatusOf;
 
 /** The error for a refused or unexpected reply, after the phone's loss of access has been reported. */
 async function failureOf(path: string, response: Response): Promise<MonitorClientError> {

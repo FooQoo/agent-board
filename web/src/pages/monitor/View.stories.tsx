@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo, useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { unconnectedMonitorReadResolvers } from './contracts';
 import { withMonitorFixtureData } from './fixture-provider';
 import { MonitorProject } from './MonitorProject';
 import { createMonitorFixture, createMonitorFixtureProps } from './mock';
@@ -36,6 +37,7 @@ function ConnectedProjectStory() {
     <MonitorProject
       projectId={fixture.projectId}
       adapter={adapter}
+      readResolvers={unconnectedMonitorReadResolvers}
       readQuestion={async () => {
         throw new Error('The story has no questions.');
       }}

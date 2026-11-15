@@ -232,6 +232,7 @@ describe('script size', () => {
       'shared/styles/theme.css',
       'features/tasks/answer/decision-answer.css',
       'pages/monitor/monitor.css',
+      'pages/monitor/monitor-screen.css',
     ].map((path) => classes(sheet(path)));
     const editorOnly = [...classes(sheet('shared/styles/editor.css'))].filter(
       (name) => !shared.some((known) => known.has(name)),

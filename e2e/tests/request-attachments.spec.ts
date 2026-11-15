@@ -36,9 +36,12 @@ test('the request text field leaves room for its complete focus ring', async ({ 
 
 test('request actions share a button height and keep the footer concise', async ({ page }) => {
   for (const width of [1280, 390]) {
-    await page.setViewportSize({ width, height: 844 });
+    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    await page.setViewportSize({ width: 1280, height: 844 });
     await page.getByRole('button', { name: 'Add task' }).click();
     const dialog = page.getByRole('dialog', { name: 'New task' });
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize({ width, height: 844 });
     await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
     const sizes = await dialog.locator('.modal__footer button').evaluateAll((buttons) => buttons.map((button) => {
       const box = button.getBoundingClientRect();
@@ -70,12 +73,15 @@ test('request attachment headings use the same typography as the other field lab
 
 test('the image picker stays square at the left without resizing the request dialog', async ({ page }, testInfo) => {
   for (const { mode, width } of [{ mode: 'light', width: 1280 }, { mode: 'dark', width: 1280 }, { mode: 'light', width: 390 }, { mode: 'dark', width: 390 }]) {
-    await page.setViewportSize({ width, height: 1100 });
+    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    await page.setViewportSize({ width: 1280, height: 1100 });
     await setPreferences({ theme: { mode: mode as 'light' | 'dark', accent: 'blue' } });
     await page.reload();
     await waitForSync(page);
     await page.getByRole('button', { name: 'Add task' }).click();
     const dialog = page.getByRole('dialog', { name: 'New task' });
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize({ width, height: 1100 });
     await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
     const initial = await dialog.boundingBox();
     const textarea = dialog.getByRole('textbox', { name: 'What should be done?' });
@@ -123,9 +129,12 @@ test('the image picker stays square at the left without resizing the request dia
 
 for (const viewport of [{ width: 1280, height: 600 }, { width: 800, height: 500 }, { width: 390, height: 640 }]) {
   test(`request fields scroll without hiding actions at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
-    await page.setViewportSize(viewport);
+    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    await page.setViewportSize({ width: 1280, height: viewport.height });
     await page.getByRole('button', { name: 'Add task' }).click();
     const dialog = page.getByRole('dialog', { name: 'New task' });
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize(viewport);
     await dialog.getByRole('textbox', { name: 'What should be done?' }).fill('Keep all actions accessible');
     await dialog.locator('input[type=file]').setInputFiles(
       Array.from({ length: 5 }, (_, index) => ({ name: `image-${index}.png`, mimeType: 'image/png', buffer: png })),
@@ -201,10 +210,11 @@ test('request dialog attachments stay visible and operable on desktop, dark, and
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('request-dark-empty.png') });
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
   await page.reload();
   await waitForSync(page);
   dialog = await openRequest();
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('request-mobile-empty.png') });
   await attach(dialog, 'mobile-notes.png');

@@ -1,9 +1,8 @@
-import { Suspense, useEffect, useId, useRef, useState } from 'react';
+import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../shared/ui/app-header/Header';
 import { monitorLogo } from './logo';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
-import { monitorPreferences } from './preferences';
 import type { MonitorViewProps } from './contracts';
 import { TaskList } from './components/TaskList';
 import { Freshness } from './components/Freshness';
@@ -16,10 +15,6 @@ import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
 import type { AnswerStart } from '../../features/tasks/answer/useAnswerFlow';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
-/** The monitor saves the language and theme on the PC's board; the sample-data mode has no board. */
-const monitorSettingsSlot =
-  import.meta.env.MODE === 'mock' ? settingsSlot : savingSettingsSlot(monitorPreferences);
-
 const detailDrawer = preloadable(() =>
   import('./components/MonitorDetailDrawer').then((module) => module.MonitorDetailDrawer),
 );
@@ -34,6 +29,12 @@ export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
   const { t } = useTranslation();
+  // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
+  const { preferences } = props;
+  const settings = useMemo(
+    () => (preferences ? savingSettingsSlot(preferences) : settingsSlot),
+    [preferences],
+  );
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -74,7 +75,7 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header settings={monitorSettingsSlot} logoSrc={monitorLogo} settingsSize="l" />
+      <Header {...props.header} settings={settings} logoSrc={monitorLogo} settingsSize="l" />
       <section className="monitor-summary" aria-label={t('monitor.summary')}>
         <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
           <strong>{tile(ordered.todo.length)}</strong>

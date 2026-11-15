@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createMonitorAdapter, monitorClient, readMonitorQuestion } from './client';
+import {
+  createMonitorAdapter,
+  monitorClient,
+  monitorReadResolvers,
+  readMonitorQuestion,
+} from './client';
+import { monitorPreferences } from './preferences';
 import { MonitorProject, type BuildReloadHook } from './MonitorProject';
 import { createMonitorFixture, fixtureQuestion } from './mock';
 import { createMonitorFixtureAdapter } from './mock-adapter';
@@ -26,6 +32,7 @@ function MonitorFixtureApp({ useBuildReload }: { useBuildReload: BuildReloadHook
     <MonitorProject
       projectId={fixture.projectId}
       adapter={adapter}
+      readResolvers={monitorReadResolvers}
       readQuestion={async (_projectId, questionId) => fixtureQuestion(fixture, questionId)}
       writeAnswers={async () => {
         throw new Error('The sample data cannot take an answer.');
@@ -95,6 +102,8 @@ function MonitorReadyApp({
     <MonitorProject
       projectId={projectId}
       adapter={adapter}
+      readResolvers={monitorReadResolvers}
+      preferences={monitorPreferences}
       readQuestion={readMonitorQuestion}
       writeAnswers={(projectId, answers) => monitorClient.answerQuestions(projectId, answers)}
       useBuildReload={useBuildReload}
