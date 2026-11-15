@@ -1,7 +1,7 @@
 import type { Task } from '../../../shared/api/contracts.ts';
 import type { Change, ChangedEvent } from '../../../shared/data/api/contracts.ts';
 import { acceptanceRoutes } from './acceptance.ts';
-import { SAMPLE_IMAGE, SAMPLE_PROJECTS, sampleBoards, type MockBoard } from './boards.ts';
+import { SAMPLE_IMAGE, sampleBoards, sampleProjects, type MockBoard } from './boards.ts';
 import { completedTasks } from './completion.ts';
 import { editRoutes } from './edits.ts';
 import { createGuide } from './guide.ts';
@@ -46,6 +46,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
     fixture: options.fixture,
     longMarkdown: options.longMarkdown,
     locale: options.locale,
+    demo: options.demo,
   };
   const now = options.now ?? (() => new Date().toISOString());
   /** Boards as loaded, with any task whose conditions are all met already moved to Done. */
@@ -120,7 +121,7 @@ export function createMockServer(options: MockServerOptions): MockServer {
           'cannot open the projects.',
           'Mock failure (?projectsFail=1).',
         );
-      const projects = page.get('projects') === 'none' ? [] : SAMPLE_PROJECTS;
+      const projects = page.get('projects') === 'none' ? [] : sampleProjects(seed);
       return json(200, { projects, catalogVersion: 'mock-catalog' });
     }
     if (method === 'GET' && path === '/api/events') {

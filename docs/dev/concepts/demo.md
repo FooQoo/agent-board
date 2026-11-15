@@ -24,7 +24,9 @@ flowchart LR
 - `web/mock-api.ts` puts it behind the Vite dev server in the [sample-data mode](../getting-started/setup.md#development) (`pnpm --dir web dev --mode mock`).
 - The demo puts it behind the page's `fetch` and `EventSource`.
 
-The boards are made fresh from `web/test/fixtures/board.json` each time a server starts. The demo build reads that fixture at build time through the `virtual:agboard-demo-seed` module (`web/demo-build.ts`). Besides reads, the server handles the writes a visitor can make:
+The boards are made fresh from `web/test/fixtures/board.json` each time a server starts. The demo build reads that fixture at build time through the `virtual:agboard-demo-seed` module (`web/demo-build.ts`). The demo passes `demo: true`, so it has a single project named `demo`, and its board starts with one open question, on card #12. The sample-data mode keeps three projects and three open questions for development and tests.
+
+Besides reads, the server handles the writes a visitor can make:
 
 - creating, editing, and moving cards, and reordering them within a lane
 - answering a question

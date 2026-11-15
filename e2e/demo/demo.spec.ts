@@ -80,15 +80,17 @@ test.describe('in an English browser', () => {
     await expect(task(lane(page, 'Doing'), 15)).toBeVisible();
     await expect(task(lane(page, 'Todo'), 15)).toHaveCount(0);
 
-    // Card #11 waits for an answer, and a waiting card is not completed. Answer it first.
-    const card11 = page.locator('.card__item').filter({ has: task(page, 11) });
-    await card11.getByRole('button', { name: 'Answer the question' }).click();
+    // The demo starts with one open question, on card #12. Answering it leaves the band empty.
+    await expect(page.locator('main [data-decision-answer]')).toHaveCount(1);
+    const card12 = page.locator('.card__item').filter({ has: task(page, 12) });
+    await card12.getByRole('button', { name: 'Answer the question' }).click();
     const answer = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
-    await answer.getByLabel('Keep the order they were moved in').check();
+    await answer.getByLabel('Keep the data').check();
     await answer.getByRole('navigation').getByRole('button', { name: 'Review and send' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Send all', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(task(lane(page, 'Doing'), 11)).toContainText('Idle');
+    await expect(task(page, 12)).not.toContainText('Pending');
+    await expect(page.locator('main [data-decision-answer]')).toHaveCount(0);
 
     // Checking its last two conditions moves the AI card to Done, as `agboard serve` does.
     await task(page, 11).click();

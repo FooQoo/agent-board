@@ -30,6 +30,12 @@ export interface MockSeed {
    * Japanese text of `sampleJa.ts` in their place. The browser demo passes the browser's language.
    */
   locale?: 'en' | 'ja';
+  /**
+   * The browser demo's data: one project, named `demo`, whose board starts with one open question
+   * (the fixture's card 12). The sample-data mode and the tests keep three projects, and cards 11
+   * and 13 wait for an answer as well.
+   */
+  demo?: boolean;
 }
 
 /** An epic the sample board shows: its label and frame on a few cards. */
@@ -85,6 +91,12 @@ export const SAMPLE_PROJECTS: Project[] = [
   { id: 'b2c3d4e5f60718293a4b5c6d7e8f90a1', name: 'knowledge', createdAt: '2026-10-01T08:00:00Z' },
   { id: 'c3d4e5f60718293a4b5c6d7e8f90a1b2', name: 'tech-blog', createdAt: '2026-10-01T09:00:00Z' },
 ];
+
+/** The projects of the sample data: the demo has only its own. */
+export function sampleProjects(seed: Pick<MockSeed, 'demo'>): Project[] {
+  const [first] = SAMPLE_PROJECTS as [Project];
+  return seed.demo ? [{ ...first, name: 'demo' }] : SAMPLE_PROJECTS;
+}
 
 /** A picture for the sample pages, served by the mock so that it is a real http image. */
 export const SAMPLE_IMAGE =
@@ -147,7 +159,7 @@ export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
         ? { ...task, acceptance: structuredClone(conditions) }
         : task;
       // Cards 11 and 13 also wait for an answer, so the Doing lane shows several pending cards at once.
-      const extraPending = EXTRA_PENDING[task.id];
+      const extraPending = seed.demo ? undefined : EXTRA_PENDING[task.id];
       const pending: Task = extraPending
         ? { ...withConditions, agentStatus: 'pending', ...structuredClone(extraPending) }
         : withConditions;
@@ -165,6 +177,10 @@ export function sampleBoards(seed: MockSeed): Record<string, MockBoard> {
         }
       : longMarkdownTask(tasks, seed.longMarkdown);
   const [first, second, third] = SAMPLE_PROJECTS as [Project, Project, Project];
+  if (seed.demo) {
+    const [demo] = sampleProjects(seed) as [Project];
+    return { [demo.id]: asBoard(demo, withEpic([...fixtureTasks, longTask(fixtureTasks)]), epic) };
+  }
   return {
     [first.id]: asBoard(first, withEpic([...fixtureTasks, longTask(fixtureTasks)]), epic),
     [second.id]: asBoard(second, withEpic(structuredClone(fixtureTasks.slice(0, 3))), epic),

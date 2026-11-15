@@ -24,7 +24,9 @@ flowchart LR
 - `web/mock-api.ts`は、[サンプルデータモード](../getting-started/setup.md#開発)（`pnpm --dir web dev --mode mock`）でViteの開発サーバーの後ろに置きます。
 - デモは、ページの`fetch`と`EventSource`の後ろに置きます。
 
-ボードは、サーバーが起動するたびに`web/test/fixtures/board.json`から作り直します。デモのビルドは、このフィクスチャをビルド時に`virtual:agboard-demo-seed`モジュールとして読み込みます（`web/demo-build.ts`）。読み取りに加えて、訪れた人ができる書き込みにも応答します。
+ボードは、サーバーが起動するたびに`web/test/fixtures/board.json`から作り直します。デモのビルドは、このフィクスチャをビルド時に`virtual:agboard-demo-seed`モジュールとして読み込みます（`web/demo-build.ts`）。デモは`demo: true`を渡すので、プロジェクトは`demo`という名前の1つだけで、ボードの未回答の質問はカード#12の1件から始まります。サンプルデータモードは、開発とテストのためにプロジェクト3つと未回答の質問3件を保ちます。
+
+読み取りに加えて、訪れた人ができる書き込みにも応答します。
 
 - カードの作成、編集、レーン間の移動、レーン内の並べ替え
 - 質問への回答

@@ -17,7 +17,7 @@ import { installDemoTransport } from './transport.ts';
 export function installDemo(): void {
   const locale = demoLocale(browserLanguages(navigator));
   applyLocale(locale);
-  const server = createMockServer({ fixture, longMarkdown, locale });
+  const server = createMockServer({ fixture, longMarkdown, locale, demo: true });
   installDemoTransport(server, window);
   watchDemoImages(server, document);
 }
