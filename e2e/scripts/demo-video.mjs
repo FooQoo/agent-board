@@ -235,15 +235,23 @@ async function record(browser, locale, tmp) {
     await page.waitForTimeout(300);
     await answerButton.click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText(text.question, { exact: true })).toBeVisible();
+    await expect(dialog.locator('.decision-panel')).toContainText(text.question);
     await page.waitForTimeout(900);
     const choice = dialog.getByRole('radio').first();
     await moveTo(page, choice);
     await page.waitForTimeout(300);
     await choice.click();
     await page.waitForTimeout(1100);
-    // The button names come from the app's translations, so the Japanese run finds 送信.
-    const send = dialog.getByRole('button', { name: locale === 'ja' ? '送信' : 'Send', exact: true });
+    // Answers are held until the review step sends them together. The names come from the
+    // app's translations, so the Japanese run finds 確認して送る and まとめて送る.
+    const review = dialog
+      .getByRole('navigation')
+      .getByRole('button', { name: locale === 'ja' ? '確認して送る' : 'Review and send', exact: true });
+    await moveTo(page, review);
+    await page.waitForTimeout(300);
+    await review.click();
+    await page.waitForTimeout(1100);
+    const send = dialog.getByRole('button', { name: locale === 'ja' ? 'まとめて送る' : 'Send all', exact: true });
     await expect(send).toBeEnabled();
     await moveTo(page, send);
     await page.waitForTimeout(400);
