@@ -58,6 +58,8 @@ try {
       const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
       // The monitor's card list, under the band that lists the waiting question.
       const band = page.getByRole('region', { name: locale === 'ja' ? '未回答の質問' : 'Unanswered questions', exact: true });
+      // The band starts closed; open it so the screenshot shows the waiting question.
+      await band.getByRole('button', { name: locale === 'ja' ? /^未回答の質問を表示する/ : /^Show unanswered questions/ }).click();
       await expect(band.getByRole('listitem')).toHaveCount(1);
       await expect(band).toBeInViewport();
       await settle(page);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
-import { answerButton, fillAnswer, openAnswer, send } from '../helpers/answer';
+import { answerButton, bandCount, bandToggle, expandBand, fillAnswer, openAnswer, questionBand, send } from '../helpers/answer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // One app serves both layouts: below 768px the board shows the phone screen, at and above it the lanes.
@@ -68,35 +68,73 @@ async function listTop(page: Page): Promise<number> {
   return box.y;
 }
 
-test('on a phone the band is left out with no questions and comes in with one, and the PC band keeps its height', async ({ page }) => {
+test('the band is always there: with no question its header shows a count of 0 and nothing opens, at desktop and phone widths', async ({ page }) => {
   // The fixture's open question on #12 is withdrawn, so the project has none.
   agboardOk(mainProject, ['qa', 'withdraw', '0123456789abcdef0123456789abcdef', '--actor', 'ai', '--reason', 'Not needed.']);
-  await expect(band(page).getByText('No unanswered questions')).toBeVisible();
-  // With no questions the PC band keeps the height it has with one, so the lanes do not move.
-  const pcEmpty = await band(page).boundingBox();
-  const laneEmpty = await lane(page, 'Doing').boundingBox();
-
-  await page.setViewportSize(PHONE);
+  for (const size of [DESKTOP, PHONE, DESKTOP]) {
+    await page.setViewportSize(size);
+    await expect(band(page)).toBeVisible();
+    await expect(bandCount(page)).toHaveText('0');
+    await expect(bandToggle(page)).toBeDisabled();
+    await expect(band(page).getByRole('listitem')).toHaveCount(0);
+    await expect(band(page).getByRole('status')).toHaveCount(0);
+    await expect(band(page).getByRole('button', { name: 'Answer them' })).toHaveCount(0);
+  }
+  if ((await phoneSummary(page).count()) === 0) await page.setViewportSize(PHONE);
   await expect(phoneSummary(page)).toBeVisible();
-  await expect(band(page)).toHaveCount(0);
   const summaryBottom = await phoneSummary(page).boundingBox().then((box) => (box ? box.y + box.height : 0));
-  const withoutBand = await listTop(page);
-  // Nothing sits between the counts and the list.
-  expect(withoutBand - summaryBottom).toBeLessThan(40);
-
-  agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
-  await expect(band(page)).toBeVisible();
   const bandBox = await band(page).boundingBox();
   if (!bandBox) throw new Error('the band has no box');
-  const withBand = await listTop(page);
-  expect(withBand).toBeGreaterThanOrEqual(bandBox.y + bandBox.height);
-  expect(withBand - withoutBand).toBeGreaterThanOrEqual(bandBox.height);
+  // The header sits under the counts, and the list follows it.
+  expect(bandBox.y).toBeGreaterThanOrEqual(summaryBottom - 1);
+  expect(await listTop(page)).toBeGreaterThanOrEqual(bandBox.y + bandBox.height);
 
+  // A question that arrives is counted at once, and the band stays closed.
+  agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
+  await expect(bandCount(page)).toHaveText('1');
+  await expect(bandToggle(page)).toBeEnabled();
+  await expect(bandToggle(page)).toHaveAttribute('aria-expanded', 'false');
+  await expect(band(page).getByRole('listitem')).toHaveCount(0);
   await page.setViewportSize(DESKTOP);
-  await expect(lane(page, 'Doing')).toBeVisible();
-  await expect(phoneSummary(page)).toHaveCount(0);
-  await expect(answerButton(page, 13)).toHaveText('Answer the question');
-  expect((await band(page).boundingBox())?.height).toBe(pcEmpty?.height);
-  expect((await lane(page, 'Doing').boundingBox())?.y).toBe(laneEmpty?.y);
   await waitForSync(page);
 });
+
+for (const [name, size] of [
+  ['desktop', DESKTOP],
+  ['phone', PHONE],
+] as const) {
+  test(`the band starts closed at ${name} width: the count and Answer them show, and its header opens and closes the cards`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await expect(band(page)).toBeVisible();
+    await expect(bandCount(page)).toHaveText('1');
+    const toggle = bandToggle(page);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(band(page).getByRole('listitem')).toHaveCount(0);
+    await expect(band(page).getByRole('button', { name: 'Answer them' })).toBeVisible();
+    await expect(band(page).getByRole('button', { name: 'Show the later questions' })).toHaveCount(0);
+
+    await expect(toggle).toBeVisible();
+    const closedHeight = (await band(page).boundingBox())?.height ?? 0;
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(band(page).getByRole('listitem')).toHaveCount(1);
+    await expect(band(page).getByRole('listitem').first()).toBeVisible();
+    await expect(bandCount(page)).toHaveText('1');
+    await expect(band(page).getByRole('button', { name: 'Answer them' })).toBeVisible();
+    expect((await band(page).boundingBox())?.height ?? 0).toBeGreaterThan(closedHeight);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(band(page).getByRole('listitem')).toHaveCount(0);
+    expect((await band(page).boundingBox())?.height).toBe(closedHeight);
+
+    // A reload does not remember the choice: the band starts closed again.
+    await toggle.click();
+    await page.reload();
+    await expect(bandToggle(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(questionBand(page).getByRole('listitem')).toHaveCount(0);
+    await expandBand(page);
+    await page.setViewportSize(DESKTOP);
+    await waitForSync(page);
+  });
+}

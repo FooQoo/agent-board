@@ -7,6 +7,9 @@ import {
   answerButton,
   answerDialog,
   answerNote,
+  bandCount,
+  bandToggle,
+  expandBand,
   answerSend,
   openAnswer,
   reachSend,
@@ -209,7 +212,10 @@ test('a failed send keeps the input and the retry sends the same answer', async 
 // DM-6: the band lists every open question; they are answered in a row and sent together.
 test('the band lists the open questions, and the answers are sent together from the review', async ({ page }) => {
   const band = questionBand(page);
-  // The fresh board has one waiting card, #12.
+  // The band starts closed; its header already counts the waiting card, #12, of the fresh board.
+  await expect(bandCount(page)).toHaveText('1');
+  await expect(band.getByRole('listitem')).toHaveCount(0);
+  await expandBand(page);
   await expect(band.getByRole('listitem')).toHaveCount(1);
   ask('Which way for #13?');
   await expect(band.getByRole('listitem')).toHaveCount(2);
@@ -234,7 +240,10 @@ test('the band lists the open questions, and the answers are sent together from 
   await expect(dialog.getByRole('button', { name: /^Change:/ })).toHaveCount(2);
   await dialog.getByRole('button', { name: 'Send all', exact: true }).click();
   await expect(dialog).toBeHidden();
-  await expect(band.getByRole('status')).toContainText('No unanswered questions');
+  // Nothing is left to open: the header stays with a count of 0, and no list shows.
+  await expect(bandCount(page)).toHaveText('0');
+  await expect(bandToggle(page)).toBeDisabled();
+  await expect(band.getByRole('listitem')).toHaveCount(0);
   expect(show(12)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
   expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
   expectHistoryNote(show(13).history.at(-1), ['Which way for #13?', 'Plan A']);

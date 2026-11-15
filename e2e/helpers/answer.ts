@@ -8,6 +8,21 @@ export const answerButton = (page: Page, id = 12): Locator =>
 export const questionBand = (page: Page): Locator =>
   page.getByRole('region', { name: /^(Unanswered questions|未回答の質問)$/ });
 
+/** The header button of the band: it opens and closes the list of questions, which starts closed. */
+export const bandToggle = (page: Page): Locator =>
+  questionBand(page).getByRole('button', { name: /^(Show|Hide) unanswered questions|^未回答の質問を(表示する|隠す)/ });
+
+/** The count the band's header shows. */
+export const bandCount = (page: Page): Locator => questionBand(page).locator('.question-band__count');
+
+/** Opens the band's list when it is closed; the band does nothing while it has no question. */
+export async function expandBand(page: Page): Promise<void> {
+  const toggle = bandToggle(page);
+  await expect(toggle).toBeEnabled();
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+}
+
 /** The open answer dialog. */
 export const answerDialog = (page: Page): Locator => page.getByRole('dialog');
 

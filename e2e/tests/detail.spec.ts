@@ -176,9 +176,9 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'BUTTON Epics',
     'BUTTON Archive',
     'BUTTON Settings',
-    // The band of unanswered questions comes before the lanes.
+    // The band of unanswered questions comes before the lanes; it is closed, so its question is not a stop.
+    'BUTTON Show unanswered questions (1)',
     'BUTTON Answer them',
-    'BUTTON Waiting for confirmation on how to replace a board. (#12)',
     'DIV #14',
     'DIV #15',
     'DIV #16',
@@ -208,8 +208,9 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), the band's button and its one question,
-  // eight cards, the Pending card's answer button, Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(6 + 2 + 8 + 1 + 1 + 4);
+  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), the band's toggle and its button, its one
+  // question (in the document even while the band is closed), eight cards, the Pending card's answer button,
+  // Archive completed tasks, four detail controls.
+  expect(focusable).toHaveLength(6 + 2 + 1 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

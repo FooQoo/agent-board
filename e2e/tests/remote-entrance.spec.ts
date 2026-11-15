@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, request as playwrightRequest, test } from '../helpers/fixtures';
 import { agboard, askArgs, decisionJson } from '../helpers/agboard';
+import { bandCount, expandBand } from '../helpers/answer';
 import {
   createMonitorHome,
   monitorProjectId,
@@ -180,15 +181,18 @@ test('the phone answers the current question from the sheet, and the answer reac
 test('the phone band lists the open questions; an answer held there is sent from the review', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   await entrance.open(page, phoneUrl());
-  // The phone shows the band only while a question is open.
+  // The band is always there, closed at first, and its header counts the open questions.
   const band = page.getByRole('region', { name: 'Unanswered questions' });
-  const before = await band.getByRole('listitem').count();
+  await expect(band).toBeVisible();
+  await expect(band.getByRole('listitem')).toHaveCount(0);
+  const before = Number(await bandCount(page).textContent());
 
   const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'ai']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
   const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
   expect(asked.code, asked.stderr).toBe(0);
-  await expect(band).toBeVisible();
+  await expect(bandCount(page)).toHaveText(String(before + 1));
+  await expandBand(page);
   await expect(band.getByRole('listitem')).toHaveCount(before + 1);
   await expect(band).toContainText(`#${id}`);
 
@@ -206,7 +210,7 @@ test('the phone band lists the open questions; an answer held there is sent from
   await expect(review.getByRole('button', { name: /^Change:/ })).toHaveCount(1);
   await review.getByRole('button', { name: 'Send all', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(band.getByRole('listitem')).toHaveCount(before);
+  await expect(bandCount(page)).toHaveText(String(before));
   const stored = json(['show', String(id)]).task as { agentStatus: string; history: { reason: string }[] };
   expect(stored.agentStatus).toBe('idle');
   expect(stored.history.at(-1)?.reason).toContain('Plan B');
