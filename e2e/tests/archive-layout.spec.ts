@@ -243,7 +243,8 @@ for (const mode of ["light", "dark"] as const) {
 			page,
 		}, testInfo) => {
 			resetBoard(mainProject);
-			await page.setViewportSize({ width: 360, height: 800 });
+			// Below 768px the board shows the phone screen, which has no lane archive button: open the dialog first, then narrow the window.
+			await page.setViewportSize({ width: 1280, height: 800 });
 			await setPreferences({ locale, theme: { mode, accent: "blue" } });
 			await page.route("**/api/projects/*/summary", async (route) => {
 				const response = await route.fetch();
@@ -268,6 +269,10 @@ for (const mode of ["light", "dark"] as const) {
 			await trigger.click();
 			const dialog = page.getByRole("dialog");
 			await expect(dialog).toBeVisible();
+			await page.setViewportSize({ width: 360, height: 800 });
+			await dialog.evaluate((element) =>
+				Promise.all(element.getAnimations().map((animation) => animation.finished)),
+			);
 			await expect(dialog.getByRole("row")).toHaveCount(101);
 			await expect(
 				dialog.getByText(
@@ -327,7 +332,8 @@ for (const mode of ["light", "dark"] as const) {
 			).toBeVisible();
 			await page.keyboard.press("Escape");
 			await expect(dialog).toHaveCount(0);
-			await expect(trigger).toBeFocused();
+			// The lane's archive button is not on the phone screen, so focus has no button to return to here;
+			// the wider layouts above check that focus returns to it.
 		});
 	}
 }
