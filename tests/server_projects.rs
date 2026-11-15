@@ -217,13 +217,14 @@ impl Running {
         let request = builder.body(body.unwrap_or("").to_string()).unwrap();
         // The server answers a refused write before it reads the body and closes the connection, so on macOS
         // the client can see the reset while it is still sending (an I/O error such as EINVAL) instead of the
-        // answer. That is a race in the client, not a different answer; ask again.
-        let mut attempts = 0;
+        // answer. That is a race in the client, not a different answer; ask again, waiting a little longer each
+        // time so that an immediate retry does not lose the same race.
+        let mut attempts: u64 = 0;
         let mut response = loop {
             match agent.run(request.clone()) {
                 Ok(response) => break response,
                 Err(ureq::Error::Io(error))
-                    if attempts < 4
+                    if attempts < 8
                         && matches!(
                             error.kind(),
                             std::io::ErrorKind::InvalidInput
@@ -232,6 +233,7 @@ impl Running {
                         ) =>
                 {
                     attempts += 1;
+                    std::thread::sleep(Duration::from_millis(25 * attempts));
                 }
                 Err(error) => panic!("{method} {path}: {error:?}"),
             }
