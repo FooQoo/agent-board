@@ -82,6 +82,12 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 
 An address without a project shows **This link has no project**, and the page reads nothing. On the PC, open the mobile connection settings and scan the current QR code again.
 
+## Use the whole board through the address
+
+The same address without `/monitor/`, for example `https://….ngrok.app/`, opens the board itself: the same board as on the PC, with the screen chosen by the window width. It asks for the same 4-digit passcode, shows nothing of the board until the passcode is right, and then lets you do what you can do on the PC board, such as editing, moving, and deleting tasks, answering questions, and reading the project documents. The passcode lasts up to 12 hours and has the same limit of 5 wrong tries.
+
+Two things stay on the PC even then: the **Mobile connection** settings, and opening a project document in the PC's own application. Anyone who has the address and the passcode can change your tasks, so keep both private.
+
 The monitor opens in the language and color theme saved on the PC. If you change them on the phone, from the settings in the monitor header, the new choice is saved on the PC too, so the board and every other browser or phone show it. A change made on the PC appears on an open monitor at once.
 
 On ngrok's free plan, the first visit from a phone shows ngrok's warning page. Choose **Visit Site**, and the monitor opens. ngrok shows the warning to each visitor only once.

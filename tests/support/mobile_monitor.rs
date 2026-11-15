@@ -205,19 +205,28 @@ impl Running {
         )
     }
 
+    /// Enter a passcode at the board app's route, as its passcode screen does.
+    pub fn unlock_board(&self, code: &str) -> Reply {
+        self.request(
+            "POST",
+            "/api/remote/unlock",
+            &[
+                ("Origin", ORIGIN),
+                ("Sec-Fetch-Site", "same-origin"),
+                ("Content-Type", "application/json"),
+            ],
+            &format!(r#"{{"code":"{code}"}}"#),
+        )
+    }
+
+    /// A session opened with the passcode of this start, at the board app's route.
+    pub fn board_session(&self) -> Session {
+        session_of(self.unlock_board(&self.passcode))
+    }
+
     /// A session opened with the passcode of this start.
     pub fn session(&self) -> Session {
-        let reply = self.unlock(&self.passcode);
-        assert_eq!(reply.status, 200, "{}", reply.body);
-        let set = reply
-            .header("set-cookie")
-            .expect("a new session sets a cookie");
-        let cookie = set.split(';').next().unwrap().to_string();
-        let csrf = serde_json::from_str::<Value>(&reply.body).unwrap()["csrfToken"]
-            .as_str()
-            .unwrap()
-            .to_string();
-        Session { cookie, csrf }
+        session_of(self.unlock(&self.passcode))
     }
 
     /// A read with a session.
@@ -240,6 +249,20 @@ impl Running {
             body,
         )
     }
+}
+
+/// The session an accepted passcode opened: its cookie and CSRF token.
+fn session_of(reply: Reply) -> Session {
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    let set = reply
+        .header("set-cookie")
+        .expect("a new session sets a cookie");
+    let cookie = set.split(';').next().unwrap().to_string();
+    let csrf = serde_json::from_str::<Value>(&reply.body).unwrap()["csrfToken"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    Session { cookie, csrf }
 }
 
 impl Drop for Running {

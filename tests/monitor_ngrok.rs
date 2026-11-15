@@ -403,7 +403,7 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
         "; Secure",
         "; HttpOnly",
         "; SameSite=Lax",
-        "; Path=/monitor/",
+        "; Path=/;",
         "; Max-Age=43200",
     ] {
         assert!(cookie.contains(part), "{part} in {cookie}");
@@ -761,15 +761,14 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     );
     for p in [
         "/board/",
-        "/api/projects",
         "/api/monitor-connections",
         "/monitor/other",
         "/index.html",
     ] {
         assert_eq!(t.call("GET", p, &with, "").status, 404, "{p}");
     }
-    // The bare origin forwards to the monitor page (the ngrok warning page ends there).
-    assert_eq!(t.call("GET", "/", &with, "").status, 308);
+    // The bare origin is the board's page shell (the ngrok warning page ends there).
+    assert_eq!(t.call("GET", "/", &with, "").status, 200);
     // Wrong methods are 405, also with a full set of write headers.
     let w = write_headers(&cookie, &csrf);
     for (m, p) in [
@@ -812,8 +811,8 @@ fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
         404
     );
     assert_eq!(t.call("GET", "/assets/app.js", &[], "").status, 404);
-    // No shell that falls back to the page.
-    assert_eq!(t.call("GET", "/monitor/anything", &[], "").status, 404);
+    // No shell that falls back to the page: anything else needs a session first.
+    assert_eq!(t.call("GET", "/monitor/anything", &[], "").status, 401);
 }
 
 // ------------------------------------------------------------------ answer
@@ -1111,7 +1110,7 @@ fn disconnect_ends_the_session_and_leaves_no_logout_path() {
     assert_eq!(r.json(), json!({"disconnected": true}));
     assert!(!r.body.contains("logout"));
     let cleared = r.header("set-cookie").unwrap();
-    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/monitor/"));
+    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/;"));
     for p in [format!("{base}/summary"), "/monitor/api/events".to_string()] {
         assert_eq!(t.call("GET", &p, &[("Cookie", &cookie)], "").status, 401);
     }

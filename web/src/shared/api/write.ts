@@ -1,14 +1,14 @@
 import { i18n } from '../i18n';
 import type { ApiError, Task } from './contracts';
 import type { EditorAttachment } from '../ui/editor/attachmentTypes';
-import { readToken } from './http';
+import { authHeaders } from './http';
 import { writeFailure } from './writeErrors';
 
 export async function postEmpty(path: string): Promise<{ task: Task }> {
   const response = await fetch(path, {
     method: 'POST',
     headers: {
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
   });
@@ -28,7 +28,7 @@ export async function postTask<T>(path: string, value: unknown): Promise<T> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body: JSON.stringify(value),
@@ -75,7 +75,7 @@ export async function sendMultipart(path: string, body: FormData, method: 'POST'
   const response = await fetch(path, {
     method,
     headers: {
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body,
@@ -101,7 +101,7 @@ export async function sendTask(
     method,
     headers: {
       'Content-Type': 'application/json',
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body: JSON.stringify(value),

@@ -1,6 +1,6 @@
 # モバイルモニター
 
-既定では、ボードに接続できるのは同じマシンからだけです。モバイルモニターは、スマホがngrokのトンネルを通して開く、読み取り中心の別のアプリです。トンネルは`serve`プロセスの中にあり、ボードの**設定**か`agboard serve --monitor ngrok`で操作します。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/operations/mobile-monitor.md)、経路は[モニターのルート](../reference/remote-routes.md)にあります。保護の概要は[セキュリティモデル](./security.md#ngrokの入口)にまとめています。
+既定では、ボードに接続できるのは同じマシンからだけです。スマホやほかのコンピューターのブラウザは、ngrokのトンネルを通してボードのアプリそのものを、合言葉のsessionの背後で開きます。読み取り中心の旧モバイルモニターは、`/monitor/`で引き続き配信しています。トンネルは`serve`プロセスの中にあり、ボードの**設定**か`agboard serve --monitor ngrok`で操作します。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/operations/mobile-monitor.md)、経路は[モニターのルート](../reference/remote-routes.md)にあります。保護の概要は[セキュリティモデル](./security.md#ngrokの入口)にまとめています。
 
 ## 全体の構成
 
@@ -15,8 +15,8 @@ flowchart LR
 
 - ngrokのRust SDKを`agboard`にリンクしています。外部の`ngrok`プログラムやサイドカーはありません。`src/server/monitor_connection/`の監督役が、ドメインもTraffic Policyも指定しないHTTPエンドポイントを一つ開き、モニターの入口へ転送します。公開アドレスはngrokが選びます。無料のngrokプランはTraffic Policyの操作を拒否するため、Traffic Policyは送りません。
 - モニターの入口は、接続が起動と停止を行う専用のループバックのリスナーです。ローカルのリスナーと同じ`serve`プロセスで動き、ライフサイクルのガード、FileStoreの索引とreader、監視、`changed`のbroadcastを共有します。`serve.json`にはローカルのポートだけを残すので、CLI・Hook・`wait`は影響を受けません。
-- [プロジェクトのドキュメント](../reference/web-api.md#プロジェクトのドキュメント)のルートは、ボードのルーターにだけあります。モニターの入口にはないので、ngrok経由でドキュメントに届くことはありません。
-- ローカルのリスナーとモニターの入口は別の面です。ローカルのリスナーは自身のHost・Origin・トークンの確認を保ち、モニターの入口がPCのボードを配信することはありません。接続設定のAPIはローカルのリスナーにだけあります。
+- [プロジェクトのドキュメント](../reference/web-api.md#プロジェクトのドキュメント)のルートは、ボードのそのほかのAPIと同じく、sessionの背後で入口から配信します。配信しないのは、PC上でプログラムを起動する`docs/open`だけです。
+- ローカルのリスナーとモニターの入口は別の面です。ローカルのリスナーは自身のHost・Origin・トークンの確認を保ちます。入口は、自身の検査（Host・session・Origin・CSRF）を先に行うので、ローカル用のガードを外したボードのルーターを配信し、そのページはトークンを持ちません。接続設定のAPI、`POST /api/notify`、`docs/open`はローカルのリスナーにだけあります。
 
 用途ごとに二種類の状態を持ち、アクセス範囲を分離しています。
 
@@ -66,11 +66,11 @@ flowchart LR
 Edgeがアプリのために行うことはありません。エンドポイントはTraffic Policyなしで開くため（無料のngrokプランはTraffic Policyを拒否します）、サインインも許可リストも拒否のルールも、アプリが信頼するヘッダーもありません。要求は、次の三つの層を順に通った場合だけモニターに届きます。
 
 1. **Host。** 入口は、トンネルが準備済みで、`Host`がngrokの返した公開HTTPSアドレスとちょうど一致する（`Host`ヘッダーが一つで、ポートも付かない）要求だけを受け付けます。それ以外は理由を示さない同じ403を返します。ループバックのポートを開いたブラウザは`Host`がループバックのアドレスなので、これに含まれます。転送ヘッダーやメソッド上書きのヘッダーは信頼しません。Hostの確認は、要求がngrok経由で届いたことをアプリに証明しません。[防げないこと](./security.md#防げないこと)を参照してください。
-2. **合言葉とsession。** ページと資産には最初の層だけが必要です。それ以外はsessionなしでは配信せず、sessionは`POST /monitor/api/unlock`でだけ始まります。
+2. **合言葉とsession。** ページの殻と静的ファイルには最初の層だけが必要です。それ以外はsessionなしでは配信せず、sessionは`POST /api/remote/unlock`（または旧モニターの`POST /monitor/api/unlock`。どちらも同じ合言葉と、間違いの同じ回数を使います）でだけ始まります。
    - *合言葉。* 起動のたびに、OSの乱数源から4桁の合言葉（`0000`〜`9999`）を偏りなく作り、連続した間違いの回数とともにメモリーに置きます。PCがこれを見るのは、接続が`ready`の間のローカルの状態APIと、`serve`の起動行だけです。ファイル、ログ、`serve.json`、ページ、エラー、スマホ向けの応答には一切書きません。
-   - *unlock。* 本文はJSONの`{"code":"1234"}`で、公開Originとの完全一致と`Sec-Fetch-Site: same-origin`が必要です。まだsessionがないため、CSRFトークンは要りません。コードは定時間で比較します。正しければ、Cookie`agboard_ngrok_session`（`Secure; HttpOnly; SameSite=Lax; Path=/monitor/`、最長12時間。この起動と公開アドレスに結び付く）を発行し、回数を0に戻し、CSRFトークンを返します。間違っていれば403 `unlock_failed`で、どれだけ近かったか、残り何回かは示しません。
+   - *unlock。* 本文はJSONの`{"code":"1234"}`で、公開Originとの完全一致と`Sec-Fetch-Site: same-origin`が必要です。まだsessionがないため、CSRFトークンは要りません。コードは定時間で比較します。正しければ、Cookie`agboard_ngrok_session`（`Secure; HttpOnly; SameSite=Lax; Path=/`、最長12時間。この起動と公開アドレスに結び付く）を発行し、回数を0に戻し、CSRFトークンを返します。間違っていれば403 `unlock_failed`で、どれだけ近かったか、残り何回かは示しません。
    - *制限。* 連続5回目の間違いまでは403です。それ以降は、正しい合言葉を含むすべての試行が429 `unlock_locked`になり、何も発行しません。新しく起動し直したときだけ、新しい合言葉と数え直した回数になります。ヘッダーや本文の不備（Originがない、JSONでない本文）で拒否された要求は推測ではないため、数えません。
-   - *session。* `GET /monitor/api/session`は、有効なsessionとそのCSRFトークンを知らせるか、401 `session_required`を返すだけで、何も始めません。そのほかの`/monitor/api/`の経路は有効なsessionが必要で、なければ401 `session_required`です。イベントストリームは、sessionの終了、起動の終了、5分の経過で終わります（ページは再接続します）。
+   - *session。* `GET /api/remote/session`（と`GET /monitor/api/session`）は、有効なsessionとそのCSRFトークンを知らせるか、401 `session_required`を返すだけで、何も始めません。そのほかの`/api/`と`/monitor/api/`の経路は有効なsessionが必要で、なければ401 `session_required`です。イベントストリームは、sessionの終了、起動の終了、5分の経過で終わります（ページは再接続します）。
 3. **書き込みのガード。** 回答、条件の付け外し（`PUT .../acceptance/{condition}`）、表示設定の保存（`PUT /monitor/api/preferences`）、`POST /monitor/api/disconnect`には、公開Originとの完全一致、`Sec-Fetch-Site: same-origin`、`X-Agboard-Csrf`のCSRFトークンも必要です。
 
 4桁の合言葉は、意図的に小さな秘密です。10,000通りしかなく、5回までの制限と、起動ごとに変わる合言葉で守ります。アカウントでのサインインより弱い守りです。防げないことは[セキュリティモデル](./security.md#防げないこと)にまとめています。
@@ -81,7 +81,16 @@ Edgeがアプリのために行うことはありません。エンドポイン�
 
 トークン・合言葉・sessionの値が、静的なJSやCSS・manifest・APIの応答・`serve.json`・ログに現れることはありません。すべてのHTMLと機密性のあるAPIは、`Cache-Control: no-store`・`Referrer-Policy: no-referrer`・`X-Content-Type-Options: nosniff`と、スクリプトと接続を自分自身に限り`frame-ancestors 'none'`を持つCSPを返します。内容で名前が決まりトークンを含まないスクリプトとスタイルシートは、代わりにimmutableでキャッシュします。
 
-## モニターのアプリ
+## 入口から使うボードのアプリ
+
+- `/`のページは、ボード自身のページ（`web/index.html`）を、空のトークンで描画したものです。同じバンドルがウィンドウの幅でPCのボードとスマホの画面を出し分けるので、入口に別のアプリは要りません。
+- トークンのないページは、読み込み時に`GET /api/remote/session`を呼びます（`web/src/app/remote/`の`RemoteGate`）。sessionがなければ合言葉の画面（モニターの`ConnectionStateView`）を表示し、ボードはマウントしないので、何も読み取りません。合言葉は`POST /api/remote/unlock`へ送り、Cookieはサーバーが設定し、CSRFトークンはメモリにだけ保ちます（`web/src/shared/api/http.ts`の`setCsrfToken`）。
+- 書き込みはすべて`authHeaders()`を送ります。ページにトークンがあればボードのトークン、なければ`X-Agboard-Csrf`です。ボードへの要求が一つでも401を受けると、CSRFトークンを消して合言葉の画面に戻ります。
+- 入口は、ボードのルーターをもう一つ組み立て（`api::remote_router`）、ローカルのHostガードと書き込みガードとローカル専用の経路を外して、入口の検査の背後で配信します。クライアントが送った`X-Agboard-Token`はそこに届く前に取り除くので、この面でボードのトークンには役割がありません。
+
+## 旧モニターのアプリ
+
+以下で説明するモニターは`/monitor/`で引き続き配信しており、いずれ廃止します。
 
 - モニター（`web/monitor.html`・`web/src/app/entry/monitor.tsx`・`web/vite.monitor.config.ts`）は`web/src/pages/monitor/App.tsx`だけを起点にします。PCの`App.tsx`・`DetailPanel`・エディター・汎用の書き込みクライアントはimportしません。独自のmanifestとともに`web/dist/monitor/`にビルドし、`src/server/monitor/assets.rs`はそのmanifestだけを配信します。Mermaidには、ボードのビルドの`chunk-mermaid.core`チャンクと、そこからimportされるすべてのチャンクを使います。これらは`web/dist/monitor/`にそのままコピーし、一つでも`web/src/`のモジュールを含めばビルドを止めます。実行ファイルには同じバイト列を一度だけ埋め込みます。
 - アドレスがプロジェクトを指定します: `/monitor/?project=<ProjectId>`。プロジェクトがない、形式が正しくない、または存在しない場合はエラー画面を表示し、サーバーからは何も読みません。モニターにはプロジェクトの一覧も切り替えもありません。スマホで別のプロジェクトを見るには、そのプロジェクトのアドレスを使います。

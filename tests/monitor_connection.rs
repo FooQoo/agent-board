@@ -347,16 +347,16 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
         "{code}"
     );
 
-    // With the public Host the entrance admits only the monitor's own routes;
-    // everything else is unknown to it. Sessions, CSRF and the rest are covered
-    // in monitor_ngrok.rs.
+    // With the public Host the entrance serves the board's page shell and answers 401 to every
+    // API until a passcode opens a session. Sessions, CSRF and the rest are covered in
+    // monitor_ngrok.rs.
     for (path, want) in [
         ("/monitor/", 200),
         // Merely asking for a session starts none: the passcode is needed.
         ("/monitor/api/session", 401),
-        ("/", 308),
-        ("/api/projects", 404),
-        ("/api/monitor-connections", 404),
+        ("/", 200),
+        ("/api/projects", 401),
+        ("/api/monitor-connections", 401),
     ] {
         let r = request(backend, "GET", path, &admitted, "");
         assert_eq!(r.status, want, "{path}");

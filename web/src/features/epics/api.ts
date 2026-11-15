@@ -1,6 +1,6 @@
 import { i18n } from '../../shared/i18n';
 import type { ApiError, Epic, ProjectId } from '../../shared/api/contracts';
-import { projectPath, readToken } from '../../shared/api/http';
+import { projectPath, authHeaders } from '../../shared/api/http';
 import { writeFailure } from '../../shared/api/writeErrors';
 import type { EditorAttachment } from '../../shared/ui/editor/attachmentTypes';
 
@@ -15,7 +15,7 @@ async function sendEpic(
     method,
     headers: {
       ...(isForm || body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
@@ -38,7 +38,7 @@ async function sendEpic(
 export async function deleteEpic(projectId: ProjectId, epicId: string): Promise<void> {
   const response = await fetch(`${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, {
     method: 'DELETE',
-    headers: { 'X-Agboard-Token': readToken() },
+    headers: authHeaders(),
   });
   if (response.ok) return;
   const body = (await response.json().catch(() => ({}))) as { error?: ApiError['error'] };

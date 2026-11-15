@@ -34,6 +34,17 @@ pub(super) async fn index(State(state): State<Arc<AppState>>) -> Response {
     response
 }
 
+/// The board page behind the ngrok entrance: the same page without a token. A session, not a token
+/// in the page, opens the API there.
+pub(super) async fn remote_index() -> Response {
+    let mut response = text_response(
+        "text/html; charset=utf-8",
+        assets::render_index(assets::INDEX_HTML, ""),
+    );
+    add_html_security_headers(&mut response);
+    response
+}
+
 pub(super) fn add_html_security_headers(response: &mut Response) {
     response.headers_mut().insert(
         header::CONTENT_SECURITY_POLICY,

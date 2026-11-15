@@ -29,8 +29,8 @@ Everything below serves one of these two goals. When a protection only restrains
 
 - By default `agboard serve` listens only on `127.0.0.1`, and every request must carry `Host: 127.0.0.1:<port>` or `localhost:<port>`. Users on the same machine are not authenticated.
 - A server that a command started listens the same way. It may take a port the OS chooses when 7420 is taken, and it stops by itself after it has gone unused. Starting it opens nothing beyond `127.0.0.1`.
-- Only when the ngrok monitor connection is started does the server add a separate loopback entry for the monitor, which ngrok forwards to. The local port is never forwarded. The entry serves only the monitor, its assets, and its read, answer, acceptance-check, and preferences routes; it never serves the desktop board.
-- The monitor is limited to reading, answering the current question, checking or unchecking an acceptance condition, and saving the language and color theme. It cannot edit, move, archive, or delete tasks, or change projects or connection settings. The checks in front of it are described in [The ngrok entrance](#the-ngrok-entrance).
+- Only when the ngrok connection is started does the server add a separate loopback entry, which ngrok forwards to. The local port is never forwarded. The entry serves the board's page and API, and the old monitor under `/monitor/`, behind the checks described in [The ngrok entrance](#the-ngrok-entrance). The board page it serves holds no token.
+- Through the entry, a session can do what the board page can do: read, answer, edit, move, archive, and delete tasks and epics, and read the project docs. It cannot reach what acts on the PC itself: the connection settings, `POST /api/notify`, and opening a docs path with the operating system. The old monitor under `/monitor/` is still limited to reading, answering, checking acceptance conditions, and saving the language and color theme.
 - The connection settings API (`/api/monitor-connections`) is on the local listener only. A phone can never start, stop, or reconfigure the connection.
 
 ## The ngrok entrance
@@ -40,7 +40,7 @@ Anyone who can open the ngrok address reaches ngrok's Edge first, not the board.
 | Layer | What it checks | What it stops |
 | --- | --- | --- |
 | Host | The endpoint is opened without a Traffic Policy, so the Edge adds nothing. The `Host` header must be exactly the public HTTPS address; anything else gets the same 403. | A browser or a website that reaches the loopback port (its `Host` is the loopback address or another name), a request for another Host, and a forged `ngrok-auth-user-*` or `X-Forwarded-*` header. |
-| Passcode and session | A 4-digit passcode made for each start opens an in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, at most 12 hours) bound to this start and address. The passcode is compared in constant time; five wrong ones in a row end all attempts until the next start. | Reading the monitor API without having been given the passcode; guessing more than five times per start; reusing a session after a stop or a restart. |
+| Passcode and session | A 4-digit passcode made for each start opens an in-memory application session (`agboard_ngrok_session`, `Secure; HttpOnly; SameSite=Lax; Path=/`, at most 12 hours) bound to this start and address. The passcode is compared in constant time; five wrong ones in a row end all attempts until the next start. | Reading or changing the board without having been given the passcode; guessing more than five times per start; reusing a session after a stop or a restart. |
 | CSRF and Origin | For an answer, an acceptance check, a preferences save, or disconnect: the exact public Origin, `Sec-Fetch-Site: same-origin`, and a CSRF token derived from the session. | A website that makes the phone's browser send an answer, an acceptance check, or a preferences save. |
 
 - The monitor is not guarded by Google or any account. The passcode is a shared secret between the PC's screen and the phone, so it is weaker than a sign-in: 10,000 possibilities, protected by the guess limit and its short life. The app does not accept the Edge's identity headers, `Forwarded`, or `X-Forwarded-*` as proof of anything; they are removed after the Host check.
@@ -48,7 +48,7 @@ Anyone who can open the ngrok address reaches ngrok's Edge first, not the board.
 - The passcode, sessions, CSRF tokens, and the ngrok token live only in memory. Stopping, starting again, or restarting the server drops them, ends open event streams, and makes a new passcode with a clean count.
 - The ngrok token is accepted only in the body of the local start request, is never returned or written to the settings file, and, when the user chooses to keep it, is stored in the PC's secure storage (the OS credential store). The `NGROK_AUTHTOKEN` environment variable takes priority over a saved token.
 - **Traffic Inspector.** ngrok ends the HTTPS connection, so it can process traffic, and its Traffic Inspector keeps request and response details when **Full Capture** is enabled for the account. Agent Board cannot turn that off; the user checks that it is disabled in the ngrok dashboard under **Settings** → **Observability**.
-- The monitor serves no desktop route, no edit or archive route, and no file listing. Unknown routes are 404 and disallowed methods are 405, and authentication is evaluated before the target is looked up.
+- Without a session the entry serves only the page shell and its static files, and none of them holds a token or board data; every API and the event stream answer 401 until a session exists. Unknown routes are 404 and disallowed methods are 405, and authentication is evaluated before the target is looked up. A change needs the exact public Origin, `Sec-Fetch-Site: same-origin`, and the session's CSRF token; the local `X-Agboard-Token` plays no part and is removed.
 
 ## Saved language and color theme
 
@@ -118,7 +118,7 @@ What is refused:
 - **Content types.** The file routes read only UTF-8 text up to 2 MiB. The image route serves only PNG, JPEG, WebP, GIF, AVIF, and SVG up to 10 MiB, with a `Content-Type` fixed by the extension and `X-Content-Type-Options: nosniff`, so an HTML file is never served as something a browser could run. An SVG can carry script, so its response also has `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, and the page shows it in an `<img>`.
 - **Opening.** `POST docs/open` passes the same write guard as every board write (Host, Origin, `Sec-Fetch-Site`, and the token), because it starts a program on the computer. With `?path=`, the path is checked as a read checks it, and only an existing regular file is handed to the operating system's opener (`open`, `explorer`, or `xdg-open`) as a single argument, never through a shell. The app the operating system picks then runs with the user's rights, as if the user had double-clicked the file.
 - **No writes.** There is no route that writes, creates, renames, or deletes a file in the docs. A `PUT` to the file route is refused (405).
-- **Exposure.** The routes are on the board router only. The monitor entry that ngrok forwards to has no docs routes, so a phone cannot read or change the docs.
+- **Exposure.** The routes are on the board router. The ngrok entrance serves them behind its session, so a phone with a session can read the docs, but `docs/open`, which starts a program on the PC, is never served there.
 
 The root folder comes from the server's own data area and the ProjectId in the URL, never from the request body. The folder is the user's: Agent Board writes only the README, when it creates the folder.
 
@@ -130,7 +130,7 @@ The body is run by a separate page, `GET /docs-sandbox`, shown in an iframe with
 
 The page has its own policy (`connect-src 'none'`, no framing, no forms, no base URL). Only this page has `'unsafe-eval'`, because the MDX compiler builds code at run time. The board's own policy gains `frame-src 'self'` so that it may embed the page, and nothing else.
 
-What this protects: the token and the files stay out of reach of a document's code, and the code cannot send anything out. What it does not: an endless loop or heavy work inside the iframe is not stopped and can slow the browser tab until the user chooses another file or closes the Docs. Parts are registered by name, and only standard HTML elements are registered; any other part is drawn as "Unregistered component". The page cannot be opened from the phone, because the monitor has no such route.
+What this protects: the token and the files stay out of reach of a document's code, and the code cannot send anything out. What it does not: an endless loop or heavy work inside the iframe is not stopped and can slow the browser tab until the user chooses another file or closes the Docs. Parts are registered by name, and only standard HTML elements are registered; any other part is drawn as "Unregistered component". The page is a fixed page without a token, so the entrance serves it without a session, like the other static files.
 
 ## Project boundaries
 

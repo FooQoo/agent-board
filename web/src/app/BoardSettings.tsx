@@ -3,7 +3,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
-import { readToken } from '../shared/api/http';
+import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
 import type { PreferencesEndpoint } from '../shared/preferences';
@@ -13,7 +13,7 @@ import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 const boardPreferences: PreferencesEndpoint | undefined =
   import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo'
     ? undefined
-    : { url: '/api/preferences', token: readToken };
+    : { url: '/api/preferences', token: readToken, headers: csrfHeaders };
 /** A phone connects to an `agboard serve` on this computer; the demo on a static site has none. */
 const phoneConnection = import.meta.env.MODE !== 'demo';
 

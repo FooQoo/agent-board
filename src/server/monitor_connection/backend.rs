@@ -7,18 +7,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
-use axum::http::header;
-use axum::response::{IntoResponse, Response};
-use axum::routing::get;
 use axum::serve::Listener;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::AbortHandle;
 
 use super::contracts::PublicOrigin;
-use super::entry::{LOGO_PATH, external_router};
+use super::entry::external_router;
 use super::router::Gate;
 use crate::error::AgboardError;
 use crate::server::AppState;
+use crate::server::api::remote_router;
 use crate::server::guard::BoardWriteGuard;
 use crate::server::monitor::{MonitorState, router as monitor_router, write_router};
 
@@ -53,9 +51,8 @@ pub(super) fn serve(listener: &SharedListener, app: Router) -> AbortHandle {
     .abort_handle()
 }
 
-/// The monitor behind the entry checks, for this public origin. The existing
-/// read-only and answer routers are reused; they only ever see requests that
-/// the entry has authenticated.
+/// The board and the old monitor behind the entry checks, for this public origin. They only
+/// ever see requests that the entry has admitted.
 pub(super) fn external_app(
     app: &Arc<AppState>,
     origin: &PublicOrigin,
@@ -76,23 +73,12 @@ pub(super) fn external_app(
         authorities: Arc::new(authorities),
         token: internal_token,
     };
+    // The board itself (its page without a token, its API, the event stream, the project docs
+    // and the guide) is served from `/`; the old monitor stays under `/monitor/` for now.
     let inner = monitor_router(monitor)
         .merge(write_router(app.clone(), guard))
-        .route(LOGO_PATH, get(logo));
+        .merge(remote_router(app.clone()));
     external_router(gate, inner)
-}
-
-/// The header logo the page asks for, from the build already embedded in the binary.
-async fn logo() -> Response {
-    (
-        [
-            (header::CONTENT_TYPE, "image/png"),
-            (header::CACHE_CONTROL, "no-store"),
-            (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
-        ],
-        crate::server::assets::LOGO_WHITE_PNG,
-    )
-        .into_response()
 }
 
 /// A fresh random token, for the guard that sits behind the entry.

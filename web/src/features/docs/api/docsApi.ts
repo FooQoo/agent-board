@@ -1,4 +1,4 @@
-import { getJson, projectPath, readToken } from '@/shared/api/http';
+import { getJson, projectPath, authHeaders } from '@/shared/api/http';
 import type { ProjectId } from '@/shared/api/contracts';
 import type { DocsTreeNode, DocsViewer } from '../ui/shell/DocsFileTree';
 import '@/shared/i18n/docs-strings';
@@ -42,7 +42,7 @@ export async function openDocs(projectId: ProjectId, path?: string): Promise<voi
   const query = path === undefined ? '' : `?path=${encodeURIComponent(path)}`;
   const response = await fetch(`${docsPath(projectId)}/open${query}`, {
     method: 'POST',
-    headers: { 'X-Agboard-Token': readToken() },
+    headers: authHeaders(),
   });
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
 }

@@ -8,6 +8,34 @@ export function readToken(): string {
   return meta?.content ?? '';
 }
 
+let csrfToken = '';
+
+/** Keeps the CSRF token of the passcode session, or forgets it with `''`. Memory only. */
+export function setCsrfToken(token: string): void {
+  csrfToken = token;
+}
+
+/** The CSRF token of the passcode session, `''` when there is none. */
+export function readCsrfToken(): string {
+  return csrfToken;
+}
+
+/**
+ * The credential a write sends. The local page carries the board's token and sends it. A page that
+ * came through the ngrok entrance carries none: its session cookie authenticates, and a write adds
+ * the session's CSRF token.
+ */
+export function authHeaders(): Record<string, string> {
+  const token = readToken();
+  if (token === '' && csrfToken !== '') return { 'X-Agboard-Csrf': csrfToken };
+  return { 'X-Agboard-Token': token };
+}
+
+/** The extra header a preferences save sends through the ngrok entrance; none on the local page. */
+export function csrfHeaders(): Record<string, string> {
+  return readToken() === '' && csrfToken !== '' ? { 'X-Agboard-Csrf': csrfToken } : {};
+}
+
 /** A failed read. `status` is 0 when the request never got an answer. */
 export class FetchError extends Error {
   constructor(

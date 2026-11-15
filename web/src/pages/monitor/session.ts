@@ -177,7 +177,15 @@ async function takeSession(response: Response): Promise<MonitorSession> {
  * passcode. Anything that is not the monitor's JSON is `unexpected_response`.
  */
 export function openSession(options: MonitorRequestOptions = {}): Promise<MonitorSession> {
-  return exchange(SESSION_URL, { headers: { Accept: 'application/json' } }, options, takeSession);
+  return openSessionAt(SESSION_URL, options);
+}
+
+/** [`openSession`] against another session route, such as the board app's `/api/remote/session`. */
+export function openSessionAt(
+  url: string,
+  options: MonitorRequestOptions = {},
+): Promise<MonitorSession> {
+  return exchange(url, { headers: { Accept: 'application/json' } }, options, takeSession);
 }
 
 /**
@@ -186,8 +194,17 @@ export function openSession(options: MonitorRequestOptions = {}): Promise<Monito
  * row `unlock_locked`; the monitor never says how many tries are left.
  */
 export function unlock(code: string, options: MonitorRequestOptions = {}): Promise<MonitorSession> {
+  return unlockAt(UNLOCK_URL, code, options);
+}
+
+/** [`unlock`] against another unlock route, such as the board app's `/api/remote/unlock`. */
+export function unlockAt(
+  url: string,
+  code: string,
+  options: MonitorRequestOptions = {},
+): Promise<MonitorSession> {
   return exchange(
-    UNLOCK_URL,
+    url,
     {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },

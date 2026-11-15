@@ -1,6 +1,6 @@
 import { i18n } from '../../../shared/i18n';
 import type { ColumnName, ProjectId, Task } from '../../../shared/api/contracts';
-import { projectPath, readToken } from '../../../shared/api/http';
+import { projectPath, authHeaders } from '../../../shared/api/http';
 import { postEmpty, postTask } from '../../../shared/api/write';
 import { WriteError } from '../../../shared/api/writeErrors';
 
@@ -31,7 +31,7 @@ export async function deleteTask(projectId: ProjectId, id: number): Promise<Dele
     const response = await fetch(`${projectPath(projectId)}/tasks/${id}`, {
       method: 'DELETE',
       headers: {
-        'X-Agboard-Token': readToken(),
+        ...authHeaders(),
         'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
       },
     });

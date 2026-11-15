@@ -1,6 +1,6 @@
 # The mobile monitor
 
-By default the board is reachable only from the same machine. The mobile monitor is a separate, read-mostly app that a phone reaches through an ngrok tunnel. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [mobile monitor guide](../../guide/operations/mobile-monitor.md); the routes are in [Monitor routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
+By default the board is reachable only from the same machine. A phone, or a browser on another computer, reaches the board app itself through an ngrok tunnel, behind a passcode session; the old read-mostly mobile monitor is still served under `/monitor/`. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [mobile monitor guide](../../guide/operations/mobile-monitor.md); the routes are in [Monitor routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
 
 ## How it is put together
 
@@ -15,8 +15,8 @@ flowchart LR
 
 - The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with no domain and no Traffic Policy, and forwards it to the monitor entry. ngrok chooses the public address. The free ngrok plan rejects Traffic Policy actions, so none is sent.
 - The monitor entry is a dedicated loopback listener that the connection starts and stops. It runs in the same `serve` process as the local listener and shares the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
-- The [project docs](../reference/web-api.md#project-docs) routes exist only on the board router. The monitor entry has none, so the docs are never reachable through ngrok.
-- The local listener and the monitor entry are separate surfaces. The local listener keeps its own Host, Origin, and token checks; the monitor entry never serves the desktop board, and the connection settings API exists only on the local listener.
+- The [project docs](../reference/web-api.md#project-docs) routes are served through the entrance with the rest of the board's API, behind the session. Only `docs/open`, which starts a program on the PC, is not.
+- The local listener and the monitor entry are separate surfaces. The local listener keeps its own Host, Origin, and token checks. The entry serves the board router without those local guards, because the entry's own checks (Host, session, Origin, CSRF) run first, and its page holds no token. The connection settings API, `POST /api/notify`, and `docs/open` exist only on the local listener.
 
 Two kinds of state keep the surfaces apart:
 
@@ -66,11 +66,11 @@ When the secure storage is missing or refuses, `keychainAvailable` is false, sav
 The Edge does nothing for the app to rely on: the endpoint is opened without a Traffic Policy (the free ngrok plan rejects one), so there is no sign-in, no allow list, no deny rule, and no header that the app trusts. A request reaches the monitor only after three layers, in this order:
 
 1. **Host.** The entry admits a request only when the tunnel is ready and `Host` is exactly the public HTTPS address ngrok returned (one `Host` header, no port added). Any other request gets the same 403 with no reason; that includes a browser that opens the loopback port, whose `Host` is the loopback address. Forwarding headers and method-override headers are not trusted. The Host check does not tell the app that a request came through ngrok: see [What is not prevented](./security.md#what-is-not-prevented).
-2. **Passcode and session.** The page and its assets need only the first layer. Nothing else is served without a session, and a session starts only at `POST /monitor/api/unlock`.
+2. **Passcode and session.** The page shell and its static files need only the first layer. Nothing else is served without a session, and a session starts only at `POST /api/remote/unlock` (or the old monitor's `POST /monitor/api/unlock`; both use the same passcode and the same count of wrong guesses).
    - *The passcode.* Each start makes a 4-digit passcode (`0000` to `9999`) from the operating system's random source, without modulo bias, and keeps it with a count of consecutive wrong guesses in memory. The PC sees it through the local status API only while the connection is `ready`, and on the `serve` startup line. It is never written to a file, a log, `serve.json`, the page, an error, or any phone-facing answer.
-   - *Unlock.* The body is `{"code":"1234"}` as JSON, with the exact public Origin and `Sec-Fetch-Site: same-origin`; no CSRF token is needed because there is no session yet. The code is compared in constant time. A right code issues the cookie `agboard_ngrok_session` (`Secure; HttpOnly; SameSite=Lax; Path=/monitor/`, up to 12 hours) bound to this start and public address, resets the count, and returns a CSRF token. A wrong code is a 403 `unlock_failed` that does not say how close it was or how many tries are left.
+   - *Unlock.* The body is `{"code":"1234"}` as JSON, with the exact public Origin and `Sec-Fetch-Site: same-origin`; no CSRF token is needed because there is no session yet. The code is compared in constant time. A right code issues the cookie `agboard_ngrok_session` (`Secure; HttpOnly; SameSite=Lax; Path=/`, up to 12 hours) bound to this start and public address, resets the count, and returns a CSRF token. A wrong code is a 403 `unlock_failed` that does not say how close it was or how many tries are left.
    - *The limit.* The fifth wrong code in a row is still a 403. From then on every attempt, the right passcode included, is a 429 `unlock_locked` and issues nothing. Only a new start makes a new passcode and a clean count. Requests refused for their headers or body (a missing Origin, a body that is not JSON) are not guesses and are not counted.
-   - *Session.* `GET /monitor/api/session` only reports a live session and its CSRF token, or answers 401 `session_required`; it starts nothing. Every other `/monitor/api/` route needs a live session, or answers 401 `session_required`. Event streams end with the session, when the run closes, and after five minutes (the page reconnects).
+   - *Session.* `GET /api/remote/session` (and `GET /monitor/api/session`) only reports a live session and its CSRF token, or answers 401 `session_required`; it starts nothing. Every other route, `/api/` and `/monitor/api/`, needs a live session, or answers 401 `session_required`. Event streams end with the session, when the run closes, and after five minutes (the page reconnects).
 3. **Write guard.** An answer, a condition change (`PUT .../acceptance/{condition}`), a preferences save (`PUT /monitor/api/preferences`), or `POST /monitor/api/disconnect` also needs the exact public Origin, `Sec-Fetch-Site: same-origin`, and the CSRF token in `X-Agboard-Csrf`.
 
 A 4-digit passcode is a deliberately small secret: it has 10,000 possibilities and is guarded by the five-guess limit and by a new passcode at every start. It is weaker than an account sign-in. The [Security model](./security.md#what-is-not-prevented) lists what it does not stop.
@@ -81,7 +81,16 @@ A 4-digit passcode is a deliberately small secret: it has 10,000 possibilities a
 
 No token, passcode, or session secret appears in static JS or CSS, manifests, API responses, `serve.json`, or logs. All HTML and sensitive APIs send `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and a CSP limiting scripts and connections to self with `frame-ancestors 'none'`. Scripts and stylesheets, which are named by their content and hold no token, are cached as immutable instead.
 
-## The monitor app
+## The board app through the entrance
+
+- The page at `/` is the board's own page (`web/index.html`), rendered with an empty token. The same bundle shows the PC board or the phone screen by window width, so the entrance needs no second app.
+- On load, a page without a token asks `GET /api/remote/session` (`RemoteGate`, `web/src/app/remote/`). Without a session it shows the passcode screen (the monitor's `ConnectionStateView`) and the board does not mount, so nothing is read. The passcode goes to `POST /api/remote/unlock`; the cookie is set by the server, and the CSRF token stays in memory (`setCsrfToken` in `web/src/shared/api/http.ts`).
+- Every write sends `authHeaders()`: the board token when the page has one, and otherwise `X-Agboard-Csrf`. A 401 from any board request clears the CSRF token and brings the passcode screen back.
+- The entrance builds the board router a second time (`api::remote_router`) without the local Host and write guards and without the local-only routes, and serves it behind the entrance checks. A client's `X-Agboard-Token` is removed before it gets there, so the board token has no role on this surface.
+
+## The old monitor app
+
+The monitor described below is still served at `/monitor/` and will be removed.
 
 - The monitor (`web/monitor.html`, `web/src/app/entry/monitor.tsx`, `web/vite.monitor.config.ts`) starts from `web/src/pages/monitor/App.tsx` only. It never imports the desktop `App.tsx`, `DetailPanel`, the editor, or the general write client. It builds into `web/dist/monitor/` with its own manifest, which `src/server/monitor/assets.rs` serves exclusively. For Mermaid it reuses the board build's `chunk-mermaid.core` chunk and every chunk it imports: they are copied into `web/dist/monitor/` unchanged, the build fails if any of them holds a module from `web/src/`, and the executable embeds the identical bytes once.
 - The address names the project: `/monitor/?project=<ProjectId>`. A missing, malformed, or unknown project shows an error screen, and nothing is read from the server. The monitor has no project list and no project switcher; a phone shows another project through its own address.

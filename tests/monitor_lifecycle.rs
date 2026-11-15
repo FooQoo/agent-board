@@ -721,11 +721,12 @@ fn the_entrance_exposes_no_desktop_editing_and_the_pc_entrance_is_unchanged() {
     let project = project_of(t.path());
     let tasks_before = t.read(&session).json()["tasks"].as_array().unwrap().len();
 
+    // What acts on the PC itself, and the old monitor's paths that never had editing, are not
+    // served here, even with a session, a CSRF token and a guessed board token.
     let edits = [
-        ("POST", format!("/api/projects/{project}/tasks")),
-        ("PATCH", format!("/api/projects/{project}/tasks/1")),
-        ("DELETE", format!("/api/projects/{project}/tasks/1")),
         ("POST", format!("/monitor/api/projects/{project}/tasks")),
+        ("POST", format!("/api/projects/{project}/docs/open")),
+        ("POST", "/api/notify".into()),
         ("PATCH", format!("{}/tasks/1", t.base())),
         ("DELETE", format!("{}/tasks/1", t.base())),
         ("PUT", "/api/monitor-connections/settings/ngrok".into()),

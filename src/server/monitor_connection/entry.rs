@@ -1,17 +1,17 @@
-//! The checks in front of the monitor, in the order they run:
+//! The checks in front of the board, in the order they run:
 //!
 //! 1. the tunnel is up and the Host is exactly the public one;
 //! 2. untrusted headers are removed;
-//! 3. the bare origin forwards to `/monitor/`; a route that is not part of the
-//!    monitor is a 404; the page and its assets need nothing more; `POST /monitor/api/unlock` trades the passcode
-//!    for a session;
-//! 4. every other API route needs a live session, and a change also needs the
-//!    public Origin, same-origin fetch metadata and the CSRF token.
+//! 3. the passcode and session routes (`/api/remote/unlock`, `/api/remote/session`, and the old
+//!    `/monitor/api/` ones) are answered here; the page shell and its static files need nothing
+//!    more;
+//! 4. every other route needs a live session, and a change also needs the public Origin,
+//!    same-origin fetch metadata and the CSRF token.
 //!
 //! Authentication always runs before a route is looked up. The Edge does no
 //! sign-in and sets no header for the app to check: the public Host and the
 //! passcode of the run are the whole of the entrance, and the passcode is the
-//! only thing that opens a session.
+//! only thing that opens a session. No board token is ever sent through here.
 
 mod reply;
 mod session;
@@ -32,13 +32,28 @@ use super::router::{BackendPolicy, Gate, admit, refuse};
 use crate::server::monitor::{apply_security_headers, assets};
 use crate::server::monitor_auth::guard::{check_write, has_method_override, strip_untrusted};
 
+/// Where the board app asks for its session and enters the passcode.
+const REMOTE_SESSION_PATH: &str = "/api/remote/session";
+const REMOTE_UNLOCK_PATH: &str = "/api/remote/unlock";
+/// The same two routes for the old mobile monitor, which is still served.
 const SESSION_PATH: &str = "/monitor/api/session";
 const UNLOCK_PATH: &str = "/monitor/api/unlock";
 const DISCONNECT_PATH: &str = "/monitor/api/disconnect";
-const EVENTS_PATH: &str = "/monitor/api/events";
-/// The header logo of the page. It is as public as the page's own assets and
-/// passes the same entrance checks, but needs no session.
-pub(super) const LOGO_PATH: &str = "/logo-white.png";
+const EVENTS_PATHS: [&str; 2] = ["/api/events", "/monitor/api/events"];
+
+/// The page shell and its static files: they hold no token and no board data, so they need the
+/// entrance checks but no session. Everything else is behind the session.
+fn is_public(method: &Method, path: &str) -> bool {
+    if !matches!(*method, Method::GET | Method::HEAD) {
+        return false;
+    }
+    matches!(
+        path,
+        "/" | "/logo.png" | "/logo-white.png" | "/docs-sandbox"
+    ) || path.starts_with("/assets/")
+        || path.starts_with("/docs-sandbox/")
+        || path.starts_with("/monitor/assets/monitor/")
+}
 /// The longest one event stream is kept open; the page reconnects after it.
 pub const EVENTS_MAX: Duration = Duration::from_secs(5 * 60);
 
@@ -66,20 +81,16 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     strip_untrusted(request.headers_mut());
     let path = request.uri().path().to_owned();
     match path.as_str() {
-        SESSION_PATH => return open_session(&policy, request.method(), request.headers()),
-        UNLOCK_PATH => return unlock(&policy, request).await,
-        DISCONNECT_PATH => return disconnect(&policy, &request),
-        "/" if matches!(*request.method(), Method::GET | Method::HEAD) => {
-            return monitor_redirect();
+        SESSION_PATH | REMOTE_SESSION_PATH => {
+            return open_session(&policy, request.method(), request.headers());
         }
+        UNLOCK_PATH | REMOTE_UNLOCK_PATH => return unlock(&policy, request).await,
+        DISCONNECT_PATH => return disconnect(&policy, &request),
         "/monitor" | "/monitor/" => return page(&request),
         _ => {}
     }
-    if path.starts_with("/monitor/assets/monitor/") || path == LOGO_PATH {
-        return next.run(request).await;
-    }
-    if !path.starts_with("/monitor/api/") {
-        return not_found().await;
+    if is_public(request.method(), &path) {
+        return with_nosniff(next.run(request).await);
     }
 
     let Some((secret, session)) = current_session(&policy, request.headers()) else {
@@ -99,13 +110,21 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     }
     request.headers_mut().remove(header::COOKIE);
     let response = next.run(request).await;
-    if path == EVENTS_PATH && response.status() == StatusCode::OK {
+    if EVENTS_PATHS.contains(&path.as_str()) && response.status() == StatusCode::OK {
         return bound_events(response, &policy, secret, session.expires_at);
     }
     response
 }
 
-/// The monitor page. It holds no token, session or board data.
+fn with_nosniff(mut response: Response) -> Response {
+    response
+        .headers_mut()
+        .entry(header::X_CONTENT_TYPE_OPTIONS)
+        .or_insert(HeaderValue::from_static("nosniff"));
+    response
+}
+
+/// The old monitor page. It holds no token, session or board data.
 fn page(request: &Request) -> Response {
     if !matches!(*request.method(), Method::GET | Method::HEAD) {
         return method_not_allowed("GET, HEAD");

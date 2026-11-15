@@ -65,13 +65,66 @@ struct GuardContext {
     token: String,
 }
 
+/// The board router of the local entrance: the Host guard, the write guard and the page token.
 pub(crate) fn router(state: Arc<AppState>) -> Router {
     let guard_context = GuardContext {
         port: state.port,
         token: state.token.clone(),
     };
+    let local_only = Router::new()
+        .route("/api/monitor-connections", get(get_connections))
+        .route(
+            "/api/monitor-connections/settings/ngrok",
+            put(put_ngrok_settings),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/start",
+            post(start_ngrok),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/stop",
+            post(stop_ngrok),
+        )
+        .route("/api/monitor-connections/token", delete(delete_saved_token))
+        .route("/api/notify", post(notify))
+        .route("/api/projects/{project_id}/docs/open", post(open_docs_path));
+    routes(get(index))
+        .merge(local_only)
+        .layer(middleware::from_fn_with_state(
+            guard_context.clone(),
+            write_guard,
+        ))
+        .layer(middleware::from_fn_with_state(guard_context, host_guard))
+        .finish(state)
+}
+
+/// The board router behind the ngrok entrance. The entrance has already checked the public Host,
+/// the session, the Origin and the CSRF token, so the local Host and token guards are not used
+/// here, and the page carries no token. Whatever acts on the PC itself (the connection settings,
+/// opening a docs path, the notify call of local agents) is not part of this router.
+pub(crate) fn remote_router(state: Arc<AppState>) -> Router {
+    routes(get(remote_index)).finish(state)
+}
+
+trait Finish {
+    fn finish(self, state: Arc<AppState>) -> Router;
+}
+
+impl Finish for Router<Arc<AppState>> {
+    fn finish(self, state: Arc<AppState>) -> Router {
+        self.layer(middleware::from_fn_with_state(
+            state.activity.clone(),
+            super::idle::track,
+        ))
+        .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
+        .layer(middleware::from_fn(no_referrer))
+        .with_state(state)
+    }
+}
+
+fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/", get(index))
+        .route("/", index_page)
         .route("/assets/{name}", get(asset))
         .route("/docs-sandbox", get(docs_sandbox))
         .route("/docs-sandbox/{name}", get(docs_sandbox_asset))
@@ -174,21 +227,6 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/qa/requests/{request_id}/withdraw",
             post(qa_withdraw),
         )
-        .route("/api/monitor-connections", get(get_connections))
-        .route(
-            "/api/monitor-connections/settings/ngrok",
-            put(put_ngrok_settings),
-        )
-        .route(
-            "/api/monitor-connections/transports/ngrok/start",
-            post(start_ngrok),
-        )
-        .route(
-            "/api/monitor-connections/transports/ngrok/stop",
-            post(stop_ngrok),
-        )
-        .route("/api/monitor-connections/token", delete(delete_saved_token))
-        .route("/api/notify", post(notify))
         .route("/api/onboarding", get(get_onboarding))
         .route("/api/onboarding/claim", post(claim_onboarding))
         .route("/api/onboarding/replay", post(replay_onboarding))
@@ -217,24 +255,11 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/docs/assets",
             get(get_docs_asset),
         )
-        .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
         .route("/api/health", get(health))
         .route(
             "/api/preferences",
             get(get_preferences).put(put_preferences),
         )
-        .layer(middleware::from_fn_with_state(
-            state.activity.clone(),
-            super::idle::track,
-        ))
-        .layer(DefaultBodyLimit::max(MAX_MULTIPART_BODY))
-        .layer(middleware::from_fn_with_state(
-            guard_context.clone(),
-            write_guard,
-        ))
-        .layer(middleware::from_fn_with_state(guard_context, host_guard))
-        .layer(middleware::from_fn(no_referrer))
-        .with_state(state)
 }
 
 /// A task ID from the URL; one that cannot be a task is `task_not_found`.

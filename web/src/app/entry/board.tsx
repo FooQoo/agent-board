@@ -6,7 +6,7 @@ import { App } from '../App';
 import { readMockInitial } from '../development/mock';
 import { initializeTheme } from '../../shared/theme';
 import { syncPreferences } from '../../shared/preferences';
-import { readToken } from '../../shared/api/http';
+import { csrfHeaders, readToken } from '../../shared/api/http';
 import '../../shared/styles/tokens.css';
 import '../../shared/styles/app.css';
 import '../../shared/styles/resize.css';
@@ -18,7 +18,12 @@ initializeTheme();
 // the browser. Otherwise the browser copy painted the first screen, and the board's saved value
 // replaces it when it differs.
 const serverless = import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo';
-if (!serverless) void syncPreferences({ url: '/api/preferences', token: readToken });
+// A page through the ngrok entrance carries no token. It has no session yet either, so the passcode
+// gate (a chunk the local page never loads) holds the board back and its first read waits for the
+// passcode.
+const remote = !serverless && readToken() === '';
+if (!serverless && !remote)
+  void syncPreferences({ url: '/api/preferences', token: readToken, headers: csrfHeaders });
 
 const initial =
   import.meta.env.MODE === 'mock' ? readMockInitial(window.location.search) : undefined;
@@ -30,6 +35,19 @@ function render(): void {
     // Sample-data mode only: a single part on its own page (see `src/mockMarkdown.tsx`).
     void import('../development/MarkdownSample').then(({ MarkdownSample }) => {
       createRoot(root).render(<MarkdownSample search={window.location.search} />);
+    });
+  } else if (remote) {
+    void import('../remote/RemoteGate').then(({ RemoteGate, watchSessionLoss }) => {
+      watchSessionLoss();
+      createRoot(root).render(
+        <StrictMode>
+          <NuqsAdapter>
+            <RemoteGate>
+              <App initial={initial} />
+            </RemoteGate>
+          </NuqsAdapter>
+        </StrictMode>,
+      );
     });
   } else
     createRoot(root).render(

@@ -3,7 +3,7 @@
 
 import { i18n } from '../../shared/i18n';
 import type { ProjectId } from '../../shared/api/contracts';
-import { projectPath, readToken } from '../../shared/api/http';
+import { projectPath, authHeaders } from '../../shared/api/http';
 
 export type GuideStatus =
   | 'unseen'
@@ -73,7 +73,7 @@ async function send(path: string, body?: unknown): Promise<GuideState> {
     method: body === undefined ? 'GET' : 'POST',
     headers: {
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      'X-Agboard-Token': readToken(),
+      ...authHeaders(),
       'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
     },
     body: body === undefined ? undefined : JSON.stringify(body),

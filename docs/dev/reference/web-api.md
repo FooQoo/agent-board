@@ -4,6 +4,10 @@ The HTTP API of `agboard serve`. How a request is handled, including the write g
 
 Task writes accept optional `X-Agboard-Language: en` or `ja` for generated history. The board and monitor send their current UI language. Missing, repeated, or unsupported values fall back to the task body’s language. This affects only generated text for that request; explicit reasons and stored history stay unchanged. See [History](../concepts/history-and-decisions.md#history).
 
+## Through the ngrok entrance
+
+The ngrok entrance serves the board page and the routes below under the same paths, behind a passcode session instead of the local Host, Origin, and token checks. The page there holds no token. A change sends the session's CSRF token in `X-Agboard-Csrf`, and the session is opened with `/api/remote/session` and `/api/remote/unlock`. See [Monitor routes](./remote-routes.md#the-board-app-through-the-entrance) for those two routes and for what the entrance does not serve (the connection settings, `POST /api/notify`, and `docs/open`).
+
 ## Endpoints
 
 | API | Contract |
@@ -104,7 +108,7 @@ The server compares the parsed data before and after every reload, so a save tha
 
 ### Mobile connection
 
-These routes exist only on the local listener (`127.0.0.1`); the ngrok entry never serves them. A read must come from the local page: a foreign Host, cross-site `Sec-Fetch-Site`, or foreign Origin is 403. The writes pass the same browser write guard as other writes.
+These routes exist only on the local listener (`127.0.0.1`); the ngrok entrance never serves them. A read must come from the local page: a foreign Host, cross-site `Sec-Fetch-Site`, or foreign Origin is 403. The writes pass the same browser write guard as other writes.
 
 | API | Contract |
 | --- | --- |
@@ -147,7 +151,7 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 
 ### Project docs
 
-These routes read the files in the project's `docs/` folder (`shared/projects/<projectId>/docs/`); none of them writes it, and a `PUT` to the file route is 405. They are on the board router only; the monitor entry never serves them. A change to the docs on disk is announced by the SSE `docs` event, never by `changed` (see [Change notifications](../concepts/notifications.md#the-docs)). Paths are relative to `docs/`, use `/`, and are checked as described in [Security model](../concepts/security.md#project-docs). A project ID that is not 32 lowercase hexadecimal digits is 422 `invalid_value`.
+These routes read the files in the project's `docs/` folder (`shared/projects/<projectId>/docs/`); none of them writes it, and a `PUT` to the file route is 405. They are on the board router, which the ngrok entrance serves behind its session, except `POST .../docs/open`, which only the local listener serves. A change to the docs on disk is announced by the SSE `docs` event, never by `changed` (see [Change notifications](../concepts/notifications.md#the-docs)). Paths are relative to `docs/`, use `/`, and are checked as described in [Security model](../concepts/security.md#project-docs). A project ID that is not 32 lowercase hexadecimal digits is 422 `invalid_value`.
 
 | API | Contract |
 | --- | --- |

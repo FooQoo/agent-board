@@ -101,7 +101,7 @@ async fn only_the_passcode_starts_a_session_and_only_get_session_shows_it() {
         "; Secure",
         "; HttpOnly",
         "; SameSite=Lax",
-        "; Path=/monitor/",
+        "; Path=/;",
         "; Max-Age=43200",
     ] {
         assert!(set.contains(part), "{part} in {set}");
@@ -186,7 +186,7 @@ async fn disconnect_forgets_the_session_and_no_longer_points_at_a_logout() {
         .unwrap()
         .to_str()
         .unwrap();
-    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/monitor/"));
+    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/;"));
     let body = body_of(r).await;
     assert_eq!(body, serde_json::json!({"disconnected": true}));
     assert!(current_session(&p, &cookie).is_none());

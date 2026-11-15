@@ -10,11 +10,12 @@ use sha2::{Digest, Sha256};
 /// Maximum lifetime of an application session, in seconds (12 hours).
 pub const SESSION_MAX_AGE_SECS: u64 = 12 * 60 * 60;
 
-/// Name of the application session cookie. Scoped to `/monitor/`.
+/// Name of the application session cookie. Scoped to the whole entrance, because the
+/// board app and its API are served from `/`.
 pub const SESSION_COOKIE_NAME: &str = "agboard_ngrok_session";
 
 /// The attributes the session cookie must carry.
-pub const SESSION_COOKIE_ATTRIBUTES: &str = "Secure; HttpOnly; SameSite=Lax; Path=/monitor/";
+pub const SESSION_COOKIE_ATTRIBUTES: &str = "Secure; HttpOnly; SameSite=Lax; Path=/";
 
 /// Hex SHA-256 of a secret value such as a session id or CSRF token.
 pub fn secret_hash(secret: &str) -> String {

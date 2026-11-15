@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "owner": "U5",
+  "files": [
+    {
+      "file": "app/remote/RemoteGate.tsx",
+      "exports": [
+        {
+          "name": "RemoteGate",
+          "stories": [],
+          "exclusion": "RemoteGate is a session integration wrapper around the passcode screen, which has its own stories (ConnectionStateView); it is verified by session.test.ts and the ngrok entrance tests."
+        },
+        {
+          "name": "watchSessionLoss",
+          "stories": [],
+          "exclusion": "A re-export of a function without a view."
+        }
+      ]
+    }
+  ]
+}

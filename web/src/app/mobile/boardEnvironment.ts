@@ -1,5 +1,5 @@
 import type { ProjectId } from '../../shared/api/contracts';
-import { projectPath, readToken } from '../../shared/api/http';
+import { csrfHeaders, projectPath, readToken } from '../../shared/api/http';
 import type { MonitorEnvironment } from '../../pages/monitor/MonitorProject';
 import { answerQuestions, setAcceptance } from '../../features/tasks/api/edit';
 import { fetchQuestion } from '../../features/tasks/api/read';
@@ -23,7 +23,9 @@ export function boardEnvironment(): MonitorEnvironment {
       setAcceptance: (projectId, taskId, conditionId, done) =>
         setAcceptance(projectId, taskId, conditionId, done),
     },
-    preferences: serverless ? undefined : { url: '/api/preferences', token: readToken },
+    preferences: serverless
+      ? undefined
+      : { url: '/api/preferences', token: readToken, headers: csrfHeaders },
     readQuestion: fetchQuestion,
     writeAnswers: answerQuestions,
   };
