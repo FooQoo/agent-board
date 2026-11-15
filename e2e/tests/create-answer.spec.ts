@@ -275,8 +275,9 @@ test('when the agent asks something else while the dialog is open, the old quest
   await expect(dialog).toContainText('This question was withdrawn. You can no longer answer it.');
   await expect(box).toBeDisabled();
   await expect(box).toHaveValue('An answer to the old question.');
+  // A card's run has no review step: the progress lists its two questions only.
   const progress = dialog.getByRole('navigation', { name: 'Answering progress' });
-  await expect(progress.getByRole('button')).toHaveCount(3);
+  await expect(progress.getByRole('button')).toHaveCount(2);
 
   // The new question comes next in the run; its answer is sent, the old one is left out.
   await dialog.getByRole('button', { name: 'Next', exact: true }).click();
@@ -314,7 +315,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   // Once the board can be read, the new question joins the run.
   await page.unroute('**/api/projects/*/summary');
   agboardOk(mainProject, ['add', 'Triggers a refresh']);
-  await expect(dialog.getByRole('navigation', { name: 'Answering progress' }).getByRole('button')).toHaveCount(3);
+  await expect(dialog.getByRole('navigation', { name: 'Answering progress' }).getByRole('button')).toHaveCount(2);
   await expect(dialog).toContainText('An answer to the old question.');
 });
 
