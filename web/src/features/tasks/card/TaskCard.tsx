@@ -10,6 +10,7 @@ import { useSortable } from '@dnd-kit/react/sortable';
 import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
 import type { AnswerBook } from '../answer/model/answerBook';
 import type { ProjectId } from '../../../shared/api/contracts';
+import { cardSensors } from './cardDrag';
 import './card-answer.css';
 
 export interface TaskCardProps {
@@ -132,7 +133,9 @@ export function TaskCardView({
         }}
       >
         <span className="card__top">
-          <GripVerticalIcon aria-hidden="true" focusable="false" className="grip" />
+          <span className="card__grip" aria-hidden="true">
+            <GripVerticalIcon focusable="false" className="grip" />
+          </span>
           <span className="card__id">#{task.id}</span>
           <AssigneeLabel assignee={task.assignee} />
           {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
@@ -180,6 +183,7 @@ export function TaskCard({
     index,
     group: task.taskStatus,
     data: { taskId: task.id, column: task.taskStatus },
+    sensors: cardSensors,
   });
   return (
     <TaskCardView

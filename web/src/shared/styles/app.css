@@ -419,6 +419,10 @@ ol {
   color: var(--r-text);
   text-align: left;
   cursor: pointer;
+  /* A long press drags the card; it must not select text or open the iOS callout. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .card--pending {
@@ -518,6 +522,18 @@ ol {
   align-items: center;
   gap: 6px;
   min-height: 16px;
+}
+
+.card__grip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  /* A 32px hit area for a finger; the negative margins keep the visual layout of the 14px grip. */
+  width: 32px;
+  height: 32px;
+  margin: -9px -9px -9px -9px;
+  touch-action: none;
 }
 
 .grip {
