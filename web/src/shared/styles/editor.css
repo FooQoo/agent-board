@@ -4,10 +4,13 @@
  * values, so this file is kept apart from app.css; the rules are unlayered on purpose, so they sit
  * above the Tailwind utilities of the shadcn/ui sources.
  */
-/* The large size of the editor dialogs: the card and epic editor and the Docs dialog. */
+/*
+ * The large size of the editor dialogs: the card and epic editor and the Docs dialog. Dialog
+ * heights use svh, not dvh: a tablet keyboard shrinks the dynamic viewport and would squash them.
+ */
 :root {
   --modal-large-width: min(1480px, calc(100vw - 48px));
-  --modal-large-height: min(960px, calc(100dvh - 48px));
+  --modal-large-height: min(960px, calc(100svh - 48px));
 }
 
 .editor-dialog {
@@ -17,7 +20,7 @@
   width: var(--modal-large-width);
   max-width: calc(100vw - 48px);
   height: var(--modal-large-height);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(100svh - 48px);
   padding: 0;
   overflow: hidden;
   /* The design measures everything from the outer edge, so the 1px border is drawn over the edge. */

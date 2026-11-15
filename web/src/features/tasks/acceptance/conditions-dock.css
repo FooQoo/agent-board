@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 40dvh;
+  max-height: 40svh;
   overflow: hidden;
   border: 1px solid var(--r-border);
   border-radius: 8px;

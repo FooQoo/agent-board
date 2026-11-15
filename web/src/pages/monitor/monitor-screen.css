@@ -346,8 +346,8 @@
   z-index: 50;
   width: 100%;
   max-width: none;
-  height: min(85dvh, 720px);
-  max-height: calc(100dvh - env(safe-area-inset-top));
+  height: min(85svh, 720px);
+  max-height: calc(100svh - env(safe-area-inset-top));
   /* The only writer of the sheet's position besides the enter and exit keyframes: the drag hook sets
      the pull, and the keyframes start or end at it. */
   translate: 0 var(--drawer-drag-y, 0px);

@@ -53,3 +53,20 @@ describe('desktop layout', () => {
     expect(viewport).toMatch(/overflow-y:\s*auto/);
   });
 });
+
+describe('dialogs and sheets with a software keyboard', () => {
+  // 100dvh follows the visible area, which a tablet's keyboard shrinks, so a dialog sized by it
+  // is squashed while you type. The small viewport (svh) stays put when the keyboard opens.
+  const sheets = [
+    'src/shared/styles/modal.css',
+    'src/shared/styles/editor.css',
+    'src/features/tasks/answer/decision-answer.css',
+    'src/features/tasks/acceptance/conditions-dock.css',
+    'src/features/docs/ui/shell/docs-shell.css',
+    'src/features/onboarding/ui/onboarding.css',
+  ];
+
+  it.each(sheets)('%s sizes its dialogs by the small viewport, not the dynamic one', (path) => {
+    expect(read(path)).not.toMatch(/\d+dvh/);
+  });
+});
