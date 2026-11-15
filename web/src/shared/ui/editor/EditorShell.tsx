@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
+import { isTouchScreen } from '../../lib/viewport/isTouchScreen';
 import { findTaskButton } from '../dialog-frame/DialogFrame';
 import { DiscardConfirm } from './DiscardConfirm';
 import { useSaveShortcut } from './useSaveShortcut';
@@ -121,10 +122,12 @@ export function EditorShell({
         onPointerDownOutside={(event) => variant === 'create' && event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          event.currentTarget instanceof HTMLElement &&
-            event.currentTarget
-              .querySelector<HTMLElement>(initialFocusSelector)
-              ?.focus({ preventScroll: true });
+          if (!(event.currentTarget instanceof HTMLElement)) return;
+          // On a touch screen the focus stays on the dialog, so the keyboard does not cover it.
+          const target = isTouchScreen()
+            ? event.currentTarget
+            : event.currentTarget.querySelector<HTMLElement>(initialFocusSelector);
+          target?.focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();

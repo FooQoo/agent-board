@@ -439,3 +439,20 @@ it('uses the refreshed task lane instead of the snapshot saved when the dialog o
     reason: 'User changed the status from Done to Doing.',
   });
 });
+
+describe('opening on a touch screen', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('leaves the focus on the dialog so the software keyboard stays down', async () => {
+    const real = window.matchMedia;
+    vi.stubGlobal('matchMedia', (media: string) => ({
+      ...real(media),
+      matches: media === '(pointer: coarse)',
+    }));
+    const { dialog } = await openHost({ kind: 'create' }, async () => undefined);
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    const active = document.activeElement;
+    expect(active).toBe(dialog);
+    expect(active?.matches('input, textarea, [contenteditable="true"]')).toBe(false);
+  });
+});

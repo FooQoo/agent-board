@@ -4,6 +4,7 @@ import { XIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
+import { isTouchScreen } from '../../lib/viewport/isTouchScreen';
 import { DiscardConfirm } from '../editor/DiscardConfirm';
 import '../../styles/modal.css';
 
@@ -118,7 +119,11 @@ export function DialogFrame({
         onPointerDownOutside={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          formRef.current?.querySelector<HTMLElement>('input, textarea')?.focus();
+          // On a touch screen the focus stays on the dialog, so the keyboard does not cover it.
+          const target = isTouchScreen()
+            ? event.currentTarget
+            : formRef.current?.querySelector<HTMLElement>('input, textarea');
+          if (target instanceof HTMLElement) target.focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
