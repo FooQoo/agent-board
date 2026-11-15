@@ -55,6 +55,8 @@ export function EpicDetailPanel({
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeFailed, setFinalizeFailed] = useState(false);
   const operation = useRef<number | null>(null);
+  // A delete or finalize is on its way. A second press before the button re-renders as busy is ignored.
+  const inFlight = useRef(false);
   const controls = useRef(operations);
   controls.current = operations;
   // The epic's text is its `document`, read when the epic is first shown and kept for later.
@@ -75,6 +77,8 @@ export function EpicDetailPanel({
 
   // A deleted epic leaves the board, which clears the selection and unmounts this panel; a refusal keeps the question open.
   const remove = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (operation.current !== null) controls.current.saveStarted(operation.current);
     setDeleting(true);
     setDeleteError(null);
@@ -89,12 +93,14 @@ export function EpicDetailPanel({
           : t('epic.deleteFailed'),
       );
     } finally {
+      inFlight.current = false;
       setDeleting(false);
     }
   };
 
   const finalize = async () => {
-    if (onFinalize === undefined) return;
+    if (onFinalize === undefined || inFlight.current) return;
+    inFlight.current = true;
     setFinalizing(true);
     setFinalizeFailed(false);
     try {
@@ -102,6 +108,7 @@ export function EpicDetailPanel({
     } catch {
       setFinalizeFailed(true);
     } finally {
+      inFlight.current = false;
       setFinalizing(false);
     }
   };

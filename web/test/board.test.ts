@@ -24,6 +24,20 @@ describe('groupCards', () => {
     expect(ids(groups.doing)).toEqual([4, 3]);
   });
 
+  it('puts the guide sample cards first in their lane, in their order', () => {
+    const sample = (ordinal: 1 | 2) => ({ runId: 'run', ordinal });
+    const groups = groupTasks([
+      makeTask({ id: 1, taskStatus: 'todo', position: 1 }),
+      makeTask({ id: 2, taskStatus: 'todo', position: 2 }),
+      makeTask({ id: 18, taskStatus: 'todo', position: 3, onboardingSample: sample(1) }),
+      makeTask({ id: 19, taskStatus: 'todo', position: 4, onboardingSample: sample(2) }),
+      makeTask({ id: 3, taskStatus: 'done', position: 9 }),
+      makeTask({ id: 20, taskStatus: 'done', position: 1, onboardingSample: sample(1) }),
+    ]);
+    expect(ids(groups.todo)).toEqual([18, 19, 1, 2]);
+    expect(ids(groups.done)).toEqual([20, 3]);
+  });
+
   it('orders done by descending position', () => {
     const groups = groupTasks([
       makeTask({ id: 1, taskStatus: 'done', position: 1 }),

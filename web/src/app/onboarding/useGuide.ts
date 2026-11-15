@@ -8,6 +8,8 @@ import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
 import { type GuideScreen, NOTICE_MS, RUNNING_MIN_MS } from './guideTiming';
 import { openGuide } from './openGuide';
 import { useGuideLease } from './useGuideLease';
+import { useInFlight } from './useInFlight';
+import type { GuideController } from './guideController';
 import { useTutorialReplay } from './useTutorialReplay';
 import {
   type GuideState,
@@ -21,21 +23,6 @@ import {
   startGuide,
   GuideError,
 } from './api';
-
-export interface GuideController {
-  screen: GuideScreen;
-  state: GuideState | null;
-  busy: boolean;
-  error: string | null;
-  /** True once a running card has been on screen for the minimum time, so its step can move on. */
-  ready: boolean;
-  start(): void;
-  skip(): void;
-  next(): void;
-  exit(): void;
-  finish(): void;
-  retry(): void;
-}
 
 interface PendingCommand {
   commandId: string;
@@ -61,7 +48,7 @@ export function useGuide({
 }): GuideController {
   const [state, setState] = useState<GuideState | null>(null);
   const [screen, setScreen] = useState<GuideScreen>({ kind: 'hidden' });
-  const [busy, setBusy] = useState(false);
+  const { busy, begin, settle } = useInFlight();
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const bound = useRef<ProjectId | null>(null);
@@ -82,14 +69,17 @@ export function useGuide({
     return next;
   }, []);
 
-  const fail = useCallback((cause: unknown) => {
-    setBusy(false);
-    // A server fault carries only a generic English text, so it shows the translated network text.
-    const refusal = cause instanceof GuideError && cause.status < 500 ? cause : null;
-    setError(
-      refusal ? (refusal.reason ?? refusal.message) : i18n.t('onboarding.guide.networkError'),
-    );
-  }, []);
+  const fail = useCallback(
+    (cause: unknown) => {
+      settle();
+      // A server fault carries only a generic English text, so it shows the translated network text.
+      const refusal = cause instanceof GuideError && cause.status < 500 ? cause : null;
+      setError(
+        refusal ? (refusal.reason ?? refusal.message) : i18n.t('onboarding.guide.networkError'),
+      );
+    },
+    [settle],
+  );
 
   // Read the guide once the board is ready, and offer it when the data area has not seen it.
   useEffect(() => {
@@ -134,7 +124,7 @@ export function useGuide({
       const current = stateRef.current;
       const project = bound.current;
       if (!current || !project || !current.run) return;
-      setBusy(true);
+      if (!begin()) return;
       // A retry sends the same command again; the server answers it once.
       const command =
         pending.current?.transition === transition
@@ -150,12 +140,12 @@ export function useGuide({
         });
         pending.current = null;
         apply(next);
-        setBusy(false);
+        settle();
       } catch (cause) {
         fail(cause);
       }
     },
-    [apply, clientId, fail],
+    [apply, begin, clientId, fail, settle],
   );
 
   const phase = phaseOf(state);
@@ -198,7 +188,7 @@ export function useGuide({
     const current = stateRef.current;
     const project = bound.current;
     if (!current || !project) return;
-    setBusy(true);
+    if (!begin()) return;
     attempt.current ??= newId();
     const locale = i18n.resolvedLanguage === 'ja' ? 'ja' : 'en';
     startGuide(project, {
@@ -209,24 +199,24 @@ export function useGuide({
     })
       .then((next) => {
         apply(next);
-        setBusy(false);
+        settle();
         setScreen({ kind: 'step' });
       })
       .catch(fail);
-  }, [apply, clientId, fail]);
+  }, [apply, begin, clientId, fail, settle]);
 
   const skip = useCallback(() => {
     const current = stateRef.current;
     if (!current) return;
-    setBusy(true);
+    if (!begin()) return;
     skipGuide(clientId, current.revision, newId())
       .then((next) => {
         apply(next);
-        setBusy(false);
+        settle();
         setScreen({ kind: 'hidden' });
       })
       .catch(fail);
-  }, [apply, clientId, fail]);
+  }, [apply, begin, clientId, fail, settle]);
 
   const exit = useCallback(() => {
     const current = stateRef.current;
@@ -239,7 +229,7 @@ export function useGuide({
       skip();
       return;
     }
-    setBusy(true);
+    if (!begin()) return;
     abortGuide(project, current.run.runId, {
       clientId,
       expectedRevision: current.revision,
@@ -247,16 +237,16 @@ export function useGuide({
     })
       .then((next) => {
         apply(next);
-        setBusy(false);
+        settle();
         setScreen({ kind: 'hidden' });
       })
       .catch(fail);
-  }, [apply, clientId, fail, skip]);
+  }, [apply, begin, clientId, fail, settle, skip]);
 
   const finish = useCallback(async () => {
     const project = bound.current;
     if (!project) return;
-    setBusy(true);
+    if (!begin()) return;
     try {
       // The last step is taken before the run is finished: the dialog's button does both.
       let current = stateRef.current;
@@ -277,13 +267,14 @@ export function useGuide({
         commandId: newId(),
       });
       apply(next);
-      setBusy(false);
       setScreen({ kind: 'notice' });
       window.setTimeout(() => setScreen({ kind: 'hidden' }), NOTICE_MS);
     } catch (cause) {
       fail(cause);
+    } finally {
+      settle();
     }
-  }, [apply, clientId, fail]);
+  }, [apply, begin, clientId, fail, settle]);
   // The explanation's "次へ". A running card's step is enabled only once the card has been on screen long enough.
   const next = useCallback(() => {
     if (phase === 'samples') void run('first-running');
