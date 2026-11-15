@@ -14,8 +14,8 @@ export const questionsEn = {
       itemHeld: '{{title}} ({{tasks}}, answered, not sent)',
       noTask: 'No task',
       heldMark: 'Answered, not sent',
-      emptyTitle: 'No unanswered questions',
-      emptyBody: 'Questions from the AI appear here',
+      show: 'Show unanswered questions ({{count}})',
+      hide: 'Hide unanswered questions ({{count}})',
     },
     card: {
       waiting: 'Unanswered questions: {{count}}',

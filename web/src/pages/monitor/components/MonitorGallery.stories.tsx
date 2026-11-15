@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { makeMonitorTask, makeProject, makeTask } from '../../../../.storybook/support/fixtures';
 import type { BandQuestion } from '../../../features/tasks/answer/model/qa';
 import {
@@ -250,23 +250,27 @@ export const AnswerContinuing: Story = {
   play: answerPlay('Continue answering'),
 };
 
-/** The band of five questions under the counts, as the approved mock shows it. */
+/** The band of five questions under the counts: closed at first, opened by its header. */
 export const QuestionBand: Story = {
   args: { variant: 'band' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).queryAllByRole('listitem')).toHaveLength(0);
+    await userEvent.click(within(band).getByRole('button', { name: /^未回答の質問を表示する/ }));
     await expect(within(band).getAllByRole('listitem')).toHaveLength(5);
     await expect(within(band).getByRole('button', { name: 'まとめて答える' })).toBeVisible();
   },
 };
 
-/** No questions: the band is left out, so the list starts right under the counts. */
+/** No questions: the band stays with a count of 0 and nothing to open. */
 export const QuestionBandEmpty: Story = {
   args: { variant: 'band-empty' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).queryByRole('region', { name: '未回答の質問' })).toBeNull();
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getByText('0')).toBeVisible();
+    await expect(within(band).getByRole('button')).toBeDisabled();
   },
 };
 

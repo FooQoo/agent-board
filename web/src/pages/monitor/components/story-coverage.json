@@ -194,12 +194,17 @@
             },
             {
               "id": "pages-monitor-components-monitorgallery--question-band",
-              "states": ["band under the counts", "five questions", "answer them"],
+              "states": [
+                "band under the counts",
+                "closed at first",
+                "five questions",
+                "answer them"
+              ],
               "interaction": true
             },
             {
               "id": "pages-monitor-components-monitorgallery--question-band-empty",
-              "states": ["empty band"],
+              "states": ["empty band", "count 0", "toggle disabled"],
               "interaction": true
             },
             {

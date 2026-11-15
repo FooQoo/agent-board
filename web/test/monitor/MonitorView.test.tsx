@@ -195,16 +195,27 @@ describe('mobile monitor lanes and task actions', () => {
 });
 
 describe('monitor question band and answer sheet', () => {
-  it('lists the open questions in a band under the counts', () => {
+  it('lists the open questions in a band under the counts, closed until its header is pressed', async () => {
+    const user = userEvent.setup();
     render(<Connected />);
+    const toggle = within(band()).getByRole('button', { name: /^Show unanswered questions/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(within(band()).queryAllByRole('listitem')).toHaveLength(0);
+    expect(within(band()).getByText('2')).toBeTruthy();
+    expect(within(band()).getByRole('button', { name: 'Answer them' })).toBeTruthy();
+    await user.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(within(band()).getAllByRole('listitem')).toHaveLength(2);
     expect(within(band()).getByText('#4')).toBeTruthy();
     expect(within(band()).getByRole('button', { name: 'Answer them' })).toBeTruthy();
   });
 
-  it('leaves the band out when nothing is open', () => {
+  it('keeps the band with a count of 0 and nothing to open when nothing is open', () => {
     render(<Connected questions={[]} />);
-    expect(screen.queryByRole('region', { name: 'Unanswered questions' })).toBeNull();
+    expect(within(band()).getByText('0')).toBeTruthy();
+    const toggle = within(band()).getByRole('button', { name: /^Show unanswered questions/ });
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+    expect(within(band()).queryByRole('list')).toBeNull();
   });
 
   it('opens only the questions of a card in the sheet and sends its answer at once', async () => {
@@ -242,6 +253,7 @@ describe('monitor question band and answer sheet', () => {
     await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
     expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-1', choiceId: 'yes' }]);
     // The sent question leaves the band at once; the one held for the other card stays.
+    await user.click(within(band()).getByRole('button', { name: /^Show unanswered questions/ }));
     await waitFor(() => expect(within(band()).getAllByRole('listitem')).toHaveLength(1));
     expect(within(band()).getByText('#4')).toBeTruthy();
     expect(within(band()).getByRole('button', { name: 'Review and send' })).toBeTruthy();
@@ -256,6 +268,7 @@ describe('monitor question band and answer sheet', () => {
     await user.click(within(sheet).getByRole('button', { name: 'Close the answer' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(within(band()).getByRole('button', { name: 'Review and send' })).toBeTruthy();
+    await user.click(within(band()).getByRole('button', { name: /^Show unanswered questions/ }));
     expect(within(band()).getByText('Answered, not sent')).toBeTruthy();
     expect(openButton(todoCard()).textContent).toBe('Continue answering');
   });

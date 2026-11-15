@@ -85,7 +85,11 @@
             },
             {
               "id": "app-board-workspace--question-band-open",
-              "states": ["question band above the lanes", "cards with unanswered questions"],
+              "states": [
+                "question band closed above the lanes",
+                "opens from its header",
+                "cards with unanswered questions"
+              ],
               "interaction": true
             },
             {
@@ -95,7 +99,7 @@
             },
             {
               "id": "app-board-workspace--question-band-empty",
-              "states": ["empty band keeps its place"],
+              "states": ["empty band keeps its place", "count 0", "toggle disabled"],
               "interaction": true
             },
             {

@@ -14,8 +14,8 @@ export const questionsJa = {
       itemHeld: '{{title}}（{{tasks}}・回答済み・未送信）',
       noTask: 'タスクなし',
       heldMark: '回答済み・未送信',
-      emptyTitle: '未回答の質問はありません',
-      emptyBody: 'AI から質問が届くと、ここに並びます',
+      show: '未回答の質問を表示する（{{count}} 件）',
+      hide: '未回答の質問を隠す（{{count}} 件）',
     },
     card: {
       waiting: '未回答の質問 {{count}} 件',

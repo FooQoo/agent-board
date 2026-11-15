@@ -275,7 +275,18 @@
           "stories": [
             {
               "id": "task-answer-questionband--items",
-              "states": ["five questions", "count", "hint", "open one", "answer them"],
+              "states": [
+                "closed at first",
+                "count",
+                "answer them while closed",
+                "open and close",
+                "open one"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-questionband--expanded",
+              "states": ["list shown", "scroll buttons"],
               "interaction": true
             },
             {
@@ -290,8 +301,8 @@
             },
             {
               "id": "task-answer-questionband--empty",
-              "states": ["no questions", "same height"],
-              "interaction": false
+              "states": ["no questions", "count 0", "toggle disabled", "no list"],
+              "interaction": true
             },
             {
               "id": "task-answer-questionband--english",
@@ -305,8 +316,8 @@
             },
             {
               "id": "task-answer-questionband--phone",
-              "states": ["phone items", "one button"],
-              "interaction": false
+              "states": ["phone closed", "phone items", "one button"],
+              "interaction": true
             },
             {
               "id": "task-answer-questionband--phone-held",
@@ -315,8 +326,13 @@
             },
             {
               "id": "task-answer-questionband--phone-empty",
-              "states": ["phone empty"],
-              "interaction": false
+              "states": ["phone empty", "count 0", "toggle disabled"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-questionband--phone-expanded",
+              "states": ["phone list shown"],
+              "interaction": true
             },
             {
               "id": "task-answer-questionband--phone-dark",

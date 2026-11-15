@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
 import { AnswerBook } from '../features/tasks/answer/model/answerBook';
 import type { BandQuestion } from '../features/tasks/answer/model/qa';
@@ -348,14 +348,17 @@ function makeQuestionModel(held: number, empty = false): AppControllerModel {
   } as unknown as AppControllerModel;
 }
 
-/** The band above the lanes, with five questions to answer. */
+/** The band above the lanes, closed at first; its header opens the five questions. */
 export const QuestionBandOpen: Story = {
   args: { model: makeQuestionModel(0) },
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('region', { name: '未回答の質問' })).toBeInTheDocument();
+    const band = within(canvas.getByRole('region', { name: '未回答の質問' }));
+    await expect(band.queryAllByRole('listitem')).toHaveLength(0);
     await expect(canvas.getByText('未回答の質問 2 件')).toBeInTheDocument();
+    await userEvent.click(band.getByRole('button', { name: /^未回答の質問を表示する/ }));
+    await expect(band.getAllByRole('listitem')).toHaveLength(5);
   },
 };
 
@@ -370,13 +373,14 @@ export const QuestionBandHeld: Story = {
   },
 };
 
-/** No questions: the band keeps its place above the lanes. */
+/** No questions: the band keeps its place above the lanes with a count of 0 and nothing to open. */
 export const QuestionBandEmpty: Story = {
   args: { model: makeQuestionModel(0, true) },
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).getByRole('status')).toHaveTextContent('未回答の質問はありません');
+    await expect(within(band).getByText('0')).toBeVisible();
+    await expect(within(band).getByRole('button')).toBeDisabled();
   },
 };
 

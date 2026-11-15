@@ -5,7 +5,7 @@ import { QuestionBand } from './QuestionBand';
 import { sampleQuestions } from './questionSamples';
 
 interface HarnessProps {
-  /** How many questions there are; 0 shows the empty band. */
+  /** How many questions there are; 0 shows the header alone. */
   count: number;
   /** How many of the first questions have an answer held. */
   held: number;
@@ -32,6 +32,13 @@ function Harness({ count, held, variant, ...handlers }: HarnessProps) {
   );
 }
 
+/** Opens the band by pressing its header, as a user does; it starts closed. */
+async function expand(canvasElement: HTMLElement) {
+  await userEvent.click(
+    within(canvasElement).getByRole('button', { name: /^未回答の質問を表示する/ }),
+  );
+}
+
 const meta = {
   title: 'Task/Answer/QuestionBand',
   component: Harness,
@@ -43,11 +50,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Five questions: the count, the hint, and one button that answers them in a row. */
+/** Five questions: closed at first, with the count and the answer button in the header; the header opens the list. */
 export const Items: Story = {
   play: async ({ args, canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).getByText('5')).toBeInTheDocument();
+    const toggle = within(band).getByRole('button', { name: /^未回答の質問を表示する/ });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(within(band).getByText('5')).toBeVisible();
+    await expect(within(band).queryAllByRole('listitem')).toHaveLength(0);
+    await expect(within(band).getByRole('button', { name: 'まとめて答える' })).toBeVisible();
+    await expect(within(band).queryByRole('button', { name: '次の質問を表示' })).toBeNull();
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(within(band).getAllByRole('listitem')).toHaveLength(5);
     await expect(within(band).getByText('タスクなし')).toBeInTheDocument();
     await expect(within(band).getByText('#14 #15 #16')).toBeInTheDocument();
@@ -55,6 +69,18 @@ export const Items: Story = {
     await expect(args.onOpen).toHaveBeenCalledWith('Q-2');
     await userEvent.click(within(band).getByRole('button', { name: 'まとめて答える' }));
     await expect(args.onAnswer).toHaveBeenCalledTimes(1);
+    await userEvent.click(within(band).getByRole('button', { name: /^未回答の質問を隠す/ }));
+    await expect(within(band).queryAllByRole('listitem')).toHaveLength(0);
+  },
+};
+
+/** The band after its header is pressed: the questions and the scroll buttons show. */
+export const Expanded: Story = {
+  play: async ({ canvasElement }) => {
+    await expand(canvasElement);
+    const band = within(canvasElement);
+    await expect(band.getAllByRole('listitem')).toHaveLength(5);
+    await expect(band.getByRole('button', { name: '次の質問を表示' })).toBeVisible();
   },
 };
 
@@ -62,6 +88,7 @@ export const Items: Story = {
 export const Held: Story = {
   args: { held: 2 },
   play: async ({ args, canvasElement }) => {
+    await expand(canvasElement);
     const band = within(canvasElement);
     await expect(band.getByText('2 件に回答済み・まだ送っていません')).toBeInTheDocument();
     await expect(band.getAllByText('回答済み・未送信')).toHaveLength(2);
@@ -75,6 +102,7 @@ export const Held: Story = {
 /** A long title stops at two lines; every item keeps the same size. */
 export const LongTitle: Story = {
   play: async ({ canvasElement }) => {
+    await expand(canvasElement);
     const items = [...canvasElement.querySelectorAll<HTMLElement>('.question-band__item')];
     const sizes = new Set(items.map((item) => `${item.offsetWidth}x${item.offsetHeight}`));
     await expect([...sizes]).toEqual(['250x78']);
@@ -83,14 +111,17 @@ export const LongTitle: Story = {
   },
 };
 
-/** No questions: the band keeps its height and says so. */
+/** No questions: the header still shows with a count of 0, the toggle does nothing, and no list shows. */
 export const Empty: Story = {
   args: { count: 0 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('status')).toHaveTextContent(
-      '未回答の質問はありません',
-    );
-    await expect(within(canvasElement).queryByRole('button')).toBeNull();
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getByText('0')).toBeVisible();
+    const toggle = within(band).getByRole('button', { name: /^未回答の質問を表示する/ });
+    await expect(toggle).toBeDisabled();
+    await expect(within(band).queryByRole('list')).toBeNull();
+    await expect(within(band).queryByRole('status')).toBeNull();
+    await expect(within(band).getAllByRole('button')).toHaveLength(1);
   },
 };
 
@@ -114,12 +145,14 @@ export const Dark: Story = {
   },
 };
 
-/** The monitor's band: narrower items, no scroll buttons, one button. */
+/** The monitor's band: closed at first; opened, narrower items, no scroll buttons, one button. */
 export const Phone: Story = {
   args: { variant: 'phone' },
   parameters: { storyFrame: 'monitor' },
   globals: { locale: 'ja', width: 'phone-375' },
   play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryAllByRole('listitem')).toHaveLength(0);
+    await expand(canvasElement);
     const item = canvasElement.querySelector<HTMLElement>('.question-band__item');
     await expect(item?.offsetWidth).toBe(210);
     await expect(
@@ -146,13 +179,15 @@ export const PhoneHeld: Story = {
   },
 };
 
-/** The monitor with no questions: the band is left out. */
+/** The monitor with no questions: the band stays, with a count of 0 and nothing to open. */
 export const PhoneEmpty: Story = {
   args: { variant: 'phone', count: 0 },
   parameters: { storyFrame: 'monitor' },
   globals: { locale: 'ja', width: 'phone-375' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).queryByRole('region')).toBeNull();
+    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
+    await expect(within(band).getByText('0')).toBeVisible();
+    await expect(within(band).getByRole('button')).toBeDisabled();
   },
 };
 
@@ -163,5 +198,16 @@ export const PhoneDark: Story = {
   globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('region')).toBeVisible();
+  },
+};
+
+/** The monitor's band after its header is pressed. */
+export const PhoneExpanded: Story = {
+  args: { variant: 'phone' },
+  parameters: { storyFrame: 'monitor' },
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async ({ canvasElement }) => {
+    await expand(canvasElement);
+    await expect(within(canvasElement).getAllByRole('listitem')).toHaveLength(5);
   },
 };

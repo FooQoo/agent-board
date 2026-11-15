@@ -1,4 +1,10 @@
-import { ChevronLeftIcon, ChevronRightIcon, CircleCheckIcon, CircleHelpIcon } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CircleCheckIcon,
+  CircleHelpIcon,
+} from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
@@ -28,10 +34,12 @@ export function taskRefs(referencedBy: readonly number[], noTask: string): strin
 }
 
 /**
- * The band of unanswered questions. On the PC board it keeps the same height with no questions, so the
- * lanes under it never move when one arrives. On a phone, where height is short, it is left out with
- * no questions and appears when one arrives. Every item has the same size; a long title stops at two
- * lines.
+ * The band of unanswered questions, the same on the PC board and on a phone. It is never left out: with
+ * no questions its header still shows the title and a count of 0. The header is a toggle that opens and
+ * closes the list of questions; the band starts closed on every load and does not remember the choice,
+ * and with no questions there is nothing to open. The count and the answer buttons stay in the header
+ * while it is closed; the scroll buttons of the board band show only while it is open. Every item has
+ * the same size; a long title stops at two lines.
  */
 export function QuestionBand({
   questions,
@@ -43,7 +51,8 @@ export function QuestionBand({
   onReview,
 }: QuestionBandProps) {
   const { t } = useTranslation();
-  const headingId = useId();
+  const listId = useId();
+  const [open, setOpen] = useState(false);
   const list = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ back: false, on: false });
   const empty = questions.length === 0;
@@ -64,13 +73,11 @@ export function QuestionBand({
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [measure, questions.length]);
+  }, [measure, questions.length, open]);
   const scroll = (direction: 1 | -1) => {
     const node = list.current;
     node?.scrollBy?.({ left: direction * node.clientWidth * 0.8, behavior: 'smooth' });
   };
-
-  if (empty && variant === 'phone') return null;
 
   const Icon = empty ? CircleCheckIcon : CircleHelpIcon;
   const note = holding
@@ -81,18 +88,31 @@ export function QuestionBand({
       className="question-band"
       data-variant={variant}
       data-state={empty ? 'empty' : holding ? 'held' : 'open'}
-      aria-labelledby={headingId}
+      aria-label={t('questions.band.title')}
     >
       <header className="question-band__header">
-        <Icon className="question-band__icon" aria-hidden="true" />
-        <h2 className="question-band__title" id={headingId}>
-          {t('questions.band.title')}
+        <h2 className="question-band__heading">
+          <button
+            type="button"
+            className="question-band__toggle"
+            aria-expanded={open && !empty}
+            aria-controls={empty ? undefined : listId}
+            aria-label={t(open ? 'questions.band.hide' : 'questions.band.show', {
+              count: questions.length,
+            })}
+            disabled={empty}
+            onClick={() => setOpen((current) => !current)}
+          >
+            <Icon className="question-band__icon" aria-hidden="true" />
+            <span className="question-band__title">{t('questions.band.title')}</span>
+            <span className="question-band__count">{questions.length}</span>
+            <ChevronDownIcon className="question-band__chevron" aria-hidden="true" />
+          </button>
         </h2>
-        <span className="question-band__count">{questions.length}</span>
         {variant === 'board' && !empty && <p className="question-band__note">{note}</p>}
         {!empty && (
           <div className="question-band__actions">
-            {variant === 'board' && (
+            {variant === 'board' && open && (
               <>
                 <Button
                   type="button"
@@ -135,15 +155,12 @@ export function QuestionBand({
           </div>
         )}
       </header>
-      {empty ? (
-        <div className="question-band__empty" role="status">
-          <strong>{t('questions.band.emptyTitle')}</strong>
-          <span>{t('questions.band.emptyBody')}</span>
-        </div>
-      ) : (
+      {!empty && (
         <ul
           className="question-band__list"
           ref={list}
+          id={listId}
+          hidden={!open}
           aria-label={t('questions.band.list')}
           onScroll={measure}
         >
