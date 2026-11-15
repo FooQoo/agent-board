@@ -39,6 +39,7 @@ export const monitorEn = {
       toPrev: '← {{lane}}',
       bulkArchive: 'Archive all',
       archiveTask: 'Archive #{{id}}',
+      moveTask: 'Move #{{id}} to {{lane}}',
       archiveTitle: 'Archive task',
       archiveDescription: 'Archive #{{id}} “{{title}}”.',
       archiveSubmit: 'Archive',

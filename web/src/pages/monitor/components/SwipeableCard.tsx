@@ -1,13 +1,20 @@
-import { Trash2Icon } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { CheckIcon, CircleDashedIcon, CircleIcon, Trash2Icon } from 'lucide-react';
+import { type CSSProperties, type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CardGestureOptions, useCardGesture } from '../hooks/useCardGesture';
-import { REVEAL_WIDTH } from '../model/lanes';
+import type { MonitorSection } from './MonitorSectionHeader';
+import { otherLanes, REVEAL_WIDTH, revealProgress } from '../model/lanes';
+
+const LANE_ICONS = { todo: CircleIcon, doing: CircleDashedIcon, done: CheckIcon } as const;
 import './monitor-lanes.css';
 
 export interface SwipeableCardProps extends Omit<CardGestureOptions, 'disabled'> {
   taskId: number;
-  /** The archive button was tapped; the parent opens the archive confirmation. */
+  /** The lane the card is in; the swipe offers the other two. */
+  lane: MonitorSection;
+  /** A lane tile was tapped; the parent opens the move dialog. */
+  onMove: (target: MonitorSection) => void;
+  /** The trash tile was tapped; the parent opens the archive confirmation. */
   onArchive: () => void;
   /** The card is in a lane that is not on screen. */
   inactive?: boolean;
@@ -15,13 +22,16 @@ export interface SwipeableCardProps extends Omit<CardGestureOptions, 'disabled'>
 }
 
 /**
- * Wraps a monitor card with the two things a finger does to it: a swipe to the left that reveals an
- * archive button, and a long press that lifts it to drag it into another lane. The card itself is
+ * Wraps a monitor card with the two things a finger does to it: a swipe to the left that reveals
+ * tiles for the two other lanes and the archive, each growing from a dot as the card slides, and a
+ * long press that lifts it to drag it into another lane. The card itself is
  * the child, so it keeps its own taps (the title opens the details). While the archive button is
  * showing, a tap on the card closes it instead.
  */
 export function SwipeableCard({
   taskId,
+  lane,
+  onMove,
   onArchive,
   inactive,
   children,
@@ -56,11 +66,42 @@ export function SwipeableCard({
         }
       }}
     >
-      <div className="swipe-card__action" data-revealed={offset < 0 || undefined}>
+      <div
+        className="swipe-card__actions"
+        data-revealed={offset < 0 || undefined}
+        style={
+          {
+            width: `${Math.max(0, -offset)}px`,
+            '--reveal': revealProgress(offset),
+          } as CSSProperties
+        }
+      >
+        {otherLanes(lane).map((target) => {
+          const Icon = LANE_ICONS[target];
+          return (
+            <button
+              key={target}
+              type="button"
+              data-swipe-action
+              data-target={target}
+              className="swipe-card__tile"
+              tabIndex={revealed ? 0 : -1}
+              aria-hidden={!revealed}
+              aria-label={t('monitor.lanes.moveTask', {
+                id: taskId,
+                lane: t(`monitor.status.${target}`),
+              })}
+              onClick={() => onMove(target)}
+            >
+              <Icon aria-hidden="true" />
+            </button>
+          );
+        })}
         <button
           type="button"
           data-swipe-action
-          className="swipe-card__button"
+          data-target="archive"
+          className="swipe-card__tile swipe-card__tile--archive"
           tabIndex={revealed ? 0 : -1}
           aria-hidden={!revealed}
           aria-label={t('monitor.lanes.archiveTask', { id: taskId })}

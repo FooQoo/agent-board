@@ -39,6 +39,7 @@ export const monitorJa = {
       toPrev: '← {{lane}}',
       bulkArchive: 'まとめてアーカイブ',
       archiveTask: '#{{id}} をアーカイブ',
+      moveTask: '#{{id}} を{{lane}}へ移動',
       archiveTitle: 'タスクをアーカイブ',
       archiveDescription: '#{{id}}「{{title}}」をアーカイブします。',
       archiveSubmit: 'アーカイブ',

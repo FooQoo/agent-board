@@ -230,15 +230,23 @@ export const DoingLane: Story = {
   },
 };
 
-/** A card slid to the left shows the アーカイブ button; the button is at least 44px tall. */
+/**
+ * A card slid to the left shows three tiles: the two other lanes and アーカイブ. Each tile is at
+ * least 44px, and a lane tile opens the move question.
+ */
 export const ArchiveRevealed: Story = {
   args: { initialLane: 'todo', previewRevealed: 15 },
   play: async ({ canvasElement }) => {
-    const button = within(cardOf(canvasElement, 15) as HTMLElement).getByRole('button', {
-      name: '#15 をアーカイブ',
-    });
-    await expect(button).toBeVisible();
-    await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    const card = within(cardOf(canvasElement, 15) as HTMLElement);
+    const names = ['#15 を進行中へ移動', '#15 を完了へ移動', '#15 をアーカイブ'];
+    for (const name of names) {
+      const tile = card.getByRole('button', { name });
+      await expect(tile).toBeVisible();
+      await expect(tile.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+    await userEvent.click(card.getByRole('button', { name: '#15 を完了へ移動' }));
+    const dialog = within(await within(document.body).findByRole('dialog'));
+    await expect(dialog.getAllByText(/#15/).length).toBeGreaterThan(0);
   },
 };
 

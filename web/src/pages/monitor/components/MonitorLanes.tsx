@@ -154,6 +154,11 @@ export function MonitorLanes({
                     <SwipeableCard
                       key={keyOf(item)}
                       taskId={item.task.id}
+                      lane={name}
+                      onMove={(target) => {
+                        setRevealed(null);
+                        onMove(item, target);
+                      }}
                       inactive={name !== lane}
                       revealed={revealed === item.task.id}
                       onRevealChange={(open) => setRevealed(open ? item.task.id : null)}

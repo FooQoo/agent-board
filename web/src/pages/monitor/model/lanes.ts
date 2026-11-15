@@ -9,8 +9,11 @@ export const LIFT_HOLD_MS = 100;
 export const LIFT_TOLERANCE = 10;
 /** How far (px) a press must move sideways before it counts as a swipe. */
 export const SWIPE_SLOP = 8;
-/** The width (px) of the archive button a card reveals. */
-export const REVEAL_WIDTH = 80;
+/** The size (px) of one swipe action tile, and the gap around the tiles. */
+export const ACTION_TILE = 56;
+export const ACTION_GAP = 8;
+/** The width (px) a card reveals: the two other lanes and the archive tile, with their gaps. */
+export const REVEAL_WIDTH = 3 * ACTION_TILE + 4 * ACTION_GAP;
 /** The strip (px) at each screen edge where a lifted card asks for the next lane. */
 export const EDGE_ZONE = 56;
 /** How long (ms) a lifted card rests in an edge strip before the lane changes. */
@@ -112,4 +115,14 @@ export function dwellEdge(
   if (edge === null) return { edge: null, run: false, armed: true };
   if (edgeTarget(lane, edge) === null) return { edge: null, run: false, armed };
   return { edge, run: armed, armed };
+}
+
+/** The lanes a card can be moved to from its own lane, in board order. */
+export function otherLanes(lane: MonitorSection): MonitorSection[] {
+  return LANES.filter((name) => name !== lane);
+}
+
+/** How far a swipe has opened the actions, from 0 (closed) to 1 (fully revealed). */
+export function revealProgress(offset: number): number {
+  return Math.min(1, Math.max(0, -offset / REVEAL_WIDTH));
 }
