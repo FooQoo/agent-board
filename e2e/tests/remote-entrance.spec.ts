@@ -211,7 +211,7 @@ test('the phone band lists the open questions; an answer held there is sent from
   expect(stored.history.at(-1)?.reason).toContain('Plan B');
 });
 
-test('an image attached to the task shows in the sheet from the board's attachment route', async ({ page }) => {
+test('an image attached to the task shows in the sheet from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'ai']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start review'], home);
@@ -235,7 +235,7 @@ test('an image attached to the task shows in the sheet from the board's attachme
   await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
-test('an image in a history reason shows in the History tab from the board's attachment route', async ({ page }) => {
+test('an image in a history reason shows in the History tab from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'ai']).task.id;
   const png = Buffer.from(

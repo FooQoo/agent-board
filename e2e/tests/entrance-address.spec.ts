@@ -46,14 +46,14 @@ test('a direct link to the board shows the passcode after Visit Site, and its sc
   expect(warned).toEqual([]);
 });
 
-test('the bare address asks for the passcode and then shows the board, and its scripts and stylesheets load', async ({ page }) => {
+test('the bare address is the board and asks for the passcode, and its scripts and stylesheets load', async ({ page }) => {
   // The bare address is the board's own page: nothing forwards to an old address.
   const warned = warnedFiles(page);
   await page.goto(entrance.phoneOrigin);
   await page.getByRole('button', { name: 'Visit Site' }).click();
   expect(new URL(page.url()).pathname).toBe('/');
-  await entrance.unlockPage(page);
-  await expect(page.getByRole('article').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Enter the passcode' })).toBeVisible();
+  await expect(page.getByRole('article')).toHaveCount(0);
   const logo = page.locator('.header__logo img');
   await expect(logo).toHaveJSProperty('complete', true);
   expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
