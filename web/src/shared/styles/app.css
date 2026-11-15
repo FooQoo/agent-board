@@ -166,8 +166,11 @@ ol {
   height: 14px;
 }
 
-/* Narrow windows keep the project name readable: the Docs button shows its icon only. */
-@media (max-width: 1200px) {
+/*
+ * Narrow windows keep the project name readable: below 1024px the Docs button shows its icon only.
+ * A tablet held sideways (about 1180px) keeps the label.
+ */
+@media (max-width: 1023px) {
   .header__docs-label {
     display: none;
   }

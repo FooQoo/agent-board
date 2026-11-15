@@ -162,6 +162,18 @@ test('1024px: the default width yields to the lanes (each stays at least 200px)'
   for (const w of lanes) expect(w).toBeGreaterThanOrEqual(200);
 });
 
+test('the Docs button keeps its label from 1024px and shows its icon only below', async ({ page }) => {
+  await open(page, 1180);
+  const docs = page.getByRole('banner').getByRole('button', { name: 'Docs', exact: true });
+  const label = docs.getByText('Docs', { exact: true });
+  await expect(label).toBeVisible();
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await expect(label).toBeVisible();
+  await page.setViewportSize({ width: 1023, height: 900 });
+  await expect(label).toBeHidden();
+  await expect(docs).toBeVisible();
+});
+
 test('1920px: the extra width goes to the lanes and the panel keeps its width', async ({ page }) => {
   await open(page, 1920);
   expect(await panelWidth(page)).toBe(360);
