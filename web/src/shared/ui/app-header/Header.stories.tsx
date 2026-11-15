@@ -37,6 +37,7 @@ interface HeaderDemoProps {
   switchDisabled?: boolean;
   canAdd?: boolean;
   viewMode?: ViewMode;
+  withSettings?: boolean;
   onAdd?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
