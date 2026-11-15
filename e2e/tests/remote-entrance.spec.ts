@@ -180,14 +180,15 @@ test('the phone answers the current question from the sheet, and the answer reac
 test('the phone band lists the open questions; an answer held there is sent from the review', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   await entrance.open(page, phoneUrl());
+  // The phone shows the band only while a question is open.
   const band = page.getByRole('region', { name: 'Unanswered questions' });
-  await expect(band).toBeVisible();
   const before = await band.getByRole('listitem').count();
 
   const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'ai']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
   const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
   expect(asked.code, asked.stderr).toBe(0);
+  await expect(band).toBeVisible();
   await expect(band.getByRole('listitem')).toHaveCount(before + 1);
   await expect(band).toContainText(`#${id}`);
 

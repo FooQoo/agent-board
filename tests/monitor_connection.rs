@@ -374,8 +374,20 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
         assert_eq!(r.status, 403, "{path} {headers:?}");
     }
     assert_eq!(
-        request(backend, "POST", "/monitor/api/answer", &admitted, "{}").status,
+        request(
+            backend,
+            "POST",
+            "/api/projects/0123456789abcdef0123456789abcdef/qa/answers",
+            &admitted,
+            "{}"
+        )
+        .status,
         401
+    );
+    // The old monitor's addresses are not found, even for the admitted public Host.
+    assert_eq!(
+        request(backend, "POST", "/monitor/api/answer", &admitted, "{}").status,
+        404
     );
 
     // The token is nowhere on disk and not in any API answer.
