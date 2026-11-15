@@ -139,6 +139,9 @@ impl ServeArgs {
 pub struct StopArgs {}
 
 #[derive(Args, Debug)]
+pub struct RemoteArgs {}
+
+#[derive(Args, Debug)]
 #[command(
     after_help = "The project is the one bound to the current folder unless --project names one.\nThe server is started in the background when none runs.\n\nExamples:\n  agboard open\n  agboard --project \"My project\" open\n  agboard open --print\n  agboard open --json"
 )]

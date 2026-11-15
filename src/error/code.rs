@@ -59,6 +59,7 @@ impl AgboardError {
             AgboardError::DocsAssetType { .. } => "docs_asset_type",
             AgboardError::DocsNotImplemented => "docs_not_implemented",
             AgboardError::DocsOpenFailed { .. } => "docs_open_failed",
+            AgboardError::RemoteUnavailable { .. } => "remote_unavailable",
             AgboardError::BrowserOpenFailed { .. } => "browser_open_failed",
         }
     }

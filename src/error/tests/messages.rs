@@ -161,6 +161,10 @@ fn messages_and_reasons_follow_the_design_table() {
         ),
         ("cannot open the Docs folder.", "xdg-open is not installed"),
         (
+            "the ngrok connection is not available.",
+            "No server is running.",
+        ),
+        (
             "cannot open the browser.",
             "Cannot start xdg-open: No such file or directory (os error 2). Open http://127.0.0.1:7420/?project=0123456789abcdef0123456789abcdef in your browser yourself.",
         ),

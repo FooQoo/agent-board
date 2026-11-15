@@ -103,6 +103,9 @@ impl AgboardError {
                 "this document operation is not available yet.".to_string()
             }
             AgboardError::DocsOpenFailed { .. } => "cannot open the Docs folder.".to_string(),
+            AgboardError::RemoteUnavailable { .. } => {
+                "the ngrok connection is not available.".to_string()
+            }
             AgboardError::BrowserOpenFailed { .. } => "cannot open the browser.".to_string(),
         }
     }

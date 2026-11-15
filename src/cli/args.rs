@@ -85,6 +85,11 @@ pub enum Command {
     Serve(ServeArgs),
     /// Open the project's board in your browser, starting the server when needed
     Open(OpenArgs),
+    /// Show the ngrok connection state, public URL, and passcode for the phone
+    #[command(
+        after_help = "The project is the one bound to the current folder unless --project names one; the URL opens that project.\nThe passcode is printed only here, on this computer. Anyone who gets it can open the board while the connection is up.\nNothing is started: without a ready connection it prints the reason and exits 1.\n\nExamples:\n  agboard remote\n  agboard remote --json\n  agboard --project \"My project\" remote"
+    )]
+    Remote(RemoteArgs),
     /// Stop the running server (the one started with serve, or serve -d)
     #[command(after_help = "Examples:\n  agboard stop\n  agboard stop --json")]
     Stop(StopArgs),
@@ -123,6 +128,7 @@ impl Command {
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
             Command::Open(_) => "open",
+            Command::Remote(_) => "remote",
             Command::Stop(_) => "stop",
             Command::Setup(_) => "setup",
             Command::Update(_) => "update",
@@ -132,7 +138,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 23] = [
+pub const SUBCOMMAND_NAMES: [&str; 24] = [
     "project",
     "init",
     "add",
@@ -149,6 +155,7 @@ pub const SUBCOMMAND_NAMES: [&str; 23] = [
     "snapshot",
     "serve",
     "open",
+    "remote",
     "stop",
     "hook",
     "wait",

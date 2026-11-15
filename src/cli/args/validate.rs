@@ -62,7 +62,8 @@ impl Cli {
                 | Command::Update(_)
                 | Command::Hook(_)
                 | Command::Progress(_)
-                | Command::Open(_),
+                | Command::Open(_)
+                | Command::Remote(_),
                 None,
             ) => {}
             (_, None) => {

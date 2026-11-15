@@ -14,6 +14,9 @@ enum Access {
     ReadProject,
     /// Reads the project bound to the current folder when no name is given.
     ReadBoundProject,
+    /// Like `ReadBoundProject`, but a folder bound to no project is not an
+    /// error: the command runs without one (`remote`).
+    ReadOptionalBoundProject,
     /// Reads the catalog; without a shared folder the list is empty.
     ReadCatalog,
     /// Changes one project that must already exist.
@@ -55,6 +58,7 @@ fn access(command: &Command) -> Access {
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) | Command::Open(_) => Access::ReadBoundProject,
+        Command::Remote(_) => Access::ReadOptionalBoundProject,
         Command::Serve(_)
         | Command::Stop(_)
         | Command::Setup(_)
@@ -99,6 +103,16 @@ pub(crate) fn prepare(cli: &Cli, env: &mut Env) -> Result<Context, AgboardError>
                 .map_err(|_| AgboardError::FolderUnbound { folder: ".".into() })?;
             Target::Existing(files.project_for_folder(&cwd)?)
         }
+        None if matches!(access, Access::ReadOptionalBoundProject) => {
+            let bound = std::env::current_dir()
+                .map_err(|_| AgboardError::FolderUnbound { folder: ".".into() })
+                .and_then(|cwd| files.project_for_folder(&cwd));
+            match bound {
+                Ok(meta) => Target::Existing(meta),
+                Err(AgboardError::FolderUnbound { .. }) => Target::Catalog,
+                Err(error) => return Err(error),
+            }
+        }
         None => Target::Catalog,
     };
     Ok(Context {
@@ -130,6 +144,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
         Command::Open(args) => commands::open::run(ctx, args),
+        Command::Remote(_) => commands::remote::run(ctx),
         Command::Hook(_)
         | Command::Qa(_)
         | Command::Wait(_)

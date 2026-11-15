@@ -229,6 +229,10 @@ pub enum AgboardError {
     DocsOpenFailed {
         reason: String,
     },
+    /// `agboard remote` has no ready ngrok connection to report.
+    RemoteUnavailable {
+        reason: String,
+    },
     /// `agboard open` could not start the program that opens the browser.
     BrowserOpenFailed {
         url: String,
