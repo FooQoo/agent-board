@@ -87,7 +87,7 @@ const devGroups: Group[] = [
       { file: 'reference/web-api', en: 'Web API', ja: 'Web API' },
       { file: 'reference/errors', en: 'Error codes', ja: 'エラーコード' },
       { file: 'reference/agent-output', en: 'Hook, progress, and wait output', ja: 'Hook・進行表・waitの出力' },
-      { file: 'reference/remote-routes', en: 'Monitor routes', ja: 'モニターのルート' },
+      { file: 'reference/remote-routes', en: 'Entrance routes', ja: '入口のルート' },
       { file: 'reference/code-map', en: 'Code map', ja: 'コード構成' },
     ],
   },

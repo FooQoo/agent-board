@@ -126,7 +126,7 @@ describe('savePreferences', () => {
       headers = init?.headers as Record<string, string>;
       return jsonResponse(200, saved);
     }) as typeof fetch;
-    await savePreferences({ url: '/monitor/api/preferences' }, { theme: saved.theme }, fetcher);
+    await savePreferences({ url: '/api/preferences' }, { theme: saved.theme }, fetcher);
     expect(headers).not.toHaveProperty('X-Agboard-Token');
   });
 
@@ -171,7 +171,7 @@ describe('savePreferences with extra headers', () => {
       return jsonResponse(200, saved);
     }) as typeof fetch;
     await savePreferences(
-      { url: '/monitor/api/preferences', headers: async () => ({ 'X-Agboard-Csrf': 'csrf-1' }) },
+      { url: '/api/preferences', headers: async () => ({ 'X-Agboard-Csrf': 'csrf-1' }) },
       { locale: 'ja' },
       fetcher,
     );

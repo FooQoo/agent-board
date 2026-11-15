@@ -2,11 +2,11 @@
 
 `agboard serve`のHTTP APIです。書き込みの保護を含むリクエストの処理は、[サーバーと画面](../concepts/server-and-ui.md)で説明しています。
 
-タスクの書き込みでは、自動生成する履歴の言語を`X-Agboard-Language: en`または`ja`で指定できます。ボードとモニターは現在の画面言語を送ります。未指定・重複・未対応の値では、本文の言語に従います。そのリクエストで自動生成する文章だけが対象で、明示した理由と保存済みの履歴は変わりません。[履歴](../concepts/history-and-decisions.md#履歴)を参照してください。
+タスクの書き込みでは、自動生成する履歴の言語を`X-Agboard-Language: en`または`ja`で指定できます。ボードは現在の画面言語を送ります。未指定・重複・未対応の値では、本文の言語に従います。そのリクエストで自動生成する文章だけが対象で、明示した理由と保存済みの履歴は変わりません。[履歴](../concepts/history-and-decisions.md#履歴)を参照してください。
 
 ## ngrokの入口から使う
 
-ngrokの入口は、ボードのページと以下のルートを同じパスで配信します。ローカルのHost・Origin・トークンの検査の代わりに、合言葉のsessionの背後に置きます。そこのページはトークンを持ちません。変更にはsessionのCSRFトークンを`X-Agboard-Csrf`で送り、sessionは`/api/remote/session`と`/api/remote/unlock`で開きます。この2つの経路と、入口が配信しないもの（接続設定、`POST /api/notify`、`docs/open`）は、[モニターのルート](./remote-routes.md#入口から使うボードのアプリ)を参照してください。
+ngrokの入口は、ボードのページと以下のルートを同じパスで配信します。ローカルのHost・Origin・トークンの検査の代わりに、合言葉のsessionの背後に置きます。そこのページはトークンを持ちません。変更にはsessionのCSRFトークンを`X-Agboard-Csrf`で送り、sessionは`/api/remote/session`と`/api/remote/unlock`で開きます。この2つの経路と、入口が配信しないもの（接続設定、`POST /api/notify`、`docs/open`）は、[入口のルート](./remote-routes.md#入口から使うボードのアプリ)を参照してください。
 
 ## エンドポイント
 
@@ -39,7 +39,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にある文書を読むだけのルート。フォルダのツリー、MarkdownかMDXのファイル1つ、画像、フォルダやファイルをコンピュータのアプリで開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
-| `GET /docs-sandbox`<br>`GET /docs-sandbox/{name}` | 文書のMDXを実行するページと、内容から名前を付けたそのスクリプト（ほかの名前は404）。トークンもボードのデータも持たない固定のページ。専用の`Content-Security-Policy`（`default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`）と`X-Content-Type-Options: nosniff`を付ける。ボードは`sandbox="allow-scripts"`のiframeで埋め込む。ボードのルーターだけにあり、モニターにはない。[ドキュメントのMDX](../concepts/security.md#ドキュメントのmdx)を参照。 |
+| `GET /docs-sandbox`<br>`GET /docs-sandbox/{name}` | 文書のMDXを実行するページと、内容から名前を付けたそのスクリプト（ほかの名前は404）。トークンもボードのデータも持たない固定のページ。専用の`Content-Security-Policy`（`default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`）と`X-Content-Type-Options: nosniff`を付ける。ボードは`sandbox="allow-scripts"`のiframeで埋め込む。[ドキュメントのMDX](../concepts/security.md#ドキュメントのmdx)を参照。 |
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
@@ -49,7 +49,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 
 ### SummaryとDetail
 
-ボードとモニターは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。モバイルモニターには同じ契約を`/monitor/api/projects/{projectId}/…`で提供し、モニターのsessionを必要とします。[モニターの経路](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
+ボードは、プロジェクトを2段階で読みます。Summaryは、カードや一覧の行に表示する内容をまとめて返します。Detailは、カードやエピックを開いたときにだけ必要な内容をストリームで返します。同じ経路はngrokの入口からも合言葉のsessionの背後で提供します。[入口のルート](./remote-routes.md)を参照してください。パスのプロジェクトIDは読む対象の指定であり、アクセス権ではありません。
 
 以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
@@ -97,14 +97,14 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | --- | --- |
 | `instanceId` | サーバーの起動ごとに1つの値。新しい値は、`seq`が最初からになったことをクライアントに伝える。 |
 | `seq` | 1つのインスタンス内で、`changed`ごとに1ずつ増える整数。欠番はイベントを取り逃したことを表す。 |
-| `projectId` | 変更が属するプロジェクト。モニターのストリームは、要求したプロジェクトの変更だけを送る。PCのストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
+| `projectId` | 変更が属するプロジェクト。ストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
 | `changes[].resource` | `task`、`epic`、`project`（プロジェクト一覧の変化: 作成・名前の変更・削除）。 |
 | `changes[].id` | タスクは整数、エピックとプロジェクトは文字列。 |
 | `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・判断待ちの質問・受入条件の件数。`request`はタスクが待っている質問が変わったこと（質問・回答・取り下げ・参照の追加や削除）。タスクだけで、必ず`summary`と一緒。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
 
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 
-サーバーは再読込のたびに解析済みデータを前後で比べるため、SummaryにもDetailにも見える内容が変わらない保存ではイベントを送りません。解析できないファイルは、そのリソースのすべてのfacetを変更とします。遅れすぎたストリームには、取りこぼしたイベントの代わりに`resync`（`{"instanceId", "seq"}`。`seq`は最新の番号）を送り、クライアントは全体を取得し直します。モニターのストリームは送るイベントに自分で番号を振るため、ほかのプロジェクトの変更で`seq`に欠番は生じず、`project`の変更も送りません。
+サーバーは再読込のたびに解析済みデータを前後で比べるため、SummaryにもDetailにも見える内容が変わらない保存ではイベントを送りません。解析できないファイルは、そのリソースのすべてのfacetを変更とします。遅れすぎたストリームには、取りこぼしたイベントの代わりに`resync`（`{"instanceId", "seq"}`。`seq`は最新の番号）を送り、クライアントは全体を取得し直します。
 
 ### モバイル接続
 
@@ -137,7 +137,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 
 ### 表示設定
 
-`GET`と`PUT /api/preferences`はローカルのリスナーにあります。ngrokのモニターには、同じ組が`/monitor/api/preferences`にあります（[モニターのルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#表示設定)で説明しています。
+`GET`と`PUT /api/preferences`はローカルのリスナーにあります。ngrokの入口は、同じ組をsessionの背後で提供します（[入口のルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#表示設定)で説明しています。
 
 `PUT`は、`locale`（`en`か`ja`）・`theme`（`{"mode": "light" | "dark", "accent": <12色のいずれか>}`）・両方のいずれかをJSONで受け取ります。送らなかった項目は、保存済みの値を保ちます。
 
@@ -145,7 +145,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 {"locale": "ja", "theme": {"mode": "dark", "accent": "teal"}}
 ```
 
-保存に成功すると保存した内容を返し、開いているイベントストリームすべてに`preferences`イベントを送ります。対象は、ボードの`/api/events`と、モニターの`/monitor/api/events`です。イベントのデータは`GET`と同じJSONです。PCの`PUT`は、ほかのPCの書き込みと同じ書き込みの保護（Host・Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Token`）を通ります。モニターの`PUT`は、回答と同じくモニターのsessionとCSRFトークンが必要です。
+保存に成功すると保存した内容を返し、開いているイベントストリームすべてに`preferences`イベントを送ります。対象は`/api/events`です。イベントのデータは`GET`と同じJSONです。PCの`PUT`は、ほかのPCの書き込みと同じ書き込みの保護（Host・Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Token`）を通ります。ngrokの入口を通す`PUT`は、回答と同じくsessionとCSRFトークンが必要です。
 
 JSONとして読めない本文は、ほかの書き込みと同じく400です。`locale`と`theme`のどちらもない本文、それ以外の項目を含む本文、許可されない値は422 `invalid_preferences`です。revisionの確認はなく、後から保存した内容が優先されます。
 

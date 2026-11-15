@@ -49,7 +49,7 @@ describe('TaskDetailView', () => {
         onClose={onClose}
         ownerName={PROJECT_A.name}
         statusLabels="monitor"
-        attachmentUrl={() => '/monitor/api/attachment'}
+        attachmentUrl={() => '/api/attachment'}
       />,
     );
     expect(screen.getByRole('heading', { name: 'Awaiting API review' })).toBeTruthy();

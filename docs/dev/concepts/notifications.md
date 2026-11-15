@@ -57,7 +57,7 @@ flowchart LR
 
 Any change to a project's `qa/*/request.json` files sends a `qa` change whose `id` is the project ID and whose only facet is `summary`; clients read the Summary again. Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
 
-The `seq` grows by one for each `changed` within one `instanceId`. The `instanceId` is new at every server start, so a client can tell that `seq` began again. The monitor's stream numbers its own events, so changes to other projects leave no gap in its `seq`.
+The `seq` grows by one for each `changed` within one `instanceId`. The `instanceId` is new at every server start, so a client can tell that `seq` began again.
 
 ## How clients use the Summary and Detail
 
@@ -85,12 +85,12 @@ At startup, `serve` also deletes temporary files (`.<name>.tmp-*`, `.new-*`) old
 
 ## Live updates
 
-The board subscribes to `GET /api/events`, which carries every project. The mobile monitor subscribes to `GET /monitor/api/events?project=<projectId>`, which carries only the project in its address and has no project-list facet. Both streams send:
+The board subscribes to `GET /api/events`, which carries every project. The phone screen is the same board app, so it subscribes to the same stream, on the PC and through the ngrok entrance. The stream sends:
 
 - `ready` after subscribing, with the server's build ID. A page built from another web build reloads once its open operations end (see [Server and UI](./server-and-ui.md#how-the-web-ui-is-built)).
 - `changed`, as described above.
 - `resync` when the stream has fallen behind.
-- A keep-alive every 15 seconds (the monitor sends a `heartbeat` event). A keep-alive does not fetch anything.
+- A keep-alive every 15 seconds. A keep-alive does not fetch anything.
 - `preferences` after a saved language or theme change.
 - `docs` on the board's stream only, after a change in a project's `docs/` folder (see [The docs](#the-docs)).
 
@@ -104,6 +104,6 @@ The files in a project's `docs/` folder are the user's, not board data. Their ch
 
 1. The watcher classifies a path under `projects/<id>/docs/` as that project's docs. Its events wait out the same 200 ms quiet period.
 2. When the period ends, the server sends `docs` with `{"projectId": "…"}` on `GET /api/events`. It reads no file, changes no `version`, and takes no `seq`. When the platform lost events, or the stream fell behind, `projectId` is `null`: any project's docs may have changed.
-3. The monitor's stream never sends `docs`, and agent waits ignore it.
+3. Agent waits ignore it.
 
 The Docs dialog reads the file list again on every `docs` for its project, and on every reopened stream. It reads the open file again only to compare its `revision`: a changed file is shown again with a notice, and a file gone from the list keeps its last content with a notice (see [Server and UI](./server-and-ui.md#the-docs-dialog)).

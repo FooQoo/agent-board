@@ -11,7 +11,7 @@
 | `file_store` | 共有領域のデータ形式と読み書き全般。<br>パス、保存、ロック、検証、操作、索引、監視。 |
 | `docs` | プロジェクトのドキュメント。パスの規則（`paths`）、共通の型（`model`）、ツリー・ファイル・画像の読み込み（`reader`）、ファイルの内容の`revision`の計算（`revision`）、新しい`docs/`に置くREADME（`templates`）。 |
 | `domain` | タスク・レーン・稼働状態・エピック・質問・入力の上限・規則。<br>I/Oなし。 |
-| `server` | axumのアプリ、API、SSE、書き込みの保護、埋め込んだWeb資産、モニターの入口。 |
+| `server` | axumのアプリ、API、SSE、書き込みの保護、埋め込んだWeb資産、ngrokの入口。 |
 | `agent` | Hookと`wait`。 |
 | `autostart` | コマンドが必要とするときに共有のサーバーを起動する。確認、`autostart.lock`、切り離した`serve --auto`の子プロセス（`spawn`）、`autostart.paused`の目印。 |
 | `progress` | `agboard progress`とHookが共有する進行表を組み立てる。 |
@@ -49,18 +49,17 @@
 | モジュール | 責務 |
 | --- | --- |
 | `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
-| `monitor/` | モニターの読み取り用ルーター、質問・回答・受入条件のチェックのエンドポイント、資産。 |
 | `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`restore`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
-| `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、PCとモニターで共有する`GET`・`PUT`の処理、変更の通知。 |
-| `monitor_auth/` | モニターのアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
-| `guard` | ローカルとモニターの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認と、HTTPSのoriginの正規化。 |
+| `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、`/api/preferences`の`GET`・`PUT`の処理、変更の通知。 |
+| `monitor_auth/` | 入口のアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
+| `guard` | ローカルの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
-| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、ボードとモニターが共有する、質問の読み出しと回答の保存、人による受入条件1件の設定（ボードのハンドラーは`api/qa.rs`）。 |
-| `web_assets` | 埋め込んだボードとモニターのスクリプトとスタイルシート、それぞれのビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
+| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、質問の読み出しと回答の保存、人による受入条件1件の設定（ボードのハンドラーは`api/qa.rs`）。 |
+| `web_assets` | 埋め込んだボードのスクリプトとスタイルシート、ビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
 | `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
 | `launch`<br>`bind`<br>`idle` | サーバー一つの起動と終了（`launch`）。待ち受けと、その失敗の意味、ポートを使っているもの、空きポートへの切り替え（`bind`）。自動のサーバーで「使われている」とみなすものと、使われないときの停止（`idle`）。 |
 | `change_feed.rs` | このサーバーの実行で変更の組に番号（`seq`、実行ごとの`instanceId`）を付け、まだ送っていないイベントを保持する。遅れすぎたストリームには`resync`を送る。 |
-| `summary_response.rs`<br>`api/summary.rs`・`api/detail.rs`・`monitor/data.rs` | `ETag`付きのSummaryの応答と、Detailのストリーム。ボードとモニターは同じ組み立て処理を使う。 |
+| `summary_response.rs`<br>`api/summary.rs`・`api/detail.rs` | `ETag`付きのSummaryの応答と、Detailのストリーム。 |
 
 `src/`以外の主なファイルとディレクトリは次のとおりです。
 
@@ -84,7 +83,7 @@
 - `src/agent/hook_version.rs`: Hookによるプラグインの版の確認。
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
 - `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
-- `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`useAnswerFlow.ts`はPCのダイアログとモニターのシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
+- `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`useAnswerFlow.ts`はPCのダイアログとスマホ画面のシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
 ### プロジェクトのドキュメント
@@ -94,7 +93,7 @@
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。
 - `web/src/features/docs/`: リクエスト（`api/docsApi.ts`）、ツリー・選んだファイル・ディスクの変化への追従（`model/`）、ダイアログ（`ui/DocsDialogContainer.tsx`。外枠とファイル一覧は`ui/shell/`、本文の欄・フロントマター・ファイルの表示・MDXの枠は`ui/document/`）。
 - `web/src/shared/markdown/frontmatter.ts`と`resolveRelativeImage.ts`: ダイアログが使う、フロントマターの分離と相対パスの画像の解決。
-- `tests/docs_*.rs`: ルート、読み込み、README、サンドボックス、モニターとの境界のRustの試験。
+- `tests/docs_*.rs`: ルート、読み込み、README、サンドボックス、ngrokの入口のRustの試験。
 
 ### 初回の案内
 

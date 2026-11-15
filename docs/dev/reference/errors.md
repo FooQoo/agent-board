@@ -96,7 +96,7 @@ These are returned by the `/api/monitor-connections` routes (see [Web API](./web
 
 On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
 
-On the ngrok entrance, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /api/remote/unlock` and `POST /monitor/api/unlock` answer a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
+On the ngrok entrance, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /api/remote/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
 
 ## Project docs
 
@@ -114,7 +114,7 @@ These are returned by the `/api/projects/{projectId}/docs/…` routes (see [Web 
 
 ## Display preferences
 
-These are returned by the `/api/preferences` and `/monitor/api/preferences` routes (see [Web API](./web-api.md#display-preferences)). They are not CLI errors, so they have no exit code. A preferences file that cannot be read is not an error: the defaults are used.
+These are returned by the `/api/preferences` route (see [Web API](./web-api.md#display-preferences)). They are not CLI errors, so they have no exit code. A preferences file that cannot be read is not an error: the defaults are used.
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |

@@ -11,7 +11,7 @@ Where things live in the repository. For how the parts work together, read [How 
 | `file_store` | The shared-area format and everything that reads or writes it: paths, saving, locking, validation, operations, the index, and watching. |
 | `docs` | The project docs: path rules (`paths`), the shared types (`model`), the tree, file and image reads (`reader`), the revision of a file's content (`revision`), and the README placed in a new `docs/` folder (`templates`). |
 | `domain` | Tasks, lanes, run states, epics, questions, input limits, and rules.<br>No I/O. |
-| `server` | The axum app, API, SSE, write guards, embedded web assets, and the monitor entry. |
+| `server` | The axum app, API, SSE, write guards, embedded web assets, and the ngrok entrance. |
 | `agent` | The hook and `wait`. |
 | `autostart` | Starting the shared server when a command needs it: the check, `autostart.lock`, the detached `serve --auto` child (`spawn`), and the `autostart.paused` marker. |
 | `progress` | Builds the progress table shared by `agboard progress` and the hook. |
@@ -49,18 +49,17 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | Module | Responsibility |
 | --- | --- |
 | `api/` | The board router (`router`, and `remote_router` for the ngrok entrance, without the local guards and local-only routes), its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, a person's acceptance check (`task_acceptance`), multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `assets`, `open`), and the mobile connection (`monitor_connections`). |
-| `monitor/` | The monitor's read router, its question, answer, and acceptance-check endpoints, and its assets. |
-| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `restore`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the monitor (`router`, `entry`, with its `session` routes for the passcode unlock). |
-| `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling shared by the PC and the monitor, and the change notice. |
-| `monitor_auth/` | The monitor's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
-| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes and monitor writes, and canonical HTTPS origins. |
+| `monitor_connection/` | The ngrok mobile connection: the supervisor and its states (`lifecycle`, `restore`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the board (`router`, `entry`, with its `session` routes for the passcode unlock). |
+| `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling of `/api/preferences`, and the change notice. |
+| `monitor_auth/` | The entrance's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
+| `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes. |
 | `response`<br>`request` | The JSON error body, `AgboardError` to HTTP status mapping, and other shared responses; JSON bodies whose failures use that error body. |
-| `store`<br>`qa`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; reading questions and saving answers, and setting one acceptance condition as a person, both shared by the board and the monitor (`api/qa.rs` holds the board's handlers). |
-| `web_assets` | The embedded scripts and stylesheets of the board and the monitor, their build IDs, and the cacheable gzip or plain response. |
+| `store`<br>`qa`<br>`acceptance` | Blocking file access, the index, and URL IDs for every router; reading questions and saving answers, and setting one acceptance condition as a person, (`api/qa.rs` holds the board's handlers). |
+| `web_assets` | The embedded scripts and stylesheets of the board, its build ID, and the cacheable gzip or plain response. |
 | `contracts/` | The data layer's wire types: the Summary, the Detail NDJSON lines, and the `changed` event. The golden examples in `tests/fixtures/data-layer/` pin their shapes. |
 | `launch`<br>`bind`<br>`idle` | Starting one server and ending it (`launch`); listening and what a failure to listen means, with the port holder and the free-port fallback (`bind`); what counts as use and the idle stop of an automatic server (`idle`). |
 | `change_feed.rs` | Numbers each change set of this server run (`seq`, with an `instanceId` for the run) and holds the events a stream has not yet sent. A stream that falls too far behind gets `resync`. |
-| `summary_response.rs`<br>`api/summary.rs`, `api/detail.rs`, `monitor/data.rs` | The Summary response with its `ETag`, and the Detail streams. The board and the monitor share the same builders. |
+| `summary_response.rs`<br>`api/summary.rs`, `api/detail.rs` | The Summary response with its `ETag`, and the Detail streams. |
 
 The main files and directories outside `src/` are:
 
@@ -84,7 +83,7 @@ The main files and directories outside `src/` are:
 - `src/agent/hook_version.rs`: the plugin version check of the Hook.
 - `tests/setup.rs` and `tests/setup_plugin.rs`: setup and update against fake agent commands (`tests/support/fake_agents.rs`). `tests/plugin_layout.rs` checks the marketplace and plugin files and their versions.
 - `src/cli/commands/qa/` and `src/cli/args/qa.rs`: the `agboard qa` commands, their JSON input, and the JSON Lines events of `qa ask` and `qa wait` (`stream.rs`). The wait itself is `src/agent/qa_wait.rs`, built on the shared wait engine.
-- `web/src/features/tasks/answer/`: answering in the web UI. `model/answerBook.ts` holds the answers until they are sent, `useAnswerFlow.ts` runs the steps and the review shared by the PC dialog and the monitor sheet, and `QuestionBand.tsx` is the band of unanswered questions. `web/src/app/model/useQuestionAnswers.ts` wires them to the PC board and its lease.
+- `web/src/features/tasks/answer/`: answering in the web UI. `model/answerBook.ts` holds the answers until they are sent, `useAnswerFlow.ts` runs the steps and the review shared by the PC dialog and the phone screen's sheet, and `QuestionBand.tsx` is the band of unanswered questions. `web/src/app/model/useQuestionAnswers.ts` wires them to the PC board and its lease.
 - `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).
 
 ### Project docs
@@ -94,7 +93,7 @@ The main files and directories outside `src/` are:
 - `src/file_store/project.rs`: creates `docs/` with a new project (`create_project_with_docs`) and fills it in at startup (`ensure_docs_dirs`).
 - `web/src/features/docs/`: the request client (`api/docsApi.ts`), the tree, the chosen file, and following changes on disk (`model/`), and the dialog (`ui/DocsDialogContainer.tsx`, `ui/shell/` for the frame and file list, `ui/document/` for the body pane, front matter, file viewer and MDX frame).
 - `web/src/shared/markdown/frontmatter.ts` and `resolveRelativeImage.ts`: the front matter split and the relative image paths the dialog uses.
-- `tests/docs_*.rs`: the Rust tests of the routes, reads, README, sandbox, and monitor boundary.
+- `tests/docs_*.rs`: the Rust tests of the routes, reads, README, sandbox, and ngrok entrance.
 
 ### First-run guide
 

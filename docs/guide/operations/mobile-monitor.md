@@ -12,7 +12,7 @@ This feature is in public preview. Its behavior and specifications may change. S
 
 ## What the monitor shows
 
-The monitor shows one project at a time, the one named in its address. The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom. The **Unanswered questions** band under the counts lists every open question of the project; you answer them in a row and send them together (see [Decisions](../use/decisions#answer-on-your-phone)). Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](../use/board#read-a-task)), and change the language and color theme. It cannot change anything else about tasks, or projects or connection settings.
+The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom. The **Unanswered questions** band under the counts lists every open question of the project; you answer them in a row and send them together (see [Decisions](../use/decisions#answer-on-your-phone)). Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](../use/board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
 
 ![Mobile monitor with a task drawer open on the Conditions tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
 
@@ -20,7 +20,7 @@ Horizontal swipes move the tab content and underline together. Gestures inside t
 
 The monitor updates itself when the PC saves a change. To read the latest data at once, choose the **Refresh** button in the header. The page keeps the last data it has while it reads again.
 
-The monitor HTML and API responses are never cached. The browser keeps the monitor's scripts and styles, so later visits download only the page and the data. The monitor has no offline snapshot cache or service worker.
+The page and the data responses are never cached. The browser keeps the scripts and styles, so later visits download only the page and the data. The monitor has no offline snapshot cache or service worker.
 
 After you install a new version and restart `agboard serve`, an open monitor reloads itself to show the new UI. If you have answers that are not sent or a task drawer open, it waits until you send or clear the answers, or close the drawer. When disconnected, the page reports the connection state.
 
@@ -28,7 +28,7 @@ After you install a new version and restart `agboard serve`, an open monitor rel
 
 You need an ngrok account and its authtoken. The **Mobile connection** dialog has a button that opens the ngrok page where you copy the token. Agent Board opens the address without any of ngrok's Traffic Policy features, including its Google sign-in (OAuth), which a free ngrok account cannot use. A free account can therefore run the monitor; the other limits and terms of your ngrok plan still apply.
 
-Agent Board uses ngrok to open a public HTTPS address that leads to the monitor only. The full board stays on `127.0.0.1`. Never expose the board to the public Internet and never use router port forwarding. ngrok ends the HTTPS connection, so ngrok can process the traffic; the connection is not end-to-end encrypted between your PC and your phone.
+Agent Board uses ngrok to open a public HTTPS address that leads to the board, behind the passcode. The PC's own address of the board stays on `127.0.0.1`. Never expose the board to the public Internet and never use router port forwarding. ngrok ends the HTTPS connection, so ngrok can process the traffic; the connection is not end-to-end encrypted between your PC and your phone.
 
 ## How the passcode protects the monitor
 
@@ -80,11 +80,11 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
 3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
 
-An address without a project shows **This link has no project**, and the page reads nothing. On the PC, open the mobile connection settings and scan the current QR code again.
+An address without a project opens the board, and you choose the project with the project switcher in the header. Links that ended in `/monitor/` in earlier versions are not served any more: they show a not-found answer. On the PC, open the mobile connection settings and scan the current QR code again.
 
 ## Use the whole board through the address
 
-The same address without `/monitor/`, for example `https://….ngrok.app/`, opens the board itself: the same board as on the PC, with the screen chosen by the window width. It asks for the same 4-digit passcode, shows nothing of the board until the passcode is right, and then lets you do what you can do on the PC board, such as editing, moving, and deleting tasks, answering questions, and reading the project documents. The passcode lasts up to 12 hours and has the same limit of 5 wrong tries.
+The address from the QR code, for example `https://….ngrok.app/?project=…`, opens the board itself: the same board as on the PC, with the screen chosen by the window width (below 768px you get the monitor described above). It asks for the same 4-digit passcode, shows nothing of the board until the passcode is right, and then lets you do what you can do on the PC board, such as editing, moving, and deleting tasks, answering questions, and reading the project documents. The passcode lasts up to 12 hours and has the same limit of 5 wrong tries.
 
 Two things stay on the PC even then: the **Mobile connection** settings, and opening a project document in the PC's own application. Anyone who has the address and the passcode can change your tasks, so keep both private.
 

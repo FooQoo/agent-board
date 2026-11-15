@@ -197,7 +197,7 @@ The file never holds the ngrok token, the phone passcode, a session, or a CSRF t
 
 ## Display preferences
 
-The saved language and color theme live in `<data-root>/.internal/preferences.json`. The file belongs to the application: it is written only by `PUT /api/preferences` on the PC and by the monitor's save route, never by hand. It is not in `shared/`, so a project backup does not include it. It is replaced atomically with owner-only permissions (`0600` where the OS has them), and a failed write leaves the old file as it was.
+The saved language and color theme live in `<data-root>/.internal/preferences.json`. The file belongs to the application: it is written only by `PUT /api/preferences`, from the PC or through the ngrok entrance, never by hand. It is not in `shared/`, so a project backup does not include it. It is replaced atomically with owner-only permissions (`0600` where the OS has them), and a failed write leaves the old file as it was.
 
 ```json
 {

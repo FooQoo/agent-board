@@ -41,7 +41,7 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 
 - サーバーを起動するコマンドは、隠しオプション`serve --auto --open-board=<projectId>`でプロジェクトIDを渡します。待つコマンドは待っているプロジェクト、`qa ask`と`qa wait`は依頼のプロジェクト、Hookは出力した進行表のプロジェクトを渡します。`agboard open`は自分でページを開くので、何も渡しません。
 - サーバーの準備ができて`autostart.lock`を外した後、スレッドが3秒待ちます（試験では`AGBOARD_OPEN_GRACE_MS`で変えられ、上限は60,000ミリ秒）。起動してからボードのページが一度もつながっていなければ、`http://127.0.0.1:<port>/?project=<projectId>`を開きます。つながってから閉じたタブも、つながり直すかもしれないので数に入れます。
-- ボードのページとは、`X-Agboard-Wait`ヘッダーのない`GET /api/events`のストリームです。待つコマンドはこのヘッダーを付けるので、起動の直後に開く自分のストリームがタブと取り違えられることはありません。モニターのストリームは別の経路なので数えません。
+- ボードのページとは、`X-Agboard-Wait`ヘッダーのない`GET /api/events`のストリームです。待つコマンドはこのヘッダーを付けるので、起動の直後に開く自分のストリームがタブと取り違えられることはありません。スマホのページがngrokの入口を通して開くのは、sessionの背後にある同じストリームで、同じように数えます。
 - ブラウザーを開けるかどうかは`src/interact/browser.rs`が次の順で決めます。`AGBOARD_OPEN_BROWSER=0`なら開きません。`AGBOARD_BROWSER_OPENER`があれば、そのプログラムをシステムのものの代わりに使います。`SSH_CONNECTION`か`SSH_TTY`があれば開きません。macOSとWindows以外では、`DISPLAY`も`WAYLAND_DISPLAY`もなければ開きません。それ以外なら`open`（macOS）、`explorer`（Windows）、`xdg-open`を、アドレスだけを引数にしてシェルを通さずに起動し、終わるのを待ちません。
 - 結果は`serve.log`に1行残ります。`Opened … in the browser.`、理由つきの`Did not open … in the browser.`、プログラムを起動できなかったときの`Could not open …`のどれかです。
 - サーバーの起動と同じく、ブラウザーを開くのは`agboard`のコマンドラインだけで、試験に組み込んだライブラリは開きません。試験は`AGBOARD_OPEN_BROWSER=0`を設定し、開く処理の試験は`AGBOARD_BROWSER_OPENER`をアドレスを記録するスクリプトに向けます。
@@ -88,12 +88,12 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 - `web/`はVite・TypeScript・Reactのアプリです。nuqsが選択対象のプロジェクトをURLで管理し（`useQueryState('project', parseAsString)`）、`useBoard`がプロジェクトごとの取得・購読・読み込みを担い、一つの`useReducer`が適用中のプロジェクト・切り替え待ち・タスクの選択・ダイアログを連動させます。部品内の入力は`useState`です。ほかの状態管理やフォームのライブラリは足しません。
 - 初回のプロジェクト選択はブラウザ履歴を置き換え、メニューからの選択は履歴に追加します。戻る・進むはnuqsのadapterに従います。History APIを直接使ったり、独自に`popstate`を処理したりはしません。
 - 一つのアプリが二つの表示を受け持ちます。`useNarrowViewport`（`web/src/shared/lib/viewport/useNarrowViewport.ts`）が`matchMedia('(max-width: 767px)')`に従うので、幅を変えるとその場で画面が切り替わります。768px未満では、`App`は`BoardWorkspace`の代わりにスマホ幅の画面（`web/src/app/mobile/MobileBoard.tsx`）を描きます。この画面は必要になったときに読み込むので、ボードの初回読み込みは変わりません。768px以上ではPC向けのボードを描きます。初回の案内はどちらの表示でも動きます。詳しくは[初回の案内](#初回の案内)を参照してください。利用者から見た画面は[ボード](../../guide/use/board.md#narrow-windows-and-phones)を参照してください。
-- スマホ幅の画面は、モニターの画面（`web/src/pages/monitor/MonitorProject.tsx`の`MonitorScreen`）に、アプリが依存先を渡したものです。渡すのは、添付の読み取り先と受入条件の書き込み（`MonitorReadResolvers`）、言語とテーマの保存先（`PreferencesEndpoint`）、質問の読み取りと回答の書き込み、ヘッダーのプロジェクト切り替えです。ボードのアプリはボード自身のルートと、ページの資格情報（トークン、ngrokの入口ではsessionのCSRFトークン）を渡し（`web/src/app/mobile/boardEnvironment.ts`）、モニターのアプリ（独自のデータ層と回答の控えを足す`MonitorProject`）は`/monitor/api/`のルートを渡します。モニターのビルドはボードのアプリをimportしないので、`build-contract.test.ts`は通り続けます。
+- スマホ幅の画面（`web/src/pages/monitor/MonitorProject.tsx`の`MonitorScreen`）は、アプリが依存先を渡します。渡すのは、添付の読み取り先と受入条件の書き込み（`MonitorReadResolvers`）、言語とテーマの保存先（`PreferencesEndpoint`）、質問の読み取りと回答の書き込み、ヘッダーのプロジェクト切り替えです。ボードのアプリはボード自身のルートと、ページの資格情報（トークン、ngrokの入口ではsessionのCSRFトークン）を渡します（`web/src/app/mobile/boardEnvironment.ts`）。2つ目のアプリはなく、旧モニター専用の入口とビルドは廃止しました。
 - 幅の切り替えの上には、一つのコントローラー（`useAppController`）が残ります。適用中のプロジェクト、データ層が持つSummary、ストリーム、送信前の回答を持つ一つの`AnswerBook`はこのコントローラーのもので、二つの画面が同じものを読みます。どちらかの画面で選んだプロジェクトはもう一方でもそのプロジェクトで、送信前に保持した回答は幅を変えても残り、同じleaseでプロジェクトの切り替えも止め続けます。ドロワー、回答シート、スクロール位置は画面ごとのもので、切り替えるとやり直しになります。`AppDialogs`のダイアログは残るので、ウィンドウを狭めたときに開いていたフォームは失われません。
-- `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、独自のmanifestを持つ`monitor/`の別ビルドを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
-- 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、モニターの詳細ドロワーは`preloadable`（`web/src/shared/lib/lazy/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
-- `web/test/monitor/build-contract.test.ts`は、ページごとの初回読み込み（入口と、そこから静的にimportされるチャンク）に上限を設け、500 kBを超えるスクリプトは使うときだけ読み込むことを確かめます。Viteの`chunkSizeWarningLimit`は、使うときだけ読み込む大きなチャンク（MermaidのELKレイアウト、文法パーサー、リッチエディター）に合わせて1500 kBにしています。
-- Rustは二つのロゴ、HTMLのテンプレート、`.gz`ファイルを埋め込みます。`build.rs`はボードとモニターのスクリプトとスタイルシートを`OUT_DIR`の表にまとめ、両方にある同じファイルは一度だけ埋め込みます。配信するのは表にある名前だけです。各ページのHTMLとファイル名から、ページごとのビルドIDも作ります。ファイルや`.gz`がない場合、またはHTMLが表にないファイルを読み込む場合は、`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
+- `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、さらに2つ目のViteビルドによるDocsサンドボックスのスクリプトを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
+- 最初のスクリプトには、最初の画面に必要なものだけを入れます。カード・エピック・一括アーカイブ・設定のダイアログ、詳細パネルのMarkdown表示、スマホ画面の詳細ドロワーは`preloadable`（`web/src/shared/lib/lazy/preloadable.ts`）で分割し、最初の画面を表示した直後に取得します。表示部品が届くまで、本文はプレーンテキストで表示します。エディターのアウトラインは表示側のMarkdownパーサーで`##`見出しを読むため、CodeMirrorはエディターを開いたときにだけ読み込まれます。
+- `web/test/build-contract.test.ts`は、ボードの初回読み込み（入口と、そこから静的にimportされるチャンク）に上限を設け、500 kBを超えるスクリプトは使うときだけ読み込むことを確かめます。Viteの`chunkSizeWarningLimit`は、使うときだけ読み込む大きなチャンク（MermaidのELKレイアウト、文法パーサー、リッチエディター）に合わせて1500 kBにしています。
+- Rustは二つのロゴ、HTMLのテンプレート、`.gz`ファイルを埋め込みます。`build.rs`はボードのスクリプトとスタイルシートを`OUT_DIR`の表にまとめ、同じバイト列のファイルは一度だけ埋め込みます。配信するのは表にある名前だけです。ページのHTMLとファイル名から、ビルドIDも作ります。ファイルや`.gz`がない場合、またはHTMLが表にないファイルを読み込む場合は、`Run "pnpm --dir web build" first.`でビルドを止めます。画面のビルドを`cargo build`の前に行うのはこのためです。`web/dist/`はコミットしません。
 - 各HTMLは`<meta name="agboard-build">`に自分のビルドIDを持ち、SSEの`ready`はサーバーの現在のビルドIDを伝えます。両者が違うとページを一度だけ再読み込みします。編集ダイアログ、送信前の回答、そのほかの操作が開いている間は、終わるまで待ちます（`useBuildReload`）。同じビルドのために一度再読み込みしたタブは、もう再読み込みしません。ビルドIDを持たないページ（Viteの開発サーバー）は再読み込みしません。
 - 表示用の純粋関数（日時、並び替え、件数）は`web/src/features/*/model/`または`web/src/shared/lib/`に置いてVitestで試験し、コンポーネントはTesting Libraryで試験します。
 - shadcnのRadix版部品（Dialog・Button・Badge・Input・Textarea・Label・RadioGroup・DropdownMenu）と、モニターの下から出るシート（Radix Dialogを使う`drawer.tsx`）は`web/src/shared/ui/`に置き、`cn`は`web/src/shared/lib/classnames/utils.ts`、別名は`@/* → ./src/*`です。Dialogのフォーカスはライブラリに任せ、保存中に閉じさせない・送信・入力の保持は機能側で扱います。UIのスタイルは`shared/styles/ui.css`、テーマと製品のスタイルは`shared/styles/theme.css`・`tokens.css`・`app.css`です。
@@ -118,8 +118,8 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 | 層 | 置くもの |
 | --- | --- |
-| `app/` | 2つの入口（`entry/board.tsx`・`entry/monitor.tsx`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
-| `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`。 |
+| `app/` | 入口（`entry/board.tsx`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
+| `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`（スマホ画面の部品）。 |
 | `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`docs/`（プロジェクトのドキュメントのダイアログ）・`monitor-connections/`（モバイル接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
@@ -131,7 +131,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 
 ## データの読み取りと更新
 
-ボードとモニターは、プロジェクトを2段階で読みます。Summary（`GET .../summary`）は、カードや一覧の行に表示するすべての内容を持ちます。サーバーは索引からSummaryを作るので、読み取りでファイルは読まれません。Detail（`GET .../tasks/{id}/detail`、または`.../epics/{epicId}/detail`）は、本文・受入条件の文章・履歴を持ちます。画面がDetailを読むのは、利用者がそのカードやエピックを開いたときだけです。モバイルモニターは、同じ契約を`/monitor/api/projects/{projectId}/`の下で使います。応答の形は[Web API](../reference/web-api.md#summaryとdetail)にあります。
+ボードとスマホの画面は、プロジェクトを2段階で読みます。Summary（`GET .../summary`）は、カードや一覧の行に表示するすべての内容を持ちます。サーバーは索引からSummaryを作るので、読み取りでファイルは読まれません。Detail（`GET .../tasks/{id}/detail`、または`.../epics/{epicId}/detail`）は、本文・受入条件の文章・履歴を持ちます。画面がDetailを読むのは、利用者がそのカードやエピックを開いたときだけです。応答の形は[Web API](../reference/web-api.md#summaryとdetail)にあります。
 
 `web/src/shared/data/`のデータ層は、これらの読み取りを次の3つに分けて扱います。
 
@@ -154,7 +154,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 **保存と回答**
 
 - 作成・移動・回答を楽観的に反映することはありません。画面は成功を待ち、失敗したら入力と選択を保って再試行できるようにします。
-- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示し、各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../qa/{questionId}`で読みます（モニターは`/monitor/api/projects/{projectId}/qa/{questionId}`）。画面については[判断依頼](../../guide/use/decisions)を参照してください。
+- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示し、各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../qa/{questionId}`で読みます。画面については[判断依頼](../../guide/use/decisions)を参照してください。
 - 答えは`AnswerBook`（`web/src/features/tasks/answer/model/answerBook.ts`）が、プロジェクトと質問ごとにメモリ上で保持します。そのためページを再読み込みすると消えます。PCのページとモニターはそれぞれ一つのbookを持ち、`useSyncExternalStore`で読みます。**まとめて送る**、またはカードから開いたときの**送る**までは何も送りません。bookはその回答の流れで送れる答えを、`{answers:[{questionId, choiceId?, text?}]}`として一度の`POST .../qa/answers`で送ります。同時に二度は送らず、古いスナップショットが表示されても送信成功後は再送しません。成功すると、次のSummaryを待たずに、送った質問を表示しなくなります。
 - 送信は全件か無しかです。`questionAnswered`または`questionWithdrawn`を挙げた409では何も保存されません。bookはそれらの質問を閉じたものとして印を付け、答えは読めるように残し、次の送信から外します。Summaryから消えた質問は、状態を読むまで閉じたものとして扱います。再送時に重複かどうかは判定しません。最初の回答が確定するので、成功の後の再送は`question_answered`で失敗します。画像のアップロードも重複を判別しないので、応答を失った後の再送で同じ画像が二つになることがあります。
 - `useAnswerFlow`は、PCのダイアログ（`DecisionAnswerDialog`）とモニターのシート（`DecisionAnswerSheet`）に共通する、質問を順に回る一回分の流れを担います。開いたときに決めた順番、表示中のステップ、確認、送信です。後から届いた質問は最後に加え、閉じた質問は印を付けてその場に残します。`DecisionAnswerPanel`は質問と回答の欄を描きます。答えの送信中も、移動などのほかの操作はできます。
@@ -181,7 +181,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 
 **設定**
 
-- 言語とカラーテーマは、ブラウザではなくPCの一つのファイルに保存し、このPCのすべてのブラウザとモバイルモニターがその値を使います。ファイルがない・不正・読めない場合は既定（英語とライトブルー）に戻し、ブラウザやOSの言語や配色は使いません。
+- 言語とカラーテーマは、ブラウザではなくPCの一つのファイルに保存し、このPCのすべてのブラウザとスマホがその値を使います。ファイルがない・不正・読めない場合は既定（英語とライトブルー）に戻し、ブラウザやOSの言語や配色は使いません。
 - 起動時、ページはブラウザの控えで描画してから、`GET /api/preferences`を読みます。PCの値と違えば、ページはPCの値に切り替えます。正しいのはPCの値で、ブラウザの控えは表示が一瞬ずれるのを防ぐためだけに使います。
 - `preferences`イベントは、開いているすべてのページに変更をすぐに反映します。再読み込みは要りません。ページは、すでに新しい版を表示していれば、遅れて届いた古い応答やイベントを無視します。
 - 保存に失敗した場合（`invalid_preferences`・`preferences_unavailable`、または接続できない場合）も、選んだ設定は今のページに反映します。設定のダイアログには保存の失敗を表示し、PCの値は変えません。日本語の翻訳キーがなければ英語の文言を表示します。設定の失敗でボードのデータが変わることはありません。
