@@ -18,7 +18,7 @@ import {
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
-import { answerButton, answerNote, answerSend, openAnswer, openReview, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, reachSend, sendAnswer } from '../helpers/answer';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
@@ -544,7 +544,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(answerNote(page)).toHaveValue('Beta answer.');
-    await openReview(page);
+    await reachSend(page);
     await expect(answerSend(page)).toBeEnabled();
     const answerResponse = page.waitForResponse((response) =>
       response.url().includes(`/api/projects/${beta}/qa/answers`),

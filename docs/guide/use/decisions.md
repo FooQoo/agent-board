@@ -14,12 +14,11 @@ Every open question of the project is also listed in the **Unanswered questions*
 
 ## Answer in the browser
 
-You answer the questions one after another and send them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**.
+From the band, you answer the questions one after another and send them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**. To answer one task's questions and send them at once, start from its card instead (see [Answer from a card](#answer-from-a-card)).
 
-1. Open the answer dialog in one of these ways:
+1. Open the answer dialog from the band in one of these ways:
    - **Answer them** in the band starts at the first question without an answer. It reads **Continue answering** once you have answered some.
    - An item in the band opens that question.
-   - **Answer the question** on a card opens the first question of that task.
 2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**. When several tasks share the question, such as a plan or a start approval, the header lists their IDs and reads **3 tasks** instead of naming only the first.
 3. Select **Next** to go on, or **Previous** to go back. The steps under the header show which questions you have answered; select a step to jump to it.
 4. After the last question, the **Review and send** step lists every question with your answer. Select **Change** to edit one, or **Answer** for one you skipped.
@@ -35,6 +34,12 @@ Each answer is saved to the history of every task that refers to its question. T
 - While you have answers that are not sent, you cannot switch to another project. Send them, or clear them with **Clear**, first.
 - Your answers are kept while the page stays open. Reloading the page clears them.
 - A question has no expiry. It stays open until it is answered or the agent withdraws it. Moving or archiving the task does not withdraw it.
+
+### Answer from a card
+
+**Answer the question** on a card opens only the questions that task waits on. There is no review step. On the last of them, select **Send**, and the answers to that task's questions are sent at once.
+
+When the task waits on more than one question, select **Next** to go through them first. Answers you hold for other tasks' questions are not sent, and the band still offers **Review and send** for them.
 
 ### If a question is answered elsewhere or withdrawn
 
@@ -53,7 +58,7 @@ The dialog keeps your answers and shows **Could not save. Try again.** Select **
 
 On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band has one button: **Answer them**, or **Review and send** while you have answers that are not sent.
 
-The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them.
+The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review.
 
 ![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 

@@ -34,6 +34,8 @@ export interface AnswerFlowViewProps {
   failure: string | null;
   /** At least one held answer can be sent. */
   canSend: boolean;
+  /** Opened from a card: the last question sends its answers, with no review step. */
+  direct?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onSend: () => void;
@@ -65,6 +67,7 @@ export function DecisionAnswerDialog({
   sending,
   failure,
   canSend,
+  direct = false,
   onPrev,
   onNext,
   onSend,
@@ -74,13 +77,20 @@ export function DecisionAnswerDialog({
 }: DecisionAnswerDialogProps) {
   const { t } = useTranslation();
   const reviewing = current >= steps.length;
+  const sendsHere = reviewing || (direct && current === steps.length - 1);
   const reviewed = review.items.filter((item) => item.state === 'answered').length;
   const loaded = panel !== null;
   useLoadedFocus('.decision-dialog', loaded);
   const hint = (
     <span className="decision-dialog__hint">
       <InfoIcon aria-hidden="true" />
-      {t(reviewing ? 'questions.flow.reviewHint' : 'questions.flow.hint')}
+      {t(
+        reviewing
+          ? 'questions.flow.reviewHint'
+          : direct
+            ? 'questions.flow.directHint'
+            : 'questions.flow.hint',
+      )}
     </span>
   );
   return (
@@ -111,7 +121,7 @@ export function DecisionAnswerDialog({
       variant="edit"
       dirty={false}
       saving={sending}
-      error={reviewing ? failure : null}
+      error={sendsHere ? failure : null}
       onRetry={canSend ? onSend : undefined}
       onClose={onClose}
       status={hint}
@@ -139,14 +149,20 @@ export function DecisionAnswerDialog({
             <Button type="button" variant="outline" disabled={current === 0} onClick={onPrev}>
               {t('questions.flow.prev')}
             </Button>
-            <Button type="button" onClick={onNext}>
-              {t('questions.flow.next')}
-            </Button>
+            {sendsHere ? (
+              <Button type="button" disabled={!canSend || sending} onClick={onSend}>
+                {sending ? t('questions.flow.sending') : t('questions.flow.send')}
+              </Button>
+            ) : (
+              <Button type="button" onClick={onNext}>
+                {t('questions.flow.next')}
+              </Button>
+            )}
           </>
         )
       }
     >
-      <AnswerSteps steps={steps} current={current} onStep={onStep} />
+      <AnswerSteps steps={steps} current={current} direct={direct} onStep={onStep} />
       {reviewing ? (
         <div className="decision-dialog__review">
           <AnswerReview {...review} variant="dialog" disabled={sending} />

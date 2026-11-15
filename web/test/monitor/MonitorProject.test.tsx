@@ -233,8 +233,7 @@ describe('MonitorProject', () => {
       }),
     );
     await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
-    await user.click(screen.getByRole('button', { name: 'Next' }));
-    await user.click(await screen.findByRole('button', { name: 'Send all' }));
+    await user.click(screen.getByRole('button', { name: /^Send$/ }));
     expect(writeAnswers).toHaveBeenCalledTimes(1);
 
     act(() =>
@@ -255,8 +254,7 @@ describe('MonitorProject', () => {
       }),
     );
     await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
-    await user.click(screen.getByRole('button', { name: 'Next' }));
-    await user.click(await screen.findByRole('button', { name: 'Send all' }));
+    await user.click(screen.getByRole('button', { name: /^Send$/ }));
     await tick();
     expect(writeAnswers).toHaveBeenCalledTimes(1);
     expect(adapter.summaryCalls).toHaveLength(2);

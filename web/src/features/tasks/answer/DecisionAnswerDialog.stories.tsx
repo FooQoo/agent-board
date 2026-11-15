@@ -82,6 +82,26 @@ export const AnswerAndMove: Story = {
 };
 
 /** Every question answered: the review lists them, and one button sends them all. */
+/** Opened from a card: only its two questions, and the last one sends them, with no review. */
+export const FromCard: Story = {
+  args: { input: { held: 1 }, start: { kind: 'task', taskId: 14 } },
+  play: async ({ args }) => {
+    await expect(await page().findByText('1 / 2')).toBeInTheDocument();
+    await expect(page().queryByText('Review and send')).toBeNull();
+    await userEvent.click((await page().findAllByRole('radio'))[0] as HTMLElement);
+    await userEvent.click(page().getByRole('button', { name: 'Next' }));
+    await expect(await page().findByText('2 / 2')).toBeInTheDocument();
+    const send = page().getByRole('button', { name: /^Send$/ });
+    // The first answer is already held, so the card can be sent from here.
+    await expect(send).toBeEnabled();
+    await userEvent.click((await page().findAllByRole('radio'))[0] as HTMLElement);
+    await userEvent.click(send);
+    await waitFor(() => expect(args.write).toHaveBeenCalledTimes(1));
+    // The answer held for a question of another card stays out of the send.
+    await expect((args.write as ReturnType<typeof fn>).mock.calls[0]?.[1]).toHaveLength(2);
+  },
+};
+
 export const Review: Story = {
   args: { input: { held: 5 }, start: { kind: 'review' } },
   play: async ({ args }) => {

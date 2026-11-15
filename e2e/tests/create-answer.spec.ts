@@ -4,7 +4,7 @@ import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, ty
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
-import { answerButton, answerNote, answerSend, openAnswer, openReview, pressSendAll, sendAll } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, reachSend, pressSend, send } from '../helpers/answer';
 
 // Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
 
@@ -187,9 +187,9 @@ test('a waiting card opens its answer in a dialog; the input stays on the card w
   expect(show(12).agentStatus).toBe('pending');
   await note.fill('Keep the current name.\nDo not migrate.');
   // The review shows the answer before it is sent.
-  await openReview(page);
+  await reachSend(page);
   await expect(dialog).toContainText('Do not migrate.');
-  await sendAll(page);
+  await send(page);
 
   // The dialog closes, the card is Idle without a button, and the answer is in the detail history.
   await expect(dialog).toBeHidden();
@@ -223,7 +223,7 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
   });
   const dialog = await openAnswer(page);
   await answerNote(page).fill('My answer.');
-  await pressSendAll(page);
+  await pressSend(page);
 
   // Failed: the answer and the dialog stay, the error is announced, and nothing changed.
   await expect(dialog.getByRole('alert')).toContainText('Could not save. Try again.');
@@ -234,7 +234,7 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
   mode = 'hold';
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Sending…' })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: /^Change:/ })).toBeDisabled();
+  await expect(answerNote(page)).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeVisible();
   expect(posts).toBe(2);
@@ -283,10 +283,10 @@ test('when the agent asks something else while the dialog is open, the old quest
   await expect(dialog).toContainText('A different question now.');
   await expect(dialog.getByText('2 / 2')).toBeVisible();
   await answerNote(page).fill('An answer to the new question.');
-  await openReview(page);
-  await expect(dialog).toContainText('This question was withdrawn. Your answer cannot be sent.');
+  // A card's run has no review: its last question sends, and only the new answer counts.
+  await reachSend(page);
   await expect(dialog.getByText('1 answered', { exact: true })).toBeVisible();
-  await sendAll(page);
+  await send(page);
   expectHistoryNote(show(12).history.at(-1), ['A different question now.', 'An answer to the new question.']);
   expect(show(12).history.filter((event) => event.reason.includes('An answer to the old question.'))).toHaveLength(0);
 });
@@ -300,12 +300,12 @@ test('an answer sent from a page that missed the new request is refused by the s
   askAgain('A different question now.');
   await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
   const answered = page.waitForResponse((response) => response.url().endsWith('/qa/answers'));
-  await pressSendAll(page);
+  await pressSend(page);
   expect((await answered).status()).toBe(409);
   await expect(dialog.getByRole('alert')).toContainText('Some questions were answered or withdrawn elsewhere.');
-  // The answer stays in the review, marked as one that cannot be sent.
+  // The answer stays in the dialog on a question that is now withdrawn, so nothing can be sent.
   await expect(dialog).toContainText('An answer to the old question.');
-  await expect(dialog).toContainText('This question was withdrawn. Your answer cannot be sent.');
+  await expect(dialog).toContainText('This question was withdrawn. You can no longer answer it.');
   await expect(answerSend(page)).toBeDisabled();
   // Nothing was saved: still waiting, now with the new question.
   expect(show(12)).toMatchObject({ agentStatus: 'pending', pendingReason: 'A different question now.' });
@@ -331,5 +331,6 @@ test('a long question does not grow the card; the dialog reads all of it', async
   await expect(dialog).toContainText('Line 1 of a long question about the release plan.');
   await expect(dialog).toContainText('Line 14 of a long question about the release plan.');
   await expect(answerNote(page)).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Next', exact: true })).toBeVisible();
+  // The card's only question is the last one, so the dialog offers Send, not Next.
+  await expect(dialog.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
 });

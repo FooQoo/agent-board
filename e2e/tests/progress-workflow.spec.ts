@@ -14,7 +14,7 @@ import {
   workspace,
 } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
-import { answerNote, sendAll, openAnswer } from '../helpers/answer';
+import { answerNote, send, openAnswer } from '../helpers/answer';
 
 function run(args: string[], home: string, cwd: string, input = ''): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
@@ -135,7 +135,7 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });
     await answerNote(page).fill('Choose Plan A and publish after review.');
-    await sendAll(page);
+    await send(page);
     await expect(answer).toBeHidden();
 
     const completed = await waitResult;

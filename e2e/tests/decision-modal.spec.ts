@@ -9,8 +9,8 @@ import {
   answerNote,
   answerSend,
   openAnswer,
-  openReview,
-  pressSendAll,
+  reachSend,
+  pressSend,
   questionBand,
   sendAnswer,
 } from '../helpers/answer';
@@ -125,9 +125,8 @@ test('a withdrawn question stays readable in the open dialog and cannot be sent'
   await expect(dialog).toContainText('Will this stay?');
   await expect(answerNote(page)).toHaveValue('Typed before it was withdrawn.');
   await expect(answerNote(page)).toBeDisabled();
-  // The review keeps the note, marked as one that cannot be sent, and nothing is left to send.
-  await openReview(page);
-  await expect(dialog).toContainText('This question was withdrawn. Your answer cannot be sent.');
+  // A card's run has no review: the last question's Send is disabled, as nothing is left to send.
+  await reachSend(page);
   await expect(answerSend(page)).toBeDisabled();
 
   await page.keyboard.press('Escape');
@@ -192,9 +191,9 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   const dialog = await openAnswer(page, 13);
   await dialog.getByRole('radio', { name: 'Plan B' }).check();
   await answerNote(page).fill('Same answer, twice.');
-  await pressSendAll(page);
+  await pressSend(page);
   await expect(dialog.getByRole('alert')).toContainText('Could not save. Try again.');
-  // The review still holds the answer.
+  // The dialog still holds the answer.
   await expect(dialog).toContainText('Plan B');
   await expect(dialog).toContainText('Same answer, twice.');
   expect(show(13).agentStatus).toBe('pending');

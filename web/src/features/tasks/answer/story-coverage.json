@@ -129,6 +129,11 @@
               "interaction": true
             },
             {
+              "id": "task-answer-decisionanswerdialog--from-card",
+              "states": ["opened from a card", "only its questions", "send without review"],
+              "interaction": true
+            },
+            {
               "id": "task-answer-decisionanswerdialog--review",
               "states": ["review", "every question answered", "send all"],
               "interaction": true
@@ -186,6 +191,11 @@
             {
               "id": "task-answer-decisionanswersheet--several-tasks",
               "states": ["question for several cards", "title counts the cards"],
+              "interaction": true
+            },
+            {
+              "id": "task-answer-decisionanswersheet--from-card",
+              "states": ["opened from a card", "only its questions", "send without review"],
               "interaction": true
             },
             {

@@ -22,6 +22,8 @@ import { useQuestionDetail } from './useQuestionDetail';
 /** Where a run through the questions starts. */
 export type AnswerStart =
   | { kind: 'question'; questionId: string }
+  /** Only the questions of one card, sent from its last question without a review. */
+  | { kind: 'task'; taskId: number }
   /** At the first open question with no answer held, or at the review when every one has one. */
   | { kind: 'resume' }
   | { kind: 'review' };
@@ -63,6 +65,9 @@ export function useAnswerFlow({
 }: UseAnswerFlowOptions): AnswerFlowViewProps & { goTo: (index: number) => void } {
   const { t } = useTranslation();
   useSyncExternalStore(book.subscribe, book.revision);
+  const scope = start.kind === 'task' ? start.taskId : null;
+  const inScope = (question: BandQuestion) =>
+    scope === null || question.referencedBy.includes(scope);
   const openIds = new Set(questions.map((question) => question.id));
 
   // The run's questions: what was open or held when it started, then what arrived.
@@ -71,11 +76,11 @@ export function useAnswerFlow({
     seen.current = new Map();
     for (const id of book.knownIds(projectId)) {
       const known = book.known(projectId, id);
-      if (known && (openIds.has(id) || book.held(projectId, id) !== null))
+      if (known && inScope(known) && (openIds.has(id) || book.held(projectId, id) !== null))
         seen.current.set(id, known);
     }
   }
-  for (const question of questions) seen.current.set(question.id, question);
+  for (const question of questions) if (inScope(question)) seen.current.set(question.id, question);
   const order = [...seen.current.values()];
 
   const firstOpen = () =>
@@ -83,7 +88,13 @@ export function useAnswerFlow({
       (question) => openIds.has(question.id) && !isAnswered(book.held(projectId, question.id)),
     )?.id ?? REVIEW;
   const [currentId, setCurrentId] = useState<string>(() =>
-    start.kind === 'question' ? start.questionId : start.kind === 'resume' ? firstOpen() : REVIEW,
+    start.kind === 'question'
+      ? start.questionId
+      : start.kind === 'review'
+        ? REVIEW
+        : start.kind === 'task'
+          ? firstOpen() || (order[0]?.id ?? REVIEW)
+          : firstOpen(),
   );
   const index = currentId === REVIEW ? order.length : order.findIndex((q) => q.id === currentId);
   const current = index >= 0 ? (order[index] ?? null) : null;
@@ -132,7 +143,7 @@ export function useAnswerFlow({
       : t('detail.problem', { file: problem.file, field: problem.field, reason: problem.reason });
   };
   const send = () => {
-    void book.send(projectId, write, describe).then((saved) => {
+    void book.send(projectId, write, describe, inRun).then((saved) => {
       if (saved) onSent();
     });
   };
@@ -176,6 +187,7 @@ export function useAnswerFlow({
         : (firstTask?.title ?? (current ? plainTitle(current.title) : '')),
     steps,
     current: shownIndex,
+    direct: scope !== null,
     answeredCount: sendable.length,
     panel:
       current === null || detail.detail === null

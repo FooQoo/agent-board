@@ -757,9 +757,8 @@ describe('switching while a form is open', () => {
     expect((screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement).value).toBe(
       'Go ahead',
     );
-    // The answer is sent from the review, after the last question.
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Send all' }));
+    // Opened from the card, its last question sends the answer, with no review.
+    await userEvent.click(screen.getByRole('button', { name: /^Send$/ }));
 
     await screen.findByText('Same number elsewhere');
     const posts = writes();

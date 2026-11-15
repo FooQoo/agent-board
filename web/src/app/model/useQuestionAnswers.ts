@@ -20,7 +20,7 @@ export interface QuestionAnswerController {
   /** The answer dialog of the active project, or null while it is closed. */
   target: AnswerTarget | null;
   open: (start: AnswerStart) => void;
-  /** Opens at the first open question of a card. */
+  /** Opens on the open questions of one card, which sends them without a review. */
   openForTask: (taskId: number) => void;
   close: () => void;
 }
@@ -82,8 +82,8 @@ export function useQuestionAnswers(
   );
   const openForTask = useCallback(
     (taskId: number) => {
-      const first = questions?.find((question) => question.referencedBy.includes(taskId));
-      open(first ? { kind: 'question', questionId: first.id } : { kind: 'resume' });
+      const asked = questions?.some((question) => question.referencedBy.includes(taskId));
+      open(asked ? { kind: 'task', taskId } : { kind: 'resume' });
     },
     [open, questions],
   );

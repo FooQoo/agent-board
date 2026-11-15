@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, answerNote, sendAll, openAnswer } from '../helpers/answer';
+import { answerButton, answerDialog, answerNote, send, openAnswer } from '../helpers/answer';
 
 // An AI card in Todo can ask a decision before the work starts. It shows as pending in Todo, answers there, and
 // returns to Todo idle. A move keeps the question open; withdrawing it is what ends the wait.
@@ -35,7 +35,7 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
   await task(page, id).click();
   await expect(await openAnswer(page, id)).toContainText('Which plan before we start?');
   await answerNote(page).fill('Plan A, then review');
-  await sendAll(page);
+  await send(page);
   await expect(answerDialog(page)).toBeHidden();
   await expect(answerButton(page, id)).toHaveCount(0);
 

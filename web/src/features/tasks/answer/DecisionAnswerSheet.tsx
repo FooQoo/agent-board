@@ -36,12 +36,14 @@ export function DecisionAnswerSheet({
   sending,
   failure,
   canSend,
+  direct = false,
   onPrev,
   onNext,
   onSend,
 }: DecisionAnswerSheetProps) {
   const { t } = useTranslation();
   const reviewing = current >= steps.length;
+  const sendsHere = reviewing || (direct && current === steps.length - 1);
   const reviewed = review.items.filter((item) => item.state === 'answered').length;
   useLoadedFocus('.decision-sheet-popup', panel !== null);
   return (
@@ -63,7 +65,7 @@ export function DecisionAnswerSheet({
       title={reviewing ? t('questions.flow.reviewTitle') : title}
       label={
         <div className="decision-sheet__progress">
-          <AnswerDots steps={steps} current={current} />
+          <AnswerDots steps={steps} current={current} direct={direct} />
           <span className="decision-sheet__count">
             {reviewing
               ? reviewed === steps.length
@@ -88,7 +90,7 @@ export function DecisionAnswerSheet({
         ) : (
           <DecisionAnswerPanel key={steps[current]?.id} {...panel} />
         )}
-        {reviewing && failure !== null && (
+        {sendsHere && failure !== null && (
           <div className="decision-sheet__failure" role="alert">
             <CircleAlertIcon aria-hidden="true" />
             <span>{failure}</span>
@@ -115,9 +117,15 @@ export function DecisionAnswerSheet({
               >
                 {t('questions.flow.prev')}
               </Button>
-              <Button type="button" size="l" onClick={onNext}>
-                {t('questions.flow.next')}
-              </Button>
+              {sendsHere ? (
+                <Button type="button" size="l" disabled={!canSend || sending} onClick={onSend}>
+                  {sending ? t('questions.flow.sending') : t('questions.flow.send')}
+                </Button>
+              ) : (
+                <Button type="button" size="l" onClick={onNext}>
+                  {t('questions.flow.next')}
+                </Button>
+              )}
             </>
           )}
         </div>

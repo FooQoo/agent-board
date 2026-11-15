@@ -6,7 +6,7 @@ import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, askArgs, decisionJson, questionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
-import { answerButton, answerNote, answerSend, openAnswer, openReview, sendAll, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, reachSend, send, sendAnswer } from '../helpers/answer';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
@@ -129,7 +129,7 @@ test('a decision request is answered with a choice only, with text only, or with
   await expect(held(0)).toBeVisible();
   await answer.getByRole('radio', { name: 'Proceed' }).check();
   await expect(held(1)).toBeVisible();
-  await sendAll(page);
+  await send(page);
   await expect(answerButton(page, 16)).toHaveCount(0);
   expect(show(16)).toMatchObject({ agentStatus: 'idle' });
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
@@ -156,14 +156,11 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   await expect(held(0)).toBeVisible();
   await answerNote(page).fill('   ');
   await expect(held(0)).toBeVisible();
-  // The review lists it as not answered, and nothing can be sent.
-  await openReview(page);
-  await expect(dialog.getByRole('button', { name: /^Answer: .*Ready\?/ })).toBeVisible();
+  // Nothing is held, so the card's Send stays disabled until an answer is given.
+  await reachSend(page);
   await expect(answerSend(page)).toBeDisabled();
-  await dialog.getByRole('button', { name: /^Answer: .*Ready\?/ }).click();
   await dialog.getByRole('radio', { name: 'Yes' }).check();
   await expect(held(1)).toBeVisible();
-  await openReview(page);
   await expect(answerSend(page)).toBeEnabled();
 });
 

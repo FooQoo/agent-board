@@ -18,6 +18,8 @@ export interface AnswerProgressProps {
   steps: readonly AnswerStep[];
   /** The step shown: an index into `steps`, or `steps.length` for the review. */
   current: number;
+  /** Opened from a card: there is no review step, so its mark is left out. */
+  direct?: boolean;
 }
 
 function stateKey(state: AnswerStepState) {
@@ -35,6 +37,7 @@ function stateKey(state: AnswerStepState) {
 export function AnswerSteps({
   steps,
   current,
+  direct = false,
   onStep,
 }: AnswerProgressProps & { onStep: (index: number) => void }) {
   const { t } = useTranslation();
@@ -65,26 +68,28 @@ export function AnswerSteps({
             </li>
           );
         })}
-        <li className="answer-steps__entry">
-          <button
-            type="button"
-            className="answer-steps__step answer-steps__step--review"
-            aria-current={review ? 'step' : undefined}
-            onClick={() => onStep(steps.length)}
-          >
-            <span className="answer-steps__marker" aria-hidden="true">
-              <SendIcon />
-            </span>
-            <span className="answer-steps__label">{t('questions.flow.reviewStep')}</span>
-          </button>
-        </li>
+        {!direct && (
+          <li className="answer-steps__entry">
+            <button
+              type="button"
+              className="answer-steps__step answer-steps__step--review"
+              aria-current={review ? 'step' : undefined}
+              onClick={() => onStep(steps.length)}
+            >
+              <span className="answer-steps__marker" aria-hidden="true">
+                <SendIcon />
+              </span>
+              <span className="answer-steps__label">{t('questions.flow.reviewStep')}</span>
+            </button>
+          </li>
+        )}
       </ol>
     </nav>
   );
 }
 
 /** The phone sheet's progress: a dot per question, the shown one long, then the review's mark. */
-export function AnswerDots({ steps, current }: AnswerProgressProps) {
+export function AnswerDots({ steps, current, direct = false }: AnswerProgressProps) {
   const { t } = useTranslation();
   return (
     <ol className="answer-dots" aria-label={t('questions.flow.progress')}>
@@ -100,13 +105,15 @@ export function AnswerDots({ steps, current }: AnswerProgressProps) {
           })}
         />
       ))}
-      <li
-        className="answer-dots__review"
-        aria-current={current === steps.length ? 'step' : undefined}
-        aria-label={t('questions.flow.reviewStep')}
-      >
-        <SendIcon aria-hidden="true" />
-      </li>
+      {!direct && (
+        <li
+          className="answer-dots__review"
+          aria-current={current === steps.length ? 'step' : undefined}
+          aria-label={t('questions.flow.reviewStep')}
+        >
+          <SendIcon aria-hidden="true" />
+        </li>
+      )}
     </ol>
   );
 }

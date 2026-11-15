@@ -114,7 +114,8 @@ test('the phone answers the current question from the sheet, and the answer reac
   await article.getByRole('button', { name: 'Answer the question' }).click();
   const sheet = page.getByRole('dialog', { name: 'Alpha pending review' });
   await expect(sheet.getByText('Waiting for the user review.')).toBeVisible();
-  // The answer is reviewed before it is sent, so the step itself sends nothing.
+  // A card's run has no review; "Send" stays disabled until an answer is held.
+  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
   await expect(sheet.getByRole('button', { name: 'Send all', exact: true })).toHaveCount(0);
 
   // Closing without sending keeps the input, and the card then says to continue.
@@ -126,12 +127,9 @@ test('the phone answers the current question from the sheet, and the answer reac
   await article.getByRole('button', { name: 'Continue answering' }).click();
   await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
   await sheet.getByRole('radio', { name: 'Plan A' }).click();
-  await sheet.getByRole('button', { name: 'Next', exact: true }).click();
-  const review = page.getByRole('dialog', { name: 'Review your answers' });
-  await expect(review).toContainText('Reviewed on the phone.');
   const answered = page.waitForResponse((response) =>
     response.url().includes('/qa/answers') && response.request().method() === 'POST');
-  await review.getByRole('button', { name: 'Send all', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Send', exact: true }).click();
   expect((await answered).status()).toBe(200);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);

@@ -14,9 +14,9 @@ export const answerDialog = (page: Page): Locator => page.getByRole('dialog');
 export const answerNote = (page: Page): Locator =>
   answerDialog(page).getByRole('textbox', { name: 'Note' });
 
-/** The review's button that sends every held answer at once. */
-export const answerSend = (page: Page): Locator =>
-  answerDialog(page).getByRole('button', { name: 'Send all', exact: true });
+/** The button that sends: "Send" on the last question of a card's run, "Send all" on the review of the band's run. */
+export const sendLabel = /^(Send|Send all|送る|まとめて送る)$/;
+export const answerSend = (page: Page): Locator => answerDialog(page).getByRole('button', { name: sendLabel });
 
 /** Presses the card's button and waits for the dialog with its question. */
 export async function openAnswer(page: Page, id = 12): Promise<Locator> {
@@ -27,15 +27,24 @@ export async function openAnswer(page: Page, id = 12): Promise<Locator> {
   return dialog;
 }
 
-/** Goes to the review, the last step of the progress (the dialog's tab or the sheet's Next). */
-export async function openReview(page: Page): Promise<Locator> {
+/**
+ * Goes to the step that sends: the last question of a card's run (button "Send", no review), or the
+ * review of a run opened from the band (button "Send all"). Steps through Next, which is bounded so
+ * it cannot spin when there is none.
+ */
+export async function reachSend(page: Page): Promise<Locator> {
   const dialog = answerDialog(page);
-  const step = dialog.getByRole('navigation').getByRole('button', { name: /^(Review and send|確認して送る)$/ });
-  if ((await step.count()) > 0) await step.click();
-  else
-    while ((await dialog.getByRole('button', { name: /^(Send all|まとめて送る)$/ }).count()) === 0)
-      await dialog.getByRole('button', { name: /^(Next|次へ)$/ }).click();
-  await expect(dialog.getByRole('button', { name: /^(Send all|まとめて送る)$/ })).toBeVisible();
+  const send = dialog.getByRole('button', { name: sendLabel });
+  const next = dialog.getByRole('button', { name: /^(Next|次へ)$/ });
+  for (let step = 0; step < 50 && (await send.count()) === 0; step++) {
+    if ((await next.count()) > 0) await next.click();
+    else {
+      const review = dialog.getByRole('navigation').getByRole('button', { name: /^(Review and send|確認して送る)$/ });
+      await expect(review.or(send).first()).toBeVisible();
+      if ((await review.count()) > 0) await review.click();
+    }
+  }
+  await expect(send).toBeVisible();
   return dialog;
 }
 
@@ -52,22 +61,22 @@ export async function fillAnswer(dialog: Locator, input: AnswerInput): Promise<v
   if (input.text !== undefined) await dialog.getByRole('textbox', { name: 'Note' }).fill(input.text);
 }
 
-/** Goes to the review and presses Send all, without waiting for the outcome. */
-export async function pressSendAll(page: Page): Promise<Locator> {
-  const dialog = await openReview(page);
-  await dialog.getByRole('button', { name: /^(Send all|まとめて送る)$/ }).click();
+/** Goes to the sending step and presses its button, without waiting for the outcome. */
+export async function pressSend(page: Page): Promise<Locator> {
+  const dialog = await reachSend(page);
+  await dialog.getByRole('button', { name: sendLabel }).click();
   return dialog;
 }
 
-/** Goes to the review and sends every held answer; the dialog closes when they are saved. */
-export async function sendAll(page: Page): Promise<void> {
-  const dialog = await pressSendAll(page);
+/** Goes to the sending step and sends; the dialog closes when the answers are saved. */
+export async function send(page: Page): Promise<void> {
+  const dialog = await pressSend(page);
   await expect(dialog).toBeHidden();
 }
 
-/** Opens the card's dialog, fills its question, and sends from the review. */
+/** Opens the card's dialog, fills its question, and sends it (a card's run needs no review). */
 export async function sendAnswer(page: Page, id: number, input: AnswerInput): Promise<void> {
   const dialog = await openAnswer(page, id);
   await fillAnswer(dialog, input);
-  await sendAll(page);
+  await send(page);
 }

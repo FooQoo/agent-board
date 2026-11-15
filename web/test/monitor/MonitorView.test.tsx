@@ -207,28 +207,44 @@ describe('monitor question band and answer sheet', () => {
     expect(within(band()).getByRole('status').textContent).toContain('No unanswered questions');
   });
 
-  it('opens the question of a card in the sheet and answers the questions in a row', async () => {
+  it('opens only the questions of a card in the sheet and sends its answer at once', async () => {
     const user = userEvent.setup();
     const write = vi.fn(async () => {});
     const onSent = vi.fn();
     render(<Connected write={write} onSent={onSent} />);
     await user.click(openButton(todoCard()));
     const sheet = await screen.findByRole('dialog', { name: 'Todo decision' });
-    expect(within(sheet).getByText('1 / 2')).toBeTruthy();
+    expect(within(sheet).getByText('1 / 1')).toBeTruthy();
+    const send = within(sheet).getByRole('button', { name: /^Send$/ });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
     await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
     expect(within(sheet).getByText('1 answered, not sent')).toBeTruthy();
+    await user.click(send);
+    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
+    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-1', choiceId: 'yes' }]);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('sends from a card only its own answers, and keeps an answer held for another card', async () => {
+    const user = userEvent.setup();
+    const write = vi.fn(async () => {});
+    render(<Connected write={write} />);
+    await user.click(within(band()).getByRole('button', { name: 'Answer them' }));
+    let sheet = await screen.findByRole('dialog');
     await user.click(within(sheet).getByRole('button', { name: 'Next' }));
     await user.type(await within(sheet).findByRole('textbox', { name: 'Note' }), 'Later');
-    await user.click(within(sheet).getByRole('button', { name: 'Next' }));
-    const review = await screen.findByRole('dialog', { name: 'Review your answers' });
-    expect(within(review).getByText('All 2 answered')).toBeTruthy();
-    await user.click(within(review).getByRole('button', { name: 'Send all' }));
-    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
-    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [
-      { questionId: 'Q-1', choiceId: 'yes' },
-      { questionId: 'Q-4', text: 'Later' },
-    ]);
+    await user.click(within(sheet).getByRole('button', { name: 'Close the answer' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(openButton(todoCard()));
+    sheet = await screen.findByRole('dialog', { name: 'Todo decision' });
+    await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
+    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-1', choiceId: 'yes' }]);
+    // The sent question leaves the band at once; the one held for the other card stays.
+    await waitFor(() => expect(within(band()).getAllByRole('listitem')).toHaveLength(1));
+    expect(within(band()).getByText('#4')).toBeTruthy();
+    expect(within(band()).getByRole('button', { name: 'Review and send' })).toBeTruthy();
   });
 
   it('keeps the answers when the sheet is closed, and the band and the card offer to go on', async () => {
@@ -255,11 +271,9 @@ describe('monitor question band and answer sheet', () => {
     await user.click(openButton(todoCard()));
     const sheet = await screen.findByRole('dialog');
     await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
-    await user.click(within(sheet).getByRole('button', { name: 'Next' }));
-    await user.click(within(sheet).getByRole('button', { name: 'Next' }));
-    await user.click(await within(sheet).findByRole('button', { name: 'Send all' }));
+    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
     expect(await within(sheet).findByRole('alert')).toBeTruthy();
-    await user.click(within(sheet).getByRole('button', { name: 'Send all' }));
+    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
     await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
     expect(write).toHaveBeenCalledTimes(2);
   });

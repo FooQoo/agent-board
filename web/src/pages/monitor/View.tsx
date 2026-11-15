@@ -113,7 +113,7 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         onOpenAnswer={(item) => {
           const first = firstQuestionOf(props.questions ?? [], item.task.id);
-          openAnswer(first ? { kind: 'question', questionId: first.id } : { kind: 'resume' });
+          openAnswer(first ? { kind: 'task', taskId: item.task.id } : { kind: 'resume' });
         }}
         answerController={props.answerController}
       />

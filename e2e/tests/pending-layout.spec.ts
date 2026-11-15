@@ -2,7 +2,7 @@ import { expect, test } from '../helpers/fixtures';
 import { agboardOk, askArgs, mainProject, nextTaskId, projectId, questionJson, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, openAnswer, openReview } from '../helpers/answer';
+import { answerButton, answerDialog, openAnswer } from '../helpers/answer';
 
 test.beforeEach(() => resetPreferences());
 
@@ -92,12 +92,12 @@ for (const { locale, theme, height } of [
     const dialog = await openAnswer(page, id);
     await expect(dialog.locator('.decision-panel').getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
-    const next = answerDialog(page).getByRole('button', { name: locale === 'ja' ? '次へ' : 'Next', exact: true });
-    await expect(next).toBeInViewport({ ratio: 1 });
+    // The card's only question is the last, so the footer button is Send rather than Next.
+    const sendName = locale === 'ja' ? '送る' : 'Send';
+    await expect(answerDialog(page).getByRole('button', { name: sendName, exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-answer.png') });
     await dialog.getByText('この計画を承認する', { exact: true }).click();
-    await openReview(page);
-    const send = answerDialog(page).getByRole('button', { name: locale === 'ja' ? 'まとめて送る' : 'Send all', exact: true });
+    const send = answerDialog(page).getByRole('button', { name: sendName, exact: true });
     await expect(send).toBeInViewport({ ratio: 1 });
     await send.click();
     await expect(dialog).toBeHidden();

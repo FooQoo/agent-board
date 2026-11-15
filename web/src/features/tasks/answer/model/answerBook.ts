@@ -210,15 +210,17 @@ export class AnswerBook {
   /**
    * Sends every sendable answer of the project in one request. On success they are forgotten; on
    * failure they stay, and the questions that a conflict names are closed. `describe` turns the
-   * failure into the line the screen shows. Resolves with whether the answers were saved.
+   * failure into the line the screen shows. `only` limits the send to those questions. Resolves
+   * with whether the answers were saved.
    */
   async send(
     projectId: ProjectId,
     write: AnswersWriter,
     describe: (error: unknown) => string,
+    only?: ReadonlySet<string>,
   ): Promise<boolean> {
     const entry = this.of(projectId);
-    const ids = this.sendableIds(projectId);
+    const ids = this.sendableIds(projectId).filter((id) => only === undefined || only.has(id));
     if (entry.sending || ids.length === 0) return false;
     const answers: AnswerItem[] = ids.map((questionId) => {
       const held = entry.held.get(questionId) ?? EMPTY;

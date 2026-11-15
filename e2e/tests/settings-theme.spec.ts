@@ -4,7 +4,7 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { answerButton, answerNote, openAnswer, pressSendAll, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, openAnswer, pressSend, sendAnswer } from '../helpers/answer';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The worker's Rust serve is real; only the browser storage and a few request
@@ -814,7 +814,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await task(page, 12).click();
   const answer = await openAnswer(page, 12);
   await answerNote(page).fill('Kept answer.');
-  await pressSendAll(page);
+  await pressSend(page);
   // The dialog shows the board's fixed save-failure text rather than the server's reason.
   await expect(answer.getByRole('alert')).toContainText('Could not save. Try again.');
   await expect(answer).toContainText('Kept answer.');

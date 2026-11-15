@@ -4,7 +4,7 @@ import {
   agboardBinary, agboardCatalogOk, agboardOk, decisionJson, makeHome, projectId, removeHome, startServe, stopServe,
   type Serve, type TaskJson,
 } from '../helpers/agboard';
-import { answerButton, sendAll, openAnswer } from '../helpers/answer';
+import { answerButton, send, openAnswer } from '../helpers/answer';
 
 // Asking a pending question with no wait setting waits for the answer. This runs the real CLI as a child
 // process against its own data area and serve, answers in the browser, and expects the same child to finish.
@@ -52,7 +52,7 @@ test('default pending waits for a browser answer', async ({ page }) => {
     expect(show(home, 1)).toMatchObject({ agentStatus: 'pending' });
 
     await request.getByRole('radio', { name: 'Plan B' }).check();
-    await sendAll(page);
+    await send(page);
 
     expect(await exited, stderr).toEqual({ code: 0, signal: null });
     // The command prints one JSON event per line and ends with the answers.
