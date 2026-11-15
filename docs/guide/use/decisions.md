@@ -16,11 +16,16 @@ Each item of the open list shows the tasks that refer to the question, or **No t
 
 ## Answer in the browser
 
-From the band, you answer the questions one after another and send them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**. To answer one task's questions and send them at once, start from its card instead (see [Answer from a card](#answer-from-a-card)).
+You can answer from the band in two ways.
 
-1. Open the answer dialog from the band in one of these ways:
-   - **Answer them** in the band starts at the first question without an answer. It reads **Continue answering** once you have answered some.
-   - An item in the band opens that question.
+- **One question at a time.** Select an item in the open list. The dialog holds only that question, and **Send** sends your answer at once, with no review step. The other questions stay open.
+- **Every question in a row.** **Answer them** in the band header goes through all the open questions and sends them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**.
+
+To answer one task's questions and send them at once, start from its card instead (see [Answer from a card](#answer-from-a-card)).
+
+To answer every question in a row:
+
+1. Select **Answer them** in the band. The dialog starts at the first question without an answer. The button reads **Continue answering** once you have answered some, and **Review and send** opens the review directly.
 2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**. When several tasks share the question, such as a plan or a start approval, the header lists their IDs and reads **3 tasks** instead of naming only the first.
 3. Select **Next** to go on, or **Previous** to go back. The steps under the header show which questions you have answered; select a step to jump to it.
 4. After the last question, the **Review and send** step lists every question with your answer. Select **Change** to edit one, or **Answer** for one you skipped.
@@ -58,9 +63,9 @@ The dialog keeps your answers and shows **Could not save. Try again.** Select **
 
 ## Answer on your phone
 
-On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. With no questions the header shows a count of 0 and does not open.
+On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. An item in the open list opens the sheet with only that question, and **Send** sends it at once. With no questions the header shows a count of 0 and does not open.
 
-The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review.
+The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review. An item of the band works the same way for its one question.
 
 ![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
