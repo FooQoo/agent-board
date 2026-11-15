@@ -202,9 +202,9 @@ describe('monitor question band and answer sheet', () => {
     expect(within(band()).getByRole('button', { name: 'Answer them' })).toBeTruthy();
   });
 
-  it('keeps the band with a message when nothing is open', () => {
+  it('leaves the band out when nothing is open', () => {
     render(<Connected questions={[]} />);
-    expect(within(band()).getByRole('status').textContent).toContain('No unanswered questions');
+    expect(screen.queryByRole('region', { name: 'Unanswered questions' })).toBeNull();
   });
 
   it('opens only the questions of a card in the sheet and sends its answer at once', async () => {
