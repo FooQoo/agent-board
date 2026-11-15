@@ -195,94 +195,6 @@ fn events_two_starts_have_different_instance_ids_and_each_starts_at_seq_one() {
     assert_ne!(seen[0], seen[1]);
 }
 
-fn monitor_stream(server: &support::Running, session: &support::Session, query: &str) -> Stream {
-    Stream::open(
-        server.backend,
-        &format!("/monitor/api/events{query}"),
-        &format!("Host: {}\r\nCookie: {}\r\n", server.host(), session.cookie),
-    )
-}
-
-#[test]
-fn events_monitor_needs_an_existing_project_in_the_query() {
-    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
-    let home = support::home();
-    let server = support::Running::start(home.path());
-    let session = server.session();
-    for (query, status, code) in [
-        ("", 422, "invalid_value"),
-        ("?project=", 422, "invalid_value"),
-        ("?other=1", 422, "invalid_value"),
-        ("?project=not-an-id", 422, "invalid_value"),
-        (
-            "?project=ffffffffffffffffffffffffffffffff",
-            404,
-            "project_not_found",
-        ),
-    ] {
-        let reply = server.get(&session, &format!("/monitor/api/events{query}"));
-        assert_eq!(reply.status, status, "{query}: {}", reply.body);
-        let body: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
-        assert_eq!(body["error"]["code"], code, "{query}");
-        assert!(
-            !reply
-                .header("content-type")
-                .unwrap_or_default()
-                .contains("event-stream"),
-            "{query}"
-        );
-    }
-}
-
-#[test]
-fn events_monitor_sends_only_the_changes_of_the_followed_project() {
-    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
-    let home = support::home();
-    let followed = project_of(home.path(), "monitor");
-    let files = store(home.path());
-    let other = files.create_project("Other", Utc::now()).unwrap().id;
-    files
-        .create_task(
-            &other,
-            agent_board::domain::NewTask {
-                title: "Elsewhere".into(),
-                description: String::new(),
-                assignee: agent_board::domain::Assignee::Ai,
-                actor: agent_board::domain::Actor::Human,
-                is_draft: false,
-            },
-            Utc::now(),
-        )
-        .unwrap();
-    let server = support::Running::start(home.path());
-    let session = server.session();
-    let mut events = monitor_stream(&server, &session, &format!("?project={followed}"));
-
-    // A change of the other project, and a new project, come first. Neither is sent.
-    note(home.path(), &other, "Elsewhere note.");
-    files.create_project("Third", Utc::now()).unwrap();
-    std::thread::sleep(Duration::from_millis(700));
-    note(home.path(), &followed, "Followed note.");
-
-    let first = events.changed(WAIT).expect("the followed change");
-    assert_eq!(first.project_id, followed.to_string());
-    assert_eq!(first.seq, 1, "the numbers count this stream's events");
-    assert!(
-        first
-            .changes
-            .iter()
-            .all(|change| change.resource != ChangeResource::Project)
-    );
-    assert!(!events.log.contains(other.as_str()), "{}", events.log);
-
-    note(home.path(), &followed, "Another note.");
-    let second = events.changed(WAIT).expect("a second change");
-    assert_eq!(second.seq, 2);
-    assert_eq!(second.instance_id, first.instance_id);
-    assert!(events.changed(Duration::from_millis(600)).is_none());
-}
-
-/// The next event called `name` within `within`; other events are skipped.
 fn next_named(events: &mut Stream, name: &str, within: Duration) -> Option<Sse> {
     let deadline = Instant::now() + within;
     loop {
@@ -324,20 +236,4 @@ fn events_pc_docs_names_the_project_and_leaves_the_board_numbers_alone() {
     note(home.path(), &project, "After the docs.");
     let changed = events.changed(WAIT).expect("a changed event");
     assert_eq!(changed.seq, 1);
-}
-
-#[test]
-fn events_monitor_does_not_send_docs_changes() {
-    let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
-    let home = support::home();
-    let followed = project_of(home.path(), "monitor");
-    let server = support::Running::start(home.path());
-    let session = server.session();
-    let mut events = monitor_stream(&server, &session, &format!("?project={followed}"));
-
-    write_doc(home.path(), &followed, "plan.md");
-    std::thread::sleep(Duration::from_millis(700));
-    note(home.path(), &followed, "Followed note.");
-    let first = events.next(WAIT).expect("an event");
-    assert_eq!(first.name, "changed", "{}", events.log);
 }

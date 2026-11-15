@@ -1,6 +1,5 @@
-//! The request handling shared by the PC board (`/api/preferences`) and the
-//! ngrok monitor (`/monitor/api/preferences`). Each route checks its own
-//! guards first; these functions only read and save.
+//! The request handling of `/api/preferences`, served on the PC and through the ngrok
+//! entrance. Each entrance checks its own guards first; these functions only read and save.
 
 use axum::http::StatusCode;
 use axum::response::Response;
@@ -26,7 +25,7 @@ pub(crate) fn save(
     };
     match store.update(patch) {
         Ok(saved) => {
-            // Every open board and monitor page applies the change.
+            // Every open board page applies the change.
             let _ = changed.send(saved.clone());
             json_response(StatusCode::OK, &saved)
         }

@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::oneshot;
 use url::Url;
 
-use super::backend::{SharedListener, external_app, internal_token, serve};
+use super::backend::{SharedListener, external_app, serve};
 use super::contracts::ConnectionStatus;
 use super::lifecycle::{Inner, MonitorConnections};
 use super::router::{BackendPolicy, Gate, backend_router};
@@ -75,19 +75,10 @@ impl MonitorConnections {
                 match result {
                     Ok(opened) => {
                         let url = opened.public.origin().to_string();
-                        let Ok(token) = internal_token() else {
-                            if let Some(run) = inner.run.take() {
-                                run.close();
-                            }
-                            inner.status = ConnectionStatus::Failed;
-                            inner.failure = Some(FailureCode::Internal);
-                            let _ = tx.send(Err(FailureCode::Internal));
-                            return;
-                        };
                         let sessions =
                             Arc::new(SessionStore::new(system_clock(), SESSION_MAX_AGE_SECS));
                         let unlock = Arc::new(UnlockGate::new(passcode.clone()));
-                        let app = external_app(&app, &opened.public, token.clone(), gate.clone());
+                        let app = external_app(&app, gate.clone());
                         if let Some(run) = inner.run.as_mut() {
                             // The refusing router hands the socket to the real one.
                             run.backend.abort();
@@ -95,7 +86,7 @@ impl MonitorConnections {
                             run.tunnel = Some(opened.keep_alive);
                         }
                         *gate.write().unwrap_or_else(|e| e.into_inner()) = Some(
-                            BackendPolicy::new(opened.public, generation, sessions, token, unlock),
+                            BackendPolicy::new(opened.public, generation, sessions, unlock),
                         );
                         inner.status = ConnectionStatus::Ready;
                         inner.url = Some(url.clone());

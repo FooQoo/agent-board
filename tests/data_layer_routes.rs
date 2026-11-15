@@ -71,13 +71,13 @@ fn data_layer_routes_pc_refuses_an_invalid_sections_query() {
 }
 
 #[test]
-fn data_layer_routes_monitor_answers_with_a_session_only() {
+fn data_layer_routes_through_the_entrance_answer_with_a_session_only() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let home = support::home();
     let id = project_id(home.path());
     let server = support::Running::start(home.path());
     let session = server.session();
-    let base = format!("/monitor/api/projects/{id}");
+    let base = format!("/api/projects/{id}");
     let paths = [
         format!("{base}/summary"),
         format!("{base}/tasks/1/detail"),
@@ -99,7 +99,7 @@ fn data_layer_routes_monitor_answers_with_a_session_only() {
         let reply = server.request("GET", path, &[], "");
         assert_eq!(reply.status, refused, "{path}: {}", reply.body);
     }
-    // The monitor stays read-only: a write to a new route is refused as before.
+    // A change to a read route is refused.
     let write = server.write(&session, "POST", &paths[0], "{}");
     assert_eq!(write.status, 405, "{}", write.body);
     // The whole-board read is gone for good, with a session or without.

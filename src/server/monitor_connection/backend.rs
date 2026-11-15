@@ -2,7 +2,6 @@
 //! the refusing router to the real one, and the router built once the public
 //! origin is known.
 
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,14 +10,10 @@ use axum::serve::Listener;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::AbortHandle;
 
-use super::contracts::PublicOrigin;
 use super::entry::external_router;
 use super::router::Gate;
-use crate::error::AgboardError;
 use crate::server::AppState;
 use crate::server::api::remote_router;
-use crate::server::guard::BoardWriteGuard;
-use crate::server::monitor::{MonitorState, router as monitor_router, write_router};
 
 /// One bound socket that two `axum::serve` calls take in turn.
 #[derive(Clone)]
@@ -51,37 +46,9 @@ pub(super) fn serve(listener: &SharedListener, app: Router) -> AbortHandle {
     .abort_handle()
 }
 
-/// The board and the old monitor behind the entry checks, for this public origin. They only
-/// ever see requests that the entry has admitted.
-pub(super) fn external_app(
-    app: &Arc<AppState>,
-    origin: &PublicOrigin,
-    internal_token: String,
-    gate: Gate,
-) -> Router {
-    let authorities: HashSet<String> = HashSet::from([origin.authority().to_string()]);
-    let monitor = Arc::new(MonitorState::new(
-        app.shared.clone(),
-        app.index.clone(),
-        app.changed.clone(),
-        app.preferences.clone(),
-        app.preferences_changed.clone(),
-        authorities.clone(),
-    ));
-    let guard = BoardWriteGuard {
-        origins: Arc::new(HashSet::from([origin.origin().to_string()])),
-        authorities: Arc::new(authorities),
-        token: internal_token,
-    };
-    // The board itself (its page without a token, its API, the event stream, the project docs
-    // and the guide) is served from `/`; the old monitor stays under `/monitor/` for now.
-    let inner = monitor_router(monitor)
-        .merge(write_router(app.clone(), guard))
-        .merge(remote_router(app.clone()));
-    external_router(gate, inner)
-}
-
-/// A fresh random token, for the guard that sits behind the entry.
-pub(super) fn internal_token() -> Result<String, AgboardError> {
-    crate::server::assets::new_token()
+/// The board behind the entry checks, for this public origin. It only ever sees requests that the
+/// entry has admitted: the page without a token, the board's API, the event stream, the project
+/// docs and the guide, all at the same paths as on the PC.
+pub(super) fn external_app(app: &Arc<AppState>, gate: Gate) -> Router {
+    external_router(gate, remote_router(app.clone()))
 }

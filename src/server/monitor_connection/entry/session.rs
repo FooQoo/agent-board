@@ -1,7 +1,7 @@
 //! The routes that show, begin and end a session.
 //!
-//! A session starts only at `POST /monitor/api/unlock`, with the passcode of
-//! this start. `GET /monitor/api/session` shows the session a cookie already
+//! A session starts only at `POST /api/remote/unlock`, with the passcode of
+//! this start. `GET /api/remote/session` shows the session a cookie already
 //! has and starts nothing.
 
 use axum::body::to_bytes;
@@ -14,7 +14,7 @@ use super::reply::{forbidden, json, method_not_allowed, plain, session_required}
 use crate::server::monitor_auth::contracts::{
     AuthSession, SESSION_COOKIE_ATTRIBUTES, SESSION_COOKIE_NAME,
 };
-use crate::server::monitor_auth::guard::{check_same_origin, check_write, is_json, session_cookie};
+use crate::server::monitor_auth::guard::{check_same_origin, is_json, session_cookie};
 use crate::server::monitor_auth::passcode::Unlock;
 use crate::server::monitor_auth::session::csrf_for;
 use crate::server::monitor_connection::router::BackendPolicy;
@@ -43,7 +43,7 @@ fn session_body(policy: &BackendPolicy, csrf: &str, expires_at: u64) -> serde_js
     })
 }
 
-/// `GET /monitor/api/session`: the page asks whether it has a live session. With
+/// `GET /api/remote/session`: the page asks whether it has a live session. With
 /// one it gets the session's CSRF token; without one it is told to enter the
 /// passcode. Nothing is issued here.
 pub(super) fn open_session(
@@ -76,7 +76,7 @@ struct UnlockBody {
     code: String,
 }
 
-/// `POST /monitor/api/unlock` with `{"code":"1234"}`: trade the passcode for a
+/// `POST /api/remote/unlock` with `{"code":"1234"}`: trade the passcode for a
 /// session. It needs the public Origin, same-origin fetch metadata and a JSON
 /// body, but no CSRF token, since there is no session yet.
 ///
@@ -145,27 +145,6 @@ fn start_session(policy: &BackendPolicy) -> Response {
         issued.expires_at.saturating_sub(policy.sessions.now())
     );
     if let Ok(value) = HeaderValue::from_str(&cookie) {
-        response.headers_mut().append(header::SET_COOKIE, value);
-    }
-    response
-}
-
-/// `POST /monitor/api/disconnect`: forget the session and clear its cookie. The
-/// passcode keeps working; the page asks for it again.
-pub(super) fn disconnect(policy: &BackendPolicy, request: &Request) -> Response {
-    if *request.method() != Method::POST {
-        return method_not_allowed("POST");
-    }
-    let Some((secret, session)) = current_session(policy, request.headers()) else {
-        return session_required();
-    };
-    if check_write(request.headers(), &policy.origin, &session).is_err() {
-        return forbidden();
-    }
-    policy.sessions.revoke(&secret);
-    let mut response = json(StatusCode::OK, &serde_json::json!({"disconnected": true}));
-    let cleared = format!("{SESSION_COOKIE_NAME}=; {SESSION_COOKIE_ATTRIBUTES}; Max-Age=0");
-    if let Ok(value) = HeaderValue::from_str(&cleared) {
         response.headers_mut().append(header::SET_COOKIE, value);
     }
     response

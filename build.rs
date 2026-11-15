@@ -1,10 +1,9 @@
 //! Stops the build when the web UI has not been built, because the server
 //! embeds `web/dist/`. Writes the tables of embedded web files:
 //!
-//! - `web_assets.rs`: the board's and the monitor's scripts and stylesheets,
-//!   as the gzip files the web build writes beside them, with a build ID for
-//!   each page. Files are named by their content, and a file both builds
-//!   contain is embedded once.
+//! - `web_assets.rs`: the board's scripts and stylesheets, as the gzip files
+//!   the web build writes beside them, with a build ID for the page. Files are
+//!   named by their content.
 //!
 //! The script uses the standard library only: the tests compile it alone.
 
@@ -25,27 +24,21 @@ fn main() {
     if !missing.is_empty() {
         fail(&dist::error_message(&missing));
     }
-    let absent = dist::missing_namespace_files(&dist_dir, "monitor", &dist::MONITOR_REQUIRED_FILES);
-    if !absent.is_empty() {
-        fail(&dist::namespace_error_message("monitor", &absent));
-    }
 
     let mut blobs = Blobs::default();
     let app = Page::read(&dist_dir, "assets", "app", &mut blobs);
-    let monitor = Page::read(&dist_dir, "monitor", "monitor", &mut blobs);
     let sandbox = read_sandbox(&dist_dir, &mut blobs);
 
     let mut source = String::new();
     blobs.write_statics(&mut source);
     app.write_table(&mut source, "APP");
-    monitor.write_table(&mut source, "MONITOR");
     write_asset_table(&mut source, "SANDBOX", &sandbox);
     std::fs::write(out_dir.join("web_assets.rs"), source)
         .expect("the build script can write to OUT_DIR");
 
     // Rerun when a folder gains or loses a file; every listed file is also
     // watched, so the tables never outlive the files they name.
-    for folder in ["", "/assets", "/monitor", "/sandbox"] {
+    for folder in ["", "/assets", "/sandbox"] {
         println!("cargo:rerun-if-changed=web/dist{folder}");
     }
 }
@@ -116,15 +109,7 @@ impl Page {
     /// script or stylesheet with its `.gz`. Fails when a `.gz` is missing or
     /// when the HTML loads a file that is not there.
     fn read(dist: &Path, folder: &str, entry: &str, blobs: &mut Blobs) -> Self {
-        let (html_path, url_prefix) = if folder == "assets" {
-            (dist.join("index.html"), "/assets/".to_owned())
-        } else {
-            (
-                dist.join(folder).join("index.html"),
-                // The monitor is addressed under /monitor/: the ngrok warning cookie is scoped to it.
-                format!("/monitor/assets/{folder}/"),
-            )
-        };
+        let (html_path, url_prefix) = (dist.join("index.html"), "/assets/".to_owned());
         let html = std::fs::read_to_string(&html_path).expect("the HTML template is readable");
         let dir = dist.join(folder);
         let mut files = BTreeMap::new();

@@ -139,14 +139,6 @@ impl Running {
         format!("/api/projects/{id}")
     }
 
-    pub fn monitor_base(&self, home: &Path) -> String {
-        let id = FileStore::open(&home.join("shared"))
-            .project_by_name("monitor")
-            .unwrap()
-            .id;
-        format!("/monitor/api/projects/{id}")
-    }
-
     pub fn host(&self) -> &'static str {
         ORIGIN.trim_start_matches("https://")
     }
@@ -191,22 +183,8 @@ impl Running {
         }
     }
 
-    /// Enter a passcode the way the phone's page does.
+    /// Enter a passcode the way the board's passcode screen does.
     pub fn unlock(&self, code: &str) -> Reply {
-        self.request(
-            "POST",
-            "/monitor/api/unlock",
-            &[
-                ("Origin", ORIGIN),
-                ("Sec-Fetch-Site", "same-origin"),
-                ("Content-Type", "application/json"),
-            ],
-            &format!(r#"{{"code":"{code}"}}"#),
-        )
-    }
-
-    /// Enter a passcode at the board app's route, as its passcode screen does.
-    pub fn unlock_board(&self, code: &str) -> Reply {
         self.request(
             "POST",
             "/api/remote/unlock",
@@ -217,11 +195,6 @@ impl Running {
             ],
             &format!(r#"{{"code":"{code}"}}"#),
         )
-    }
-
-    /// A session opened with the passcode of this start, at the board app's route.
-    pub fn board_session(&self) -> Session {
-        session_of(self.unlock_board(&self.passcode))
     }
 
     /// A session opened with the passcode of this start.

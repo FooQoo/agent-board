@@ -353,12 +353,12 @@ fn summary_the_same_content_has_the_same_version_after_a_restart() {
 }
 
 #[test]
-fn summary_monitor_answers_the_same_contract_behind_the_session() {
+fn summary_through_the_entrance_answers_the_same_contract_behind_the_session() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let (home, project) = home();
     let server = support::Running::start(home.path());
     let session = server.session();
-    let path = format!("/monitor/api/projects/{project}/summary");
+    let path = format!("/api/projects/{project}/summary");
     let reply = server.get(&session, &path);
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.header("cache-control"), Some("no-store"));
@@ -378,16 +378,16 @@ fn summary_monitor_answers_the_same_contract_behind_the_session() {
 
     let missing = server.get(
         &session,
-        "/monitor/api/projects/ffffffffffffffffffffffffffffffff/summary",
+        "/api/projects/ffffffffffffffffffffffffffffffff/summary",
     );
     assert_eq!(missing.status, 404, "{}", missing.body);
-    // Without a session the entrance refuses it as it does every monitor read.
+    // Without a session the entrance refuses it as it does every read.
     let refused = server.request("GET", &path, &[], "");
     assert_ne!(refused.status, 200);
 }
 
 #[test]
-fn summary_the_pc_and_the_monitor_give_the_same_body() {
+fn summary_the_pc_and_the_entrance_give_the_same_body() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let (home, project) = home();
     let pc = {
@@ -397,10 +397,7 @@ fn summary_the_pc_and_the_monitor_give_the_same_body() {
     let server = support::Running::start(home.path());
     let session = server.session();
     let monitor = server
-        .get(
-            &session,
-            &format!("/monitor/api/projects/{project}/summary"),
-        )
+        .get(&session, &format!("/api/projects/{project}/summary"))
         .body;
     assert_eq!(pc, monitor);
 }

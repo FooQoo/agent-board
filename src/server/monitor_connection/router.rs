@@ -27,8 +27,6 @@ pub struct BackendPolicy {
     pub sessions: Arc<SessionStore>,
     /// The passcode of this run and the count of wrong guesses against it.
     pub unlock: Arc<UnlockGate>,
-    /// Added to a request that has passed every check, for the existing write guard.
-    pub internal_token: Arc<str>,
     revoked: Arc<watch::Sender<bool>>,
 }
 
@@ -37,7 +35,6 @@ impl BackendPolicy {
         origin: PublicOrigin,
         epoch: u64,
         sessions: Arc<SessionStore>,
-        internal_token: String,
         unlock: Arc<UnlockGate>,
     ) -> Self {
         Self {
@@ -45,7 +42,6 @@ impl BackendPolicy {
             epoch,
             sessions,
             unlock,
-            internal_token: internal_token.into(),
             revoked: Arc::new(watch::channel(false).0),
         }
     }
@@ -127,7 +123,6 @@ mod tests {
             PublicOrigin::parse("https://abc.ngrok.app").unwrap(),
             1,
             Arc::new(SessionStore::new(system_clock(), 60)),
-            "internal".into(),
             Arc::new(UnlockGate::new(Passcode::from_number(1234))),
         )
     }

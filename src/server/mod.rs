@@ -15,7 +15,6 @@ pub mod guard;
 pub mod idle;
 pub(crate) mod instance;
 mod launch;
-pub mod monitor;
 pub(crate) mod preferences;
 mod qa;
 pub mod monitor_auth {

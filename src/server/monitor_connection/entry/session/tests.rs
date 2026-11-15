@@ -24,7 +24,6 @@ fn policy(now: &Arc<AtomicU64>, epoch: u64, origin: &str) -> BackendPolicy {
             Arc::new(move || clock.load(Ordering::SeqCst)),
             SESSION_MAX_AGE_SECS,
         )),
-        "internal".into(),
         Arc::new(UnlockGate::new(Passcode::from_number(4821))),
     )
 }
@@ -58,7 +57,7 @@ async fn try_code(p: &BackendPolicy, code: &str) -> Response {
     unlock(p, post(UNLOCK, &PAGE, &format!(r#"{{"code":"{code}"}}"#))).await
 }
 
-const UNLOCK: &str = "/monitor/api/unlock";
+const UNLOCK: &str = "/api/remote/unlock";
 
 async fn body_of(response: Response) -> serde_json::Value {
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
@@ -154,40 +153,4 @@ async fn a_session_ends_after_twelve_hours_and_never_crosses_a_generation_or_ori
         StatusCode::UNAUTHORIZED
     );
     assert_eq!(try_code(&p, CODE).await.status(), StatusCode::OK);
-}
-
-#[tokio::test]
-async fn disconnect_forgets_the_session_and_no_longer_points_at_a_logout() {
-    let now = Arc::new(AtomicU64::new(0));
-    let p = policy(&now, 1, ORIGIN);
-    let issued = try_code(&p, CODE).await;
-    let mut cookie = cookie_of(&issued);
-    let csrf = body_of(issued).await["csrfToken"]
-        .as_str()
-        .unwrap()
-        .to_string();
-    cookie.insert(
-        HeaderName::from_static("x-agboard-csrf"),
-        HeaderValue::from_str(&csrf).unwrap(),
-    );
-    for (k, v) in [("origin", ORIGIN), ("sec-fetch-site", "same-origin")] {
-        cookie.insert(
-            HeaderName::from_bytes(k.as_bytes()).unwrap(),
-            HeaderValue::from_str(v).unwrap(),
-        );
-    }
-    let mut request = post("/monitor/api/disconnect", &[], "{}");
-    *request.headers_mut() = cookie.clone();
-    let r = disconnect(&p, &request);
-    assert_eq!(r.status(), StatusCode::OK);
-    let cleared = r
-        .headers()
-        .get(header::SET_COOKIE)
-        .unwrap()
-        .to_str()
-        .unwrap();
-    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/;"));
-    let body = body_of(r).await;
-    assert_eq!(body, serde_json::json!({"disconnected": true}));
-    assert!(current_session(&p, &cookie).is_none());
 }

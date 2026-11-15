@@ -8,21 +8,6 @@ use std::path::Path;
 /// checks them through the files the HTML names.
 pub const REQUIRED_FILES: [&str; 3] = ["index.html", "logo.png", "logo-white.png"];
 
-pub const MONITOR_REQUIRED_FILES: [&str; 1] = ["index.html"];
-
-/// Required files missing beneath one isolated web asset namespace.
-pub fn missing_namespace_files<'a>(
-    dist: &Path,
-    namespace: &str,
-    required: &'a [&'a str],
-) -> Vec<&'a str> {
-    required
-        .iter()
-        .copied()
-        .filter(|rel| !dist.join(namespace).join(rel).is_file())
-        .collect()
-}
-
 /// Actionable error for an incomplete isolated web build.
 pub fn namespace_error_message(namespace: &str, missing: &[&str]) -> String {
     format!(
@@ -97,22 +82,5 @@ mod tests {
         let message = error_message(&["index.html", "logo.png"]);
         assert!(message.contains("Run \"pnpm --dir web build\" first."));
         assert!(message.contains("index.html, logo.png"));
-    }
-
-    #[test]
-    fn an_incomplete_monitor_build_names_the_files_and_build_command() {
-        let tmp = tempfile::tempdir().unwrap();
-        assert_eq!(
-            missing_namespace_files(tmp.path(), "monitor", &MONITOR_REQUIRED_FILES),
-            vec!["index.html"]
-        );
-        assert!(
-            namespace_error_message("monitor", &["index.html"])
-                .contains("Run \"pnpm --dir web build\" first.")
-        );
-        assert!(
-            namespace_error_message("monitor", &["index.html"])
-                .contains("missing in web/dist/monitor: index.html")
-        );
     }
 }

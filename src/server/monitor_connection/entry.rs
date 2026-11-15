@@ -2,9 +2,8 @@
 //!
 //! 1. the tunnel is up and the Host is exactly the public one;
 //! 2. untrusted headers are removed;
-//! 3. the passcode and session routes (`/api/remote/unlock`, `/api/remote/session`, and the old
-//!    `/monitor/api/` ones) are answered here; the page shell and its static files need nothing
-//!    more;
+//! 3. the passcode and session routes (`/api/remote/unlock`, `/api/remote/session`) are answered
+//!    here; the page shell and its static files need nothing more;
 //! 4. every other route needs a live session, and a change also needs the public Origin,
 //!    same-origin fetch metadata and the CSRF token.
 //!
@@ -21,25 +20,20 @@ use std::time::Duration;
 use axum::Router;
 use axum::body::Body;
 use axum::extract::{Request, State};
-use axum::http::{HeaderName, HeaderValue, Method, StatusCode, header};
+use axum::http::{HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use futures_util::StreamExt;
 
-use self::reply::{forbidden, method_not_allowed, plain, session_required};
-use self::session::{current_session, disconnect, open_session, unlock};
+use self::reply::{forbidden, plain, session_required};
+use self::session::{current_session, open_session, unlock};
 use super::router::{BackendPolicy, Gate, admit, refuse};
-use crate::server::monitor::{apply_security_headers, assets};
 use crate::server::monitor_auth::guard::{check_write, has_method_override, strip_untrusted};
 
 /// Where the board app asks for its session and enters the passcode.
 const REMOTE_SESSION_PATH: &str = "/api/remote/session";
 const REMOTE_UNLOCK_PATH: &str = "/api/remote/unlock";
-/// The same two routes for the old mobile monitor, which is still served.
-const SESSION_PATH: &str = "/monitor/api/session";
-const UNLOCK_PATH: &str = "/monitor/api/unlock";
-const DISCONNECT_PATH: &str = "/monitor/api/disconnect";
-const EVENTS_PATHS: [&str; 2] = ["/api/events", "/monitor/api/events"];
+const EVENTS_PATH: &str = "/api/events";
 
 /// The page shell and its static files: they hold no token and no board data, so they need the
 /// entrance checks but no session. Everything else is behind the session.
@@ -52,7 +46,6 @@ fn is_public(method: &Method, path: &str) -> bool {
         "/" | "/logo.png" | "/logo-white.png" | "/docs-sandbox"
     ) || path.starts_with("/assets/")
         || path.starts_with("/docs-sandbox/")
-        || path.starts_with("/monitor/assets/monitor/")
 }
 /// The longest one event stream is kept open; the page reconnects after it.
 pub const EVENTS_MAX: Duration = Duration::from_secs(5 * 60);
@@ -80,13 +73,15 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     }
     strip_untrusted(request.headers_mut());
     let path = request.uri().path().to_owned();
+    // The old mobile monitor's addresses are gone: they are not found, session or none.
+    if path == "/monitor" || path.starts_with("/monitor/") {
+        return not_found().await;
+    }
     match path.as_str() {
-        SESSION_PATH | REMOTE_SESSION_PATH => {
+        REMOTE_SESSION_PATH => {
             return open_session(&policy, request.method(), request.headers());
         }
-        UNLOCK_PATH | REMOTE_UNLOCK_PATH => return unlock(&policy, request).await,
-        DISCONNECT_PATH => return disconnect(&policy, &request),
-        "/monitor" | "/monitor/" => return page(&request),
+        REMOTE_UNLOCK_PATH => return unlock(&policy, request).await,
         _ => {}
     }
     if is_public(request.method(), &path) {
@@ -97,20 +92,12 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         return session_required();
     };
     let changing = !matches!(*request.method(), Method::GET | Method::HEAD);
-    if changing {
-        if check_write(request.headers(), &policy.origin, &session).is_err() {
-            return forbidden();
-        }
-        // Only the existing write guard sees this; the page never has it.
-        if let Ok(value) = HeaderValue::from_str(&policy.internal_token) {
-            request
-                .headers_mut()
-                .insert(HeaderName::from_static("x-agboard-token"), value);
-        }
+    if changing && check_write(request.headers(), &policy.origin, &session).is_err() {
+        return forbidden();
     }
     request.headers_mut().remove(header::COOKIE);
     let response = next.run(request).await;
-    if EVENTS_PATHS.contains(&path.as_str()) && response.status() == StatusCode::OK {
+    if path == EVENTS_PATH && response.status() == StatusCode::OK {
         return bound_events(response, &policy, secret, session.expires_at);
     }
     response
@@ -122,36 +109,6 @@ fn with_nosniff(mut response: Response) -> Response {
         .entry(header::X_CONTENT_TYPE_OPTIONS)
         .or_insert(HeaderValue::from_static("nosniff"));
     response
-}
-
-/// The old monitor page. It holds no token, session or board data.
-fn page(request: &Request) -> Response {
-    if !matches!(*request.method(), Method::GET | Method::HEAD) {
-        return method_not_allowed("GET, HEAD");
-    }
-    if request.uri().path() == "/monitor" {
-        return monitor_redirect();
-    }
-    let mut response = Response::new(Body::from(assets::render_monitor("")));
-    let headers = response.headers_mut();
-    headers.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static("text/html; charset=utf-8"),
-    );
-    apply_security_headers("/monitor/", headers);
-    response
-}
-
-/// The page address without the slash, and the bare origin: both go to `/monitor/`.
-/// The ngrok warning page ends on the bare origin after "Visit Site", so that
-/// address has to forward too. Nothing here reveals anything.
-fn monitor_redirect() -> Response {
-    Response::builder()
-        .status(StatusCode::PERMANENT_REDIRECT)
-        .header(header::LOCATION, "/monitor/")
-        .header(header::CACHE_CONTROL, "no-store")
-        .body(Body::empty())
-        .unwrap_or_default()
 }
 
 /// Keep an event stream no longer than [`EVENTS_MAX`], the session, or the run.
@@ -207,7 +164,6 @@ mod tests {
                 Arc::new(move || clock.load(Ordering::SeqCst)),
                 SESSION_MAX_AGE_SECS,
             )),
-            "internal".into(),
             Arc::new(UnlockGate::new(Passcode::from_number(1234))),
         )
     }

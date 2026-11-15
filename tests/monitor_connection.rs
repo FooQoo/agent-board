@@ -333,10 +333,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     assert_eq!(request(backend, "GET", "/", &[], "").status, 403);
     let host = PUBLIC.trim_start_matches("https://");
     let admitted = [("Host", host)];
-    assert_eq!(
-        request(backend, "GET", "/monitor/", &admitted, "").status,
-        403
-    );
+    assert_eq!(request(backend, "GET", "/", &admitted, "").status, 403);
     release.send(()).unwrap();
     let ready = s.wait_status("ready");
     assert_eq!(ready["url"], PUBLIC);
@@ -351,9 +348,9 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     // API until a passcode opens a session. Sessions, CSRF and the rest are covered in
     // monitor_ngrok.rs.
     for (path, want) in [
-        ("/monitor/", 200),
+        ("/", 200),
         // Merely asking for a session starts none: the passcode is needed.
-        ("/monitor/api/session", 401),
+        ("/api/remote/session", 401),
         ("/", 200),
         ("/api/projects", 401),
         ("/api/monitor-connections", 401),
@@ -364,9 +361,9 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     // Any other Host is refused, and headers a client writes to look like the Edge's are not a Host.
     for (path, headers) in [
         ("/", vec![("Host", "127.0.0.1")]),
-        ("/monitor/", vec![("Host", "localhost")]),
+        ("/", vec![("Host", "localhost")]),
         (
-            "/monitor/",
+            "/",
             vec![
                 ("ngrok-auth-user-email", "me@example.com"),
                 ("X-Forwarded-Host", host),

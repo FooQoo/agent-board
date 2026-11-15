@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use agent_board::error::AgboardError;
 use agent_board::file_store::watch::WatchMode;
-use agent_board::server::web_assets::{APP_ASSETS, MONITOR_ASSETS};
+use agent_board::server::web_assets::APP_ASSETS;
 use agent_board::server::{ServeConfig, run_until_in};
 
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
@@ -54,7 +54,7 @@ fn write(root: &Path, rel: &str, bytes: &[u8]) {
 }
 
 /// A fake crate root with a complete build: the pages load `app-A1.js`,
-/// `app-A2.css`, `monitor-M1.js` and `monitor-M2.css`, each with its `.gz`,
+/// and `app-A2.css`, each with its `.gz`,
 /// plus `extra` files (also given as `(path, bytes)`).
 fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
@@ -64,19 +64,12 @@ fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
         "index.html",
         br#"<script src="/assets/app-A1.js"></script><link href="/assets/app-A2.css">"#,
     );
-    write(
-        root,
-        "monitor/index.html",
-        br#"<script src="/monitor/assets/monitor/monitor-M1.js"></script><link href="/monitor/assets/monitor/monitor-M2.css">"#,
-    );
     for rel in ["logo.png", "logo-white.png"] {
         write(root, rel, b"x");
     }
     for name in [
         "assets/app-A1.js",
         "assets/app-A2.css",
-        "monitor/monitor-M1.js",
-        "monitor/monitor-M2.css",
         "sandbox/sandbox-S1.js",
     ] {
         write(root, name, name.as_bytes());
@@ -94,19 +87,6 @@ fn failure(dir: &Path) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
     assert!(stderr.contains("pnpm --dir web build"), "{stderr}");
     stderr
-}
-
-#[test]
-fn the_build_rejects_missing_isolated_assets_with_an_actionable_message() {
-    let dir = tempfile::tempdir().unwrap();
-    for rel in ["index.html", "logo.png", "logo-white.png"] {
-        write(dir.path(), rel, b"x");
-    }
-    let stderr = failure(dir.path());
-    assert!(
-        stderr.contains("the monitor web assets are not built"),
-        "{stderr}"
-    );
 }
 
 #[test]
@@ -129,9 +109,9 @@ fn the_build_rejects_a_page_that_loads_a_file_that_is_not_built() {
 #[test]
 fn the_build_rejects_a_file_without_its_gzip_copy() {
     let dir = fake_build(&[]);
-    std::fs::remove_file(dir.path().join("web/dist/monitor/monitor-M1.js.gz")).unwrap();
+    std::fs::remove_file(dir.path().join("web/dist/assets/app-A1.js.gz")).unwrap();
     let stderr = failure(dir.path());
-    assert!(stderr.contains("monitor-M1.js.gz is missing"), "{stderr}");
+    assert!(stderr.contains("app-A1.js.gz is missing"), "{stderr}");
 }
 
 #[test]
@@ -141,21 +121,14 @@ fn the_tables_list_entries_and_chunks_and_nothing_else() {
         ("assets/chunk-spec-AAAA.js.gz", b"spec"),
         ("assets/other.js", b"other"),
         ("assets/chunk-map-BBBB.js.map", b"map"),
-        ("monitor/app-C1.js", b"board"),
-        ("monitor/app-C1.js.gz", b"board"),
     ]);
     let (output, table) = run_build_script(dir.path());
     assert!(output.status.success(), "{output:?}");
     let table = table.expect("the build script writes web_assets.rs");
-    for name in [
-        "app-A1.js",
-        "app-A2.css",
-        "chunk-spec-AAAA.js",
-        "monitor-M1.js",
-    ] {
+    for name in ["app-A1.js", "app-A2.css", "chunk-spec-AAAA.js"] {
         assert!(table.contains(&format!("name: \"{name}\"")), "{table}");
     }
-    for name in ["other.js", "chunk-map-BBBB.js.map", "app-C1.js"] {
+    for name in ["other.js", "chunk-map-BBBB.js.map"] {
         assert!(!table.contains(&format!("name: \"{name}\"")), "{table}");
     }
     assert!(
@@ -165,19 +138,20 @@ fn the_tables_list_entries_and_chunks_and_nothing_else() {
 }
 
 #[test]
-fn a_file_both_pages_contain_is_embedded_once() {
+fn files_with_the_same_bytes_are_embedded_once() {
     let dir = fake_build(&[
         ("assets/chunk-same-SSSS.js", b"same"),
         ("assets/chunk-same-SSSS.js.gz", b"same gzip"),
-        ("monitor/chunk-same-SSSS.js", b"same"),
-        ("monitor/chunk-same-SSSS.js.gz", b"same gzip"),
+        ("assets/chunk-twin-TTTT.js", b"same"),
+        ("assets/chunk-twin-TTTT.js.gz", b"same gzip"),
     ]);
     let (output, table) = run_build_script(dir.path());
     assert!(output.status.success(), "{output:?}");
     let table = table.unwrap();
-    // Four entry files, the sandbox script and one shared chunk.
-    assert_eq!(table.matches("include_bytes!").count(), 6, "{table}");
-    assert_eq!(table.matches("chunk-same-SSSS.js\"").count(), 2, "{table}");
+    // Two entry files, the sandbox script and one chunk shared by two names.
+    assert_eq!(table.matches("include_bytes!").count(), 4, "{table}");
+    assert_eq!(table.matches("chunk-same-SSSS.js\"").count(), 1, "{table}");
+    assert_eq!(table.matches("chunk-twin-TTTT.js\"").count(), 1, "{table}");
 }
 
 #[test]
@@ -354,16 +328,6 @@ fn a_browser_that_accepts_gzip_gets_the_compressed_bytes() {
         body,
         std::fs::read(dist.join(format!("{name}.gz"))).unwrap()
     );
-}
-
-#[test]
-fn the_monitor_reuses_the_boards_diagram_chunks() {
-    let shared: Vec<_> = MONITOR_ASSETS
-        .iter()
-        .filter(|asset| asset.name.starts_with("chunk-mermaid.core-"))
-        .collect();
-    assert_eq!(shared.len(), 1);
-    assert!(APP_ASSETS.iter().any(|asset| asset.name == shared[0].name));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-//! The board's and the monitor's scripts and stylesheets, which `build.rs`
+//! The board's scripts and stylesheets, which `build.rs`
 //! embeds gzip-compressed. Every file is named by its content, so a response
 //! may be kept by the browser for a year: a new build loads new names from the
 //! HTML, which is never cached.
@@ -15,7 +15,7 @@ pub struct EmbeddedAsset {
     pub gzip: &'static [u8],
 }
 
-// `APP_ASSETS`, `MONITOR_ASSETS`, `SANDBOX_ASSETS`, `APP_BUILD_ID` and `MONITOR_BUILD_ID`.
+// `APP_ASSETS`, `SANDBOX_ASSETS` and `APP_BUILD_ID`.
 include!(concat!(env!("OUT_DIR"), "/web_assets.rs"));
 
 /// What the web build leaves in each page's `agboard-build` `<meta>`.
@@ -97,32 +97,14 @@ mod tests {
 
     #[test]
     fn the_tables_hold_only_content_named_scripts_and_stylesheets() {
-        assert!(!APP_ASSETS.is_empty() && !MONITOR_ASSETS.is_empty());
-        for asset in APP_ASSETS.iter().chain(MONITOR_ASSETS) {
+        assert!(!APP_ASSETS.is_empty());
+        for asset in APP_ASSETS {
             let name = asset.name;
             assert!(!name.contains('/') && !name.contains(".."), "{name}");
             assert!(name.ends_with(".js") || name.ends_with(".css"), "{name}");
             assert!(asset.gzip.starts_with(&[0x1f, 0x8b]), "{name}");
         }
         assert_eq!(APP_BUILD_ID.len(), 16);
-        assert_eq!(MONITOR_BUILD_ID.len(), 16);
-    }
-
-    #[test]
-    fn a_file_both_builds_contain_is_embedded_once() {
-        // The monitor reuses the board's diagram chunks under the same names.
-        let shared = MONITOR_ASSETS
-            .iter()
-            .filter_map(|asset| Some((asset, find(APP_ASSETS, asset.name)?)))
-            .collect::<Vec<_>>();
-        assert!(
-            shared
-                .iter()
-                .any(|(asset, _)| asset.name.starts_with("chunk-mermaid.core-"))
-        );
-        for (monitor, board) in shared {
-            assert!(std::ptr::eq(board.gzip, monitor.gzip), "{}", monitor.name);
-        }
     }
 
     #[test]

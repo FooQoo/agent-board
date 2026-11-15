@@ -1,13 +1,12 @@
-//! A real ngrok monitor backend on loopback for the phone client's own tests.
+//! A real ngrok entrance backend on loopback for the browser tests.
 //!
-//! Run only by `web/test/monitor/phone-live.test.ts`, which starts this test with
+//! Run only by `e2e/helpers/phone-entrance.mjs`, which starts this test with
 //! `--ignored`, reads the line that starts with `READY`, and sends commands on
 //! stdin. No test here reaches ngrok: a fake connector opens the "tunnel", so
 //! the Edge (adding the public Host, header removal) is not exercised. The READY line
 //! carries the passcode of the start, as the PC would show it.
 //!
-//! The same backend serves the Playwright specs (`e2e/helpers/monitor.ts`),
-//! which stand in for the Edge with a small proxy. Those specs set
+//! The Playwright specs stand in for the Edge with a small proxy. Those specs set
 //! `AGBOARD_PHONE_HOME` to serve a data area they filled through the CLI; the
 //! decision request below is then left to them. The data area may already hold
 //! the saved setting of an earlier run.
@@ -48,7 +47,7 @@ fn announce(s: &Server) {
 /// Commands on stdin: `rotate` replaces the tunnel (old sessions end and the
 /// passcode changes), `stop` stops it, `quit` ends the test.
 #[test]
-#[ignore = "started by web/test/monitor/phone-live.test.ts"]
+#[ignore = "started by e2e/helpers/phone-entrance.mjs"]
 fn serve_the_phone_backend_until_told_to_quit() {
     let external = std::env::var_os("AGBOARD_PHONE_HOME").map(std::path::PathBuf::from);
     let temp = external.is_none().then(home);

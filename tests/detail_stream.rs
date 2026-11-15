@@ -414,13 +414,13 @@ fn pc_a_client_that_leaves_early_does_not_hurt_the_server() {
 }
 
 #[test]
-fn monitor_detail_routes_stream_the_same_contract_behind_a_session() {
+fn detail_routes_through_the_entrance_stream_the_same_contract_behind_a_session() {
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let home = support::home();
     let id = project_id(home.path());
     let server = support::Running::start(home.path());
     let session = server.session();
-    let base = format!("/monitor/api/projects/{id}");
+    let base = format!("/api/projects/{id}");
     let reply = server.get(&session, &format!("{base}/tasks/1/detail"));
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.header("cache-control"), Some("no-store"));

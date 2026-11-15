@@ -141,7 +141,7 @@ impl Tunnel {
     fn unlock(&self, code: &str) -> Reply {
         self.call(
             "POST",
-            "/monitor/api/unlock",
+            "/api/remote/unlock",
             &[
                 ("Origin", &self.public),
                 ("Sec-Fetch-Site", "same-origin"),
@@ -165,7 +165,7 @@ impl Tunnel {
     }
 
     fn base(&self) -> String {
-        format!("/monitor/api/projects/{}", project_of(self.path()))
+        format!("/api/projects/{}", project_of(self.path()))
     }
 
     fn read(&self, session: &Session) -> Reply {
@@ -249,8 +249,7 @@ fn open_events(t: &Tunnel, cookie: &str) -> (TcpStream, String) {
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events?project={} HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
-        project_of(t.path()),
+        "GET /api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
         t.host()
     );
     stream.write_all(head.as_bytes()).unwrap();
@@ -439,8 +438,8 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
     let t = Tunnel::up();
     let live = t.session();
     let request_id = t.request_id(&live);
-    let page = t.call("GET", "/monitor/", &[], "");
-    let start = page.body.find("/monitor/assets/monitor/").unwrap();
+    let page = t.call("GET", "/", &[], "");
+    let start = page.body.find("/assets/").unwrap();
     let asset: String = page.body[start..]
         .chars()
         .take_while(|c| *c != '"' && *c != '\'')
@@ -450,20 +449,20 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
     let body = json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
         .to_string();
     let kinds: Vec<(&str, String)> = vec![
-        ("GET", "/monitor/".into()),
+        ("GET", "/".into()),
         ("GET", asset.clone()),
         ("GET", "/logo-white.png".into()),
-        ("GET", "/monitor/api/session".into()),
-        ("POST", "/monitor/api/unlock".into()),
+        ("GET", "/api/remote/session".into()),
+        ("POST", "/api/remote/unlock".into()),
         ("GET", format!("{base}/summary")),
         ("GET", format!("{base}/tasks/1/detail")),
-        ("GET", "/monitor/api/events".into()),
+        ("GET", "/api/events".into()),
         ("POST", answer.clone()),
     ];
     // The body of each: the right passcode for the unlock, the answer for the rest.
     let unlock_body = json!({"code": t.passcode}).to_string();
     let body_of = |path: &str| {
-        if path == "/monitor/api/unlock" {
+        if path == "/api/remote/unlock" {
             unlock_body.clone()
         } else {
             body.clone()
@@ -523,8 +522,8 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
             &body_of(path),
         );
         let want = match path {
-            p if p == "/monitor/" || *p == asset || p == "/logo-white.png" => 200,
-            p if p == "/monitor/api/unlock" => 403,
+            p if p == "/" || *p == asset || p == "/logo-white.png" => 200,
+            p if p == "/api/remote/unlock" => 403,
             _ => 401,
         };
         assert_eq!(r.status, want, "{method} {path}");
@@ -715,20 +714,17 @@ fn a_restart_never_revives_an_old_session_and_keeps_no_secret() {
 // ------------------------------------------------------------ the boundaries
 
 #[test]
-fn the_entrance_exposes_no_desktop_editing_and_the_pc_entrance_is_unchanged() {
+fn the_entrance_does_not_serve_what_acts_on_the_pc_and_the_pc_entrance_is_unchanged() {
     let t = Tunnel::up();
     let session = t.session();
     let project = project_of(t.path());
     let tasks_before = t.read(&session).json()["tasks"].as_array().unwrap().len();
 
-    // What acts on the PC itself, and the old monitor's paths that never had editing, are not
-    // served here, even with a session, a CSRF token and a guessed board token.
+    // What acts on the PC itself is not served here, even with a session, a CSRF token and a
+    // guessed board token.
     let edits = [
-        ("POST", format!("/monitor/api/projects/{project}/tasks")),
         ("POST", format!("/api/projects/{project}/docs/open")),
         ("POST", "/api/notify".into()),
-        ("PATCH", format!("{}/tasks/1", t.base())),
-        ("DELETE", format!("{}/tasks/1", t.base())),
         ("PUT", "/api/monitor-connections/settings/ngrok".into()),
         (
             "POST",

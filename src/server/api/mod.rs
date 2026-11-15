@@ -30,8 +30,6 @@ use axum::middleware;
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
-pub(crate) use detail::{Target, detail_response};
-
 use super::response::{agboard_error_response, error_response, json_response};
 use super::store::refresh_index;
 use super::{AppState, events};

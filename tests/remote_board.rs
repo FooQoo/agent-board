@@ -95,7 +95,7 @@ fn local(
 fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
     let home = home();
     let server = Running::start(home.path());
-    let session = server.board_session();
+    let session = server.session();
     let base = server.base(home.path());
 
     // Reads: the board's own routes.
@@ -206,7 +206,7 @@ fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
 fn a_write_needs_the_session_the_origin_the_fetch_metadata_and_the_csrf_token() {
     let home = home();
     let server = Running::start(home.path());
-    let session = server.board_session();
+    let session = server.session();
     let path = format!("{}/tasks", server.base(home.path()));
     let body = json!({"title": "Refused", "assignee": "human"}).to_string();
     let good = |extra: &[(&str, &str)]| {
@@ -256,7 +256,7 @@ fn a_write_needs_the_session_the_origin_the_fetch_metadata_and_the_csrf_token() 
 fn what_acts_on_the_pc_itself_is_not_served_through_the_entrance() {
     let home = home();
     let server = Running::start(home.path());
-    let session = server.board_session();
+    let session = server.session();
     let base = server.base(home.path());
     for (method, path) in [
         ("GET", "/api/monitor-connections".to_string()),
@@ -341,7 +341,7 @@ fn the_cookie_is_issued_only_when_the_passcode_passes() {
     assert_eq!(ask.status, 401);
     assert!(ask.header("set-cookie").is_none());
     for _ in 0..4 {
-        let reply = server.unlock_board(wrong);
+        let reply = server.unlock(wrong);
         assert_eq!(reply.status, 403, "{}", reply.body);
         assert!(reply.body.contains("unlock_failed"));
         assert!(reply.header("set-cookie").is_none());
@@ -357,7 +357,7 @@ fn the_cookie_is_issued_only_when_the_passcode_passes() {
     assert!(no_origin.header("set-cookie").is_none());
 
     // The right code opens a session: a cookie for the whole entrance, and the CSRF token.
-    let granted = server.unlock_board(&server.passcode);
+    let granted = server.unlock(&server.passcode);
     assert_eq!(granted.status, 200, "{}", granted.body);
     let cookie = granted.header("set-cookie").expect("a cookie");
     for part in [
@@ -392,10 +392,10 @@ fn five_wrong_passcodes_lock_the_entrance_and_even_the_right_one_issues_nothing(
         "0000"
     };
     for _ in 0..5 {
-        assert_eq!(server.unlock_board(wrong).status, 403);
+        assert_eq!(server.unlock(wrong).status, 403);
     }
     for code in [wrong, server.passcode.as_str()] {
-        let reply = server.unlock_board(code);
+        let reply = server.unlock(code);
         assert_eq!(reply.status, 429, "{}", reply.body);
         assert!(reply.body.contains("unlock_locked"));
         assert!(reply.header("set-cookie").is_none());
@@ -466,7 +466,7 @@ fn the_page_and_its_static_files_carry_no_token_and_need_no_session() {
         }
     }
     // A session does not change the page: it still has no token.
-    let session = server.board_session();
+    let session = server.session();
     let again = server.get(&session, "/");
     assert!(!again.body.contains(&board_token));
     assert!(again.body.contains("name=\"agboard-token\" content=\"\""));
@@ -543,4 +543,135 @@ fn the_local_entrance_keeps_its_token_page_and_checks_with_the_tunnel_up() {
         &body,
     );
     assert!(made.status < 300, "{} {}", made.status, made.body);
+}
+
+// ------------------------------------------------------- the old monitor is gone
+
+/// Every address the old mobile monitor had, whatever the method.
+const OLD_MONITOR_PATHS: [&str; 12] = [
+    "/monitor",
+    "/monitor/",
+    "/monitor/?project=0123456789abcdef0123456789abcdef",
+    "/monitor/api/session",
+    "/monitor/api/unlock",
+    "/monitor/api/disconnect",
+    "/monitor/api/events?project=0123456789abcdef0123456789abcdef",
+    "/monitor/api/preferences",
+    "/monitor/api/projects/0123456789abcdef0123456789abcdef/summary",
+    "/monitor/api/projects/0123456789abcdef0123456789abcdef/qa/answers",
+    "/monitor/assets/monitor/monitor-x.js",
+    "/monitor/assets/docs-sandbox",
+];
+
+#[test]
+fn the_old_monitor_addresses_are_not_found_through_the_entrance_with_or_without_a_session() {
+    let home = home();
+    let server = Running::start(home.path());
+    let session = server.session();
+    for path in OLD_MONITOR_PATHS {
+        for method in ["GET", "HEAD", "POST", "PUT"] {
+            // Without a session.
+            let bare = server.request(method, path, &[], "{}");
+            assert_eq!(bare.status, 404, "{method} {path} (no session)");
+            assert!(bare.header("location").is_none(), "{method} {path}");
+            // With a live session and every header a change needs.
+            let with = server.write(&session, method, path, "{}");
+            assert_eq!(with.status, 404, "{method} {path} (session)");
+            assert!(with.header("location").is_none(), "{method} {path}");
+        }
+    }
+    // The bodies do not point anywhere: no page, no redirect, no token.
+    let page = server.get(&session, "/monitor/");
+    assert!(!page.body.contains("agboard-monitor-token"));
+    assert!(!page.body.contains("<html"));
+}
+
+#[test]
+fn the_old_monitor_addresses_are_not_found_on_the_local_entrance_too() {
+    let home = home();
+    let server = Running::start(home.path());
+    for path in OLD_MONITOR_PATHS {
+        let reply = local(&server, "GET", path, &[], "");
+        assert_eq!(reply.status, 404, "GET {path}");
+        assert!(reply.header("location").is_none(), "GET {path}");
+    }
+}
+
+// ---------------------------------------------- projects through the entrance
+
+#[test]
+fn projects_are_listed_and_switched_through_the_entrance_as_on_the_pc() {
+    let home = home();
+    let store = agent_board::file_store::FileStore::open(&home.path().join("shared"));
+    let second = store
+        .create_project("second", chrono::Utc::now())
+        .unwrap()
+        .id;
+    store
+        .create_task(
+            &second,
+            agent_board::domain::NewTask {
+                title: "Only in the second project".into(),
+                description: String::new(),
+                assignee: agent_board::domain::Assignee::Human,
+                actor: agent_board::domain::Actor::Human,
+                is_draft: false,
+            },
+            chrono::Utc::now(),
+        )
+        .unwrap();
+    let first = store.project_by_name("monitor").unwrap().id;
+    let server = Running::start(home.path());
+    let session = server.session();
+
+    // The list is the board's own: every project, by its ID, with its name.
+    let list = server.get(&session, "/api/projects");
+    assert_eq!(list.status, 200, "{}", list.body);
+    let projects = json_of(&list);
+    let projects = projects["projects"].as_array().expect("a projects array");
+    let ids: Vec<&str> = projects.iter().filter_map(|p| p["id"].as_str()).collect();
+    assert!(ids.contains(&first.as_str()), "{ids:?}");
+    assert!(ids.contains(&second.as_str()), "{ids:?}");
+    let names: Vec<&str> = projects.iter().filter_map(|p| p["name"].as_str()).collect();
+    assert!(
+        names.contains(&"monitor") && names.contains(&"second"),
+        "{names:?}"
+    );
+
+    // Switching is reading the other project: each one shows its own tasks.
+    let titles = |id: &str| -> Vec<String> {
+        let reply = server.get(&session, &format!("/api/projects/{id}/summary"));
+        assert_eq!(reply.status, 200, "{id}: {}", reply.body);
+        json_of(&reply)["tasks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|t| t["title"].as_str().map(str::to_owned))
+            .collect()
+    };
+    assert_eq!(titles(first.as_str()), ["Sample"]);
+    assert_eq!(titles(second.as_str()), ["Only in the second project"]);
+    let unknown = server.get(
+        &session,
+        "/api/projects/ffffffffffffffffffffffffffffffff/summary",
+    );
+    assert_eq!(unknown.status, 404, "{}", unknown.body);
+
+    // The page that names a project is the same page as the root: the board app picks the project
+    // from `?project=`, as on the PC, and no token or board data is in it.
+    for id in [first.as_str(), second.as_str()] {
+        let page = server.request("GET", &format!("/?project={id}"), &[], "");
+        assert_eq!(page.status, 200, "{id}");
+        assert!(page.body.contains("name=\"agboard-token\" content=\"\""));
+        assert!(!page.body.contains("Only in the second project"));
+    }
+
+    // Without a session neither the list nor a project is readable.
+    assert_eq!(server.request("GET", "/api/projects", &[], "").status, 401);
+    assert_eq!(
+        server
+            .request("GET", &format!("/api/projects/{second}/summary"), &[], "")
+            .status,
+        401
+    );
 }

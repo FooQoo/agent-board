@@ -111,7 +111,7 @@ impl Tunnel {
     fn unlock(&self, code: &str) -> Reply {
         self.call(
             "POST",
-            "/monitor/api/unlock",
+            "/api/remote/unlock",
             &[
                 ("Origin", PUBLIC),
                 ("Sec-Fetch-Site", "same-origin"),
@@ -160,13 +160,13 @@ fn write_headers<'a>(cookie: &'a str, csrf: &'a str) -> Vec<(&'a str, &'a str)> 
 }
 
 /// Open the event stream by hand so that its end can be observed.
-fn open_events(addr: SocketAddr, project: &str, cookie: &str) -> (TcpStream, String) {
+fn open_events(addr: SocketAddr, cookie: &str) -> (TcpStream, String) {
     let mut stream = TcpStream::connect(addr).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
     let head = format!(
-        "GET /monitor/api/events?project={project} HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
+        "GET /api/events HTTP/1.1\r\nHost: {}\r\nCookie: {cookie}\r\nAccept: text/event-stream\r\nConnection: close\r\n\r\n",
         Tunnel::host()
     );
     stream.write_all(head.as_bytes()).unwrap();
@@ -267,7 +267,7 @@ fn only_the_exact_public_host_is_admitted() {
         ],
     ];
     for headers in &hostile {
-        for path in ["/monitor/", "/monitor/api/session", "/monitor/api/projects"] {
+        for path in ["/", "/api/remote/session", "/api/projects"] {
             let r = request(t.backend, "GET", path, headers, "");
             assert_eq!(r.status, 403, "{path} {headers:?}");
             assert!(r.body.contains("not available"));
@@ -276,7 +276,7 @@ fn only_the_exact_public_host_is_admitted() {
         let unlock = request(
             t.backend,
             "POST",
-            "/monitor/api/unlock",
+            "/api/remote/unlock",
             &[
                 headers.as_slice(),
                 &[
@@ -296,7 +296,7 @@ fn only_the_exact_public_host_is_admitted() {
     let mut raw = TcpStream::connect(t.backend).unwrap();
     raw.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     let head = format!(
-        "GET /monitor/ HTTP/1.1\r\nHost: {0}\r\nHost: {0}\r\nConnection: close\r\n\r\n",
+        "GET / HTTP/1.1\r\nHost: {0}\r\nHost: {0}\r\nConnection: close\r\n\r\n",
         Tunnel::host()
     );
     raw.write_all(head.as_bytes()).unwrap();
@@ -304,17 +304,12 @@ fn only_the_exact_public_host_is_admitted() {
     let _ = raw.read_to_string(&mut answer);
     assert!(answer.starts_with("HTTP/1.1 403"), "{answer}");
     // Method overrides are refused even when everything else is right.
-    let r = t.call(
-        "GET",
-        "/monitor/",
-        &[("X-HTTP-Method-Override", "DELETE")],
-        "",
-    );
+    let r = t.call("GET", "/", &[("X-HTTP-Method-Override", "DELETE")], "");
     assert_eq!(r.status, 403);
     // The public Host admits the page; an extra header changes nothing either way.
-    assert_eq!(t.call("GET", "/monitor/", &[], "").status, 200);
+    assert_eq!(t.call("GET", "/", &[], "").status, 200);
     assert_eq!(
-        t.call("GET", "/monitor/", &[("x-agboard-tunnel-proof", "x")], "")
+        t.call("GET", "/", &[("x-agboard-tunnel-proof", "x")], "")
             .status,
         200
     );
@@ -322,7 +317,7 @@ fn only_the_exact_public_host_is_admitted() {
     let local = request(
         t.backend,
         "GET",
-        "/monitor/",
+        "/",
         &[("Host", &t.s.local.to_string())],
         "",
     );
@@ -344,18 +339,14 @@ fn forged_identity_headers_never_stand_in_for_a_session() {
         ("X-Agboard-Csrf", "x"),
         ("Origin", PUBLIC),
     ];
-    let path = format!("/monitor/api/projects/{}/summary", t.project());
-    for p in [
-        "/monitor/api/projects",
-        path.as_str(),
-        "/monitor/api/events",
-    ] {
+    let path = format!("/api/projects/{}/summary", t.project());
+    for p in ["/api/projects", path.as_str(), "/api/events"] {
         assert_eq!(t.call("GET", p, &forged, "").status, 401, "{p}");
     }
     assert_eq!(
         t.call(
             "GET",
-            "/monitor/api/projects",
+            "/api/projects",
             &[("Cookie", "agboard_ngrok_session=guess")],
             ""
         )
@@ -373,7 +364,7 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
     let direct = request(
         t.backend,
         "POST",
-        "/monitor/api/unlock",
+        "/api/remote/unlock",
         &[
             ("Origin", PUBLIC),
             ("Sec-Fetch-Site", "same-origin"),
@@ -386,7 +377,7 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
     // At the entrance but without a session, nothing is issued by merely asking.
     let ask = t.call(
         "GET",
-        "/monitor/api/session",
+        "/api/remote/session",
         &[("Sec-Fetch-Site", "same-origin")],
         "",
     );
@@ -421,7 +412,7 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
     // A page that asks again with its cookie keeps the session and its token.
     let again = t.call(
         "GET",
-        "/monitor/api/session",
+        "/api/remote/session",
         &[("Cookie", &cookie_header(&value))],
         "",
     );
@@ -430,15 +421,12 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
     assert_eq!(again.json()["csrfToken"], body["csrfToken"]);
 
     // Asking for a session takes GET only, and not from another site.
-    assert_eq!(
-        t.call("POST", "/monitor/api/session", &[], "{}").status,
-        405
-    );
-    assert_eq!(t.call("HEAD", "/monitor/api/session", &[], "").status, 405);
+    assert_eq!(t.call("POST", "/api/remote/session", &[], "{}").status, 405);
+    assert_eq!(t.call("HEAD", "/api/remote/session", &[], "").status, 405);
     assert_eq!(
         t.call(
             "GET",
-            "/monitor/api/session",
+            "/api/remote/session",
             &[("Sec-Fetch-Site", "cross-site")],
             ""
         )
@@ -446,7 +434,7 @@ fn a_session_starts_only_with_the_passcode_and_gets_a_scoped_cookie() {
         403
     );
     // Opening one takes POST only.
-    assert_eq!(t.call("GET", "/monitor/api/unlock", &[], "").status, 405);
+    assert_eq!(t.call("GET", "/api/remote/unlock", &[], "").status, 405);
 }
 
 #[test]
@@ -509,7 +497,7 @@ fn unlock_wants_the_page_itself_and_a_small_json_body_and_a_wrong_code_gets_noth
     cases.push(("method override", with_override, 403));
     // Whatever the page forges, the identity headers of an Edge are not read.
     for (name, headers, want) in cases {
-        let r = t.call("POST", "/monitor/api/unlock", &headers, &good);
+        let r = t.call("POST", "/api/remote/unlock", &headers, &good);
         assert_eq!(r.status, want, "{name}: {}", r.body);
         assert!(r.header("set-cookie").is_none(), "{name}");
     }
@@ -519,12 +507,12 @@ fn unlock_wants_the_page_itself_and_a_small_json_body_and_a_wrong_code_gets_noth
         r#"{"code":1234}"#,
         r#"{"code":"1","x":1}"#,
     ] {
-        let r = t.call("POST", "/monitor/api/unlock", &page, body);
+        let r = t.call("POST", "/api/remote/unlock", &page, body);
         assert_eq!(r.status, 400, "{body}: {}", r.body);
     }
     let big = json!({"code": "1".repeat(10_000)}).to_string();
     assert_eq!(
-        t.call("POST", "/monitor/api/unlock", &page, &big).status,
+        t.call("POST", "/api/remote/unlock", &page, &big).status,
         413
     );
     // Header forgeries and refusals counted for nothing: the passcode still opens.
@@ -535,7 +523,7 @@ fn unlock_wants_the_page_itself_and_a_small_json_body_and_a_wrong_code_gets_noth
     ] {
         let mut headers = page.to_vec();
         headers.push(forged);
-        let r = t.call("POST", "/monitor/api/unlock", &headers, &good);
+        let r = t.call("POST", "/api/remote/unlock", &headers, &good);
         assert_eq!(r.status, 200, "{forged:?}: {}", r.body);
     }
 
@@ -635,13 +623,13 @@ fn the_cookie_alone_cannot_reach_the_backend() {
             ("X-Forwarded-Host", Tunnel::host()),
         ],
     ] {
-        let r = request(t.backend, "GET", "/monitor/api/projects", &headers, "");
+        let r = request(t.backend, "GET", "/api/projects", &headers, "");
         assert_eq!(r.status, 403, "{headers:?}");
     }
     assert_eq!(
         t.call(
             "GET",
-            &format!("/monitor/api/projects/{}/summary", t.project()),
+            &format!("/api/projects/{}/summary", t.project()),
             &[("Cookie", &cookie)],
             ""
         )
@@ -658,7 +646,7 @@ fn a_session_dies_with_the_run_that_issued_it() {
     assert_eq!(
         t.call(
             "GET",
-            &format!("/monitor/api/projects/{}/summary", t.project()),
+            &format!("/api/projects/{}/summary", t.project()),
             &[("Cookie", &cookie)],
             ""
         )
@@ -682,7 +670,7 @@ fn a_session_dies_with_the_run_that_issued_it() {
     // The old cookie is no session of the new run, though the Host is the same.
     let headers = [("Host", Tunnel::host()), ("Cookie", cookie.as_str())];
     assert_eq!(
-        request(backend, "GET", "/monitor/api/projects", &headers, "").status,
+        request(backend, "GET", "/api/projects", &headers, "").status,
         401
     );
     // The new run has its own passcode, and that one opens a session there.
@@ -690,7 +678,7 @@ fn a_session_dies_with_the_run_that_issued_it() {
     let unlock = request(
         backend,
         "POST",
-        "/monitor/api/unlock",
+        "/api/remote/unlock",
         &[
             ("Host", Tunnel::host()),
             ("Origin", PUBLIC),
@@ -702,21 +690,21 @@ fn a_session_dies_with_the_run_that_issued_it() {
     assert_eq!(unlock.status, 200, "{}", unlock.body);
 }
 
-// ------------------------------------------------------------- the monitor
+// ----------------------------------------------------------- the board routes
 
 #[test]
-fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
+fn every_board_route_needs_a_session_and_unknown_routes_are_not_found() {
     let t = Tunnel::up();
     let project = t.project();
-    let base = format!("/monitor/api/projects/{project}");
+    let base = format!("/api/projects/{project}");
     let routes = [
-        "/monitor/api/projects".to_string(),
+        "/api/projects".to_string(),
         format!("{base}/board"),
         format!("{base}/summary"),
         format!("{base}/tasks/1/detail"),
         format!("{base}/tasks/1/attachments/none"),
-        "/monitor/api/events".to_string(),
-        "/monitor/api/nothing-here".to_string(),
+        "/api/events".to_string(),
+        "/api/nothing-here".to_string(),
     ];
     for r in &routes {
         assert_eq!(t.call("GET", r, &[], "").status, 401, "{r}");
@@ -730,15 +718,12 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
     let with = [("Cookie", cookie.as_str())];
-    // The whole-board reads are gone, also for a phone with a session.
-    for old in [
-        "/monitor/api/projects".to_string(),
-        format!("{base}/board"),
-        format!("{base}/epics"),
-        format!("{base}/epics/EPIC-1"),
-    ] {
-        assert_eq!(t.call("GET", &old, &with, "").status, 404, "{old}");
-    }
+    // The project list is the board's own, as on the PC; the whole-board read is gone.
+    assert_eq!(t.call("GET", "/api/projects", &with, "").status, 200);
+    assert_eq!(
+        t.call("GET", &format!("{base}/board"), &with, "").status,
+        404
+    );
     let board = t.call("GET", &format!("{base}/summary"), &with, "");
     assert_eq!(board.status, 200);
     assert_eq!(board.header("cache-control").as_deref(), Some("no-store"));
@@ -755,16 +740,8 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
         404
     );
     // Unknown routes are 404; there is no catch-all page.
-    assert_eq!(
-        t.call("GET", "/monitor/api/nothing-here", &with, "").status,
-        404
-    );
-    for p in [
-        "/board/",
-        "/api/monitor-connections",
-        "/monitor/other",
-        "/index.html",
-    ] {
+    assert_eq!(t.call("GET", "/api/nothing-here", &with, "").status, 404);
+    for p in ["/board/", "/api/monitor-connections", "/index.html"] {
         assert_eq!(t.call("GET", p, &with, "").status, 404, "{p}");
     }
     // The bare origin is the board's page shell (the ngrok warning page ends there).
@@ -772,47 +749,14 @@ fn every_monitor_route_needs_a_session_and_unknown_routes_are_not_found() {
     // Wrong methods are 405, also with a full set of write headers.
     let w = write_headers(&cookie, &csrf);
     for (m, p) in [
-        ("POST", "/monitor/api/projects".to_string()),
+        ("POST", "/api/projects".to_string()),
         ("DELETE", format!("{base}/summary")),
         ("PUT", format!("{base}/qa/answers")),
-        ("PATCH", "/monitor/api/events".to_string()),
-        ("POST", format!("{base}/tasks/1/move")),
-        ("POST", "/monitor/".to_string()),
+        ("PATCH", "/api/events".to_string()),
+        ("POST", "/".to_string()),
     ] {
         assert_eq!(t.call(m, &p, &w, "{}").status, 405, "{m} {p}");
     }
-}
-
-#[test]
-fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
-    let t = Tunnel::up();
-    let page = t.call("GET", "/monitor/", &[], "");
-    assert_eq!(page.status, 200);
-    assert_eq!(page.header("cache-control").as_deref(), Some("no-store"));
-    let csp = page.header("content-security-policy").unwrap();
-    assert!(csp.contains("frame-ancestors 'none'") && csp.contains("default-src 'none'"));
-    assert_eq!(
-        page.header("referrer-policy").as_deref(),
-        Some("no-referrer")
-    );
-    assert!(page.body.contains("agboard-monitor-token\" content=\"\""));
-    assert!(!page.body.contains("Choose the first path"));
-    // Its assets are served to the entrance without a session, and not otherwise.
-    let start = page.body.find("/monitor/assets/monitor/").unwrap();
-    let asset: String = page.body[start..]
-        .chars()
-        .take_while(|c| *c != '"' && *c != '\'')
-        .collect();
-    assert_eq!(t.call("GET", &asset, &[], "").status, 200);
-    assert_eq!(request(t.backend, "GET", &asset, &[], "").status, 403);
-    assert_eq!(
-        t.call("GET", "/monitor/assets/monitor/not-there.js", &[], "")
-            .status,
-        404
-    );
-    assert_eq!(t.call("GET", "/assets/app.js", &[], "").status, 404);
-    // No shell that falls back to the page: anything else needs a session first.
-    assert_eq!(t.call("GET", "/monitor/anything", &[], "").status, 401);
 }
 
 // ------------------------------------------------------------------ answer
@@ -820,7 +764,7 @@ fn the_page_and_its_assets_hold_no_secret_and_need_the_entrance() {
 #[test]
 fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     let t = Tunnel::up();
-    let base = format!("/monitor/api/projects/{}", t.project());
+    let base = format!("/api/projects/{}", t.project());
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
     let board: Value = t
@@ -979,7 +923,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
 #[test]
 fn a_preference_save_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     let t = Tunnel::up();
-    let path = "/monitor/api/preferences";
+    let path = "/api/preferences";
     // Without a session the route is closed, also for reading.
     assert_eq!(t.call("GET", path, &[], "").status, 401);
     let (value, csrf) = t.session();
@@ -1076,63 +1020,16 @@ fn a_preference_save_needs_the_session_origin_fetch_metadata_csrf_and_json() {
     assert_eq!(read(&t)["locale"], "ja");
 }
 
-#[test]
-fn disconnect_ends_the_session_and_leaves_no_logout_path() {
-    let t = Tunnel::up();
-    let (value, csrf) = t.session();
-    let cookie = cookie_header(&value);
-    let base = format!("/monitor/api/projects/{}", t.project());
-    let w = write_headers(&cookie, &csrf);
-    assert_eq!(t.call("GET", "/monitor/api/disconnect", &w, "").status, 405);
-    assert_eq!(
-        t.call(
-            "POST",
-            "/monitor/api/disconnect",
-            &[("Cookie", &cookie)],
-            "{}"
-        )
-        .status,
-        403
-    );
-    assert_eq!(
-        t.call(
-            "GET",
-            &format!("{base}/summary"),
-            &[("Cookie", &cookie)],
-            ""
-        )
-        .status,
-        200
-    );
-    let r = t.call("POST", "/monitor/api/disconnect", &w, "{}");
-    assert_eq!(r.status, 200, "{}", r.body);
-    // The answer is only that the session ended: there is no Edge sign-in to leave.
-    assert_eq!(r.json(), json!({"disconnected": true}));
-    assert!(!r.body.contains("logout"));
-    let cleared = r.header("set-cookie").unwrap();
-    assert!(cleared.contains("Max-Age=0") && cleared.contains("Path=/;"));
-    for p in [format!("{base}/summary"), "/monitor/api/events".to_string()] {
-        assert_eq!(t.call("GET", &p, &[("Cookie", &cookie)], "").status, 401);
-    }
-    assert_eq!(
-        t.call("POST", &format!("{base}/qa/answers"), &w, "{}")
-            .status,
-        401
-    );
-    // The passcode of the run still works: the same phone can open a new session.
-    assert_eq!(t.unlock(&t.passcode).status, 200);
-}
-
 // --------------------------------------------------------------------- SSE
 
 #[test]
 fn the_event_stream_needs_a_session_and_ends_when_the_run_stops() {
     let t = Tunnel::up();
-    let (_, denied) = open_events(t.backend, &t.project(), "");
+    let (_, denied) = open_events(t.backend, "");
     assert!(denied.starts_with("HTTP/1.1 401"), "{denied}");
     assert!(!denied.contains("event: ready"));
     let (value, _) = t.session();
-    let (stream, seen) = open_events(t.backend, &t.project(), &cookie_header(&value));
+    let (stream, seen) = open_events(t.backend, &cookie_header(&value));
     assert!(seen.starts_with("HTTP/1.1 200"), "{seen}");
     assert!(seen.contains("event: ready"), "{seen}");
     // No token travels in the URL.
@@ -1146,47 +1043,6 @@ fn the_event_stream_needs_a_session_and_ends_when_the_run_stops() {
     assert!(TcpStream::connect_timeout(&t.backend, Duration::from_millis(300)).is_err());
 }
 
-#[test]
-fn the_event_stream_ends_when_its_session_is_disconnected() {
-    let t = Tunnel::up();
-    let (value, csrf) = t.session();
-    let cookie = cookie_header(&value);
-    let (stream, seen) = open_events(t.backend, &t.project(), &cookie);
-    assert!(seen.contains("event: ready"), "{seen}");
-    assert_eq!(
-        t.call(
-            "POST",
-            "/monitor/api/disconnect",
-            &write_headers(&cookie, &csrf),
-            "{}"
-        )
-        .status,
-        200
-    );
-    // The session is gone for new streams at once; an open one stops at its next event.
-    let (_, again) = open_events(t.backend, &t.project(), &cookie);
-    assert!(again.starts_with("HTTP/1.1 401"), "{again}");
-    let store = FileStore::open(&t.home.path().join("shared"));
-    let project = store.project_by_name("monitor").unwrap().id;
-    store
-        .create_task(
-            &project,
-            NewTask {
-                title: "Wakes the stream".into(),
-                description: String::new(),
-                assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
-            },
-            chrono::Utc::now(),
-        )
-        .unwrap();
-    assert!(
-        stream_ends(stream, Duration::from_secs(10)),
-        "the stream outlived its session"
-    );
-}
-
 // ----------------------------------------------------------------- secrets
 
 #[test]
@@ -1195,7 +1051,7 @@ fn no_session_value_reaches_the_disk_or_the_pc_api() {
     let (value, csrf) = t.session();
     let _ = t.call(
         "GET",
-        "/monitor/api/projects",
+        "/api/projects",
         &[("Cookie", &cookie_header(&value))],
         "",
     );
@@ -1219,8 +1075,8 @@ fn the_passcode_is_four_digits_for_the_pc_only_while_ready_and_is_never_written_
     // answers (the session, an error, a refusal) never repeat it.
     let (value, csrf) = t.session();
     let cookie = cookie_header(&value);
-    let page = t.call("GET", "/monitor/", &[], "");
-    let session = t.call("GET", "/monitor/api/session", &[("Cookie", &cookie)], "");
+    let page = t.call("GET", "/", &[], "");
+    let session = t.call("GET", "/api/remote/session", &[("Cookie", &cookie)], "");
     let wrong = t.unlock(if code == WRONG_CODE {
         "0001"
     } else {
