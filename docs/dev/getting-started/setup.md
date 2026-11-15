@@ -171,7 +171,7 @@ Without `AGBOARD_CODESIGN_IDENTITY`, or on another OS, the script installs witho
 - The first run after signing still asks once. Choose **Always Allow**.
 - `codesign` may ask once for permission to use the signing key. Enter your login password and choose **Always Allow**. Run the script from a terminal app: from a non-GUI context, `codesign` can fail with `errSecInternalComponent`.
 
-macOS can also slow down development. Gatekeeper scans every freshly built test binary, so `cargo nextest` may crawl. In System Settings, open Privacy & Security, then Developer Tools, and turn on your terminal app.
+macOS can also slow down the test suite. It checks each freshly built test binary the first time it runs, and a test that starts the board's file watcher can wait for macOS long enough to time out. Turning on your terminal app under Privacy & Security, then Developer Tools, in System Settings does not remove this wait. When the full suite does not finish locally, run the checks you need locally and leave the full suite to CI on the pull request.
 
 To try an installation without touching `~/.cargo/bin` or your board:
 
