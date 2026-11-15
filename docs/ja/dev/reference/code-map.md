@@ -83,7 +83,7 @@
 - `src/agent/hook_version.rs`: Hookによるプラグインの版の確認。
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
 - `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
-- `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`useAnswerFlow.ts`はPCのダイアログとスマホ画面のシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
+- `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`useAnswerFlow.ts`はPCのダイアログとスマホ画面のシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯で、PCのボードとスマホ画面で共通の、開閉できる帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
 ### プロジェクトのドキュメント

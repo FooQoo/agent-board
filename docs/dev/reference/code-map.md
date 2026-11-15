@@ -83,7 +83,7 @@ The main files and directories outside `src/` are:
 - `src/agent/hook_version.rs`: the plugin version check of the Hook.
 - `tests/setup.rs` and `tests/setup_plugin.rs`: setup and update against fake agent commands (`tests/support/fake_agents.rs`). `tests/plugin_layout.rs` checks the marketplace and plugin files and their versions.
 - `src/cli/commands/qa/` and `src/cli/args/qa.rs`: the `agboard qa` commands, their JSON input, and the JSON Lines events of `qa ask` and `qa wait` (`stream.rs`). The wait itself is `src/agent/qa_wait.rs`, built on the shared wait engine.
-- `web/src/features/tasks/answer/`: answering in the web UI. `model/answerBook.ts` holds the answers until they are sent, `useAnswerFlow.ts` runs the steps and the review shared by the PC dialog and the phone screen's sheet, and `QuestionBand.tsx` is the band of unanswered questions. `web/src/app/model/useQuestionAnswers.ts` wires them to the PC board and its lease.
+- `web/src/features/tasks/answer/`: answering in the web UI. `model/answerBook.ts` holds the answers until they are sent, `useAnswerFlow.ts` runs the steps and the review shared by the PC dialog and the phone screen's sheet, and `QuestionBand.tsx` is the band of unanswered questions, a collapsible band shared by the PC board and the phone screen. `web/src/app/model/useQuestionAnswers.ts` wires them to the PC board and its lease.
 - `scripts/release/` and `.github/workflows/release.yml`: the release archive, signing, notarization, and Formula (see [Build release](../getting-started/setup.md#build-release)).
 
 ### Project docs

@@ -10,7 +10,9 @@ A decision is a question an agent asks when it cannot continue without you. This
 
 A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
 
-Every open question of the project is also listed in the **Unanswered questions** band above the lanes, with the count in its header. Each item shows the tasks that refer to the question, or **No task**, and its title in up to two lines. An item you have answered but not sent is marked **Answered, not sent**. When there are no questions, the band keeps its place and says **No unanswered questions**. When the items do not fit, scroll the band sideways.
+Every open question of the project is also listed in the **Unanswered questions** band above the lanes. The band is always there, and it starts closed: its header shows the title and the number of open questions, and **Answer them** (or **Continue answering** and **Review and send** while you hold answers) stays in the header. Select the header, or its arrow, to open the list; select it again to close it. The band does not remember its state, so it is closed again when you reload the page.
+
+Each item of the open list shows the tasks that refer to the question, or **No task**, and its title in up to two lines. An item you have answered but not sent is marked **Answered, not sent**. When the items do not fit, scroll the band sideways with the arrow buttons that appear while it is open. When there are no questions, the header shows a count of 0 and there is nothing to open.
 
 ## Answer in the browser
 
@@ -56,7 +58,7 @@ The dialog keeps your answers and shows **Could not save. Try again.** Select **
 
 ## Answer on your phone
 
-On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band has one button: **Answer them**, or **Review and send** while you have answers that are not sent. To save room, the band appears only while there are questions; with none, the task list starts right under the counts.
+On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. With no questions the header shows a count of 0 and does not open.
 
 The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review.
 
