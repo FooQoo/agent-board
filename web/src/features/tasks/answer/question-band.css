@@ -1,7 +1,8 @@
 /*
  * The band of unanswered questions (QuestionBand). The lengths follow the approved mock (DELEGATE-1):
  * on the PC every item is 250 x 78px and the band is 140px high; on a phone the items are 210 x 78px.
- * The band keeps that height with no questions, so the lanes under it stay where they are.
+ * On the PC the band keeps that height with no questions, so the lanes under it stay where they are;
+ * on a phone it is left out with no questions.
  */
 
 .question-band {

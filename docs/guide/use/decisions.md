@@ -56,7 +56,7 @@ The dialog keeps your answers and shows **Could not save. Try again.** Select **
 
 ## Answer on your phone
 
-On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band has one button: **Answer them**, or **Review and send** while you have answers that are not sent.
+On the mobile monitor, the same **Unanswered questions** band is under the counts, and a Pending task shows the same **Answer the question** button. The band has one button: **Answer them**, or **Review and send** while you have answers that are not sent. To save room, the band appears only while there are questions; with none, the task list starts right under the counts.
 
 The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review.
 

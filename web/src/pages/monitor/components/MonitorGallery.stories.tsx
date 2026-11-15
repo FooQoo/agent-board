@@ -261,13 +261,12 @@ export const QuestionBand: Story = {
   },
 };
 
-/** No questions: the band keeps its place and says so. */
+/** No questions: the band is left out, so the list starts right under the counts. */
 export const QuestionBandEmpty: Story = {
   args: { variant: 'band-empty' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).getByRole('status')).toHaveTextContent('未回答の質問はありません');
+    await expect(within(canvasElement).queryByRole('region', { name: '未回答の質問' })).toBeNull();
   },
 };
 

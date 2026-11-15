@@ -146,13 +146,13 @@ export const PhoneHeld: Story = {
   },
 };
 
-/** The monitor's empty band. */
+/** The monitor with no questions: the band is left out. */
 export const PhoneEmpty: Story = {
   args: { variant: 'phone', count: 0 },
   parameters: { storyFrame: 'monitor' },
   globals: { locale: 'ja', width: 'phone-375' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('status')).toBeVisible();
+    await expect(within(canvasElement).queryByRole('region')).toBeNull();
   },
 };
 

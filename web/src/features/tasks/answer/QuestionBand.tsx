@@ -28,8 +28,10 @@ export function taskRefs(referencedBy: readonly number[], noTask: string): strin
 }
 
 /**
- * The band of unanswered questions. It keeps the same height with no questions, so the lanes under
- * it never move when one arrives. Every item has the same size; a long title stops at two lines.
+ * The band of unanswered questions. On the PC board it keeps the same height with no questions, so the
+ * lanes under it never move when one arrives. On a phone, where height is short, it is left out with
+ * no questions and appears when one arrives. Every item has the same size; a long title stops at two
+ * lines.
  */
 export function QuestionBand({
   questions,
@@ -67,6 +69,8 @@ export function QuestionBand({
     const node = list.current;
     node?.scrollBy?.({ left: direction * node.clientWidth * 0.8, behavior: 'smooth' });
   };
+
+  if (empty && variant === 'phone') return null;
 
   const Icon = empty ? CircleCheckIcon : CircleHelpIcon;
   const note = holding
