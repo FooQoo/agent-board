@@ -150,10 +150,15 @@ jobs:
           fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   e2e:
-    name: E2E (Playwright)
+    name: E2E (Playwright ${{ matrix.shard }}/3)
     if: github.event_name != 'pull_request'
     runs-on: macos-15
     timeout-minutes: 60
+    # The suite is split across three runners. Each shard builds the app and runs a third of the tests.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -178,7 +183,7 @@ jobs:
           pnpm --dir e2e exec playwright install chromium webkit
       # The global setup builds the web UI and the CLI, then each worker starts
       # its own `agboard serve` on port 0 with its own temporary data area.
-      - run: pnpm --dir e2e test
+      - run: pnpm --dir e2e test --shard=${{ matrix.shard }}/3
       - name: Find the results folder
         if: failure()
         id: results
@@ -186,7 +191,7 @@ jobs:
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: failure()
         with:
-          name: e2e-results
+          name: e2e-results-${{ matrix.shard }}
           path: ${{ steps.results.outputs.dir }}
           if-no-files-found: ignore
           retention-days: 7
