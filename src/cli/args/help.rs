@@ -44,7 +44,7 @@ Workflow for agents:
   agboard --project NAME progress --json
   agboard --project NAME ls --json
   agboard ls --all-projects --json
-  agboard remote --json
+  agboard --project NAME remote --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
   agboard --project NAME qa ask --actor ai --task <id> --json --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'

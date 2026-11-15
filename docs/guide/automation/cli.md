@@ -201,9 +201,8 @@ agboard stop
 While the ngrok connection is up, `agboard remote` prints its state, the public address, and the 4-digit passcode, so that an agent can hand you a link without you opening the connection dialog:
 
 ```sh
-agboard remote
-agboard remote --json
 agboard --project "My project" remote
+agboard --project "My project" remote --json
 ```
 
 ```text
@@ -213,7 +212,7 @@ Passcode: 4821
 Project: My project
 ```
 
-The address opens the project bound to the current folder, or the one `--project` names. When neither resolves, it prints the address without `?project=` and says that no project was selected. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`; `entrance` is the address without a project, and `project` is `null` when none was selected.
+`--project` is required, and the address opens that project. Without it, `remote` prints nothing and exits with code 2 as `invalid_argument`. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`; `entrance` is the address without a project.
 
 `remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
 

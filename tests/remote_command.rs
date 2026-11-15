@@ -85,26 +85,18 @@ fn ready_connection_prints_the_state_the_project_address_and_the_passcode() {
 }
 
 #[test]
-fn without_a_project_it_prints_the_entrance_and_says_so() {
+fn without_project_it_is_a_usage_error_and_prints_no_address_or_passcode() {
     let home = home();
     let s = Server::start(home.path(), Opts::default());
     connect(&s);
     let passcode = s.passcode();
 
-    let json = agboard(home.path(), &["--json", "remote"]);
-    assert!(json.status.success(), "{}", err(&json));
-    let v: Value = serde_json::from_slice(&json.stdout).unwrap();
-    assert_eq!(v["url"], format!("{PUBLIC}/"));
-    assert_eq!(v["entrance"], PUBLIC);
-    assert_eq!(v["passcode"], passcode);
-    assert_eq!(v["project"], Value::Null);
-
-    let text = agboard(home.path(), &["remote"]);
-    assert!(
-        out(&text).contains("No project was selected"),
-        "{}",
-        out(&text)
-    );
+    let run = agboard(home.path(), &["--json", "remote"]);
+    assert_eq!(run.status.code(), Some(2), "{}", err(&run));
+    assert!(out(&run).is_empty(), "{}", out(&run));
+    let v: Value = serde_json::from_str(&err(&run)).unwrap();
+    assert_eq!(v["error"]["code"], "invalid_argument");
+    assert!(!err(&run).contains(PUBLIC) && !err(&run).contains(&passcode));
 }
 
 #[test]

@@ -38,18 +38,21 @@ pub fn run(ctx: &Context) -> Result<Outcome, AgboardError> {
                 "No server is running, so there is no ngrok connection. Start one with \"NGROK_AUTHTOKEN=... agboard serve --monitor ngrok\", or turn the connection on in the board's settings.",
             )
         })?;
-    let status = fetch_status(info.port)?;
-    let project = match &ctx.target {
-        Target::Existing(meta) => Some((meta.id.to_string(), meta.name.clone())),
-        _ => None,
+    // `--project` is required, so the target is always an existing project.
+    let Target::Existing(meta) = &ctx.target else {
+        return Err(AgboardError::InvalidArgument {
+            message: "--project NAME is required.".to_string(),
+            command: Some("remote".to_string()),
+        });
     };
-    build(&status, project)
+    let status = fetch_status(info.port)?;
+    build(&status, (meta.id.to_string(), meta.name.clone()))
 }
 
 /// The outcome for the status the server returned. Only a ready connection
 /// with an address and a passcode gives one; anything else is
 /// `remote_unavailable`, with no address or passcode in the message.
-fn build(status: &Value, project: Option<(String, String)>) -> Result<Outcome, AgboardError> {
+fn build(status: &Value, (id, name): (String, String)) -> Result<Outcome, AgboardError> {
     let state = status["status"].as_str().unwrap_or("unknown");
     if state != "ready" {
         return Err(unavailable(&not_ready_reason(status, state)));
@@ -68,33 +71,17 @@ fn build(status: &Value, project: Option<(String, String)>) -> Result<Outcome, A
             )
         })?;
 
-    let mut value = json!({
-        "status": state,
-        "entrance": entrance,
-        "passcode": passcode,
-    });
-    let mut human = format!("ngrok: {state}\n");
-    match project {
-        Some((id, name)) => {
-            let url = format!("{entrance}/?project={id}");
-            human.push_str(&format!(
-                "URL: {url}\nPasscode: {passcode}\nProject: {name}\n"
-            ));
-            value["url"] = json!(url);
-            value["project"] = json!({ "id": id, "name": name });
-        }
-        None => {
-            human.push_str(&format!(
-                "URL: {entrance}/\nPasscode: {passcode}\nNo project was selected: this folder is bound to none and --project was not given, so the address has no ?project=.\n"
-            ));
-            value["url"] = json!(format!("{entrance}/"));
-            value["project"] = Value::Null;
-        }
-    }
+    let url = format!("{entrance}/?project={id}");
     Ok(Outcome {
         changed: false,
-        human,
-        json: value,
+        human: format!("ngrok: {state}\nURL: {url}\nPasscode: {passcode}\nProject: {name}\n"),
+        json: json!({
+            "status": state,
+            "url": url,
+            "entrance": entrance,
+            "passcode": passcode,
+            "project": { "id": id, "name": name },
+        }),
     })
 }
 
@@ -160,13 +147,17 @@ fn fetch_status(port: u16) -> Result<Value, AgboardError> {
 mod tests {
     use super::*;
 
+    fn demo() -> (String, String) {
+        ("p1".into(), "Demo".into())
+    }
+
     fn ready() -> Value {
         json!({"status":"ready","url":"https://abc.ngrok-free.app","passcode":"2418","failure":null})
     }
 
     #[test]
     fn a_ready_connection_gives_the_project_address_and_the_passcode() {
-        let out = build(&ready(), Some(("p1".into(), "Demo".into()))).unwrap();
+        let out = build(&ready(), demo()).unwrap();
         assert_eq!(
             out.json,
             json!({"status":"ready","url":"https://abc.ngrok-free.app/?project=p1","entrance":"https://abc.ngrok-free.app","passcode":"2418","project":{"id":"p1","name":"Demo"}})
@@ -178,18 +169,10 @@ mod tests {
     }
 
     #[test]
-    fn without_a_project_the_entrance_is_given_and_the_gap_is_said() {
-        let out = build(&ready(), None).unwrap();
-        assert_eq!(out.json["url"], "https://abc.ngrok-free.app/");
-        assert_eq!(out.json["project"], Value::Null);
-        assert!(out.human.contains("No project was selected"));
-    }
-
-    #[test]
     fn a_connection_that_is_not_ready_prints_no_address_or_passcode() {
         for state in ["disabled", "starting", "reconnecting", "failed", "unknown"] {
             let status = json!({"status":state,"url":"https://abc.ngrok-free.app","passcode":"2418","failure":"connect_failed"});
-            let error = build(&status, None).err().unwrap();
+            let error = build(&status, demo()).err().unwrap();
             let text = crate::cli::errors::human(&error);
             assert!(text.contains(state), "{text}");
             assert!(
@@ -207,7 +190,7 @@ mod tests {
             json!({"status":"ready","url":"https://abc.ngrok-free.app"}),
         ] {
             assert!(matches!(
-                build(&status, None),
+                build(&status, demo()),
                 Err(AgboardError::RemoteUnavailable { .. })
             ));
         }

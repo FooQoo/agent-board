@@ -87,7 +87,7 @@ pub enum Command {
     Open(OpenArgs),
     /// Show the ngrok connection state, public URL, and passcode for the phone
     #[command(
-        after_help = "The project is the one bound to the current folder unless --project names one; the URL opens that project.\nThe passcode is printed only here, on this computer. Anyone who gets it can open the board while the connection is up.\nNothing is started: without a ready connection it prints the reason and exits 1.\n\nExamples:\n  agboard remote\n  agboard remote --json\n  agboard --project \"My project\" remote"
+        after_help = "--project NAME is required; the URL opens that project.\nThe passcode is printed only here, on this computer. Anyone who gets it can open the board while the connection is up.\nNothing is started: without a ready connection it prints the reason and exits 1.\n\nExamples:\n  agboard --project \"My project\" remote\n  agboard --project \"My project\" remote --json"
     )]
     Remote(RemoteArgs),
     /// Stop the running server (the one started with serve, or serve -d)

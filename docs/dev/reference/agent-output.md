@@ -98,7 +98,7 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 {"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
 ```
 
-`url` opens the board of the bound or named project, and `entrance` is the address without a project. When no project resolves (the folder is bound to none and `--project` is not given), `url` is the entrance with a trailing `/` and `project` is `null`. A named project that does not exist is `project_not_found`.
+`--project` is required: without it the command is `invalid_argument` (exit 2). `url` opens the board of the named project, and `entrance` is the address without a project. A named project that does not exist is `project_not_found`.
 
 Anything else prints nothing on standard output and exits 1 with `remote_unavailable`: no server is running, or the connection is not `ready`. The error carries no address and no passcode. The server answers this only on its local address, so the passcode reaches the person at this computer and never passes through the tunnel. See [Error codes](./errors.md#server-and-waiting).
 

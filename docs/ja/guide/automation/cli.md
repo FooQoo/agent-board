@@ -201,9 +201,8 @@ agboard stop
 ngrok接続が動いている間、`agboard remote`は接続の状態、公開アドレス、4桁の合言葉を表示します。接続ダイアログを開かなくても、エージェントからリンクを渡してもらえます。
 
 ```sh
-agboard remote
-agboard remote --json
 agboard --project "My project" remote
+agboard --project "My project" remote --json
 ```
 
 ```text
@@ -213,7 +212,7 @@ Passcode: 4821
 Project: My project
 ```
 
-アドレスは、今のフォルダに登録されたプロジェクトか、`--project`で指定したプロジェクトを開きます。どちらも決まらないときは、`?project=`のないアドレスを表示し、プロジェクトが選ばれていないことを伝えます。`--json`では`{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`を出します。`entrance`はプロジェクトを含まないアドレスで、プロジェクトが選ばれていないときは`project`が`null`です。
+`--project`は必須で、アドレスはそのプロジェクトを開きます。指定しないときは何も表示せず、`invalid_argument`として終了コード2で終わります。`--json`では`{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`を出します。`entrance`はプロジェクトを含まないアドレスです。
 
 `remote`は何も起動しません。サーバーが動いていないか、接続の準備ができていないときは、アドレスも合言葉も表示せず、理由を伝えて、`remote_unavailable`として終了コード1で終わります。存在しないプロジェクトは終了コード4です。
 
