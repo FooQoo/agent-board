@@ -120,7 +120,7 @@ export async function settle(page) {
 }
 
 /**
- * Starts the board for the scripts: the PC board on loopback (`origin`) and the phone monitor behind
+ * Starts the board for the scripts: the PC board on loopback (`origin`) and the phone screen behind
  * the ngrok entrance stand-in (`remote`), both over `home`. No connection to ngrok is made.
  */
 export async function startServer(home) {

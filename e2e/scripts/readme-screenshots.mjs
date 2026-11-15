@@ -53,7 +53,7 @@ try {
       await page.screenshot({ path: path.join(output, `epic${suffix}.png`) });
 
       await page.setViewportSize({ width: 390, height: 844 });
-      await server.open(page, `${remote}/monitor/?project=${id}`);
+      await server.open(page, `${remote}/?project=${id}`);
       await expect(page.getByRole('status')).toContainText(text.ready);
       const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
       // The monitor's card list, under the band that lists the waiting question.

@@ -1,9 +1,9 @@
-# Benchmark: PC board and phone monitor
+# Benchmark: PC board and phone screen
 
 These scripts measure transfer size, request counts by route, first display time, the cost of opening a heavy card, DOM size, JavaScript heap use, long tasks, and the transfer after a status change. They record the numbers for comparison; they do not pass or fail anything by a threshold.
 
 - `gen-fixture.mjs` writes a large data area with a fixed seed.
-- `measure.mjs` starts the built `agboard` binary on that data, drives it with Playwright, and writes `pc.json` and `monitor.json`.
+- `measure.mjs` starts the built `agboard` binary on that data, drives it with Playwright, and writes `pc.json` and `phone.json`.
 - `baseline/` holds the results measured on commit `1a9b2d0`.
 
 ## Prerequisites
@@ -23,7 +23,7 @@ pnpm --dir web build
 cargo build
 ```
 
-The monitor measurement also builds the `monitor_phone_serve` test target with `cargo test --no-run`, which the phone entrance in `e2e/helpers/` needs.
+The phone measurement also builds the `monitor_phone_serve` test target with `cargo test --no-run`, which the phone entrance in `e2e/helpers/` needs.
 
 ## Reproduce
 
@@ -42,11 +42,11 @@ Options:
 | `--bin <path>` | The `agboard` binary to measure. |
 | `--port <n>` | Loopback port of the PC server. Must be within 9210 to 9219 or 9320 to 9329. |
 | `--runs <n>` | Runs per target. The results keep every run, the median, and the range. |
-| `--target pc\|monitor\|both` | Which target to measure. |
+| `--target pc\|phone\|both` | Which target to measure. |
 | `--fixture <dir>` | A fixture made by `gen-fixture.mjs`. When omitted, one is generated into a temporary directory. |
 | `--seed <n>` | Seed for a generated fixture. Default `20261022`. |
 | `--commit <sha>` | The commit recorded in the results. Default: the short `HEAD`. |
-| `--out-dir <dir>` | Where `pc.json` and `monitor.json` are written. |
+| `--out-dir <dir>` | Where `pc.json` and `phone.json` are written. |
 
 To generate the fixture alone, and check that two runs with the same seed match:
 
@@ -71,7 +71,7 @@ Before measuring, `measure.mjs` reads a copy of the fixture with the CLI and sto
 
 Each target runs the same steps:
 
-1. Open the board or the monitor and wait for card `#1` (`Bench task 001`) to appear. The time to appear is `firstVisibleMs`.
+1. Open the board (at phone width for the phone screen) and wait for card `#1` (`Bench task 001`) to appear. The time to appear is `firstVisibleMs`.
 2. Count the requests and bytes until the page is quiet. Requests are grouped by route in `routes.load`, and by category (document, api, static, stream) in the metrics.
 3. Open heavy card `#6`, wait for its body, and count the requests and bytes (`heavy.*`, `heavyOpenMs`). Then record the DOM node count and the JavaScript heap used (`Performance.getMetrics`, `JSHeapUsedSize`, without a forced garbage collection).
 4. Move card `#1` from Todo to Doing with the CLI, while the page stays open. Wait for the page to request the change (`statusDetectedMs`) and for the requests to stop. Record the requests and bytes (`status.*`, `statusMs`).
@@ -80,10 +80,10 @@ Long tasks come from a `PerformanceObserver` on `longtask`, installed before the
 
 Streams (`/api/events`) are counted as requests. Their bytes are not counted, because a stream does not finish while the page is open.
 
-## Notes on the monitor
+## Notes on the phone screen
 
-The monitor is reached through the ngrok entrance in production. The benchmark uses the phone entrance from `e2e/helpers/phone-entrance.mjs` instead, which starts the `monitor_phone_serve` backend with a fake tunnel and a proxy that stands in for the Edge. For the monitor, `--bin` only supplies the CLI used for the status change. The backend is the test target built from the same checkout. The phone entrance and its backend bind OS-assigned loopback ports, so the monitor runs fall outside 9210 to 9219. The PC server uses `--port`.
+The phone screen is reached through the ngrok entrance in production. The benchmark uses the phone entrance from `e2e/helpers/phone-entrance.mjs` instead, which starts the `monitor_phone_serve` backend with a fake tunnel and a proxy that stands in for the Edge. For the phone screen, `--bin` only supplies the CLI used for the status change. The backend is the test target built from the same checkout. The phone entrance and its backend bind OS-assigned loopback ports, so the phone runs fall outside 9210 to 9219. The PC server uses `--port`.
 
 ## Results
 
-`baseline/pc.json` and `baseline/monitor.json` hold the results for commit `1a9b2d0`, with the platform, Chromium version, Playwright version, and fixture digest. Byte and request counts were the same in all three runs for every item. Timings varied within the ranges stored in each file.
+`baseline/pc.json` holds the results for commit `1a9b2d0`, with the platform, Chromium version, Playwright version, and fixture digest. Byte and request counts were the same in all three runs for every item. Timings varied within the ranges stored in each file.

@@ -1,4 +1,4 @@
-// The phone monitor entrance for browser tests and sample-media scripts.
+// The phone entrance for browser tests and sample-media scripts.
 //
 // It starts the dedicated ngrok monitor backend on loopback (the Rust test
 // `monitor_phone_serve`, whose fake connector opens the "tunnel" without any
@@ -50,7 +50,7 @@ export function buildPhoneBackend() {
 // ngrok's warning page (free plan). A browser without the warning
 // cookie gets this page for a document, a script, a stylesheet, or an image. "Visit Site" posts
 // back to the same address, and the response sets the cookie on the directory that address is
-// in (Path=/monitor for /monitor/). The browser then sends the cookie only for files under that
+// in (Path=/ for a page at the root). The browser then sends the cookie only for files under that
 // path, so a file outside it comes back as this page again. fetch() calls are not interrupted.
 const WARNING_COOKIE = 'abuse_interstitial';
 const WARNED_DESTINATIONS = new Set(['document', 'script', 'style', 'image', 'font']);
@@ -90,7 +90,7 @@ function listen(server) {
 /**
  * Starts the backend over `home` and the Edge stand-in in front of it.
  *
- * `phoneOrigin` is what the phone's browser opens (`<phoneOrigin>/monitor/`);
+ * `phoneOrigin` is what the phone's browser opens (`<phoneOrigin>/`);
  * `pcOrigin` is the backend's own PC entrance on loopback, with the normal board.
  */
 export async function startPhoneEntrance(home, { timeoutMs = 120_000, warning = false } = {}) {
@@ -221,8 +221,10 @@ export async function startPhoneEntrance(home, { timeoutMs = 120_000, warning = 
     get passcode() { return target.passcode; },
     /** Type the passcode into the phone page that is asking for it and send it. */
     unlockPage,
-    /** Open a phone monitor URL and enter the passcode, as a person with the PC beside them would. */
+    /** Open a board URL at phone width and enter the passcode, as a person with the PC beside them would. */
     async open(page, url) {
+      // The board shows its phone screen below 768px.
+      if ((page.viewportSize()?.width ?? 1280) >= 768) await page.setViewportSize({ width: 390, height: 844 });
       const response = await page.goto(url);
       await unlockPage(page);
       return response;

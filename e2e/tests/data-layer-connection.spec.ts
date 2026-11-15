@@ -11,7 +11,7 @@ import {
 } from '../helpers/monitor';
 
 // The PC connection dialog gives one address per project: the QR code and the copied URL are the
-// same `/monitor/?project={projectId}`. The QR code is decoded in the page with the jsQR build that
+// same `/?project={projectId}`. The QR code is decoded in the page with the jsQR build that
 // the web app already ships, so the test reads the code the way a phone camera does. The tunnel is
 // the fake one of the phone entrance: no network is used.
 test.describe.configure({ mode: 'serial' });
@@ -98,13 +98,13 @@ test('the QR code and the copied URL are the same address, with the selected pro
   await dialog.getByRole('button', { name: 'Copy URL' }).click();
   await expect.poll(() => copied(page)).toBe(encoded);
 
-  // The address is the public origin the connection reports, the monitor path and the project.
+  // The address is the public origin the connection reports, the board's root and the project.
   const status = (await (await page.request.get(`${entrance.pcOrigin}/api/monitor-connections`)).json()) as {
     url: string;
   };
   const address = new URL(encoded ?? '');
   expect(address.origin).toBe(new URL(status.url).origin);
-  expect(address.pathname).toBe('/monitor/');
+  expect(address.pathname).toBe('/');
   expect(address.search).toBe(`?project=${alpha}`);
 });
 

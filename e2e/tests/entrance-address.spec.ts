@@ -1,0 +1,61 @@
+import { expect, test, type Page } from '../helpers/fixtures';
+import { createMonitorHome, monitorProjectId, removeMonitorHome, startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
+
+// The phone's first visit through ngrok's warning page (free plan). "Visit Site" sets a cookie on
+// the directory of the address, which is the root, so the board's scripts and stylesheet under
+// /assets/ receive it. A file that came back as the warning page would leave the board blank.
+// The warning is emulated by the phone entrance; see helpers/phone-entrance.mjs.
+test.describe.configure({ mode: 'serial' });
+test.use({ viewport: { width: 390, height: 844 }, locale: 'en-US', timezoneId: 'UTC' });
+
+let home: string;
+let alpha: string;
+let entrance: PhoneEntrance;
+
+test.beforeAll(async () => {
+  test.setTimeout(240_000);
+  home = createMonitorHome();
+  alpha = monitorProjectId(home, 'Alpha');
+  entrance = await startPhoneEntrance(home, { warning: true });
+});
+
+test.afterAll(async () => {
+  await entrance?.stop();
+  if (home) removeMonitorHome(home);
+});
+
+/** The scripts and stylesheets that the page received as HTML instead of their own type. */
+function warnedFiles(page: Page): string[] {
+  const warned: string[] = [];
+  page.on('response', (response) => {
+    const kind = response.request().resourceType();
+    const type = response.headers()['content-type'] ?? '';
+    if ((kind === 'script' || kind === 'stylesheet') && type.includes('text/html')) warned.push(response.url());
+  });
+  return warned;
+}
+
+test('a direct link to the board shows the passcode after Visit Site, and its scripts and stylesheets load', async ({ page }) => {
+  const warned = warnedFiles(page);
+  await page.goto(`${entrance.phoneOrigin}/?project=${alpha}`);
+  await page.getByRole('button', { name: 'Visit Site' }).click();
+  await expect(page.locator('#monitor-passcode')).toBeVisible();
+  const logo = page.locator('.header__logo img');
+  await expect(logo).toHaveJSProperty('complete', true);
+  expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect(warned).toEqual([]);
+});
+
+test('the bare address asks for the passcode and then shows the board, and its scripts and stylesheets load', async ({ page }) => {
+  // The bare address is the board's own page: nothing forwards to an old address.
+  const warned = warnedFiles(page);
+  await page.goto(entrance.phoneOrigin);
+  await page.getByRole('button', { name: 'Visit Site' }).click();
+  expect(new URL(page.url()).pathname).toBe('/');
+  await entrance.unlockPage(page);
+  await expect(page.getByRole('article').first()).toBeVisible();
+  const logo = page.locator('.header__logo img');
+  await expect(logo).toHaveJSProperty('complete', true);
+  expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect(warned).toEqual([]);
+});

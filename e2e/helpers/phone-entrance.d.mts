@@ -1,5 +1,5 @@
 export interface PhoneEntrance {
-  /** What the phone's browser opens: `<phoneOrigin>/monitor/`. */
+  /** What the phone's browser opens: `<phoneOrigin>/`. */
   phoneOrigin: string;
   /** The backend's own PC entrance on loopback, with the normal board. */
   readonly pcOrigin: string;
@@ -11,7 +11,7 @@ export interface PhoneEntrance {
   readonly passcode: string;
   /** Type the passcode into the phone page that is asking for it and send it. */
   unlockPage(page: import('@playwright/test').Page): Promise<void>;
-  /** Open a phone monitor URL and enter the passcode. */
+  /** Open a board URL at phone width and enter the passcode. */
   open(page: import('@playwright/test').Page, url: string): Promise<import('@playwright/test').Response | null>;
   rotate(): Promise<void>;
   stopTunnel(): Promise<void>;

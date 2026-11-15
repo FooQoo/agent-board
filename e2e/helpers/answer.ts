@@ -4,7 +4,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export const answerButton = (page: Page, id = 12): Locator =>
   page.locator(`[data-decision-answer][data-task-id="${id}"]`);
 
-/** The band of unanswered questions above the lanes (or under the monitor's counts). */
+/** The band of unanswered questions above the lanes (or under the phone screen's counts). */
 export const questionBand = (page: Page): Locator =>
   page.getByRole('region', { name: /^(Unanswered questions|未回答の質問)$/ });
 

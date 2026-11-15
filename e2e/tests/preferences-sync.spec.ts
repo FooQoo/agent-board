@@ -19,7 +19,7 @@ let home: string;
 let alpha: string;
 let entrance: PhoneEntrance;
 
-const monitorUrl = () => `${entrance.phoneOrigin}/monitor/?project=${alpha}`;
+const monitorUrl = () => `${entrance.phoneOrigin}/?project=${alpha}`;
 const html = (page: Page) => page.locator('html');
 
 test.beforeAll(async () => {

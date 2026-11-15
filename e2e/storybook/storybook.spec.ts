@@ -38,11 +38,7 @@ function watchForRuntimeProblems(page: Page, allowedFixturePaths: string[] = [])
   });
   page.on('request', (request) => {
     const url = new URL(request.url());
-    const isProductApi =
-      url.pathname === '/api' ||
-      url.pathname.startsWith('/api/') ||
-      url.pathname === '/monitor/api' ||
-      url.pathname.startsWith('/monitor/api/');
+    const isProductApi = url.pathname === '/api' || url.pathname.startsWith('/api/');
     if (isProductApi && !allowedFixturePaths.includes(url.pathname)) {
       productRequests.push(`${request.method()} ${url.pathname}`);
     }

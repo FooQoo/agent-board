@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Measures the PC board and the phone monitor on the benchmark data area from gen-fixture.mjs.
+// Measures the PC board and the phone screen of the board app on the benchmark data area from gen-fixture.mjs.
 //
 // For each target, every run starts from a fresh copy of the fixture, so the status change of one run
 // does not reach the next. Each measured item is repeated --runs times; the result keeps every value,
@@ -7,14 +7,14 @@
 //
 // Usage:
 //   node scripts/bench/measure.mjs [--bin <agboard>] [--port 9210] [--runs 3]
-//     [--target pc|monitor|both] [--fixture <dir>] [--out-dir <dir>] [--commit <sha>]
+//     [--target pc|phone|both] [--fixture <dir>] [--out-dir <dir>] [--commit <sha>]
 //
 // --bin       the agboard binary used for the PC board and for the CLI status change (default: target/debug/agboard)
 // --port      the loopback port of the PC server; must be within 9210-9219
 // --fixture   a directory from gen-fixture.mjs; when omitted, a fixture is generated into a temporary directory
-// --out-dir   where pc.json and monitor.json are written (default: scripts/bench/results)
+// --out-dir   where pc.json and phone.json are written (default: scripts/bench/results)
 //
-// The monitor uses the phone entrance from e2e/helpers. Its backend is the monitor_phone_serve test binary
+// The phone run opens the board through the phone entrance from e2e/helpers, at phone width. Its backend is the monitor_phone_serve test binary
 // of this repository and binds OS-assigned loopback ports, so it runs outside 9210-9219.
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -79,7 +79,7 @@ function parseArgs(argv) {
   if (!Number.isInteger(args.port) || !(inRange(PORT_MIN, PORT_MAX) || inRange(PORT_ALT_MIN, PORT_ALT_MAX))) {
     throw new Error(`--port must be within ${PORT_MIN}-${PORT_MAX} or ${PORT_ALT_MIN}-${PORT_ALT_MAX}`);
   }
-  if (!['pc', 'monitor', 'both'].includes(args.target)) throw new Error('--target must be pc, monitor, or both');
+  if (!['pc', 'phone', 'both'].includes(args.target)) throw new Error('--target must be pc, phone, or both');
   args.outDir ??= path.join(here, 'results');
   return args;
 }
@@ -323,9 +323,9 @@ async function runPc({ browser, bin, fixture, port, scratch, index }) {
   }
 }
 
-/** One monitor run: the same steps as the PC run, on the phone monitor through the phone entrance. */
-async function runMonitor({ browser, bin, fixture, scratch, index }) {
-  const home = path.join(scratch, `monitor-${index}`);
+/** One phone run: the same steps as the PC run, on the board's phone screen through the phone entrance. */
+async function runPhone({ browser, bin, fixture, scratch, index }) {
+  const home = path.join(scratch, `phone-${index}`);
   cpSync(fixture, home, { recursive: true });
   const projectId = projectIdOf(bin, home);
   const entrance = await startPhoneEntrance(home, { warning: false });
@@ -342,7 +342,7 @@ async function runMonitor({ browser, bin, fixture, scratch, index }) {
 
     const loadMark = log.mark();
     const started = Date.now();
-    await page.goto(`${entrance.phoneOrigin}/monitor/?project=${projectId}`);
+    await page.goto(`${entrance.phoneOrigin}/?project=${projectId}`);
     await entrance.unlockPage(page);
     await page.getByRole('article', { name: /Bench task 001/ }).first().waitFor({ state: 'visible' });
     const firstVisibleMs = Date.now() - started;
@@ -513,12 +513,12 @@ async function main() {
   const env = environmentInfo(browser, commit, args.bin, fixture);
   mkdirSync(args.outDir, { recursive: true });
   try {
-    for (const target of args.target === 'both' ? ['pc', 'monitor'] : [args.target]) {
+    for (const target of args.target === 'both' ? ['pc', 'phone'] : [args.target]) {
       const runs = [];
       for (let index = 1; index <= args.runs; index++) {
         const run = target === 'pc'
           ? await runPc({ browser, bin: args.bin, fixture: args.fixture, port: args.port, scratch, index })
-          : await runMonitor({ browser, bin: args.bin, fixture: args.fixture, scratch, index });
+          : await runPhone({ browser, bin: args.bin, fixture: args.fixture, scratch, index });
         runs.push(run);
         process.stderr.write(`${target} run ${index} done\n`);
       }
@@ -531,8 +531,8 @@ async function main() {
         runs,
         summary: summarize(runs),
         routeSummary: summarizeRoutes(runs),
-        notes: target === 'monitor'
-          ? ['Monitor runs use the phone entrance: monitor_phone_serve backend and a proxy on OS-assigned loopback ports.', 'Status change is a CLI move while the monitor is open; the monitor refetches through its change stream.']
+        notes: target === 'phone'
+          ? ['Phone runs use the phone entrance: monitor_phone_serve backend and a proxy on OS-assigned loopback ports.', 'Status change is a CLI move while the phone screen is open; the screen refetches through its change stream.']
           : ['PC runs use agboard serve on the port given by --port.', 'Status change is a CLI move while the board is open.'],
       };
       writeFileSync(path.join(args.outDir, `${target}.json`), `${JSON.stringify(result, null, 2)}\n`);
