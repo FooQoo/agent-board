@@ -11,8 +11,21 @@
   align-items: center;
   justify-content: center;
   gap: 20px;
+  width: 100%;
+  max-width: 400px;
+  margin-inline: auto;
   padding: 0 8px 28px;
   text-align: center;
+}
+
+/*
+ * The same screen is the passcode entrance on a PC: keep the column phone-sized in the middle and
+ * give the header the board's side margins, instead of stretching the action across the window.
+ */
+@media (min-width: 768px) {
+  .monitor-shell:has(> .connection-state) {
+    padding: 8px 24px;
+  }
 }
 
 .connection-state__icon {
