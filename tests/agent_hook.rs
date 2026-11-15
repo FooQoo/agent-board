@@ -92,15 +92,12 @@ fn hook_failure_is_bounded_and_does_not_create_a_missing_database() {
         agent_board::agent::hook::run("codex", &mut Cursor::new(input), &db_path, None).is_none()
     );
     assert!(!db_path.exists());
-    let oversized = vec![b'x'; 65_537];
-    let output = agent_board::agent::hook::run(
-        "claude",
-        &mut Cursor::new(oversized),
-        &db_path,
-        Some("demo"),
-    )
-    .unwrap();
-    assert!(output.contains("hook_input_too_large"));
+    // Input that is not JSON is reported, whatever its size.
+    let broken = vec![b'x'; 200_000];
+    let output =
+        agent_board::agent::hook::run("claude", &mut Cursor::new(broken), &db_path, Some("demo"))
+            .unwrap();
+    assert!(output.contains("invalid_hook_input"));
     assert!(!db_path.exists());
 }
 
@@ -208,30 +205,63 @@ fn hook_progress_size_depends_on_work_metadata_not_markdown_bodies() {
     }
 }
 
+/// The input after a large tool result, such as an image read (sent as
+/// base64) or a long command output.
+fn large_tool_result_input(event: &str, cwd: Option<&str>, size: usize) -> String {
+    let mut input = serde_json::json!({
+        "hook_event_name": event,
+        "tool_name": "Read",
+        "tool_input": {"file_path": "/tmp/screen.png"},
+        "tool_response": [{"type": "image", "source": {"type": "base64", "data": "A".repeat(size)}}],
+    });
+    if let Some(cwd) = cwd {
+        input["cwd"] = Value::from(cwd);
+    }
+    input.to_string()
+}
+
 #[test]
-fn hook_input_limit_stays_at_64_kib() {
+fn hook_adds_the_progress_table_after_a_large_tool_result() {
     let (_home, db_path) = board_with_descriptions(&[]);
-    let mut at_limit = br#"{"hook_event_name":"PostToolUse","x":""#.to_vec();
-    at_limit.resize(64 * 1024 - 2, b'x');
-    at_limit.extend_from_slice(b"\"}");
-    assert_eq!(at_limit.len(), 64 * 1024);
-    let ok = agent_board::agent::hook::run(
-        "claude",
-        &mut Cursor::new(at_limit.clone()),
-        &db_path,
-        Some("Agent Board"),
-    )
-    .unwrap();
-    assert!(ok.contains("AGBOARD_PROGRESS"));
-    at_limit.push(b' ');
-    let over = agent_board::agent::hook::run(
-        "claude",
-        &mut Cursor::new(at_limit),
-        &db_path,
-        Some("Agent Board"),
-    )
-    .unwrap();
-    assert!(over.contains("hook_input_too_large"));
+    for (agent, event) in [
+        ("claude", "PostToolUse"),
+        ("claude", "PostToolUseFailure"),
+        ("codex", "PostToolUse"),
+    ] {
+        let input = large_tool_result_input(event, None, 4 * 1024 * 1024);
+        assert!(input.len() > 4 * 1024 * 1024);
+        let output = agent_board::agent::hook::run(
+            agent,
+            &mut Cursor::new(input.into_bytes()),
+            &db_path,
+            Some("Agent Board"),
+        )
+        .unwrap();
+        let parsed: Value = serde_json::from_str(&output).unwrap();
+        let context = parsed["hookSpecificOutput"]["additionalContext"]
+            .as_str()
+            .unwrap();
+        assert!(context.starts_with("AGBOARD_PROGRESS\n"), "{agent} {event}");
+        // The tool result is never passed on.
+        assert!(context.len() < 10 * 1024);
+    }
+}
+
+#[test]
+fn installed_binary_reads_a_large_hook_input_from_stdin_and_uses_its_cwd() {
+    let home = tempdir().unwrap();
+    let folder = home.path().join("work");
+    std::fs::create_dir_all(&folder).unwrap();
+    create_project(home.path(), &folder, "Large");
+    let elsewhere = tempdir().unwrap();
+    let input = large_tool_result_input(
+        "PostToolUse",
+        Some(folder.to_str().unwrap()),
+        2 * 1024 * 1024,
+    );
+    let run = hook(home.path(), elsewhere.path(), &[], &input);
+    assert_eq!(run.status, 0, "{}", run.stderr);
+    assert_eq!(project_of(&run), "Large");
 }
 
 #[test]
@@ -585,8 +615,8 @@ fn hook_keeps_its_event_allow_list_and_json_errors_for_unbound_folders() {
         r#"{{"hook_event_name":"SessionStart","x":"{}"}}"#,
         "x".repeat(70_000)
     );
-    let run = hook(home.path(), work.path(), &[], &big);
-    assert_eq!(error_of(&run)["code"], "hook_input_too_large");
+    // A large input is read like any other: here, an unbound folder says nothing.
+    assert_silent(&hook(home.path(), work.path(), &[], &big));
 }
 
 #[test]

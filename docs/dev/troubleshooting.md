@@ -45,7 +45,7 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 
 | Symptom | Cause | What to do |
 | --- | --- | --- |
-| `AGBOARD_ERROR` with `context_too_large` | The progress table exceeds 256 KiB or the input exceeds 64 KiB. | Make the table smaller (finish or split tasks). Do not make board-dependent changes until a table can be read. |
+| `AGBOARD_ERROR` with `context_too_large` | The progress table exceeds 256 KiB. | Make the table smaller (finish or split tasks). Do not make board-dependent changes until a table can be read. |
 | `AGBOARD_ERROR` with `folder_unbound` | The folder is not bound. | Bind the folder to a project, or name the project explicitly. |
 | The hook does not run | The hook is not registered, or `agboard` is not on `PATH`. | See [Set up your agents](../guide/automation/agents.md#set-up-your-agents) and check `command -v agboard`. |
 

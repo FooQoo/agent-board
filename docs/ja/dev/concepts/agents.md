@@ -28,7 +28,8 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 - **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude --plugin-version <version>`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
 - **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex --plugin-version <version>`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。
-- **上限。** 入力はUTF-8で64 KiB、一覧は256 KiB、一回の実行は10秒が上限です。Codexの`additionalContextLimit`は0にし、Hookが自分の上限を守ります。超えたら`context_too_large`を報告し、切り詰めて成功として報告することはありません。一覧を作れない、または入力の全体が届かなかったときは、Hookがそれを伝え、元のツールの結果を保ちます。
+- **上限。** 一覧は256 KiB、一回の実行は10秒が上限です。Codexの`additionalContextLimit`は0にし、Hookが自分の上限を守ります。超えたら`context_too_large`を報告し、切り詰めて成功として報告することはありません。一覧を作れない、または入力を読めないときは、Hookがそれを伝え、元のツールの結果を保ちます。
+- **入力。** Hookは、大きさにかかわらず入力を最後まで読み、使うのは`hook_event_name`と`cwd`だけです。エージェントはPostToolUseのたびにツールの結果をまるごと送るので、画像を読んだあとや長いコマンドの出力のあとは入力が大きくなります。ツールの入力と結果は読み飛ばし、残したり渡したりしません。
 - **安全性。** コマンドは固定で、タスクのテキストや`tool_input`から何も組み立てません。Hookがエージェントのツールを呼ぶことも、自分自身を起動することも、ボードのファイルを変えることもありません。進行表を加えるとき、サーバーが動いていなければ、待たずに裏で起動します。`agboard stop`で止めた後と`AGBOARD_AUTOSTART=0`のときは起動しません（[サーバーと画面](./server-and-ui.md#コマンドがサーバーを起動する手順)を参照）。エージェントがファイルを編集するだけでも、自動Doneが働くようにするためです。こうして起動したサーバーは、そのプロジェクトのボードをブラウザーで一度だけ開きます（[ボードを開く](./server-and-ui.md#opening-the-board)を参照）。パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出しません。
 
 エージェントは、一覧を読めるまでボードに依存する変更をせず、コンテキスト圧縮後には一覧を新しく読みます。
@@ -119,7 +120,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 | `cwd`が存在しない、または読めない | `hook_cwd_unavailable`。スキップにはしません。 |
 | 明示した`--project` | 指定したプロジェクトを優先します。見つからなければ`project_not_found`。 |
 
-入力64 KiB、一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、ネットワークの利用も設定の書き込みもしません。サーバーの起動だけが、Hookが起こす変化です。出す通知は、セッション開始時の[プラグインの版の確認](#プラグインの版の確認)だけです。
+一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、ネットワークの利用も設定の書き込みもしません。サーバーの起動だけが、Hookが起こす変化です。出す通知は、セッション開始時の[プラグインの版の確認](#プラグインの版の確認)だけです。
 
 ## プラグインの版の確認
 

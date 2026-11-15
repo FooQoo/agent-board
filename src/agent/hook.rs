@@ -12,9 +12,6 @@ use crate::{
     progress::{self, Include},
 };
 
-/// Largest hook input read, in UTF-8 bytes.
-const MAX_INPUT_BYTES: usize = 64 * 1024;
-
 /// Largest progress JSON passed on, in UTF-8 bytes.
 const MAX_PROGRESS_BYTES: usize = 256 * 1024;
 
@@ -80,6 +77,16 @@ pub fn run_reporting(
     HookRun { output, board }
 }
 
+/// The fields of the hook input the hook uses. Every other field, the tool
+/// input and result included, is skipped.
+#[derive(serde::Deserialize)]
+struct HookInput {
+    #[serde(default)]
+    hook_event_name: Option<serde_json::Value>,
+    #[serde(default)]
+    cwd: Option<serde_json::Value>,
+}
+
 fn hook_output(
     agent: &str,
     input: &mut dyn Read,
@@ -88,22 +95,21 @@ fn hook_output(
     include: Include,
     board: &mut Option<ProjectId>,
 ) -> Option<String> {
+    // The input is read to the end whatever its size: it comes from the local
+    // agent, and after a large tool result (an image, a long command output)
+    // it is large through no fault of the board. Only two fields are used;
+    // the tool input and result are skipped without being kept.
     let mut bytes = Vec::new();
-    if input
-        .take((MAX_INPUT_BYTES + 1) as u64)
-        .read_to_end(&mut bytes)
-        .is_err()
-        || bytes.len() > MAX_INPUT_BYTES
-    {
+    if input.read_to_end(&mut bytes).is_err() {
         return Some(output(
             "PostToolUse",
             &error_context(&Failure::new(
-                "hook_input_too_large",
-                "Hook input exceeded 64 KiB.",
+                "invalid_hook_input",
+                "Hook input could not be read.",
             )),
         ));
     }
-    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+    let Ok(input) = serde_json::from_slice::<HookInput>(&bytes) else {
         return Some(output(
             "PostToolUse",
             &error_context(&Failure::new(
@@ -112,8 +118,9 @@ fn hook_output(
             )),
         ));
     };
-    let event = value
-        .get("hook_event_name")
+    let event = input
+        .hook_event_name
+        .as_ref()
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let allowed = match agent {
@@ -124,7 +131,7 @@ fn hook_output(
     if !allowed {
         return None;
     }
-    let context = match progress_context(shared, project, value.get("cwd"), include) {
+    let context = match progress_context(shared, project, input.cwd.as_ref(), include) {
         Ok(Some((context, project))) => {
             *board = Some(project);
             context

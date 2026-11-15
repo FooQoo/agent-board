@@ -18,6 +18,7 @@ A release that lets you hand a request to an agent and answer its questions in o
 ### Fixes
 
 - The board no longer stops answering when your operating system asks whether Agent Board may use the ngrok token saved on this PC, for example after an update. Only connecting with the saved token and deleting it wait for your answer.
+- After an agent reads an image or runs a command with long output, the Hook still adds the board's progress table. It used to report `hook_input_too_large` instead, and the agent had to read the board again.
 
 ### Breaking changes
 

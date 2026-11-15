@@ -28,7 +28,8 @@ The hook identifies the project from the nearest bound ancestor of the input `cw
 
 - **Claude Code.** The plugin's `hooks/claude.json` registers `agboard hook --agent claude --plugin-version <version>` on SessionStart (`startup`, `resume`, `clear`, and `compact`), PostToolUse, and PostToolUseFailure, without a fixed project name. Generic skill frontmatter hooks are not used.
 - **Codex.** The plugin's `hooks/codex.json` registers `agboard hook --agent codex --plugin-version <version>` on SessionStart and PostToolUse. Codex runs a plugin's hooks only once they are trusted; `agboard setup` and `agboard update` trust them (see [Setup and update](#setup-and-update)).
-- **Limits.** Input is limited to 64 KiB of UTF-8, the table to 256 KiB, and a run to 10 seconds. Codex's `additionalContextLimit` is set to 0 so the hook enforces its own limit. Exceeding it reports `context_too_large`; output is never truncated and reported as success. When the table cannot be produced or the full input did not arrive, the hook says so and keeps the original tool result.
+- **Limits.** The table is limited to 256 KiB and a run to 10 seconds. Codex's `additionalContextLimit` is set to 0 so the hook enforces its own limit. Exceeding it reports `context_too_large`; output is never truncated and reported as success. When the table cannot be produced or the input cannot be read, the hook says so and keeps the original tool result.
+- **Input.** The hook reads its input to the end, whatever its size, and takes only `hook_event_name` and `cwd` from it. The agent sends the whole tool result with every PostToolUse, so the input is large after an image read or a long command output; the tool input and result are skipped, never kept or passed on.
 - **Safety.** Commands are fixed; nothing is built from task text or `tool_input`. The hook never calls agent tools, never triggers itself, and changes no board file. When it adds a progress table, it starts the server in the background if none runs, without waiting, unless `agboard stop` paused that or `AGBOARD_AUTOSTART=0` is set (see [Server and web UI](./server-and-ui.md#how-a-command-starts-a-server)). This keeps automatic Done working while an agent only edits files. A server started this way opens the board of that project in the browser once (see [Opening the board](./server-and-ui.md#opening-the-board)). Paths appear only in local CLI and hook output, never in remote JSON.
 
 Agents make no board-dependent changes until the table can be read, and they read a fresh table after context compaction.
@@ -119,7 +120,7 @@ The Hook resolves the project with `FileStore::resolve_binding`, which returns a
 | The `cwd` does not exist or cannot be read | `hook_cwd_unavailable`. It is never turned into a skip. |
 | An explicit `--project` | The named project wins. A name that is not found is `project_not_found`. |
 
-The 64 KiB input, 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never uses the network or writes settings. Starting the server is the one side effect it has, and its only notice is the [version check](#the-plugin-version-check) at session start.
+The 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The Hook never uses the network or writes settings. Starting the server is the one side effect it has, and its only notice is the [version check](#the-plugin-version-check) at session start.
 
 ## The plugin version check
 
