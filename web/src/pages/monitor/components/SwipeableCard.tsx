@@ -1,4 +1,4 @@
-import { ArchiveIcon } from 'lucide-react';
+import { Trash2Icon } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CardGestureOptions, useCardGesture } from '../hooks/useCardGesture';
@@ -66,8 +66,7 @@ export function SwipeableCard({
           aria-label={t('monitor.lanes.archiveTask', { id: taskId })}
           onClick={onArchive}
         >
-          <ArchiveIcon aria-hidden="true" />
-          <span>{t('archive.title')}</span>
+          <Trash2Icon aria-hidden="true" />
         </button>
       </div>
       <div className="swipe-card__body" style={{ transform: `translateX(${offset}px)` }}>

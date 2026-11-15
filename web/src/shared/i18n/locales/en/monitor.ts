@@ -39,6 +39,9 @@ export const monitorEn = {
       toPrev: '← {{lane}}',
       bulkArchive: 'Archive all',
       archiveTask: 'Archive #{{id}}',
+      archiveTitle: 'Archive task',
+      archiveDescription: 'Archive #{{id}} “{{title}}”.',
+      archiveSubmit: 'Archive',
     },
     freshness: {
       loading: 'Loading monitor…',

@@ -10,7 +10,7 @@ export const LIFT_TOLERANCE = 10;
 /** How far (px) a press must move sideways before it counts as a swipe. */
 export const SWIPE_SLOP = 8;
 /** The width (px) of the archive button a card reveals. */
-export const REVEAL_WIDTH = 96;
+export const REVEAL_WIDTH = 80;
 /** The strip (px) at each screen edge where a lifted card asks for the next lane. */
 export const EDGE_ZONE = 56;
 /** How long (ms) a lifted card rests in an edge strip before the lane changes. */

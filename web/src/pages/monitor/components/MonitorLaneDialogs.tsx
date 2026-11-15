@@ -1,8 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog';
 import type { ColumnName } from '../../../shared/api/contracts';
 import { BulkArchiveDialog } from '../../../features/tasks/archive/BulkArchiveDialog';
-import { DeleteConfirm } from '../../../features/tasks/delete/DeleteConfirm';
 import { MoveDialog } from '../../../features/tasks/move/MoveDialog';
 import type { MonitorTask } from '../contracts';
 import './monitor-lanes.css';
@@ -32,8 +30,8 @@ export interface MonitorLaneDialogsProps {
 
 /**
  * The three confirmations of the lane view, each the one the PC board uses: the archive question
- * of a card, the move dialog with its reason, and the bulk archive of the done lane. The archive
- * question sits in a dialog here, because on a phone there is no detail panel to hold it.
+ * of a card, the move dialog with its reason, and the bulk archive of the done lane. Archiving one
+ * card asks in the same dialog as the bulk archive, listing that card alone, so both read alike.
  */
 export function MonitorLaneDialogs({
   pending,
@@ -65,22 +63,22 @@ export function MonitorLaneDialogs({
         onCancel={onCancel}
       />
     );
+  const item = pending.item;
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="lane-confirm" showCloseButton={false}>
-        <DialogTitle className="sr-only">{t('archive.buttonLabel')}</DialogTitle>
-        <DialogDescription className="sr-only">
-          {t('archive.confirm', { id: pending.item.task.id, title: pending.item.task.title })}
-        </DialogDescription>
-        <DeleteConfirm
-          task={pending.item.task}
-          action="archive"
-          saving={false}
-          focusOnMount
-          onCancel={onCancel}
-          onConfirm={() => onArchive(pending.item)}
-        />
-      </DialogContent>
-    </Dialog>
+    <BulkArchiveDialog
+      projectName={projectName}
+      targets={[item.task]}
+      saving={false}
+      title={t('monitor.lanes.archiveTitle')}
+      description={t('monitor.lanes.archiveDescription', {
+        id: item.task.id,
+        title: item.task.title,
+      })}
+      submitLabel={t('monitor.lanes.archiveSubmit')}
+      onConfirm={async () => {
+        if (!(await onArchive(item))) throw new Error(t('archive.error'));
+      }}
+      onCancel={onCancel}
+    />
   );
 }

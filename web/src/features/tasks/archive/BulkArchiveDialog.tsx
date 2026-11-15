@@ -12,6 +12,10 @@ export interface BulkArchiveDialogProps {
   saving: boolean;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
+  /** Wording for a confirmation that is not the done lane's bulk archive, such as one card. */
+  title?: string;
+  description?: string;
+  submitLabel?: string;
 }
 
 /** Displays the session's fixed bulk-archive target snapshot and reports the user's choice. */
@@ -21,6 +25,9 @@ export function BulkArchiveDialog({
   saving,
   onConfirm,
   onCancel,
+  title,
+  description,
+  submitLabel,
 }: BulkArchiveDialogProps) {
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +83,10 @@ export function BulkArchiveDialog({
         }}
       >
         <div className="modal__header">
-          <DialogTitle className="modal__title">{t('archive.bulkTitle')}</DialogTitle>
+          <DialogTitle className="modal__title">{title ?? t('archive.bulkTitle')}</DialogTitle>
         </div>
         <DialogDescription className="bulk-archive__description">
-          {t('archive.bulkDescription', { projectName, count: targets.length })}
+          {description ?? t('archive.bulkDescription', { projectName, count: targets.length })}
         </DialogDescription>
         <div
           className="bulk-archive__table-wrap"
@@ -139,7 +146,9 @@ export function BulkArchiveDialog({
             onClick={() => void confirm()}
             disabled={saving || targets.length === 0}
           >
-            {saving ? t('dialog.saving') : t('archive.bulkSubmit', { count: targets.length })}
+            {saving
+              ? t('dialog.saving')
+              : (submitLabel ?? t('archive.bulkSubmit', { count: targets.length }))}
           </Button>
         </DialogActions>
       </DialogContent>
