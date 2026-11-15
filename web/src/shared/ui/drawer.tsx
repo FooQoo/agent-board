@@ -3,6 +3,7 @@ import { XIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useDrawerDrag } from './use-drawer-drag';
+import { isTouchScreen } from '../lib/viewport/isTouchScreen';
 
 /**
  * A bottom sheet on the shared Radix Dialog: modal, closed by Escape, the backdrop or the close
@@ -72,6 +73,16 @@ export function Drawer({
                   : null;
             if (target === null) return;
             event.preventDefault();
+            // On a touch screen a text field is not focused on open: it would raise the keyboard
+            // over the sheet before the question is read. The sheet itself takes focus instead.
+            if (
+              isTouchScreen() &&
+              target.matches('input, textarea') &&
+              event.currentTarget instanceof HTMLElement
+            ) {
+              event.currentTarget.focus({ preventScroll: true });
+              return;
+            }
             target.focus({ preventScroll: true });
           }}
           onCloseAutoFocus={(event) => {
