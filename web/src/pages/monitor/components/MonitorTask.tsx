@@ -51,7 +51,8 @@ export function MonitorTask({
       data-agent-status={showsState ? task.agentStatus : undefined}
     >
       <span className="monitor-card__top">
-        <span className="monitor-card__id">#{task.id}</span>
+        {/* The guide's sample cards have no number of their own; the span keeps the row's layout. */}
+        <span className="monitor-card__id">{task.id > 0 ? `#${task.id}` : ''}</span>
         <span className="monitor-card__indicators">
           {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
           <AcceptanceProgress task={task} />
