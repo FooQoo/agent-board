@@ -207,3 +207,10 @@
 [data-slot="dialog-overlay"] {
   background: var(--modal-scrim);
 }
+
+/* A centered dialog is centered in the kept page height (see stableHeight.ts), so a tablet keyboard
+   covers its lower part instead of pushing its top off the screen. :where() keeps it below any
+   dialog's own placement. */
+:where([data-slot="dialog-content"]) {
+  top: calc(var(--stable-vh, 100svh) / 2);
+}

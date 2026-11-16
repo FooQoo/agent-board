@@ -21,7 +21,7 @@ describe('desktop layout', () => {
   const css = read('src/shared/styles/app.css');
 
   it('stacks the header, the body and the status bar to the full viewport height', () => {
-    expect(rule(css, '.app')).toMatch(/height:\s*100svh/);
+    expect(rule(css, '.app')).toMatch(/height:\s*var\(--stable-vh, 100svh\)/);
     expect(rule(css, '.header')).toMatch(/height:\s*56px/);
     expect(rule(css, '.header')).toMatch(/padding:\s*0 24px/);
     expect(rule(css, '.app')).toMatch(/grid-template-rows:\s*56px minmax\(0, 1fr\) 40px/);
@@ -55,8 +55,9 @@ describe('desktop layout', () => {
 });
 
 describe('dialogs and sheets with a software keyboard', () => {
-  // 100dvh follows the visible area, which a tablet's keyboard shrinks, so a dialog sized by it
-  // is squashed while you type. The small viewport (svh) stays put when the keyboard opens.
+  // A tablet's keyboard shrinks the dynamic viewport, and on some tablets the small one too, so a
+  // dialog sized by either is squashed while you type. Heights follow the kept page height
+  // (--stable-vh, see stableHeight.ts), with svh only as the fallback before it is set.
   const sheets = [
     'src/shared/styles/modal.css',
     'src/shared/styles/editor.css',
@@ -68,6 +69,7 @@ describe('dialogs and sheets with a software keyboard', () => {
 
   it.each(sheets)('%s sizes its dialogs by the small viewport, not the dynamic one', (path) => {
     expect(read(path)).not.toMatch(/\d+dvh/);
+    expect(read(path)).not.toMatch(/(?<!var\(--stable-vh, )\b\d+svh/);
   });
 });
 
