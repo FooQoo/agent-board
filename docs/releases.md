@@ -2,6 +2,42 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.3.0
+
+A release that brings the whole board to your phone: below 768px the board shows one lane at a time, and the ngrok address opens the same board behind its passcode.
+
+### Changes
+
+- **One board for every screen.** Below 768px wide, the board shows its phone screen; at 768px and wider, the lanes. The mobile monitor is no longer a separate page: the ngrok address opens this same board, and the project switcher in the header lists every project, as on the PC.
+- **One lane at a time on the phone.** Tabs at the top show each lane with its number of cards. Tap a tab, or swipe sideways, to change lanes.
+- **Move and archive cards from the phone.** Hold a card to choose it, then swipe it to show its buttons: move it to the next or the previous lane, or archive it after a confirmation. The Done lane has **Archive all**, which is unavailable while the lane is empty. Deleting for good is still done from the archive.
+- **The Unanswered questions band starts closed.** Its header shows how many questions are open. Open it to list them, pick one to answer it alone, or answer them all with **Answer them**. This is the same on the PC and the phone.
+- **`agboard remote` hands you the phone link.** While the ngrok connection is up, `agboard --project "<name>" remote` prints the connection state, the address of that project, and the passcode, so an agent can give you a link without you opening the connection dialog.
+- **The first-run guide works on the phone and through ngrok.** The guide now runs in the browser only: its sample cards and the agent's moves are drawn on the screen, and the board keeps only whether you have seen it. **Try it** under **Tutorial** in the settings shows it again, on the PC or the phone.
+- **Easier to use with a finger.** Touch screens get larger buttons, a card can be dragged at once from its grip, and the board and its dialogs keep their size while a tablet's or phone's keyboard is open. The field you type in stays above the keyboard.
+
+### Fixes
+
+- Opening a dialog or an answer sheet on a touch screen no longer brings up the keyboard before you choose a field.
+- On a tablet, the keyboard no longer squashes the board and an open dialog into the strip above it.
+- The **Docs** label stays visible on a tablet held sideways.
+
+### Breaking changes
+
+- **The ngrok address opens the whole board.** Whoever enters the 4-digit passcode can use the board for up to 12 hours, as on the PC: read every project, and add, edit, move, archive, and delete tasks and epics. Earlier versions only let the phone answer questions and check conditions. Only the connection settings stay on the PC. Give the passcode only to people you would let use your board.
+- **Addresses ending in `/monitor/` are no longer served.** The separate monitor page and its API are removed, and old links show a not-found answer. On the PC, open the mobile connection settings and scan the current QR code again.
+
+### Required update steps
+
+Update the command, then move the plugin to the same version:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+agboard update
+```
+
+`agboard update` is needed: the Skill now tells agents how to open the board on your phone with `agboard remote`, and the plugin's version must match the command; otherwise a new agent session asks you to run it. Restart `agboard serve` after the upgrade so the phone loads the new board.
+
 ## v1.2.1
 
 A release that lets you answer a task's questions from its card and send them at once, and that makes the board's buttons safe to press twice.
