@@ -118,6 +118,25 @@ export function cardOffset(
   return raw;
 }
 
+/** How far (px) past its tiles a card is pulled before the pull moves the lanes instead. */
+export const LANE_HANDOFF = 56;
+
+/**
+ * Where a card pulled past its tiles hands the pull to the lanes: the card's slide (start plus
+ * drag) at which it does, or null while the slide stays within the tiles and the give past them.
+ */
+export function laneHandoff(
+  startOffset: number,
+  dx: number,
+  leftWidth: number,
+  rightWidth: number,
+): number | null {
+  const raw = startOffset + dx;
+  if (raw > leftWidth + LANE_HANDOFF) return leftWidth + LANE_HANDOFF;
+  if (raw < -(rightWidth + LANE_HANDOFF)) return -(rightWidth + LANE_HANDOFF);
+  return null;
+}
+
 /** The side a released card stays open on: past half its tiles, or flicked that way. */
 export function cardSettles(
   offset: number,

@@ -6,8 +6,8 @@ import { IconLabel } from '@/shared/ui/icon-label';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneReorder } from '../hooks/useLaneReorder';
 import { useLaneSwipe } from '../hooks/useLaneSwipe';
-import { canReorder, LANES, laneIndex, type RevealSide, reorderIds } from '../model/lanes';
-import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
+import { canReorder, LANES, laneIndex, type RevealSide } from '../model/lanes';
+import type { MonitorSection } from './MonitorSectionHeader';
 import { MonitorTask } from './MonitorTask';
 import { SwipeableCard } from './SwipeableCard';
 import './monitor-lanes.css';
@@ -41,7 +41,7 @@ const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
 /**
  * The phone monitor's lanes: one lane on screen, the other two beside it on a track. Tabs and a
  * sideways swipe on empty space move the track. A card slides left to show the lane on the right
- * and the archive, or right to show the lane on the left, and a card held for 100 ms lifts and can be carried up or down to reorder its lane (not in
+ * and the archive, or right to show the lane on the left, . Pulled well past its tiles, a card's swipe moves the lanes instead. A card held for 100 ms lifts and can be carried up or down to reorder its lane (not in
  * 完了, which keeps the completion order). Nothing here writes: every action is a callback.
  */
 export function MonitorLanes({
@@ -64,32 +64,13 @@ export function MonitorLanes({
     previewRevealed === undefined ? null : { id: previewRevealed, side: 'right' },
   );
 
-  // The order a drop just saved, shown until the next read of the project brings it back.
-  const [saved, setSaved] = useState<{ lane: MonitorSection; ids: number[] } | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new read replaces the saved order
-  useEffect(() => setSaved(null), [lanes]);
-  const shown = (name: MonitorSection) => {
-    const items = lanes[name];
-    if (saved?.lane !== name) return items;
-    const byId = new Map(items.map((item) => [item.task.id, item]));
-    const ordered = saved.ids.flatMap((id) => byId.get(id) ?? []);
-    return ordered.length === items.length ? ordered : items;
-  };
-
   const changeLane = (next: MonitorSection) => {
     setRevealed(null);
     onLaneChange(next);
   };
   const swipe = useLaneSwipe(viewport, { lane, onLaneChange: changeLane, disabled: false });
   const carried = useLaneReorder(viewport, {
-    onReorder: (item, beforeId) => {
-      const name = item.task.taskStatus as MonitorSection;
-      const ids = shown(name).map((entry) => entry.task.id);
-      const others = ids.filter((id) => id !== item.task.id);
-      const slot = beforeId === null ? others.length : others.indexOf(beforeId);
-      setSaved({ lane: name, ids: reorderIds(ids, item.task.id, slot) });
-      onReorder?.(item, beforeId);
-    },
+    onReorder: (item, beforeId) => onReorder?.(item, beforeId),
   });
 
   // A tap anywhere outside the card that shows its archive button closes it.
@@ -118,7 +99,7 @@ export function MonitorLanes({
     >
       <div className="monitor-lanes__track" style={track}>
         {LANES.map((name) => {
-          const items = shown(name);
+          const items = lanes[name];
           return (
             <section
               key={name}
@@ -129,8 +110,8 @@ export function MonitorLanes({
               inert={name !== lane}
             >
               {name === 'done' && (
+                // The tab above already names the lane and its count; the bar holds only the action.
                 <div className="monitor-lane__bar">
-                  <MonitorSectionHeader section="done" count={items.length} />
                   <Button
                     type="button"
                     variant="outline"
@@ -176,6 +157,8 @@ export function MonitorLanes({
                       }}
                       onLiftMove={carried.move}
                       onLiftEnd={(_point, cancelled) => carried.end(cancelled)}
+                      onLanePull={swipe.pull}
+                      onLaneRelease={swipe.release}
                     >
                       <MonitorTask
                         item={item}

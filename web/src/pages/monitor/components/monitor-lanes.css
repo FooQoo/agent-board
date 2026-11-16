@@ -90,17 +90,7 @@
 .monitor-lane__bar {
   display: flex;
   flex: none;
-  align-items: center;
-  gap: 8px;
-}
-.monitor-lane__bar .monitor-section-header {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.monitor-lane__bar .monitor-section-header strong {
-  margin-left: auto;
-  color: var(--r-text2);
-  font-size: 13px;
+  justify-content: flex-end;
 }
 .monitor-lane__scroll {
   display: flex;

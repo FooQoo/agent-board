@@ -38,9 +38,20 @@ export function useLaneSwipe(
     if (next !== lane) onLaneChange(next);
   };
 
+  const widthOf = () => ref.current?.clientWidth ?? 0;
+
   return {
     offset,
     dragging: offset !== null,
+    /** A card's pull that went past its tiles moves the track `dx` px. */
+    pull: (dx: number) => setOffset(trackOffset(lane, dx, widthOf())),
+    /** The card's pull ended: the track settles on a lane like a swipe on empty space. */
+    release: (dx: number, velocity: number, cancelled: boolean) => {
+      setOffset(null);
+      if (cancelled) return;
+      const next = settleLane(lane, dx, velocity, widthOf());
+      if (next !== lane) onLaneChange(next);
+    },
     handlers: {
       onPointerDown: (event: PointerEvent<HTMLElement>) => {
         if (disabled || !event.isPrimary || event.button !== 0) return;

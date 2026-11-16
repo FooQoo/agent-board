@@ -383,6 +383,11 @@
               "id": "pages-monitor-components-monitorlanes--right-swipe-shows-left-lane",
               "states": ["right swipe", "left lane tile"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--card-pull-switches-lane",
+              "states": ["card pulled past its tiles", "lane switch"],
+              "interaction": true
             }
           ]
         }

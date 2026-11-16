@@ -4,6 +4,7 @@ import {
   type RevealSide,
   cardOffset,
   cardSettles,
+  laneHandoff,
   revealOffset,
   swipeAxis,
   withinLiftTolerance,
@@ -24,7 +25,7 @@ export function capturePointer(element: Element, pointerId: number): void {
   }
 }
 
-type Phase = 'idle' | 'pending' | 'reveal' | 'lifted';
+type Phase = 'idle' | 'pending' | 'reveal' | 'lifted' | 'lane';
 
 export interface CardGestureOptions {
   /** The side whose tiles are showing. The parent owns this, so it can close it from outside. */
@@ -42,6 +43,10 @@ export interface CardGestureOptions {
   disabled?: boolean;
   /** False when a long press does not lift the card (the done lane keeps its order). */
   liftable?: boolean;
+  /** The card was pulled past its tiles: the pull now moves the lanes, `dx` px from where it did. */
+  onLanePull?: (dx: number) => void;
+  /** The finger let go of a pull that moves the lanes, or the browser took it (`cancelled`). */
+  onLaneRelease?: (dx: number, speed: number, cancelled: boolean) => void;
 }
 
 /** The sample the speed is read from: where the pointer was, and when. */
@@ -53,7 +58,8 @@ interface Sample extends Point {
  * The gestures of one card. A press that moves sideways slides the card to show or hide the tiles
  * on that side. A press that holds still for 100 ms lifts the card, and the following moves carry it. A
  * press that moves up or down is left to the browser, which scrolls the lane. A sideways move
- * on empty space never reaches this: the lane swipe handles it.
+ * on empty space never reaches this: the lane swipe handles it. A slide pulled well past the
+ * tiles hands the pull to the lanes, so a long swipe on a card also moves to the next lane.
  */
 export function useCardGesture(
   ref: RefObject<HTMLElement | null>,
@@ -67,6 +73,8 @@ export function useCardGesture(
     onLiftEnd,
     disabled,
     liftable = true,
+    onLanePull,
+    onLaneRelease,
   }: CardGestureOptions,
 ) {
   const [drag, setDrag] = useState<number | null>(null);
@@ -78,6 +86,8 @@ export function useCardGesture(
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const moved = useRef(false);
   const origin = useRef(0);
+  // The drag (px) at which the pull went over to the lanes.
+  const handoff = useRef(0);
 
   const stop = () => {
     clearTimeout(timer.current);
@@ -93,7 +103,7 @@ export function useCardGesture(
     const element = ref.current;
     if (!element) return;
     const block = (event: TouchEvent) => {
-      if ((phase.current === 'lifted' || phase.current === 'reveal') && event.cancelable)
+      if (phase.current !== 'idle' && phase.current !== 'pending' && event.cancelable)
         event.preventDefault();
     };
     element.addEventListener('touchmove', block, { passive: false });
@@ -147,7 +157,19 @@ export function useCardGesture(
         phase.current = 'idle';
       }
     } else if (phase.current === 'reveal') {
-      setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
+      const at = onLanePull ? laneHandoff(origin.current, dx, leftWidth, rightWidth) : null;
+      if (at === null || !onLanePull) {
+        setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
+        return;
+      }
+      // Pulled past the tiles: the card closes and the finger moves the lanes from here.
+      phase.current = 'lane';
+      handoff.current = at - origin.current;
+      setDrag(null);
+      onRevealChange(null);
+      onLanePull(dx - handoff.current);
+    } else if (phase.current === 'lane') {
+      onLanePull?.(dx - handoff.current);
     }
   };
 
@@ -163,6 +185,8 @@ export function useCardGesture(
     const speed = velocity.current;
     stop();
     if (was === 'lifted') onLiftEnd(point, cancelled);
+    if (was === 'lane')
+      onLaneRelease?.(event.clientX - start.current.x - handoff.current, speed, cancelled);
     if (was === 'reveal' && !cancelled)
       onRevealChange(cardSettles(offset, speed, leftWidth, rightWidth));
   };

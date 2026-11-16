@@ -10,6 +10,8 @@ import './components/monitor-lanes.css';
 import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
+import { useLaneOverlay } from './hooks/useLaneOverlay';
+import { reorderIds } from './model/lanes';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
@@ -72,10 +74,13 @@ export function MonitorView(props: MonitorViewProps) {
     return () => guideLink?.setSheetOpen(false);
   }, [guideLink, answerOpen]);
   // Kept between renders, so the lanes see a new order only when the project is read again.
-  const ordered = useMemo(
+  const read = useMemo(
     () => ({ todo: sortLane(todo), doing: sortLane(doing), done: sortDone(done) }),
     [todo, doing, done],
   );
+  // What this phone saved stays on screen until a read shows it, so nothing jumps back and forth.
+  const overlay = useLaneOverlay(read);
+  const ordered = overlay.lanes;
   const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(tasks);
   const { onDetailOpenChange } = props;
@@ -123,9 +128,14 @@ export function MonitorView(props: MonitorViewProps) {
         onReorder={
           writes
             ? (item, beforeId) => {
+                const name = item.task.taskStatus as MonitorSection;
+                const ids = ordered[name].map((entry) => entry.task.id);
+                const others = ids.filter((id) => id !== item.task.id);
+                const slot = beforeId === null ? others.length : others.indexOf(beforeId);
+                overlay.reorder(name, reorderIds(ids, item.task.id, slot));
                 void writes
                   .reorder(projectId, item.task.id, beforeId)
-                  .catch(() => {})
+                  .catch(() => overlay.forgetOrder())
                   .finally(() => onWritten?.());
               }
             : undefined
@@ -154,6 +164,7 @@ export function MonitorView(props: MonitorViewProps) {
             } catch {
               return false;
             }
+            overlay.hide([item.task.id]);
             closePending();
             onWritten?.();
             return true;
@@ -161,6 +172,7 @@ export function MonitorView(props: MonitorViewProps) {
           onMove={async (item, target, data) => {
             try {
               await writes.move(projectId, item.task.id, target, data.reason, data.fromStatus);
+              overlay.move(item.task.id, target);
             } finally {
               onWritten?.();
             }
@@ -168,10 +180,9 @@ export function MonitorView(props: MonitorViewProps) {
           }}
           onBulkArchive={async () => {
             try {
-              await writes.archiveDone(
-                projectId,
-                ordered.done.map((item) => item.task.id),
-              );
+              const ids = ordered.done.map((item) => item.task.id);
+              await writes.archiveDone(projectId, ids);
+              overlay.hide(ids);
             } finally {
               onWritten?.();
             }

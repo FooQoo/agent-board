@@ -344,6 +344,27 @@ export const RightSwipeShowsLeftLane: Story = {
   },
 };
 
+/** A card pulled far past its tiles moves the lanes, like a swipe on empty space. */
+export const CardPullSwitchesLane: Story = {
+  args: { initialLane: 'todo' },
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector<HTMLElement>(
+      '.monitor-lane[data-lane="todo"] [data-swipe-card]',
+    );
+    if (!card) throw new Error('No todo card.');
+    const rect = card.getBoundingClientRect();
+    const y = rect.top + 20;
+    press(card, 'pointerdown', rect.right - 10, y);
+    for (const x of [rect.right - 40, rect.right - 160, rect.right - 260, rect.left + 10])
+      press(card, 'pointermove', x, y);
+    press(card, 'pointerup', rect.left + 10, y);
+    await waitFor(() =>
+      expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
+    );
+    await expect(card).not.toHaveAttribute('data-revealed');
+  },
+};
+
 /** A sideways swipe on empty space moves to the next lane. */
 export const SwipeSwitchesLane: Story = {
   args: { initialLane: 'todo' },
