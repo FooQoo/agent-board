@@ -3,8 +3,6 @@ import type { MonitorSection } from '../components/MonitorSectionHeader';
 /** The lanes in the order the phone shows them, left to right. */
 export const LANES: readonly MonitorSection[] = ['todo', 'doing', 'done'];
 
-/** How far (px) a press must move sideways before it counts as a swipe. */
-export const SWIPE_SLOP = 8;
 /** The size (px) of one swipe action tile, and the gap around the tiles. */
 export const ACTION_TILE = 48;
 export const ACTION_GAP = 8;
@@ -70,19 +68,6 @@ export function cardOffset(
   if (raw > leftWidth) return leftWidth + (raw - leftWidth) / 4;
   if (raw < -rightWidth) return -rightWidth + (raw + rightWidth) / 4;
   return raw;
-}
-
-/** A card is held this long (ms) before it is chosen, and only a chosen card slides sideways. */
-export const ARM_HOLD_MS = 300;
-/**
- * A finger may drift this far (px) during that hold. It is below the swipe slop, so a press that
- * moves sooner becomes a lane swipe or a scroll before the card is chosen.
- */
-export const ARM_TOLERANCE = 6;
-
-/** Whether a press has stayed close enough to where it began to choose the card. */
-export function withinArmTolerance(dx: number, dy: number): boolean {
-  return Math.hypot(dx, dy) <= ARM_TOLERANCE;
 }
 
 /** The side a released card stays open on: past half its tiles, or flicked that way. */

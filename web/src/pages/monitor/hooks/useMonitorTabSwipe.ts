@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import useEmblaCarousel from 'embla-carousel-react';
+import { useRef } from 'react';
+import { useSwipePages } from '@/shared/lib/gesture/useSwipePages';
 import type { MonitorDetailTab } from '../contracts';
 
 export const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
@@ -33,43 +33,11 @@ export function useMonitorTabSwipe(
   onTabChange: (tab: MonitorDetailTab) => void,
 ) {
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [carouselRef, carousel] = useEmblaCarousel({
-    loop: false,
-    watchFocus: false,
-    watchDrag: (api, event) =>
-      !window.getSelection()?.toString() && !shouldIgnoreTabSwipe(event.target, api.rootNode()),
+  const carouselRef = useSwipePages(TAB_ORDER, tab, onTabChange, {
+    ignore: (target, root) =>
+      Boolean(window.getSelection()?.toString()) || shouldIgnoreTabSwipe(target, root),
+    progressTarget: tabsRef,
+    progressVar: '--tab-progress',
   });
-  const initializedCarousel = useRef<typeof carousel>(undefined);
-
-  useEffect(() => {
-    if (!carousel) return;
-    const index = TAB_ORDER.indexOf(tab);
-    if (initializedCarousel.current !== carousel || carousel.selectedScrollSnap() !== index) {
-      carousel.scrollTo(index, initializedCarousel.current !== carousel);
-    }
-    initializedCarousel.current = carousel;
-  }, [carousel, tab]);
-
-  useEffect(() => {
-    if (!carousel) return;
-    const onSelected = () => {
-      const next = TAB_ORDER[carousel.selectedScrollSnap()];
-      if (next && next !== tab) onTabChange(next);
-    };
-    const updateIndicator = () => {
-      const progress = Math.max(0, Math.min(1, carousel.scrollProgress()));
-      tabsRef.current?.style.setProperty('--tab-progress', String(progress));
-    };
-    updateIndicator();
-    carousel.on('select', onSelected);
-    carousel.on('scroll', updateIndicator);
-    carousel.on('reInit', updateIndicator);
-    return () => {
-      carousel.off('select', onSelected);
-      carousel.off('scroll', updateIndicator);
-      carousel.off('reInit', updateIndicator);
-    };
-  }, [carousel, tab, onTabChange]);
-
   return { tabsRef, carouselRef };
 }

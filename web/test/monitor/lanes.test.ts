@@ -3,8 +3,6 @@ import {
   actionsWidth,
   cardOffset,
   cardSettles,
-  ARM_TOLERANCE,
-  withinArmTolerance,
   laneIndex,
   neighbourLane,
   swipeActions,
@@ -46,12 +44,5 @@ describe('card swipe', () => {
     expect(cardSettles(LEFT / 2 + 1, 0, LEFT, RIGHT)).toBe('left');
     expect(cardSettles(10, 0.9, LEFT, RIGHT)).toBe('left');
     expect(cardSettles(10, 0.9, 0, RIGHT)).toBeNull();
-  });
-});
-
-describe('choosing a card', () => {
-  it('keeps the hold while the finger stays within the tolerance', () => {
-    expect(withinArmTolerance(3, 3)).toBe(true);
-    expect(withinArmTolerance(ARM_TOLERANCE + 1, 0)).toBe(false);
   });
 });

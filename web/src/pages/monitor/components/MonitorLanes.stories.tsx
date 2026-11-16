@@ -13,7 +13,7 @@ import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask } from '../contracts';
 import type { LaneItems } from './MonitorLanes';
 import type { LanePending } from './MonitorLaneDialogs';
-import { ARM_HOLD_MS } from '../model/lanes';
+import { HOLD_MS } from '@/shared/lib/gesture/sideSwipe';
 import { MonitorLanesScreen, type MonitorLanesScreenProps } from './MonitorLanesScreen';
 
 const LANE_PROJECT_NAME = 'agent-board';
@@ -190,7 +190,7 @@ function press(
 /** Holds a card still until it is chosen, then lets go: the card shows its focus ring. */
 const choose = async (card: Element, x: number, y: number) => {
   press(card, 'pointerdown', x, y);
-  await new Promise((resolve) => setTimeout(resolve, ARM_HOLD_MS + 60));
+  await new Promise((resolve) => setTimeout(resolve, HOLD_MS + 60));
   press(card, 'pointerup', x, y);
   await waitFor(() => expect(card).toHaveAttribute('data-armed'));
 };
@@ -357,7 +357,7 @@ export const HoldThenSwipeInOnePress: Story = {
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
     press(card, 'pointerdown', rect.right - 20, y);
-    await new Promise((resolve) => setTimeout(resolve, ARM_HOLD_MS + 60));
+    await new Promise((resolve) => setTimeout(resolve, HOLD_MS + 60));
     await waitFor(() => expect(card).toHaveAttribute('data-armed'));
     press(card, 'pointermove', rect.right - 60, y);
     press(card, 'pointermove', rect.right - 140, y);
