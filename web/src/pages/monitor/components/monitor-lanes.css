@@ -88,15 +88,23 @@
   min-height: 0;
   overflow: hidden;
 }
-/* The carousel's container: Embla moves it. A vertical drag scrolls the lane on screen. */
+/*
+ * The carousel's container: Embla moves it. A vertical drag scrolls the lane on screen. Lanes are
+ * kept apart by `--lane-gap` while they slide: each lane is padded on its left, and the track is
+ * moved left by as much, so the lane on screen stays where it was.
+ */
 .monitor-lanes__track {
+  --lane-gap: 16px;
   display: flex;
   height: 100%;
+  margin-left: calc(var(--lane-gap) * -1);
   touch-action: pan-y pinch-zoom;
 }
 .monitor-lane {
+  box-sizing: border-box;
   display: flex;
   flex: 0 0 100%;
+  padding-left: var(--lane-gap);
   flex-direction: column;
   gap: 6px;
   min-width: 0;
