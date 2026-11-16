@@ -42,9 +42,7 @@ export function revealOffset(
   return 0;
 }
 
-/** The distance, as a share of the lane width, that turns a drag into a lane change. */
-export const LANE_SWITCH_RATIO = 0.25;
-/** The speed (px/ms) that turns even a short flick into a lane change. */
+/** The speed (px/ms) that turns even a short flick of a card into a decision. */
 export const LANE_FLICK_SPEED = 0.5;
 
 export type Direction = -1 | 1;
@@ -56,40 +54,6 @@ export function laneIndex(lane: MonitorSection): number {
 /** The lane next to `lane` in `direction` (1 is right), or null at the end of the row. */
 export function neighbourLane(lane: MonitorSection, direction: Direction): MonitorSection | null {
   return LANES[laneIndex(lane) + direction] ?? null;
-}
-
-/** Keeps a position on the three lanes, so a drag past an end of the row stops there. */
-export function clampLaneIndex(index: number): number {
-  return Math.min(LANES.length - 1, Math.max(0, Math.round(index)));
-}
-
-/** Which way a press has gone once it passed the slop: a sideways swipe, a scroll, or neither yet. */
-export function swipeAxis(dx: number, dy: number, slop = SWIPE_SLOP): 'x' | 'y' | null {
-  const ax = Math.abs(dx);
-  const ay = Math.abs(dy);
-  if (Math.max(ax, ay) < slop) return null;
-  return ax > ay ? 'x' : 'y';
-}
-
-/** The lane a sideways drag on empty space ends in. Past either end it stays where it is. */
-export function settleLane(
-  lane: MonitorSection,
-  dx: number,
-  velocity: number,
-  width: number,
-): MonitorSection {
-  const far = Math.abs(dx) >= width * LANE_SWITCH_RATIO;
-  const flick = Math.abs(velocity) >= LANE_FLICK_SPEED && Math.abs(dx) > SWIPE_SLOP;
-  if (!far && !flick) return lane;
-  // A drag to the left (negative) reveals the lane on the right.
-  return neighbourLane(lane, dx < 0 ? 1 : -1) ?? lane;
-}
-
-/** The track's offset (px) while a drag is under way: it follows the finger, and gives at an end. */
-export function trackOffset(lane: MonitorSection, dx: number, width: number): number {
-  const base = -laneIndex(lane) * width;
-  const blocked = neighbourLane(lane, dx < 0 ? 1 : -1) === null;
-  return base + (blocked ? dx / 3 : dx);
 }
 
 /**

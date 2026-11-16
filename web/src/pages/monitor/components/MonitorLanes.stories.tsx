@@ -163,26 +163,29 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A pointer event on `target`, as a finger or a mouse would send it. */
+/**
+ * A pointer event on `target`, followed by the mouse event a browser sends with it. The card reads
+ * pointer events (`@use-gesture/react`); the lane carousel reads mouse and touch events (Embla).
+ */
 function press(
   target: Element,
   type: 'pointerdown' | 'pointermove' | 'pointerup',
   x: number,
   y: number,
 ) {
+  const init = {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button: 0,
+    buttons: type === 'pointerup' ? 0 : 1,
+    clientX: x,
+    clientY: y,
+  };
   target.dispatchEvent(
-    new PointerEvent(type, {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      pointerId: 7,
-      pointerType: 'touch',
-      isPrimary: true,
-      button: 0,
-      clientX: x,
-      clientY: y,
-    }),
+    new PointerEvent(type, { ...init, pointerId: 7, pointerType: 'mouse', isPrimary: true }),
   );
+  target.dispatchEvent(new MouseEvent(type.replace('pointer', 'mouse'), init));
 }
 /** Holds a card still until it is chosen, then lets go: the card shows its focus ring. */
 const choose = async (card: Element, x: number, y: number) => {

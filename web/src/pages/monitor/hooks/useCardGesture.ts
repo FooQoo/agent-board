@@ -1,25 +1,14 @@
+import { useDrag } from '@use-gesture/react';
 import { useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react';
 import {
   ARM_HOLD_MS,
   type RevealSide,
+  SWIPE_SLOP,
   cardOffset,
   cardSettles,
   revealOffset,
-  swipeAxis,
   withinArmTolerance,
 } from '../model/lanes';
-
-/** Keeps the pointer on `element` for the rest of the gesture. A pointer that is gone is not an error. */
-export function capturePointer(element: Element, pointerId: number): void {
-  try {
-    element.setPointerCapture(pointerId);
-  } catch {
-    // The browser no longer has this pointer; the gesture ends on its own.
-  }
-}
-
-/** `hold`: an unchosen card waits for the hold. `press`: a chosen card waits for a direction. */
-type Phase = 'idle' | 'hold' | 'press' | 'reveal';
 
 export interface CardGestureOptions {
   /** The side whose tiles are showing. The parent owns this, so it can close it from outside. */
@@ -36,105 +25,82 @@ export interface CardGestureOptions {
   disabled?: boolean;
 }
 
-/** The sample the speed is read from: where the pointer was, and when. */
-interface Sample {
-  x: number;
-  t: number;
-}
-
 /**
  * The gestures of one card. One rule decides a sideways move: on a chosen card it slides the card
- * to show the tiles on that side, and on any other card it is the lane swipe's. Holding a card
- * chooses it (a focus ring shows), and the same press can then swipe it. An up or down move scrolls.
+ * to show the tiles on that side, and on any other card it belongs to the lane carousel. Holding a
+ * card chooses it (a focus ring shows), and the same press can then swipe it. An up or down move
+ * scrolls. The drag itself is read by `@use-gesture/react`; this hook adds the hold.
  */
 export function useCardGesture(
   ref: RefObject<HTMLElement | null>,
   { revealed, onRevealChange, armed, onArm, leftWidth, rightWidth, disabled }: CardGestureOptions,
 ) {
   const [drag, setDrag] = useState<number | null>(null);
-  const phase = useRef<Phase>('idle');
-  const start = useRef({ x: 0, y: 0 });
-  const last = useRef<Sample>({ x: 0, t: 0 });
-  const velocity = useRef(0);
+  // Read from listeners that outlive a render: a hold chooses the card in the middle of a press.
+  const chosen = useRef(armed);
+  useEffect(() => {
+    chosen.current = armed;
+  }, [armed]);
+  const sliding = useRef(false);
   const moved = useRef(false);
-  const origin = useRef(0);
+  const press = useRef<{ x: number; y: number; origin: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  // Once the card slides, a touch that moves must not scroll the lane. React's touch handlers are
-  // passive, so this one is added by hand.
+  // Once a card is chosen its moves are its own: the lane carousel (which listens above, on touch
+  // and mouse events) does not see them, and a sliding card does not scroll the lane.
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const block = (event: TouchEvent) => {
-      if (phase.current === 'reveal' && event.cancelable) event.preventDefault();
+    const touch = (event: TouchEvent) => {
+      if (!chosen.current) return;
+      event.stopPropagation();
+      if (sliding.current && event.cancelable) event.preventDefault();
     };
-    element.addEventListener('touchmove', block, { passive: false });
-    return () => element.removeEventListener('touchmove', block);
+    const mouse = (event: MouseEvent) => {
+      if (chosen.current) event.stopPropagation();
+    };
+    element.addEventListener('touchmove', touch, { passive: false });
+    element.addEventListener('mousemove', mouse);
+    return () => {
+      element.removeEventListener('touchmove', touch);
+      element.removeEventListener('mousemove', mouse);
+    };
   }, [ref]);
 
-  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if (disabled || !event.isPrimary || event.button !== 0 || phase.current !== 'idle') return;
-    if ((event.target as Element).closest('[data-swipe-action]')) return;
-    start.current = { x: event.clientX, y: event.clientY };
-    last.current = { x: event.clientX, t: event.timeStamp };
-    velocity.current = 0;
-    moved.current = false;
-    origin.current = revealOffset(revealed, leftWidth, rightWidth);
-    if (armed) {
-      phase.current = 'press';
-      return;
-    }
-    phase.current = 'hold';
-    timer.current = setTimeout(() => {
-      if (phase.current !== 'hold') return;
-      // Chosen: from here the same press can swipe it, like a press on a chosen card.
-      phase.current = 'press';
-      // The click that ends the hold is not a tap on the card.
-      moved.current = true;
-      onArm();
-    }, ARM_HOLD_MS);
-  };
-
-  const onPointerMove = (event: PointerEvent<HTMLElement>) => {
-    const dx = event.clientX - start.current.x;
-    const dy = event.clientY - start.current.y;
-    const dt = event.timeStamp - last.current.t;
-    if (dt > 0) velocity.current = (event.clientX - last.current.x) / dt;
-    last.current = { x: event.clientX, t: event.timeStamp };
-    if (phase.current === 'hold') {
-      // Moved before the hold: the lane swipe or the browser's scroll takes it.
-      if (!withinArmTolerance(dx, dy)) {
-        clearTimeout(timer.current);
-        phase.current = 'idle';
+  const bind = useDrag(
+    ({ first, last, tap, movement: [mx], velocity: [vx], direction: [dx], cancel }) => {
+      // A tap is the card's own: it opens the details or closes the tiles.
+      if (tap) return;
+      const origin = press.current?.origin ?? 0;
+      if (first) {
+        // A card that is not chosen leaves the sideways move to the lanes.
+        if (!chosen.current) return cancel();
+        sliding.current = true;
+        moved.current = true;
       }
-    } else if (phase.current === 'press') {
-      const axis = swipeAxis(dx, dy);
-      if (axis === 'y') phase.current = 'idle';
-      if (axis !== 'x') return;
-      phase.current = 'reveal';
-      moved.current = true;
-      capturePointer(event.currentTarget, event.pointerId);
-      setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
-    } else if (phase.current === 'reveal') {
-      setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
-    }
-  };
+      if (!sliding.current) return;
+      const offset = cardOffset(origin, mx, leftWidth, rightWidth);
+      if (!last) {
+        setDrag(offset);
+        return;
+      }
+      sliding.current = false;
+      setDrag(null);
+      onRevealChange(cardSettles(offset, vx * dx, leftWidth, rightWidth));
+    },
+    {
+      axis: 'x',
+      threshold: SWIPE_SLOP,
+      filterTaps: true,
+      enabled: !disabled,
+      // A touch stays with the card it began on anyway; the window hears the rest of a mouse drag.
+      pointer: { capture: false },
+    },
+  );
+  const drags = bind();
 
-  const finish = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
-    clearTimeout(timer.current);
-    const was = phase.current;
-    const offset = cardOffset(
-      origin.current,
-      event.clientX - start.current.x,
-      leftWidth,
-      rightWidth,
-    );
-    phase.current = 'idle';
-    setDrag(null);
-    if (was === 'reveal' && !cancelled)
-      onRevealChange(cardSettles(offset, velocity.current, leftWidth, rightWidth));
-  };
+  const endHold = () => clearTimeout(timer.current);
 
   return {
     /** The slide in px while a finger drags the card; null when it rests. */
@@ -142,10 +108,41 @@ export function useCardGesture(
     /** True when the press was a hold or a swipe, so the click that follows is not a tap. */
     consumesClick: () => moved.current,
     handlers: {
-      onPointerDown,
-      onPointerMove,
-      onPointerUp: (event: PointerEvent<HTMLElement>) => finish(event, false),
-      onPointerCancel: (event: PointerEvent<HTMLElement>) => finish(event, true),
+      ...drags,
+      onPointerDown: (event: PointerEvent<HTMLElement>) => {
+        if (disabled || !event.isPrimary || event.button !== 0) return;
+        if ((event.target as Element).closest('[data-swipe-action]')) return;
+        press.current = {
+          x: event.clientX,
+          y: event.clientY,
+          origin: revealOffset(revealed, leftWidth, rightWidth),
+        };
+        moved.current = false;
+        drags.onPointerDown?.(event);
+        if (armed) return;
+        timer.current = setTimeout(() => {
+          // Chosen: from here the same press can swipe it. The click that ends the hold is not a tap.
+          chosen.current = true;
+          moved.current = true;
+          onArm();
+        }, ARM_HOLD_MS);
+      },
+      onPointerMove: (event: PointerEvent<HTMLElement>) => {
+        // Moved before the hold: the lane carousel or the browser's scroll takes the press.
+        const at = press.current;
+        if (at && !withinArmTolerance(event.clientX - at.x, event.clientY - at.y)) endHold();
+        drags.onPointerMove?.(event);
+      },
+      onPointerUp: (event: PointerEvent<HTMLElement>) => {
+        endHold();
+        drags.onPointerUp?.(event);
+      },
+      onPointerCancel: (event: PointerEvent<HTMLElement>) => {
+        endHold();
+        sliding.current = false;
+        setDrag(null);
+        drags.onPointerCancel?.(event);
+      },
       // A long press must not open the browser's menu for the card.
       onContextMenu: (event: { preventDefault: () => void }) => event.preventDefault(),
     },

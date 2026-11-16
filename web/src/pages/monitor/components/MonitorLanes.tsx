@@ -1,11 +1,11 @@
 import { ArchiveIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { IconLabel } from '@/shared/ui/icon-label';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
-import { useLaneSwipe } from '../hooks/useLaneSwipe';
-import { LANES, laneIndex, type RevealSide } from '../model/lanes';
+import { useLaneCarousel } from '../hooks/useLaneCarousel';
+import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { MonitorTask } from './MonitorTask';
 import { SwipeableCard } from './SwipeableCard';
@@ -36,8 +36,8 @@ export interface MonitorLanesProps {
 const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
 
 /**
- * The phone monitor's lanes: one lane on screen, the other two beside it on a track. Tabs and a
- * sideways swipe anywhere move the track. A card held for a moment is chosen and shows a focus
+ * The phone monitor's lanes: one lane on screen, the other two beside it in a carousel. Tabs and a
+ * sideways swipe anywhere move it. A card held for a moment is chosen and shows a focus
  * ring; a later swipe on it slides it left to show the lane on the right and the archive, or right
  * to show the lane on the left. Nothing here writes: every action is a callback.
  */
@@ -55,7 +55,6 @@ export function MonitorLanes({
   previewRevealed,
 }: MonitorLanesProps) {
   const { t } = useTranslation();
-  const viewport = useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = useState<{ id: number; side: RevealSide } | null>(
     previewRevealed === undefined ? null : { id: previewRevealed, side: 'right' },
   );
@@ -68,7 +67,7 @@ export function MonitorLanes({
     setArmed(null);
     onLaneChange(next);
   };
-  const swipe = useLaneSwipe(viewport, { lane, onLaneChange: changeLane, disabled: false });
+  const viewport = useLaneCarousel(lane, changeLane);
 
   // A tap anywhere outside the chosen card lets it go and closes its tiles.
   useEffect(() => {
@@ -83,14 +82,9 @@ export function MonitorLanes({
     return () => document.removeEventListener('pointerdown', close, true);
   }, [armed]);
 
-  const track =
-    swipe.offset === null
-      ? { transform: `translateX(${-laneIndex(lane) * 100}%)` }
-      : { transform: `translateX(${swipe.offset}px)`, transition: 'none' };
-
   return (
-    <div ref={viewport} id={id} className="monitor-lanes" {...swipe.handlers}>
-      <div className="monitor-lanes__track" style={track}>
+    <div ref={viewport} id={id} className="monitor-lanes">
+      <div className="monitor-lanes__track">
         {LANES.map((name) => {
           const items = lanes[name];
           return (

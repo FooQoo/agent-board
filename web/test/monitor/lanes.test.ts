@@ -3,15 +3,11 @@ import {
   actionsWidth,
   cardOffset,
   cardSettles,
-  clampLaneIndex,
   ARM_TOLERANCE,
   withinArmTolerance,
   laneIndex,
   neighbourLane,
-  settleLane,
   swipeActions,
-  swipeAxis,
-  trackOffset,
 } from '../../src/pages/monitor/model/lanes';
 
 describe('lane order', () => {
@@ -21,45 +17,6 @@ describe('lane order', () => {
     expect(neighbourLane('doing', -1)).toBe('todo');
     expect(neighbourLane('done', 1)).toBeNull();
     expect(neighbourLane('todo', -1)).toBeNull();
-  });
-
-  it('keeps an index on the three lanes', () => {
-    expect(clampLaneIndex(-0.7)).toBe(0);
-    expect(clampLaneIndex(1.4)).toBe(1);
-    expect(clampLaneIndex(9)).toBe(2);
-  });
-});
-
-describe('swipe axis', () => {
-  it('waits until the press moved past the slop', () => {
-    expect(swipeAxis(3, -4)).toBeNull();
-  });
-  it('tells a sideways swipe from a scroll', () => {
-    expect(swipeAxis(-20, 6)).toBe('x');
-    expect(swipeAxis(5, 24)).toBe('y');
-  });
-  it('lets a finger drift a little while it holds', () => {});
-});
-
-describe('lane swipe', () => {
-  it('changes lane past a quarter of the width', () => {
-    expect(settleLane('doing', -120, 0, 390)).toBe('done');
-    expect(settleLane('doing', 120, 0, 390)).toBe('todo');
-  });
-  it('stays for a short, slow drag', () => {
-    expect(settleLane('doing', -60, 0.1, 390)).toBe('doing');
-  });
-  it('changes lane for a quick flick', () => {
-    expect(settleLane('todo', -30, -0.8, 390)).toBe('doing');
-  });
-  it('stays at the ends of the row', () => {
-    expect(settleLane('todo', 200, 1, 390)).toBe('todo');
-    expect(settleLane('done', -200, -1, 390)).toBe('done');
-  });
-  it('moves the track with the finger and gives at the ends', () => {
-    expect(trackOffset('doing', -50, 390)).toBe(-390 - 50);
-    expect(trackOffset('todo', 60, 390)).toBe(20);
-    expect(trackOffset('done', -60, 390)).toBe(-780 - 20);
   });
 });
 
