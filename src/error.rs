@@ -137,14 +137,6 @@ pub enum AgboardError {
         id: i64,
         current: Column,
     },
-    /// The guide's state moved on: a stale revision, another tab's lease, or another run.
-    OnboardingConflict {
-        reason: String,
-    },
-    /// A guide command that the current step does not allow, or a malformed guide input.
-    OnboardingInvalid {
-        reason: String,
-    },
     ConfirmationRequired {
         operation: String,
     },

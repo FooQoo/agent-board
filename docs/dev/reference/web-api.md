@@ -57,7 +57,7 @@ The shapes below are fixed by the Rust types in `src/server/contracts/` and by t
 
 | Item | Fields |
 | --- | --- |
-| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `questionIds`, `openQuestionIds`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on guide samples), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
+| Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `isDraft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `questionIds`, `openQuestionIds`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on cards written by earlier releases' guide), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
 | Epic | `id` (string), `name`, `color`, `isDraft`, `priority` (the task IDs in the order the epic sets; empty when it sets none), `priorityError` (the stored order cannot be read, so `priority` is ignored), `progress` (`todo`, `doing`, `done`, `archived`, `total`), and `detailVersions` (`document`). |
 | Question | The open questions in ID order: `id`, `requestId`, `kind`, `title` (the first line, up to 200 characters), `recommendedChoiceId`, `referencedBy` (the unarchived tasks that refer to it), and `createdAt`. The full text is read with `GET …/qa/{questionId}`. |
 | Problem | `file`, `field`, `reason`, as in the board. |
@@ -209,15 +209,7 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/onboarding` | The guide's state. Read only. |
-| `POST /api/onboarding/claim` | Take the guide for a tab: `clientId`, `expectedRevision`. |
-| `POST /api/onboarding/replay` | Offer a finished or skipped guide again: `clientId`, `expectedRevision`. |
-| `POST /api/onboarding/heartbeat` | Renew the lease: `clientId`. |
-| `POST /api/onboarding/skip` | Skip before any card is created: `clientId`, `expectedRevision`, `commandId`. |
-| `POST /api/onboarding/recover` | End the runs whose lease has expired. |
-| `POST /api/projects/{projectId}/onboarding/start` | Start a run: `clientId`, `attemptId`, `expectedRevision`, `locale`. A repeated attempt returns the same run. |
-| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | Take one step: `clientId`, `expectedRevision`, `commandId`, `transition`. |
-| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | Archive the run's cards and complete the guide. |
-| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | End the run early and archive its cards. |
+| `GET /api/onboarding` | Whether this data area has seen the guide: `{ "formatVersion": 2, "status": "unseen" \| "completed" \| "skipped" }`. Read only. |
+| `POST /api/onboarding/seen` | Record how the guide ended: `{ "outcome": "completed" \| "skipped" }`. Returns the same shape as `GET`. A later call replaces the earlier outcome. |
 
-The writes pass the write guard, and unknown fields are refused. The answer to a sample's question uses `POST /api/projects/{projectId}/qa/answers`.
+The write passes the write guard, and a body with an unknown field, a missing `outcome`, or any other value is refused with `invalid_value` (422). Both routes are on the board router, so the ngrok entrance serves them behind its session like the other board routes. The guide itself runs in the web UI; the server stores only this status. See [saving and recovery](../concepts/saving-and-recovery.md#the-first-run-guides-state).

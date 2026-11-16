@@ -233,8 +233,8 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 
 ## First-run guide
 
-- `shared/.internal/onboarding.json`: the guide's status, lease owner, active run, and recent command IDs. See [saving and recovery](../concepts/saving-and-recovery.md).
-- `tasks/<id>/task.json` `onboardingSample`: `{ "runId": "<32 lowercase hex>", "ordinal": 1 | 2 }`. Present only on the guide's sample cards.
+- `shared/.internal/onboarding.json`: `{ "formatVersion": 2, "status": "unseen" | "completed" | "skipped" }`. Version 1 files from earlier releases are read as `completed`, `skipped`, or `unseen` and rewritten once. See [saving and recovery](../concepts/saving-and-recovery.md).
+- `tasks/<id>/task.json` `onboardingSample`: `{ "runId": "<32 lowercase hex>", "ordinal": 1 | 2 }`. Written only by earlier releases, on their guide's sample cards. Nothing writes it now; it is still read and kept as it is.
 
 ## Files that setup writes {#agent-settings}
 

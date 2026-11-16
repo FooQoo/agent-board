@@ -1,110 +1,88 @@
-//! The first-run guide's operations: the lease, the start of a run, the scripted
-//! steps, and the finish, abort, and recovery that return the samples to the
-//! archive. Every operation takes the guide's lock first, then the project lock
-//! that the card operations take, and saves the guide's file once per change.
+//! The first-run guide's one stored fact: whether this data area has seen it.
+//! Every operation takes the guide's lock, and the lock is held while a leftover
+//! version 1 run's sample cards are archived and the file is rewritten.
 
-mod cards;
-mod claim;
-mod run;
+use chrono::{DateTime, Utc};
 
-use chrono::{DateTime, Duration, Utc};
-
-use super::super::onboarding_state::{GuideLocale, LEASE_SECONDS, OnboardingFile};
-use crate::domain::{Actor, ChangeContext};
+use super::super::FileStore;
+use super::super::onboarding_state::{self as state, GuideOutcome, Loaded, OnboardingFile};
+use super::super::reader;
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
 
-const SAMPLE_CRITERION: &str = "AC-1";
-
-/// The two sample cards, in ordinal order, with their titles and bodies.
-fn sample_text(locale: GuideLocale, ordinal: u8) -> (&'static str, &'static str, &'static str) {
-    match (locale, ordinal) {
-        (GuideLocale::Ja, 1) => (
-            "サンプル：使い方を確認する",
-            "ガイド用のサンプルです。実際のAIは動きません。",
-            "サンプルの進行を確認する",
-        ),
-        (GuideLocale::Ja, _) => (
-            "サンプル：案内の見せ方を選ぶ",
-            "ガイド用のサンプルです。実際のAIは動きません。",
-            "サンプルの回答を確認する",
-        ),
-        (GuideLocale::En, 1) => (
-            "Sample: follow a task",
-            "This is a guide sample. No AI agent works on it.",
-            "Confirm the sample's progress",
-        ),
-        (GuideLocale::En, _) => (
-            "Sample: choose the guide style",
-            "This is a guide sample. No AI agent works on it.",
-            "Confirm the sample's answer",
-        ),
+impl FileStore {
+    /// The guide's state. A version 1 file is upgraded first, so a read never shows
+    /// sample cards from an older release.
+    pub fn guide(&self, now: DateTime<Utc>) -> Result<OnboardingFile, AgboardError> {
+        let shared = self.shared_dir();
+        if !state::state_file(shared).exists() {
+            return Ok(OnboardingFile::fresh());
+        }
+        state::with_lock(shared, || self.load_guide_locked(now))
     }
-}
 
-fn question_text(locale: GuideLocale) -> (&'static str, [(&'static str, &'static str); 2]) {
-    match locale {
-        GuideLocale::Ja => (
-            "案内の文章は、どちらが読みやすいですか？",
-            [
-                ("brief", "短く、要点だけ"),
-                ("detailed", "背景も含めて詳しく"),
-            ],
-        ),
-        GuideLocale::En => (
-            "Which explanation is easier to read?",
-            [
-                ("brief", "Keep it brief"),
-                ("detailed", "Include more context"),
-            ],
-        ),
-    }
-}
-
-fn conflict(reason: &str) -> AgboardError {
-    AgboardError::OnboardingConflict {
-        reason: reason.to_string(),
-    }
-}
-
-fn invalid(reason: &str) -> AgboardError {
-    AgboardError::OnboardingInvalid {
-        reason: reason.to_string(),
-    }
-}
-
-/// The revision a command names must be the one the guide has now.
-fn check_revision(file: &OnboardingFile, expected: u64) -> Result<(), AgboardError> {
-    if file.revision != expected {
-        return Err(conflict(
-            "The guide changed since this tab read it. Read it again.",
-        ));
-    }
-    Ok(())
-}
-
-fn check_id(value: &str, field: &str) -> Result<(), AgboardError> {
-    let well_formed = !value.is_empty()
-        && value.len() <= 64
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_');
-    if well_formed {
-        Ok(())
-    } else {
-        Err(AgboardError::InvalidValue {
-            field: field.into(),
-            reason: "Use 1 to 64 letters, digits, hyphens, or underscores.".into(),
+    /// Record how the guide ended. A later call replaces the earlier outcome.
+    pub fn guide_seen(
+        &self,
+        outcome: GuideOutcome,
+        now: DateTime<Utc>,
+    ) -> Result<OnboardingFile, AgboardError> {
+        let shared = self.shared_dir();
+        state::with_lock(shared, || {
+            self.load_guide_locked(now)?;
+            let file = OnboardingFile::with_status(outcome.into());
+            state::write(shared, &file)?;
+            Ok(file)
         })
     }
-}
 
-fn lease_until(now: DateTime<Utc>) -> DateTime<Utc> {
-    now + Duration::seconds(LEASE_SECONDS)
-}
+    /// Upgrade a version 1 file when the server starts.
+    pub fn guide_upgrade(&self, now: DateTime<Utc>) -> Result<(), AgboardError> {
+        self.guide(now).map(|_| ())
+    }
 
-fn ai_context(reason: &str) -> ChangeContext {
-    ChangeContext {
-        actor: Actor::Ai,
-        reason: reason.to_string(),
+    /// Read the file; for a version 1 file, archive the sample cards of its open
+    /// run and rewrite it as version 2. A failure while archiving leaves the old
+    /// file in place, so the next read finishes the same cleanup.
+    fn load_guide_locked(&self, now: DateTime<Utc>) -> Result<OnboardingFile, AgboardError> {
+        let shared = self.shared_dir();
+        let Loaded {
+            file,
+            legacy_run,
+            legacy,
+        } = state::read(shared)?;
+        if !legacy {
+            return Ok(file);
+        }
+        if let Some(run) = legacy_run
+            && let Ok(project) = run.project_id.parse::<ProjectId>()
+            && reader::project_dir_checked(shared, &project).is_ok()
+        {
+            for id in self.legacy_samples(&project, &run.run_id)? {
+                self.archive_task(&project, id, now)?;
+            }
+        }
+        state::write(shared, &file)?;
+        Ok(file)
+    }
+
+    /// Every card that an older release created for this run, wherever it is.
+    fn legacy_samples(&self, project: &ProjectId, run_id: &str) -> Result<Vec<i64>, AgboardError> {
+        let shared = self.shared_dir();
+        let project_dir = reader::project_dir_checked(shared, project)?;
+        let mut ids = Vec::new();
+        for id in reader::task_ids(&project_dir)? {
+            let Ok(task) = reader::read_task_metadata_strict(shared, project, id) else {
+                continue;
+            };
+            if task
+                .onboarding_sample
+                .as_ref()
+                .is_some_and(|sample| sample.run_id == run_id)
+            {
+                ids.push(id);
+            }
+        }
+        Ok(ids)
     }
 }

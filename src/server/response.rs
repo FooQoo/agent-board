@@ -57,9 +57,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
         AgboardError::TaskArchived { .. }
         | AgboardError::TaskNotArchived { .. }
-        | AgboardError::ArchiveTargetsChanged
-        | AgboardError::OnboardingConflict { .. } => StatusCode::CONFLICT,
-        AgboardError::OnboardingInvalid { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+        | AgboardError::ArchiveTargetsChanged => StatusCode::CONFLICT,
         AgboardError::InvalidArgument { .. }
         | AgboardError::InvalidValue { .. }
         | AgboardError::FileInvalid { .. }

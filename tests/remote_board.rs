@@ -299,7 +299,7 @@ fn without_a_session_every_api_and_the_event_stream_are_401() {
         ("POST", format!("{base}/tasks")),
         ("DELETE", format!("{base}/tasks/1")),
         ("PUT", "/api/preferences".to_string()),
-        ("POST", "/api/onboarding/skip".to_string()),
+        ("POST", "/api/onboarding/seen".to_string()),
         ("GET", "/api/monitor-connections".to_string()),
         ("GET", "/api/nothing-here".to_string()),
     ] {

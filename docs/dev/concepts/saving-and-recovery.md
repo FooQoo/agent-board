@@ -81,11 +81,11 @@ While a project has defects, the `serve` index keeps the last good view and retu
 
 ## The first-run guide's state
 
-The guide keeps one file for the whole shared directory, `shared/.internal/onboarding.json`. It holds the status (`unseen`, `offered`, `active`, `closing`, `completed`, `interrupted`, or `skipped`), the tab that holds the lease and when it expires, the active run with its phase and sample card IDs, and the most recent command IDs that were applied.
+The first-run guide runs in the web UI. The server keeps one fact for the whole shared directory: whether this data area has already seen the guide. It is stored in `shared/.internal/onboarding.json` as `{ "formatVersion": 2, "status": "unseen" | "completed" | "skipped" }`.
 
-Each operation takes the guide lock and then the project lock. A command that changes the state saves the file atomically with a new revision. A request names the revision it read and a command ID. A repeated command returns the current state without repeating the step, and a request that names an old revision is refused.
+`GET /api/onboarding` reads it, and `POST /api/onboarding/seen` with `{ "outcome": "completed" | "skipped" }` records how the guide ended. A later call replaces the earlier outcome, so finishing a replay after a skip records `completed`. Both take the guide lock and save the file atomically.
 
-A tab holds the lease for 30 seconds and renews it with a heartbeat every 10 seconds. A heartbeat extends the lease without changing the revision. When the server starts, and when a recovery request arrives, a run whose lease has expired is ended: its cards are archived, and the guide becomes `interrupted`. The board also sends a recovery request when its first read finds an `active` guide whose lease has expired or has no owner, which is what a closed or reloaded tab leaves behind. A lease that is still live belongs to another tab and is left alone.
+Releases before this format kept a whole run in the file, with sample cards on the board. Version 1 of the file is read as follows: `completed` and `skipped` keep their meaning, and every other status is `unseen`. If the old file names a run that was still open (`offered`, `active`, `closing`, or `interrupted`), its sample cards are archived once, and then the file is rewritten as version 2. This happens when the server starts, and on the first read if the file has not been rewritten yet. If archiving fails, the old file stays, and the next read tries again.
 
 ## Failure behavior at a glance
 

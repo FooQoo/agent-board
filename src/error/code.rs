@@ -35,8 +35,6 @@ impl AgboardError {
             AgboardError::RequestNotFound { .. } => "request_not_found",
             AgboardError::RequestAnswered { .. } => "request_answered",
             AgboardError::TaskStatusChanged { .. } => "task_status_changed",
-            AgboardError::OnboardingConflict { .. } => "onboarding_conflict",
-            AgboardError::OnboardingInvalid { .. } => "onboarding_invalid",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",
             AgboardError::FileError { .. } => "file_error",
             AgboardError::FileInvalid { .. } => "file_invalid",

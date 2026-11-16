@@ -57,7 +57,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 
 | 項目 | フィールド |
 | --- | --- |
-| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（案内のサンプルのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
+| タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`isDraft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
 | エピック | `id`（文字列）、`name`、`color`、`isDraft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
 | 質問 | 未回答の質問をID順に並べる。`id`・`requestId`・`kind`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/qa/{questionId}`で読む。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
@@ -209,15 +209,7 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 | メソッドとパス | 役割 |
 | --- | --- |
-| `GET /api/onboarding` | 案内の状態。読み取りだけ。 |
-| `POST /api/onboarding/claim` | タブに案内を渡す。`clientId`・`expectedRevision`。 |
-| `POST /api/onboarding/replay` | 完了またはスキップ済みの案内をもう一度提示する。`clientId`・`expectedRevision`。 |
-| `POST /api/onboarding/heartbeat` | リースを延長する。`clientId`。 |
-| `POST /api/onboarding/skip` | カードを作る前にスキップする。`clientId`・`expectedRevision`・`commandId`。 |
-| `POST /api/onboarding/recover` | リースが切れたrunを終了する。 |
-| `POST /api/projects/{projectId}/onboarding/start` | runを始める。`clientId`・`attemptId`・`expectedRevision`・`locale`。同じ`attemptId`の再送は同じrunを返す。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/advance` | 手順を1つ進める。`clientId`・`expectedRevision`・`commandId`・`transition`。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/finish` | runのカードをアーカイブし、案内を完了する。 |
-| `POST /api/projects/{projectId}/onboarding/{runId}/abort` | runを途中で終え、カードをアーカイブする。 |
+| `GET /api/onboarding` | このデータ領域が案内を見たかどうか。`{ "formatVersion": 2, "status": "unseen" \| "completed" \| "skipped" }`。読み取りだけ。 |
+| `POST /api/onboarding/seen` | 案内の終わり方を記録する。`{ "outcome": "completed" \| "skipped" }`。`GET`と同じ形を返す。あとからもう一度呼ぶと前の結果を置き換える。 |
 
-書き込みは、ほかの書き込みと同じ書き込みの保護を通り、未知のフィールドは拒否します。サンプルの質問への回答は、`POST /api/projects/{projectId}/qa/answers`を使います。
+書き込みは書き込みの保護を通ります。未知のフィールドがある、`outcome`がない、ほかの値が入っている本文は、`invalid_value`（422）で拒否します。どちらの経路もボードのルーターにあるため、ngrokの入口でも、ほかのボードの経路と同じようにセッションの内側で使えます。案内そのものはWeb UIの中で進み、サーバーはこの状態だけを保存します。[保存と復旧](../concepts/saving-and-recovery.md#初回案内の状態)を参照してください。

@@ -13,7 +13,6 @@ use crate::file_store::history_language::HistoryLanguage;
 use crate::file_store::io;
 use crate::file_store::layout;
 use crate::file_store::model::{TaskFile, TaskMetadata, TaskView};
-use crate::file_store::onboarding_model::OnboardingSample;
 use crate::file_store::reader;
 use crate::file_store::validate;
 
@@ -87,18 +86,6 @@ impl FileStore {
         new: NewTask,
         now: DateTime<Utc>,
     ) -> Result<TaskView, AgboardError> {
-        self.create_task_with_identity(project, new, now, None)
-    }
-
-    /// [`Self::create_task`] for the first-run guide: the card is written with its
-    /// sample identity in the same file, so it never exists without one.
-    pub(crate) fn create_task_with_identity(
-        &self,
-        project: &ProjectId,
-        new: NewTask,
-        now: DateTime<Utc>,
-        identity: Option<OnboardingSample>,
-    ) -> Result<TaskView, AgboardError> {
         let title = validate_title(&new.title)?;
         let description = normalize_description(&new.description)?;
         let shared = self.shared_dir();
@@ -138,7 +125,7 @@ impl FileStore {
             task_status_changed_at: at,
             attachments: Vec::new(),
             simple_request: None,
-            onboarding_sample: identity,
+            onboarding_sample: None,
             history: vec![transition_event(Transition {
                 language,
                 kind: HistoryKind::Created,

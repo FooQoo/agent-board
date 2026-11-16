@@ -233,8 +233,8 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 
 ## 初回の案内
 
-- `shared/.internal/onboarding.json`: 案内の状態、リースの持ち主、実行中のrun、直近のコマンドID。[保存と復旧](../concepts/saving-and-recovery.md)を参照してください。
-- `tasks/<id>/task.json`の`onboardingSample`: `{ "runId": "<32桁の小文字の16進数>", "ordinal": 1 | 2 }`。案内のサンプルカードにだけ付きます。
+- `shared/.internal/onboarding.json`: `{ "formatVersion": 2, "status": "unseen" | "completed" | "skipped" }`。以前のリリースが書いたバージョン1のファイルは、`completed`、`skipped`、`unseen`のいずれかとして読み、一度だけ書き直します。[保存と復旧](../concepts/saving-and-recovery.md)を参照してください。
+- `tasks/<id>/task.json`の`onboardingSample`: `{ "runId": "<32桁の小文字の16進数>", "ordinal": 1 | 2 }`。以前のリリースが、案内のサンプルカードにだけ書いたものです。今は何も書きませんが、読み込みでは、そのまま保持します。
 
 ## setupが書き込むファイル {#agent-settings}
 

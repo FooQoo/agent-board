@@ -1,24 +1,22 @@
 //! The first-run guide's state: one file for the whole shared directory,
-//! `shared/.internal/onboarding.json`. It records whether the guide has been
-//! offered, skipped, or completed, which run is active, which tab owns the
-//! guide's lease, and which commands were applied, so that a retry or a lost
-//! response never repeats a step.
+//! `shared/.internal/onboarding.json`. It records only whether this data area has
+//! already seen the guide, and how it ended. The guide itself runs in the web UI.
+//!
+//! Releases before this format kept a whole run in the file (a tab lease, sample
+//! cards, applied commands). [`read`] maps such a version 1 file to the three
+//! statuses below, and [`legacy_run`] names the sample cards it may have left behind.
 
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::io;
 use super::lock::WriteLock;
 use crate::error::AgboardError;
 
-/// The only format this build reads and writes.
-pub const STATE_FORMAT_VERSION: u32 = 1;
-/// How long a tab keeps the guide's lease without a heartbeat.
-pub const LEASE_SECONDS: i64 = 30;
-/// Recent command IDs kept for replay; older ones are no longer repeated.
-pub const APPLIED_LIMIT: usize = 64;
+/// The only format this build writes.
+pub const STATE_FORMAT_VERSION: u32 = 2;
+const LEGACY_FORMAT_VERSION: u32 = 1;
 
 pub fn state_file(shared: &Path) -> PathBuf {
     shared.join(".internal").join("onboarding.json")
@@ -28,58 +26,30 @@ pub fn state_lock(shared: &Path) -> PathBuf {
     shared.join(".internal").join("onboarding.lock")
 }
 
-/// The guide's global status.
+/// Whether this data area has seen the guide, and how it ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GuideStatus {
     Unseen,
-    Offered,
-    Active,
-    Closing,
     Completed,
-    Interrupted,
     Skipped,
 }
 
-/// The step of the scripted run.
+/// How a person left the guide.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum GuidePhase {
-    Samples,
-    FirstRunning,
-    FirstDone,
-    Question,
-    SecondRunning,
-    SecondDone,
-    Complete,
+#[serde(rename_all = "lowercase")]
+pub enum GuideOutcome {
+    Completed,
+    Skipped,
 }
 
-/// The tab that holds the guide, and until when its lease is valid.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct GuideOwner {
-    pub client_id: String,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub lease_until: DateTime<Utc>,
-}
-
-/// One run of the guide: its two sample cards and the step it has reached.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct GuideRun {
-    pub run_id: String,
-    pub attempt_id: String,
-    pub project_id: String,
-    /// `en` or `ja`: the language the sample cards and the question were written in.
-    pub locale: String,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub created_at: DateTime<Utc>,
-    /// The sample cards created so far, in ordinal order.
-    pub sample_ids: Vec<i64>,
-    pub phase: GuidePhase,
-    /// The request ID of the second sample's question, once it is asked.
-    pub question_request_id: Option<String>,
-    pub closing_reason: Option<String>,
+impl From<GuideOutcome> for GuideStatus {
+    fn from(outcome: GuideOutcome) -> GuideStatus {
+        match outcome {
+            GuideOutcome::Completed => GuideStatus::Completed,
+            GuideOutcome::Skipped => GuideStatus::Skipped,
+        }
+    }
 }
 
 /// `onboarding.json`.
@@ -87,66 +57,115 @@ pub struct GuideRun {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct OnboardingFile {
     pub format_version: u32,
-    /// Increases with every saved change; a command names the revision it saw.
-    pub revision: u64,
     pub status: GuideStatus,
-    pub owner: Option<GuideOwner>,
-    pub run: Option<GuideRun>,
-    pub applied_commands: Vec<String>,
 }
 
 impl OnboardingFile {
     /// The state of a data area that has never shown the guide.
     pub fn fresh() -> OnboardingFile {
+        OnboardingFile::with_status(GuideStatus::Unseen)
+    }
+
+    pub fn with_status(status: GuideStatus) -> OnboardingFile {
         OnboardingFile {
             format_version: STATE_FORMAT_VERSION,
-            revision: 0,
-            status: GuideStatus::Unseen,
-            owner: None,
-            run: None,
-            applied_commands: Vec::new(),
+            status,
         }
-    }
-
-    /// Whether `client_id` holds a lease that is still valid at `now`.
-    pub fn owned_by(&self, client_id: &str, now: DateTime<Utc>) -> bool {
-        self.owner
-            .as_ref()
-            .is_some_and(|owner| owner.client_id == client_id && owner.lease_until > now)
-    }
-
-    /// Whether a lease exists and is still valid at `now`, for any tab.
-    pub fn lease_is_live(&self, now: DateTime<Utc>) -> bool {
-        self.owner
-            .as_ref()
-            .is_some_and(|owner| owner.lease_until > now)
-    }
-
-    /// Remember a command as applied, keeping only the most recent ones.
-    pub fn remember(&mut self, command_id: &str) {
-        self.applied_commands.push(command_id.to_string());
-        let excess = self.applied_commands.len().saturating_sub(APPLIED_LIMIT);
-        self.applied_commands.drain(..excess);
     }
 }
 
+/// The sample cards a version 1 file may have left in a project.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LegacyRun {
+    pub project_id: String,
+    pub run_id: String,
+}
+
+/// What a read found: the state, and the leftover run of a version 1 file whose
+/// sample cards have not been archived yet.
+pub struct Loaded {
+    pub file: OnboardingFile,
+    pub legacy_run: Option<LegacyRun>,
+    /// Whether the file on disk is a version 1 file that still needs rewriting.
+    pub legacy: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LegacyFile {
+    format_version: u32,
+    status: String,
+    run: Option<LegacyRunFields>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LegacyRunFields {
+    project_id: String,
+    run_id: String,
+    #[serde(default)]
+    sample_ids: Vec<i64>,
+}
+
 /// Read the state; a data area without the file has never shown the guide.
-pub fn read(shared: &Path) -> Result<OnboardingFile, AgboardError> {
+pub fn read(shared: &Path) -> Result<Loaded, AgboardError> {
     let path = state_file(shared);
     let label = super::layout::shared_label(shared, &path);
     if !path.exists() {
-        return Ok(OnboardingFile::fresh());
+        return Ok(Loaded {
+            file: OnboardingFile::fresh(),
+            legacy_run: None,
+            legacy: false,
+        });
     }
     let text = io::read_text(&path, &label)?;
-    let file: OnboardingFile =
+    let value: serde_json::Value =
         serde_json::from_str(&text).map_err(|error| io::read_error(&label, error))?;
-    if file.format_version != STATE_FORMAT_VERSION {
-        return Err(io::read_error(
+    match value.get("formatVersion").and_then(|v| v.as_u64()) {
+        Some(version) if version == u64::from(STATE_FORMAT_VERSION) => {
+            let file: OnboardingFile =
+                serde_json::from_value(value).map_err(|error| io::read_error(&label, error))?;
+            Ok(Loaded {
+                file,
+                legacy_run: None,
+                legacy: false,
+            })
+        }
+        Some(version) if version == u64::from(LEGACY_FORMAT_VERSION) => {
+            let old: LegacyFile =
+                serde_json::from_value(value).map_err(|error| io::read_error(&label, error))?;
+            debug_assert_eq!(old.format_version, LEGACY_FORMAT_VERSION);
+            let status = match old.status.as_str() {
+                "completed" => GuideStatus::Completed,
+                "skipped" => GuideStatus::Skipped,
+                _ => GuideStatus::Unseen,
+            };
+            // Only a run that was still open can have left sample cards in a lane.
+            let open = matches!(
+                old.status.as_str(),
+                "offered" | "active" | "closing" | "interrupted"
+            );
+            let legacy_run = old
+                .run
+                .filter(|run| open && !run.sample_ids.is_empty())
+                .map(|run| LegacyRun {
+                    project_id: run.project_id,
+                    run_id: run.run_id,
+                });
+            Ok(Loaded {
+                file: OnboardingFile::with_status(status),
+                legacy_run,
+                legacy: true,
+            })
+        }
+        other => Err(io::read_error(
             &label,
-            format!("unsupported format version {}", file.format_version),
-        ));
+            format!(
+                "unsupported format version {}",
+                other.map_or("(missing)".to_string(), |v| v.to_string())
+            ),
+        )),
     }
-    Ok(file)
 }
 
 /// Save the state atomically.
@@ -173,42 +192,4 @@ pub fn with_lock<T>(
     }
     let _lock = WriteLock::acquire(&lock_path)?;
     action()
-}
-
-/// The language of the sample cards and the question, from the board's language.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum GuideLocale {
-    En,
-    Ja,
-}
-
-impl GuideLocale {
-    /// The language code kept in the run: `en` or `ja`.
-    pub fn code(self) -> &'static str {
-        match self {
-            GuideLocale::En => "en",
-            GuideLocale::Ja => "ja",
-        }
-    }
-
-    pub fn from_code(code: &str) -> Option<GuideLocale> {
-        match code {
-            "en" => Some(GuideLocale::En),
-            "ja" => Some(GuideLocale::Ja),
-            _ => None,
-        }
-    }
-}
-
-/// One step of the run, named as the client asks for it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum GuideTransition {
-    FirstRunning,
-    FirstDone,
-    AskQuestion,
-    ResumeSecond,
-    SecondDone,
-    Complete,
 }

@@ -51,12 +51,6 @@ impl AgboardError {
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
             }
-            AgboardError::OnboardingConflict { .. } => {
-                "Read the guide's state again, then repeat the step with the current revision.".into()
-            }
-            AgboardError::OnboardingInvalid { .. } => {
-                "Follow the guide's order: the step does not apply to the current state.".into()
-            }
             AgboardError::AcceptanceUnmet { .. } => {
                 "Mark each condition done once it is verified, or ask a person to move the task.".into()
             }

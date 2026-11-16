@@ -86,7 +86,7 @@ This restrains cooperative agents; it does not authenticate against direct file 
 
 ## Sample cards of the first-run guide
 
-The first-run guide creates two sample cards. Each carries an `onboardingSample` identity, which holds the run ID and the ordinal (1 or 2). The progress table, the hook, and `wait --until task` leave out every card with this identity, whatever its lane or run state, so an agent never picks one up.
+Earlier releases created two sample cards for the first-run guide and marked each with an `onboardingSample` identity, which holds the run ID and the ordinal (1 or 2). The current guide runs in the web UI and creates no cards, but the progress table, the hook, and `wait --until task` still leave out every card with this identity, whatever its lane or run state, so an agent never picks one up. The server archives such cards once, when it finds an old guide file (see [saving and recovery](./saving-and-recovery.md#the-first-run-guides-state)).
 
 Only the guide writes the identity. Create and edit requests have no field for it, and moves, history updates, archiving, and restoring keep it. The board still shows the cards. For what the user sees, see [Before you start](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 

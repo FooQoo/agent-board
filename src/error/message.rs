@@ -66,8 +66,6 @@ impl AgboardError {
             AgboardError::TaskStatusChanged { id, current } => {
                 format!("task #{id} is now {}.", current.as_str())
             }
-            AgboardError::OnboardingConflict { reason } => reason.clone(),
-            AgboardError::OnboardingInvalid { reason } => reason.clone(),
             AgboardError::ConfirmationRequired { operation } => {
                 format!("{operation} needs confirmation from a human.")
             }

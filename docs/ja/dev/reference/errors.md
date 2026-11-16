@@ -122,10 +122,6 @@ ngrokの入口では、Hostの確認に失敗した要求は理由`not available
 | `invalid_preferences` | 本文に未知の項目、許可されない値、`locale`も`theme`もないものがある。何も保存しない。 | なし | 422 |
 | `preferences_unavailable` | 表示設定のファイルに書けなかった。保存済みの値は変わらない。 | なし | 500 |
 
-## 初回の案内
-
-- `onboarding_conflict`（409）: タブが読んだあとに案内が変わった、ほかのタブがリースを持っている、またはそのrunが現在のrunでない。状態を読み直し、現在のrevisionで手順をやり直す。
-- `onboarding_invalid`（422）: 手順が現在の段階に続かない。回答が保存される前に再開する場合など。
 
 ## 終了コード
 
