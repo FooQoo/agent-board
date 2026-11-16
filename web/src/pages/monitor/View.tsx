@@ -1,9 +1,12 @@
 import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Header } from '../../shared/ui/app-header/Header';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
 import type { MonitorViewProps } from './contracts';
-import { TaskList } from './components/TaskList';
+import { LaneTabs } from './components/LaneTabs';
+import { MonitorLanes } from './components/MonitorLanes';
+import { type LanePending, MonitorLaneDialogs } from './components/MonitorLaneDialogs';
+import type { MonitorSection } from './components/MonitorSectionHeader';
+import './components/monitor-lanes.css';
 import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
@@ -29,15 +32,15 @@ const answerSheet = preloadable(() =>
 export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
-  const { t } = useTranslation();
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences } = props;
   const settings = useMemo(
     () => (preferences ? savingSettingsSlot(preferences) : settingsSlot),
     [preferences],
   );
-  const listId = useId();
-  const listRef = useRef<HTMLDivElement>(null);
+  const lanesId = useId();
+  const [lane, setLane] = useState<MonitorSection>('todo');
+  const [pending, setPending] = useState<LanePending>(null);
   useEffect(() => {
     // A failed fetch is tried again when the drawer is first rendered.
     detailDrawer.preload().catch(() => {});
@@ -52,7 +55,7 @@ export function MonitorView(props: MonitorViewProps) {
     setAnswering((current) => ({ start, key: (current?.key ?? 0) + 1 }));
     setAnswerOpen(true);
   };
-  const { summary, todo, doing, done, freshness, guideLink } = props;
+  const { todo, doing, done, freshness, guideLink } = props;
   const guideNotice = usePhoneGuideNotice(guideLink);
   // The first-run guide opens the sheet of a sample card, and learns whether the sheet is open.
   const answerRequest = useRef<(taskId: number) => void>(() => {});
@@ -80,32 +83,15 @@ export function MonitorView(props: MonitorViewProps) {
     onDetailOpenChange?.(detail.open);
     return () => onDetailOpenChange?.(false);
   }, [detail.open, onDetailOpenChange]);
-  // While the shared files are partly damaged the server summary is missing; the tiles then show a dash, not a zero.
-  const tile = (n: number) => (summary === null ? '—' : n);
-  const goTo = (section: string) => {
-    const target = listRef.current?.querySelector<HTMLElement>(
-      `[data-monitor-section="${section}"]`,
-    );
-    target?.scrollIntoView?.({ block: 'start' });
-    target?.focus?.({ preventScroll: true });
+  const { writes, onWritten } = props;
+  // Without writes (the demo, sample data) a swipe or a lift asks nothing and changes nothing.
+  const ask = (next: LanePending) => {
+    if (writes) setPending(next);
   };
+  const closePending = () => setPending(null);
   return (
     <main className="monitor-shell">
       <Header {...props.header} settings={settings} settingsSize="l" />
-      <section className="monitor-summary" aria-label={t('monitor.summary')}>
-        <button type="button" onClick={() => goTo('todo')} aria-controls={listId}>
-          <strong>{tile(ordered.todo.length)}</strong>
-          <span>{t('monitor.status.todo')}</span>
-        </button>
-        <button type="button" onClick={() => goTo('doing')} aria-controls={listId}>
-          <strong>{tile(ordered.doing.length)}</strong>
-          <span>{t('monitor.status.doing')}</span>
-        </button>
-        <button type="button" onClick={() => goTo('done')} aria-controls={listId}>
-          <strong>{tile(ordered.done.length)}</strong>
-          <span>{t('monitor.status.done')}</span>
-        </button>
-      </section>
       {guideNotice !== null && <OnboardingNotice message={guideNotice} inline />}
       {props.answerController && props.projectId && props.questions && (
         <QuestionBand
@@ -118,13 +104,24 @@ export function MonitorView(props: MonitorViewProps) {
           onReview={() => openAnswer(answerStart.review())}
         />
       )}
-      <TaskList
-        ref={listRef}
-        id={listId}
-        todo={ordered.todo}
-        doing={ordered.doing}
-        done={ordered.done}
-        freshness={freshness}
+      <LaneTabs
+        lane={lane}
+        controlsId={lanesId}
+        counts={{
+          todo: ordered.todo.length,
+          doing: ordered.doing.length,
+          done: ordered.done.length,
+        }}
+        onLaneChange={setLane}
+      />
+      <MonitorLanes
+        id={lanesId}
+        lanes={ordered}
+        lane={lane}
+        onLaneChange={setLane}
+        onMove={(item, target) => ask({ kind: 'move', item, target })}
+        onArchive={(item) => ask({ kind: 'archive', item })}
+        onBulkArchive={() => ask({ kind: 'bulk' })}
         onOpenDetail={(item, tab) => {
           detail.show(item, tab);
           props.onOpenDetail?.(item, tab);
@@ -135,6 +132,43 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         answerController={props.answerController}
       />
+      {writes && (
+        <MonitorLaneDialogs
+          pending={pending}
+          projectName={props.projectName ?? ''}
+          doneItems={ordered.done}
+          onCancel={closePending}
+          onArchive={async (item) => {
+            try {
+              await writes.archive(projectId, item.task.id);
+            } catch {
+              return false;
+            }
+            closePending();
+            onWritten?.();
+            return true;
+          }}
+          onMove={async (item, target, data) => {
+            try {
+              await writes.move(projectId, item.task.id, target, data.reason, data.fromStatus);
+            } finally {
+              onWritten?.();
+            }
+            closePending();
+          }}
+          onBulkArchive={async () => {
+            try {
+              await writes.archiveDone(
+                projectId,
+                ordered.done.map((item) => item.task.id),
+              );
+            } finally {
+              onWritten?.();
+            }
+            closePending();
+          }}
+        />
+      )}
       {props.answerController && props.projectId && answering && (
         <Suspense fallback={null}>
           <answerSheet.Component

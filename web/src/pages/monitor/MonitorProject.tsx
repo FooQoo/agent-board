@@ -15,7 +15,12 @@ import type {
   QuestionReader,
 } from '../../features/tasks/answer/model/qa';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
-import type { MonitorHeaderProps, MonitorReadResolvers, MonitorViewProps } from './contracts';
+import type {
+  MonitorHeaderProps,
+  MonitorReadResolvers,
+  MonitorViewProps,
+  MonitorWrites,
+} from './contracts';
 import { MonitorView } from './View';
 import { monitorFreshness } from './model/freshness';
 import { selectMonitorTasks } from './model/select';
@@ -37,6 +42,8 @@ export interface MonitorEnvironment {
   /** Reads one question of the project for the answer sheet. */
   readQuestion: QuestionReader;
   writeAnswers: AnswersWriter;
+  /** Moves and archives from the lanes; without them the lanes only read. */
+  writes?: MonitorWrites;
 }
 
 export interface MonitorScreenProps extends MonitorEnvironment {
@@ -111,6 +118,7 @@ export function MonitorScreen({
   stream,
   header,
   guideLink,
+  writes,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
   const answers = useAnswerBookState(book);
@@ -194,6 +202,9 @@ export function MonitorScreen({
     onRefresh: () => void refresh(),
     refreshing: refreshing || summary.state === 'refreshing',
     onDetailOpenChange: setDetailOpen,
+    writes,
+    projectName: header?.projects?.find((project) => project.id === projectId)?.name ?? '',
+    onWritten: () => void summary.refresh(),
   };
   return <MonitorView {...props} />;
 }

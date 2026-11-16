@@ -1,4 +1,4 @@
-import type { Task, ProjectId } from '../../shared/api/contracts';
+import type { ColumnName, Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { HeaderProps } from '../../shared/ui/app-header/Header';
@@ -48,6 +48,22 @@ export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
     `/api/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/attachments/${encodeURIComponent(attachmentId)}`,
 };
 
+/**
+ * The changes the lane view makes, each after the person confirmed it: a move with its reason,
+ * the archive of one card, and the archive of the done lane. They go to the board's own routes.
+ */
+export interface MonitorWrites {
+  move(
+    projectId: ProjectId,
+    taskId: number,
+    target: ColumnName,
+    reason: string,
+    fromStatus: ColumnName,
+  ): Promise<unknown>;
+  archive(projectId: ProjectId, taskId: number): Promise<unknown>;
+  archiveDone(projectId: ProjectId, ids: readonly number[]): Promise<unknown>;
+}
+
 /** The project switcher the header shows when the app lets the person change project. */
 export type MonitorHeaderProps = Pick<
   HeaderProps,
@@ -81,6 +97,12 @@ export interface MonitorViewProps {
   guideLink?: PhoneGuideLink;
   /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
   onDetailOpenChange?(open: boolean): void;
+  /** Moves and archives from the lanes; without them the lanes only read. */
+  writes?: MonitorWrites;
+  /** The project's name, which the archive confirmations show. */
+  projectName?: string;
+  /** A move or an archive was saved: the screen reads the project again without waiting. */
+  onWritten?(): void;
 }
 
 /** What the monitor needs to answer questions: its book of held answers and its two routes. */
