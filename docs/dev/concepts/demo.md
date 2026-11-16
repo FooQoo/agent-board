@@ -46,9 +46,9 @@ Images do not go through `fetch`. `demo/images.ts` watches the page and rewrites
 
 ### The first-run guide
 
-The guide's routes (`mock-server/guide.ts`, `guideState.ts`, `guideCards.ts`) follow `agboard serve`: the lease, the start, the scripted steps, the finish, and the abort. The guide acts as the AI. It creates two sample cards, runs one to Done, asks a question on the other, and finishes it once the visitor answers.
+The guide runs in the page, as it does against `agboard serve`: its two sample cards, their steps, and the question are local to the front end (`web/src/app/onboarding/`). The sample-data server (`mock-server/guide.ts`) answers only the two routes the real server has: `GET /api/onboarding` and `POST /api/onboarding/seen`. It writes no card to the demo's board.
 
-The guide's state lives only in memory. A new page is a new server, so the guide starts again on every page load, and **Skip** closes it for that page only. Its user-facing steps are described in the [quickstart](../../guide/quickstart.md#before-you-start-the-first-run-guide).
+The seen state lives only in memory. A new page is a new server, so the guide starts again on every page load, and **Skip** or **Finish and get started** closes it for that page only. Its user-facing steps are described in the [quickstart](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 
 ### Language
 

@@ -97,11 +97,10 @@
 
 ### 初回の案内
 
-- `src/file_store/onboarding_state.rs`: 状態ファイル、そのロック、runの型。
-- `src/file_store/onboarding_model.rs`: サンプルの識別と検査。
-- `src/file_store/ops/onboarding/`: 案内の操作。
-- `src/server/api/onboarding.rs`: 案内のルート。
-- `web/src/app/onboarding/`: リクエスト、制御、層。
+- `src/file_store/onboarding_state.rs`: 状態ファイル。案内を見たかどうかだけを記録します。
+- `src/server/api/onboarding.rs`: 案内の2つのルート。
+- `web/src/app/onboarding/`: リクエスト、制御、サンプルカードと質問、サンプルの回答フォーム、層。
+- `web/src/app/development/mock-server/guide.ts`: デモの案内の2つのルート。
 - `web/src/features/onboarding/ui/`: 表示部品。
 - `e2e/tests/onboarding.spec.ts`: E2Eテスト。
 - `web/src/app/dialogs/TaskPreviewDialog.tsx`: タスクのプレビューとサーバーの接続。下書きの出入り、カードの読み直し、稼働中とアーカイブの状態を扱います。

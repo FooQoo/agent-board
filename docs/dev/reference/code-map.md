@@ -97,11 +97,10 @@ The main files and directories outside `src/` are:
 
 ### First-run guide
 
-- `src/file_store/onboarding_state.rs`: the state file, its lock, and the run's types.
-- `src/file_store/onboarding_model.rs`: the sample identity and its checks.
-- `src/file_store/ops/onboarding/`: the guide's operations.
-- `src/server/api/onboarding.rs`: the guide's routes.
-- `web/src/app/onboarding/`: the request client, the controller, and the layer.
+- `src/file_store/onboarding_state.rs`: the state file, which records only whether the guide was seen.
+- `src/server/api/onboarding.rs`: the guide's two routes.
+- `web/src/app/onboarding/`: the request client, the controller, the sample cards and question, the sample answer form, and the layer.
+- `web/src/app/development/mock-server/guide.ts`: the demo's two guide routes.
 - `web/src/features/onboarding/ui/`: the view parts.
 - `e2e/tests/onboarding.spec.ts`: the end-to-end tests.
 - `web/src/app/dialogs/TaskPreviewDialog.tsx`: the task preview's server wiring: entering and leaving the draft, reading the card again, and the running and archived states.
