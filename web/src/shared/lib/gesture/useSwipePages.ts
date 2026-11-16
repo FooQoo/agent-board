@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 
 export interface SwipePagesOptions {
@@ -36,11 +36,17 @@ export function useSwipePages<Page extends string>(
     report = 'select',
   }: SwipePagesOptions = {},
 ) {
+  // Only the first page is an option: a changed option rebuilds the carousel, which would cut a
+  // slide short. Later pages are reached with `scrollTo`.
+  const [startIndex] = useState(() => Math.max(0, pages.indexOf(current)));
+  // Embla keeps the first `watchDrag` it is given, so the test it runs is read from here.
+  const ignoreRef = useRef(ignore);
+  ignoreRef.current = ignore;
   const [viewportRef, carousel] = useEmblaCarousel({
     loop: false,
     watchFocus: false,
-    startIndex: Math.max(0, pages.indexOf(current)),
-    watchDrag: (api, event) => !ignore?.(event.target as Element | null, api.rootNode()),
+    startIndex,
+    watchDrag: (api, event) => !ignoreRef.current?.(event.target as Element | null, api.rootNode()),
   });
   const ready = useRef<typeof carousel>(undefined);
 

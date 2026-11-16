@@ -10,8 +10,8 @@ const KEEPS_ITS_SWIPE = `[data-lane-ignore],[data-swipe-action],${CHOSEN_CARD}`;
 /**
  * The lanes as swipe pages: a sideways swipe anywhere moves to the next lane, except on a chosen
  * card, on its tiles or on a control marked `data-lane-ignore`. As in the detail drawer, the tab
- * marker follows the finger (`--lane-progress` on the tab bar); the new lane is reported once
- * the slide has stopped, so drawing it does not stall the slide.
+ * marker follows the finger (`--lane-progress` on the tab bar), and the tab is selected as soon
+ * as the release decides the lane.
  */
 export function useLaneCarousel(
   lane: MonitorSection,
@@ -22,6 +22,5 @@ export function useLaneCarousel(
     ignore: (target) => Boolean(target?.closest(KEEPS_ITS_SWIPE)),
     progressTarget: tabs,
     progressVar: '--lane-progress',
-    report: 'settle',
   });
 }

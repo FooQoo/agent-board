@@ -40,6 +40,7 @@ export function MonitorView(props: MonitorViewProps) {
     [preferences],
   );
   const lanesId = useId();
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [lane, setLane] = useState<MonitorSection>('todo');
   const [pending, setPending] = useState<LanePending>(null);
   useEffect(() => {
@@ -109,6 +110,7 @@ export function MonitorView(props: MonitorViewProps) {
         />
       )}
       <LaneTabs
+        ref={tabsRef}
         lane={lane}
         controlsId={lanesId}
         counts={{
@@ -120,6 +122,7 @@ export function MonitorView(props: MonitorViewProps) {
       />
       <MonitorLanes
         id={lanesId}
+        tabsRef={tabsRef}
         lanes={ordered}
         lane={lane}
         onLaneChange={setLane}
