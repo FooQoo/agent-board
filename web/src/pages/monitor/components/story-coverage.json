@@ -385,8 +385,8 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--card-pull-switches-lane",
-              "states": ["card pulled past its tiles", "lane switch"],
+              "id": "pages-monitor-components-monitorlanes--edge-swipe-switches-lane",
+              "states": ["swipe from the screen edge over a card", "lane switch"],
               "interaction": true
             }
           ]

@@ -1,12 +1,13 @@
 import { useRef, useState, type PointerEvent, type RefObject } from 'react';
 import type { MonitorSection } from '../components/MonitorSectionHeader';
 import { capturePointer } from './useCardGesture';
-import { SWIPE_SLOP, settleLane, swipeAxis, trackOffset } from '../model/lanes';
+import { SWIPE_SLOP, atScreenEdge, settleLane, swipeAxis, trackOffset } from '../model/lanes';
 
 /**
  * The sideways swipe on empty space that moves to the neighbouring lane. The track follows the
  * finger, gives at the ends of the row, and settles with a slide. A press that lands on a card is
- * left to the card, which has its own sideways gestures.
+ * left to the card, which has its own sideways gestures, unless it starts at the left or right edge
+ * of the screen: from there a swipe always moves the lanes.
  */
 export function useLaneSwipe(
   ref: RefObject<HTMLElement | null>,
@@ -38,25 +39,17 @@ export function useLaneSwipe(
     if (next !== lane) onLaneChange(next);
   };
 
-  const widthOf = () => ref.current?.clientWidth ?? 0;
-
   return {
     offset,
     dragging: offset !== null,
-    /** A card's pull that went past its tiles moves the track `dx` px. */
-    pull: (dx: number) => setOffset(trackOffset(lane, dx, widthOf())),
-    /** The card's pull ended: the track settles on a lane like a swipe on empty space. */
-    release: (dx: number, velocity: number, cancelled: boolean) => {
-      setOffset(null);
-      if (cancelled) return;
-      const next = settleLane(lane, dx, velocity, widthOf());
-      if (next !== lane) onLaneChange(next);
-    },
     handlers: {
       onPointerDown: (event: PointerEvent<HTMLElement>) => {
         if (disabled || !event.isPrimary || event.button !== 0) return;
         const target = event.target as Element;
-        if (target.closest('[data-swipe-card],button,a,[data-lane-ignore]')) return;
+        if (target.closest('[data-lane-ignore]')) return;
+        // On a card the swipe is the card's, unless it starts at the edge of the screen.
+        const edge = atScreenEdge(event.clientX, window.innerWidth);
+        if (!edge && target.closest('[data-swipe-card],button,a')) return;
         const width = ref.current?.clientWidth ?? event.currentTarget.clientWidth;
         press.current = {
           x: event.clientX,

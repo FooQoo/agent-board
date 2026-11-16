@@ -344,8 +344,8 @@ export const RightSwipeShowsLeftLane: Story = {
   },
 };
 
-/** A card pulled far past its tiles moves the lanes, like a swipe on empty space. */
-export const CardPullSwitchesLane: Story = {
+/** A swipe that starts at the right edge of the screen moves the lanes, even over a card. */
+export const EdgeSwipeSwitchesLane: Story = {
   args: { initialLane: 'todo' },
   play: async ({ canvasElement }) => {
     const card = canvasElement.querySelector<HTMLElement>(
@@ -354,10 +354,11 @@ export const CardPullSwitchesLane: Story = {
     if (!card) throw new Error('No todo card.');
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
-    press(card, 'pointerdown', rect.right - 10, y);
-    for (const x of [rect.right - 40, rect.right - 160, rect.right - 260, rect.left + 10])
-      press(card, 'pointermove', x, y);
-    press(card, 'pointerup', rect.left + 10, y);
+    const edge = window.innerWidth - 4;
+    // The lanes listen on their viewport; the press lands on the card under the edge.
+    press(card, 'pointerdown', edge, y);
+    for (const x of [edge - 30, edge - 140, edge - 240]) press(card, 'pointermove', x, y);
+    press(card, 'pointerup', edge - 240, y);
     await waitFor(() =>
       expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
     );

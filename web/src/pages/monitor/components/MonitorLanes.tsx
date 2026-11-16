@@ -41,7 +41,7 @@ const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
 /**
  * The phone monitor's lanes: one lane on screen, the other two beside it on a track. Tabs and a
  * sideways swipe on empty space move the track. A card slides left to show the lane on the right
- * and the archive, or right to show the lane on the left, . Pulled well past its tiles, a card's swipe moves the lanes instead. A card held for 100 ms lifts and can be carried up or down to reorder its lane (not in
+ * and the archive, or right to show the lane on the left, . A swipe that starts at the left or right edge of the screen moves the lanes even over a card. A card held for 100 ms lifts and can be carried up or down to reorder its lane (not in
  * 完了, which keeps the completion order). Nothing here writes: every action is a callback.
  */
 export function MonitorLanes({
@@ -157,8 +157,6 @@ export function MonitorLanes({
                       }}
                       onLiftMove={carried.move}
                       onLiftEnd={(_point, cancelled) => carried.end(cancelled)}
-                      onLanePull={swipe.pull}
-                      onLaneRelease={swipe.release}
                     >
                       <MonitorTask
                         item={item}

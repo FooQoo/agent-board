@@ -6,8 +6,8 @@ import {
   cardSettles,
   clampLaneIndex,
   dropSlot,
-  LANE_HANDOFF,
-  laneHandoff,
+  EDGE_SWIPE_ZONE,
+  atScreenEdge,
   laneIndex,
   neighbourLane,
   reorderBefore,
@@ -127,14 +127,11 @@ describe('reorder', () => {
   });
 });
 
-describe('a card pulled past its tiles', () => {
-  it('hands the pull to the lanes once it is well past them', () => {
-    expect(laneHandoff(0, -100, 64, 120)).toBeNull();
-    expect(laneHandoff(0, -(120 + LANE_HANDOFF) - 1, 64, 120)).toBe(-(120 + LANE_HANDOFF));
-    expect(laneHandoff(0, 64 + LANE_HANDOFF + 1, 64, 120)).toBe(64 + LANE_HANDOFF);
-    // A side with no tiles hands over after the give alone.
-    expect(laneHandoff(0, LANE_HANDOFF + 1, 0, 120)).toBe(LANE_HANDOFF);
-    // An open card counts from where it rests.
-    expect(laneHandoff(-120, -LANE_HANDOFF - 1, 64, 120)).toBe(-(120 + LANE_HANDOFF));
+describe('a swipe from the edge of the screen', () => {
+  it('starts within the zone at either edge', () => {
+    expect(atScreenEdge(EDGE_SWIPE_ZONE, 390)).toBe(true);
+    expect(atScreenEdge(390 - EDGE_SWIPE_ZONE, 390)).toBe(true);
+    expect(atScreenEdge(EDGE_SWIPE_ZONE + 1, 390)).toBe(false);
+    expect(atScreenEdge(195, 390)).toBe(false);
   });
 });
