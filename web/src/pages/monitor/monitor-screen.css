@@ -341,7 +341,9 @@
 .mobile-drawer[data-slot="drawer-popup"] {
   position: fixed;
   right: 0;
-  bottom: 0;
+  /* Anchored to the bottom of the kept page height, not the viewport: while the keyboard is open the
+     sheet keeps its top on screen and the keyboard covers its lower part. */
+  bottom: min(0px, calc(100% - var(--stable-vh, 100%)));
   left: 0;
   z-index: 50;
   width: 100%;

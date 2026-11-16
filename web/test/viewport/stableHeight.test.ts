@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { editingText, nextStableHeight } from '../../src/shared/viewport/stableHeight';
+import {
+  editingText,
+  nextStableHeight,
+  watchStableHeight,
+} from '../../src/shared/viewport/stableHeight';
 
 describe('the kept page height', () => {
   const tall = { width: 1024, height: 1300 };
@@ -29,5 +33,29 @@ describe('the kept page height', () => {
     expect(editingText(area)).toBe(false);
     expect(editingText(document.createElement('button'))).toBe(false);
     expect(editingText(null)).toBe(false);
+  });
+
+  it('marks the page while the keyboard covers the kept height', () => {
+    const root = document.documentElement;
+    const field = document.createElement('input');
+    document.body.append(field);
+    const resize = (height: number) => {
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+      window.dispatchEvent(new Event('resize'));
+    };
+    resize(1300);
+    const stop = watchStableHeight(window);
+    try {
+      expect(root.hasAttribute('data-keyboard')).toBe(false);
+      field.focus();
+      resize(700);
+      expect(root.style.getPropertyValue('--stable-vh')).toBe('1300px');
+      expect(root.hasAttribute('data-keyboard')).toBe(true);
+      resize(1300);
+      expect(root.hasAttribute('data-keyboard')).toBe(false);
+    } finally {
+      stop();
+      field.remove();
+    }
   });
 });

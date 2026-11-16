@@ -209,8 +209,16 @@
 }
 
 /* A centered dialog is centered in the kept page height (see stableHeight.ts), so a tablet keyboard
-   covers its lower part instead of pushing its top off the screen. :where() keeps it below any
-   dialog's own placement. */
-:where([data-slot="dialog-content"]) {
+   covers its lower part instead of pushing its top off the screen. Only dialogs that keep the
+   default top-[50%] are moved: this rule is unlayered, so it would also beat the utilities of a
+   dialog placed elsewhere, such as the guide's panel. */
+:where([data-slot="dialog-content"].top-\[50\%\]) {
   top: calc(var(--stable-vh, 100svh) / 2);
+}
+
+/* While the keyboard is open (see stableHeight.ts), the same dialogs sit at the top instead, so the
+   field being typed in stays above the keyboard. */
+:root[data-keyboard] :where([data-slot="dialog-content"].top-\[50\%\]) {
+  top: calc(env(safe-area-inset-top) + 16px);
+  translate: -50% 0;
 }

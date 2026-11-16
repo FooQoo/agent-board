@@ -45,6 +45,9 @@ export function watchStableHeight(target: Window = window): () => void {
   const update = () => {
     const now = { width: target.innerWidth, height: target.innerHeight };
     const next = nextStableHeight(kept, now, editingText(target.document.activeElement));
+    // While the kept height is taller than the viewport, the keyboard covers the bottom of the
+    // page; CSS moves centered dialogs to the top then, so their text fields stay above it.
+    root.toggleAttribute('data-keyboard', next.height > now.height);
     if (next === kept) return;
     kept = next;
     root.style.setProperty('--stable-vh', `${next.height}px`);

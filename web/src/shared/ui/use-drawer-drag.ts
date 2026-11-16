@@ -127,7 +127,8 @@ export function useDrawerDrag({
     let startOffset = 0;
     if (sheet?.hasAttribute('data-settling')) {
       // Catch a sheet that is still sliding back from where it is on screen.
-      const rest = window.innerHeight - height;
+      // Where the sheet rests: its layout top, which the pull's translate does not move.
+      const rest = sheet.offsetTop;
       startOffset = Math.max(0, sheet.getBoundingClientRect().top - rest);
       sheet.removeAttribute('data-settling');
       overlay.current?.removeAttribute('data-settling');
