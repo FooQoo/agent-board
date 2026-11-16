@@ -251,6 +251,8 @@ test('saving a body edit after a concurrent lane change keeps the newest event a
 	expect(task.history.at(-1)).toMatchObject({ reason: 'Concurrent lane update' });
 	expect(task.history.filter((event) => event.reason === 'Concurrent lane update')).toHaveLength(1);
 	await panel.getByRole('button', { name: 'Finalize', exact: true }).click();
+	// The CLI refuses a draft, so wait until the finalized task is saved.
+	await expect.poll(() => show(id).isDraft).toBe(false);
 
 	const replacement = path.join(home, 'replacement.md');
 	replaceFileAtomically(replacement, '## Work\n\nCLI replacement without a history field.\n');
