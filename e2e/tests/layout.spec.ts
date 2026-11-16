@@ -157,7 +157,8 @@ for (const width of [1024, 1280, 1920]) {
 
 test('1024px: the default width yields to the lanes (each stays at least 200px)', async ({ page }) => {
   await open(page, 1024);
-  expect(await panelWidth(page)).toBe(344);
+  // The panel opens at its default width and then yields to the lanes once they are measured.
+  await expect.poll(() => panelWidth(page)).toBe(344);
   const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
   for (const w of lanes) expect(w).toBeGreaterThanOrEqual(200);
 });
