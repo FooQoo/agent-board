@@ -96,10 +96,7 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
   return { lanes, setLanes, questions, answerController, projectId: SAMPLE_PROJECT };
 }
 
-type ScreenArgs = Pick<
-  MonitorLanesScreenProps,
-  'initialLane' | 'previewRevealed' | 'previewLift'
-> & {
+type ScreenArgs = Pick<MonitorLanesScreenProps, 'initialLane' | 'previewRevealed'> & {
   /** Opens a confirmation: `archive` and `move` use the card named by `pendingTask`. */
   pending?: 'archive' | 'move' | 'bulk';
   pendingTask?: number;
@@ -148,6 +145,13 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
         return true;
       }}
       onBulkArchive={async () => setLanes({ ...lanes, done: [] })}
+      onReorder={(item, beforeId) => {
+        const lane = item.task.taskStatus as keyof typeof lanes;
+        const rest = lanes[lane].filter((entry) => entry.task.id !== item.task.id);
+        const at = beforeId === null ? rest.length : rest.findIndex((e) => e.task.id === beforeId);
+        rest.splice(at, 0, item);
+        setLanes({ ...lanes, [lane]: rest });
+      }}
     />
   );
 }
@@ -238,13 +242,14 @@ export const ArchiveRevealed: Story = {
   args: { initialLane: 'todo', previewRevealed: 15 },
   play: async ({ canvasElement }) => {
     const card = within(cardOf(canvasElement, 15) as HTMLElement);
-    const names = ['#15 を進行中へ移動', '#15 を完了へ移動', '#15 をアーカイブ'];
+    const names = ['#15 を進行中へ移動', '#15 をアーカイブ'];
+    await expect(card.queryByRole('button', { name: '#15 を完了へ移動' })).toBeNull();
     for (const name of names) {
       const tile = card.getByRole('button', { name });
       await expect(tile).toBeVisible();
       await expect(tile.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
-    await userEvent.click(card.getByRole('button', { name: '#15 を完了へ移動' }));
+    await userEvent.click(card.getByRole('button', { name: '#15 を進行中へ移動' }));
     const dialog = within(await within(document.body).findByRole('dialog'));
     await expect(dialog.getAllByText(/#15/).length).toBeGreaterThan(0);
   },
@@ -258,17 +263,6 @@ export const ArchiveConfirm: Story = {
     await expect(dialog.getAllByText(/#15/).length).toBeGreaterThan(0);
     await expect(dialog.getByRole('button', { name: 'アーカイブ' })).toBeEnabled();
     await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeEnabled();
-  },
-};
-
-/** A card held at the right edge: the edge names the next lane. Nothing moves until it is let go. */
-export const CardLiftedAtEdge: Story = {
-  args: { initialLane: 'todo', previewLift: { taskId: 15, x: 372, y: 330 } },
-  play: async ({ canvasElement }) => {
-    await expect(canvasElement.querySelector('.lane-edge[data-active]')).toHaveTextContent(
-      '→ 進行中',
-    );
-    await expect(canvasElement.querySelector('.swipe-card[data-lifted]')).toBeNull();
   },
 };
 
@@ -328,6 +322,28 @@ export const SwipeRevealsArchive: Story = {
   },
 };
 
+/** A right swipe on a card in 進行中 shows the lane on its left, 未着手. */
+export const RightSwipeShowsLeftLane: Story = {
+  args: { initialLane: 'doing' },
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector<HTMLElement>(
+      '.monitor-lane[data-lane="doing"] [data-swipe-card]',
+    );
+    if (!card) throw new Error('No doing card.');
+    const id = card.dataset.swipeCard;
+    const rect = card.getBoundingClientRect();
+    const y = rect.top + 20;
+    press(card, 'pointerdown', rect.left + 20, y);
+    press(card, 'pointermove', rect.left + 60, y);
+    press(card, 'pointermove', rect.left + 120, y);
+    press(card, 'pointerup', rect.left + 120, y);
+    await waitFor(() => expect(card).toHaveAttribute('data-revealed', 'left'));
+    const tile = within(card).getByRole('button', { name: `#${id} を未着手へ移動` });
+    await expect(tile).toBeVisible();
+    await expect(within(card).queryByRole('button', { name: `#${id} をアーカイブ` })).toBeNull();
+  },
+};
+
 /** A sideways swipe on empty space moves to the next lane. */
 export const SwipeSwitchesLane: Story = {
   args: { initialLane: 'todo' },
@@ -346,29 +362,48 @@ export const SwipeSwitchesLane: Story = {
   },
 };
 
-/** Holding a card, then resting at the right edge, switches the lane; letting go asks to move it. */
-export const LongPressDragMoves: Story = {
+/** Holding a card and carrying it down puts it lower in its lane; the others make room. */
+export const LongPressReorders: Story = {
   args: { initialLane: 'todo' },
   play: async ({ canvasElement }) => {
-    const card = cardOf(canvasElement, 15);
+    const lane = canvasElement.querySelector('.monitor-lane[data-lane="todo"]');
+    if (!lane) throw new Error('No lane.');
+    const ids = () =>
+      [...lane.querySelectorAll<HTMLElement>('[data-swipe-card]')].map((card) =>
+        Number(card.dataset.swipeCard),
+      );
+    const [first, second] = ids();
+    if (first === undefined || second === undefined) throw new Error('Too few cards.');
+    const card = cardOf(canvasElement, first);
+    const next = cardOf(canvasElement, second).getBoundingClientRect();
     const rect = card.getBoundingClientRect();
-    const view = canvasElement.querySelector('.monitor-lanes')?.getBoundingClientRect();
-    if (!view) throw new Error('No lanes.');
-    press(card, 'pointerdown', rect.left + 40, rect.top + 20);
+    const x = rect.left + 40;
+    press(card, 'pointerdown', x, rect.top + 20);
     await wait(180);
     await waitFor(() => expect(card).toHaveAttribute('data-lifted'));
-    press(card, 'pointermove', view.right - 10, rect.top + 20);
+    press(card, 'pointermove', x, rect.top + 20 + (next.bottom - rect.top) - 10);
     await waitFor(() =>
-      expect(canvasElement.querySelector('.lane-edge[data-active]')).not.toBeNull(),
+      expect((cardOf(canvasElement, second) as HTMLElement).style.transform).toMatch(
+        /translateY\(-/,
+      ),
     );
-    await waitFor(
-      () => expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
-      {
-        timeout: 2000,
-      },
+    press(card, 'pointerup', x, rect.top + 20 + (next.bottom - rect.top) - 10);
+    await waitFor(() => expect(ids().slice(0, 2)).toEqual([second, first]));
+  },
+};
+
+/** 完了 keeps the order the cards were completed in: a long press does not lift a card there. */
+export const DoneLaneDoesNotReorder: Story = {
+  args: { initialLane: 'done' },
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector<HTMLElement>(
+      '.monitor-lane[data-lane="done"] [data-swipe-card]',
     );
-    press(card, 'pointerup', view.right - 10, rect.top + 20);
-    const dialog = within(await within(document.body).findByRole('dialog'));
-    await expect(dialog.getByRole('button', { name: '移動する' })).toBeEnabled();
+    if (!card) throw new Error('No done card.');
+    const rect = card.getBoundingClientRect();
+    press(card, 'pointerdown', rect.left + 40, rect.top + 20);
+    await wait(220);
+    await expect(card).not.toHaveAttribute('data-lifted');
+    press(card, 'pointerup', rect.left + 40, rect.top + 20);
   },
 };

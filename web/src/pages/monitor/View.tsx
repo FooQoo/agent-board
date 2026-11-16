@@ -71,11 +71,11 @@ export function MonitorView(props: MonitorViewProps) {
     guideLink?.setSheetOpen(answerOpen);
     return () => guideLink?.setSheetOpen(false);
   }, [guideLink, answerOpen]);
-  const ordered = {
-    todo: sortLane(todo),
-    doing: sortLane(doing),
-    done: sortDone(done),
-  };
+  // Kept between renders, so the lanes see a new order only when the project is read again.
+  const ordered = useMemo(
+    () => ({ todo: sortLane(todo), doing: sortLane(doing), done: sortDone(done) }),
+    [todo, doing, done],
+  );
   const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(tasks);
   const { onDetailOpenChange } = props;
@@ -120,6 +120,16 @@ export function MonitorView(props: MonitorViewProps) {
         lane={lane}
         onLaneChange={setLane}
         onMove={(item, target) => ask({ kind: 'move', item, target })}
+        onReorder={
+          writes
+            ? (item, beforeId) => {
+                void writes
+                  .reorder(projectId, item.task.id, beforeId)
+                  .catch(() => {})
+                  .finally(() => onWritten?.());
+              }
+            : undefined
+        }
         onArchive={(item) => ask({ kind: 'archive', item })}
         onBulkArchive={() => ask({ kind: 'bulk' })}
         onOpenDetail={(item, tab) => {

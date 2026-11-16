@@ -49,8 +49,8 @@ export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
 };
 
 /**
- * The changes the lane view makes, each after the person confirmed it: a move with its reason,
- * the archive of one card, and the archive of the done lane. They go to the board's own routes.
+ * The changes the lane view makes: a move with its reason, the archive of one card, and the
+ * archive of the done lane, each after the person confirmed it, and a reorder by a long press. They go to the board's own routes.
  */
 export interface MonitorWrites {
   move(
@@ -60,6 +60,8 @@ export interface MonitorWrites {
     reason: string,
     fromStatus: ColumnName,
   ): Promise<unknown>;
+  /** Puts a card before `beforeId` in its lane, or at the end when it is null. */
+  reorder(projectId: ProjectId, taskId: number, beforeId: number | null): Promise<unknown>;
   archive(projectId: ProjectId, taskId: number): Promise<unknown>;
   archiveDone(projectId: ProjectId, ids: readonly number[]): Promise<unknown>;
 }

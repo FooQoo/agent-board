@@ -12,7 +12,7 @@ import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
 export interface MonitorLanesScreenProps
-  extends Pick<MonitorLanesProps, 'previewRevealed' | 'previewLift'> {
+  extends Pick<MonitorLanesProps, 'previewRevealed' | 'onReorder'> {
   lanes: LaneItems;
   projectName: string;
   /** The lane the screen opens on. After that the tabs and the swipes own it. */
@@ -56,7 +56,7 @@ export function MonitorLanesScreen({
   onArchive,
   onBulkArchive,
   previewRevealed,
-  previewLift,
+  onReorder,
 }: MonitorLanesScreenProps) {
   const lanesId = useId();
   const [lane, setLane] = useState<MonitorSection>(initialLane);
@@ -96,7 +96,7 @@ export function MonitorLanesScreen({
         onOpenAnswer={() => answer(answerStart.resume())}
         answerController={answerController}
         previewRevealed={previewRevealed}
-        previewLift={previewLift}
+        onReorder={onReorder}
       />
       <MonitorLaneDialogs
         pending={pending}

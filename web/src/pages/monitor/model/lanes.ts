@@ -12,19 +12,47 @@ export const SWIPE_SLOP = 8;
 /** The size (px) of one swipe action tile, and the gap around the tiles. */
 export const ACTION_TILE = 48;
 export const ACTION_GAP = 8;
-/** The width (px) a card reveals: the two other lanes and the archive tile, with their gaps. */
-export const REVEAL_WIDTH = 3 * ACTION_TILE + 4 * ACTION_GAP;
-/** The strip (px) at each screen edge where a lifted card asks for the next lane. */
-export const EDGE_ZONE = 56;
-/** How long (ms) a lifted card rests in an edge strip before the lane changes. */
-export const EDGE_DWELL_MS = 600;
+
+/** The side a card has slid open: `right` shows the tiles on its right (a swipe to the left). */
+export type RevealSide = 'left' | 'right';
+
+/**
+ * The tiles a swipe shows, by the side they appear on. A swipe to the left shows the lane on the
+ * right and the archive; a swipe to the right shows the lane on the left. A lane at an end of the
+ * row has no tile for the lane beyond it.
+ */
+export function swipeActions(lane: MonitorSection): {
+  left: MonitorSection[];
+  right: (MonitorSection | 'archive')[];
+} {
+  const before = neighbourLane(lane, -1);
+  const after = neighbourLane(lane, 1);
+  return { left: before ? [before] : [], right: [...(after ? [after] : []), 'archive'] };
+}
+
+/** The width (px) a row of `count` tiles takes, with a gap around each; none takes no room. */
+export function actionsWidth(count: number): number {
+  return count === 0 ? 0 : count * ACTION_TILE + (count + 1) * ACTION_GAP;
+}
+
+/** Where a card rests (px) when `side` is open: positive slides it right. */
+export function revealOffset(
+  side: RevealSide | null,
+  leftWidth: number,
+  rightWidth: number,
+): number {
+  if (side === 'left') return leftWidth;
+  if (side === 'right') return -rightWidth;
+  return 0;
+}
+/** The band (px) at the top and bottom of a lane where a held card scrolls it. */
+export const AUTOSCROLL_ZONE = 56;
 /** The distance, as a share of the lane width, that turns a drag into a lane change. */
 export const LANE_SWITCH_RATIO = 0.25;
 /** The speed (px/ms) that turns even a short flick into a lane change. */
 export const LANE_FLICK_SPEED = 0.5;
 
 export type Direction = -1 | 1;
-export type Edge = 'left' | 'right';
 
 export function laneIndex(lane: MonitorSection): number {
   return LANES.indexOf(lane);
@@ -74,55 +102,96 @@ export function trackOffset(lane: MonitorSection, dx: number, width: number): nu
   return base + (blocked ? dx / 3 : dx);
 }
 
-/** How far (px) a card has slid: the drag from where it began, between closed and fully revealed. */
-export function cardOffset(startOffset: number, dx: number): number {
+/**
+ * How far (px) a card has slid: the drag from where it began, between the two sides' tiles. Past
+ * them, or towards a side with no tiles, it gives only a quarter of the drag.
+ */
+export function cardOffset(
+  startOffset: number,
+  dx: number,
+  leftWidth: number,
+  rightWidth: number,
+): number {
   const raw = startOffset + dx;
-  if (raw > 0) return raw / 4;
-  if (raw < -REVEAL_WIDTH) return -REVEAL_WIDTH + (raw + REVEAL_WIDTH) / 4;
+  if (raw > leftWidth) return leftWidth + (raw - leftWidth) / 4;
+  if (raw < -rightWidth) return -rightWidth + (raw + rightWidth) / 4;
   return raw;
 }
 
-/** Whether a released card stays open: past half the button, or flicked to the left. */
-export function cardSettlesOpen(offset: number, velocity: number): boolean {
-  if (velocity <= -LANE_FLICK_SPEED) return true;
-  if (velocity >= LANE_FLICK_SPEED) return false;
-  return offset <= -REVEAL_WIDTH / 2;
-}
-
-/** The edge strip a pointer is in, or null. A lane with no neighbour on that side has no strip. */
-export function edgeOf(x: number, width: number, zone = EDGE_ZONE): Edge | null {
-  if (x <= zone) return 'left';
-  if (x >= width - zone) return 'right';
+/** The side a released card stays open on: past half its tiles, or flicked that way. */
+export function cardSettles(
+  offset: number,
+  velocity: number,
+  leftWidth: number,
+  rightWidth: number,
+): RevealSide | null {
+  if (offset < 0 && rightWidth > 0) {
+    if (velocity >= LANE_FLICK_SPEED) return null;
+    return velocity <= -LANE_FLICK_SPEED || offset <= -rightWidth / 2 ? 'right' : null;
+  }
+  if (offset > 0 && leftWidth > 0) {
+    if (velocity <= -LANE_FLICK_SPEED) return null;
+    return velocity >= LANE_FLICK_SPEED || offset >= leftWidth / 2 ? 'left' : null;
+  }
   return null;
 }
 
-/** The lane an edge asks for from `lane`, or null when the row ends there. */
-export function edgeTarget(lane: MonitorSection, edge: Edge | null): MonitorSection | null {
-  if (edge === null) return null;
-  return neighbourLane(lane, edge === 'left' ? -1 : 1);
+/** The lanes whose cards a long press reorders. 完了 keeps the order the cards were completed in. */
+export function canReorder(lane: MonitorSection): boolean {
+  return lane !== 'done';
+}
+
+/** Where a held card would land: the number of the other cards whose middle is above `y`. */
+export function dropSlot(middles: readonly number[], y: number): number {
+  return middles.filter((middle) => middle < y).length;
+}
+
+/** The lane's order once the held card lands in `slot` among the other cards. */
+export function reorderIds(ids: readonly number[], liftedId: number, slot: number): number[] {
+  const others = ids.filter((id) => id !== liftedId);
+  others.splice(Math.min(Math.max(slot, 0), others.length), 0, liftedId);
+  return others;
 }
 
 /**
- * Tells whether the dwell clock should run. It runs while the pointer rests in a strip that has a
- * neighbour, and only once the pointer has left the strip since the last change, so a card that
- * stays at the edge moves one lane and not three.
+ * The card the held card is put before when it lands in `slot` (null: the end of the lane), or
+ * undefined when it lands where it already was and nothing needs saving.
  */
-export function dwellEdge(
-  lane: MonitorSection,
-  edge: Edge | null,
-  armed: boolean,
-): { edge: Edge | null; run: boolean; armed: boolean } {
-  if (edge === null) return { edge: null, run: false, armed: true };
-  if (edgeTarget(lane, edge) === null) return { edge: null, run: false, armed };
-  return { edge, run: armed, armed };
+export function reorderBefore(
+  ids: readonly number[],
+  liftedId: number,
+  slot: number,
+): number | null | undefined {
+  const next = reorderIds(ids, liftedId, slot);
+  if (next.every((id, index) => id === ids[index])) return undefined;
+  return next[next.indexOf(liftedId) + 1] ?? null;
 }
 
-/** The lanes a card can be moved to from its own lane, in board order. */
-export function otherLanes(lane: MonitorSection): MonitorSection[] {
-  return LANES.filter((name) => name !== lane);
+/**
+ * How far (px) each card moves while the held card would land in `slot`: the lane is laid out
+ * again in the new order with the same heights and gaps, so the others make room for it.
+ */
+export function reorderShifts(
+  ids: readonly number[],
+  tops: readonly number[],
+  heights: readonly number[],
+  liftedId: number,
+  slot: number,
+): Map<number, number> {
+  const shifts = new Map<number, number>();
+  if (ids.length === 0) return shifts;
+  const gap = ids.length > 1 ? (tops[1] ?? 0) - ((tops[0] ?? 0) + (heights[0] ?? 0)) : 0;
+  let top = tops[0] ?? 0;
+  for (const id of reorderIds(ids, liftedId, slot)) {
+    const index = ids.indexOf(id);
+    shifts.set(id, top - (tops[index] ?? 0));
+    top += (heights[index] ?? 0) + gap;
+  }
+  return shifts;
 }
 
-/** How far a swipe has opened the actions, from 0 (closed) to 1 (fully revealed). */
-export function revealProgress(offset: number): number {
-  return Math.min(1, Math.max(0, -offset / REVEAL_WIDTH));
+/** How far a swipe has opened a side's tiles, from 0 (closed) to 1 (fully revealed). */
+export function revealProgress(offset: number, width: number): number {
+  if (width <= 0) return 0;
+  return Math.min(1, Math.max(0, Math.abs(offset) / width));
 }

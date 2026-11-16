@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react';
 import {
   LIFT_HOLD_MS,
-  REVEAL_WIDTH,
+  type RevealSide,
   cardOffset,
-  cardSettlesOpen,
+  cardSettles,
+  revealOffset,
   swipeAxis,
   withinLiftTolerance,
 } from '../model/lanes';
@@ -26,9 +27,12 @@ export function capturePointer(element: Element, pointerId: number): void {
 type Phase = 'idle' | 'pending' | 'reveal' | 'lifted';
 
 export interface CardGestureOptions {
-  /** Whether the archive button is showing. The parent owns this, so it can close it from outside. */
-  revealed: boolean;
-  onRevealChange: (revealed: boolean) => void;
+  /** The side whose tiles are showing. The parent owns this, so it can close it from outside. */
+  revealed: RevealSide | null;
+  onRevealChange: (revealed: RevealSide | null) => void;
+  /** The widths (px) of the tiles on each side; a side with none does not open. */
+  leftWidth: number;
+  rightWidth: number;
   /** The card was held for the lift delay; `grab` is where inside the card the finger took it. */
   onLiftStart: (point: Point, grab: Point, rect: DOMRect) => void;
   onLiftMove: (point: Point) => void;
@@ -36,6 +40,8 @@ export interface CardGestureOptions {
   onLiftEnd: (point: Point, cancelled: boolean) => void;
   /** The card sits in the lane that is not on screen: it takes no gesture. */
   disabled?: boolean;
+  /** False when a long press does not lift the card (the done lane keeps its order). */
+  liftable?: boolean;
 }
 
 /** The sample the speed is read from: where the pointer was, and when. */
@@ -44,14 +50,24 @@ interface Sample extends Point {
 }
 
 /**
- * The gestures of one card. A press that moves sideways slides the card to show or hide its archive
- * button. A press that holds still for 100 ms lifts the card, and the following moves carry it. A
+ * The gestures of one card. A press that moves sideways slides the card to show or hide the tiles
+ * on that side. A press that holds still for 100 ms lifts the card, and the following moves carry it. A
  * press that moves up or down is left to the browser, which scrolls the lane. A sideways move
  * on empty space never reaches this: the lane swipe handles it.
  */
 export function useCardGesture(
   ref: RefObject<HTMLElement | null>,
-  { revealed, onRevealChange, onLiftStart, onLiftMove, onLiftEnd, disabled }: CardGestureOptions,
+  {
+    revealed,
+    onRevealChange,
+    leftWidth,
+    rightWidth,
+    onLiftStart,
+    onLiftMove,
+    onLiftEnd,
+    disabled,
+    liftable = true,
+  }: CardGestureOptions,
 ) {
   const [drag, setDrag] = useState<number | null>(null);
   const [lifted, setLifted] = useState(false);
@@ -93,12 +109,12 @@ export function useCardGesture(
     last.current = start.current;
     velocity.current = 0;
     moved.current = false;
-    origin.current = revealed ? -REVEAL_WIDTH : 0;
+    origin.current = revealOffset(revealed, leftWidth, rightWidth);
     phase.current = 'pending';
     timer.current = setTimeout(() => {
       if (phase.current !== 'pending') return;
       // A revealed card is closed by a tap, not lifted.
-      if (revealed) return;
+      if (revealed !== null || !liftable) return;
       phase.current = 'lifted';
       moved.current = true;
       capturePointer(element, event.pointerId);
@@ -124,25 +140,31 @@ export function useCardGesture(
         phase.current = 'reveal';
         moved.current = true;
         capturePointer(event.currentTarget, event.pointerId);
-        setDrag(cardOffset(origin.current, dx));
+        setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
       } else if (axis === 'y' || !withinLiftTolerance(dx, dy)) {
         // A scroll: the browser takes it from here.
         clearTimeout(timer.current);
         phase.current = 'idle';
       }
     } else if (phase.current === 'reveal') {
-      setDrag(cardOffset(origin.current, dx));
+      setDrag(cardOffset(origin.current, dx, leftWidth, rightWidth));
     }
   };
 
   const finish = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
     const was = phase.current;
     const point = { x: event.clientX, y: event.clientY };
-    const offset = cardOffset(origin.current, event.clientX - start.current.x);
+    const offset = cardOffset(
+      origin.current,
+      event.clientX - start.current.x,
+      leftWidth,
+      rightWidth,
+    );
     const speed = velocity.current;
     stop();
     if (was === 'lifted') onLiftEnd(point, cancelled);
-    if (was === 'reveal' && !cancelled) onRevealChange(cardSettlesOpen(offset, speed));
+    if (was === 'reveal' && !cancelled)
+      onRevealChange(cardSettles(offset, speed, leftWidth, rightWidth));
   };
 
   return {

@@ -3,13 +3,20 @@ import { type CSSProperties, type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CardGestureOptions, useCardGesture } from '../hooks/useCardGesture';
 import { type MonitorSection, SECTION_ICONS } from './MonitorSectionHeader';
-import { otherLanes, REVEAL_WIDTH, revealProgress } from '../model/lanes';
+import {
+  actionsWidth,
+  type RevealSide,
+  revealOffset,
+  revealProgress,
+  swipeActions,
+} from '../model/lanes';
 
 import './monitor-lanes.css';
 
-export interface SwipeableCardProps extends Omit<CardGestureOptions, 'disabled'> {
+export interface SwipeableCardProps
+  extends Omit<CardGestureOptions, 'disabled' | 'leftWidth' | 'rightWidth'> {
   taskId: number;
-  /** The lane the card is in; the swipe offers the other two. */
+  /** The lane the card is in; a swipe offers the lanes beside it. */
   lane: MonitorSection;
   /** A lane tile was tapped; the parent opens the move dialog. */
   onMove: (target: MonitorSection) => void;
@@ -17,15 +24,17 @@ export interface SwipeableCardProps extends Omit<CardGestureOptions, 'disabled'>
   onArchive: () => void;
   /** The card is in a lane that is not on screen. */
   inactive?: boolean;
+  /** How far (px) the card moves down or up to make room for a card being reordered. */
+  shift?: number;
   children: ReactNode;
 }
 
 /**
- * Wraps a monitor card with the two things a finger does to it: a swipe to the left that reveals
- * tiles for the two other lanes and the archive, each growing from a dot as the whole card slides
- * to the left after the finger, and a long press that lifts it to drag it into another lane. The card itself is
- * the child, so it keeps its own taps (the title opens the details). While the archive button is
- * showing, a tap on the card closes it instead.
+ * Wraps a monitor card with what a finger does to it. A swipe to the left slides the whole card
+ * left and shows the lane on the right and the archive; a swipe to the right shows the lane on the
+ * left. Each tile grows from a dot as the card slides. A long press lifts the card to reorder its
+ * lane. The card itself is the child, so it keeps its own taps (the title opens the details).
+ * While tiles are showing, a tap on the card closes them instead.
  */
 export function SwipeableCard({
   taskId,
@@ -33,85 +42,107 @@ export function SwipeableCard({
   onMove,
   onArchive,
   inactive,
+  shift,
   children,
   revealed,
   ...gesture
 }: SwipeableCardProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
+  const actions = swipeActions(lane);
+  const leftWidth = actionsWidth(actions.left.length);
+  const rightWidth = actionsWidth(actions.right.length);
   const { drag, lifted, consumesClick, handlers } = useCardGesture(ref, {
     ...gesture,
     revealed,
+    leftWidth,
+    rightWidth,
     disabled: inactive,
   });
-  const offset = drag ?? (revealed ? -REVEAL_WIDTH : 0);
-  return (
-    <div
-      ref={ref}
-      className="swipe-card"
-      data-swipe-card={taskId}
-      data-revealed={revealed || undefined}
-      data-lifted={lifted || undefined}
-      data-dragging={drag !== null || undefined}
-      {...handlers}
-      onClickCapture={(event) => {
-        // The click that ends a swipe or a lift is not a tap; a tap on a revealed card closes it.
-        const target = event.target as Element;
-        if (target.closest('[data-swipe-action]')) return;
-        if (consumesClick() || revealed) {
-          event.preventDefault();
-          event.stopPropagation();
-          if (revealed && !consumesClick()) gesture.onRevealChange(false);
-        }
-      }}
-    >
-      <div
-        className="swipe-card__actions"
-        data-revealed={offset < 0 || undefined}
-        style={
-          {
-            width: `${Math.max(0, -offset)}px`,
-            '--reveal': revealProgress(offset),
-          } as CSSProperties
-        }
-      >
-        {otherLanes(lane).map((target) => {
-          const Icon = SECTION_ICONS[target];
-          return (
-            <button
-              key={target}
-              type="button"
-              data-swipe-action
-              data-target={target}
-              className="swipe-card__tile"
-              tabIndex={revealed ? 0 : -1}
-              aria-hidden={!revealed}
-              aria-label={t('monitor.lanes.moveTask', {
-                id: taskId,
-                lane: t(`monitor.status.${target}`),
-              })}
-              onClick={() => onMove(target)}
-            >
-              <Icon aria-hidden="true" />
-            </button>
-          );
-        })}
+  const offset = drag ?? revealOffset(revealed, leftWidth, rightWidth);
+
+  const tile = (target: MonitorSection | 'archive', side: RevealSide) => {
+    const open = revealed === side;
+    if (target === 'archive')
+      return (
         <button
+          key="archive"
           type="button"
           data-swipe-action
           data-target="archive"
           className="swipe-card__tile swipe-card__tile--archive"
-          tabIndex={revealed ? 0 : -1}
-          aria-hidden={!revealed}
+          tabIndex={open ? 0 : -1}
+          aria-hidden={!open}
           aria-label={t('monitor.lanes.archiveTask', { id: taskId })}
           onClick={onArchive}
         >
           <Trash2Icon aria-hidden="true" />
         </button>
-      </div>
+      );
+    const Icon = SECTION_ICONS[target];
+    return (
+      <button
+        key={target}
+        type="button"
+        data-swipe-action
+        data-target={target}
+        className="swipe-card__tile"
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
+        aria-label={t('monitor.lanes.moveTask', {
+          id: taskId,
+          lane: t(`monitor.status.${target}`),
+        })}
+        onClick={() => onMove(target)}
+      >
+        <Icon aria-hidden="true" />
+      </button>
+    );
+  };
+
+  const side = (name: RevealSide, width: number, shown: boolean) => (
+    <div
+      className="swipe-card__actions"
+      data-side={name}
+      data-revealed={shown || undefined}
+      style={
+        {
+          width: `${shown ? Math.min(width, Math.abs(offset)) : 0}px`,
+          '--reveal': shown ? revealProgress(offset, width) : 0,
+        } as CSSProperties
+      }
+    >
+      {(name === 'left' ? actions.left : actions.right).map((target) => tile(target, name))}
+    </div>
+  );
+
+  return (
+    <div
+      ref={ref}
+      className="swipe-card"
+      data-swipe-card={taskId}
+      data-revealed={revealed ?? undefined}
+      data-lifted={lifted || undefined}
+      data-dragging={drag !== null || undefined}
+      data-shifting={shift !== undefined || undefined}
+      style={shift ? { transform: `translateY(${shift}px)` } : undefined}
+      {...handlers}
+      onClickCapture={(event) => {
+        // The click that ends a swipe or a lift is not a tap; a tap on an open card closes it.
+        const target = event.target as Element;
+        if (target.closest('[data-swipe-action]')) return;
+        if (consumesClick() || revealed !== null) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (revealed !== null && !consumesClick()) gesture.onRevealChange(null);
+        }
+      }}
+    >
+      {side('left', leftWidth, offset > 0)}
+      {side('right', rightWidth, offset < 0)}
       <div
         className="swipe-card__body"
-        style={offset < 0 ? { transform: `translateX(${offset}px)` } : undefined}
+        style={offset !== 0 ? { transform: `translateX(${offset}px)` } : undefined}
       >
         {children}
       </div>

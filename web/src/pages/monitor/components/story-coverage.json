@@ -370,33 +370,18 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
-              "states": ["long press lifts the card"],
+              "id": "pages-monitor-components-monitorlanes--long-press-reorders",
+              "states": ["long press lifts", "others make room", "drop reorders"],
               "interaction": true
             },
             {
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["touch and mouse gestures"],
               "interaction": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "file": "pages/monitor/components/LaneEdges.tsx",
-      "exports": [
-        {
-          "name": "LaneEdges",
-          "stories": [
-            {
-              "id": "pages-monitor-components-monitorlanes--card-lifted-at-edge",
-              "states": ["edge strip", "neighbour lane name", "active edge"],
-              "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
-              "states": ["dwell switches lane"],
+              "id": "pages-monitor-components-monitorlanes--right-swipe-shows-left-lane",
+              "states": ["right swipe", "left lane tile"],
               "interaction": true
             }
           ]
@@ -438,6 +423,11 @@
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["all gestures"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--done-lane-does-not-reorder",
+              "states": ["done lane keeps completion order"],
+              "interaction": true
             }
           ]
         }
@@ -460,8 +450,8 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--long-press-drag-moves",
-              "states": ["move confirmation after a drop"],
+              "id": "pages-monitor-components-monitorlanes--long-press-reorders",
+              "states": ["long press lifts", "others make room", "drop reorders"],
               "interaction": true
             }
           ]

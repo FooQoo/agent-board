@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EDGE_ZONE,
-  REVEAL_WIDTH,
+  actionsWidth,
+  canReorder,
   cardOffset,
-  cardSettlesOpen,
+  cardSettles,
   clampLaneIndex,
-  dwellEdge,
-  edgeOf,
-  edgeTarget,
+  dropSlot,
   laneIndex,
   neighbourLane,
+  reorderBefore,
+  reorderIds,
+  reorderShifts,
   settleLane,
+  swipeActions,
   swipeAxis,
   trackOffset,
   withinLiftTolerance,
@@ -68,41 +70,57 @@ describe('lane swipe', () => {
   });
 });
 
+const RIGHT = actionsWidth(2);
+const LEFT = actionsWidth(1);
+
 describe('card swipe', () => {
-  it('follows the finger between closed and fully revealed', () => {
-    expect(cardOffset(0, -40)).toBe(-40);
-    expect(cardOffset(-REVEAL_WIDTH, 30)).toBe(-REVEAL_WIDTH + 30);
+  it('offers the lane on the right and the archive to the left, the lane on the left to the right', () => {
+    expect(swipeActions('todo')).toEqual({ left: [], right: ['doing', 'archive'] });
+    expect(swipeActions('doing')).toEqual({ left: ['todo'], right: ['done', 'archive'] });
+    expect(swipeActions('done')).toEqual({ left: ['doing'], right: ['archive'] });
+    expect(actionsWidth(0)).toBe(0);
   });
-  it('gives past either end', () => {
-    expect(cardOffset(0, 40)).toBe(10);
-    expect(cardOffset(0, -REVEAL_WIDTH - 40)).toBe(-REVEAL_WIDTH - 10);
+  it('follows the finger between the two sides, and gives past them', () => {
+    expect(cardOffset(0, -40, LEFT, RIGHT)).toBe(-40);
+    expect(cardOffset(-RIGHT, 30, LEFT, RIGHT)).toBe(-RIGHT + 30);
+    expect(cardOffset(0, 40, LEFT, RIGHT)).toBe(40);
+    expect(cardOffset(0, LEFT + 40, LEFT, RIGHT)).toBe(LEFT + 10);
+    expect(cardOffset(0, -RIGHT - 40, LEFT, RIGHT)).toBe(-RIGHT - 10);
+    expect(cardOffset(0, 40, 0, RIGHT)).toBe(10);
   });
-  it('settles open past half the button, or on a flick', () => {
-    expect(cardSettlesOpen(-REVEAL_WIDTH / 2 - 1, 0)).toBe(true);
-    expect(cardSettlesOpen(-10, 0)).toBe(false);
-    expect(cardSettlesOpen(-10, -0.9)).toBe(true);
-    expect(cardSettlesOpen(-REVEAL_WIDTH, 0.9)).toBe(false);
+  it('stays open on the side it passed half of, or was flicked to', () => {
+    expect(cardSettles(-RIGHT / 2 - 1, 0, LEFT, RIGHT)).toBe('right');
+    expect(cardSettles(-10, 0, LEFT, RIGHT)).toBeNull();
+    expect(cardSettles(-10, -0.9, LEFT, RIGHT)).toBe('right');
+    expect(cardSettles(-RIGHT, 0.9, LEFT, RIGHT)).toBeNull();
+    expect(cardSettles(LEFT / 2 + 1, 0, LEFT, RIGHT)).toBe('left');
+    expect(cardSettles(10, 0.9, LEFT, RIGHT)).toBe('left');
+    expect(cardSettles(10, 0.9, 0, RIGHT)).toBeNull();
   });
 });
 
-describe('edge of the screen', () => {
-  it('finds the strip a pointer is in', () => {
-    expect(edgeOf(10, 390)).toBe('left');
-    expect(edgeOf(390 - EDGE_ZONE, 390)).toBe('right');
-    expect(edgeOf(200, 390)).toBeNull();
+describe('reorder', () => {
+  it('reorders every lane but 完了', () => {
+    expect(canReorder('todo')).toBe(true);
+    expect(canReorder('doing')).toBe(true);
+    expect(canReorder('done')).toBe(false);
   });
-  it('asks for the neighbour on that side', () => {
-    expect(edgeTarget('todo', 'right')).toBe('doing');
-    expect(edgeTarget('doing', 'left')).toBe('todo');
-    expect(edgeTarget('todo', 'left')).toBeNull();
-    expect(edgeTarget('done', 'right')).toBeNull();
-    expect(edgeTarget('doing', null)).toBeNull();
+  it('finds the slot under the held card', () => {
+    expect(dropSlot([50, 150, 250], 10)).toBe(0);
+    expect(dropSlot([50, 150, 250], 200)).toBe(2);
+    expect(dropSlot([50, 150, 250], 300)).toBe(3);
   });
-  it('runs the dwell only in a strip that leads somewhere, and once per visit', () => {
-    expect(dwellEdge('doing', 'right', true)).toEqual({ edge: 'right', run: true, armed: true });
-    expect(dwellEdge('doing', 'right', false)).toEqual({ edge: 'right', run: false, armed: false });
-    expect(dwellEdge('todo', 'left', true).run).toBe(false);
-    expect(dwellEdge('todo', 'left', true).edge).toBeNull();
-    expect(dwellEdge('doing', null, false)).toEqual({ edge: null, run: false, armed: true });
+  it('names the card it lands before, and nothing when it stays', () => {
+    expect(reorderIds([1, 2, 3], 1, 2)).toEqual([2, 3, 1]);
+    expect(reorderBefore([1, 2, 3], 1, 1)).toBe(3);
+    expect(reorderBefore([1, 2, 3], 1, 2)).toBeNull();
+    expect(reorderBefore([1, 2, 3], 3, 0)).toBe(1);
+    expect(reorderBefore([1, 2, 3], 2, 1)).toBeUndefined();
+  });
+  it('makes room for the held card where it would land', () => {
+    const shifts = reorderShifts([1, 2, 3], [0, 60, 140], [50, 70, 40], 1, 1);
+    expect(shifts.get(2)).toBe(-60);
+    expect(shifts.get(1)).toBe(80);
+    expect(shifts.get(3)).toBe(0);
   });
 });
