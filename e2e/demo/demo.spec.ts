@@ -46,8 +46,8 @@ test.describe('in an English browser', () => {
   }) => {
     const errors = await openDemo(page);
 
-    // AC-1: the guide plays the AI. It runs one sample card, asks a question on the other,
-    // and finishes it after the answer.
+    // AC-1: the guide plays the AI in the page. It runs one sample card, asks a question on the
+    // other, and finishes it after the answer; the samples are never part of the board.
     await page.getByRole('button', { name: 'Start guide' }).click();
     await expect(page.getByText('Guide 1 / 4')).toBeVisible();
     await page.getByRole('button', { name: 'Watch it move' }).click();
@@ -69,7 +69,6 @@ test.describe('in an English browser', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Finish and get started' }).click();
-    await expect(page.getByText('The two sample tasks have been archived.')).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Guide' })).toHaveCount(0);
     await expect(page.locator('main .card').filter({ hasText: 'Sample:' })).toHaveCount(0);
 
@@ -125,7 +124,7 @@ test.describe('in an English browser', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Finish and get started' }).click();
-    await expect(page.locator('.onboarding-notice--inline')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
@@ -178,13 +177,13 @@ test.describe('in a Japanese browser', () => {
     await expect(cards.filter({ hasText: 'セットアップガイドを書く' })).toHaveCount(1);
     await expect(cards.filter({ hasText: 'Implement task moves' })).toHaveCount(0);
 
-    // The guide speaks Japanese and creates its sample cards in Japanese.
+    // The guide speaks Japanese and its sample cards are in Japanese. They are drawn over the board.
     await welcome.getByRole('button', { name: 'ガイドを始める' }).click();
     await expect(page.getByText('使い方ガイド 1 / 4')).toBeVisible();
     await page.getByRole('button', { name: '動きを見る' }).click();
     await expect(page.getByText('使い方ガイド 2 / 4')).toBeVisible({ timeout: 15_000 });
-    await expect(cards.filter({ hasText: 'サンプル：使い方を確認する' })).toHaveCount(1);
-    await expect(cards.filter({ hasText: 'Sample:' })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Guide' }).getByText('サンプル：使い方を確認する')).toBeVisible();
+    await expect(cards.filter({ hasText: 'サンプル' })).toHaveCount(0);
 
     expect(errors).toEqual([]);
   });

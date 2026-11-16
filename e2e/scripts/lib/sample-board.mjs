@@ -60,7 +60,7 @@ function skipGuide(home) {
   mkdirSync(internal, { recursive: true });
   writeFileSync(
     path.join(internal, 'onboarding.json'),
-    JSON.stringify({ formatVersion: 1, revision: 1, status: 'skipped', owner: null, run: null, appliedCommands: [] }),
+    JSON.stringify({ formatVersion: 2, status: 'skipped' }),
   );
 }
 
