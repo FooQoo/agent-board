@@ -17,7 +17,10 @@ import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
 import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
 import { type AnswerStart, answerStart } from '../../features/tasks/answer/answerStart';
 import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
-import { usePhoneGuideNotice } from '../../features/onboarding/model/phoneGuideLink';
+import {
+  usePhoneGuideLane,
+  usePhoneGuideNotice,
+} from '../../features/onboarding/model/phoneGuideLink';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
 const detailDrawer = preloadable(() =>
@@ -59,6 +62,11 @@ export function MonitorView(props: MonitorViewProps) {
   };
   const { todo, doing, done, freshness, guideLink } = props;
   const guideNotice = usePhoneGuideNotice(guideLink);
+  // A guide step is about the cards of one lane: that lane comes on screen.
+  const guideLane = usePhoneGuideLane(guideLink);
+  useEffect(() => {
+    if (guideLane) setLane(guideLane);
+  }, [guideLane]);
   // The first-run guide opens the sheet of a sample card, and learns whether the sheet is open.
   const answerRequest = useRef<(taskId: number) => void>(() => {});
   answerRequest.current = (taskId) => {

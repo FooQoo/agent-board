@@ -173,6 +173,12 @@ export function GuideLayer({
 
   // On the phone the finish notice sits in the screen's own flow, which the screen draws.
   const phoneLink = phone?.link ?? null;
+  // On the phone one lane is on screen at a time: the step's lane is brought there.
+  useEffect(() => {
+    if (!phoneLink || !stepColumn) return undefined;
+    phoneLink.setLane(stepColumn);
+    return () => phoneLink.setLane(null);
+  }, [phoneLink, stepColumn]);
   const showNotice = screen.kind === 'notice';
   const noticeText = t('onboarding.archived');
   useEffect(() => {

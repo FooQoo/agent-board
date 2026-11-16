@@ -1,5 +1,5 @@
-// The phone presentation of the guide's spotlight: it frames the sample cards of the phone
-// screen's list, measured from the list itself, and offers copies of them inside the frame.
+// The phone presentation of the guide's spotlight: it frames the sample cards in the lane on the
+// phone screen, measured from the lane itself, and offers copies of them inside the frame.
 
 import { useCallback, useLayoutEffect, useState } from 'react';
 import type { TaskSummary } from '../../shared/api/contracts';
@@ -12,13 +12,17 @@ const PANEL_GAP = 12;
 /** The room around the cards inside the frame, in pixels. */
 const FRAME_PAD = 4;
 
+/** How long a lane takes to slide onto the screen, in milliseconds; the frame follows it. */
+const SLIDE_MS = 700;
+
 const listCard = (taskId: number) =>
-  document.querySelector<HTMLElement>(`.monitor-list .monitor-card[data-task-id="${taskId}"]`);
+  document.querySelector<HTMLElement>(`.monitor-lane .monitor-card[data-task-id="${taskId}"]`);
 
 /**
- * The frame of the phone list's cards with these IDs, in viewport pixels; `null` when none is on the
- * screen. The first card is scrolled into view when the cards change, since the stage holds the page's
- * own scrolling. The frame ends above the explanation panel; taller cards scroll inside it.
+ * The frame of the phone lane's cards with these IDs, in viewport pixels; `null` when none is on the
+ * screen. The first card is scrolled to the top of its lane when the cards change, since the stage
+ * holds the page's own scrolling, and the frame follows the lane while it slides onto the screen.
+ * The frame ends above the explanation panel; taller cards scroll inside it.
  */
 export function usePhoneTargetRect(taskIds: readonly number[]): SpotlightRect | null {
   const [rect, setRect] = useState<SpotlightRect | null>(null);
@@ -35,39 +39,53 @@ export function usePhoneTargetRect(taskIds: readonly number[]): SpotlightRect | 
     const top = Math.min(...boxes.map((box) => box.top)) - FRAME_PAD;
     const panel = document.querySelector<HTMLElement>('.onboarding-panel');
     const panelTop = panel ? panel.getBoundingClientRect().top : window.innerHeight;
-    setRect({
+    const next = {
       x: left - FRAME_PAD,
       y: top,
       width: right - left + FRAME_PAD * 2,
       maxHeight: Math.max(0, panelTop - PANEL_GAP - top),
-    });
+    };
+    setRect((previous) =>
+      previous &&
+      previous.x === next.x &&
+      previous.y === next.y &&
+      previous.width === next.width &&
+      previous.maxHeight === next.maxHeight
+        ? previous
+        : next,
+    );
   }, [key]);
   useLayoutEffect(() => {
-    // The explanation panel covers the bottom of the screen: the list gets room under its last card,
+    // The explanation panel covers the bottom of the screen: the lane gets room under its last card,
     // so the framed cards can always be scrolled above the panel.
     const first = key === '' ? null : listCard(Number(key.split(',')[0]));
-    const list = first?.closest<HTMLElement>('.monitor-list') ?? null;
+    const list = first?.closest<HTMLElement>('.monitor-lane__scroll') ?? null;
     const padded = list?.style.paddingBottom ?? '';
     const place = () => {
       const panel = document.querySelector<HTMLElement>('.onboarding-panel');
       if (list && panel)
         list.style.paddingBottom = `${panel.getBoundingClientRect().height + 24}px`;
-      first?.scrollIntoView?.({ block: 'start' });
+      // Only the lane scrolls: scrolling the card into view would also move the lanes sideways.
+      if (list && first)
+        list.scrollTop += first.getBoundingClientRect().top - list.getBoundingClientRect().top;
       measure();
     };
     place();
-    // The panel is drawn after this effect on the first render, so measure again once it is there.
-    const frame = window.requestAnimationFrame(place);
-    const observer = new ResizeObserver(measure);
-    observer.observe(document.body);
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    // The panel is drawn after this effect on the first render, and the lane may still be sliding
+    // onto the screen: place the cards on every frame until it is there. After that the frame keeps
+    // following the cards, since what the lane draws above them, such as the done lane's archive
+    // button, can arrive later and push them down without resizing the page.
+    const until = performance.now() + SLIDE_MS;
+    let frame = 0;
+    const follow = () => {
+      if (performance.now() < until) place();
+      else measure();
+      frame = window.requestAnimationFrame(follow);
+    };
+    frame = window.requestAnimationFrame(follow);
     return () => {
       window.cancelAnimationFrame(frame);
       if (list) list.style.paddingBottom = padded;
-      observer.disconnect();
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
     };
   }, [key, measure]);
   return rect;
