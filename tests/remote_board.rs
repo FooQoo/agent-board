@@ -303,6 +303,9 @@ fn without_a_session_every_api_and_the_event_stream_are_401() {
         ("GET", "/api/monitor-connections".to_string()),
         ("GET", "/api/nothing-here".to_string()),
     ] {
+        // A read carries no body: the 401 comes before any body is read, and an
+        // unread body on a read can break the connection.
+        let body = if method == "GET" { "" } else { "{}" };
         let reply = server.request(
             method,
             &path,
@@ -311,7 +314,7 @@ fn without_a_session_every_api_and_the_event_stream_are_401() {
                 ("Sec-Fetch-Site", "same-origin"),
                 ("Content-Type", "application/json"),
             ],
-            "{}",
+            body,
         );
         assert_eq!(reply.status, 401, "{method} {path}: {}", reply.body);
         assert!(reply.header("set-cookie").is_none(), "{method} {path}");
