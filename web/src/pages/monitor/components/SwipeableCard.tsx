@@ -28,10 +28,11 @@ export interface SwipeableCardProps
 }
 
 /**
- * Wraps a monitor card with what a finger does to it. A swipe to the left slides the whole card
- * left and shows the lane on the right and the archive; a swipe to the right shows the lane on the
- * left. Each tile grows from a dot as the card slides. The card itself is the child, so it keeps its own taps (the title opens the details).
- * While tiles are showing, a tap on the card closes them instead.
+ * Wraps a monitor card with what a finger does to it. Holding the card for a moment chooses it
+ * (a focus ring shows); after that, a swipe to the left on it slides it left and shows the lane on
+ * the right and the archive, and a swipe to the right shows the lane on the left. Each tile grows
+ * from a dot as the card slides. The card itself is the child, so it keeps its own taps (the title
+ * opens the details). While tiles are showing, a tap on the card closes them instead.
  */
 export function SwipeableCard({
   taskId,
@@ -118,6 +119,7 @@ export function SwipeableCard({
       className="swipe-card"
       data-swipe-card={taskId}
       data-revealed={revealed ?? undefined}
+      data-armed={gesture.armed || undefined}
       data-dragging={drag !== null || undefined}
       {...handlers}
       onClickCapture={(event) => {

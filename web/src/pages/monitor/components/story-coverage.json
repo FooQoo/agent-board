@@ -380,8 +380,13 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--edge-swipe-switches-lane",
-              "states": ["swipe from the screen edge over a card", "lane switch"],
+              "id": "pages-monitor-components-monitorlanes--hold-then-swipe-in-one-press",
+              "states": ["hold chooses the card", "same press swipes it open"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--swipe-on-card-switches-lane",
+              "states": ["swipe over a card that is not chosen", "lane switch"],
               "interaction": true
             }
           ]

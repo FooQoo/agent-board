@@ -4,8 +4,8 @@ import {
   cardOffset,
   cardSettles,
   clampLaneIndex,
-  EDGE_SWIPE_ZONE,
-  atScreenEdge,
+  ARM_TOLERANCE,
+  withinArmTolerance,
   laneIndex,
   neighbourLane,
   settleLane,
@@ -92,11 +92,9 @@ describe('card swipe', () => {
   });
 });
 
-describe('a swipe from the edge of the screen', () => {
-  it('starts within the zone at either edge', () => {
-    expect(atScreenEdge(EDGE_SWIPE_ZONE, 390)).toBe(true);
-    expect(atScreenEdge(390 - EDGE_SWIPE_ZONE, 390)).toBe(true);
-    expect(atScreenEdge(EDGE_SWIPE_ZONE + 1, 390)).toBe(false);
-    expect(atScreenEdge(195, 390)).toBe(false);
+describe('choosing a card', () => {
+  it('keeps the hold while the finger stays within the tolerance', () => {
+    expect(withinArmTolerance(3, 3)).toBe(true);
+    expect(withinArmTolerance(ARM_TOLERANCE + 1, 0)).toBe(false);
   });
 });

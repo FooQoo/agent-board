@@ -37,9 +37,9 @@ const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
 
 /**
  * The phone monitor's lanes: one lane on screen, the other two beside it on a track. Tabs and a
- * sideways swipe on empty space, or from the left or right edge of the screen, move the track. A
- * card slides left to show the lane on the right and the archive, or right to show the lane on the
- * left. Nothing here writes: every action is a callback.
+ * sideways swipe anywhere move the track. A card held for a moment is chosen and shows a focus
+ * ring; a later swipe on it slides it left to show the lane on the right and the archive, or right
+ * to show the lane on the left. Nothing here writes: every action is a callback.
  */
 export function MonitorLanes({
   lanes,
@@ -60,22 +60,28 @@ export function MonitorLanes({
     previewRevealed === undefined ? null : { id: previewRevealed, side: 'right' },
   );
 
+  // The card a hold chose: it shows a focus ring, and a sideways swipe on it opens its tiles.
+  const [armed, setArmed] = useState<number | null>(previewRevealed ?? null);
+
   const changeLane = (next: MonitorSection) => {
     setRevealed(null);
+    setArmed(null);
     onLaneChange(next);
   };
   const swipe = useLaneSwipe(viewport, { lane, onLaneChange: changeLane, disabled: false });
 
-  // A tap anywhere outside the card that shows its archive button closes it.
+  // A tap anywhere outside the chosen card lets it go and closes its tiles.
   useEffect(() => {
-    if (revealed === null) return;
+    if (armed === null) return;
     const close = (event: PointerEvent) => {
-      if (!(event.target as Element).closest(`[data-swipe-card="${revealed.id}"]`))
+      if (!(event.target as Element).closest(`[data-swipe-card="${armed}"]`)) {
+        setArmed(null);
         setRevealed(null);
+      }
     };
     document.addEventListener('pointerdown', close, true);
     return () => document.removeEventListener('pointerdown', close, true);
-  }, [revealed]);
+  }, [armed]);
 
   const track =
     swipe.offset === null
@@ -125,6 +131,11 @@ export function MonitorLanes({
                       }}
                       inactive={name !== lane}
                       revealed={revealed?.id === item.task.id ? revealed.side : null}
+                      armed={armed === item.task.id}
+                      onArm={() => {
+                        setRevealed(null);
+                        setArmed(item.task.id);
+                      }}
                       onRevealChange={(side) =>
                         setRevealed(side === null ? null : { id: item.task.id, side })
                       }

@@ -108,12 +108,17 @@ export function cardOffset(
   return raw;
 }
 
-/** How close (px) to the left or right edge of the screen a swipe starts to move the lanes. */
-export const EDGE_SWIPE_ZONE = 96;
+/** A card is held this long (ms) before it is chosen, and only a chosen card slides sideways. */
+export const ARM_HOLD_MS = 300;
+/**
+ * A finger may drift this far (px) during that hold. It is below the swipe slop, so a press that
+ * moves sooner becomes a lane swipe or a scroll before the card is chosen.
+ */
+export const ARM_TOLERANCE = 6;
 
-/** Whether a press at `x` starts at an edge of the screen, where a swipe moves the lanes. */
-export function atScreenEdge(x: number, screenWidth: number): boolean {
-  return x <= EDGE_SWIPE_ZONE || x >= screenWidth - EDGE_SWIPE_ZONE;
+/** Whether a press has stayed close enough to where it began to choose the card. */
+export function withinArmTolerance(dx: number, dy: number): boolean {
+  return Math.hypot(dx, dy) <= ARM_TOLERANCE;
 }
 
 /** The side a released card stays open on: past half its tiles, or flicked that way. */

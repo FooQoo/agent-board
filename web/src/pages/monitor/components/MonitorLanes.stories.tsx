@@ -13,6 +13,7 @@ import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask } from '../contracts';
 import type { LaneItems } from './MonitorLanes';
 import type { LanePending } from './MonitorLaneDialogs';
+import { ARM_HOLD_MS } from '../model/lanes';
 import { MonitorLanesScreen, type MonitorLanesScreenProps } from './MonitorLanesScreen';
 
 const LANE_PROJECT_NAME = 'agent-board';
@@ -183,6 +184,13 @@ function press(
     }),
   );
 }
+/** Holds a card still until it is chosen, then lets go: the card shows its focus ring. */
+const choose = async (card: Element, x: number, y: number) => {
+  press(card, 'pointerdown', x, y);
+  await new Promise((resolve) => setTimeout(resolve, ARM_HOLD_MS + 60));
+  press(card, 'pointerup', x, y);
+  await waitFor(() => expect(card).toHaveAttribute('data-armed'));
+};
 const cardOf = (canvas: HTMLElement, id: number) => {
   const found = canvas.querySelector(`[data-swipe-card="${id}"]`);
   if (!found) throw new Error(`No card ${id}.`);
@@ -289,18 +297,19 @@ export const EmptyDoneLane: Story = {
   },
 };
 
-/** Try it: tabs, a sideways swipe on empty space or from a screen edge, a swipe on a card. */
+/** Try it: tabs, a sideways swipe anywhere, a hold on a card and then a swipe on it. */
 export const Interactive: Story = {
   args: { initialLane: 'todo' },
 };
 
-/** A left swipe on a card reveals its archive button; a swipe back closes it. */
+/** A held card is chosen; a left swipe on it then reveals its archive button, a swipe back closes it. */
 export const SwipeRevealsArchive: Story = {
   args: { initialLane: 'todo' },
   play: async ({ canvasElement }) => {
     const card = cardOf(canvasElement, 15);
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
+    await choose(card, rect.right - 20, y);
     press(card, 'pointerdown', rect.right - 20, y);
     press(card, 'pointermove', rect.right - 60, y);
     press(card, 'pointermove', rect.right - 140, y);
@@ -314,7 +323,7 @@ export const SwipeRevealsArchive: Story = {
   },
 };
 
-/** A right swipe on a card in 進行中 shows the lane on its left, 未着手. */
+/** A right swipe on a chosen card in 進行中 shows the lane on its left, 未着手. */
 export const RightSwipeShowsLeftLane: Story = {
   args: { initialLane: 'doing' },
   play: async ({ canvasElement }) => {
@@ -325,6 +334,7 @@ export const RightSwipeShowsLeftLane: Story = {
     const id = card.dataset.swipeCard;
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
+    await choose(card, rect.left + 20, y);
     press(card, 'pointerdown', rect.left + 20, y);
     press(card, 'pointermove', rect.left + 60, y);
     press(card, 'pointermove', rect.left + 120, y);
@@ -336,25 +346,40 @@ export const RightSwipeShowsLeftLane: Story = {
   },
 };
 
-/** A swipe that starts at the right edge of the screen moves the lanes, even over a card. */
-export const EdgeSwipeSwitchesLane: Story = {
+/** A hold chooses the card, and the same press then swipes it open. */
+export const HoldThenSwipeInOnePress: Story = {
   args: { initialLane: 'todo' },
   play: async ({ canvasElement }) => {
-    const card = canvasElement.querySelector<HTMLElement>(
-      '.monitor-lane[data-lane="todo"] [data-swipe-card]',
-    );
-    if (!card) throw new Error('No todo card.');
+    const card = cardOf(canvasElement, 15);
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
-    const edge = window.innerWidth - 4;
-    // The lanes listen on their viewport; the press lands on the card under the edge.
-    press(card, 'pointerdown', edge, y);
-    for (const x of [edge - 30, edge - 140, edge - 240]) press(card, 'pointermove', x, y);
-    press(card, 'pointerup', edge - 240, y);
+    press(card, 'pointerdown', rect.right - 20, y);
+    await new Promise((resolve) => setTimeout(resolve, ARM_HOLD_MS + 60));
+    await waitFor(() => expect(card).toHaveAttribute('data-armed'));
+    press(card, 'pointermove', rect.right - 60, y);
+    press(card, 'pointermove', rect.right - 140, y);
+    press(card, 'pointerup', rect.right - 140, y);
+    await waitFor(() => expect(card).toHaveAttribute('data-revealed', 'right'));
+    await expect(tab(canvasElement, '未着手')).toHaveAttribute('aria-selected', 'true');
+  },
+};
+
+/** A sideways swipe on a card that is not chosen moves the lanes; the card does not slide. */
+export const SwipeOnCardSwitchesLane: Story = {
+  args: { initialLane: 'todo' },
+  play: async ({ canvasElement }) => {
+    const card = cardOf(canvasElement, 15);
+    const rect = card.getBoundingClientRect();
+    const y = rect.top + 20;
+    press(card, 'pointerdown', rect.right - 20, y);
+    for (const x of [rect.right - 50, rect.right - 160, rect.right - 260])
+      press(card, 'pointermove', x, y);
+    press(card, 'pointerup', rect.right - 260, y);
     await waitFor(() =>
       expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
     );
     await expect(card).not.toHaveAttribute('data-revealed');
+    await expect(card).not.toHaveAttribute('data-armed');
   },
 };
 

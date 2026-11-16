@@ -1,13 +1,15 @@
 import { useRef, useState, type PointerEvent, type RefObject } from 'react';
 import type { MonitorSection } from '../components/MonitorSectionHeader';
 import { capturePointer } from './useCardGesture';
-import { SWIPE_SLOP, atScreenEdge, settleLane, swipeAxis, trackOffset } from '../model/lanes';
+import { SWIPE_SLOP, settleLane, swipeAxis, trackOffset } from '../model/lanes';
+
+/** A card that is chosen: its sideways moves slide it, not the lanes. */
+const CHOSEN = '[data-swipe-card][data-armed]';
 
 /**
- * The sideways swipe on empty space that moves to the neighbouring lane. The track follows the
- * finger, gives at the ends of the row, and settles with a slide. A press that lands on a card is
- * left to the card, which has its own sideways gestures, unless it starts at the left or right edge
- * of the screen: from there a swipe always moves the lanes.
+ * The sideways swipe that moves to the neighbouring lane. The track follows the finger, gives at
+ * the ends of the row, and settles with a slide. It starts anywhere, on a card too, except on a
+ * card that is chosen: that one slides to show its tiles instead.
  */
 export function useLaneSwipe(
   ref: RefObject<HTMLElement | null>,
@@ -46,10 +48,8 @@ export function useLaneSwipe(
       onPointerDown: (event: PointerEvent<HTMLElement>) => {
         if (disabled || !event.isPrimary || event.button !== 0) return;
         const target = event.target as Element;
-        if (target.closest('[data-lane-ignore]')) return;
-        // On a card the swipe is the card's, unless it starts at the edge of the screen.
-        const edge = atScreenEdge(event.clientX, window.innerWidth);
-        if (!edge && target.closest('[data-swipe-card],button,a')) return;
+        // A chosen card and its tiles keep their own sideways moves; any other card does not.
+        if (target.closest(`[data-lane-ignore],[data-swipe-action],${CHOSEN}`)) return;
         const width = ref.current?.clientWidth ?? event.currentTarget.clientWidth;
         press.current = {
           x: event.clientX,
@@ -69,6 +69,11 @@ export function useLaneSwipe(
         if (dt > 0) speed.current = (event.clientX - last.current.x) / dt;
         last.current = { x: event.clientX, t: event.timeStamp };
         if (!swiping.current) {
+          // A card chosen during this press (by holding it) takes the move.
+          if ((event.target as Element).closest(CHOSEN)) {
+            press.current = null;
+            return;
+          }
           const axis = swipeAxis(dx, event.clientY - was.y, SWIPE_SLOP);
           if (axis === null) return;
           if (axis === 'y') {
