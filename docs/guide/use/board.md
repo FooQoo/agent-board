@@ -90,7 +90,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 ## Narrow windows and phones {#narrow-windows-and-phones}
 
-When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes: the counts of Todo, Doing, and Done, the **Unanswered questions** band, which starts closed and shows its count in the header, and a list of tasks. Choose a task to read it in a drawer, check its conditions, and answer a decision. The project switcher and the settings button stay in the header. Adding, editing, moving, and archiving tasks are for a wider window.
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Unanswered questions** band above the tabs, which starts closed and shows its count in the header. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
 
 The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Mobile monitor](../operations/mobile-monitor).
 

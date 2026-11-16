@@ -12,7 +12,35 @@ This feature is in public preview. Its behavior and specifications may change. S
 
 ## What the monitor shows
 
-The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The monitor groups tasks into Todo, Doing, and Done. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom. The **Unanswered questions** band under the counts shows the number of open questions and starts closed; select its header to list them, pick one to answer it alone, or answer them in a row and send them together (see [Decisions](../use/decisions#answer-on-your-phone)). Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](../use/board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
+The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
+
+The **Unanswered questions** band sits above the lane tabs. It shows the number of open questions and starts closed; select its header to list them, pick one to answer it alone, or answer them in a row and send them together (see [Decisions](../use/decisions#answer-on-your-phone)).
+
+![Mobile monitor showing the Doing lane with its tab bar, the collapsed Unanswered questions band, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
+
+### Switch lanes
+
+The tabs under the header are named **Todo**, **Doing**, and **Done**, and each shows how many tasks its lane holds. Tap a tab to show that lane. You can also swipe sideways anywhere on the lane, including from a task you have not chosen, to move to the lane beside it. A swipe past Todo or Done stays where it is. Each lane scrolls on its own, and a vertical scroll never changes the lane.
+
+### Move or archive a task
+
+Moving and archiving start from a task you have chosen, so a stray swipe does not change anything.
+
+1. Press and hold a task until it shows an outline. That chooses it.
+2. Swipe the chosen task sideways. A swipe to the left shows a button for the next lane and the red **Archive** button with a trash can icon. A swipe to the right shows a button for the previous lane. The same press that chose the task can continue into the swipe. Each lane button shows the icon of its lane; a screen reader reads it as, for example, **Move #3 to Doing**.
+3. Tap a button. A lane button opens **Move task**, where you can add a reason and choose **Move**. The archive button opens **Archive task**, where you choose **Archive**. Nothing changes until you confirm, and **Cancel** leaves the task where it was.
+
+![Mobile monitor with a chosen task slid open, showing its move and archive buttons](../../images/mobile-swipe.png){.screenshot--narrow}
+
+Swipe the task back, or tap anywhere outside it, to close the buttons without a change. A swipe never deletes a task. Archived tasks can be restored, and permanent deletion is only available from the archive screen of a wider window, as on the PC.
+
+### Archive all done tasks
+
+The Done lane has an **Archive all** button above its list. It opens **Archive completed tasks**, which lists every task that would be archived; choose **Archive** with the count to confirm. The button is disabled while the lane is empty.
+
+### Read a task
+
+Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](../use/board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
 
 ![Mobile monitor with a task drawer open on the Conditions tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
 
@@ -125,7 +153,7 @@ When the computer sleeps or the server stops, the monitor is unavailable until t
 
 ## Check on a phone
 
-Responsive browser tests cover narrow viewports; the software keyboard needs a real-device check. Open the monitor in the phone's browser and open the answer sheet of a Todo or Doing task with a Pending question. Confirm that the keyboard leaves the answer field and the Previous and Next buttons reachable, then send the answer with Send on its last question. Also check scrolling in long Body, Conditions, and Epic tabs, horizontal tab swipes, and downward dismissal from the handle and header. Browser emulation alone does not verify Safari's keyboard behavior.
+On a tablet or phone, the page keeps the height it had before the software keyboard opened, so the lanes do not jump. While the keyboard is open, a dialog that is normally centered moves to the top of the screen, and the answer sheet keeps its top on screen, so the field you type in stays above the keyboard. Responsive browser tests cover narrow viewports; the software keyboard needs a real-device check. Open the monitor in the phone's browser and open the answer sheet of a Todo or Doing task with a Pending question. Confirm that the keyboard leaves the answer field and the Previous and Next buttons reachable, then send the answer with Send on its last question. Also check scrolling in long Body, Conditions, and Epic tabs, horizontal tab swipes, and downward dismissal from the handle and header. Browser emulation alone does not verify Safari's keyboard behavior.
 
 ## Next
 

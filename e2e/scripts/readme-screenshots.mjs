@@ -16,6 +16,7 @@ try {
     const home = mkdtempSync(path.join(os.tmpdir(), 'agboard-readme-'));
     let server;
     let context;
+    let phoneContext;
     try {
       const text = copy[locale];
       const id = seed(home, text);
@@ -52,46 +53,79 @@ try {
       await settle(page);
       await page.screenshot({ path: path.join(output, `epic${suffix}.png`) });
 
-      await page.setViewportSize({ width: 390, height: 844 });
-      await server.open(page, `${remote}/?project=${id}`);
-      await expect(page.getByRole('status')).toContainText(text.ready);
-      const waiting = page.getByRole('article', { name: /^#3(?!\d)/ });
-      // The monitor's card list, under the band that lists the waiting question.
-      const band = page.getByRole('region', { name: locale === 'ja' ? '未回答の質問' : 'Unanswered questions', exact: true });
-      // The band starts closed; open it so the screenshot shows the waiting question.
-      await band.getByRole('button', { name: locale === 'ja' ? /^未回答の質問を表示する/ : /^Show unanswered questions/ }).click();
-      await expect(band.getByRole('listitem')).toHaveCount(1);
-      await expect(band).toBeInViewport();
-      await settle(page);
-      await page.screenshot({ path: path.join(output, `mobile-cards${suffix}.png`) });
+      // The phone is a touch device of its own: a long press and a swipe are real touch events.
+      phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, timezoneId: 'UTC' });
+      const phone = await phoneContext.newPage();
+      phone.on('pageerror', (error) => errors.push(error.message));
+      await server.open(phone, `${remote}/?project=${id}`);
+      await expect(phone.getByRole('status')).toContainText(text.ready);
+      const waiting = phone.getByRole('article', { name: /^#3(?!\d)/ });
+      // The monitor shows one lane at a time: open Doing, which holds the waiting question's card.
+      // The lanes slide when the tab changes: measure and capture only after they stopped moving.
+      const stable = async (locator) => {
+        let last = '';
+        await expect.poll(async () => {
+          const now = JSON.stringify(await locator.boundingBox());
+          const still = now === last;
+          last = now;
+          return still;
+        }).toBe(true);
+      };
+      const tabs = phone.getByRole('tablist', { name: locale === 'ja' ? 'レーン' : 'Lanes', exact: true });
+      await tabs.getByRole('tab', { name: locale === 'ja' ? /^進行中/ : /^Doing/ }).tap();
+      await expect(tabs.getByRole('tab', { selected: true })).toHaveText(locale === 'ja' ? /進行中/ : /Doing/);
+      await expect(waiting).toBeVisible();
+      await stable(waiting);
+      await settle(phone);
+      await phone.screenshot({ path: path.join(output, `mobile-cards${suffix}.png`) });
+      // A card held for a moment is chosen; sliding it open shows its buttons.
+      const swipeCard = phone.locator('[data-swipe-card]').filter({ has: phone.getByRole('article', { name: /^#7(?!\d)/ }) });
+      await stable(swipeCard);
+      const box = await swipeCard.boundingBox();
+      const y = box.y + box.height / 2;
+      const cdp = await phoneContext.newCDPSession(phone);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width * 0.8, y }] });
+      await expect(swipeCard).toHaveAttribute('data-armed', 'true');
+      for (let step = 1; step <= 12; step += 1) {
+        await cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: box.x + box.width * (0.8 - 0.6 * (step / 12)), y }],
+        });
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await cdp.detach();
+      await expect(swipeCard).toHaveAttribute('data-revealed', 'right');
+      await settle(phone);
+      await phone.screenshot({ path: path.join(output, `mobile-swipe${suffix}.png`) });
       // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
       await waiting.getByRole('button', { name: answerLabel, exact: true }).scrollIntoViewIfNeeded();
       await waiting.getByRole('button', { name: answerLabel, exact: true }).click();
-      const sheet = page.getByRole('dialog', { name: text.titles[2], exact: true });
+      const sheet = phone.getByRole('dialog', { name: text.titles[2], exact: true });
       await expect(sheet.getByText(text.question, { exact: true })).toBeVisible();
       await sheet.getByRole('radio', { name: text.choices[0], exact: true }).click();
-      await settle(page);
-      await page.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
+      await settle(phone);
+      await phone.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
       // Closing keeps the picked choice as a draft, so the card then offers "Continue answering".
       await sheet.getByRole('button', { name: locale === 'ja' ? '回答を閉じる' : 'Close the answer', exact: true }).click();
       await expect(sheet).toHaveCount(0);
-      await page.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
-      await expect(page.getByRole('tab')).toHaveCount(4);
-      await page.getByRole('tab', { name: text.tab, exact: true }).click();
-      const panel = page.getByRole('tabpanel', { name: text.tab, exact: true });
+      await phone.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
+      await expect(phone.getByRole('tab')).toHaveCount(4);
+      await phone.getByRole('tab', { name: text.tab, exact: true }).click();
+      const panel = phone.getByRole('tabpanel', { name: text.tab, exact: true });
       await expect(panel).toBeVisible();
       // Embla animates with requestAnimationFrame, outside the Web Animations API.
       await expect.poll(async () => {
         const [slide, viewport] = await Promise.all([
-          panel.boundingBox(), page.locator('.monitor-drawer__panels').boundingBox(),
+          panel.boundingBox(), phone.locator('.monitor-drawer__panels').boundingBox(),
         ]);
         return Math.abs(slide.x - viewport.x);
       }).toBeLessThan(1);
-      await settle(page);
-      await page.screenshot({ path: path.join(output, `mobile${suffix}.png`) });
+      await settle(phone);
+      await phone.screenshot({ path: path.join(output, `mobile${suffix}.png`) });
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured board, epic progress, the mobile cards, question, and drawer; no browser errors.`);
+      console.log(`${locale}: captured board, epic progress, the mobile lane, swipe buttons, question, and drawer; no browser errors.`);
     } finally {
+      await phoneContext?.close();
       await context?.close();
       await stop(server);
       rmSync(home, { recursive: true, force: true });

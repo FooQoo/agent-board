@@ -344,7 +344,7 @@ for (const width of [375, 1440]) {
         await page.addInitScript((value) => {
           localStorage.setItem('vitepress-theme-appearance', value);
         }, scheme);
-        await page.goto(devPagePath(lang, 'reference/remote-routes'));
+        await page.goto(devPagePath(lang, 'reference/errors'));
         const table = page.locator('.vp-doc table').first();
         await expect(table).toBeVisible();
         const dimensions = await table.evaluate((el) => ({

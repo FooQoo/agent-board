@@ -84,6 +84,7 @@
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
 - `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
 - `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`answerStart.ts`は単独とまとめての2種類の回答の流れに名前を付け、`runPlan`がそれぞれの持つ質問を決め、`useAnswerFlow.ts`はPCのダイアログとスマホ画面のシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯で、PCのボードとスマホ画面で共通の、開閉できる帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
+- `web/src/pages/monitor/`: スマホ幅の画面です。`View.tsx`がヘッダー、質問の帯、レーンのタブ、レーンを組み立てます。`components/LaneTabs.tsx`は件数付きのタブ、`components/MonitorLanes.tsx`は指に追従するレーンのカルーセル（`hooks/useLaneCarousel.ts`）、`components/SwipeableCard.tsx`と`hooks/useCardGesture.ts`はカードの長押しで選ぶ動きとスライドして開く動き（`web/src/shared/lib/gesture/useSideSwipe.ts`の上に作っています）、`components/MonitorLaneDialogs.tsx`は移動・アーカイブ・まとめてアーカイブの確認です。`model/lanes.ts`はレーンの並びとスワイプで出るボタンを持ち、`hooks/useLaneOverlay.ts`はこのスマホが保存した内容を次の読み取りまで画面に残します。`components/MonitorLanesScreen.tsx`は同じ部品をStorybook用に組み立てます。`web/src/shared/viewport/stableHeight.ts`はソフトウェアキーボードが開いている間のページの高さを保ちます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
 ### プロジェクトのドキュメント
