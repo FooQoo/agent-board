@@ -12,6 +12,11 @@ export interface DetailWidth {
   startDrag: (clientX: number) => void;
   moveDrag: (clientX: number) => void;
   endDrag: () => void;
+  /**
+   * Starts watching the body element once it is in the page. The board is loaded after the hook
+   * starts, so the body can appear later; give this as the body's ref callback.
+   */
+  observeBody: (node: HTMLElement | null) => void;
 }
 
 const px = (value: string) => Number.parseFloat(value) || 0;
@@ -64,17 +69,31 @@ export function useDetailWidth(
     measure();
   }, [measure, contentKey]);
 
+  const measureRef = useRef(measure);
+  measureRef.current = measure;
+  const observer = useRef<{ node: HTMLElement; observer: ResizeObserver | null } | null>(null);
+  const observeBody = useCallback((node: HTMLElement | null) => {
+    if (observer.current?.node === node) return;
+    observer.current?.observer?.disconnect();
+    observer.current = null;
+    if (!node) return;
+    const watcher =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => measureRef.current());
+    watcher?.observe(node);
+    observer.current = { node, observer: watcher };
+    measureRef.current();
+  }, []);
+
   useEffect(() => {
     window.addEventListener('resize', measure);
-    const body = bodyRef.current;
-    const observer =
-      typeof ResizeObserver === 'undefined' || !body ? null : new ResizeObserver(measure);
-    if (observer && body) observer.observe(body);
-    return () => {
-      window.removeEventListener('resize', measure);
-      observer?.disconnect();
-    };
-  }, [measure, bodyRef]);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure]);
+
+  // A body that is already in the page when the hook starts is watched at once.
+  useEffect(() => {
+    observeBody(bodyRef.current);
+    return () => observeBody(null);
+  }, [observeBody, bodyRef]);
 
   const startDrag = useCallback((clientX: number) => {
     drag.current = {
@@ -101,5 +120,5 @@ export function useDetailWidth(
 
   useEffect(() => () => document.body.classList.remove('is-resizing'), []);
 
-  return { width: clampWidth(preferred, layoutMax), startDrag, moveDrag, endDrag };
+  return { width: clampWidth(preferred, layoutMax), startDrag, moveDrag, endDrag, observeBody };
 }

@@ -222,16 +222,24 @@ export function useAppController(initial: AppInitial | undefined): AppController
 
   const detailShown = view !== 'projects-loading' && view !== 'projects-error';
   const bodyRef = useRef<HTMLDivElement>(null);
+  // The board is loaded after this hook starts, so its body is watched from its ref callback.
+  const observeBody = useRef<(node: HTMLElement | null) => void>(() => {});
+  const attachBodyRef = useCallback((node: HTMLDivElement | null) => {
+    bodyRef.current = node;
+    observeBody.current(node);
+  }, []);
   const layoutRef = useRef<HTMLElement>(null);
   const attachLayoutRef = useCallback((node: HTMLElement | null) => {
     layoutRef.current = node;
   }, []);
-  const { width, startDrag, moveDrag, endDrag } = useDetailWidth(
+  const detailWidth = useDetailWidth(
     bodyRef,
     layoutRef,
     `${detailShown}:${session.viewMode}:${view}:${archive.status}`,
     epicsVisible ? 1 : 3,
   );
+  observeBody.current = detailWidth.observeBody;
+  const { width, startDrag, moveDrag, endDrag } = detailWidth;
   const [mockInitial] = useState(initial);
   const isMockTask = selected !== null && selected.id === mockInitial?.select;
   const retry = view === 'projects-error' ? projects.reload : board.reload;
@@ -266,7 +274,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     connected: !streamDown && !board.fetchFailed && !projects.fetchFailed,
     streamDown,
     width,
-    bodyRef,
+    bodyRef: attachBodyRef,
     attachLayoutRef,
     startDrag,
     moveDrag,

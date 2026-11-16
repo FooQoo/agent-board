@@ -1,4 +1,4 @@
-import type { Dispatch, RefCallback, RefObject } from 'react';
+import type { Dispatch, Ref, RefCallback } from 'react';
 import type { UseBoardResult } from '../pages/board/model/useBoard';
 import type {
   Epic,
@@ -63,7 +63,7 @@ export interface AppControllerModel {
   connected: boolean;
   streamDown: boolean;
   width: number;
-  bodyRef: RefObject<HTMLDivElement | null>;
+  bodyRef: Ref<HTMLDivElement>;
   attachLayoutRef: RefCallback<HTMLElement>;
   startDrag: (clientX: number) => void;
   moveDrag: (clientX: number) => void;

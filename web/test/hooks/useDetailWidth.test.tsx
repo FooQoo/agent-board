@@ -66,6 +66,20 @@ describe('useDetailWidth', () => {
     expect(document.body.classList.contains('is-resizing')).toBe(false);
   });
 
+  it('yields to the lanes when the body appears after the hook started', () => {
+    const { ref, layoutRef } = makeBody(1000);
+    const body = ref.current;
+    const late: { current: HTMLElement | null } = { current: null };
+    const { result } = renderHook(() => useDetailWidth(late, layoutRef, true));
+    expect(result.current.width).toBe(360);
+    act(() => {
+      late.current = body;
+      result.current.observeBody(body);
+    });
+    // 1000 - 24 - 24 - 2 * 12 - 3 * 200
+    expect(result.current.width).toBe(328);
+  });
+
   it('keeps the dragged width when saving fails', () => {
     const { ref, layoutRef } = makeBody(1600);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
