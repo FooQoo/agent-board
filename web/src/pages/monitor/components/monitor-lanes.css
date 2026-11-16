@@ -126,15 +126,9 @@
 .swipe-card__body {
   position: relative;
   width: 100%;
-  overflow: hidden;
   transition:
-    width 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 120ms;
-}
-/* While the card is narrowed, its title keeps one line and ends in an ellipsis. */
-.swipe-card[data-dragging] .monitor-card__title,
-.swipe-card[data-revealed] .monitor-card__title {
-  -webkit-line-clamp: 1;
 }
 .swipe-card[data-dragging] .swipe-card__body {
   transition: none;
