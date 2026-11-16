@@ -109,7 +109,7 @@ export function cardOffset(
 }
 
 /** How close (px) to the left or right edge of the screen a swipe starts to move the lanes. */
-export const EDGE_SWIPE_ZONE = 64;
+export const EDGE_SWIPE_ZONE = 96;
 
 /** Whether a press at `x` starts at an edge of the screen, where a swipe moves the lanes. */
 export function atScreenEdge(x: number, screenWidth: number): boolean {
