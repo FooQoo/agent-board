@@ -1,13 +1,17 @@
-// What the guide's controller returns to the view: the screen to show and the commands to send.
+// What the guide's controller returns to the view: the screen to show, the step, the sample cards
+// of that step, and the commands to run.
 
-import type { GuideState } from './api';
-import type { GuideScreen } from './guideTiming';
+import type { TaskSummary } from '../../shared/api/contracts';
+import type { GuideLocale } from './guideSamples';
+import type { GuidePhase, GuideScreen } from './guideTiming';
 
 export interface GuideController {
   screen: GuideScreen;
-  state: GuideState | null;
-  busy: boolean;
-  error: string | null;
+  phase: GuidePhase;
+  /** The sample cards as the step shows them; they are never part of the board. */
+  samples: TaskSummary[];
+  /** The language of the samples and of their question, fixed when the guide starts. */
+  locale: GuideLocale;
   /** True once a running card has been on screen for the minimum time, so its step can move on. */
   ready: boolean;
   start(): void;
@@ -15,5 +19,6 @@ export interface GuideController {
   next(): void;
   exit(): void;
   finish(): void;
-  retry(): void;
+  /** The sample question was answered: the second card resumes. */
+  answered(): void;
 }

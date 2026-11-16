@@ -7,8 +7,8 @@ import type { OnboardingCompleteProps } from '../model/viewContracts';
 import { DIALOG_TITLE_CLASS, WELCOME_DIALOG_CLASS } from './dialog-classes';
 import './onboarding.css';
 
-/** The last screen: what the user has tried, and the finish action that archives the two samples. */
-export function OnboardingComplete({ busy, error, onFinish }: OnboardingCompleteProps) {
+/** The last screen: what the user has tried, and the finish action. */
+export function OnboardingComplete({ onFinish }: OnboardingCompleteProps) {
   const { t } = useTranslation();
   const finishRef = useRef<HTMLButtonElement>(null);
   return (
@@ -17,7 +17,6 @@ export function OnboardingComplete({ busy, error, onFinish }: OnboardingComplete
         showCloseButton={false}
         overlayClassName="onboarding-overlay"
         className={`onboarding-dialog onboarding-dialog--card ${WELCOME_DIALOG_CLASS}`}
-        aria-busy={busy}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           finishRef.current?.focus();
@@ -37,15 +36,9 @@ export function OnboardingComplete({ busy, error, onFinish }: OnboardingComplete
           <li>✓ {t('onboarding.complete.pointFlow')}</li>
           <li>✓ {t('onboarding.complete.pointDecision')}</li>
         </ul>
-        <p className="onboarding-dialog__note">{t('onboarding.complete.archiveNote')}</p>
-        {error ? (
-          <p role="alert" className="onboarding-dialog__error">
-            {error}
-          </p>
-        ) : null}
         <div className="onboarding-dialog__actions mt-5">
-          <Button ref={finishRef} size="m" disabled={busy} onClick={onFinish}>
-            {error ? t('onboarding.guide.retry') : t('onboarding.complete.finish')}
+          <Button ref={finishRef} size="m" onClick={onFinish}>
+            {t('onboarding.complete.finish')}
           </Button>
         </div>
       </DialogContent>

@@ -5,21 +5,13 @@ import { TaskCardView } from '../../features/tasks/card/TaskCard';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
 import { OnboardingGuidePanel } from '../../features/onboarding/ui/OnboardingGuidePanel';
-import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
 import { OnboardingStage } from '../../features/onboarding/ui/OnboardingStage';
 import { OnboardingWelcome } from '../../features/onboarding/ui/OnboardingWelcome';
 import '../../features/onboarding/ui/onboarding.css';
 import { MockBoard, MockStageCards } from './MockBoard';
 import { doneSample, pendingSample, resumedSample, runningSample, samples } from './mock-data';
 
-export type ScreenKind =
-  | 'welcome'
-  | 'samples'
-  | 'running'
-  | 'pending'
-  | 'resumed'
-  | 'complete'
-  | 'archived';
+export type ScreenKind = 'welcome' | 'samples' | 'running' | 'pending' | 'resumed' | 'complete';
 
 const noop = () => {};
 
@@ -48,7 +40,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
       return (
         <>
           <MockBoard count={0} />
-          <OnboardingWelcome busy={false} error={null} onStart={noop} onSkip={noop} />
+          <OnboardingWelcome onStart={noop} onSkip={noop} />
         </>
       );
     case 'samples':
@@ -80,8 +72,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                 body={body('samples')}
                 hint={t('onboarding.guide.readFirst')}
                 actionLabel={t('onboarding.guide.watch')}
-                busy={false}
-                error={null}
                 onAction={noop}
                 onExit={noop}
               />
@@ -115,8 +105,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                 body={body('running')}
                 hint={t('onboarding.guide.readFirst')}
                 actionLabel={t('onboarding.guide.next')}
-                busy={false}
-                error={null}
                 onAction={noop}
                 onExit={noop}
               />
@@ -169,8 +157,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                 hint={t('onboarding.guide.waitingHint')}
                 waitingBadge={t('onboarding.guide.waitingBadge')}
                 actionLabel={t('onboarding.guide.next')}
-                busy={false}
-                error={null}
                 onAction={noop}
                 onExit={noop}
               />
@@ -204,8 +190,6 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
                 body={body('resumed')}
                 hint={t('onboarding.guide.readFirst')}
                 actionLabel={t('onboarding.guide.next')}
-                busy={false}
-                error={null}
                 onAction={noop}
                 onExit={noop}
               />
@@ -228,14 +212,7 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
               />,
             ]}
           />
-          <OnboardingComplete busy={false} error={null} onFinish={noop} />
-        </>
-      );
-    case 'archived':
-      return (
-        <>
-          <MockBoard count={0} emptyHint={t('onboarding.mock.emptyHint')} />
-          <OnboardingNotice message={t('onboarding.archived')} />
+          <OnboardingComplete onFinish={noop} />
         </>
       );
   }

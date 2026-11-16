@@ -6,7 +6,6 @@ export const onboardingJa = {
       body: '2枚のサンプルカードで、AIの作業と、あなたに判断が戻ってくる流れを体験できます。',
       stepWatch: 'サンプルカードの自動進行を見る',
       stepAnswer: 'AIからの質問に答えてみる',
-      archiveNote: 'ガイドで作るサンプル2枚は、完了時にアーカイブします。',
       simulated: 'このガイドではAIの進行を再現します。実際のAIとの接続は不要です。',
       skip: 'スキップ',
       start: 'ガイドを始める',
@@ -14,13 +13,11 @@ export const onboardingJa = {
     guide: {
       step: '使い方ガイド {{current}} / {{total}}',
       exit: 'ガイドを終了',
-      retry: '再試行',
       next: '次へ',
       watch: '動きを見る',
       readFirst: '説明を読んでから進められます',
       waitingHint: 'カードの回答を待っています',
       waitingBadge: '回答待ち',
-      networkError: 'サーバーに接続できませんでした。もう一度お試しください。',
     },
     steps: {
       samples: {
@@ -49,14 +46,13 @@ export const onboardingJa = {
       body: 'AIに任せ、必要なときに判断する。このボードで、あなたの作業を始めてみましょう。',
       pointFlow: 'AIの進み方が分かった',
       pointDecision: '判断への回答を体験した',
-      archiveNote: '完了すると、サンプル2枚をアーカイブします。',
       finish: '完了して始める',
     },
-    archived: 'サンプル2枚をアーカイブしました。',
     mock: {
       emptyHint: 'さっそく、最初の作業を追加してみましょう。',
     },
     sample: {
+      label: 'サンプル',
       follow: 'サンプル：使い方を確認する',
       guideStyle: 'サンプル：案内の見せ方を選ぶ',
       question: '案内の文章は、どちらが読みやすいですか？',

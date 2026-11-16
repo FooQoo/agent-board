@@ -47,13 +47,6 @@
   list-style: none;
 }
 
-.onboarding-dialog__note {
-  margin-top: 20px;
-  color: var(--r-text2);
-  font-size: 12px;
-  line-height: 19px;
-}
-
 .onboarding-dialog__actions {
   display: flex;
   gap: 12px;
@@ -63,21 +56,6 @@
 .onboarding-dialog__actions > button {
   flex: 1 1 0;
   min-width: 0;
-}
-
-.onboarding-dialog__error {
-  margin-top: 12px;
-}
-
-.onboarding-panel__error {
-  margin-top: 8px;
-}
-
-.onboarding-dialog__error,
-.onboarding-panel__error {
-  color: var(--r-danger);
-  font-size: 12px;
-  line-height: 19px;
 }
 
 .onboarding-panel {
@@ -176,42 +154,6 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 18px;
-}
-
-.onboarding-notice {
-  position: absolute;
-  top: 100px;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: min(500px, calc(100% - 48px));
-  height: 58px;
-  padding: 0 18px;
-  transform: translateX(-50%);
-  border: 1px solid var(--r-border);
-  border-radius: 10px;
-  background: var(--r-surface);
-  color: var(--r-text);
-  font-size: 14px;
-  box-shadow: 0 6px 18px rgb(15 23 42 / 0.12);
-}
-
-.onboarding-notice--inline {
-  position: static;
-  top: auto;
-  left: auto;
-  flex: none;
-  box-sizing: border-box;
-  width: 100%;
-  transform: none;
-}
-
-.onboarding-notice__icon {
-  width: 20px;
-  height: 20px;
-  color: var(--r-done);
-  flex-shrink: 0;
 }
 
 /*

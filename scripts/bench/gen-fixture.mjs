@@ -173,7 +173,7 @@ export function generateFixture(out, seed = DEFAULT_SEED) {
   // The first-run guide is marked as skipped, so the screen shows the board.
   writeFileSync(
     path.join(shared, '.internal', 'onboarding.json'),
-    jsonFile({ formatVersion: 1, revision: 1, status: 'skipped', owner: null, run: null, appliedCommands: [] }),
+    jsonFile({ formatVersion: 2, status: 'skipped' }),
   );
   mkdirSync(folder, { recursive: true });
   writeFileSync(path.join(folder, 'README.md'), `# ${PROJECT_NAME}\n\nBenchmark fixture written by scripts/bench/gen-fixture.mjs.\n`);

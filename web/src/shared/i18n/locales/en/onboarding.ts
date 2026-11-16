@@ -6,7 +6,6 @@ export const onboardingEn = {
       body: 'Follow two sample tasks to see how AI makes progress and asks for your decisions.',
       stepWatch: 'Watch a sample card move on its own',
       stepAnswer: 'Answer a question from AI',
-      archiveNote: 'The two sample cards are archived when you finish the guide.',
       simulated: 'This guide simulates AI progress. No AI agent is needed.',
       skip: 'Skip',
       start: 'Start guide',
@@ -14,13 +13,11 @@ export const onboardingEn = {
     guide: {
       step: 'Guide {{current}} / {{total}}',
       exit: 'End guide',
-      retry: 'Retry',
       next: 'Next',
       watch: 'Watch it move',
       readFirst: 'Read the note, then continue.',
       waitingHint: 'Waiting for your answer on the card',
       waitingBadge: 'Waiting for you',
-      networkError: 'The guide could not reach the server. Try again.',
     },
     steps: {
       samples: {
@@ -49,14 +46,13 @@ export const onboardingEn = {
       body: 'Let AI do the work and decide when it needs you. Start your own work on this board.',
       pointFlow: 'You saw how AI makes progress',
       pointDecision: 'You answered a decision',
-      archiveNote: 'Finishing archives the two sample cards.',
       finish: 'Finish and get started',
     },
-    archived: 'The two sample tasks have been archived.',
     mock: {
       emptyHint: 'Add your first task to get started.',
     },
     sample: {
+      label: 'Sample',
       follow: 'Sample: follow a task',
       guideStyle: 'Sample: choose the guide style',
       question: 'Which explanation is easier to read?',

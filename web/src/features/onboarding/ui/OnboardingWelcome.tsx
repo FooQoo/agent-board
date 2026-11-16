@@ -8,7 +8,7 @@ import { DIALOG_TITLE_CLASS, WELCOME_DIALOG_CLASS } from './dialog-classes';
 import './onboarding.css';
 
 /** The first screen: what the guide does, what it creates, and the choice to start or skip. */
-export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWelcomeProps) {
+export function OnboardingWelcome({ onStart, onSkip }: OnboardingWelcomeProps) {
   const { t } = useTranslation();
   const startRef = useRef<HTMLButtonElement>(null);
   return (
@@ -17,14 +17,13 @@ export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWe
         showCloseButton={false}
         overlayClassName="onboarding-overlay"
         className={`onboarding-dialog onboarding-dialog--card ${WELCOME_DIALOG_CLASS}`}
-        aria-busy={busy}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           startRef.current?.focus();
         }}
         onEscapeKeyDown={(event) => {
           event.preventDefault();
-          if (!busy) onSkip();
+          onSkip();
         }}
       >
         <SparklesIcon className="onboarding-dialog__icon" aria-hidden="true" />
@@ -44,18 +43,12 @@ export function OnboardingWelcome({ busy, error, onStart, onSkip }: OnboardingWe
             {t('onboarding.welcome.stepAnswer')}
           </li>
         </ol>
-        <p className="onboarding-dialog__note">{t('onboarding.welcome.archiveNote')}</p>
-        {error ? (
-          <p role="alert" className="onboarding-dialog__error">
-            {error}
-          </p>
-        ) : null}
         <div className="onboarding-dialog__actions mt-5">
-          <Button variant="outline" size="m" disabled={busy} onClick={onSkip}>
+          <Button variant="outline" size="m" onClick={onSkip}>
             {t('onboarding.welcome.skip')}
           </Button>
-          <Button ref={startRef} size="m" disabled={busy} onClick={onStart}>
-            {error ? t('onboarding.guide.retry') : t('onboarding.welcome.start')}
+          <Button ref={startRef} size="m" onClick={onStart}>
+            {t('onboarding.welcome.start')}
           </Button>
         </div>
       </DialogContent>

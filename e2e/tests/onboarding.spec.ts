@@ -1,15 +1,16 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { ensureProject, makeHome, projectId, removeHome, startServe, type Serve } from '../helpers/agboard';
 
-// The first-run guide on a data area that has never shown it. Each test starts its own
-// serve with its own data area, so the board tests are not affected.
+// The first-run guide runs in the browser: its two sample cards are drawn over the board and never
+// written to it, and the server only keeps whether the guide has been seen. Each test starts its
+// own serve with its own data area, so the board tests are not affected.
 
 const PROJECT = 'guide';
 let home = '';
 let serve: Serve | null = null;
 
-async function openFreshBoard(): Promise<string> {
-	home = makeHome('onboarding', 'unseen');
+async function openBoard(guide: 'unseen' | 'skipped' = 'unseen'): Promise<string> {
+	home = makeHome('onboarding', guide);
 	ensureProject(PROJECT, home);
 	serve = await startServe(home);
 	return serve.url;
@@ -24,93 +25,95 @@ test.afterEach(async () => {
 	home = '';
 });
 
-async function guideState(url: string): Promise<{ status: string; revision: number }> {
+async function guideStatus(url: string): Promise<string> {
 	const response = await fetch(`${url}api/onboarding`);
-	return (await response.json()) as { status: string; revision: number };
+	return ((await response.json()) as { status: string }).status;
 }
 
-/** The sample cards are the cards whose title starts with "Sample:" on the board. */
-async function sampleCardTitles(page: Page): Promise<string[]> {
-	return page.locator('.card').filter({ hasText: 'Sample:' }).allTextContents();
+/** The titles of the open cards the server holds for the project. */
+async function serverTitles(url: string): Promise<string[]> {
+	const response = await fetch(`${url}api/projects/${projectId(PROJECT, home)}/summary`);
+	const body = (await response.json()) as { tasks: { title: string }[] };
+	return body.tasks.map((task) => task.title);
 }
 
-test('OB-01: the guide runs both samples, takes the answer, and archives them', async ({ page }) => {
-	const url = await openFreshBoard();
+/** The board's own cards (not the spotlight's copies) whose title starts with "Sample:". */
+function boardSamples(page: Page) {
+	return page.locator('main .card').filter({ hasText: 'Sample:' });
+}
+
+/** Walks the guide to its last step, answering the question in the sample answer form. */
+async function walkToComplete(page: Page, answer: (page: Page) => ReturnType<Page['getByRole']>) {
+	await page.getByRole('button', { name: 'Watch it move' }).click();
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
+	await expect(page.getByText('The first card is done')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click();
+
+	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
+	await expect(page.locator('.onboarding-panel__badge')).toHaveText('Waiting for you');
+	const stage = page.getByRole('dialog', { name: 'Guide' });
+	await stage.getByRole('button', { name: 'Answer the question' }).click();
+	const form = answer(page);
+	await form.getByLabel('Keep it brief').check();
+	await form.getByRole('button', { name: 'Send', exact: true }).click();
+
+	await expect(page.getByText('Guide 4 / 4')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
+	await expect(page.getByText('You have completed the guide')).toBeVisible();
+}
+
+const dialogWithNote = (page: Page) =>
+	page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
+
+test('OB-01: the guide runs both samples, takes the answer, and leaves the board alone', async ({ page }) => {
+	const url = await openBoard();
 	await page.goto(url);
 
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
 	await page.getByRole('button', { name: 'Start guide' }).click();
-
 	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
-	await page.getByRole('button', { name: 'Watch it move' }).click();
+	// The samples are the guide's own: the board and the server have none of them.
+	await expect(boardSamples(page)).toHaveCount(0);
+	await expect(page.getByRole('dialog', { name: 'Guide' }).getByText('Sample: follow a task')).toBeVisible();
 
-	// The first card runs. Next is enabled once the running minimum has passed, and the card is then Done.
-	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Next' }).click();
-	await expect(page.getByText('The first card is done')).toBeVisible();
-	await page.getByRole('button', { name: 'Next' }).click();
-
-	// The second card asks its question and waits for the user.
-	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
-	await expect(page.locator('.onboarding-panel__badge')).toHaveText('Waiting for you');
-	// The card inside the guide's spotlight shows only the answer button; the answer is given in its dialog.
-	const stage = page.getByRole('dialog', { name: 'Guide' });
-	await stage.getByRole('button', { name: 'Answer the question' }).click();
-	const answer = page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
-	await answer.getByLabel('Keep it brief').check();
-	// The card's only question sends directly, with no review.
-	await answer.getByRole('button', { name: 'Send', exact: true }).click();
-
-	await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Next' }).click();
-
-	await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
+	await walkToComplete(page, dialogWithNote);
 	await page.getByRole('button', { name: 'Finish and get started' }).click();
-	await expect(page.getByText('The two sample tasks have been archived.')).toBeVisible();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 
-	expect((await guideState(url)).status).toBe('completed');
-	expect(await sampleCardTitles(page)).toEqual([]);
+	await expect.poll(() => guideStatus(url)).toBe('completed');
+	expect(await serverTitles(url)).toEqual([]);
+	await page.reload();
+	await expect(page.getByText('Try Agent Board')).toBeHidden();
 });
 
-test('OB-02: skipping creates no sample cards and the guide is not shown again', async ({ page }) => {
-	const url = await openFreshBoard();
+test('OB-02: skipping records it and the guide is not shown again', async ({ page }) => {
+	const url = await openBoard();
 	await page.goto(url);
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
 	await page.getByRole('button', { name: 'Skip' }).click();
 	await expect(page.getByText('Try Agent Board')).toBeHidden();
-	expect((await guideState(url)).status).toBe('skipped');
-	expect(await sampleCardTitles(page)).toEqual([]);
+	await expect.poll(() => guideStatus(url)).toBe('skipped');
 
 	await page.reload();
 	await expect(page.getByText('Try Agent Board')).toBeHidden();
 });
 
-test('OB-03: ending the guide early archives its two cards and offers a new run', async ({ page }) => {
-	const url = await openFreshBoard();
+test('OB-03: ending an offered guide early records a skip', async ({ page }) => {
+	const url = await openBoard();
 	await page.goto(url);
 	await page.getByRole('button', { name: 'Start guide' }).click();
-	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
 	await page.getByRole('button', { name: 'Watch it move' }).click();
-	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
 
 	await page.getByRole('button', { name: 'End guide' }).click();
 	await expect(page.getByText('Guide 2 / 4')).toBeHidden();
-	expect((await guideState(url)).status).toBe('interrupted');
-	expect(await sampleCardTitles(page)).toEqual([]);
-
-	await page.reload();
-	await expect(page.getByText('Try Agent Board')).toBeVisible();
+	await expect.poll(() => guideStatus(url)).toBe('skipped');
+	expect(await serverTitles(url)).toEqual([]);
 });
 
-async function openSkippedBoard(): Promise<string> {
-	home = makeHome('onboarding-tutorial', 'skipped');
-	ensureProject(PROJECT, home);
-	serve = await startServe(home);
-	return serve.url;
-}
-
-test('OB-04: the settings start the tutorial again, and ending it archives its samples', async ({ page }) => {
-	const url = await openSkippedBoard();
+test('OB-04: the settings show the tutorial again, and ending a replay records nothing', async ({ page }) => {
+	const url = await openBoard('skipped');
 	await page.goto(url);
 	await expect(page.getByText('Try Agent Board')).toBeHidden();
 
@@ -123,76 +126,27 @@ test('OB-04: the settings start the tutorial again, and ending it archives its s
 	await page.getByRole('button', { name: 'End guide' }).click();
 
 	await expect(page.getByText('Guide 1 / 4')).toBeHidden();
-	expect(await sampleCardTitles(page)).toEqual([]);
-	expect((await guideState(url)).status).toBe('interrupted');
+	expect(await guideStatus(url)).toBe('skipped');
+	expect(await serverTitles(url)).toEqual([]);
 });
 
-/** The titles of the cards the server holds for a project, from the board (open cards) or the archive. */
-async function serverTitles(url: string, id: string, list: 'board' | 'archive'): Promise<string[]> {
-	// The open cards are listed in the Summary.
-	const response = await fetch(`${url}api/projects/${id}/${list === 'board' ? 'summary' : list}`);
-	expect(response.ok).toBe(true);
-	const body = (await response.json()) as { tasks: { title: string }[] };
-	return body.tasks.map((task) => task.title).sort();
-}
-
-test('OB-05: a tutorial started in a second project puts its samples on that project', async ({ page }) => {
-	home = makeHome('onboarding-switch', 'skipped');
-	ensureProject('first', home);
-	ensureProject('second', home);
-	serve = await startServe(home);
-	const url = serve.url;
+test('OB-05: a second tab can show the guide at the same time', async ({ page, context }) => {
+	const url = await openBoard();
 	await page.goto(url);
-
-	// Whichever project opens first, the other one is the second project the user switches to.
-	const switcher = page.locator('header .project-switcher');
-	await expect(switcher).toHaveText(/^(first|second)$/);
-	const opened = (await switcher.innerText()).trim();
-	const target = opened === 'first' ? 'second' : 'first';
-	const openedId = projectId(opened, home);
-	const targetId = projectId(target, home);
-	await switcher.click();
-	await page.getByRole('menuitemradio', { name: target, exact: true }).click();
-	await expect(switcher).toHaveText(target);
-	await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(targetId);
-	await expect(page.getByText('Try Agent Board')).toBeHidden();
-
-	await page.getByRole('button', { name: 'Settings' }).click();
-	await page.getByRole('button', { name: 'Try it' }).click();
 	await expect(page.getByText('Try Agent Board')).toBeVisible();
-	await page.getByRole('button', { name: 'Start guide' }).click();
-	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
 
-	// The board behind the guide shows exactly the two cards of the run (the guide's spotlight shows copies of them).
-	const samples = ['Sample: choose the guide style', 'Sample: follow a task'];
-	const boardCards = page.locator('main .card').filter({ hasText: 'Sample:' });
-	await expect(boardCards).toHaveCount(2);
-	await expect(boardCards.filter({ hasText: samples[0] })).toHaveCount(1);
-	await expect(boardCards.filter({ hasText: samples[1] })).toHaveCount(1);
-	expect(new URL(page.url()).searchParams.get('project')).toBe(targetId);
-
-	// The server agrees: the cards belong to the project on screen, and the project opened first has none.
-	expect(await serverTitles(url, targetId, 'board')).toEqual(samples);
-	expect(await serverTitles(url, openedId, 'board')).toEqual([]);
-
-	await page.getByRole('button', { name: 'End guide' }).click();
-	await expect(page.getByText('Guide 1 / 4')).toBeHidden();
-	await expect.poll(async () => sampleCardTitles(page)).toEqual([]);
-	expect((await guideState(url)).status).toBe('interrupted');
-	expect(await serverTitles(url, targetId, 'board')).toEqual([]);
-	expect(await serverTitles(url, targetId, 'archive')).toEqual(samples);
-	expect(await serverTitles(url, openedId, 'archive')).toEqual([]);
+	const other = await context.newPage();
+	await other.goto(url);
+	await expect(other.getByText('Try Agent Board')).toBeVisible();
+	await other.getByRole('button', { name: 'Start guide' }).click();
+	await expect(other.getByText('Guide 1 / 4')).toBeVisible();
+	await expect(page.getByText('Try Agent Board')).toBeVisible();
 });
 
 const PHONE = { width: 390, height: 844 };
 
-/** The answer sheet of the phone screen: the dialog that holds the note field. */
-function phoneSheet(page: Page) {
-	return page.getByRole('dialog').filter({ has: page.getByRole('textbox', { name: 'Note' }) });
-}
-
 test('OB-06: at phone width the guide runs to the end, with the answer given in the sheet', async ({ page }) => {
-	const url = await openFreshBoard();
+	const url = await openBoard();
 	await page.setViewportSize(PHONE);
 	await page.goto(url);
 
@@ -200,44 +154,42 @@ test('OB-06: at phone width the guide runs to the end, with the answer given in 
 	await page.getByRole('button', { name: 'Start guide' }).click();
 	await expect(page.getByText('Guide 1 / 4')).toBeVisible();
 	await page.getByRole('button', { name: 'Watch it move' }).click();
-	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
-	await page.getByRole('button', { name: 'Next' }).click();
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
+	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
 	await expect(page.getByText('The first card is done')).toBeVisible();
 	await page.getByRole('button', { name: 'Next' }).click();
 
 	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
-	await expect(page.locator('.onboarding-panel__badge')).toHaveText('Waiting for you');
 	const stage = page.getByRole('dialog', { name: 'Guide' });
 	await stage.getByRole('button', { name: 'Answer the question' }).click();
 	// While the sheet is open the explanation is a strip: its title and body are gone.
 	await expect(page.locator('.onboarding-panel--compact')).toBeVisible();
-	const sheet = phoneSheet(page);
+	const sheet = dialogWithNote(page);
 	await sheet.getByLabel('Keep it brief').check();
 	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
 
-	await expect(page.getByText('Guide 4 / 4')).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText('Guide 4 / 4')).toBeVisible();
 	await expect(page.locator('.onboarding-panel--compact')).toHaveCount(0);
-	await page.getByRole('button', { name: 'Next' }).click();
-	await expect(page.getByText('You have completed the guide')).toBeVisible({ timeout: 15_000 });
+	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
+	await expect(page.getByText('You have completed the guide')).toBeVisible();
 	await page.getByRole('button', { name: 'Finish and get started' }).click();
-	// The notice sits in the phone screen's own flow.
-	await expect(page.locator('.monitor-shell .onboarding-notice--inline')).toHaveText(/archived/);
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 
-	expect((await guideState(url)).status).toBe('completed');
+	await expect.poll(() => guideStatus(url)).toBe('completed');
 });
 
 test('OB-07: a change of width in the middle of the guide keeps the screen it is on', async ({ page }) => {
-	const url = await openFreshBoard();
+	const url = await openBoard();
 	await page.goto(url);
 	await page.getByRole('button', { name: 'Start guide' }).click();
 	await page.getByRole('button', { name: 'Watch it move' }).click();
-	await expect(page.getByText('Guide 2 / 4')).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
 
-	// To the phone: the same step, with the same run, now over the phone screen.
+	// To the phone: the same step, now over the phone screen.
 	await page.setViewportSize(PHONE);
 	await expect(page.getByText('Guide 2 / 4')).toBeVisible();
 	await expect(page.locator('.monitor-shell')).toBeVisible();
-	await page.getByRole('button', { name: 'Next' }).click();
+	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
 	await expect(page.getByText('The first card is done')).toBeVisible();
 	await page.getByRole('button', { name: 'Next' }).click();
 	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
@@ -247,5 +199,4 @@ test('OB-07: a change of width in the middle of the guide keeps the screen it is
 	await expect(page.getByText('Guide 3 / 4')).toBeVisible();
 	await expect(page.locator('.monitor-shell')).toHaveCount(0);
 	await expect(page.getByRole('dialog', { name: 'Guide' }).getByRole('button', { name: 'Answer the question' })).toBeVisible();
-	expect((await guideState(url)).status).toBe('active');
 });

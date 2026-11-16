@@ -47,9 +47,6 @@ export function useAppActions(model: AppControllerModel) {
     onSelectEpic: (id) => dispatch({ type: 'SELECT_EPIC', id }),
     onSelectArchiveCard: (id) => dispatch({ type: 'SELECT_ARCHIVE_CARD', id }),
     onSelectCard: (id) => dispatch({ type: 'SELECT_CARD', id }),
-    onAnswerChanged: () => {
-      if (isProjectId(activeId)) refreshProject(activeId);
-    },
     onOpenEpic: (epicId) => {
       const epic = model.boardData?.epics.find((item) => item.id === epicId);
       if (!epic || !isProjectId(activeId)) return;

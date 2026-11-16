@@ -16,11 +16,7 @@ import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
 import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
 import { type AnswerStart, answerStart } from '../../features/tasks/answer/answerStart';
-import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
-import {
-  usePhoneGuideLane,
-  usePhoneGuideNotice,
-} from '../../features/onboarding/model/phoneGuideLink';
+import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
 const detailDrawer = preloadable(() =>
@@ -61,26 +57,11 @@ export function MonitorView(props: MonitorViewProps) {
     setAnswerOpen(true);
   };
   const { todo, doing, done, freshness, guideLink } = props;
-  const guideNotice = usePhoneGuideNotice(guideLink);
   // A guide step is about the cards of one lane: that lane comes on screen.
   const guideLane = usePhoneGuideLane(guideLink);
   useEffect(() => {
     if (guideLane) setLane(guideLane);
   }, [guideLane]);
-  // The first-run guide opens the sheet of a sample card, and learns whether the sheet is open.
-  const answerRequest = useRef<(taskId: number) => void>(() => {});
-  answerRequest.current = (taskId) => {
-    const first = firstQuestionOf(props.questions ?? [], taskId);
-    openAnswer(first ? answerStart.task(taskId) : answerStart.resume());
-  };
-  useEffect(
-    () => guideLink?.onAnswerRequest((taskId) => answerRequest.current(taskId)),
-    [guideLink],
-  );
-  useEffect(() => {
-    guideLink?.setSheetOpen(answerOpen);
-    return () => guideLink?.setSheetOpen(false);
-  }, [guideLink, answerOpen]);
   // Kept between renders, so the lanes see a new order only when the project is read again.
   const read = useMemo(
     () => ({ todo: sortLane(todo), doing: sortLane(doing), done: sortDone(done) }),
@@ -105,7 +86,6 @@ export function MonitorView(props: MonitorViewProps) {
   return (
     <main className="monitor-shell">
       <Header {...props.header} settings={settings} settingsSize="l" />
-      {guideNotice !== null && <OnboardingNotice message={guideNotice} inline />}
       {props.answerController && props.projectId && props.questions && (
         <QuestionBand
           questions={props.questions.filter((question) => !book?.isSent(projectId, question.id))}

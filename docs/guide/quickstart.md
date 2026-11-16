@@ -12,12 +12,12 @@ To keep your own board untouched while you try this, run `export AGBOARD_HOME="$
 
 ## Before you start: the first-run guide
 
-The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see how an AI agent works on a card and asks you for a decision. The guide creates two sample cards and simulates the AI's progress on them. No AI agent or API key is needed. You answer the second card's question on the card itself. When you finish, the two samples are archived.
+The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see how an AI agent works on a card and asks you for a decision. The guide runs in your browser: it draws two sample cards over the board and simulates the AI's progress on them. Your board and your data are never changed. No AI agent or API key is needed. You answer the second card's question in the same answer form you use for real questions, and nothing you choose there is sent anywhere.
 
-- **Skip** closes the guide without creating anything. The guide is not shown again in this data area.
-- **End guide** ends the run early, and so does Escape, unless you are typing in an answer field. Its two cards are archived. The next time you open a board, the guide is offered again with two new cards.
+- **Skip** closes the guide. The guide is not shown again in this data area.
+- **End guide** ends the guide early, and so does Escape, unless you are typing in an answer field. Like **Skip**, it closes the guide for good. **Finish and get started** at the last step also closes it for good.
 
-A guide that you finished or skipped does not appear again by itself in this data area. To see it again, open Settings and choose **Try it** in the **Tutorial** row. It starts in the project you have open, creates two sample cards, and archives them when you finish or end it.
+You can open the guide again at any time, on the screen you are using, whatever it did before. Open Settings and choose **Try it** in the **Tutorial** row. A guide you start this way never changes whether the data area offers it by itself.
 
 ## 1. Start the board
 

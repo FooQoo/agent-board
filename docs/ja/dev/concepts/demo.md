@@ -46,9 +46,9 @@ flowchart LR
 
 ### 初回の案内
 
-案内のルート（`mock-server/guide.ts`、`guideState.ts`、`guideCards.ts`）は`agboard serve`に合わせてあります。リース、開始、台本どおりの手順、完了、中断を扱います。案内はAIの役を担い、2枚のサンプルカードを作って1枚をDoneまで進め、もう1枚で質問を出し、回答を受けてから完了させます。
+案内は、`agboard serve`に対してと同じく、ページの中で動きます。2枚のサンプルカード、その手順、質問はフロントエンド（`web/src/app/onboarding/`）の中だけにあります。サンプルデータのサーバー（`mock-server/guide.ts`）が答えるのは、本物のサーバーにもある2つのルート、`GET /api/onboarding`と`POST /api/onboarding/seen`だけです。デモのボードにカードを書き込むことはありません。
 
-案内の状態はメモリにしかありません。新しいページは新しいサーバーなので、ページを開くたびに案内が始まり、**スキップ**はそのページでだけ案内を閉じます。画面での手順は[クイックスタート](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
+「見た」という状態はメモリにしかありません。新しいページは新しいサーバーなので、ページを開くたびに案内が始まり、**スキップ**や**完了して始める**はそのページでだけ案内を閉じます。画面での手順は[クイックスタート](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
 
 ### 言語
 

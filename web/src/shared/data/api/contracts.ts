@@ -57,6 +57,7 @@ export interface SummaryTask {
   openQuestionIds?: string[];
   taskStatusChangedAt: string;
   agentStatusChangedAt: string;
+  /** Written by older versions for the guide's sample cards; the app no longer reads it. */
   onboardingSample?: { runId: string; ordinal: number };
   detailVersions: TaskDetailVersions;
 }

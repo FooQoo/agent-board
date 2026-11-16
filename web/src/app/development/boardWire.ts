@@ -70,7 +70,6 @@ export function summaryOfBoard(board: Board): Summary {
         agentStatusChangedAt: task.agentStatusChangedAt,
         detailVersions: { document: documentVersion(task), history: historyVersion(task) },
       };
-      if (task.onboardingSample) entry.onboardingSample = task.onboardingSample;
       const asked = questionOf(task);
       if (asked) {
         entry.questionIds = [asked.id];
