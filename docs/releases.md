@@ -12,7 +12,7 @@ A release that brings the whole board to your phone: below 768px the board shows
 - **One lane at a time on the phone.** Tabs at the top show each lane with its number of cards. Tap a tab, or swipe sideways, to change lanes.
 - **Move and archive cards from the phone.** Hold a card to choose it, then swipe it to show its buttons: move it to the next or the previous lane, or archive it after a confirmation. The Done lane has **Archive all**, which is unavailable while the lane is empty. Deleting for good is still done from the archive.
 - **The Unanswered questions band starts closed.** Its header shows how many questions are open. Open it to list them, pick one to answer it alone, or answer them all with **Answer them**. This is the same on the PC and the phone.
-- **`agboard remote` hands you the phone link.** While the ngrok connection is up, `agboard --project "<name>" remote` prints the connection state, the address of that project, and the passcode, so an agent can give you a link without you opening the connection dialog.
+- **`agboard remote` hands you the phone link.** While the ngrok connection is up, `agboard --project "<name>" remote` prints the connection state, the address of that project, and the passcode, and `--json` prints them as JSON, so an agent can give you a link without you opening the connection dialog. It runs on the PC only and starts nothing.
 - **The first-run guide works on the phone and through ngrok.** The guide now runs in the browser only: its sample cards and the agent's moves are drawn on the screen, and the board keeps only whether you have seen it. **Try it** under **Tutorial** in the settings shows it again, on the PC or the phone.
 - **Easier to use with a finger.** Touch screens get larger buttons, a card can be dragged at once from its grip, and the board and its dialogs keep their size while a tablet's or phone's keyboard is open. The field you type in stays above the keyboard.
 
@@ -25,7 +25,7 @@ A release that brings the whole board to your phone: below 768px the board shows
 ### Breaking changes
 
 - **The ngrok address opens the whole board.** Whoever enters the 4-digit passcode can use the board for up to 12 hours, as on the PC: read every project, and add, edit, move, archive, and delete tasks and epics. Earlier versions only let the phone answer questions and check conditions. Only the connection settings stay on the PC. Give the passcode only to people you would let use your board.
-- **Addresses ending in `/monitor/` are no longer served.** The separate monitor page and its API are removed, and old links show a not-found answer. On the PC, open the mobile connection settings and scan the current QR code again.
+- **Addresses ending in `/monitor/` are no longer served.** The separate monitor page and its API are removed, and old links show a not-found answer; there is no redirect. On the PC, open the mobile connection settings, scan the current QR code again, and replace saved bookmarks with the new address.
 
 ### Required update steps
 
