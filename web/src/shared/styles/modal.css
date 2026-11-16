@@ -203,7 +203,11 @@
   top: min(100px, calc(var(--stable-vh, 100svh) * 0.08));
   bottom: auto;
   translate: -50% 0;
-  max-height: calc(var(--stable-vh, 100svh) - min(100px, calc(var(--stable-vh, 100svh) * 0.08)) - 16px);
+  max-height: calc(
+    var(--stable-vh, 100svh) -
+    min(100px, calc(var(--stable-vh, 100svh) * 0.08)) -
+    16px
+  );
   height: auto;
   gap: 28px;
   overflow: hidden;
