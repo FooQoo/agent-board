@@ -48,14 +48,8 @@ describe('MonitorView', () => {
   it('lists each task once in its Todo, Doing, or Done lane', () => {
     const { container } = render(<Connected />);
     expect(container.querySelector('header.header')).toBeTruthy();
-    const headings = screen
-      .getAllByRole('heading', { level: 2 })
-      .map((h) => h.getAttribute('aria-label'));
-    expect(headings).toEqual(['Todo 1', 'Doing 3', 'Done 1']);
-    const summary = screen.getByRole('region', { name: 'Work summary' });
-    for (const label of ['1Todo', '3Doing', '1Done']) {
-      expect(within(summary).getByRole('button', { name: label })).toBeTruthy();
-    }
+    const tabs = screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'));
+    expect(tabs).toEqual(['Todo 1', 'Doing 3', 'Done 1']);
     expect(screen.getAllByRole('article', { name: /^#4 / })).toHaveLength(1);
     const pendingTask = screen.getByRole('article', { name: /^#4 Doing Pending / });
     expect(pendingTask.querySelector('.status-label')?.textContent).toBe('Pending');
@@ -82,40 +76,25 @@ describe('MonitorView', () => {
       ).disabled,
     ).toBe(false);
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Archive|Delete|Edit/ })).toBeNull();
+    // The Done lane's bulk archive is the only archive control in view; nothing deletes or edits.
+    expect(
+      screen.getAllByRole('button', { name: /Archive|Delete|Edit/ }).map((b) => b.textContent),
+    ).toEqual(['Archive all']);
   });
 
-  it('changes section and summary labels with the locale', () => {
+  it('changes lane tab and run state labels with the locale', () => {
     render(<MonitorView {...props()} />);
-    const sections = [
-      { en: 'Todo', ja: '未着手', count: 1 },
-      { en: 'Doing', ja: '進行中', count: 3 },
-      { en: 'Done', ja: '完了', count: 1 },
-    ];
-    const tiles = [
-      { en: 'Todo', ja: '未着手', count: 1 },
-      { en: 'Doing', ja: '進行中', count: 3 },
-      { en: 'Done', ja: '完了', count: 1 },
-    ];
+    const tabs = {
+      en: ['Todo 1', 'Doing 3', 'Done 1'],
+      ja: ['未着手 1件', '進行中 3件', '完了 1件'],
+    };
     for (const locale of ['en', 'ja', 'en'] as const) {
       act(() => {
         selectLocale(locale);
       });
-      const summary = screen.getByRole('region', {
-        name: locale === 'ja' ? '作業の概要' : 'Work summary',
-      });
-      for (const tile of tiles) {
-        expect(
-          within(summary).getByRole('button', {
-            name: new RegExp(`^${tile.count}\\s*${tile[locale]}$`),
-          }),
-        ).toBeTruthy();
-      }
-      for (const section of sections) {
-        expect(
-          screen.getByRole('heading', { name: `${section[locale]} ${section.count}` }),
-        ).toBeTruthy();
-      }
+      expect(screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))).toEqual(
+        tabs[locale],
+      );
       const runningLabel = locale === 'ja' ? '稼働中' : 'Running';
       const running = screen.getByRole('article', { name: new RegExp(`^#2 .*${runningLabel} `) });
       expect(running.querySelector('.status-label')?.textContent).toBe(runningLabel);

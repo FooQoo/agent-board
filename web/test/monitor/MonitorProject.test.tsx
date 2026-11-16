@@ -175,7 +175,7 @@ describe('MonitorProject', () => {
     });
     await tick(500);
     expect(adapter.streamCalls).toHaveLength(1);
-    expect(screen.getByRole('heading', { name: /Doing 1/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Doing 1' })).toBeTruthy();
   });
 
   const pendingSummary = () => {

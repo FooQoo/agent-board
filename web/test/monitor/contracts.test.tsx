@@ -29,6 +29,9 @@ describe('monitor contracts and view', () => {
     expect(screen.getByRole('status').textContent).toContain('Loading monitor');
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'All Projects' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Archive|Delete|Edit|Answer/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Delete|Edit|Answer/ })).toBeNull();
+    // With nothing done there is nothing to archive: the Done lane's bulk archive is disabled.
+    const archive = screen.getByRole('button', { name: /Archive/ }) as HTMLButtonElement;
+    expect(archive.disabled).toBe(true);
   });
 });

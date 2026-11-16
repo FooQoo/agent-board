@@ -133,11 +133,12 @@ describe('mobile monitor lanes and task actions', () => {
   it('counts tasks once by taskStatus and keeps run state inline', () => {
     render(<Connected />);
 
-    expect(screen.getByRole('button', { name: '1Todo' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '2Doing' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '1Done' })).toBeTruthy();
+    expect(screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([
+      'Todo 1',
+      'Doing 2',
+      'Done 1',
+    ]);
     expect(screen.getAllByRole('article')).toHaveLength(4);
-    expect(screen.getAllByRole('heading', { name: /^(Todo 1|Doing 2|Done 1)$/ })).toHaveLength(3);
     expect(screen.queryByRole('heading', { name: /Pending|Running/ })).toBeNull();
     expect(screen.getAllByText('Pending')).toHaveLength(2);
     // A decision card shows the button only; the question is read in the sheet.
