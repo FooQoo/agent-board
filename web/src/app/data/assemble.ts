@@ -58,7 +58,6 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
     acceptance: { done: task.acceptance.done, total: task.acceptance.total },
     acceptanceError: task.acceptanceError,
   };
-  if (task.onboardingSample) card.onboardingSample = task.onboardingSample;
   return card;
 }
 
@@ -124,9 +123,6 @@ export function taskForEditor(card: TaskSummary, document: DocumentData): Task {
     agentStatus: card.agentStatus,
     pendingReason: card.pendingReason,
     pendingRequestId: card.pendingRequestId,
-    ...(card.onboardingSample
-      ? { onboardingSample: card.onboardingSample as NonNullable<Task['onboardingSample']> }
-      : {}),
     pendingChoices: card.pendingChoices,
     epic: card.epic,
     createdAt: card.createdAt ?? card.updatedAt,

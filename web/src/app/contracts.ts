@@ -109,7 +109,6 @@ export interface AppWorkspaceActions {
   onSelectEpic: (id: string | null) => void;
   onSelectArchiveCard: (id: number | null) => void;
   onSelectCard: (id: number | null) => void;
-  onAnswerChanged: () => void;
   onOpenEpic: (epicId: string) => void;
   onMove: (task: TaskSummary, column: ColumnName) => void;
   onReorder: (task: TaskSummary, beforeId: number | null) => void;

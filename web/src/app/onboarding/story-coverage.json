@@ -42,11 +42,6 @@
               "id": "app-onboarding-mock-screens--completed",
               "states": ["06 completion dialog after both samples are done", "finish action"],
               "interaction": false
-            },
-            {
-              "id": "app-onboarding-mock-screens--archived",
-              "states": ["07 archive confirmation on the empty board"],
-              "interaction": false
             }
           ]
         }
@@ -89,6 +84,35 @@
           "name": "GuideLayer",
           "stories": [],
           "exclusion": "GuideLayer joins the guide's view parts to the live board and the controller; its parts are covered by the mock screen stories and its controller by the hook tests, and the whole run by the board's end-to-end tests."
+        }
+      ]
+    },
+    {
+      "file": "app/onboarding/SampleAnswer.tsx",
+      "exports": [
+        {
+          "name": "SampleAnswer",
+          "stories": [
+            {
+              "id": "app-onboarding-sampleanswer--dialog",
+              "states": [
+                "PC dialog with the guide's own question",
+                "Send disabled until a choice",
+                "Send resumes the guide"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "app-onboarding-sampleanswer--sheet-japanese-narrow",
+              "states": [
+                "phone bottom sheet",
+                "japanese locale",
+                "phone width",
+                "Send resumes the guide"
+              ],
+              "interaction": true
+            }
+          ]
         }
       ]
     }

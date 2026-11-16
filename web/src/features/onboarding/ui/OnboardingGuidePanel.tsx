@@ -17,8 +17,6 @@ export function OnboardingGuidePanel({
   waitingBadge,
   actionLabel,
   actionDisabled = false,
-  busy,
-  error,
   onAction,
   onExit,
   compact = false,
@@ -28,23 +26,21 @@ export function OnboardingGuidePanel({
   const actionRef = useRef<HTMLButtonElement>(null);
   // Keyboard focus follows the guide: once a step is ready, focus moves to its action, so Tab starts there.
   useEffect(() => {
-    if (busy) return;
     const target = actionRef.current && !actionDisabled ? actionRef.current : panelRef.current;
     target?.focus();
-  }, [busy, actionDisabled]);
+  }, [actionDisabled]);
   return (
     <section
       ref={panelRef}
       tabIndex={-1}
       className={compact ? 'onboarding-panel onboarding-panel--compact' : 'onboarding-panel'}
       aria-live="polite"
-      aria-busy={busy}
     >
       <div className="onboarding-panel__head">
         <span className="onboarding-panel__step">
           {t('onboarding.guide.step', { current: index, total })}
         </span>
-        <button type="button" className="onboarding-panel__exit" disabled={busy} onClick={onExit}>
+        <button type="button" className="onboarding-panel__exit" onClick={onExit}>
           {t('onboarding.guide.exit')}
         </button>
       </div>
@@ -65,16 +61,11 @@ export function OnboardingGuidePanel({
         {waitingBadge ? (
           <span className="onboarding-panel__badge">{waitingBadge}</span>
         ) : (
-          <Button ref={actionRef} size="m" disabled={busy || actionDisabled} onClick={onAction}>
+          <Button ref={actionRef} size="m" disabled={actionDisabled} onClick={onAction}>
             {actionLabel}
           </Button>
         )}
       </div>
-      {error ? (
-        <p role="alert" className="onboarding-panel__error">
-          {error}
-        </p>
-      ) : null}
     </section>
   );
 }

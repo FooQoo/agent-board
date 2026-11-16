@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import type { SpotlightRect } from '../../../shared/ui/spotlight/Spotlight';
 import { OnboardingComplete } from './OnboardingComplete';
 import { OnboardingGuidePanel } from './OnboardingGuidePanel';
-import { OnboardingNotice } from './OnboardingNotice';
 import { OnboardingStage } from './OnboardingStage';
 import { OnboardingWelcome } from './OnboardingWelcome';
 import './onboarding.css';
@@ -23,9 +22,7 @@ type ScreenKind =
   | 'pending'
   | 'resumed'
   | 'complete'
-  | 'archived'
-  | 'compact'
-  | 'noticeInline';
+  | 'compact';
 
 const TARGET_SAMPLES: SpotlightRect = { x: 30, y: 126, width: 390, height: 220 };
 const TARGET_RUNNING: SpotlightRect = { x: 442, y: 126, width: 396, height: 118 };
@@ -97,8 +94,6 @@ function GuideScreen({ kind }: { kind: ScreenKind }) {
       body={t(`onboarding.steps.${key}.body`)}
       hint={t('onboarding.guide.readFirst')}
       actionLabel={t('onboarding.guide.next')}
-      busy={false}
-      error={null}
       onAction={fn()}
       onExit={fn()}
       {...extra}
@@ -106,7 +101,7 @@ function GuideScreen({ kind }: { kind: ScreenKind }) {
   );
   switch (kind) {
     case 'welcome':
-      return <OnboardingWelcome busy={false} error={null} onStart={fn()} onSkip={fn()} />;
+      return <OnboardingWelcome onStart={fn()} onSkip={fn()} />;
     case 'samples':
       return (
         <StandInStage
@@ -143,15 +138,7 @@ function GuideScreen({ kind }: { kind: ScreenKind }) {
         />
       );
     case 'complete':
-      return <OnboardingComplete busy={false} error={null} onFinish={fn()} />;
-    case 'archived':
-      return <OnboardingNotice message={t('onboarding.archived')} />;
-    case 'noticeInline':
-      return (
-        <div style={{ padding: 8 }}>
-          <OnboardingNotice message={t('onboarding.archived')} inline />
-        </div>
-      );
+      return <OnboardingComplete onFinish={fn()} />;
     case 'compact':
       return (
         <StandInStage
@@ -209,7 +196,6 @@ export const AutomaticProgress: Story = { args: { kind: 'running' } };
 export const DecisionNeeded: Story = { args: { kind: 'pending' } };
 export const ResumedAfterAnswer: Story = { args: { kind: 'resumed' } };
 export const Completed: Story = { args: { kind: 'complete' } };
-export const Archived: Story = { args: { kind: 'archived' } };
 
 /** On the phone the explanation shrinks to a strip at the top while the answer sheet is open. */
 export const AnswerSheetStripNarrow: Story = {
@@ -219,12 +205,6 @@ export const AnswerSheetStripNarrow: Story = {
     await expect(document.querySelector('.onboarding-panel--compact')).not.toBeNull();
     await expect(document.querySelector('.onboarding-panel__title')).toBeNull();
   },
-};
-
-/** The finish notice in the phone screen's flow, between the count tiles and the lanes. */
-export const ArchivedInlineNarrow: Story = {
-  args: { kind: 'noticeInline' },
-  globals: { locale: 'ja', width: 'phone-375' },
 };
 
 /** Two buttons in a row split the row evenly, on the welcome of a phone-width window. */

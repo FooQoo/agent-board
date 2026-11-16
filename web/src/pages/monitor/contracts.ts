@@ -96,7 +96,7 @@ export interface MonitorViewProps {
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
-  /** The first-run guide's link to this screen: it opens the answer sheet and shows the finish notice. */
+  /** The first-run guide's link to this screen: it asks for the lane its step is about. */
   guideLink?: PhoneGuideLink;
   /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
   onDetailOpenChange?(open: boolean): void;

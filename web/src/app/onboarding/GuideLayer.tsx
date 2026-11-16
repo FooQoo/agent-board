@@ -1,34 +1,29 @@
-// The first-run guide on the board: it picks the screen the controller is on, measures
-// the lane the guide is pointing at, and shows the real task cards and answer form in
-// the spotlight. The view parts stay free of the board, so this file joins them.
+// The first-run guide on the board: it picks the screen the controller is on, measures the lane
+// the guide is pointing at, and draws the two sample cards in the spotlight over it. The sample
+// cards are local: the board's own cards stay dimmed beneath and are never changed. The view parts
+// stay free of the board, so this file joins them.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ProjectId, TaskSummary } from '../../shared/api/contracts';
-import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
+import type { ProjectId } from '../../shared/api/contracts';
+import { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import { TaskCard } from '../../features/tasks/card/TaskCard';
-import {
-  type PhoneGuideLink,
-  usePhoneSheetOpen,
-} from '../../features/onboarding/model/phoneGuideLink';
+import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import { MonitorTask } from '../../pages/monitor/components/MonitorTask';
 import '../../pages/monitor/monitor-screen.css';
-import { boardEnvironment } from '../mobile/boardEnvironment';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
 import { OnboardingGuidePanel } from '../../features/onboarding/ui/OnboardingGuidePanel';
-import { OnboardingNotice } from '../../features/onboarding/ui/OnboardingNotice';
 import { OnboardingStage } from '../../features/onboarding/ui/OnboardingStage';
 import { OnboardingWelcome } from '../../features/onboarding/ui/OnboardingWelcome';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import '../../shared/i18n/onboarding-strings';
-import { newId } from './api';
-import type { GuidePhase } from './api';
-import { phoneItemOf, usePhoneTargetRect } from './phoneTarget';
+import { focusOrdinal } from './guideSamples';
+import type { GuidePhase } from './guideTiming';
+import { phoneItemOf, usePhoneLaneRect } from './phoneTarget';
+import { SampleAnswer } from './SampleAnswer';
 import { useGuide } from './useGuide';
 
 type Column = 'todo' | 'doing' | 'done';
-
-const noop = () => {};
 
 /** The gap between the frame and the guide panel, in pixels. */
 const PANEL_GAP = 24;
@@ -84,7 +79,6 @@ const PANEL_INDEX: Record<GuidePhase, number> = {
   question: 3,
   'second-running': 4,
   'second-done': 4,
-  complete: 4,
 };
 
 /** What the guide needs to draw itself on the phone screen, which replaces the PC board below 768px. */
@@ -93,164 +87,133 @@ export interface PhoneGuide {
   projectName: string;
 }
 
+const noop = () => {};
+
 export function GuideLayer({
   projectId,
   eligible,
-  tasks,
-  answers,
-  onAnswer,
-  onAnswerChanged,
   phone = null,
 }: {
   /** Set while the phone screen is shown; `null` on the PC board. One guide serves both. */
   phone?: PhoneGuide | null;
   projectId: ProjectId | null;
   eligible: boolean;
-  tasks: TaskSummary[];
-  answers: AnswerBook;
-  onAnswer: (taskId: number) => void;
-  onAnswerChanged: () => void;
 }) {
   const { t } = useTranslation();
-  const [clientId] = useState(newId);
-  const guide = useGuide({ projectId, eligible, tasks, clientId });
-  const { screen, state, busy, error, ready } = guide;
-  const run = state?.run ?? null;
-  // Every saved step, start, end or finish moves the revision. The board it changed is read at
-  // once, not when the presentation hold lets the stream's update through.
-  const revision = state?.revision;
-  const seenRevision = useRef(revision);
+  const guide = useGuide({ projectId, eligible });
+  const { screen, phase, samples, locale, ready } = guide;
+  // The sample question's form is open: it has the screen, so the stage frames nothing.
+  const [answering, setAnswering] = useState(false);
   useEffect(() => {
-    const before = seenRevision.current;
-    seenRevision.current = revision;
-    if (before !== undefined && before !== revision) onAnswerChanged();
-  }, [revision, onAnswerChanged]);
-  const samples = run
-    ? tasks
-        .filter((task) => task.onboardingSample?.runId === run.runId)
-        .sort((a, b) => (a.onboardingSample?.ordinal ?? 0) - (b.onboardingSample?.ordinal ?? 0))
-    : [];
+    if (phase !== 'question') setAnswering(false);
+  }, [phase]);
   // The spotlight is on the lane of the card the step is about: the first card, then the second.
-  const focusOrdinal =
-    run && ['question', 'second-running', 'second-done', 'complete'].includes(run.phase) ? 2 : 1;
-  const focus = samples.find((task) => task.onboardingSample?.ordinal === focusOrdinal) ?? null;
-  const column: Column | null = focus ? (focus.taskStatus as Column) : null;
-  const sheetOpen = usePhoneSheetOpen(phone?.link);
-  const stepColumn = screen.kind === 'step' ? column : null;
-  const inLane = samples.filter((task) => task.taskStatus === column);
+  const focus = samples[focusOrdinal(phase) - 1];
+  const stepColumn: Column | null = screen.kind === 'step' && focus ? focus.taskStatus : null;
+  const inLane = samples.filter((card) => card.taskStatus === stepColumn);
   const laneRect = useLaneRect(phone ? null : stepColumn);
-  // While the answer sheet is open the stage frames nothing: the sheet has the screen.
-  const phoneRect = usePhoneTargetRect(
-    phone && stepColumn && !sheetOpen ? inLane.map((task) => task.id) : [],
-  );
-  const rect = phone ? phoneRect : laneRect;
-  const environment = useMemo(boardEnvironment, []);
-  const cards = inLane.map((task) =>
+  const phoneRect = usePhoneLaneRect(phone ? stepColumn : null);
+  const rect = answering ? null : phone ? phoneRect : laneRect;
+  // The sample cards have no answers held, and nothing to read or send.
+  const book = useMemo(() => new AnswerBook(), []);
+  const cards = inLane.map((card) =>
     phone && projectId ? (
       <MonitorTask
-        key={task.id}
-        item={phoneItemOf(task, projectId, phone.projectName)}
-        section={task.taskStatus as Column}
-        onOpenAnswer={(item) => phone.link.openAnswer(item.task.id)}
+        key={card.id}
+        item={phoneItemOf(card, projectId, phone.projectName)}
+        section={card.taskStatus}
+        onOpenAnswer={() => setAnswering(true)}
         answerController={{
-          book: answers,
-          read: environment.readQuestion,
-          write: environment.writeAnswers,
+          book,
+          read: () => Promise.reject(new Error('The guide has no server question.')),
+          write: () => Promise.resolve(),
         }}
       />
     ) : (
       <TaskCard
-        key={task.id}
-        task={task}
+        key={card.id}
+        task={card}
         selected={false}
         onSelect={noop}
         projectId={projectId ?? undefined}
-        answers={answers}
-        onAnswer={onAnswer}
+        answers={book}
+        onAnswer={() => setAnswering(true)}
       />
     ),
   );
 
-  // On the phone the finish notice sits in the screen's own flow, which the screen draws.
-  const phoneLink = phone?.link ?? null;
   // On the phone one lane is on screen at a time: the step's lane is brought there.
+  const phoneLink = phone?.link ?? null;
   useEffect(() => {
     if (!phoneLink || !stepColumn) return undefined;
     phoneLink.setLane(stepColumn);
     return () => phoneLink.setLane(null);
   }, [phoneLink, stepColumn]);
-  const showNotice = screen.kind === 'notice';
-  const noticeText = t('onboarding.archived');
-  useEffect(() => {
-    if (!phoneLink || !showNotice) return undefined;
-    phoneLink.setNotice(noticeText);
-    return () => phoneLink.setNotice(null);
-  }, [phoneLink, showNotice, noticeText]);
 
   if (screen.kind === 'hidden') return null;
 
   if (screen.kind === 'welcome') {
-    return (
-      <OnboardingWelcome busy={busy} error={error} onStart={guide.start} onSkip={guide.skip} />
-    );
+    return <OnboardingWelcome onStart={guide.start} onSkip={guide.skip} />;
   }
 
   if (screen.kind === 'complete') {
-    return <OnboardingComplete busy={busy} error={error} onFinish={guide.finish} />;
+    return <OnboardingComplete onFinish={guide.finish} />;
   }
 
-  if (screen.kind === 'notice') {
-    return phone ? null : <OnboardingNotice message={noticeText} />;
-  }
-
-  const phase: GuidePhase = run?.phase ?? 'samples';
   const index = PANEL_INDEX[phase];
   const copy = panelCopy(phase);
-  // A failed step offers Retry in place of its action. A question waits on the card instead.
-  const failed = error !== null;
-  const waiting = phase === 'question' && !failed;
+  // A question waits on the card instead of offering the step's action.
+  const waiting = phase === 'question';
   const holding = (phase === 'first-running' || phase === 'second-running') && !ready;
   return (
-    <OnboardingStage
-      target={rect}
-      onExit={guide.exit}
-      renderTarget={
-        cards.length > 0 ? (
-          <div
-            className={
-              phone
-                ? 'onboarding-stage__cards onboarding-stage__cards--phone'
-                : 'onboarding-stage__cards'
-            }
-          >
-            {cards}
-          </div>
-        ) : null
-      }
-      guide={
-        <OnboardingGuidePanel
-          index={index}
-          total={4}
-          title={t(copy.title)}
-          body={t(copy.body)}
-          hint={t(waiting ? 'onboarding.guide.waitingHint' : 'onboarding.guide.readFirst')}
-          waitingBadge={waiting ? t('onboarding.guide.waitingBadge') : undefined}
-          actionLabel={t(actionKey(phase, failed))}
-          actionDisabled={holding}
-          busy={busy}
-          error={error}
-          onAction={failed ? guide.retry : guide.next}
-          onExit={guide.exit}
-          compact={phone !== null && sheetOpen}
+    <>
+      <OnboardingStage
+        target={rect}
+        onExit={guide.exit}
+        renderTarget={
+          cards.length > 0 ? (
+            <div
+              className={
+                phone
+                  ? 'onboarding-stage__cards onboarding-stage__cards--phone'
+                  : 'onboarding-stage__cards'
+              }
+            >
+              {cards}
+            </div>
+          ) : null
+        }
+        guide={
+          <OnboardingGuidePanel
+            index={index}
+            total={4}
+            title={t(copy.title)}
+            body={t(copy.body)}
+            hint={t(waiting ? 'onboarding.guide.waitingHint' : 'onboarding.guide.readFirst')}
+            waitingBadge={waiting ? t('onboarding.guide.waitingBadge') : undefined}
+            actionLabel={t(
+              phase === 'samples' ? 'onboarding.guide.watch' : 'onboarding.guide.next',
+            )}
+            actionDisabled={holding}
+            onAction={guide.next}
+            onExit={guide.exit}
+            compact={phone !== null && answering}
+          />
+        }
+      />
+      {answering && (
+        <SampleAnswer
+          phone={phone !== null}
+          locale={locale}
+          onSend={() => {
+            setAnswering(false);
+            guide.answered();
+          }}
+          onClose={() => setAnswering(false)}
         />
-      }
-    />
+      )}
+    </>
   );
-}
-
-function actionKey(phase: GuidePhase, failed: boolean): string {
-  if (failed) return 'onboarding.guide.retry';
-  return phase === 'samples' ? 'onboarding.guide.watch' : 'onboarding.guide.next';
 }
 
 function panelCopy(phase: GuidePhase): { title: string; body: string } {
@@ -263,7 +226,6 @@ function panelCopy(phase: GuidePhase): { title: string; body: string } {
       return { title: 'onboarding.steps.pending.title', body: 'onboarding.steps.pending.body' };
     case 'second-running':
     case 'second-done':
-    case 'complete':
       return { title: 'onboarding.steps.resumed.title', body: 'onboarding.steps.resumed.body' };
     default:
       return { title: 'onboarding.steps.samples.title', body: 'onboarding.steps.samples.body' };

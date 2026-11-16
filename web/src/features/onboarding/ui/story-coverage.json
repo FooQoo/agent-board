@@ -111,26 +111,6 @@
           ]
         }
       ]
-    },
-    {
-      "file": "features/onboarding/ui/OnboardingNotice.tsx",
-      "exports": [
-        {
-          "name": "OnboardingNotice",
-          "stories": [
-            {
-              "id": "features-onboarding-guide--archived",
-              "states": ["archive confirmation on the board"],
-              "interaction": false
-            },
-            {
-              "id": "features-onboarding-guide--archived-inline-narrow",
-              "states": ["inline in the phone screen's flow", "phone width"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
     }
   ]
 }

@@ -49,4 +49,3 @@ export const DecisionNeededDark: Story = {
 };
 export const ResumedAfterAnswer: Story = { args: { kind: 'resumed' } };
 export const Completed: Story = { args: { kind: 'complete' } };
-export const Archived: Story = { args: { kind: 'archived' } };

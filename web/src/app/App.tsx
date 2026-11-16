@@ -81,10 +81,6 @@ function AppScreen({ initial }: AppProps) {
             !model.archiveVisible &&
             !model.isMockTask
           }
-          tasks={model.tasks}
-          answers={model.answers.book}
-          onAnswer={model.answers.openForTask}
-          onAnswerChanged={actions.workspace.onAnswerChanged}
           phone={phone}
         />
       </Suspense>

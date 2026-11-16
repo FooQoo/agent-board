@@ -126,7 +126,7 @@ describe('a generally available screen', () => {
 
   it.each(['en', 'ja'] as const)('the first-run welcome shows none in %s', async (locale) => {
     await i18n.changeLanguage(locale);
-    render(<OnboardingWelcome busy={false} error={null} onStart={() => {}} onSkip={() => {}} />);
+    render(<OnboardingWelcome onStart={() => {}} onSkip={() => {}} />);
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).queryByText(WORDS[locale].badge)).toBeNull();
     expect(within(dialog).queryByRole('link')).toBeNull();

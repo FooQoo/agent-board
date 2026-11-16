@@ -93,8 +93,6 @@ export interface TaskSummary {
   pendingChoices: Choice[];
   /** The open questions the card waits on; a card read from an older source leaves it out. */
   openQuestionIds?: string[];
-  /** The first-run guide's sample cards carry this; ordinary cards do not. */
-  onboardingSample?: { runId: string; ordinal: number } | null;
   epic: EpicRef | null;
   updatedAt: string;
   /** When the task was created; a card built from the Summary carries it. */
@@ -124,8 +122,6 @@ export interface Task {
   agentStatus: RunState;
   pendingReason: string | null;
   pendingRequestId: string | null;
-  /** The first-run guide's sample cards carry this; ordinary cards do not. */
-  onboardingSample?: { runId: string; ordinal: 1 | 2 } | null;
   pendingChoices: Choice[];
   /** The open questions the card waits on; a card read from an older source leaves it out. */
   openQuestionIds?: string[];
