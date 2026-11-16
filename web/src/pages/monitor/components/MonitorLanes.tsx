@@ -1,5 +1,5 @@
 import { ArchiveIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { IconLabel } from '@/shared/ui/icon-label';
@@ -29,6 +29,8 @@ export interface MonitorLanesProps {
   onOpenAnswer?: (item: MonitorTaskModel) => void;
   answerController?: MonitorViewProps['answerController'];
   id?: string;
+  /** The tab bar: its marker follows the slide between lanes. */
+  tabsRef?: RefObject<HTMLElement | null>;
   /** A story's still picture: this card has its left-swipe tiles showing. */
   previewRevealed?: number;
 }
@@ -52,6 +54,7 @@ export function MonitorLanes({
   onOpenAnswer,
   answerController,
   id,
+  tabsRef,
   previewRevealed,
 }: MonitorLanesProps) {
   const { t } = useTranslation();
@@ -67,7 +70,7 @@ export function MonitorLanes({
     setArmed(null);
     onLaneChange(next);
   };
-  const viewport = useLaneCarousel(lane, changeLane);
+  const viewport = useLaneCarousel(lane, changeLane, tabsRef);
 
   // A tap anywhere outside the chosen card lets it go and closes its tiles.
   useEffect(() => {

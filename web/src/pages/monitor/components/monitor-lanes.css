@@ -1,6 +1,7 @@
 /* The phone monitor's lane view: the tab bar, the sliding track, and a card that swipes. */
 
 .lane-tabs {
+  position: relative;
   display: grid;
   flex: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8,8 +9,32 @@
   padding: 3px;
   border-radius: 10px;
   background: var(--r-lane);
+  /* Where the marker rests without a carousel; the carousel writes the value while it slides. */
+  --lane-progress: 0;
+}
+.lane-tabs[data-lane="doing"] {
+  --lane-progress: 0.5;
+}
+.lane-tabs[data-lane="done"] {
+  --lane-progress: 1;
+}
+/* The marker under the current lane. It moves with the lanes, as the drawer's underline does. */
+.lane-tabs::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 14px) / 3);
+  border: 1px solid var(--r-accent);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  transform: translateX(calc(var(--lane-progress) * (200% + 8px)));
+  pointer-events: none;
 }
 .lane-tabs__tab {
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: var(--btn-l-h);
@@ -17,7 +42,7 @@
   justify-content: center;
   gap: 6px;
   padding: 0 6px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--r-text2);
@@ -26,10 +51,7 @@
   cursor: pointer;
 }
 .lane-tabs__tab[aria-selected="true"] {
-  border-color: var(--r-accent);
-  background: var(--r-surface);
   color: var(--r-text);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
 }
 .lane-tabs__tab:focus-visible {
   outline: 2px solid var(--r-accent);

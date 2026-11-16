@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANES } from '../model/lanes';
 import { type MonitorSection, SECTION_ICONS } from './MonitorSectionHeader';
@@ -6,15 +7,19 @@ import './monitor-lanes.css';
 export type LaneCounts = Record<MonitorSection, number | '—'>;
 
 /**
- * The tab bar under the header and the questions band: one tab for each lane with its count. The
- * current lane is highlighted; a tap switches to it. Each tab is a 44px touch target.
+ * The tab bar under the header and the questions band: one tab for each lane with its count. A
+ * marker sits under the current lane and slides with the lanes while a finger moves them (the
+ * carousel writes `--lane-progress` through `ref`); a tap switches lanes. Each tab is a 44px
+ * touch target.
  */
 export function LaneTabs({
+  ref,
   lane,
   counts,
   controlsId,
   onLaneChange,
 }: {
+  ref?: Ref<HTMLDivElement>;
   lane: MonitorSection;
   counts: LaneCounts;
   /** The id of the lanes viewport the tabs control. */
@@ -23,7 +28,13 @@ export function LaneTabs({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="lane-tabs" role="tablist" aria-label={t('monitor.lanes.tabs')}>
+    <div
+      ref={ref}
+      className="lane-tabs"
+      role="tablist"
+      aria-label={t('monitor.lanes.tabs')}
+      data-lane={lane}
+    >
       {LANES.map((name) => {
         const selected = name === lane;
         const Icon = SECTION_ICONS[name];

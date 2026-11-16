@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Header } from '../../../shared/ui/app-header/Header';
 import { settingsSlot } from '../../../features/settings/ui/settingsSlot';
 import { QuestionBand } from '../../../features/tasks/answer/QuestionBand';
@@ -57,6 +57,7 @@ export function MonitorLanesScreen({
   previewRevealed,
 }: MonitorLanesScreenProps) {
   const lanesId = useId();
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [lane, setLane] = useState<MonitorSection>(initialLane);
   const [pending, setPending] = useState<LanePending>(initialPending);
   const book = answerController?.book;
@@ -77,6 +78,7 @@ export function MonitorLanesScreen({
         />
       )}
       <LaneTabs
+        ref={tabsRef}
         lane={lane}
         controlsId={lanesId}
         counts={{ todo: lanes.todo.length, doing: lanes.doing.length, done: lanes.done.length }}
@@ -84,6 +86,7 @@ export function MonitorLanesScreen({
       />
       <MonitorLanes
         id={lanesId}
+        tabsRef={tabsRef}
         lanes={lanes}
         lane={lane}
         onLaneChange={setLane}
