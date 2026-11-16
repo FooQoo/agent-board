@@ -1,18 +1,28 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { AppDialogs } from './AppDialogs';
-import { BoardWorkspace } from './BoardWorkspace';
 import { useAppActions } from './useAppActions';
 import { useAppController } from './useAppController';
 import type { AppInitial } from './contracts';
 import { PcDataProvider } from './data/PcData';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
-import { useNarrowViewport } from '../shared/lib/viewport/useNarrowViewport';
+import { NARROW_VIEWPORT_QUERY, useNarrowViewport } from '../shared/lib/viewport/useNarrowViewport';
+import { preloadable } from '../shared/lib/lazy/preloadable';
 import { createPhoneGuideLink } from '../features/onboarding/model/phoneGuideLink';
 import { guideLayer } from './onboarding/lazyGuide';
 import { isProjectId } from './model/projectSession';
 
 /** The phone layout loads when the window is first narrow, so the PC board's first load stays as it was. */
 const MobileBoard = lazy(() => import('./mobile/MobileBoard'));
+
+/**
+ * The PC board is split out too, so a phone never downloads it (its drag and drop included). A wide
+ * window starts fetching it as soon as this module runs, alongside the first render.
+ */
+export const boardWorkspace = preloadable(() =>
+  import('./BoardWorkspace').then((module) => module.BoardWorkspace),
+);
+if (typeof window.matchMedia !== 'function' || !window.matchMedia(NARROW_VIEWPORT_QUERY).matches)
+  void boardWorkspace.preload();
 
 export interface AppProps {
   /** Mock mode only: initial UI state taken from the page URL (see `src/mock.ts`). */
@@ -54,7 +64,9 @@ function AppScreen({ initial }: AppProps) {
           </Suspense>
         </>
       ) : (
-        <BoardWorkspace model={model} actions={actions.workspace} />
+        <Suspense fallback={null}>
+          <boardWorkspace.Component model={model} actions={actions.workspace} />
+        </Suspense>
       )}
       {/* One guide above the width switch: a change of width keeps the screen it is on. */}
       <Suspense fallback={null}>

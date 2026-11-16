@@ -70,13 +70,19 @@ if (typeof window !== 'undefined') {
   // Code that the pages load after their first screen is fetched before each file's tests, so a
   // dialog opens in the same render as it would once the page has settled.
   beforeAll(async () => {
-    const [{ actionDialog, bulkArchiveDialog }, { settingsDialog }, { preloadMonitorDrawer }] =
-      await Promise.all([
-        import('../src/app/dialogs/lazyDialogs'),
-        import('../src/features/settings/ui/settingsSlot'),
-        import('../src/pages/monitor/View'),
-      ]);
+    const [
+      { actionDialog, bulkArchiveDialog },
+      { settingsDialog },
+      { preloadMonitorDrawer },
+      { boardWorkspace },
+    ] = await Promise.all([
+      import('../src/app/dialogs/lazyDialogs'),
+      import('../src/features/settings/ui/settingsSlot'),
+      import('../src/pages/monitor/View'),
+      import('../src/app/App'),
+    ]);
     await Promise.all([
+      boardWorkspace.preload(),
       actionDialog.preload(),
       bulkArchiveDialog.preload(),
       settingsDialog.preload(),
