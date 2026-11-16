@@ -191,6 +191,8 @@ function bigDocument(origin: string): string {
 }
 
 test('a 50,000-character document is shown with a bounded page, and is edited and saved as before', async ({ page }) => {
+  // The heaviest test of the suite: two pages hold the whole document. It takes 30 to 40 seconds on a CI runner, close to the default limit.
+  test.slow();
   const id = nextTaskId(mainProject);
   const file = path.join(work, 'big.md');
   const text = bigDocument(images.origin);
