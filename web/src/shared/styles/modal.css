@@ -10,7 +10,7 @@
   gap: 22px;
   width: 560px;
   max-width: calc(100vw - 32px);
-  max-height: calc(100svh - 32px);
+  max-height: calc(var(--stable-vh, 100svh) - 32px);
   overflow-y: auto;
   overscroll-behavior: contain;
   /* The design measures the 28px padding from the outer edge; the 1px border takes one of it. */
@@ -200,10 +200,10 @@
 
 .request-dialog {
   width: 680px;
-  top: min(100px, 8svh);
+  top: min(100px, calc(var(--stable-vh, 100svh) * 0.08));
   bottom: auto;
   translate: -50% 0;
-  max-height: calc(100svh - min(100px, 8svh) - 16px);
+  max-height: calc(var(--stable-vh, 100svh) - min(100px, calc(var(--stable-vh, 100svh) * 0.08)) - 16px);
   height: auto;
   gap: 28px;
   overflow: hidden;
@@ -457,7 +457,7 @@
     top: 40px;
     bottom: auto;
     translate: -50% 0;
-    max-height: calc(100svh - 56px);
+    max-height: calc(var(--stable-vh, 100svh) - 56px);
     gap: 11px;
     padding: 23px 15px 14px;
   }

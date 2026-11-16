@@ -32,8 +32,8 @@
 /* The dialog is the container: it is as wide as the window less 48px, so 852px is a 900px window. */
 .editor-dialog.decision-dialog {
   width: min(1120px, calc(100vw - 48px));
-  height: calc(100svh - 48px);
-  max-height: calc(100svh - 48px);
+  height: calc(var(--stable-vh, 100svh) - 48px);
+  max-height: calc(var(--stable-vh, 100svh) - 48px);
   container: decision-dialog / inline-size;
 }
 
@@ -60,7 +60,7 @@
 /* The dialog stops growing at 800px once the window is wide enough for two columns. */
 @media (min-width: 900px) {
   .editor-dialog.decision-dialog {
-    height: min(800px, calc(100svh - 48px));
+    height: min(800px, calc(var(--stable-vh, 100svh) - 48px));
   }
 }
 
@@ -233,7 +233,7 @@
 
 /* The answer sheet rises to 56px below the top of the screen, as in the design. */
 .mobile-drawer.decision-sheet-popup[data-slot="drawer-popup"] {
-  height: calc(100svh - 56px);
+  height: calc(var(--stable-vh, 100svh) - 56px);
 }
 
 .decision-sheet {

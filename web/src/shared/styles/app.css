@@ -82,7 +82,7 @@ ol {
   display: grid;
   grid-template-rows: 56px minmax(0, 1fr) 40px;
   height: 100vh;
-  height: 100svh;
+  height: var(--stable-vh, 100svh);
 }
 
 .app__body {
