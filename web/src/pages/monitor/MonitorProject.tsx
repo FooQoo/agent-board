@@ -1,3 +1,4 @@
+import type { HeaderSettings } from '../../shared/ui/app-header/Header';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProjectId } from '../../shared/api/contracts';
 import { httpStatusOf } from '../../shared/api/httpStatus';
@@ -44,6 +45,8 @@ export interface MonitorEnvironment {
   writeAnswers: AnswersWriter;
   /** Moves and archives from the lanes; without them the lanes only read. */
   writes?: MonitorWrites;
+  /** The header's settings dialog; without it, the plain one that saves through `preferences`. */
+  settings?: HeaderSettings;
 }
 
 export interface MonitorScreenProps extends MonitorEnvironment {
@@ -119,6 +122,7 @@ export function MonitorScreen({
   header,
   guideLink,
   writes,
+  settings,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
   const answers = useAnswerBookState(book);
@@ -196,6 +200,7 @@ export function MonitorScreen({
     onAnswersSent: () => void summary.refresh(),
     readResolvers,
     preferences,
+    settings,
     header,
     guideLink,
     freshness,

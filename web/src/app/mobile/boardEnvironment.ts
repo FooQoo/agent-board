@@ -3,6 +3,8 @@ import { csrfHeaders, projectPath, readToken } from '../../shared/api/http';
 import type { MonitorEnvironment } from '../../pages/monitor/MonitorProject';
 import { answerQuestions, setAcceptance } from '../../features/tasks/api/edit';
 import { fetchQuestion } from '../../features/tasks/api/read';
+import type { PreferencesEndpoint } from '../../shared/preferences';
+import { phoneSettingsSlot } from './phoneSettingsSlot';
 import { archiveDone, archiveTask, moveTask } from '../../features/tasks/api/lifecycle';
 
 const taskUrl = (projectId: ProjectId, taskId: number) =>
@@ -15,6 +17,9 @@ const taskUrl = (projectId: ProjectId, taskId: number) =>
  */
 export function boardEnvironment(): MonitorEnvironment {
   const serverless = import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo';
+  const preferences: PreferencesEndpoint | undefined = serverless
+    ? undefined
+    : { url: '/api/preferences', token: readToken, headers: csrfHeaders };
   return {
     readResolvers: {
       attachmentUrl: (projectId, taskId, attachmentId) =>
@@ -24,9 +29,9 @@ export function boardEnvironment(): MonitorEnvironment {
       setAcceptance: (projectId, taskId, conditionId, done) =>
         setAcceptance(projectId, taskId, conditionId, done),
     },
-    preferences: serverless
-      ? undefined
-      : { url: '/api/preferences', token: readToken, headers: csrfHeaders },
+    preferences,
+    // As on the PC board, the settings can show the guide again.
+    settings: phoneSettingsSlot(preferences),
     readQuestion: fetchQuestion,
     writeAnswers: answerQuestions,
     writes: { move: moveTask, archive: archiveTask, archiveDone },

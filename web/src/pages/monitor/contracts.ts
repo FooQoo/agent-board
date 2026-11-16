@@ -1,7 +1,7 @@
 import type { ColumnName, Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
-import type { HeaderProps } from '../../shared/ui/app-header/Header';
+import type { HeaderProps, HeaderSettings } from '../../shared/ui/app-header/Header';
 import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import type {
   AnswersWriter,
@@ -74,6 +74,8 @@ export type MonitorHeaderProps = Pick<
 export interface MonitorViewProps {
   /** Where the language and theme are saved; without it they stay in this browser. */
   preferences?: PreferencesEndpoint;
+  /** The header's settings dialog; without it, the plain one that saves through `preferences`. */
+  settings?: HeaderSettings;
   /** The project switcher in the header; the monitor app names its project in its address. */
   header?: MonitorHeaderProps;
   summary: MonitorSummary;

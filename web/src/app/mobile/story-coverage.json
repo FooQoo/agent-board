@@ -11,6 +11,35 @@
           "exclusion": "MobileBoard is the board controller's narrow-width screen, which wires the monitor parts to the board's data layer; those parts have their own Stories and the screen is exercised by the App responsive tests and the product E2E."
         }
       ]
+    },
+    {
+      "file": "app/mobile/PhoneSettings.tsx",
+      "exports": [
+        {
+          "name": "PhoneSettings",
+          "stories": [
+            {
+              "id": "app-mobile-phone-settings--with-tutorial-entry",
+              "states": [
+                "tutorial entry below language and theme",
+                "choosing it closes the dialog",
+                "choosing it asks the guide to start"
+              ],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mobile/phoneSettingsSlot.tsx",
+      "exports": [
+        {
+          "name": "phoneSettingsSlot",
+          "stories": [],
+          "exclusion": "phoneSettingsSlot only defers loading PhoneSettings; the dialog it renders has its own Story."
+        }
+      ]
     }
   ]
 }

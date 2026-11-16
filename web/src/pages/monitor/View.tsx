@@ -34,10 +34,10 @@ export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
-  const { preferences } = props;
+  const { preferences, settings: given } = props;
   const settings = useMemo(
-    () => (preferences ? savingSettingsSlot(preferences) : settingsSlot),
-    [preferences],
+    () => given ?? (preferences ? savingSettingsSlot(preferences) : settingsSlot),
+    [given, preferences],
   );
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
