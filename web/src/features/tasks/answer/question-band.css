@@ -31,7 +31,9 @@
 
 .question-band__heading {
   display: flex;
-  flex: none;
+  /* It gives way to the answer buttons: a long title wraps rather than push them out of the band. */
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
   font: inherit;
 }
@@ -91,8 +93,10 @@
 }
 
 .question-band__title {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
+  text-align: start;
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
