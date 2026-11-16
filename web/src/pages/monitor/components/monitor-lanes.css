@@ -1,4 +1,4 @@
-/* The phone monitor's lane view: the tab bar, the sliding track, a card that swipes, and a lifted card. */
+/* The phone monitor's lane view: the tab bar, the sliding track, and a card that swipes. */
 
 .lane-tabs {
   display: grid;
@@ -68,10 +68,6 @@
   /* A vertical drag scrolls the lane; every sideways drag is read by the gesture code. */
   touch-action: pan-y;
 }
-.monitor-lanes[data-lifting] {
-  user-select: none;
-  -webkit-user-select: none;
-}
 .monitor-lanes__track {
   display: flex;
   width: 100%;
@@ -122,17 +118,6 @@
 }
 .swipe-card[data-dragging] .swipe-card__body {
   transition: none;
-}
-.swipe-card[data-lifted] .swipe-card__body {
-  opacity: 0.35;
-}
-/* While a card is held, the others of its lane slide to make room where it would land. */
-.swipe-card[data-shifting] {
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.swipe-card[data-lifted] {
-  outline: 1px dashed var(--r-accent);
-  outline-offset: -1px;
 }
 .swipe-card__actions {
   position: absolute;
@@ -202,19 +187,10 @@
   outline-offset: 2px;
 }
 
-.lane-ghost {
-  position: absolute;
-  z-index: 4;
-  pointer-events: none;
-  border-radius: 7px;
-  box-shadow: 0 14px 30px rgb(0 0 0 / 30%);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .monitor-lanes__track,
   .swipe-card__body,
-  .swipe-card__actions,
-  .swipe-card[data-shifting] {
+  .swipe-card__actions {
     transition: none;
   }
 }

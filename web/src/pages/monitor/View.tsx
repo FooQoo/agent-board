@@ -11,7 +11,6 @@ import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
-import { reorderIds } from './model/lanes';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
@@ -89,7 +88,7 @@ export function MonitorView(props: MonitorViewProps) {
     return () => onDetailOpenChange?.(false);
   }, [detail.open, onDetailOpenChange]);
   const { writes, onWritten } = props;
-  // Without writes (the demo, sample data) a swipe or a lift asks nothing and changes nothing.
+  // Without writes (the demo, sample data) a swipe asks nothing and changes nothing.
   const ask = (next: LanePending) => {
     if (writes) setPending(next);
   };
@@ -125,21 +124,6 @@ export function MonitorView(props: MonitorViewProps) {
         lane={lane}
         onLaneChange={setLane}
         onMove={(item, target) => ask({ kind: 'move', item, target })}
-        onReorder={
-          writes
-            ? (item, beforeId) => {
-                const name = item.task.taskStatus as MonitorSection;
-                const ids = ordered[name].map((entry) => entry.task.id);
-                const others = ids.filter((id) => id !== item.task.id);
-                const slot = beforeId === null ? others.length : others.indexOf(beforeId);
-                overlay.reorder(name, reorderIds(ids, item.task.id, slot));
-                void writes
-                  .reorder(projectId, item.task.id, beforeId)
-                  .catch(() => overlay.forgetOrder())
-                  .finally(() => onWritten?.());
-              }
-            : undefined
-        }
         onArchive={(item) => ask({ kind: 'archive', item })}
         onBulkArchive={() => ask({ kind: 'bulk' })}
         onOpenDetail={(item, tab) => {

@@ -3,8 +3,7 @@ import type { MonitorSection } from '../components/MonitorSectionHeader';
 import { EMPTY_OVERLAY, type Lanes, applyOverlay, settleOverlay } from '../model/overlay';
 
 /**
- * Keeps what the phone saved on screen until a read of the project shows it: a new order, a move,
- * an archive. Without it the card would jump back to where the last read had it, and then forward
+ * Keeps what the phone saved on screen until a read of the project shows it: a move or an archive. Without it the card would jump back to where the last read had it, and then forward
  * again when the read after the save arrives.
  */
 export function useLaneOverlay(lanes: Lanes) {
@@ -16,10 +15,6 @@ export function useLaneOverlay(lanes: Lanes) {
   );
   return {
     lanes: shown,
-    reorder: (lane: MonitorSection, ids: number[]) =>
-      setOverlay((current) => ({ ...current, order: { lane, ids } })),
-    /** The save failed: show the lane as the project reads it. */
-    forgetOrder: () => setOverlay((current) => ({ ...current, order: null })),
     move: (id: number, target: MonitorSection) =>
       setOverlay((current) => ({ ...current, moved: new Map(current.moved).set(id, target) })),
     hide: (ids: readonly number[]) =>

@@ -3,12 +3,7 @@ import { csrfHeaders, projectPath, readToken } from '../../shared/api/http';
 import type { MonitorEnvironment } from '../../pages/monitor/MonitorProject';
 import { answerQuestions, setAcceptance } from '../../features/tasks/api/edit';
 import { fetchQuestion } from '../../features/tasks/api/read';
-import {
-  archiveDone,
-  archiveTask,
-  moveTask,
-  reorderTask,
-} from '../../features/tasks/api/lifecycle';
+import { archiveDone, archiveTask, moveTask } from '../../features/tasks/api/lifecycle';
 
 const taskUrl = (projectId: ProjectId, taskId: number) =>
   `${projectPath(projectId)}/tasks/${taskId}`;
@@ -34,6 +29,6 @@ export function boardEnvironment(): MonitorEnvironment {
       : { url: '/api/preferences', token: readToken, headers: csrfHeaders },
     readQuestion: fetchQuestion,
     writeAnswers: answerQuestions,
-    writes: { move: moveTask, reorder: reorderTask, archive: archiveTask, archiveDone },
+    writes: { move: moveTask, archive: archiveTask, archiveDone },
   };
 }

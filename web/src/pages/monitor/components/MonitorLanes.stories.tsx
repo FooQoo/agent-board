@@ -145,13 +145,6 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
         return true;
       }}
       onBulkArchive={async () => setLanes({ ...lanes, done: [] })}
-      onReorder={(item, beforeId) => {
-        const lane = item.task.taskStatus as keyof typeof lanes;
-        const rest = lanes[lane].filter((entry) => entry.task.id !== item.task.id);
-        const at = beforeId === null ? rest.length : rest.findIndex((e) => e.task.id === beforeId);
-        rest.splice(at, 0, item);
-        setLanes({ ...lanes, [lane]: rest });
-      }}
     />
   );
 }
@@ -190,7 +183,6 @@ function press(
     }),
   );
 }
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const cardOf = (canvas: HTMLElement, id: number) => {
   const found = canvas.querySelector(`[data-swipe-card="${id}"]`);
   if (!found) throw new Error(`No card ${id}.`);
@@ -297,7 +289,7 @@ export const EmptyDoneLane: Story = {
   },
 };
 
-/** Try it: tabs, a sideways swipe on empty space, a left swipe on a card, a long press and drag. */
+/** Try it: tabs, a sideways swipe on empty space or from a screen edge, a swipe on a card. */
 export const Interactive: Story = {
   args: { initialLane: 'todo' },
 };
@@ -381,51 +373,5 @@ export const SwipeSwitchesLane: Story = {
     await waitFor(() =>
       expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
     );
-  },
-};
-
-/** Holding a card and carrying it down puts it lower in its lane; the others make room. */
-export const LongPressReorders: Story = {
-  args: { initialLane: 'todo' },
-  play: async ({ canvasElement }) => {
-    const lane = canvasElement.querySelector('.monitor-lane[data-lane="todo"]');
-    if (!lane) throw new Error('No lane.');
-    const ids = () =>
-      [...lane.querySelectorAll<HTMLElement>('[data-swipe-card]')].map((card) =>
-        Number(card.dataset.swipeCard),
-      );
-    const [first, second] = ids();
-    if (first === undefined || second === undefined) throw new Error('Too few cards.');
-    const card = cardOf(canvasElement, first);
-    const next = cardOf(canvasElement, second).getBoundingClientRect();
-    const rect = card.getBoundingClientRect();
-    const x = rect.left + 40;
-    press(card, 'pointerdown', x, rect.top + 20);
-    await wait(180);
-    await waitFor(() => expect(card).toHaveAttribute('data-lifted'));
-    press(card, 'pointermove', x, rect.top + 20 + (next.bottom - rect.top) - 10);
-    await waitFor(() =>
-      expect((cardOf(canvasElement, second) as HTMLElement).style.transform).toMatch(
-        /translateY\(-/,
-      ),
-    );
-    press(card, 'pointerup', x, rect.top + 20 + (next.bottom - rect.top) - 10);
-    await waitFor(() => expect(ids().slice(0, 2)).toEqual([second, first]));
-  },
-};
-
-/** 完了 keeps the order the cards were completed in: a long press does not lift a card there. */
-export const DoneLaneDoesNotReorder: Story = {
-  args: { initialLane: 'done' },
-  play: async ({ canvasElement }) => {
-    const card = canvasElement.querySelector<HTMLElement>(
-      '.monitor-lane[data-lane="done"] [data-swipe-card]',
-    );
-    if (!card) throw new Error('No done card.');
-    const rect = card.getBoundingClientRect();
-    press(card, 'pointerdown', rect.left + 40, rect.top + 20);
-    await wait(220);
-    await expect(card).not.toHaveAttribute('data-lifted');
-    press(card, 'pointerup', rect.left + 40, rect.top + 20);
   },
 };

@@ -24,16 +24,13 @@ export interface SwipeableCardProps
   onArchive: () => void;
   /** The card is in a lane that is not on screen. */
   inactive?: boolean;
-  /** How far (px) the card moves down or up to make room for a card being reordered. */
-  shift?: number;
   children: ReactNode;
 }
 
 /**
  * Wraps a monitor card with what a finger does to it. A swipe to the left slides the whole card
  * left and shows the lane on the right and the archive; a swipe to the right shows the lane on the
- * left. Each tile grows from a dot as the card slides. A long press lifts the card to reorder its
- * lane. The card itself is the child, so it keeps its own taps (the title opens the details).
+ * left. Each tile grows from a dot as the card slides. The card itself is the child, so it keeps its own taps (the title opens the details).
  * While tiles are showing, a tap on the card closes them instead.
  */
 export function SwipeableCard({
@@ -42,7 +39,6 @@ export function SwipeableCard({
   onMove,
   onArchive,
   inactive,
-  shift,
   children,
   revealed,
   ...gesture
@@ -52,7 +48,7 @@ export function SwipeableCard({
   const actions = swipeActions(lane);
   const leftWidth = actionsWidth(actions.left.length);
   const rightWidth = actionsWidth(actions.right.length);
-  const { drag, lifted, consumesClick, handlers } = useCardGesture(ref, {
+  const { drag, consumesClick, handlers } = useCardGesture(ref, {
     ...gesture,
     revealed,
     leftWidth,
@@ -122,13 +118,10 @@ export function SwipeableCard({
       className="swipe-card"
       data-swipe-card={taskId}
       data-revealed={revealed ?? undefined}
-      data-lifted={lifted || undefined}
       data-dragging={drag !== null || undefined}
-      data-shifting={shift !== undefined || undefined}
-      style={shift ? { transform: `translateY(${shift}px)` } : undefined}
       {...handlers}
       onClickCapture={(event) => {
-        // The click that ends a swipe or a lift is not a tap; a tap on an open card closes it.
+        // The click that ends a swipe is not a tap; a tap on an open card closes it.
         const target = event.target as Element;
         if (target.closest('[data-swipe-action]')) return;
         if (consumesClick() || revealed !== null) {

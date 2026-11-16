@@ -27,16 +27,6 @@ const ids = (shown: Lanes) => ({
 const NOW = '2099-01-01T00:00:00Z';
 
 describe('lane overlay', () => {
-  it('keeps a saved order through a read that still has the old one', () => {
-    const overlay = { ...EMPTY_OVERLAY, order: { lane: 'todo' as const, ids: [3, 1, 2] } };
-    const stale = lanes([1, 2, 3]);
-    expect(ids(applyOverlay(stale, overlay, NOW)).todo).toEqual([3, 1, 2]);
-    expect(settleOverlay(stale, overlay)).toBe(overlay);
-    expect(settleOverlay(lanes([3, 1, 2]), overlay).order).toBeNull();
-    // Someone else changed the lane: the read wins.
-    expect(settleOverlay(lanes([1, 2]), overlay).order).toBeNull();
-  });
-
   it('shows a moved card at the end of its new lane until a read has it there', () => {
     const overlay = { ...EMPTY_OVERLAY, moved: new Map([[1, 'doing' as const]]) };
     const shown = applyOverlay(lanes([1, 2], [5]), overlay, NOW);

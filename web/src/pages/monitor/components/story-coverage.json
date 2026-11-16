@@ -370,11 +370,6 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--long-press-reorders",
-              "states": ["long press lifts", "others make room", "drop reorders"],
-              "interaction": true
-            },
-            {
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["touch and mouse gestures"],
               "interaction": true
@@ -428,11 +423,6 @@
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["all gestures"],
               "interaction": true
-            },
-            {
-              "id": "pages-monitor-components-monitorlanes--done-lane-does-not-reorder",
-              "states": ["done lane keeps completion order"],
-              "interaction": true
             }
           ]
         }
@@ -452,11 +442,6 @@
             {
               "id": "pages-monitor-components-monitorlanes--bulk-archive-confirm",
               "states": ["bulk archive confirmation"],
-              "interaction": true
-            },
-            {
-              "id": "pages-monitor-components-monitorlanes--long-press-reorders",
-              "states": ["long press lifts", "others make room", "drop reorders"],
               "interaction": true
             }
           ]
