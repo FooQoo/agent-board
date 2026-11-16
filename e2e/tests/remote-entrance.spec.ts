@@ -139,6 +139,8 @@ test('the old monitor addresses are not found, with or without a session, and no
 // DM-6: the phone answers from the bottom sheet; the card itself carries only the button.
 test('the phone answers the current question from the sheet, and the answer reaches the shared files', async ({ page }) => {
   await entrance.open(page, phoneUrl());
+  // The phone shows one lane at a time; the card waiting for an answer is in Doing.
+  await page.getByRole('tab', { name: /^Doing / }).click();
   const article = page.getByRole('article', { name: /Alpha pending review/ });
   // The card shows the button only: no question, no choices, no note.
   await expect(article.getByRole('button', { name: 'Answer the question' })).toBeVisible();
@@ -232,6 +234,7 @@ test('an image attached to the task shows in the sheet from the attachment route
   expect(st.code, st.stderr).toBe(0);
 
   await entrance.open(page, phoneUrl());
+  await page.getByRole('tab', { name: /^Doing / }).click();
   await page.getByRole('article', { name: /Alpha image question/ }).getByRole('button', { name: 'Answer the question' }).click();
   const sheet = page.getByRole('dialog', { name: 'Alpha image question' });
   const image = sheet.getByRole('img', { name: 'the picture' });

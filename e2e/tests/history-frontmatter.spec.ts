@@ -157,6 +157,8 @@ test('new task history survives restart and appears in PC and mobile details', a
 
 	await page.setViewportSize({ width: 375, height: 812 });
 	await serve.open(page, `${serve.phoneOrigin}/?project=${pid}`);
+	// The phone shows one lane at a time; the task is in Doing.
+	await page.getByRole('tab', { name: /^Doing / }).click();
 	const monitorTask = page.getByRole('article', { name: new RegExp(`History after restart`) });
 	await monitorTask.getByRole('button', { name: 'History after restart', exact: true }).click();
 	const drawer = page.getByRole('dialog', { name: 'History after restart' });
@@ -182,6 +184,8 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await new Promise((resolve) => setTimeout(resolve, 150));
 	await page.setViewportSize({ width: 375, height: 812 });
 	await serve.open(page, `${serve.phoneOrigin}/?project=${pid}`);
+	// The phone shows one lane at a time; the task is in Doing.
+	await page.getByRole('tab', { name: /^Doing / }).click();
 	const article = page.getByRole('article', { name: new RegExp(`Pending history answer`) });
 	// The card holds only the button; the answer is given in the sheet.
 	await article.getByRole('button', { name: 'Answer the question' }).click();
