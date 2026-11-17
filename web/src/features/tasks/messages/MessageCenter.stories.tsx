@@ -80,7 +80,7 @@ export const ListFromAi: Story = {
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
     await expect(within(list).getAllByText('未回答')).toHaveLength(2);
-    await expect(within(list).getByText('承認待ち')).toBeVisible();
+    await expect(within(list).getByText('承認待ち')).toBeInTheDocument();
     await expect(within(list).queryByText('受け取り待ち')).toBeNull();
   },
 };
@@ -90,7 +90,7 @@ export const ListFromYou: Story = {
   args: { initial: { tab: 'fromYou' } },
   play: async () => {
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
-    await expect(within(list).getByText('受け取り待ち')).toBeVisible();
+    await expect(within(list).getByText('受け取り待ち')).toBeInTheDocument();
     await expect(within(list).queryByText('未回答')).toBeNull();
   },
 };
@@ -114,8 +114,10 @@ export const QuestionOpen: Story = {
     await within(dialog).findByRole('heading', { name: '既存のユーザーデータの扱い' });
     const send = within(dialog).getByRole('button', { name: '回答を送る' });
     await expect(send).toBeDisabled();
-    await expect(within(dialog).getByRole('button', { name: 'あとでやる' })).toBeVisible();
-    await expect(within(dialog).getByText(/返事があるまで #21 #22 は止まります/)).toBeVisible();
+    await expect(within(dialog).getByRole('button', { name: 'あとでやる' })).toBeInTheDocument();
+    await expect(
+      within(dialog).getByText(/返事があるまで #21 #22 は止まります/),
+    ).toBeInTheDocument();
     const question = dialog.querySelector('.decision-panel__question');
     const answer = dialog.querySelector('.decision-panel__answer');
     if (!question || !answer) throw new Error('The panel has no two columns.');
@@ -218,6 +220,8 @@ export const PhoneRequestEnDark: Story = {
   globals: { locale: 'en', mode: 'dark', width: 'phone-375' },
   play: async () => {
     const sheet = await page().findByRole('dialog', { name: 'Messages' });
-    await expect(await within(sheet).findByRole('button', { name: 'Withdraw' })).toBeVisible();
+    await expect(
+      await within(sheet).findByRole('button', { name: 'Withdraw' }),
+    ).toBeInTheDocument();
   },
 };

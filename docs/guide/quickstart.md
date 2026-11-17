@@ -32,7 +32,7 @@ You do not set up tasks or conditions. The agent reads the board, and for a requ
 
 ## 3. Answer the plan questions
 
-The agent asks what it cannot settle itself, with choices and a recommendation. It writes each question in the chat, and every question is also on the board, in the **Unanswered questions** band and on the tasks that wait for the answer, which show **Pending**. Answer wherever is easier: choose an option on the board or on your phone, or reply in the chat in your own words. The first answer recorded is the one that counts. See [Decisions](./delegate/decisions).
+The agent asks what it cannot settle itself, with choices and a recommendation. It writes each question in the chat, and every question is also on the board, in the **Messages** band and on the tasks that wait for the answer, which show **Pending**. Answer wherever is easier: choose an option on the board or on your phone, or reply in the chat in your own words. The first answer recorded is the one that counts. See [Decisions](./delegate/decisions).
 
 The agent changes the plan as your answers say, and may ask a little more. If it has no questions, it skips this step.
 
