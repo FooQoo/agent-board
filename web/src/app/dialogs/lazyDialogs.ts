@@ -16,13 +16,6 @@ export const bulkArchiveDialog = preloadable(() =>
   ),
 );
 
-/** The answer dialog, with the Markdown renderer of the question, loads before it is first opened. */
-export const decisionAnswerDialog = preloadable(() =>
-  import('../../features/tasks/answer/DecisionAnswerDialogContainer').then(
-    (module) => module.DecisionAnswerDialogContainer,
-  ),
-);
-
 /** The docs dialog loads when it is first opened. */
 export const docsDialog = preloadable(() =>
   import('../../features/docs/ui/DocsDialogContainer').then((module) => module.DocsDialogContainer),
@@ -36,7 +29,6 @@ export function preloadBoardCode(): void {
   for (const preload of [
     actionDialog.preload,
     bulkArchiveDialog.preload,
-    decisionAnswerDialog.preload,
     preloadDecisionQuestion,
     preloadDocumentBlocks,
     preloadDetailSection,

@@ -1,6 +1,5 @@
 import type { ColumnName } from '../../shared/api/contracts';
 import type { BlockKind, Summary, SummaryEpic, SummaryTask } from '../../shared/data/api';
-import type { QuestionDetail } from '../../features/tasks/answer/model/qa';
 import type { MonitorViewProps } from './contracts';
 import { monitorFreshness } from './model/freshness';
 import { monitorTasksOf } from './model/summary';
@@ -166,6 +165,24 @@ export function createMonitorFixture(): MonitorFixture {
             ]
           : [],
       ),
+      // Each waiting card's question is one message waiting on the person.
+      messages: [...tasks.values()].flatMap(({ summary }) =>
+        summary.pendingRequestId
+          ? [
+              {
+                id: summary.pendingRequestId,
+                type: 'question' as const,
+                from: 'ai' as const,
+                to: 'human' as const,
+                turn: 'human' as const,
+                title: summary.pendingReason ?? '',
+                createdAt: summary.agentStatusChangedAt,
+                tasks: [summary.id],
+                epicId: null,
+              },
+            ]
+          : [],
+      ),
       epics: [epic],
       problems: [],
     },
@@ -197,21 +214,5 @@ export function createMonitorFixtureProps(
       lastFetchedAt: '2026-10-11T01:00:00Z',
     }),
     onRefresh: () => undefined,
-  };
-}
-
-/** One question of the sample project, as the question route returns it. */
-export function fixtureQuestion(fixture: MonitorFixture, questionId: string): QuestionDetail {
-  const task = [...fixture.tasks.values()].find(
-    ({ summary }) => summary.pendingRequestId === questionId,
-  );
-  if (!task) throw new Error(`The sample project has no question ${questionId}.`);
-  return {
-    id: questionId,
-    question: task.summary.pendingReason ?? '',
-    choices: task.summary.pendingChoices,
-    recommendedChoiceId: null,
-    status: 'open',
-    referencedBy: [task.summary.id],
   };
 }

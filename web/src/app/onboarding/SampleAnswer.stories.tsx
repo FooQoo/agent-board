@@ -16,14 +16,16 @@ type Story = StoryObj<typeof meta>;
 
 const page = () => within(document.body);
 
-/** The PC dialog with the guide's own question: Send waits for a choice, then resumes the guide. */
+/** The PC dialog with the guide's own question: Send answer waits for a choice, then resumes the guide. */
 export const Dialog: Story = {
   play: async ({ args }) => {
     await expect(await page().findByRole('dialog')).toBeInTheDocument();
-    await expect(page().getByText('Which explanation is easier to read?')).toBeInTheDocument();
-    await expect(page().getByRole('button', { name: 'Send' })).toBeDisabled();
+    await expect(
+      await page().findByText('Which explanation is easier to read?'),
+    ).toBeInTheDocument();
+    await expect(page().getByRole('button', { name: 'Send answer' })).toBeDisabled();
     await userEvent.click(page().getByRole('radio', { name: 'Keep it brief' }));
-    await userEvent.click(page().getByRole('button', { name: 'Send' }));
+    await userEvent.click(page().getByRole('button', { name: 'Send answer' }));
     await expect(args.onSend).toHaveBeenCalledTimes(1);
   },
 };
@@ -39,7 +41,7 @@ export const SheetJapaneseNarrow: Story = {
       expect(page().getByText('案内の文章は、どちらが読みやすいですか？')).toBeVisible(),
     );
     await userEvent.click(page().getByRole('radio', { name: '短く、要点だけ' }));
-    await userEvent.click(page().getByRole('button', { name: '送る' }));
+    await userEvent.click(page().getByRole('button', { name: '回答を送る' }));
     await expect(args.onSend).toHaveBeenCalledTimes(1);
   },
 };

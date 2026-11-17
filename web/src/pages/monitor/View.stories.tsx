@@ -38,11 +38,16 @@ function ConnectedProjectStory() {
       projectId={fixture.projectId}
       adapter={adapter}
       readResolvers={unconnectedMonitorReadResolvers}
-      readQuestion={async () => {
-        throw new Error('The story has no questions.');
-      }}
-      writeAnswers={async () => {
-        throw new Error('The story takes no answers.');
+      messagesApi={{
+        read: async () => {
+          throw new Error('The story has no messages.');
+        },
+        answer: async () => {
+          throw new Error('The story takes no answers.');
+        },
+        withdraw: async () => {
+          throw new Error('The story withdraws nothing.');
+        },
       }}
       useBuildReload={() => undefined}
       onNotFound={() => undefined}

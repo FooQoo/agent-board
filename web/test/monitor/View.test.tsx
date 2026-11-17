@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
 import { MonitorView } from '../../src/pages/monitor/View';
 import type { MonitorViewProps } from '../../src/pages/monitor/contracts';
-import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 import { makeTask, PROJECT_A } from '../fixtures';
 
 function props(): MonitorViewProps {
@@ -37,10 +36,16 @@ function props(): MonitorViewProps {
   };
 }
 
-/** The view with the answer controller the page gives it. */
+/** The view with the messages routes the page gives it. */
 function Connected() {
-  const { book } = useMonitorInteractions();
-  return <MonitorView {...props()} answerController={{ book, read: vi.fn(), write: vi.fn() }} />;
+  return (
+    <MonitorView
+      {...props()}
+      projectId="p"
+      messages={[]}
+      messagesApi={{ read: vi.fn(), answer: vi.fn(), withdraw: vi.fn() }}
+    />
+  );
 }
 
 describe('MonitorView', () => {

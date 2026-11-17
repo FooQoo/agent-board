@@ -8,28 +8,39 @@ A decision is a question an agent asks when it cannot continue without you. It i
 
 ## How you notice a question
 
-A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. You can also see Pending tasks on the [remote access](../watch/remote-access).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. You can also see Pending tasks on the [remote access](../watch/remote-access).
 
-Every open question of the project is also listed in the **Unanswered questions** band above the lanes. The band is always there, and it starts closed: its header shows the title and the number of open questions, and **Answer them** (or **Continue answering** and **Review and send** while you hold answers) stays in the header. Select the header, or its arrow, to open the list; select it again to close it. The band does not remember its state, so it is closed again when you reload the page.
+Every open message of the project is counted in the **Messages** band above the lanes. The band is always there. It shows two counts:
 
-Each item of the open list shows the tasks that refer to the question, or **No task**, and its title in up to two lines. An item you have answered but not sent is marked **Answered, not sent**. When the items do not fit, scroll the band sideways with the arrow buttons that appear while it is open. When there are no questions, the header shows a count of 0 and there is nothing to open.
+- **AI's questions** is the number of questions and approvals that wait on you, with the split in brackets, such as **(2 questions, 1 approval)**.
+- **Your requests** is the number of requests you sent that no agent has picked up yet, marked **waiting to be picked up**.
+
+With nothing open, the counts are 0. Select **Open the list** to read the messages.
+
+## The list of messages
+
+**Open the list** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. Each row shows the kind (question, request, or approval), the direction, the ID, the time, and the first line, with its state on the right:
+
+| State | Meaning |
+| --- | --- |
+| **Unanswered** | A question that waits on your answer. |
+| **Awaiting approval** | A plan that waits on your approval. Selecting it opens the review of the plan. |
+| **Waiting to be picked up** | A request you sent that no agent has accepted yet. |
+
+Only open messages are listed. A question you have answered, a request an agent accepted, and a message that was withdrawn leave the list, so nothing you have finished is shown.
+
+Select a question or a request to open it in place of the list. **Back to list** returns to the list.
 
 ## Answer in the browser
 
-You can answer from the band in two ways.
+Select a question in the list, or select **Answer the question** on its card to open the list at that task's first open question. The question opens in a wide modal with two columns:
 
-- **One question at a time.** Select an item in the open list. The dialog holds only that question, and **Send** sends your answer at once, with no review step. The other questions stay open.
-- **Every question in a row.** **Answer them** in the band header goes through all the open questions and sends them together at the end. Nothing is sent, and the waiting agent does not move, until you select **Send all**.
+- On the left, the question, drawn like a task body. When tasks wait on it, a note above it says so, such as **#21 #22 stay blocked until you reply**.
+- On the right, your answer: choose one of the offered options and, if you like, add a note.
 
-To answer one task's questions and send them at once, start from its card instead (see [Answer from a card](#answer-from-a-card)).
+**Later** and **Send answer** stay at the bottom, so they are in reach however long the question is. **Send answer** sends your answer at once and returns to the list. **Later** closes the list and keeps nothing. You can also close it with the close button, Escape, or a click outside. Closing never asks for confirmation.
 
-To answer every question in a row:
-
-1. Select **Answer them** in the band. The dialog starts at the first question without an answer. The button reads **Continue answering** once you have answered some, and **Review and send** opens the review directly.
-2. Read the question on the left, and answer on the right: choose one of the offered options, write a note, or do both. The header shows the task and where you are, such as **2 / 5**. When several tasks share the question, the header lists their IDs and reads **3 tasks** instead of naming only the first.
-3. Select **Next** to go on, or **Previous** to go back. The steps under the header show which questions you have answered; select a step to jump to it.
-4. After the last question, the **Review and send** step lists every question with your answer. Select **Change** to edit one, or **Answer** for one you skipped.
-5. Select **Send all**. The answers you gave are sent together, and the questions you skipped stay open.
+A question with choices needs a choice: a note alone cannot be sent, and **Send answer** stays disabled until you choose one. The note then adds to your choice. A question without choices needs a note. The note takes up to 2,000 characters. Answers are sent one question at a time: there is no review step, and no answer is held on the page.
 
 On a window narrower than 900 px, the question and the answer stack in one column.
 
@@ -37,41 +48,29 @@ On a window narrower than 900 px, the question and the answer stack in one colum
 
 Each answer is saved to the history of every task that refers to its question. The question and each part of your answer appear as separate blocks there. A task stays in its current column. When none of its questions is open any more, its agent state becomes Idle, and the agent reads your response before it decides how to resume.
 
-- **Close** the dialog at any time with the close button, Escape, or a click outside it. Closing never asks for confirmation, and your answers stay. Open the dialog again from the band or the card to go on, or select **Review and send** in the band.
-- While you have answers that are not sent, you cannot switch to another project. Send them, or clear them with **Clear**, first.
-- Your answers are kept while the page stays open. Reloading the page clears them.
-- A question has no expiry. It stays open until it is answered or the agent withdraws it. Moving or archiving the task does not withdraw it.
-
-### Answer from a card
-
-**Answer the question** on a card opens only the questions that task waits on. There is no review step. On the last of them, select **Send**, and the answers to that task's questions are sent at once.
-
-When the task waits on more than one question, select **Next** to go through them first. Answers you hold for other tasks' questions are not sent, and the band still offers **Review and send** for them.
+A question has no expiry. It stays open until it is answered or the agent withdraws it. Moving or archiving the task does not withdraw it.
 
 ### If a question is answered elsewhere or withdrawn
 
-A question can be answered somewhere else, for example in the chat, while you are answering it. An agent can also withdraw a question it no longer needs. The dialog then marks that question:
-
-- On its step, the dialog shows **This question was withdrawn. You can no longer answer it.**, or that it was answered elsewhere. You can still read the question and your input, but you cannot change them.
-- In the review, the answer is marked as one that cannot be sent, and **Discard** removes it. **Send all** sends only the others.
-
-A question the agent asks while the dialog is open is added at the end of the steps.
+A question can be answered somewhere else, for example in the chat, while you are answering it, and an agent can withdraw a question it no longer needs. Such a question leaves the list, and an open question you were writing returns you to the list. When you send an answer to a question that was just answered or withdrawn, nothing is saved and the dialog says **This question was answered elsewhere or withdrawn.**
 
 ### If sending fails
 
-The dialog keeps your answers and shows **Could not save. Try again.** Select **Retry**. When some of the questions were answered or withdrawn elsewhere in the meantime, nothing is sent. Those questions are marked, and sending again sends the others.
+The dialog keeps your choice and note and shows **It could not be sent. Try again.** Select **Send answer** again.
+
+## Your requests
+
+A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiting to be picked up** until an agent accepts it. Open it to read what you sent, with its images. While it waits, **Withdraw** takes it back. Once an agent has accepted it, it leaves the list, and it can no longer be withdrawn.
 
 ## Answer on your phone
 
-On remote access, the same **Unanswered questions** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. An item in the open list opens the sheet with only that question, and **Send** sends it at once. With no questions the header shows a count of 0 and does not open.
+On remote access, the same **Messages** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band shows the same counts. **Open the list** opens the list as a sheet that slides up from the bottom, and **Ask AI** sits beside it when your phone can send a request.
 
-The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review. An item of the band works the same way for its one question.
+The sheet works like the modal. The tabs and rows are the same. An open question stacks the answer under the question, and the sheet scrolls while **Later** and **Send answer** stay at the bottom, in reach of your thumb. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
 
-![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
+![Answer sheet on the phone with the question, choices, note, and the buttons at the bottom](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
 Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Remote access](../watch/remote-access) for connecting a phone.
-
-If you close the sheet with an answer that is not sent, and the question is then answered elsewhere or withdrawn, the review keeps that answer, marked as one that cannot be sent. Select **Discard** to remove it.
 
 ## Answer in the chat
 

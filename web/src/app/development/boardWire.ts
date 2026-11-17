@@ -79,6 +79,25 @@ export function summaryOfBoard(board: Board): Summary {
       const asked = questionOf(task);
       return asked ? [asked] : [];
     }),
+    // Each open question is one message waiting on the person.
+    messages: board.tasks.flatMap((task) => {
+      const asked = questionOf(task);
+      return asked
+        ? [
+            {
+              id: asked.id,
+              type: 'question' as const,
+              from: 'ai' as const,
+              to: 'human' as const,
+              turn: 'human' as const,
+              title: asked.title,
+              createdAt: asked.createdAt,
+              tasks: asked.referencedBy,
+              epicId: task.epic?.id ?? null,
+            },
+          ]
+        : [];
+    }),
     epics: board.epics.map((epic) => ({
       id: epic.id,
       name: epic.name,

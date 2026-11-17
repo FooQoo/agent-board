@@ -2,12 +2,8 @@ import type { ColumnName, Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { HeaderProps, HeaderSettings } from '../../shared/ui/app-header/Header';
-import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
-import type {
-  AnswersWriter,
-  BandQuestion,
-  QuestionReader,
-} from '../../features/tasks/answer/model/qa';
+import type { MessagesApi } from '../../features/tasks/messages/model/messages';
+import type { Message } from '../../shared/data/api/contracts';
 
 export interface MonitorTask {
   projectId: ProjectId;
@@ -87,12 +83,16 @@ export interface MonitorViewProps {
   onRefresh(): void;
   /** True while that request runs; the button waits. */
   refreshing?: boolean;
-  answerController?: MonitorAnswerController;
-  /** The project on the screen, and its open questions for the band; no band without them. */
+  /** The project on the screen, its open messages and the routes for the band; no band without them. */
   projectId?: ProjectId;
-  questions?: readonly BandQuestion[];
-  /** The answers were saved: the screen reads the project again without waiting. */
-  onAnswersSent?(): void;
+  messages?: readonly Message[];
+  messagesApi?: MessagesApi;
+  /** An answer or a withdrawal was saved: the screen reads the project again without waiting. */
+  onMessagesChanged?(): void;
+  /** The phone band's "Ask AI" button; the band shows none without it. */
+  onAsk?(): void;
+  /** An approval row of the list was chosen: the plan review opens. */
+  onOpenApproval?(message: Message): void;
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
@@ -100,17 +100,12 @@ export interface MonitorViewProps {
   guideLink?: PhoneGuideLink;
   /** Told whenever the detail drawer opens or closes; the page does not reload while it is open. */
   onDetailOpenChange?(open: boolean): void;
+  /** Told whenever the list of messages opens or closes; an answer being written would be lost by a reload. */
+  onMessagesOpenChange?(open: boolean): void;
   /** Moves and archives from the lanes; without them the lanes only read. */
   writes?: MonitorWrites;
   /** The project's name, which the archive confirmations show. */
   projectName?: string;
   /** A move or an archive was saved: the screen reads the project again without waiting. */
   onWritten?(): void;
-}
-
-/** What the monitor needs to answer questions: its book of held answers and its two routes. */
-export interface MonitorAnswerController {
-  book: AnswerBook;
-  read: QuestionReader;
-  write: AnswersWriter;
 }

@@ -40,7 +40,7 @@ export const detailJa = {
     heading: 'あなたの回答',
     note: 'メモ',
     notePlaceholder: '補足があれば書く…',
-    guide: '選択肢を選ぶか、メモだけでも回答できます。',
+    guide: '選択肢を選んでください。メモは補足として添えられます。',
     clear: '入力をクリア',
     sheetClose: '回答を閉じる',
     sheetDismiss: '下にスワイプして回答を閉じる',

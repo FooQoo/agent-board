@@ -14,14 +14,12 @@ export function MonitorTask({
   section,
   onOpenDetail,
   onOpenAnswer,
-  answerController,
 }: {
   item: MonitorTaskModel;
   section: MonitorSection;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   /** The card's answer button was pressed; the sheet is drawn outside the cards. */
   onOpenAnswer?: (item: MonitorTaskModel) => void;
-  answerController?: MonitorViewProps['answerController'];
 }) {
   const { t } = useTranslation();
   const task = item.task;
@@ -85,15 +83,9 @@ export function MonitorTask({
               : formatShort(task.agentStatusChangedAt)}
         </span>
       </span>
-      {pending && waitsOnQuestion(task) && answerController && (
+      {pending && waitsOnQuestion(task) && onOpenAnswer && (
         <div className="monitor-card__request">
-          <DecisionAnswerButton
-            continuing={(task.openQuestionIds ?? []).some(
-              (id) => answerController.book.held(item.projectId, id) !== null,
-            )}
-            taskId={task.id}
-            onClick={() => onOpenAnswer?.(item)}
-          />
+          <DecisionAnswerButton taskId={task.id} onClick={() => onOpenAnswer(item)} />
         </div>
       )}
     </article>

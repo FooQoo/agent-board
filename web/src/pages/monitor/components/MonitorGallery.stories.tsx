@@ -1,15 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { makeMonitorTask, makeProject, makeTask } from '../../../../.storybook/support/fixtures';
-import type { BandQuestion } from '../../../features/tasks/answer/model/qa';
+import type { Message } from '../../../shared/data/api/contracts';
 import {
   SAMPLE_PROJECT,
-  sampleQuestions,
-  sampleReader,
-} from '../../../features/tasks/answer/questionSamples';
-import { useMonitorInteractions } from '../hooks/useMonitorInteractions';
+  sampleMessages,
+  sampleMessagesApi,
+} from '../../../features/tasks/messages/messageSamples';
 import { MonitorView } from '../View';
 import type { MonitorViewProps } from '../contracts';
 import { withMonitorFixtureData } from '../fixture-provider';
@@ -25,21 +24,22 @@ type MonitorGalleryVariant =
   | 'stale'
   | 'section-headers'
   | 'answer'
-  | 'answer-continuing'
   | 'band'
   | 'band-empty';
 
 // The Story-ID collector reads the first `title:` literal of a file, so this one is kept out of it.
 const ANSWER_TITLE = 'API refactoring';
 
-/** A card of the mock's board; with questions referring to it, it waits for them. */
+/** A card of the mock's board; with an open question referring to it, it waits for it. */
 function questionCard(
   id: number,
   title: string,
   taskStatus: 'todo' | 'doing' | 'done',
-  questions: readonly BandQuestion[],
+  messages: readonly Message[],
 ) {
-  const open = questions.filter((q) => q.referencedBy.includes(id)).map((q) => q.id);
+  const open = messages
+    .filter((m) => m.type === 'question' && m.tasks.includes(id))
+    .map((m) => m.id);
   return {
     ...makeTask({
       id,
@@ -55,28 +55,28 @@ function questionCard(
 }
 
 /**
- * The monitor with questions waiting. `answer`: one card with its button. `band`: the mock's board
- * under the band of five questions; `band-empty`: the same board with none.
+ * The monitor with messages waiting. `answer`: one card with its button. `band`: the mock's board
+ * under the band of messages; `band-empty`: the same board with none.
  */
 function QuestionScreen({ variant }: { variant: MonitorGalleryVariant }) {
   const { i18n } = useTranslation();
   const project = useMemo(() => makeProject({ id: SAMPLE_PROJECT, name: 'agent-board' }), []);
-  const answerController = useMonitorInteractions();
-  const { book } = answerController;
-  const questions = useMemo(
-    () => (variant === 'band-empty' ? [] : sampleQuestions(i18n.language)),
+  // The first question waits on the card "API refactoring" (#11).
+  const messages = useMemo(
+    () =>
+      variant === 'band-empty'
+        ? []
+        : sampleMessages(i18n.language).map((message) =>
+            message.id === 'Q-12' ? { ...message, tasks: [11] } : message,
+          ),
     [variant, i18n.language],
   );
-  useMemo(() => book.reconcile(SAMPLE_PROJECT, questions), [book, questions]);
-  useEffect(() => {
-    if (variant !== 'answer-continuing') return;
-    book.setText(SAMPLE_PROJECT, 'Q-2', 'Keep it until v3.');
-  }, [variant, book]);
+  const messagesApi = useMemo(() => sampleMessagesApi(i18n.language), [i18n.language]);
   const data = useMemo(() => createMonitorFixture(), []);
   const base = useMemo(() => createMonitorFixtureProps(data), [data]);
   const card = (id: number, title: string, status: 'todo' | 'doing' | 'done') =>
-    makeMonitorTask(questionCard(id, title, status, questions), project);
-  const single = variant === 'answer' || variant === 'answer-continuing';
+    makeMonitorTask(questionCard(id, title, status, messages), project);
+  const single = variant === 'answer';
   const lists = single
     ? { todo: [], doing: [card(11, ANSWER_TITLE, 'doing')], done: [] }
     : {
@@ -99,13 +99,12 @@ function QuestionScreen({ variant }: { variant: MonitorGalleryVariant }) {
     ...base,
     ...lists,
     summary: { todo: lists.todo.length, doing: lists.doing.length, done: lists.done.length },
-    answerController: {
-      book,
-      read: sampleReader(sampleQuestions(i18n.language, true)),
-      write: async () => {},
-    },
     projectId: SAMPLE_PROJECT,
-    questions: single ? undefined : questions,
+    messages: single ? undefined : messages,
+    messagesApi,
+    // The card's button opens the list, so the single-card variant needs the messages too.
+    ...(single ? { messages } : {}),
+    onAsk: () => {},
   };
   return withMonitorFixtureData(data, <MonitorView {...props} />);
 }
@@ -114,12 +113,7 @@ function MonitorGallery({ variant = 'loaded' }: { variant?: MonitorGalleryVarian
   const data = useMemo(() => createMonitorFixture(), []);
   const fixture = useMemo(() => createMonitorFixtureProps(data), [data]);
 
-  if (
-    variant === 'answer' ||
-    variant === 'answer-continuing' ||
-    variant === 'band' ||
-    variant === 'band-empty'
-  ) {
+  if (variant === 'answer' || variant === 'band' || variant === 'band-empty') {
     return <QuestionScreen variant={variant} />;
   }
 
@@ -244,38 +238,30 @@ export const Answer: Story = {
   play: answerPlay('質問に回答する'),
 };
 
-export const AnswerContinuing: Story = {
-  args: { variant: 'answer-continuing' },
-  globals: { locale: 'en', mode: 'dark', accent: 'blue', width: 'phone-375' },
-  play: answerPlay('Continue answering'),
-};
-
-/** The band of five questions under the counts: closed at first, opened by its header. */
-export const QuestionBand: Story = {
+/** The band of messages under the counts, with "AI に依頼" and "一覧を開く". */
+export const MessageBand: Story = {
   args: { variant: 'band' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).queryAllByRole('listitem')).toHaveLength(0);
-    await userEvent.click(within(band).getByRole('button', { name: /^未回答の質問を表示する/ }));
-    await expect(within(band).getAllByRole('listitem')).toHaveLength(5);
-    await expect(within(band).getByRole('button', { name: 'まとめて答える' })).toBeVisible();
+    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
+    await expect(within(band).getByText(/質問 2・承認 1/)).toBeVisible();
+    await expect(within(band).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
+    await expect(within(band).getByRole('button', { name: '一覧を開く' })).toBeVisible();
   },
 };
 
-/** No questions: the band stays with a count of 0 and nothing to open. */
-export const QuestionBandEmpty: Story = {
+/** Nothing is open: the band stays with a count of 0. */
+export const MessageBandEmpty: Story = {
   args: { variant: 'band-empty' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).getByText('0')).toBeVisible();
-    await expect(within(band).getByRole('button')).toBeDisabled();
+    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
+    await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('0');
   },
 };
 
 /** The band in dark mode. */
-export const QuestionBandDark: Story = {
+export const MessageBandDark: Story = {
   args: { variant: 'band' },
   globals: { ...mobileJapaneseLight, mode: 'dark' },
 };

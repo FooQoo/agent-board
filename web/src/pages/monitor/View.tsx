@@ -1,4 +1,9 @@
 import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { MessageCenter } from '../../features/tasks/messages/MessageCenter';
+import { firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
+import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
+import type { ProjectId } from '../../shared/api/contracts';
+import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
 import type { MonitorViewProps } from './contracts';
@@ -13,19 +18,11 @@ import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
-import { QuestionBand } from '../../features/tasks/answer/QuestionBand';
-import { firstQuestionOf } from '../../features/tasks/answer/model/qa';
-import { type AnswerStart, answerStart } from '../../features/tasks/answer/answerStart';
 import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
 
 /** The drawer, with the Markdown view, history and swipe code, loads after the list is shown. */
 const detailDrawer = preloadable(() =>
   import('./components/MonitorDetailDrawer').then((module) => module.MonitorDetailDrawer),
-);
-
-/** The answer sheet, with its form and the Markdown view, loads after the list is shown too. */
-const answerSheet = preloadable(() =>
-  import('./components/MonitorAnswerSheet').then((module) => module.default),
 );
 
 /** Fetches the drawer's code; the view calls it once the list is shown. */
@@ -45,17 +42,18 @@ export function MonitorView(props: MonitorViewProps) {
   useEffect(() => {
     // A failed fetch is tried again when the drawer is first rendered.
     detailDrawer.preload().catch(() => {});
-    answerSheet.preload().catch(() => {});
   }, []);
-  // The sheet is drawn outside the cards: a card that moves or leaves does not close it.
-  const [answering, setAnswering] = useState<{ start: AnswerStart; key: number } | null>(null);
-  const [answerOpen, setAnswerOpen] = useState(false);
-  const book = props.answerController?.book;
+  // The list is drawn outside the cards, so a card that moves or leaves does not close it.
+  const panel = useMessagesPanel();
   const projectId = props.projectId ?? '';
-  const openAnswer = (start: AnswerStart) => {
-    setAnswering((current) => ({ start, key: (current?.key ?? 0) + 1 }));
-    setAnswerOpen(true);
-  };
+  const attachments = props.readResolvers?.attachmentUrl;
+  const resolveAttachment =
+    attachments && props.projectId
+      ? (message: Message, id: string) =>
+          message.tasks[0] === undefined
+            ? null
+            : attachments(projectId as ProjectId, message.tasks[0], id)
+      : undefined;
   const { todo, doing, done, freshness, guideLink } = props;
   // A guide step is about the cards of one lane: that lane comes on screen.
   const guideLane = usePhoneGuideLane(guideLink);
@@ -77,6 +75,12 @@ export function MonitorView(props: MonitorViewProps) {
     onDetailOpenChange?.(detail.open);
     return () => onDetailOpenChange?.(false);
   }, [detail.open, onDetailOpenChange]);
+  const { onMessagesOpenChange } = props;
+  const listOpen = panel.target !== null;
+  useEffect(() => {
+    onMessagesOpenChange?.(listOpen);
+    return () => onMessagesOpenChange?.(false);
+  }, [listOpen, onMessagesOpenChange]);
   const { writes, onWritten } = props;
   // Without writes (the demo, sample data) a swipe asks nothing and changes nothing.
   const ask = (next: LanePending) => {
@@ -86,15 +90,17 @@ export function MonitorView(props: MonitorViewProps) {
   return (
     <main className="monitor-shell">
       <Header {...props.header} settings={settings} settingsSize="l" />
-      {props.answerController && props.projectId && props.questions && (
-        <QuestionBand
-          questions={props.questions.filter((question) => !book?.isSent(projectId, question.id))}
-          held={new Set(book?.heldIds(projectId))}
-          sendableCount={book?.sendableIds(projectId).length ?? 0}
+      {props.messagesApi && props.projectId && props.messages && (
+        <MessageCenter
+          projectId={props.projectId}
+          messages={props.messages}
           variant="phone"
-          onOpen={(questionId) => openAnswer(answerStart.question(questionId))}
-          onAnswer={() => openAnswer(answerStart.resume())}
-          onReview={() => openAnswer(answerStart.review())}
+          panel={panel}
+          api={props.messagesApi}
+          onChanged={props.onMessagesChanged ?? (() => {})}
+          onAsk={props.onAsk}
+          onOpenApproval={props.onOpenApproval}
+          resolveAttachment={resolveAttachment}
         />
       )}
       <LaneTabs
@@ -121,11 +127,15 @@ export function MonitorView(props: MonitorViewProps) {
           detail.show(item, tab);
           props.onOpenDetail?.(item, tab);
         }}
-        onOpenAnswer={(item) => {
-          const first = firstQuestionOf(props.questions ?? [], item.task.id);
-          openAnswer(first ? answerStart.task(item.task.id) : answerStart.resume());
-        }}
-        answerController={props.answerController}
+        onOpenAnswer={
+          props.messagesApi
+            ? (item) =>
+                panel.open({
+                  tab: 'fromAi',
+                  openId: firstQuestionOfTask(props.messages ?? [], item.task.id)?.id ?? null,
+                })
+            : undefined
+        }
       />
       {writes && (
         <MonitorLaneDialogs
@@ -164,22 +174,6 @@ export function MonitorView(props: MonitorViewProps) {
             closePending();
           }}
         />
-      )}
-      {props.answerController && props.projectId && answering && (
-        <Suspense fallback={null}>
-          <answerSheet.Component
-            key={answering.key}
-            projectId={props.projectId}
-            questions={props.questions ?? []}
-            items={tasks}
-            start={answering.start}
-            open={answerOpen}
-            onOpenChange={setAnswerOpen}
-            controller={props.answerController}
-            resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
-            onSent={props.onAnswersSent ?? (() => {})}
-          />
-        </Suspense>
       )}
       <Suspense fallback={null}>
         <detailDrawer.Component

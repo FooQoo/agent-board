@@ -10,7 +10,7 @@ import { epicForEditor, taskForEditor, toBoardView, toTaskSummary } from './data
 import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
-import { useQuestionAnswers } from './model/useQuestionAnswers';
+import { useMessagesController } from './model/useMessagesController';
 import { useStreamSubscriptions } from './model/useStreamSubscriptions';
 import { findTask, nextSelection } from '../features/tasks/model/board';
 import { isProjectId } from './model/projectSession';
@@ -32,10 +32,7 @@ const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
 
 export function useAppController(initial: AppInitial | undefined): AppControllerModel {
   const [requested, setRequested] = useQueryState('project', parseAsString);
-  const { session, dispatch, operations, answerLeaseControls } = useProjectSession(
-    requested,
-    initial?.select ?? null,
-  );
+  const { session, dispatch, operations } = useProjectSession(requested, initial?.select ?? null);
   const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
   const projects = useProjects();
   const activeId = session.activeProjectId;
@@ -88,11 +85,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
   const boardData = view === 'board' ? boardView : null;
   const tasks = isProjectId(activeId) ? (boardData?.tasks ?? []) : [];
-  const answers = useQuestionAnswers(
-    activeId,
-    boardData?.questions ?? null,
-    answerLeaseControls.set,
-  );
+  const messages = useMessagesController(activeId, boardData?.messages ?? null);
 
   const selected = findTask(tasks, session.selectedId);
   const archivedSelected =
@@ -208,7 +201,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
   useBuildReload(
     serverBuild,
-    session.operation !== null || session.answerLeases.length > 0 || answers.book.hasAnyHeld(),
+    session.operation !== null || session.answerLeases.length > 0,
     core.gate,
   );
   useEffect(preloadBoardCode, []);
@@ -251,7 +244,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     projects,
     board,
     archive,
-    answers,
+    messages,
     tasks,
     selected,
     archivedSelected,

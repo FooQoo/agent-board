@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { answerStart } from '../features/tasks/answer/answerStart';
+import { MessageCenter } from '../features/tasks/messages/MessageCenter';
+import { messagesApi } from '../features/tasks/messages/api';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
@@ -13,25 +14,29 @@ import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
 import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
-import { QuestionBand } from '../features/tasks/answer/QuestionBand';
 import type { EpicRef, ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
-/** The board's band of unanswered questions, with the answers held for the project. */
+/**
+ * The board's band of messages, with the list it opens. `onAsk` and `onOpenApproval` are left out
+ * until the "Ask AI" dialog and the plan review are wired: the PC band has no Ask button anyway.
+ */
 function boardBand(model: AppControllerModel) {
-  const { answers, activeId, boardData } = model;
+  const { messages, activeId, boardData } = model;
   if (boardData === null || !isProjectId(activeId)) return null;
-  const { book } = answers;
-  const questions = boardData.questions.filter((question) => !book.isSent(activeId, question.id));
   return (
-    <QuestionBand
-      questions={questions}
-      held={new Set(book.heldIds(activeId))}
-      sendableCount={book.sendableIds(activeId).length}
+    <MessageCenter
+      projectId={activeId}
+      messages={boardData.messages}
       variant="board"
-      onOpen={(questionId) => answers.open(answerStart.question(questionId))}
-      onAnswer={() => answers.open(answerStart.resume())}
-      onReview={() => answers.open(answerStart.review())}
+      panel={messages.panel}
+      api={messagesApi}
+      onChanged={() => model.refreshProject(activeId)}
+      resolveAttachment={(message, id) =>
+        message.tasks[0] === undefined
+          ? null
+          : `/api/projects/${activeId}/tasks/${message.tasks[0]}/attachments/${id}`
+      }
     />
   );
 }
@@ -142,8 +147,7 @@ export function BoardWorkspace({
             onRetry={retry}
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
-            answers={model.answers.book}
-            onAnswer={model.answers.openForTask}
+            onAnswer={model.messages.openForTask}
             band={boardBand(model)}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}

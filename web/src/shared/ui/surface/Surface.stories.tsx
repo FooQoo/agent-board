@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { Button } from '../button';
 import { Surface } from './Surface';
 
@@ -35,7 +35,9 @@ type Story = StoryObj<typeof meta>;
 export const Dialog: Story = {
   play: async ({ args, canvasElement }) => {
     const screen = within(canvasElement.ownerDocument.body);
-    await expect(await screen.findByRole('dialog', { name: 'Messages' })).toBeVisible();
+    const dialog = await screen.findByRole('dialog', { name: 'Messages' });
+    // The dialog fades in, so it is visible once the animation has started.
+    await waitFor(() => expect(dialog).toBeVisible());
     await expect(screen.getByRole('button', { name: 'Send' })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     await expect(args.onClose).toHaveBeenCalled();
