@@ -69,9 +69,6 @@ export const PanelAiQuestions: Story = {
 /** 4. The panel, "Your requests" tab: a request nobody picked up yet shows "Waiting to be picked up". */
 export const PanelYourRequests: Story = { args: { initial: { kind: 'panel', tab: 'fromYou' } } };
 
-/** 4. The panel, "done" tab. */
-export const PanelDone: Story = { args: { initial: { kind: 'panel', tab: 'done' } } };
-
 /** 4. An opened question shows the existing answer UI. */
 export const PanelQuestionOpen: Story = {
   args: { initial: { kind: 'panel', tab: 'fromAi', openId: 'Q-12' } },

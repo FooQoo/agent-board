@@ -10,7 +10,7 @@ import { Surface } from './Surface';
 import { type MockText, useMockText } from './text';
 import './exchanges-mock.css';
 
-export type ExchangeTab = 'fromAi' | 'fromYou' | 'done';
+export type ExchangeTab = 'fromAi' | 'fromYou';
 
 const TYPE_ICONS = {
   question: CircleHelpIcon,
@@ -27,9 +27,9 @@ function shortTime(iso: string): string {
   return `${iso.slice(5, 7)}/${iso.slice(8, 10)} ${iso.slice(11, 16)}`;
 }
 
-/** Which tab a row belongs to. */
-export function tabOf(exchange: MockExchange): ExchangeTab {
-  if (exchange.turn === null) return 'done';
+/** Which tab a row belongs to. Closed exchanges are not listed: nobody goes back to read them here. */
+export function tabOf(exchange: MockExchange): ExchangeTab | null {
+  if (exchange.turn === null) return null;
   return exchange.from === 'ai' ? 'fromAi' : 'fromYou';
 }
 
@@ -160,7 +160,7 @@ function RequestDetail({ exchange, onBack }: { exchange: MockExchange; onBack: (
 }
 
 /**
- * The list of every exchange with the three tabs, and the opened exchange in its place. An approval
+ * The list of open exchanges in two tabs, and the opened exchange in its place. An approval
  * does not open here: it opens the plan review.
  */
 export function ExchangePanelBody({
@@ -187,7 +187,6 @@ export function ExchangePanelBody({
   const tabs: { id: ExchangeTab; label: string }[] = [
     { id: 'fromAi', label: m.tabFromAi },
     { id: 'fromYou', label: m.tabFromYou },
-    { id: 'done', label: m.tabDone },
   ];
   const rows = exchanges.filter((exchange) => tabOf(exchange) === tab);
   return (

@@ -124,11 +124,6 @@
               "interaction": false
             },
             {
-              "id": "mocks-exchanges-desktop--panel-done",
-              "states": ["done tab"],
-              "interaction": false
-            },
-            {
               "id": "mocks-exchanges-desktop--panel-question-open",
               "states": ["question with answer UI"],
               "interaction": false
