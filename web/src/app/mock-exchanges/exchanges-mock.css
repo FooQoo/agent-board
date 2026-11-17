@@ -200,6 +200,47 @@
   background: var(--r-surface);
 }
 
+/*
+ * An open question on the desktop: the modal takes the answer dialog's size and is the container of
+ * the product's two-column rules (decision-answer.css). The header and footer carry the padding.
+ */
+.modal.xmodal.xmodal--decision {
+  width: min(1120px, calc(100vw - 48px));
+  height: calc(var(--stable-vh, 100svh) - 48px);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  container: decision-dialog / inline-size;
+}
+
+@media (min-width: 900px) {
+  .modal.xmodal.xmodal--decision {
+    height: min(800px, calc(var(--stable-vh, 100svh) - 48px));
+  }
+}
+
+.xmodal--decision .modal__header {
+  flex: none;
+  padding: 18px 28px 14px;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.xmodal--decision .xsurface__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.xmodal--decision .xsurface__footer {
+  flex-direction: row;
+  justify-content: flex-end;
+  padding: 14px 28px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
 /* ---- Exchange list ---- */
 
 .xpanel {
@@ -346,9 +387,15 @@
   gap: 12px;
 }
 
-.xdetail .decision-panel {
-  flex: none;
-  overflow: visible;
+/* The panel keeps the product's own layout: stacked, or two columns inside the dialog. */
+.xdetail--panel {
+  gap: 0;
+}
+
+.xdetail__question {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .xdetail__back {

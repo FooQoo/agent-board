@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ClipboardCheckIcon, CircleHelpIcon, SendIcon } from 'luc
 import { useState } from 'react';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
-import { DecisionAnswerPanel } from '../../features/tasks/answer/DecisionAnswerPanel';
+import { DecisionAnswerFields } from '../../features/tasks/answer/DecisionAnswerFields';
 import type { DecisionAnswerView } from '../../features/tasks/answer/decisionAnswerView';
 import { DecisionQuestion } from '../../features/tasks/answer/DecisionQuestion';
 import { resolveAttachment, type MockExchange } from './data';
@@ -75,6 +75,8 @@ function ExchangeRow({ exchange, onOpen }: { exchange: MockExchange; onOpen: () 
   );
 }
 
+type AnswerState = ReturnType<typeof useAnswerState>;
+
 function useAnswerState() {
   const [choiceId, setChoiceId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -101,21 +103,24 @@ function useAnswerState() {
   };
 }
 
-/** An opened question: the existing answer UI, a choice and a note. */
+/**
+ * An opened question: the question on the left and the answer on the right, as in the product's
+ * answer dialog (the `decision-panel` rules split them inside a `decision-dialog`). The buttons are
+ * not here: the surface pins them in its footer.
+ */
 function QuestionDetail({
   exchange,
+  answer,
   onBack,
-  onClose,
 }: {
   exchange: MockExchange;
+  answer: AnswerState;
   onBack: () => void;
-  onClose: () => void;
 }) {
   const m = useMockText();
-  const answer = useAnswerState();
   const answered = exchange.turn === null;
-  return (
-    <div className="xdetail">
+  const head = (
+    <>
       <Button type="button" variant="outline" size="s" className="xdetail__back" onClick={onBack}>
         <ArrowLeftIcon aria-hidden="true" />
         {m.back}
@@ -125,29 +130,31 @@ function QuestionDetail({
           {m.blocks(exchange.tasks.map((id) => `#${id}`).join(' '))}
         </p>
       )}
-      {answered ? (
-        <DecisionQuestion question={exchange.body ?? exchange.title} />
-      ) : (
-        <>
-          <DecisionAnswerPanel
-            question={exchange.body ?? exchange.title}
-            choices={exchange.choices ?? []}
-            view={answer.view}
-            resolveAttachment={resolveAttachment}
-            onChoiceChange={answer.onChoiceChange}
-            onTextChange={answer.onTextChange}
-            onClear={answer.onClear}
-          />
-          <div className="xdetail__bar">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {m.later}
-            </Button>
-            <Button type="button" disabled={!answer.view.sendable}>
-              {m.answerSend}
-            </Button>
-          </div>
-        </>
-      )}
+    </>
+  );
+  const question = exchange.body ?? exchange.title;
+  if (answered)
+    return (
+      <div className="xdetail">
+        {head}
+        <DecisionQuestion question={question} />
+      </div>
+    );
+  return (
+    <div className="decision-panel xdetail xdetail--panel">
+      <div className="decision-panel__question xdetail__question">
+        {head}
+        <DecisionQuestion question={question} resolveAttachment={resolveAttachment} />
+      </div>
+      <div className="decision-panel__answer">
+        <DecisionAnswerFields
+          choices={exchange.choices ?? []}
+          view={answer.view}
+          onChoiceChange={answer.onChoiceChange}
+          onTextChange={answer.onTextChange}
+          onClear={answer.onClear}
+        />
+      </div>
     </div>
   );
 }
@@ -188,7 +195,7 @@ export function ExchangePanelBody({
   openId,
   onOpenChange,
   onOpenPlan,
-  onClose,
+  answer,
 }: {
   exchanges: MockExchange[];
   tab: ExchangeTab;
@@ -196,13 +203,13 @@ export function ExchangePanelBody({
   openId: string | null;
   onOpenChange: (id: string | null) => void;
   onOpenPlan: (exchange: MockExchange) => void;
-  /** Closes the whole panel; "Later" in an opened question uses it. */
-  onClose: () => void;
+  /** The answer being written in an opened question; the panel keeps it for the footer buttons. */
+  answer: AnswerState;
 }) {
   const m = useMockText();
   const opened = exchanges.find((exchange) => exchange.id === openId);
   if (opened?.type === 'question')
-    return <QuestionDetail exchange={opened} onBack={() => onOpenChange(null)} onClose={onClose} />;
+    return <QuestionDetail exchange={opened} answer={answer} onBack={() => onOpenChange(null)} />;
   if (opened?.type === 'request')
     return <RequestDetail exchange={opened} onBack={() => onOpenChange(null)} />;
   const tabs: { id: ExchangeTab; label: string }[] = [
@@ -265,8 +272,30 @@ export function ExchangePanel({
   const m = useMockText();
   const [tab, setTab] = useState<ExchangeTab>(initialTab);
   const [openId, setOpenId] = useState<string | null>(initialOpenId);
+  const answer = useAnswerState();
+  const opened = exchanges.find((exchange) => exchange.id === openId);
+  // An open question that still waits for you: the modal takes the answer dialog's size and the
+  // buttons stay pinned in the footer.
+  const answering = opened?.type === 'question' && opened.turn !== null;
   return (
-    <Surface kind={kind} title={m.panelTitle} onClose={onClose} className="xpanel-surface">
+    <Surface
+      kind={kind}
+      title={m.panelTitle}
+      onClose={onClose}
+      className={answering ? 'xpanel-surface xmodal--decision decision-dialog' : 'xpanel-surface'}
+      footer={
+        answering && (
+          <div className="xdetail__bar">
+            <Button type="button" variant="outline" onClick={onClose}>
+              {m.later}
+            </Button>
+            <Button type="button" disabled={!answer.view.sendable}>
+              {m.answerSend}
+            </Button>
+          </div>
+        )
+      }
+    >
       <ExchangePanelBody
         exchanges={exchanges}
         tab={tab}
@@ -274,7 +303,7 @@ export function ExchangePanel({
         openId={openId}
         onOpenChange={setOpenId}
         onOpenPlan={onOpenPlan}
-        onClose={onClose}
+        answer={answer}
       />
     </Surface>
   );
