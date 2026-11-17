@@ -121,6 +121,8 @@ pub struct Projection {
     /// The open questions, in ID order, and a hash of every question's state.
     pub questions: Vec<QuestionSummary>,
     pub qa_hash: String,
+    /// The open questions, requests and approvals in the common shape.
+    pub messages: Vec<super::message::Message>,
     /// Tasks and epics that could not be read at all, with a digest of their raw files.
     broken_tasks: BTreeMap<i64, String>,
     broken_epics: BTreeMap<String, String>,

@@ -45,6 +45,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         AgboardError::QuestionsUnanswered { .. }
         | AgboardError::QuestionAnswered { .. }
         | AgboardError::QuestionWithdrawn { .. }
+        | AgboardError::StartBlockedByQuestions { .. }
         | AgboardError::MessageClosed { .. }
         | AgboardError::RequestAccepted { .. }
         | AgboardError::RequestWithdrawn { .. }

@@ -51,6 +51,9 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         AgboardError::QuestionWithdrawn {
             ids: vec!["Q-2".into()],
         },
+        AgboardError::StartBlockedByQuestions {
+            ids: vec!["Q-2".into()],
+        },
         AgboardError::MessageNotFound { id: "Q-3".into() },
         AgboardError::MessageClosed { id: "Q-3".into() },
         AgboardError::MessageTypeMismatch {
@@ -173,6 +176,7 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("questions_unanswered", 1),
             ("question_answered", 1),
             ("question_withdrawn", 1),
+            ("start_blocked_by_questions", 1),
             ("message_not_found", 3),
             ("message_closed", 1),
             ("message_type_mismatch", 2),

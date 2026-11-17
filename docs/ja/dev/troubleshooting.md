@@ -13,6 +13,7 @@
 | `acceptance_unmet` | 受入条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
 | `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `message wait <question-id>`で回答を待つか、人にボードで回答してもらいます。 |
 | `question_answered`・`question_withdrawn` | 質問にすでに回答がある、または取り下げられた。最初の回答が確定です。 | 質問を読み直し（`message show <question-id>`）、記録済みの回答に従います。 |
+| `start_blocked_by_questions` | ドラフトについての質問に返事がないため、開始を断った。 | 示された質問に答えて（`message answer`、またはボード上で）、もう一度開始します。 |
 | `folder_unbound`・`bound_project_missing` | 作業フォルダがプロジェクトに紐付いていない、またはプロジェクトが削除された。 | `--project`でプロジェクトを明示するか、利用者にフォルダの紐付けを頼みます。 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 人に実行してもらいます。確認を省くオプションはありません。 |
 

@@ -35,6 +35,7 @@
 | `layout` | 検証済みのIDだけから所有パスを組み立てる。<br>文字列を直接パスにしない。 |
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、受入条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。複数のファイルをまとめて保存するバッチのジャーナル（`batch.rs`）も持つ。 |
+| `message.rs` | 質問・依頼・承認の共通の形（`Message`、`MessageSource`トレイト、`Question`・`Request`・`Approval`の3つの型）と、Summaryの`messages`の一覧。 |
 | `qa/` | メッセージ。質問と依頼のモデル（`model.rs`）、`QA.md`の読み書き（`codec.rs`）、ファイルが満たす規則（`check.rs`）、メッセージの置き場所と読み方（`store.rs`）、タスクに導く状態（`derive.rs`）、呼び出し側が受け取るビュー（`view.rs`）。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |

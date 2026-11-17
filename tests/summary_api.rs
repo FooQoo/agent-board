@@ -122,7 +122,8 @@ fn check_summary(body: &str, project: &ProjectId) -> Summary {
             "tasks",
             "epics",
             "problems",
-            "questions"
+            "questions",
+            "messages"
         ])
     );
     assert_eq!(keys(&value["project"]), set(&["id", "name"]));

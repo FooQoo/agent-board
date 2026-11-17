@@ -35,6 +35,7 @@ impl AgboardError {
             AgboardError::QuestionsUnanswered { .. } => "questions_unanswered",
             AgboardError::QuestionAnswered { .. } => "question_answered",
             AgboardError::QuestionWithdrawn { .. } => "question_withdrawn",
+            AgboardError::StartBlockedByQuestions { .. } => "start_blocked_by_questions",
             AgboardError::MessageNotFound { .. } => "message_not_found",
             AgboardError::MessageClosed { .. } => "message_closed",
             AgboardError::MessageTypeMismatch { .. } => "message_type_mismatch",

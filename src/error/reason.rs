@@ -81,6 +81,9 @@ impl AgboardError {
             AgboardError::QuestionWithdrawn { .. } => {
                 "A withdrawn question takes no answer. Ask a new question if one is still needed.".into()
             }
+            AgboardError::StartBlockedByQuestions { .. } => {
+                "Answer the questions (the board, or \"agboard message answer\"), then start again.".into()
+            }
             AgboardError::MessageNotFound { .. } => {
                 "Run \"agboard message ls --status all\" to see the messages of the project.".into()
             }

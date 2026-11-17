@@ -246,6 +246,7 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         problems,
         questions,
         qa_hash,
+        messages: crate::file_store::message::messages(snapshot),
         broken_tasks,
         broken_epics,
     }

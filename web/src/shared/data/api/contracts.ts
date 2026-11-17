@@ -102,6 +102,27 @@ export interface SummaryQuestion {
   createdAt: string;
 }
 
+export type MessageType = 'question' | 'request' | 'approval';
+export type MessageParty = 'ai' | 'human';
+
+/**
+ * A question, a request or an approval in one shape. `turn` is who has to act (`null`: over; the
+ * server lists open items only). An approval's `id` is the epic's ID, or `#<task id>` for a task
+ * outside an epic; a question's or request's is `Q-<n>`.
+ */
+export interface Message {
+  id: string;
+  type: MessageType;
+  from: MessageParty;
+  to: MessageParty;
+  turn: MessageParty | null;
+  /** The first line of a message, or the name of the epic or task of an approval. */
+  title: string;
+  createdAt: string;
+  tasks: number[];
+  epicId: string | null;
+}
+
 export interface Summary {
   project: SummaryProject;
   version: Version;
@@ -110,6 +131,8 @@ export interface Summary {
   problems: SummaryProblem[];
   /** The open questions, in ID order. */
   questions?: SummaryQuestion[];
+  /** Open questions, requests and approvals, oldest first; a mock may leave it out. */
+  messages?: Message[];
 }
 
 // ---- Detail NDJSON: `.../tasks/{id}/detail`, `.../epics/{epicId}/detail`

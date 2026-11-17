@@ -32,7 +32,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・draft・documentまたはbody）。`acceptance`の入力は受け付けない。201。 |
 | `POST /api/projects/{projectId}/epics/{epicId}/start` | 人がエピックを開始する。エピックと、そのエピックの未アーカイブでAIの下書きのタスクが、一度の保存でまとめて下書きから外れ、そのタスクごとに履歴へ開始を記録する。人自身の下書きのタスクは下書きのまま。人の下書きのエピックは409 `epic_is_draft`。200で`epic`・`started`（タスクID）・`changed`を返す。 |
-| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・priorityの更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（AIの下書きのエピックは409 `ai_draft_needs_start`）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `epic_in_use`で拒否する。 |
+| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・priorityの更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（AIの下書きのエピックは409 `ai_draft_needs_start`）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `start_blocked_by_questions`・`epic_in_use`で拒否する。 |
 | `…/epics/{epicId}/attachments`、`…/{attachmentId}` | エピックの画像。 |
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
@@ -56,13 +56,14 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 
 以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
-**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`questions`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
+**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`questions`、`messages`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
 
 | 項目 | フィールド |
 | --- | --- |
 | タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`draft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
 | エピック | `id`（文字列）、`name`、`color`、`draft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
 | 質問 | 未回答の質問をID順に並べる。`id`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
+| メッセージ | 未完了の質問・依頼・承認を一つの形で、古い順（同時刻はID順）に並べる。`id`・`type`（`question`・`request`・`approval`）・`from`・`to`（`ai`か`human`）・`turn`（次に動く側。`ai`・`human`、終わったものは`null`）・`title`・`createdAt`・`tasks`（関わるタスクの番号）・`epicId`（または`null`）。質問の`turn`は`human`、依頼は`ai`、承認は常に`human`。回答のある質問、受け付け済みの依頼、取り下げたメッセージは含めないため、載っているメッセージには必ず`turn`がある。質問と依頼のIDは`Q-<n>`（依頼の`tasks`は空）。承認にファイルはなく、AIの下書きから導く。AIの下書きのエピック、またはAIの下書きのタスクを持つエピックは1件の承認（`id`と`epicId`はエピックID、`title`はエピック名、`tasks`はAIの下書きのタスク）、エピックのないAIの下書きのタスクはそれぞれ1件の承認（`id`は`#<タスク番号>`、`title`はタスクのタイトル、`epicId`は`null`）。エピックまたはタスクを開始すると、その承認は消える。`questions`は、まだ読んでいる画面のために残す。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
 
 versionはすべて不透明な文字列で、解析済みデータの内容ハッシュです。サーバーの起動回に依存しないため、再起動後も保存済みの値と比べられます。versionは等しいかどうかだけを比べてください。

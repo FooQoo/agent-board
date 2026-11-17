@@ -76,6 +76,30 @@ describe('summary', () => {
     }
   });
 
+  it('reads messages in the common shape and keeps them optional', () => {
+    const original = JSON.parse(read('summary.json')) as Record<string, unknown>;
+    const summary = parseSummary(original);
+    expect(summary.messages?.map((e) => [e.id, e.type, e.turn])).toEqual([
+      ['Q-1', 'question', 'human'],
+      ['EPIC-1', 'approval', 'human'],
+    ]);
+    expect(summary.messages?.[1]).toMatchObject({ epicId: 'EPIC-1', tasks: [302] });
+    const { messages: _omitted, ...without } = original;
+    expect(parseSummary(without).messages).toBeUndefined();
+    const over = structuredClone(original) as { messages: Record<string, unknown>[] };
+    Object.assign(over.messages[0] ?? {}, { turn: null });
+    expect(parseSummary(over).messages?.[0]?.turn).toBeNull();
+    for (const [key, value] of [
+      ['turn', 'nobody'],
+      ['tasks', [0]],
+      ['extra', 1],
+    ] as const) {
+      const bad = structuredClone(original) as { messages: Record<string, unknown>[] };
+      Object.assign(bad.messages[0] ?? {}, { [key]: value });
+      expect(() => parseSummary(bad), key).toThrow(ContractError);
+    }
+  });
+
   it('refuses every invalid example', () => {
     const names = invalid('summary-');
     expect(names.length).toBeGreaterThan(0);

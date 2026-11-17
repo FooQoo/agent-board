@@ -18,6 +18,8 @@ pub struct Summary {
     pub problems: Vec<SummaryProblem>,
     /// The open questions of the project, in ID order.
     pub questions: Vec<SummaryQuestion>,
+    /// Open questions, requests and approvals in one shape, oldest first.
+    pub messages: Vec<crate::file_store::message::Message>,
 }
 
 /// An open question: enough to list it; the full text is read with `GET …/messages/{id}`.
