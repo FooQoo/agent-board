@@ -78,7 +78,7 @@ landing:
         link: { text: Epics and progress, link: /guide/watch/epics }
         alt: The epic editor with the task progress panel and the Markdown details
       - image: mobile
-        title: Check from your phone
+        title: Check from anywhere
         text: Away from your desk, open the board on your phone or tablet, watch the work, and answer the agent.
         link: { text: Remote access, link: /guide/watch/remote-access }
         preview: /guide/feature-stages#remote-access

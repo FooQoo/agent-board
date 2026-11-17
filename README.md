@@ -54,7 +54,7 @@ The board is one monitor for the work, not the whole of it. A monitor is a place
 
 - **The board.** Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/watch/board)
 - **Epics and progress.** An epic holds the plan and the order of its tasks, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/watch/epics)
-- **Check from your phone.** Away from your desk, watch the work and answer the agent with remote access. In public preview. [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access)
+- **Check from anywhere.** Away from your desk, watch the work and answer the agent from your phone or tablet with remote access. In public preview. [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access)
 - **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/watch/docs)
 
 You can also answer in the chat with your agent, and the `agboard` command is what the agent and your scripts use. Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter.

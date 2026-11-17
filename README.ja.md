@@ -54,7 +54,7 @@ flowchart LR
 
 - **ボード。** 仕事が未着手・進行中・完了と進むのを見守れます。エージェントを止めずにカードへ介入でき、質問への回答も、タスクの上でそのまま行えます。[ボードの使い方](https://fooqoo.github.io/agent-board/ja/guide/watch/board)
 - **エピックと進行表。** エピックが計画とタスクの順序を持ち、進行表が、いま進められる作業をエージェントに返します。[エピックと進行表](https://fooqoo.github.io/agent-board/ja/guide/watch/epics)
-- **スマホで確認。** 席を離れていても、リモートアクセスで仕事を見守り、エージェントの質問に答えられます。パブリックプレビューです。[リモートアクセス](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access)
+- **どこからでも確認。** 席を離れていても、リモートアクセスでスマホやタブレットから仕事を見守り、エージェントの質問に答えられます。パブリックプレビューです。[リモートアクセス](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access)
 - **プロジェクトのドキュメント。** プロジェクトの`docs/`にある設計書や仕様を、ボードから開いて読めます。パブリックプレビューです。[プロジェクトのドキュメント](https://fooqoo.github.io/agent-board/ja/guide/watch/docs)
 
 エージェントとのチャットで答えることもでき、`agboard`コマンドはエージェントやスクリプトが使う入口です。計画と結果は、手元のMarkdownファイル（`EPIC.md`と`TASK.md`）に残り、受入条件と履歴はfrontmatterに入ります。

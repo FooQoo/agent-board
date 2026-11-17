@@ -78,7 +78,7 @@ landing:
         link: { text: エピックと進行表, link: /ja/guide/watch/epics }
         alt: タスクの進行表とMarkdown本文を持つエピック編集画面
       - image: mobile
-        title: スマホで確認
+        title: どこからでも確認
         text: 席を離れていても、スマホやタブレットでボードを開き、仕事を見守り、エージェントの質問に答えられます。
         link: { text: リモートアクセス, link: /ja/guide/watch/remote-access }
         preview: /ja/guide/feature-stages#remote-access
