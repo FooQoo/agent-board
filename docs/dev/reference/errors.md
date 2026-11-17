@@ -11,7 +11,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_not_found` | The task ID does not exist in the project. | 3 | 404 |
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
-| `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. | 1 | 409 |
+| `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. The `reason` for a person's draft says to wait for the user to finalize it; for an AI draft it says to wait for a person to start it. | 1 | 409 |
 | `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
 | `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
 | `human_only` | An agent runs `start` or `epic start`, or withdraws a request. Only a person can do these. | 1 | 403 |

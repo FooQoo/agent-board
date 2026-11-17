@@ -162,6 +162,7 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("invalid_state_for_column", 1),
             ("invalid_state_for_assignee", 2),
             ("task_is_draft", 1),
+            ("task_is_draft", 1),
             ("epic_is_draft", 1),
             ("ai_draft_needs_start", 1),
             ("human_only", 1),

@@ -39,6 +39,7 @@
 
 - 既定では、人の判断待ちでないTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
 - `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
+- 人からの依頼が未処理（受理も取り下げもされていない）のとき、表に`requests`配列がID順で加わります。各要素は`{"id":"Q-3","createdAt":"…","title":"…"}`で、`title`は依頼の最初の空でない行から見出しの記号を除いた80文字までです（超える分は`…`で終わります）。未処理の依頼がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で依頼を引き受けます。
 - 本文も履歴もありません。エージェントは、必要な`documentPath`と`taskPath`のファイルを読みます。
 - `cursor`は`wait --after`に渡す値です。
 - パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出ません。
@@ -72,7 +73,13 @@ taskの項目を省略した例です。
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":"…/epics/DESIGN/EPIC.md"}
 ```
 
-指定時間に対象タスクが現れない場合は、成功結果（終了コード0）を返します。
+未処理の依頼があるとき、waitは人が頼んだものなので、どのタスクよりも先にその依頼を返します。結果には、未処理の依頼すべてが進行表と同じ形で入ります。エージェントは`message show`で読み、`message accept`で引き受けてから、あらためて待ち受けます。引き受けるまでは、次のwaitも同じ依頼を返します。
+
+```json
+{"kind":"requests","projectId":"<id>","cursor":"<cursor>","requests":[{"id":"Q-3","createdAt":"2026-11-17T09:00:00Z","title":"Add a reset link"}]}
+```
+
+指定時間に対象タスクも未処理の依頼も現れない場合は、成功結果（終了コード0）を返します。
 
 ```json
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}

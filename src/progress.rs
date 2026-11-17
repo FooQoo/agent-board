@@ -11,6 +11,9 @@
 //!
 //! Open requests are always listed, so an agent sees what a person asked it.
 
+mod requests;
+mod text;
+
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
@@ -21,7 +24,6 @@ use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
 use crate::file_store::onboarding_model::is_onboarding_sample;
-use crate::file_store::qa::RequestStatus;
 use crate::file_store::reader::ProjectSnapshot;
 
 /// The table as the CLI and the hook give it.
@@ -50,49 +52,6 @@ pub struct Progress {
     pub done: Option<Vec<ProgressTask>>,
 }
 
-/// An open request, shortened: the agent reads the whole text with `message show`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProgressRequest {
-    pub id: String,
-    #[serde(with = "crate::clock::serde_utc")]
-    pub created_at: DateTime<Utc>,
-    /// The first line of the request, at most `TITLE_LIMIT` characters.
-    pub title: String,
-}
-
-/// The open requests of a snapshot in ID order.
-pub fn open_requests(snapshot: &ProjectSnapshot) -> Vec<ProgressRequest> {
-    snapshot
-        .requests
-        .iter()
-        .filter(|request| request.status == RequestStatus::Open)
-        .map(|request| ProgressRequest {
-            id: request.id.clone(),
-            created_at: request.created_at,
-            title: request_title(&request.body),
-        })
-        .collect()
-}
-
-/// Longest request title in the table, in characters.
-const TITLE_LIMIT: usize = 80;
-
-/// The first non-empty line without heading marks, cut to `TITLE_LIMIT` characters with an
-/// ellipsis when it was longer.
-fn request_title(body: &str) -> String {
-    let line = body
-        .lines()
-        .map(|line| line.trim().trim_start_matches('#').trim())
-        .find(|line| !line.is_empty())
-        .unwrap_or_default();
-    if line.chars().count() <= TITLE_LIMIT {
-        return line.to_string();
-    }
-    let cut: String = line.chars().take(TITLE_LIMIT).collect();
-    format!("{cut}…")
-}
-
 /// Extra sections of the table. The default adds nothing.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Include {
@@ -103,15 +62,14 @@ pub struct Include {
     pub done: usize,
 }
 
-/// Longest question text in the table, in characters.
-const QUESTION_LIMIT: usize = 200;
-
 /// Conditions met out of conditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Count {
     pub done: usize,
     pub total: usize,
 }
+
+pub use requests::{ProgressRequest, open_requests};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -304,17 +262,6 @@ fn is_waiting(task: &TaskView) -> bool {
         && !is_sample(task)
 }
 
-/// The question on one line, cut to `QUESTION_LIMIT` characters with an
-/// ellipsis when it was longer.
-fn short_question(text: &str) -> String {
-    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    if flat.chars().count() <= QUESTION_LIMIT {
-        return flat;
-    }
-    let cut: String = flat.chars().take(QUESTION_LIMIT).collect();
-    format!("{cut}…")
-}
-
 /// Position in the priority list; a task that is not listed comes after all
 /// listed tasks.
 fn rank(priority: &[i64], id: i64) -> usize {
@@ -343,7 +290,7 @@ fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
         acceptance: count(&task.acceptance),
         acceptance_error: task.acceptance_error,
         question: if is_waiting(task) {
-            task.pending_reason.as_deref().map(short_question)
+            task.pending_reason.as_deref().map(text::short_question)
         } else {
             None
         },

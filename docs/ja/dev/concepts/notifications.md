@@ -42,7 +42,7 @@ flowchart LR
 {"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
   {"resource": "task", "id": 302, "facets": ["summary", "history"]},
   {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
-  {"resource": "qa", "id": "…", "facets": ["summary"]},
+  {"resource": "messages", "id": "…", "facets": ["summary"]},
   {"resource": "project", "id": "…", "facets": ["deleted"]}
 ]}
 ```
@@ -55,7 +55,7 @@ flowchart LR
 | `history` | 履歴。 |
 | `deleted` | リソースがなくなったこと。プロジェクトは`summary`か`deleted`だけを持ちます。 |
 
-プロジェクトの`qa/*/QA.md`が変わると、`id`がプロジェクトIDで、facetが`summary`だけの`qa`の変更を送ります。クライアントはSummaryを読み直します。タスクをアーカイブへ移す、またはアーカイブから戻すことは`summary`の変更です。解析できないファイルは、そのリソースの`summary`・`document`・`history`が変わったものとして扱われます。`request`は、読み取れる依頼IDが変わったときだけ加えます。
+プロジェクトの`qa/*/QA.md`が変わると、`id`がプロジェクトIDで、facetが`summary`だけの`messages`の変更を送ります。クライアントはSummaryを読み直します。タスクをアーカイブへ移す、またはアーカイブから戻すことは`summary`の変更です。解析できないファイルは、そのリソースの`summary`・`document`・`history`が変わったものとして扱われます。`request`は、読み取れる依頼IDが変わったときだけ加えます。
 
 `seq`は、1つの`instanceId`の中で`changed`ごとに1ずつ増えます。`instanceId`はサーバーを起動するたびに新しくなるので、`seq`が最初から数え直されたことが分かります。
 

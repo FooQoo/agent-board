@@ -154,8 +154,8 @@ export type DetailEvent =
 
 // ---- SSE `changed`
 
-/** `qa`: the project's questions changed; its ID is the project's and its only facet `summary`. */
-export type ChangeResource = 'task' | 'epic' | 'project' | 'qa';
+/** `messages`: the project's questions or requests changed; its ID is the project's and its only facet `summary`. */
+export type ChangeResource = 'task' | 'epic' | 'project' | 'messages';
 /**
  * `request`: a task's pending decision request was asked, answered, or withdrawn. It always comes
  * with `summary` and is applied even while a panel holds the other updates back.

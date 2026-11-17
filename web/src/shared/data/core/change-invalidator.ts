@@ -21,7 +21,7 @@ const NONE = (): Invalidation => ({ reset: null, summary: false, stale: [], remo
 const FACETS: readonly Facet[] = ['summary', 'document', 'history', 'deleted'];
 const FOR_RESOURCE: Record<string, readonly Facet[]> = {
   project: ['summary', 'deleted'],
-  qa: ['summary'],
+  messages: ['summary'],
   task: [...FACETS, 'request'],
   epic: FACETS,
 };
@@ -88,7 +88,7 @@ export class ChangeInvalidator {
 
   private applyChange(projectId: ProjectId, change: Change, out: Invalidation): void {
     const facets = new Set(change.facets);
-    if (change.resource === 'project' || change.resource === 'qa') {
+    if (change.resource === 'project' || change.resource === 'messages') {
       out.summary = true;
       return;
     }
@@ -135,7 +135,7 @@ export function contradictsSummary(
   for (const event of recorded) {
     if (event.projectId !== next.project.id) continue;
     for (const change of event.changes) {
-      if (change.resource === 'project' || change.resource === 'qa') {
+      if (change.resource === 'project' || change.resource === 'messages') {
         if (unchanged(previous, next)) return true;
         continue;
       }
