@@ -101,6 +101,7 @@ export function BoardWorkspace({
         viewMode={session.viewMode}
         onBack={actions.onBack}
         onAdd={actions.onAdd}
+        onAddManually={actions.onAddManually}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
         // Docs open the project's files on this computer; the demo has no such files.

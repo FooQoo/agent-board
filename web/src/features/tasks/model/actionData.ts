@@ -19,6 +19,6 @@ export interface ActionDialogData {
   finalize?: boolean;
   attachments?: EditorAttachment[];
   removedAttachmentIds?: string[];
-  requestKind?: 'simple';
-  epicId?: string | null;
+  /** Ask AI: the Markdown text of the request; its images are in `attachments`. */
+  requestText?: string;
 }

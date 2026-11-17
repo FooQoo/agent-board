@@ -21,7 +21,7 @@ export function AppDialogs({
   epicApi,
 }: AppDialogsProps) {
   const { t } = useTranslation();
-  const { session, tasks, boardData, board, projects } = model;
+  const { session, tasks, boardData, projects } = model;
   const dialog = session.dialog;
   const operation = session.operation;
   const bulkArchive = session.bulkArchive;
@@ -38,8 +38,6 @@ export function AppDialogs({
             onClose={onCloseOperation}
             onSavingChange={onSavingChange}
             tasks={tasks}
-            epics={boardData?.epics ?? []}
-            epicsFetchFailed={board.fetchFailed}
             epicApi={dialog.kind === 'epic' ? epicApi : undefined}
             onOpenTask={onOpenTask}
             onSubmit={onSubmit}

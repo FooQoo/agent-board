@@ -15,7 +15,7 @@
             },
             {
               "id": "task-dialogs-actiondialog--request",
-              "states": ["request action opens real RequestDialog"],
+              "states": ["request action opens the Ask AI dialog"],
               "interaction": false
             },
             {
