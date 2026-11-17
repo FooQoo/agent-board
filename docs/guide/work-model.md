@@ -63,7 +63,7 @@ These rules are kept by Agent Board itself, not left to the agent's good manners
 - **Who owns a task never changes.** The owner is fixed when the task is created.
 - **Only valid states exist.** A column and a run state that do not go together are refused, and nobody can set Pending by hand.
 - **The agent waits when you have not answered.** A task that refers to an open question is Pending, and the agent cannot mark it Running. Asking a question puts a Running task back to Idle at the same moment.
-- **A plan does not start without your approval.** A planned task waits until you approve the start, and keeps waiting if you choose anything else.
+- **A plan does not start without your approval.** Once a plan question or the start approval is linked to a planned task, it waits until you approve the start, and keeps waiting if you choose anything else. Before any question is linked, the task is Idle in Todo; see [What still relies on the agent](#relies-on-agent).
 - **An answer is recorded once.** The first answer stands and is not overwritten. A question, its answer, and the history of the tasks that refer to it are saved together.
 - **Done means the conditions are met.** An AI-owned task needs at least one acceptance condition, all of them done, and no open question. The check is made again on the latest files at the moment it moves, and the reason goes into the history. This is what automatic Done checks. An agent that moves a task to Done by hand also needs every condition done and no open question, but a task with no conditions is not refused; see [What still relies on the agent](#relies-on-agent).
 - **Finished work stays finished.** An agent cannot change a Done task. If you move it back, it can be worked on again. A Done task does not go back by itself when you uncheck a condition.
@@ -81,12 +81,13 @@ There are two ways to take part, and both go through the same work model.
 | **Answer when asked** (human in the loop) | The agent stops and waits for a decision it cannot make. | Answer a plan question, approve the start, or answer a question during the work. |
 | **Watch and step in** (human on the loop) | The agent keeps working while you look. It follows your change the next time it reads the board. | Move a card back or to Done, check a condition, rewrite a body or conditions, archive, or delete. |
 
-The agent calls you only in four cases: your intent is unclear, your preference decides it, an action cannot be undone, or the work grows bigger than you asked. This line is part of the agent's Skill, and Agent Board makes sure that once the agent has asked, it stops. See [Working with agents](./delegate/agents).
+The agent calls you only in four cases: your intent is unclear, your preference decides it, an action cannot be undone, or the work grows bigger than you asked. This line is part of the agent's Skill. Agent Board refuses to mark a task Running while its questions are open, but it does not block the agent's other actions; the agent stops because its Skill tells it to. See [Working with agents](./delegate/agents).
 
 ## What still relies on the agent {#relies-on-agent}
 
 Some things are not enforced by Agent Board yet. They depend on the agent following its Skill, so know where they are:
 
+- **Before a plan is linked to a question.** The agent registers a plan's tasks first and links its questions right after. In between, the tasks are Idle in Todo, so another agent could pick one up.
 - **Withdrawing a question.** The command that withdraws a question does not check who runs it, so an agent could withdraw one and release the wait. This relies on the agent not doing so.
 - **Tasks with no conditions.** An agent could move a task without any acceptance conditions to Done by hand. Automatic Done never does this.
 - **Who answered.** Agent Board does not check who actually typed an answer. When you reply in the chat, the agent records your words on the board.
