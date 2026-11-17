@@ -156,7 +156,7 @@ taskの項目を省略した例です。
 | `message send`、`message accept` | `{request}`。 |
 | `message withdraw` | 取り下げたものに応じて`{question}`または`{request}`。 |
 
-質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`acceptedBy`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
+質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
 
 ## 初回案内のサンプルカード
 

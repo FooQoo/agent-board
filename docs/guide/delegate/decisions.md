@@ -188,12 +188,12 @@ A request is a message in the other direction: a person writes it for the agents
 
 ```sh
 agboard --project "My project" message send --actor human --text "Add a Windows section to the guide" --image ./sketch.png
-agboard --project "My project" message accept Q-13 --actor ai --by "<agent-id>"
+agboard --project "My project" message accept Q-13 --actor ai
 agboard --project "My project" message withdraw Q-13 --actor human
 ```
 
 - `message send` records a request of 1 to 20,000 characters, from `--text` or `--text-file`. Repeat `--image` to attach pictures.
-- `message accept` marks an open request as accepted by the agent named with `--by`. Only an agent accepts, and only once.
+- `message accept` marks an open request as accepted and records when. Only an agent accepts, and only once.
 - Only a person withdraws a request, and only while it is open. An accepted request cannot be withdrawn.
 
 ## Next

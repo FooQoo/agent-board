@@ -55,8 +55,6 @@ struct RequestFront {
     to: Actor,
     #[serde(default, with = "crate::clock::serde_opt_utc")]
     accepted_at: Option<DateTime<Utc>>,
-    #[serde(default)]
-    accepted_by: Option<String>,
     #[serde(default, with = "crate::clock::serde_opt_utc")]
     withdrawn_at: Option<DateTime<Utc>>,
     #[serde(with = "crate::clock::serde_utc")]
@@ -117,7 +115,6 @@ pub fn parse_message(id: &str, text: &str) -> Result<Message, Defect> {
                 id: id.to_string(),
                 body,
                 accepted_at: f.accepted_at,
-                accepted_by: f.accepted_by,
                 withdrawn_at: f.withdrawn_at,
                 created_at: f.created_at,
             }))
@@ -155,7 +152,6 @@ pub fn render_message(message: &Message) -> Result<String, Defect> {
                 from: Actor::Human,
                 to: Actor::Ai,
                 accepted_at: r.accepted_at,
-                accepted_by: r.accepted_by.clone(),
                 withdrawn_at: r.withdrawn_at,
                 created_at: r.created_at,
             }),
@@ -221,7 +217,6 @@ mod tests {
             id: "Q-2".into(),
             body: "Add a link.".into(),
             accepted_at: Some(at),
-            accepted_by: Some("session-1".into()),
             withdrawn_at: None,
             created_at: at,
         };

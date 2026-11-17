@@ -59,8 +59,6 @@ pub struct Request {
     /// The Markdown text of the request.
     pub body: String,
     pub accepted_at: Option<DateTime<Utc>>,
-    /// The agent or session that accepted the request.
-    pub accepted_by: Option<String>,
     pub withdrawn_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }

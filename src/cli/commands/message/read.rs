@@ -102,11 +102,8 @@ fn describe_question(q: &QuestionView) -> String {
 
 fn describe_request(r: &RequestView) -> String {
     let mut text = format!("{} (request, {})\n{}\n", r.id, r.status.as_str(), r.body);
-    if let (Some(at), Some(by)) = (r.accepted_at, &r.accepted_by) {
-        text.push_str(&format!(
-            "Accepted by {by} at {}\n",
-            crate::clock::format_utc(at)
-        ));
+    if let Some(at) = r.accepted_at {
+        text.push_str(&format!("Accepted at {}\n", crate::clock::format_utc(at)));
     }
     text
 }

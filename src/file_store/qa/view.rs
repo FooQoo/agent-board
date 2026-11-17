@@ -132,7 +132,6 @@ pub struct RequestView {
     pub status: RequestStatus,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub accepted_at: Option<DateTime<Utc>>,
-    pub accepted_by: Option<String>,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub withdrawn_at: Option<DateTime<Utc>>,
     #[serde(with = "crate::clock::serde_utc")]
@@ -155,7 +154,6 @@ impl RequestView {
                 RequestStatus::Open
             },
             accepted_at: request.accepted_at,
-            accepted_by: request.accepted_by.clone(),
             withdrawn_at: request.withdrawn_at,
             created_at: request.created_at,
         }

@@ -116,7 +116,7 @@ To take one:
 2. Accept it, so that no other agent takes it too:
 
    ```sh
-   agboard --project "<name>" message accept <Q-id> --actor ai --by <your session or agent name>
+   agboard --project "<name>" message accept <Q-id> --actor ai
    ```
 
    The first acceptance is final. If it fails with `request_accepted`, another agent has it; leave it alone. A request the person withdrew cannot be accepted.

@@ -54,7 +54,7 @@ test('a request sent through Ask AI with an image is returned by task wait as a 
   expect(shown.request.status).toBe('open');
   const again = JSON.parse(agboard(mainProject, ['wait', '--until', 'task', '--idle-timeout', '1', '--json']).stdout) as { kind: string };
   expect(again.kind).toBe('requests');
-  agboardOk(mainProject, ['message', 'accept', selected.requests[0].id, '--actor', 'ai', '--by', 'e2e-listener', '--json']);
+  agboardOk(mainProject, ['message', 'accept', selected.requests[0].id, '--actor', 'ai', '--json']);
   // An accepted request no longer wakes the wait: the board's own todo task is returned instead.
   const next = JSON.parse(agboard(mainProject, ['wait', '--until', 'task', '--idle-timeout', '1', '--json']).stdout) as { kind: string };
   expect(next.kind).not.toBe('requests');

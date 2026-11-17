@@ -43,13 +43,9 @@ pub(super) fn send(ctx: &Context, args: &MessageSendArgs) -> Result<Printed, Agb
 }
 
 pub(super) fn accept(ctx: &Context, args: &MessageAcceptArgs) -> Result<Printed, AgboardError> {
-    let request = ctx.files.accept_request(
-        ctx.project_id()?,
-        &args.id,
-        &args.by,
-        Actor::Ai,
-        ctx.clock.now(),
-    )?;
+    let request =
+        ctx.files
+            .accept_request(ctx.project_id()?, &args.id, Actor::Ai, ctx.clock.now())?;
     Ok(Printed {
         changed: true,
         human: format!("Accepted request {}.\n", request.id),

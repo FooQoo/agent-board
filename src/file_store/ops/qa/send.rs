@@ -116,7 +116,6 @@ impl FileStore {
             id: id.clone(),
             body: text.to_owned(),
             accepted_at: None,
-            accepted_by: None,
             withdrawn_at: None,
             created_at: stamp(now),
         };

@@ -156,7 +156,7 @@ The other `message` commands print one JSON object with `--json`:
 | `message send`, `message accept` | `{request}`. |
 | `message withdraw` | `{question}` or `{request}`, whichever was withdrawn. |
 
-A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, or `null`), `status`, `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status`, `acceptedAt`, `acceptedBy`, `withdrawnAt`, and `createdAt`. The statuses are described in [Messages](./files.md#messages).
+A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, or `null`), `status`, `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status`, `acceptedAt`, `withdrawnAt`, and `createdAt`. The statuses are described in [Messages](./files.md#messages).
 
 ## Sample cards of the first-run guide
 

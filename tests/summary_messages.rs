@@ -176,7 +176,7 @@ fn a_request_is_the_agents_turn_until_it_is_accepted_or_withdrawn() {
     assert_eq!(list[0]["turn"], "ai");
     assert_eq!(list[0]["title"], "Add dark mode");
     f.store
-        .accept_request(&f.project, &one, "agent", Actor::Ai, at(3))
+        .accept_request(&f.project, &one, Actor::Ai, at(3))
         .unwrap();
     f.store
         .withdraw_message(&f.project, &two, Actor::Human, at(4))

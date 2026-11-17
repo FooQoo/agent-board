@@ -8,11 +8,11 @@
 
 - メッセージは1件1ファイルで、`qa/Q-<n>/QA.md`に保存します。YAMLのfrontmatterとMarkdownの本文で構成します。依頼に添付した画像は`qa/Q-<n>/attachments/`に置きます。質問と依頼は`project.json`の`nextQuestionId`の1本の連番を共有し、番号は増えるだけです。
 - 質問は`from`、`to`、任意の`tasks`（質問の対象タスク）、任意で2〜10件の`choices`、任意の`recommended`、`reply`、`withdrawnAt`、`createdAt`を持ちます。本文が質問で、1〜5,000文字です。各選択肢は質問内で一意のID（`[A-Za-z0-9_-]`の1〜64文字）と1〜200文字のラベルを持ちます。`recommended`は選択肢のどれかを指します。
-- 依頼は`from`、`to`、`acceptedAt`、`acceptedBy`、`withdrawnAt`、`createdAt`を持ちます。本文が依頼で、1〜20,000文字です。
+- 依頼は`from`、`to`、`acceptedAt`、`withdrawnAt`、`createdAt`を持ちます。本文が依頼で、1〜20,000文字です。
 - `agboard message ask`は質問1件につき1ファイルを書き、1回に20件まで出せます。`--task <id>`または質問の`tasks`を指定すると、そのタスクのfrontmatterの`questions`に質問IDを足し、質問と選択肢を別々のブロックにした履歴を追加します。Runningのタスクは同じ保存でIdleに戻します。指定したタスクが存在しない、アーカイブ済み、下書き、またはAIの操作でDoneのときは、何も書きません。
 - 回答は`{choice, text, via, at}`の形です。選択肢のある質問には`choice`が必要で、選択肢のない質問には前後の空白を除いて1〜2,000文字の`text`が必要です。未知の選択肢は`choice_unknown`です。回答には選択肢のID、`via`（ボードとリモートアクセスからは`ui`、チャットで受けた回答をエージェントが記録したときは`chat`、端末からは`cli`）、時刻を保存します。質問を参照しているアーカイブされていないタスクには、質問・選んだラベル・メモを別々のブロックにした履歴を追加します。Doneのタスクにも追加します。
 - 回答を書けるのは人だけで、1回だけです。回答済みの質問に答えると`question_answered`で失敗します。まとめて送った回答は、全部書くか何も書かないかのどちらかです。
-- 依頼は、エージェントが`agboard message accept`で受け付けます。`acceptedAt`と`acceptedBy`（`--by`で渡したエージェントまたはセッションのID）を記録します。受け付けは1回だけで、2回目は`request_accepted`で失敗します。
+- 依頼は、エージェントが`agboard message accept`で受け付けます。`acceptedAt`を記録します。受け付けは1回だけで、2回目は`request_accepted`で失敗します。
 - 取り下げたメッセージには何も書きません。回答は`question_withdrawn`、受け付けは`request_withdrawn`で失敗します。質問を取り下げられるのはエージェントだけ（人は`ai_only`）、依頼を取り下げられるのは人だけ（エージェントは`human_only`）です。すでに回答または受け付けのあるメッセージは取り下げられません（`message_closed`）。すでに付いた回答は残ります。レーンの移動、アーカイブ、削除でメッセージが取り下げられることはありません。
 - `message link`と`message unlink`は、タスクの`questions`に参照を足したり外したりし、質問側の`tasks`も合わせて更新します。`TASK.md`の編集と同じ制限がかかり、履歴を追加します。
 - メッセージの文は前後の空白を除き、CRLFと単独のCRをLFに正規化します。

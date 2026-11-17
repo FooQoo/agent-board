@@ -13,8 +13,6 @@ pub const MAX_QUESTION_CHARS: usize = 5_000;
 pub const MAX_REQUEST_CHARS: usize = 20_000;
 /// The most characters of a text reply.
 pub const MAX_REPLY_CHARS: usize = 2_000;
-/// The most characters of the agent that accepts a request.
-pub const MAX_ACCEPTED_BY_CHARS: usize = 200;
 
 fn defect(field: &str, reason: &str) -> Defect {
     Defect {
@@ -105,21 +103,6 @@ fn reply_defect(question: &Question) -> Option<Defect> {
 fn request_defect(request: &Request) -> Option<Defect> {
     if let Some(d) = body_defect(&request.body, MAX_REQUEST_CHARS) {
         return Some(d);
-    }
-    match (&request.accepted_at, &request.accepted_by) {
-        (None, None) => {}
-        (Some(_), Some(by)) => {
-            let count = by.chars().count();
-            if by.trim() != by || count == 0 || count > MAX_ACCEPTED_BY_CHARS {
-                return Some(defect("acceptedBy", "The agent is 1 to 200 characters."));
-            }
-        }
-        _ => {
-            return Some(defect(
-                "acceptedAt",
-                "acceptedAt and acceptedBy are written together.",
-            ));
-        }
     }
     None
 }

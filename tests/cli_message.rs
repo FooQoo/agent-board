@@ -268,26 +268,10 @@ fn a_person_sends_a_request_and_one_agent_accepts_it() {
 
     let listed = msg_json(home.path(), &["ls", "--type", "request"]);
     assert_eq!(listed["messages"][0]["id"], "Q-1");
-    let (_, error) = json_error(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "message",
-            "accept",
-            "Q-1",
-            "--actor",
-            "ai",
-        ],
-    );
-    assert_eq!(error, "invalid_argument");
-
-    let accepted = msg_json(
-        home.path(),
-        &["accept", "Q-1", "--actor", "ai", "--by", "session-1"],
-    );
+    let accepted = msg_json(home.path(), &["accept", "Q-1", "--actor", "ai"]);
     assert_eq!(accepted["request"]["status"], "accepted");
-    assert_eq!(accepted["request"]["acceptedBy"], "session-1");
+    assert!(accepted["request"]["acceptedAt"].is_string());
+    assert!(accepted["request"].get("acceptedBy").is_none());
     let (code, error) = json_error(
         home.path(),
         &[
@@ -298,14 +282,12 @@ fn a_person_sends_a_request_and_one_agent_accepts_it() {
             "Q-1",
             "--actor",
             "ai",
-            "--by",
-            "session-2",
         ],
     );
     assert_eq!((code, error.as_str()), (1, "request_accepted"));
     assert_eq!(msg_json(home.path(), &["ls"])["messages"], json!([]));
     let closed = msg_json(home.path(), &["ls", "--status", "closed"]);
-    assert_eq!(closed["messages"][0]["acceptedBy"], "session-1");
+    assert_eq!(closed["messages"][0]["status"], "accepted");
 
     // A request is withdrawn by a person, until an agent takes it.
     let second = msg_json(
@@ -338,8 +320,6 @@ fn a_person_sends_a_request_and_one_agent_accepts_it() {
             "Q-2",
             "--actor",
             "ai",
-            "--by",
-            "session-1",
         ],
     );
     assert_eq!(error, "request_withdrawn");

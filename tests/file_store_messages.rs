@@ -202,9 +202,7 @@ fn every_message_is_one_file_and_one_sequence_numbers_them() {
     assert!(q1.ends_with("---\n\nKeep the records?\n"), "{q1}");
     let q3 = f.file("Q-3");
     assert!(
-        q3.starts_with(
-            "---\nfrom: human\nto: ai\nacceptedAt: null\nacceptedBy: null\nwithdrawnAt: null\n"
-        ),
+        q3.starts_with("---\nfrom: human\nto: ai\nacceptedAt: null\nwithdrawnAt: null\n"),
         "{q3}"
     );
     assert!(q3.ends_with("---\n\nAdd a reset link.\n"), "{q3}");
@@ -354,32 +352,26 @@ fn a_request_is_accepted_once_by_one_agent() {
 
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &request, "agent-1", Actor::Human, Utc::now()),
+            .accept_request(&f.project, &request, Actor::Human, Utc::now()),
         Err(AgboardError::AiOnly { .. })
     ));
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &question, "agent-1", Actor::Ai, Utc::now()),
+            .accept_request(&f.project, &question, Actor::Ai, Utc::now()),
         Err(AgboardError::MessageTypeMismatch { .. })
-    ));
-    assert!(matches!(
-        f.store
-            .accept_request(&f.project, &request, "  ", Actor::Ai, Utc::now()),
-        Err(AgboardError::InvalidValue { .. })
     ));
 
     let accepted = f
         .store
-        .accept_request(&f.project, &request, "session-1", Actor::Ai, Utc::now())
+        .accept_request(&f.project, &request, Actor::Ai, Utc::now())
         .unwrap();
     assert_eq!(accepted.status, RequestStatus::Accepted);
-    assert_eq!(accepted.accepted_by.as_deref(), Some("session-1"));
     let text = f.file(&request);
-    assert!(text.contains("acceptedBy: session-1") && !text.contains("acceptedAt: null"));
+    assert!(!text.contains("acceptedAt: null") && !text.contains("acceptedBy"));
 
     let second = f
         .store
-        .accept_request(&f.project, &request, "session-2", Actor::Ai, Utc::now())
+        .accept_request(&f.project, &request, Actor::Ai, Utc::now())
         .unwrap_err();
     assert!(matches!(second, AgboardError::RequestAccepted { .. }));
     assert_eq!(f.file(&request), text);
@@ -393,7 +385,7 @@ fn a_request_is_accepted_once_by_one_agent() {
     f.withdraw(&withdrawn, Actor::Human).unwrap();
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &withdrawn, "session-1", Actor::Ai, Utc::now()),
+            .accept_request(&f.project, &withdrawn, Actor::Ai, Utc::now()),
         Err(AgboardError::RequestWithdrawn { .. })
     ));
 }
@@ -404,18 +396,12 @@ fn two_agents_never_both_take_one_request() {
     let request = f.send("Add a reset link.");
     let winners: usize = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..8)
-            .map(|n| {
+            .map(|_| {
                 let store = FileStore::open(&f.shared);
                 let (project, request) = (f.project.clone(), request.clone());
                 scope.spawn(move || {
                     store
-                        .accept_request(
-                            &project,
-                            &request,
-                            &format!("agent-{n}"),
-                            Actor::Ai,
-                            Utc::now(),
-                        )
+                        .accept_request(&project, &request, Actor::Ai, Utc::now())
                         .is_ok()
                 })
             })

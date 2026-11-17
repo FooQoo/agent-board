@@ -7,33 +7,22 @@ use super::message_change;
 use crate::domain::{Actor, ProjectId};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
-use crate::file_store::qa::{
-    MAX_ACCEPTED_BY_CHARS, Message, MessageState, RequestView, read_message,
-};
+use crate::file_store::qa::{Message, MessageState, RequestView, read_message};
 use crate::file_store::transaction::save_batch_locked;
 
 impl FileStore {
-    /// An agent accepts a request, naming itself (`by`, an agent or session ID). The first
-    /// acceptance is final: a second one is `request_accepted`, and a withdrawn request
+    /// An agent accepts a request. The first acceptance is final: a second one is `request_accepted`, and a withdrawn request
     /// takes none (`request_withdrawn`).
     pub fn accept_request(
         &self,
         project: &ProjectId,
         id: &str,
-        by: &str,
         actor: Actor,
         now: DateTime<Utc>,
     ) -> Result<RequestView, AgboardError> {
         if actor != Actor::Ai {
             return Err(AgboardError::AiOnly {
                 action: "accepting a request".into(),
-            });
-        }
-        let by = by.trim();
-        if by.is_empty() || by.chars().count() > MAX_ACCEPTED_BY_CHARS {
-            return Err(AgboardError::InvalidValue {
-                field: "by".into(),
-                reason: "Name the accepting agent in 1 to 200 characters.".into(),
             });
         }
         let shared = self.shared_dir();
@@ -57,7 +46,6 @@ impl FileStore {
             MessageState::Open => {}
         }
         request.accepted_at = Some(stamp(now));
-        request.accepted_by = Some(by.to_owned());
         let message = Message::Request(request);
         let change = message_change(&project_dir, &message, false)?;
         save_batch_locked(&project_dir, vec![change])?;

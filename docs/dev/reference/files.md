@@ -149,7 +149,6 @@ A request:
 from: human
 to: ai
 acceptedAt: 2026-11-14T03:10:00Z
-acceptedBy: agent-1
 createdAt: 2026-11-14T03:00:00Z
 ---
 Add a dark theme to the settings screen.
@@ -177,7 +176,7 @@ Fields of a request:
 
 | Field | Rule |
 | --- | --- |
-| `acceptedAt`, `acceptedBy` | `null` until an agent accepts it; both are written together. `acceptedBy` is the agent or session ID given with `--by` (1 to 200 characters). |
+| `acceptedAt` | `null` until an agent accepts it, then when it was accepted. |
 
 The state is not stored. A message is withdrawn when `withdrawnAt` is set, closed when its question has a `reply` or its request is accepted, and open otherwise. The CLI and API report a question's status as `open`, `answered`, or `withdrawn`, and a request's as `open`, `accepted`, or `withdrawn`; the filter words shared by both are `open`, `closed`, and `withdrawn`.
 

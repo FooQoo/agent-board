@@ -237,7 +237,7 @@ pub struct MessageSendArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "The first acceptance is final: accepting again fails with request_accepted (exit 1), so two agents never take the same request.\n\nExamples:\n  agboard --project demo message accept Q-14 --actor ai --by session-1"
+    after_help = "The first acceptance is final: accepting again fails with request_accepted (exit 1), so two agents never take the same request.\n\nExamples:\n  agboard --project demo message accept Q-14 --actor ai"
 )]
 pub struct MessageAcceptArgs {
     /// The request to accept
@@ -245,7 +245,4 @@ pub struct MessageAcceptArgs {
     /// Who accepts: only an agent
     #[arg(long, value_enum, required = true)]
     pub actor: AiActorArg,
-    /// The agent or session that accepts the request
-    #[arg(long, value_name = "AGENT_ID", required = true)]
-    pub by: String,
 }

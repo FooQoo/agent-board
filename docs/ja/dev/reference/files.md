@@ -149,7 +149,6 @@ createdAt: 2026-11-14T02:30:00Z
 from: human
 to: ai
 acceptedAt: 2026-11-14T03:10:00Z
-acceptedBy: agent-1
 createdAt: 2026-11-14T03:00:00Z
 ---
 設定画面にダークテーマを追加してください。
@@ -177,7 +176,7 @@ createdAt: 2026-11-14T03:00:00Z
 
 | 項目 | 規則 |
 | --- | --- |
-| `acceptedAt`、`acceptedBy` | AIが受け付けるまでは`null`で、2つは一緒に書きます。`acceptedBy`は`--by`で渡すエージェントまたはセッションのID（1〜200文字）です。 |
+| `acceptedAt` | AIが受け付けるまでは`null`で、受け付けるとその時刻です。 |
 
 状態は保存しません。`withdrawnAt`があれば取り下げ済み、質問に`reply`がある、または依頼が受け付け済みなら完了、それ以外は未完了です。CLIとAPIでは、質問の状態を`open`・`answered`・`withdrawn`、依頼の状態を`open`・`accepted`・`withdrawn`で返します。両方に共通する絞り込みの語は`open`・`closed`・`withdrawn`です。
 

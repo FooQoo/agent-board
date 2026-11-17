@@ -188,12 +188,12 @@ agboard --project "My project" state 1 running --actor ai --reason "ユーザー
 
 ```sh
 agboard --project "My project" message send --actor human --text "ガイドにWindowsの節を足して" --image ./sketch.png
-agboard --project "My project" message accept Q-13 --actor ai --by "<agent-id>"
+agboard --project "My project" message accept Q-13 --actor ai
 agboard --project "My project" message withdraw Q-13 --actor human
 ```
 
 - `message send`は、`--text`か`--text-file`で1〜20,000文字の依頼を記録します。`--image`を繰り返すと画像を添付できます。
-- `message accept`は、未対応の依頼を、`--by`で指定したエージェントが受け付けたものとして記録します。受け付けられるのはエージェントだけで、1回だけです。
+- `message accept`は、未対応の依頼を受け付け済みにし、その時刻を記録します。受け付けられるのはエージェントだけで、1回だけです。
 - 依頼を取り下げられるのは人だけで、未対応のあいだに限ります。受け付け済みの依頼は取り下げられません。
 
 ## 次に読む

@@ -63,8 +63,6 @@ fn an_open_request_is_in_progress_with_a_short_title_and_leaves_when_accepted() 
             &id,
             "--actor",
             "ai",
-            "--by",
-            "session-1",
             "--json",
         ],
     );
@@ -170,8 +168,6 @@ fn listening_returns_an_open_request_before_any_task() {
             &id,
             "--actor",
             "ai",
-            "--by",
-            "session-1",
             "--json",
         ],
     );
