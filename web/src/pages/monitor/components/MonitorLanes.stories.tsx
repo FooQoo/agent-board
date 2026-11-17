@@ -164,6 +164,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
+ * The time (ms) the synthetic events claim, one frame apart. The carousel judges a swipe by its
+ * distance over its time, read from `event.timeStamp`. Events dispatched in a row would share a
+ * stamp (or differ by whatever the machine's speed gives), the swipe would have no speed, and a
+ * drag of under half the page would snap back; with a stamp of our own the speed is the same on
+ * every machine.
+ */
+let clock = 0;
+const FRAME_MS = 16;
+
+/**
  * A pointer event on `target`, followed by the mouse event a browser sends with it. The card reads
  * pointer events (`@use-gesture/react`); the lane carousel reads mouse and touch events (Embla).
  */
@@ -182,10 +192,17 @@ function press(
     clientX: x,
     clientY: y,
   };
-  target.dispatchEvent(
-    new PointerEvent(type, { ...init, pointerId: 7, pointerType: 'mouse', isPrimary: true }),
-  );
-  target.dispatchEvent(new MouseEvent(type.replace('pointer', 'mouse'), init));
+  const pointer = new PointerEvent(type, {
+    ...init,
+    pointerId: 7,
+    pointerType: 'mouse',
+    isPrimary: true,
+  });
+  const mouse = new MouseEvent(type.replace('pointer', 'mouse'), init);
+  clock += FRAME_MS;
+  for (const event of [pointer, mouse]) Object.defineProperty(event, 'timeStamp', { value: clock });
+  target.dispatchEvent(pointer);
+  target.dispatchEvent(mouse);
 }
 /** Holds a card still until it is chosen, then lets go: the card shows its focus ring. */
 const choose = async (card: Element, x: number, y: number) => {
