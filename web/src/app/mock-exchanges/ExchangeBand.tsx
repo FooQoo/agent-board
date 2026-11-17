@@ -1,0 +1,68 @@
+import { ArrowRightLeftIcon, ChevronRightIcon, CircleCheckIcon } from 'lucide-react';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
+import '../../features/tasks/answer/question-band.css';
+import './exchanges-mock.css';
+import { countExchanges, type MockExchange } from './data';
+import { useMockText } from './text';
+
+/** The band above the lanes that replaces the unanswered-questions band: whose turn it is, in counts. */
+export function ExchangeBand({
+  exchanges,
+  variant,
+  onOpen,
+}: {
+  exchanges: MockExchange[];
+  variant: 'board' | 'phone';
+  onOpen: () => void;
+}) {
+  const m = useMockText();
+  const count = countExchanges(exchanges);
+  const idle = count.human === 0;
+  const Icon = idle ? CircleCheckIcon : ArrowRightLeftIcon;
+  return (
+    <section
+      className="question-band xband"
+      data-variant={variant}
+      data-state={idle ? 'empty' : 'open'}
+      aria-label={m.bandTitle}
+    >
+      <header className="question-band__header xband__header">
+        <h2 className="question-band__heading">
+          <span className="question-band__toggle xband__title">
+            <Icon className="question-band__icon" aria-hidden="true" />
+            <span className="question-band__title">{m.bandTitle}</span>
+          </span>
+        </h2>
+        <ul className="xband__chips">
+          <li>
+            <Badge variant={idle ? 'muted' : 'pending'} className="xband__chip">
+              {m.bandYourTurn} <strong>{count.human}</strong>
+              {count.human > 0 && (
+                <span className="xband__sub">
+                  （{m.bandBreakdown(count.questions, count.approvals)}）
+                </span>
+              )}
+            </Badge>
+          </li>
+          <li>
+            <Badge variant="outline" className="xband__chip">
+              {m.bandAiTurn} <strong>{count.ai}</strong>
+            </Badge>
+          </li>
+          {count.unpicked > 0 && (
+            <li>
+              <Badge variant="muted" className="xband__chip">
+                {m.bandUnpicked(count.unpicked)}
+              </Badge>
+            </li>
+          )}
+        </ul>
+        <Button type="button" size="s" className="xband__open" onClick={onOpen}>
+          {m.bandOpen}
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+      </header>
+    </section>
+  );
+}

@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-exchanges/ExchangesScreen.tsx",
+      "exports": [
+        {
+          "name": "BoardHeader",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--header",
+              "states": ["ask AI button"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "HeaderToday",
+          "stories": [],
+          "exclusion": "Exported only to compare with the header the board has today; no Story of its own."
+        },
+        {
+          "name": "ExchangesScreen",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--band-and-plan-card",
+              "states": ["band", "plan card"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-desktop--plan-card-added-to-epic",
+              "states": ["tasks added to an epic"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--single-draft-tasks",
+              "states": ["draft task", "start disabled"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--all-approvals",
+              "states": ["all approval shapes"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--board-ja-dark",
+              "states": ["ja dark"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-phone--band-and-lanes",
+              "states": ["phone band", "phone lanes"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-phone--band-ja-dark",
+              "states": ["phone ja dark"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/ExchangeBand.tsx",
+      "exports": [
+        {
+          "name": "ExchangeBand",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--band-and-plan-card",
+              "states": ["your turn", "AI turn", "not picked up"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-phone--band-and-lanes",
+              "states": ["phone band"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/AskAiDialog.tsx",
+      "exports": [
+        {
+          "name": "AskAiDialog",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--ask-ai-dialog",
+              "states": ["empty"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-desktop--ask-ai-dialog-filled",
+              "states": ["text and images"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/ExchangePanel.tsx",
+      "exports": [
+        {
+          "name": "ExchangePanelBody",
+          "stories": [],
+          "exclusion": "Drawn only inside ExchangePanel; the panel Stories show it."
+        },
+        {
+          "name": "ExchangePanel",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--panel-your-turn",
+              "states": ["your turn tab"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-desktop--panel-ai-turn",
+              "states": ["AI turn tab", "waiting to be picked up"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--panel-done",
+              "states": ["done tab"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--panel-question-open",
+              "states": ["question with answer UI"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--panel-request-open",
+              "states": ["request"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-phone--panel-sheet",
+              "states": ["sheet"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-phone--panel-sheet-question",
+              "states": ["sheet question"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/PlanReview.tsx",
+      "exports": [
+        {
+          "name": "PlanReview",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--plan-review-with-open-question",
+              "states": ["open question", "start disabled"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-desktop--plan-review-ready",
+              "states": ["start enabled"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-desktop--plan-review-added-tasks",
+              "states": ["added tasks"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--plan-review-single-task",
+              "states": ["single task"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-phone--plan-review-sheet-with-open-question",
+              "states": ["sheet blocked"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-phone--plan-review-sheet-ready",
+              "states": ["sheet ready"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/PlanCards.tsx",
+      "exports": [
+        {
+          "name": "PlanCard",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--band-and-plan-card",
+              "states": ["new epic plan card"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-desktop--plan-card-added-to-epic",
+              "states": ["added to epic"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "DraftTaskCard",
+          "stories": [
+            {
+              "id": "mocks-exchanges-desktop--single-draft-tasks",
+              "states": ["draft task", "start disabled"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-exchanges/Surface.tsx",
+      "exports": [
+        {
+          "name": "Surface",
+          "stories": [],
+          "exclusion": "Chrome of the mock dialogs and sheets; every panel and review Story shows it."
+        }
+      ]
+    }
+  ]
+}
