@@ -166,7 +166,7 @@ describe('writes from the phone screen go to the board routes', () => {
 
     await waitFor(() => expect(requests('POST')).toHaveLength(1));
     const [url, init] = requests('POST')[0] ?? [];
-    expect(url).toBe(`/api/projects/${PROJECT_A.id}/qa/answers`);
+    expect(url).toBe(`/api/projects/${PROJECT_A.id}/messages/answers`);
     expect(JSON.parse(String(init?.body))).toMatchObject({
       answers: [{ questionId: pendingTask?.pendingRequestId, text: 'Go ahead' }],
     });

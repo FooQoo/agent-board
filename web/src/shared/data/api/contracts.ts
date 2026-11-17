@@ -91,13 +91,9 @@ export interface SummaryProblem {
   reason: string;
 }
 
-export type QuestionKind = 'plan' | 'start_approval' | 'task';
-
-/** An open question of the project; the full text is read with `GET .../qa/{questionId}`. */
+/** An open question of the project; the full text is read with `GET .../messages/{questionId}`. */
 export interface SummaryQuestion {
   id: string;
-  requestId: string;
-  kind: QuestionKind;
   /** The first line of the question, up to 200 characters. */
   title: string;
   recommendedChoiceId: string | null;

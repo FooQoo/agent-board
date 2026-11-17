@@ -79,7 +79,7 @@ export function transcript(): unknown[] {
     { url: `${base}/epics/FILE-SHARE/detail` },
     post(`${base}/tasks`, { title: 'New card', assignee: 'ai' }),
     post(`${base}/tasks/15/move`, { taskStatus: 'doing' }),
-    post(`${base}/qa/answers`, {
+    post(`${base}/messages/answers`, {
       answers: [{ questionId: '13131313131313131313131313131313', choiceId: 'board' }],
     }),
     { method: 'PATCH', url: `${base}/tasks/14`, body: JSON.stringify({ title: 'Edited' }) },
@@ -221,7 +221,7 @@ export function mockServerCases(): void {
 
     it('answers an open question, and refuses an unknown one', () => {
       const { server } = start();
-      const url = `/api/projects/${PROJECT}/qa/answers`;
+      const url = `/api/projects/${PROJECT}/messages/answers`;
       const answer = (questionId: string) =>
         post(url, { answers: [{ questionId, choiceId: 'board' }] });
       expect(send(server, answer('old')).status).toBe(404);

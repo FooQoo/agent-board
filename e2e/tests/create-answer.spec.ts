@@ -213,7 +213,7 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
     release = resolve;
   });
   let posts = 0;
-  await page.route('**/api/projects/*/qa/answers', async (route) => {
+  await page.route('**/api/projects/*/messages/answers', async (route) => {
     posts += 1;
     if (mode === 'fail') {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'database_error', reason: 'busy' } }) });
@@ -245,13 +245,12 @@ test('while it is sent the dialog cannot be sent twice or closed; a failure keep
   expectHistoryNote(show(12).history.at(-1), ['Waiting for confirmation on how to replace a board.', 'My answer.']);
 });
 
-/** A person's move drops the old request; the agent then runs again and asks something else. */
+/** A person's move drops the old question; the agent then runs again and asks something else. */
 function askAgain(reason: string): void {
   // The agent withdraws the open question before it asks a new one.
   const open = show(12).pendingRequestId;
   if (open) {
-    const { requestId } = JSON.parse(agboardOk(mainProject, ['qa', 'show', open, '--json']).stdout).question as { requestId: string };
-    agboardOk(mainProject, ['qa', 'withdraw', requestId, '--actor', 'ai', '--reason', 'Asking again.']);
+    agboardOk(mainProject, ['message', 'withdraw', open, '--actor', 'ai']);
   }
   agboardOk(mainProject, ['mv', '12', 'todo', '--actor', 'human', '--reason', 'Back to Todo.']);
   agboardOk(mainProject, ['mv', '12', 'doing', '--actor', 'human', '--reason', 'Doing again.']);
@@ -300,7 +299,7 @@ test('an answer sent from a page that missed the new request is refused by the s
   await page.route('**/api/projects/*/summary', (route) => route.abort());
   askAgain('A different question now.');
   await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
-  const answered = page.waitForResponse((response) => response.url().endsWith('/qa/answers'));
+  const answered = page.waitForResponse((response) => response.url().endsWith('/messages/answers'));
   await pressSend(page);
   expect((await answered).status()).toBe(409);
   await expect(dialog.getByRole('alert')).toContainText('Some questions were answered or withdrawn elsewhere.');

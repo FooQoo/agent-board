@@ -16,7 +16,7 @@ import {
 
 // A card's life on the board: create, move, answer, archive, restore and delete.
 
-const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?|qa\/answers)$/;
+const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?|messages\/answers)$/;
 
 export const lifecycleRoutes: Routes = (context, request) => {
   const match = TASK_ROUTE.exec(request.url.pathname);
@@ -73,7 +73,7 @@ export const lifecycleRoutes: Routes = (context, request) => {
     return archiveDone(context, found, input);
   }
 
-  if (rest === 'qa/answers') {
+  if (rest === 'messages/answers') {
     if (!request.token) return forbidden();
     if (!found) return projectNotFound();
     const input = parseBody(request.body);

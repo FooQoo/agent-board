@@ -72,7 +72,8 @@ async function listTop(page: Page): Promise<number> {
 
 test('the band is always there: with no question its header shows a count of 0 and nothing opens, at desktop and phone widths', async ({ page }) => {
   // The fixture's open question on #12 is withdrawn, so the project has none.
-  agboardOk(mainProject, ['qa', 'withdraw', '0123456789abcdef0123456789abcdef', '--actor', 'ai', '--reason', 'Not needed.']);
+  const open = JSON.parse(agboardOk(mainProject, ['show', '12', '--json']).stdout).task.pendingRequestId as string;
+  agboardOk(mainProject, ['message', 'withdraw', open, '--actor', 'ai']);
   for (const size of [DESKTOP, PHONE, DESKTOP]) {
     await page.setViewportSize(size);
     await expect(band(page)).toBeVisible();

@@ -134,7 +134,7 @@ export function stubBackend(backend: FakeBackend) {
         ? errorResponse(404, 'project_not_found')
         : answer(found, summaryOfBoard);
     }
-    const qa = /^\/api\/projects\/([0-9a-f]{32})\/qa\/([^/?]+)$/.exec(url);
+    const qa = /^\/api\/projects\/([0-9a-f]{32})\/messages\/([^/?]+)$/.exec(url);
     if (qa?.[1]) {
       const board = backend.boards[qa[1]];
       if (board === undefined) return errorResponse(404, 'project_not_found');
@@ -146,7 +146,7 @@ export function stubBackend(backend: FakeBackend) {
           ? {
               question: {
                 id,
-                question: task.pendingReason ?? '',
+                body: task.pendingReason ?? '',
                 choices: task.pendingChoices,
                 recommendedChoiceId: null,
                 status: 'open',

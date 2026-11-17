@@ -47,8 +47,7 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
 test('moving a task out of Todo keeps its question pending until the question is withdrawn', async ({ page }) => {
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
-  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout) as {
-    requestId: string;
+  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout.split('\n')[0]) as {
     questions: { id: string }[];
   };
   const question = asked.questions[0].id;
@@ -65,7 +64,7 @@ test('moving a task out of Todo keeps its question pending until the question is
   await expect(answerButton(page, id)).toBeVisible();
 
   // Withdrawing the question ends the wait.
-  agboardOk(mainProject, ['qa', 'withdraw', asked.requestId, '--actor', 'ai', '--reason', 'No longer needed.']);
+  agboardOk(mainProject, ['message', 'withdraw', question, '--actor', 'ai']);
   await page.reload();
   await waitForSync(page);
   expect(show(id)).toMatchObject({ taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null });

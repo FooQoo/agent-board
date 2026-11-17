@@ -7,7 +7,7 @@ import { type AnswerItem, answersBody } from '../answer/model/qa';
 /** Sends a person's answers to questions of the project; the server writes all of them or none. */
 export async function answerQuestions(projectId: ProjectId, answers: AnswerItem[]) {
   return postTask<{ questions: unknown[] }>(
-    `${projectPath(projectId)}/qa/answers`,
+    `${projectPath(projectId)}/messages/answers`,
     answersBody(answers),
   );
 }

@@ -33,8 +33,8 @@ test('default pending waits for a browser answer', async ({ page }) => {
 
     // The request has no wait setting at all: the child must wait for the answer on its own.
     waiter = spawn(agboardBinary(), [
-      '--project', project, 'qa', 'ask', '--actor', 'ai', '--task', '1', '--json',
-      '--request-json', decisionJson('Which plan should the default wait use?'),
+      '--project', project, 'message', 'ask', '--actor', 'ai', '--task', '1', '--json',
+      '--questions-json', decisionJson('Which plan should the default wait use?'),
     ], { cwd: home, env: { ...process.env, AGBOARD_HOME: home, TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';

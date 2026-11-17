@@ -9,7 +9,7 @@ export async function fetchQuestion(
   questionId: string,
 ): Promise<QuestionDetail> {
   return parseQuestionDetail(
-    await getJson<unknown>(`${projectPath(projectId)}/qa/${encodeURIComponent(questionId)}`),
+    await getJson<unknown>(`${projectPath(projectId)}/messages/${encodeURIComponent(questionId)}`),
   );
 }
 

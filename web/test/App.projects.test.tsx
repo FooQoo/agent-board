@@ -763,7 +763,7 @@ describe('switching while a form is open', () => {
     await screen.findByText('Same number elsewhere');
     const posts = writes();
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/qa/answers`);
+    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/messages/answers`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toMatchObject({
       answers: [{ questionId: pendingA?.pendingRequestId, text: 'Go ahead' }],
     });

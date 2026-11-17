@@ -164,7 +164,7 @@ test('the phone answers the current question from the sheet, and the answer reac
   await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
   await sheet.getByRole('radio', { name: 'Plan A' }).click();
   const answered = page.waitForResponse((response) =>
-    response.url().includes('/qa/answers') && response.request().method() === 'POST');
+    response.url().includes('/messages/answers') && response.request().method() === 'POST');
   await sheet.getByRole('button', { name: 'Send', exact: true }).click();
   expect((await answered).status()).toBe(200);
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -277,7 +277,7 @@ test('nothing is read or answered without a session, and a replaced tunnel needs
     expect((await response.json()).error?.code ?? (await response.json()).code).toBe('session_required');
     expect(response.headers()['set-cookie']).toBeUndefined();
   }
-  const forged = await bare.post(`${base}/projects/${alpha}/qa/answers`, {
+  const forged = await bare.post(`${base}/projects/${alpha}/messages/answers`, {
     headers: { Cookie: 'agboard_ngrok_session=' + '0'.repeat(64), 'X-Agboard-Csrf': '0'.repeat(64) },
     data: { answers: [{ questionId: 'Q-1', text: 'forged' }] },
   });

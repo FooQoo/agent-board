@@ -11,7 +11,7 @@ export interface BandQuestion {
 
 export type QuestionStatus = 'open' | 'answered' | 'withdrawn';
 
-/** One question as `GET .../qa/{questionId}` returns it: what the answer dialog shows. */
+/** One question as `GET .../messages/{questionId}` returns it: what the answer dialog shows. */
 export interface QuestionDetail {
   id: string;
   question: string;
@@ -24,7 +24,7 @@ export interface QuestionDetail {
 /** Reads one question; the PC and the monitor each read it through their own routes. */
 export type QuestionReader = (projectId: ProjectId, questionId: string) => Promise<QuestionDetail>;
 
-/** One answer of `POST .../qa/answers`. */
+/** One answer of `POST .../messages/answers`. */
 export interface AnswerItem {
   questionId: string;
   choiceId?: string;
@@ -50,7 +50,7 @@ export const isAnswered = (held: HeldAnswer | null | undefined): held is HeldAns
 export const isWithinLimit = (held: HeldAnswer): boolean =>
   [...held.text].length <= MAX_ANSWER_TEXT;
 
-/** The body of `POST .../qa/answers`. */
+/** The body of `POST .../messages/answers`. */
 export function answersBody(answers: readonly AnswerItem[]) {
   return { answers };
 }
@@ -74,12 +74,12 @@ export function firstQuestionOf(
 /** Parses a question as the routes return it; anything else is treated as missing. */
 export function parseQuestionDetail(value: unknown): QuestionDetail {
   const body = (value as { question?: Record<string, unknown> } | null)?.question;
-  if (!body || typeof body.id !== 'string' || typeof body.question !== 'string')
+  if (!body || typeof body.id !== 'string' || typeof body.body !== 'string')
     throw new TypeError('The question response is not valid.');
   const status = body.status;
   return {
     id: body.id,
-    question: body.question,
+    question: body.body,
     choices: Array.isArray(body.choices)
       ? (body.choices as Choice[]).filter(
           (choice) => typeof choice?.id === 'string' && typeof choice.label === 'string',

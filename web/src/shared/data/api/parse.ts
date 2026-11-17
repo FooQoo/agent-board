@@ -16,7 +16,6 @@ const STATUSES = ['todo', 'doing', 'done'] as const;
 const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
 const RESOURCES = ['task', 'epic', 'project', 'qa'] as const;
-const QUESTION_KINDS = ['plan', 'start_approval', 'task'] as const;
 const DRAFTS = ['human', 'ai'] as const;
 const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
@@ -134,19 +133,9 @@ function parseProblem(value: unknown, path: string): SummaryProblem {
 }
 
 function parseQuestion(value: unknown, path: string): SummaryQuestion {
-  const o = exact(value, path, [
-    'id',
-    'requestId',
-    'kind',
-    'title',
-    'recommendedChoiceId',
-    'referencedBy',
-    'createdAt',
-  ]);
+  const o = exact(value, path, ['id', 'title', 'recommendedChoiceId', 'referencedBy', 'createdAt']);
   return {
     id: str(o.id, `${path}.id`),
-    requestId: str(o.requestId, `${path}.requestId`),
-    kind: oneOf(o.kind, `${path}.kind`, QUESTION_KINDS),
     title: str(o.title, `${path}.title`),
     recommendedChoiceId: nullableStr(o.recommendedChoiceId, `${path}.recommendedChoiceId`),
     referencedBy: list(o.referencedBy, `${path}.referencedBy`, (v, q) => int(v, q, 1)),

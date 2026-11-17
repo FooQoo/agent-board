@@ -172,7 +172,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const id = addTask('Pending history answer');
 	cliOk(['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Begin review']);
 	const request = {
-		question: 'Which release should ship?',
+		body: 'Which release should ship?',
 		choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
 	};
 	cliOk(askArgs(String(id), JSON.stringify({ questions: [request] })));
@@ -194,7 +194,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	await sheet.getByRole('radio', { name: 'Plan B' }).click();
 	await sheet.getByRole('textbox').fill('Ship the stable release.');
 	const answerRequest = page.waitForResponse((response) =>
-		response.url().includes('/qa/answers') && response.request().method() === 'POST');
+		response.url().includes('/messages/answers') && response.request().method() === 'POST');
 	// The card's only question is the last one, so the sheet sends from it without a review.
 	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
 	expect((await answerRequest).status()).toBe(200);
@@ -208,11 +208,11 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const task = show(id);
 	expect(task.agentStatus).toBe('idle');
 	expect(task.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
-	const recorded = JSON.parse(cliOk(['qa', 'show', requestId!]).trim()) as { question: { answer: unknown } };
-	expect(recorded.question.answer).toMatchObject({ actor: 'human', via: 'ui', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
+	const recorded = JSON.parse(cliOk(['message', 'show', requestId!, '--json']).trim()) as { question: { reply: unknown } };
+	expect(recorded.question.reply).toMatchObject({ via: 'ui', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
 	expect(task.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
-	const stale = cli(['qa', 'answer', requestId!, '--actor', 'human', '--via', 'cli', '--text', 'Late answer', '--json']);
+	const stale = cli(['message', 'answer', requestId!, '--actor', 'human', '--via', 'cli', '--text', 'Late answer', '--json']);
 	expect(stale.code).not.toBe(0);
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Pending history answer`) }).click();

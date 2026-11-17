@@ -547,7 +547,7 @@ test.describe('two projects with the same task numbers', () => {
     await reachSend(page);
     await expect(answerSend(page)).toBeEnabled();
     const answerResponse = page.waitForResponse((response) =>
-      response.url().includes(`/api/projects/${beta}/qa/answers`),
+      response.url().includes(`/api/projects/${beta}/messages/answers`),
     );
     await answerSend(page).click();
     expect((await answerResponse).status()).toBe(200);

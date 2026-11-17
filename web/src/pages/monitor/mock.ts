@@ -158,8 +158,6 @@ export function createMonitorFixture(): MonitorFixture {
           ? [
               {
                 id: summary.pendingRequestId,
-                requestId: summary.pendingRequestId,
-                kind: 'task' as const,
                 title: summary.pendingReason ?? '',
                 recommendedChoiceId: null,
                 referencedBy: [summary.id],

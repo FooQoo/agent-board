@@ -192,8 +192,6 @@ describe('MonitorProject', () => {
     summary.questions = [
       {
         id: 'r1',
-        requestId: 'r1',
-        kind: 'task',
         title: 'Which one?',
         recommendedChoiceId: null,
         referencedBy: [1],

@@ -803,7 +803,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
 
   // Answering: a refused answer keeps the text, and the card stays pending.
   let answerFails = true;
-  await page.route('**/api/projects/*/qa/answers', async (route) => {
+  await page.route('**/api/projects/*/messages/answers', async (route) => {
     if (!answerFails) return route.fallback();
     return route.fulfill({
       status: 409,

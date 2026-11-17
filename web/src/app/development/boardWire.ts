@@ -33,8 +33,6 @@ export function questionOf(task: Task): SummaryQuestion | null {
   if (task.agentStatus !== 'pending' || !task.pendingRequestId || task.archivedAt) return null;
   return {
     id: task.pendingRequestId,
-    requestId: task.pendingRequestId,
-    kind: 'task',
     title: (task.pendingReason ?? '').split('\n')[0]?.slice(0, 200) ?? '',
     recommendedChoiceId: null,
     referencedBy: [task.id],

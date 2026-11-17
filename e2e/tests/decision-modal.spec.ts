@@ -34,9 +34,9 @@ function show(id: number): Shown {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
-/** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait; returns the request id. */
+/** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait; returns the question id. */
 function ask(question: string): string {
-  return JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson(question))]).stdout).requestId as string;
+  return JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson(question))]).stdout.split('\n')[0]).questions[0].id as string;
 }
 
 const png = Buffer.from(
@@ -122,8 +122,8 @@ test('a withdrawn question stays readable in the open dialog and cannot be sent'
   const dialog = await openAnswer(page, 13);
   await answerNote(page).fill('Typed before it was withdrawn.');
 
-  // The agent withdraws the request while the dialog is open.
-  agboardOk(mainProject, ['qa', 'withdraw', request, '--actor', 'ai', '--reason', 'The plan changed.']);
+  // The agent withdraws the question while the dialog is open.
+  agboardOk(mainProject, ['message', 'withdraw', request, '--actor', 'ai']);
   await expect(dialog).toContainText('This question was withdrawn. You can no longer answer it.');
   await expect(dialog).toContainText('Will this stay?');
   await expect(answerNote(page)).toHaveValue('Typed before it was withdrawn.');
@@ -184,7 +184,7 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   ask('Will it fail?');
   const bodies: string[] = [];
   let fail = true;
-  await page.route('**/api/projects/*/qa/answers', async (route) => {
+  await page.route('**/api/projects/*/messages/answers', async (route) => {
     bodies.push(route.request().postData() ?? '');
     if (fail) {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'database_error', reason: 'busy' } }) });
