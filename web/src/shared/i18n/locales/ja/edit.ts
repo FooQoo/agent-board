@@ -119,7 +119,7 @@ export const editJa = {
     deleteFailed: 'エピックを削除できませんでした。もう一度試してください。',
   },
   acceptanceEdit: {
-    title: '受入条件',
+    title: '完了条件',
     progress: '{{total}}件中{{done}}件を達成',
     savedIn: 'ファイルの frontmatter に保存',
     add: '条件を追加',

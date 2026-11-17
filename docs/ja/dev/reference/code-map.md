@@ -33,14 +33,14 @@
 | --- | --- |
 | `model` | 永続形式のserdeの型（`deny_unknown_fields`、camelCase、`formatVersion`）。 |
 | `layout` | 検証済みのIDだけから所有パスを組み立てる。<br>文字列を直接パスにしない。 |
-| `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、受入条件と履歴の解析、未知のキーを保ったファイルの検証。 |
+| `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、完了条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。複数のファイルをまとめて保存するバッチのジャーナル（`batch.rs`）も持つ。 |
 | `message.rs` | 質問・依頼・承認の共通の形（`Message`、`MessageSource`トレイト、`Question`・`Request`・`Approval`の3つの型）と、Summaryの`messages`の一覧。 |
 | `qa/` | メッセージ。質問と依頼のモデル（`model.rs`）、`QA.md`の読み書き（`codec.rs`）、ファイルが満たす規則（`check.rs`）、メッセージの置き場所と読み方（`store.rs`）、タスクに導く状態（`derive.rs`）、呼び出し側が受け取るビュー（`view.rs`）。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
 | `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
-| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による受入条件のチェック・エピック・画像・自動完了の操作。 |
+| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -49,13 +49,13 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、リモート接続の`monitor_connections`）。 |
+| `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による完了条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、リモート接続の`monitor_connections`）。 |
 | `monitor_connection/` | ngrokのリモート接続。監督役と状態（`lifecycle`・`restore`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、`/api/preferences`の`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | 入口のアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
-| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、メッセージの読み出し、回答の保存、依頼の送信と取り下げ（`messages.rs`。ボードのハンドラーは`api/messages.rs`）、人による受入条件1件の設定。 |
+| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、メッセージの読み出し、回答の保存、依頼の送信と取り下げ（`messages.rs`。ボードのハンドラーは`api/messages.rs`）、人による完了条件1件の設定。 |
 | `web_assets` | 埋め込んだボードのスクリプトとスタイルシート、ビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
 | `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
 | `launch`<br>`bind`<br>`idle` | サーバー一つの起動と終了（`launch`）。待ち受けと、その失敗の意味、ポートを使っているもの、空きポートへの切り替え（`bind`）。自動のサーバーで「使われている」とみなすものと、使われないときの停止（`idle`）。 |

@@ -184,7 +184,7 @@ describe('automatic Done', () => {
       taskOf(server, 15)
         .history.slice(-2)
         .map((entry) => entry.reason),
-    ).toEqual(['A person marked AC-1 as met.', 'すべての受入条件を達成しました。']);
+    ).toEqual(['A person marked AC-1 as met.', 'すべての完了条件を達成しました。']);
     // A task in Done stays there when a condition is unchecked.
     check(server, 15, 'AC-1', false);
     expect(taskOf(server, 15).taskStatus).toBe('done');

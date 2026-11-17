@@ -4,7 +4,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
 ## タスク
 
-タスクはボード上の作業の単位です。タスクの状態は`task.json`に、本文・受入条件・履歴は`TASK.md`にあります。
+タスクはボード上の作業の単位です。タスクの状態は`task.json`に、本文・完了条件・履歴は`TASK.md`にあります。
 
 | 項目 | 規則 |
 | --- | --- |
@@ -12,7 +12,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `title` | 前後の空白を除いて1〜100文字、1行。 |
 | `description` | frontmatterを含む`TASK.md`の全文。50,000文字の上限は本文だけを数える。CRLFはLFに正規化する。 |
 | `body` | `description`からfrontmatterを除いた本文。見出し構成は自由。GitHub Flavored Markdownに対応。 |
-| `acceptance`・`acceptanceError` | frontmatterの受入条件（不正なときは空）と、`acceptance`かYAML構文が不正かどうか。 |
+| `acceptance`・`acceptanceError` | frontmatterの完了条件（不正なときは空）と、`acceptance`かYAML構文が不正かどうか。 |
 | `assignee` | `ai`か`human`。作成時に決め、以後は変えない。 |
 | `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |
 | `taskStatus` | レーン。`todo`・`doing`・`done`。 |
@@ -106,7 +106,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 - 以前の版が書いた`pendingRequestId`と`pendingRequest`は、読むときに無視し、次の保存では書きません。
 - 過去の簡易依頼タスクには`simpleRequest`メタデータが残っている場合があります。互換性のため読み込みますが、新規タスクでは保存せず、再送の判定にも使いません。
 
-`TASK.md`では`history`が必須です（`history: []`も有効）。新規タスクの入力では省略するか空のリストにでき、作成の入力に空でない履歴があれば拒否します。本文と受入条件の編集は最新の履歴を保ち、`edit --desc-file`は履歴を追加しません。また、保存済みの`questions`の参照を保ち、入力の`history`と`questions`は無視します。直接編集で履歴を追記する場合は、既存の内容を保ち、`at`/`reason`の項目だけを追加します。ただし、日時の付与と原子的な追記を行うCLIの利用を推奨します。
+`TASK.md`では`history`が必須です（`history: []`も有効）。新規タスクの入力では省略するか空のリストにでき、作成の入力に空でない履歴があれば拒否します。本文と完了条件の編集は最新の履歴を保ち、`edit --desc-file`は履歴を追加しません。また、保存済みの`questions`の参照を保ち、入力の`history`と`questions`は無視します。直接編集で履歴を追記する場合は、既存の内容を保ち、`at`/`reason`の項目だけを追加します。ただし、日時の付与と原子的な追記を行うCLIの利用を推奨します。
 
 ```yaml
 ---
