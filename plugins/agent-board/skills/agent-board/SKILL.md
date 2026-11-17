@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, turn a request into a provisional plan on the board that the user starts once, report AI progress, ask the user questions with choices on the board and in the chat, wait for their answers, and automatically record work progress in task history.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, accept the user's requests, turn a request into a plan of AI drafts that the user starts once, report AI progress, ask the user questions (with or without choices) on the board and in the chat, wait for their answers, and automatically record work progress in task history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Commands that wait for user answers start the local agboard server when it is not running.
 ---
 
@@ -47,7 +47,7 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. A `requests` array lists the open requests a person sent you (see "Accept a request" in section 4). Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
 - `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
@@ -56,7 +56,7 @@ After context compaction, read a fresh progress table before any board-dependent
 
 ### Explicit listen mode
 
-The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow [the listener procedure](references/listening.md): establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; read the current epic details and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
+The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow [the listener procedure](references/listening.md): establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; a `requests` result is a request to accept and plan, not work to start; read the current epic details and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
 
 ## 3. Find and edit the shared files
 
@@ -103,18 +103,41 @@ For these two epics, keep per-task plans, decisions, verification, and results i
 
 Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
-### Plan a request: provisional plan, questions, then the user starts it
+### Accept a request
 
-When the user asks for work that is more than one task, such as a feature, a change across several areas, or a list of things to do, put a provisional plan on the board first and let the user correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
+A person can send you a request from the board ("Ask AI"). It is a message to the agents, not a task: it has no owner, epic, or task, and its only reply is the acceptance. An open request shows up in two places:
+
+- `requests` in the progress table (and in the hook output): `[{"id":"Q-3","createdAt":"...","title":"..."}]`. The field is absent when no request is open.
+- `wait --until task` returns `{"kind":"requests", ...}` before any task while a request is open (see [the listener procedure](references/listening.md)).
+
+To take one:
+
+1. Read it: `agboard --project "<name>" message show <Q-id> --json`. The body is Markdown and may refer to images in its `attachments/` folder; look at them when the text depends on them.
+2. Accept it, so that no other agent takes it too:
+
+   ```sh
+   agboard --project "<name>" message accept <Q-id> --actor ai --by <your session or agent name>
+   ```
+
+   The first acceptance is final. If it fails with `request_accepted`, another agent has it; leave it alone. A request the person withdrew cannot be accepted.
+3. Plan it as below. The acceptance carries no text and links to nothing, so tell the person what you did through the plan they will see, and through questions.
+
+Accept a request before you plan it, and plan only requests you have accepted. Do not ask the person what they meant by a request before you have put a plan on the board; ask about what you cannot settle after the plan exists.
+
+### Plan a request: AI drafts, questions, then the person starts them
+
+When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, put a plan on the board as AI drafts and let the person correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
-2. **Register the provisional plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner, plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Start none of the tasks.
-3. **Ask the plan questions.** Ask what you cannot settle yourself in one `message ask` call (section 7), each question with choices and a recommendation. List every AI task of the plan in their `tasks`; a task that refers to an open question stays Pending. When the request came from a board task, add that task too. With no plan questions, go to step 5.
-4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. If the answers leave something open, ask more questions the same way.
-5. **Wait for the start.** Everything you create is an AI draft, so nothing starts until the user starts it (`agboard epic start` or `agboard start`, with `--actor human`). Do not start it yourself.
-6. **Proceed.** After the start, work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
+2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Everything you create this way is an AI draft (`draft: ai`), the user's tasks too. The board shows the epic's drafts as one proposed plan.
+3. **Ask what you cannot settle.** Ask in one `message ask` call (section 7). List the draft tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A draft that refers to a question without an answer cannot be started: `agboard start` and `agboard epic start` fail with `start_blocked_by_questions`. A question can have choices and a recommendation, or none and be answered in words.
+4. **Revise.** You may `edit` a draft and `history add` to it. Change the epic and the tasks as the answers say, and record what changed. If the answers leave something open, ask again the same way.
+5. **Wait for the start.** A person starts the plan from the board ("Start this plan") or with `agboard epic start <EPIC-ID> --actor human` / `agboard start <id> --actor human`. `mv` and `state` on a draft are refused with `task_is_draft`, and starting yourself is refused with `human_only`. Do not try. Work on other tasks while you wait.
+6. **Proceed.** After the start, the tasks are ordinary tasks. Work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
 
-A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task.
+After the start, the board cannot stop you from rewriting a started task's contents. Keep to the plan the person started: if the work needs a different scope, ask (section 7) instead of changing the tasks silently.
+
+A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task. When you add a task to an epic that is already running, it is a draft too, and the epic shows an approval for it.
 
 ## 5. Lanes and run states
 
