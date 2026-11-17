@@ -97,7 +97,7 @@ fn automatic_completion_uses_the_body_language() {
             .last()
             .unwrap()
             .reason,
-        "すべての受入条件を達成しました。"
+        "すべての完了条件を達成しました。"
     );
 }
 

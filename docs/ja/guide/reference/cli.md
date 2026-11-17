@@ -60,7 +60,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### タスクを終える
 
-終えるには、`TASK.md`に検証を記録し、検証した受入条件の`done`を`true`にします。サーバーが対象のAI担当タスクを自動で完了に移すので（サーバーはHookや待つコマンドが必要なときに起動します）、`mv ... done --actor ai`は実行しません。規則は[Markdownファイルの形式](./file-format)を参照してください。完了したタスクはエージェントから読み取り専用で、作業が必要になったら、ユーザーが再開できます。
+終えるには、`TASK.md`に検証を記録し、検証した完了条件の`done`を`true`にします。サーバーが対象のAI担当タスクを自動で完了に移すので（サーバーはHookや待つコマンドが必要なときに起動します）、`mv ... done --actor ai`は実行しません。規則は[Markdownファイルの形式](./file-format)を参照してください。完了したタスクはエージェントから読み取り専用で、作業が必要になったら、ユーザーが再開できます。
 
 ### 質問する
 
@@ -82,7 +82,7 @@ agboard --project "My project" edit 1 --desc-file task.md
 
 説明は50,000文字まで、エピックの詳細（`EPIC.md`）は100,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
 
-`edit --desc-file`は、本文と受入条件を置き換え、`TASK.md`の最新の履歴と質問への参照（`questions`）を保ちます。入力ファイルの`history`と`questions`は無視されるため、未回答の質問を参照しているタスクは保留のままです。参照を変えるには`qa link`・`qa unlink`を使います。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
+`edit --desc-file`は、本文と完了条件を置き換え、`TASK.md`の最新の履歴と質問への参照（`questions`）を保ちます。入力ファイルの`history`と`questions`は無視されるため、未回答の質問を参照しているタスクは保留のままです。参照を変えるには`qa link`・`qa unlink`を使います。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
 
 ## エピックの詳細を編集する
 

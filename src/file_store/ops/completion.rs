@@ -82,7 +82,7 @@ impl FileStore {
                 kind: HistoryKind::Lane,
                 reason: Some(
                     self.history_language(project, &task)?
-                        .text(AUTO_DONE_REASON, "すべての受入条件を達成しました。"),
+                        .text(AUTO_DONE_REASON, "すべての完了条件を達成しました。"),
                 ),
                 from_task: Some(task.task_status),
                 to_task: Column::Done,

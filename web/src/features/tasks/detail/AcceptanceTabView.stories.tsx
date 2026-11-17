@@ -83,7 +83,7 @@ export const JapaneseDarkNarrow: Story = {
     const view = within(canvasElement);
     await userEvent.click(view.getByRole('checkbox', { name: 'Errors keep the input' }));
     await waitFor(() =>
-      expect(view.getByRole('alert')).toHaveTextContent('受入条件を保存できませんでした'),
+      expect(view.getByRole('alert')).toHaveTextContent('完了条件を保存できませんでした'),
     );
   },
 };

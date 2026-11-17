@@ -53,8 +53,8 @@ describe('splitSections', () => {
   });
 
   it('supports Japanese titles and Setext H2', () => {
-    const result = splitSections('## 目的・責務\n\n本文\n\n受け入れ条件\n---\n\n- 一つ\n');
-    expect(result.sections.map((s) => s.title)).toEqual(['目的・責務', '受け入れ条件']);
+    const result = splitSections('## 目的・責務\n\n本文\n\n完了条件\n---\n\n- 一つ\n');
+    expect(result.sections.map((s) => s.title)).toEqual(['目的・責務', '完了条件']);
     expect(result.sections[1]?.markdown).toBe('- 一つ');
   });
 

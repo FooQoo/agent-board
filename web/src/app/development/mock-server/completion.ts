@@ -28,7 +28,7 @@ export function completesAutomatically(task: Task): boolean {
 
 const COMPLETED = {
   en: 'All acceptance conditions are complete.',
-  ja: 'すべての受入条件を達成しました。',
+  ja: 'すべての完了条件を達成しました。',
 };
 
 /** The tasks of the board that move to Done now, and their changes; none when nothing completes. */

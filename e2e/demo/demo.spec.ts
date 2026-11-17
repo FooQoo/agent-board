@@ -199,7 +199,7 @@ test.describe('in a Japanese browser', () => {
     await task(page, 11).click();
     const panel = page.getByRole('complementary', { name: 'タスクの詳細' });
     await expect(panel.getByRole('heading', { level: 2 })).toHaveText('タスクの移動を実装する');
-    await panel.getByRole('tab', { name: '受入条件' }).click();
+    await panel.getByRole('tab', { name: '完了条件' }).click();
     await expect(panel.getByRole('checkbox', { name: '履歴に理由が残る' })).toBeVisible();
 
     // Switching to English changes the screens at once; the sample data keeps its words.

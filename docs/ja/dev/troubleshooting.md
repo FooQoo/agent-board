@@ -10,7 +10,7 @@
 | `task_is_draft` | タスクが下書きで、エージェントは変更できない。 | 人にWeb画面で下書きを確定してもらい、その間はほかのタスクを進めます。`TASK.md`は編集しません。 |
 | `epic_is_draft` | エピックが下書きで、CLIはその詳細や作業順序を変更できない。 | 人が保存か破棄をするまで待つか、確定を頼みます。`epic attachment`と所属の変更は使えます。`EPIC.md`は編集しません。 |
 | `task_is_done` | タスクがDoneで、エージェントは変更できない。 | 人に再開してもらいます。 |
-| `acceptance_unmet` | 受入条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
+| `acceptance_unmet` | 完了条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
 | `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `qa wait <request-id>`で回答を待つか、人にボードで回答してもらいます。 |
 | `question_answered`・`question_withdrawn` | 質問にすでに回答がある、またはリクエストが取り下げられた。最初の回答が確定です。 | 質問を読み直し（`qa show <question-id>`）、記録済みの回答に従います。 |
 | `folder_unbound`・`bound_project_missing` | 作業フォルダがプロジェクトに紐付いていない、またはプロジェクトが削除された。 | `--project`でプロジェクトを明示するか、利用者にフォルダの紐付けを頼みます。 |

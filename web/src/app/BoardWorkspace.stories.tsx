@@ -37,7 +37,7 @@ const accepted = [
   '結果と根拠を本文に記録できる',
   '共有領域の相対パスを保つ',
   '回答待ちの状態を表示できる',
-  '受け入れ条件が完了している',
+  '完了条件が完了している',
 ].map((text, index) => ({ id: `AC-${index + 1}`, text, done: index < 3 }));
 const timestamp = '2026-10-02T01:08:00.000Z';
 const history = Array.from({ length: 7 }, (_, index) => ({
