@@ -38,7 +38,7 @@ The agent changes the plan as your answers say, and may ask a little more. If it
 
 ## 4. Approve the start once
 
-When the plan is ready, the agent asks one **start approval** question that lists the revised plan. The planned tasks stay Pending until you approve, and no task starts before then. Choose **Start this plan** to approve, or choose to change the plan, and the agent revises it and asks again. Silence is not an approval.
+When the plan is ready, the agent asks one **start approval** question that lists the revised plan. The planned tasks stay Pending until you approve, and no task starts before then. The agent writes the choices, for example "Start this plan" and "Change the plan". Choose the approving one to start, or the other to have the agent revise the plan and ask again. Silence is not an approval.
 
 ## 5. Watch it run
 
