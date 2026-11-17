@@ -74,7 +74,7 @@ While the dialog is open, it follows the `docs/` folder:
 - A Markdown or MDX file of up to 2 MiB can be shown. It must be UTF-8 text. An image can be up to 10 MiB.
 - Agent Board creates `docs/` when the project is created, with a short `README.md` in the app's language. If an older project has no `docs/`, the server creates it at startup. A `README.md` you deleted is not put back.
 - Deleting the project with `agboard project rm` also deletes its `docs/` folder. Copy anything you want to keep first.
-- Docs are not shown on the [mobile monitor](./mobile-monitor).
+- Docs are not shown on the [remote access](./remote-access).
 
 ## Next
 

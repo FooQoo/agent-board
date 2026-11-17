@@ -17,6 +17,7 @@ try {
     let server;
     let context;
     let phoneContext;
+    let tabletContext;
     try {
       const text = copy[locale];
       const id = seed(home, text);
@@ -52,6 +53,17 @@ try {
       await expect(epic.locator('.conditions-dock')).toHaveCount(0);
       await settle(page);
       await page.screenshot({ path: path.join(output, `epic${suffix}.png`) });
+
+      // The remote entrance serves the same board app, so a tablet width shows the lanes side by side.
+      tabletContext = await browser.newContext({ viewport: { width: 1024, height: 768 }, timezoneId: 'UTC' });
+      const tablet = await tabletContext.newPage();
+      tablet.on('pageerror', (error) => errors.push(error.message));
+      // `open` shrinks the page to phone width; the tablet keeps its own width, so it unlocks the page itself.
+      await tablet.goto(`${remote}/?project=${id}`);
+      await server.unlockPage(tablet);
+      await expect(tablet.locator('[data-decision-answer][data-task-id="3"]')).toHaveText(answerLabel);
+      await settle(tablet);
+      await tablet.screenshot({ path: path.join(output, `tablet${suffix}.png`) });
 
       // The phone is a touch device of its own: a long press and a swipe are real touch events.
       phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, timezoneId: 'UTC' });
@@ -123,9 +135,10 @@ try {
       await settle(phone);
       await phone.screenshot({ path: path.join(output, `mobile${suffix}.png`) });
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured board, epic progress, the mobile lane, swipe buttons, question, and drawer; no browser errors.`);
+      console.log(`${locale}: captured board, epic progress, the tablet board, the mobile lane, swipe buttons, question, and drawer; no browser errors.`);
     } finally {
       await phoneContext?.close();
+      await tabletContext?.close();
       await context?.close();
       await stop(server);
       rmSync(home, { recursive: true, force: true });

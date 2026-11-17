@@ -87,7 +87,7 @@ function fixtureTask(id: number, status: ColumnName, long: boolean): FixtureTask
       updatedAt: at,
       pendingRequestId: pending ? `request-${id}` : null,
       pendingReason: pending
-        ? 'Waiting for a decision about how the mobile monitor should present the result.'
+        ? 'Waiting for a decision about how remote access should present the result.'
         : null,
       pendingChoices: pending
         ? [

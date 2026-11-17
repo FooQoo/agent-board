@@ -16,7 +16,7 @@ export const dataLayerMonitorEn = {
         title: 'This project is no longer available',
         body: 'It may have been deleted or renamed.',
       },
-      guide: 'On the PC, open the mobile connection settings and scan the QR code again.',
+      guide: 'On the PC, open the remote connection settings and scan the QR code again.',
     },
   },
 } as const;

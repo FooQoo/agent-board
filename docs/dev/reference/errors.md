@@ -81,9 +81,9 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `invalid_sections` | The `sections` query of a Detail route is not `document`, `history`, or `document,history`. See [Web API](./web-api.md#summary-and-detail). | n/a | 400 |
 | `not_implemented` | The Summary or Detail route exists but its handler is not written yet. | n/a | 501 |
 
-## Mobile connection
+## Remote connection
 
-These are returned by the `/api/monitor-connections` routes (see [Web API](./web-api.md#mobile-connection)) and carry no secret value.
+These are returned by the `/api/monitor-connections` routes (see [Web API](./web-api.md#remote-connection)) and carry no secret value.
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
@@ -95,7 +95,7 @@ These are returned by the `/api/monitor-connections` routes (see [Web API](./web
 | `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
 | `invalid_value` | The token or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
 
-On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#mobile-connection).
+On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#remote-connection).
 
 On the ngrok entrance, a request that fails the Host check gets a 403 `forbidden` with the reason `not available`, a missing or expired session gets 401 `session_required`, and a write without the public Origin, same-origin metadata, or CSRF token gets 403 `forbidden`. `POST /api/remote/unlock` answers a wrong passcode with 403 `unlock_failed` and, after five wrong ones in a row, every attempt with 429 `unlock_locked`; neither says how many tries are left.
 

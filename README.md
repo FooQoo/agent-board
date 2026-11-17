@@ -48,13 +48,13 @@ To see it for yourself, [try the demo](https://fooqoo.github.io/agent-board/demo
 
 You take part in two ways. When the agent stops to ask, you answer wherever is easiest, and the answer is recorded once (human in the loop). While it works, you can watch, move a card back, check a condition, or rewrite a plan without stopping it, and the agent follows the change (human on the loop). See [The work model](https://fooqoo.github.io/agent-board/guide/work-model) and the [Quickstart](https://fooqoo.github.io/agent-board/guide/quickstart).
 
-## Windows on the work
+## Monitors for the work
 
-The board is one window onto the work, not the whole of it.
+The board is one monitor for the work, not the whole of it. A monitor is a place to watch, answer, and step in.
 
 - **The board.** Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/watch/board)
 - **Epics and progress.** An epic holds the plan and the order of its tasks, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/watch/epics)
-- **Check from your phone.** Away from your desk, watch the work and answer the agent from the mobile monitor. In public preview. [Mobile monitor](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor)
+- **Check from your phone.** Away from your desk, watch the work and answer the agent with remote access. In public preview. [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access)
 - **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/watch/docs)
 
 You can also answer in the chat with your agent, and the `agboard` command is what the agent and your scripts use. Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter.
@@ -101,7 +101,7 @@ agboard serve
 
 Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and add a task. Agents do not need you to keep it running: a command that waits for you, and the agent hook, start the server in the background, and it stops by itself after 30 minutes without use. A server started this way opens the project's board in your browser unless a board tab is already open, and `agboard open` opens it at any time. Most board commands use `--project NAME`; `agboard progress` and hooks resolve the project from the current folder unless explicitly overridden.
 
-To check progress and answer questions from your phone, open **Settings** → **Mobile connection** and connect with your ngrok authtoken. The phone has to enter a 4-digit passcode that the board shows on your computer and that changes each time the connection starts; the full board stays on your computer. You can also start it with `NGROK_AUTHTOKEN` set and `agboard serve --monitor ngrok`, which prints the passcode. A 4-digit passcode is weaker than an account sign-in, so keep the address private; the [mobile monitor guide](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor) explains the limits.
+To check progress and answer questions from your phone, open **Settings** → **Remote connection** and connect with your ngrok authtoken. The phone has to enter a 4-digit passcode that the board shows on your computer and that changes each time the connection starts; the full board stays on your computer. You can also start it with `NGROK_AUTHTOKEN` set and `agboard serve --monitor ngrok`, which prints the passcode. A 4-digit passcode is weaker than an account sign-in, so keep the address private; the [remote access guide](https://fooqoo.github.io/agent-board/guide/watch/remote-access) explains the limits.
 
 ## Update
 
@@ -116,7 +116,7 @@ agboard update
 
 ## Feature stages
 
-Version 1.0.0 mixes generally available (GA) features and features in public preview. Docs, task listening, and the mobile monitor are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
+Version 1.0.0 mixes generally available (GA) features and features in public preview. Docs, task listening, and remote access are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
 
 ## License
 
@@ -127,7 +127,7 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 ## Documentation
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
-- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
+- [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
 - [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
 - [The Agent Board plugin](plugins/agent-board/README.md) — what `setup` installs for Claude Code and Codex, and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.

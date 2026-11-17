@@ -80,7 +80,7 @@ How it differs from the product build:
 - The pages are served from `/agent-board/demo/`. Set `AGBOARD_DEMO_BASE` (for example `AGBOARD_DEMO_BASE=/demo/`) when building to use another folder.
 - The sample-data server runs in the page. A replacement `fetch` and `EventSource` send `/api/` requests and the live stream to it, and attachment images are answered from it as `data:` URLs.
 - The page has a fixed token and an empty build ID, so it never reloads for a new build. Reloading the page restores the sample data and opens the first-run guide again.
-- Features that need a computer are hidden: project Docs (with its buttons that open files and folders), the mobile monitor connection, and saving pasted or dropped images.
+- Features that need a computer are hidden: project Docs (with its buttons that open files and folders), the remote access connection, and saving pasted or dropped images.
 
 The demo code lives in `web/src/app/development/demo/` and loads only when Vite runs with `--mode demo`. `pnpm --dir web build` contains none of it, and `web/test/build-contract.test.ts` checks that. [The browser demo](../concepts/demo.md) explains how it works and how to test it the way it is published.
 
@@ -158,7 +158,7 @@ The installed `agboard` and your development build are separate files. Hooks cal
 
 ### Keep the Keychain grant on macOS
 
-On macOS, the mobile monitor's token lives in the Keychain, and the "Always Allow" grant belongs to one exact binary. A binary built by `cargo install` is ad-hoc signed with an identifier that changes on every build, so each reinstall asks again. `scripts/dev/install-local.sh` runs `cargo install --path . --locked --force` (extra arguments go to `cargo install`) and then re-signs the result with the release identifier and a certificate of your own, so the grant carries over.
+On macOS, the remote access token lives in the Keychain, and the "Always Allow" grant belongs to one exact binary. A binary built by `cargo install` is ad-hoc signed with an identifier that changes on every build, so each reinstall asks again. `scripts/dev/install-local.sh` runs `cargo install --path . --locked --force` (extra arguments go to `cargo install`) and then re-signs the result with the release identifier and a certificate of your own, so the grant carries over.
 
 ```sh
 security find-identity -v -p codesigning   # list your signing identities

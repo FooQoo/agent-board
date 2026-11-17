@@ -35,7 +35,7 @@ const guideGroups: Group[] = [
     ja: '見守って介入する',
     pages: [
       { file: 'watch/board', en: 'The board', ja: 'ボード' },
-      { file: 'watch/mobile-monitor', en: 'Mobile monitor', ja: 'モバイルモニター' },
+      { file: 'watch/remote-access', en: 'Remote access', ja: 'リモートアクセス' },
       { file: 'watch/epics', en: 'Epics and progress', ja: 'エピックと進行表' },
       { file: 'watch/editing', en: 'Editing and image attachments', ja: '編集と画像添付' },
       { file: 'watch/docs', en: 'Project docs', ja: 'プロジェクトのドキュメント' },
@@ -83,7 +83,7 @@ const devGroups: Group[] = [
       { file: 'concepts/server-and-ui', en: 'Server and web UI', ja: 'サーバーと画面' },
       { file: 'concepts/demo', en: 'The browser demo', ja: 'ブラウザのデモ' },
       { file: 'concepts/agents', en: 'Agent integration', ja: 'エージェント連携' },
-      { file: 'concepts/remote-access', en: 'The mobile monitor', ja: 'モバイルモニター' },
+      { file: 'concepts/remote-access', en: 'Remote access', ja: 'リモートアクセス' },
       { file: 'concepts/security', en: 'Security model', ja: 'セキュリティモデル' },
     ],
   },

@@ -92,7 +92,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Unanswered questions** band above the tabs, which starts closed and shows its count in the header. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
 
-The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Mobile monitor](./mobile-monitor).
+The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Remote access](./remote-access).
 
 ## Updates
 
@@ -108,16 +108,16 @@ A decision is the exception. When an agent asks for a decision, or a decision is
 
 Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark).
 
-The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and the mobile monitor, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
+The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and remote access, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
 Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button:
 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again, on the screen you are using.
-- **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](./mobile-monitor).
+- **Remote connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [remote access guide](./remote-access).
 
-![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Mobile connection rows](../../images/guide/settings.png){.screenshot}
+![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Remote connection rows](../../images/guide/settings.png){.screenshot}
 
 The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors. On a narrow window the button of each row moves under its description.
 

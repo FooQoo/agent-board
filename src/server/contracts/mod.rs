@@ -1,6 +1,6 @@
 //! The wire contract of the data layer: the Summary, the Detail NDJSON stream and the SSE
 //! `changed` payload. These types only describe the shapes; the handlers that fill them live in
-//! `api` (PC) and `monitor` (mobile monitor).
+//! `api` (PC) and `monitor` (remote access).
 //!
 //! Every type is camelCase and refuses unknown fields, so a response that grows a field the
 //! clients do not know is caught by the golden examples in `tests/fixtures/data-layer/`.

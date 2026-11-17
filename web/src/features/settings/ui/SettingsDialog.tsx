@@ -124,7 +124,7 @@ export function SettingsDialog({
   /** Optional persistence boundary for isolated stories and deterministic tests. */
   localeStorageProvider?: LocaleStorageProvider;
   themeStorageProvider?: ThemeStorageProvider;
-  /** Further settings the page adds below the theme, such as the mobile connection. */
+  /** Further settings the page adds below the theme, such as the remote connection. */
   extra?: ReactNode;
   /** Where the choice is saved. Without it the choice stays in the browser copy only. */
   preferencesEndpoint?: PreferencesEndpoint;

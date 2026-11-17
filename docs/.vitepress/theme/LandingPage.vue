@@ -12,6 +12,8 @@ import mobileCards from '../../images/mobile-cards.png'
 import mobileCardsJa from '../../images/mobile-cards.ja.png'
 import mobileQuestion from '../../images/mobile-question.png'
 import mobileQuestionJa from '../../images/mobile-question.ja.png'
+import tablet from '../../images/tablet.png'
+import tabletJa from '../../images/tablet.ja.png'
 import boardDark from '../../images/guide/board-dark.png'
 import boardDarkJa from '../../images/guide/board-dark.ja.png'
 import docs from '../../images/guide/docs.png'
@@ -22,8 +24,18 @@ type Link = { text: string; link: string }
 type Step = { actor: 'ai' | 'human' | 'auto'; title: string; text: string }
 // One line of the setup sample: the command, a frame line, a question, its answer, or a result.
 type TerminalLine = { kind: 'command' | 'frame' | 'question' | 'answer' | 'result'; text: string }
-// `alts` holds one description per phone screen; the other features show one image with `alt`.
-type Feature = { image: string; title: string; text: string; link: Link; preview?: string; alt?: string; alts?: string[] }
+// `alts` holds one description per phone screen and `tabletAlt` describes the tablet screen beside them;
+// the other features show one image with `alt`.
+type Feature = {
+  image: string
+  title: string
+  text: string
+  link: Link
+  preview?: string
+  alt?: string
+  alts?: string[]
+  tabletAlt?: string
+}
 
 const { frontmatter, lang } = useData()
 const c = computed(() => frontmatter.value.landing)
@@ -38,6 +50,8 @@ const images = computed(() =>
 const phones = computed(() =>
   ja.value ? [mobileCardsJa, mobileQuestionJa, mobileJa] : [mobileCards, mobileQuestion, mobile],
 )
+// The same board opened at a tablet width (1024 x 768): the three lanes sit side by side.
+const tabletShot = computed(() => (ja.value ? tabletJa : tablet))
 const video = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.mp4`))
 const poster = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.jpg`))
 
@@ -195,7 +209,15 @@ onMounted(() => {
                 <img class="screenshot lp-only-dark" :src="images.boardDark" :alt="f.alt" loading="lazy" />
               </template>
               <template v-else-if="f.image === 'mobile'">
-                <img v-for="(src, i) in phones" :key="src" class="screenshot" :src="src" :alt="f.alts?.[i]" loading="lazy" />
+                <div class="lp-tablet"><img class="screenshot" :src="tabletShot" :alt="f.tabletAlt" loading="lazy" /></div>
+                <img
+                  v-for="(src, i) in phones"
+                  :key="src"
+                  class="screenshot lp-phone"
+                  :src="src"
+                  :alt="f.alts?.[i]"
+                  loading="lazy"
+                />
               </template>
               <img v-else class="screenshot" :src="images[f.image as keyof typeof images]" :alt="f.alt" loading="lazy" />
             </div>
@@ -845,6 +867,7 @@ onMounted(() => {
   align-items: center;
 }
 .lp-feature__panel {
+  container-type: inline-size;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -861,19 +884,50 @@ onMounted(() => {
   border-radius: 10px 10px 0 0;
 }
 .lp-feature__panel.is-phone {
-  align-items: center;
-  gap: 4%;
-  padding: 5% 0;
+  /* A collage: the tablet board sits behind, and the three phone screens stand in front of it.
+     Every size is a share of the panel, so the arrangement scales with it and never reflows. */
+  position: relative;
+  align-items: stretch;
+  aspect-ratio: 6 / 5;
+  padding: 0;
 }
-.lp-feature__panel.is-phone img {
-  /* The phone captures are 390 x 844. The ratio gives a lazy image its width before it loads;
+.lp-tablet {
+  position: absolute;
+  top: 7%;
+  left: 4%;
+  width: 64%;
+  overflow: hidden;
+  border: 0.9cqw solid #2b2f36;
+  border-radius: 2.4cqw;
+  background: #2b2f36;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.18);
+}
+.lp-feature__panel.is-phone .lp-tablet img {
+  /* The tablet captures are 1024 x 768. The ratio gives a lazy image its width before it loads;
      without it the image has no width, never enters the viewport, and never loads. */
+  aspect-ratio: 1024 / 768;
+  border: 0;
+  border-radius: 1.5cqw;
+}
+.lp-feature__panel.is-phone .lp-phone {
+  /* The phone captures are 390 x 844. */
+  position: absolute;
+  bottom: -3%;
+  width: 21%;
   aspect-ratio: 390 / 844;
-  width: auto;
-  min-width: 0;
-  height: 100%;
-  border-bottom: 1px solid var(--vp-c-divider);
+  height: auto;
+  border: 1px solid var(--vp-c-divider);
   border-radius: 20px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.22);
+}
+.lp-feature__panel.is-phone .lp-phone:nth-of-type(1) {
+  left: 31%;
+}
+.lp-feature__panel.is-phone .lp-phone:nth-of-type(2) {
+  left: 54%;
+}
+.lp-feature__panel.is-phone .lp-phone:nth-of-type(3) {
+  left: 76%;
 }
 .lp-only-dark,
 .dark .lp-only-light {

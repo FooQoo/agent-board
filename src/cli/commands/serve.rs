@@ -195,7 +195,7 @@ pub(super) fn daemon_line(
     let mut line = format!("Serving at {}", startup["url"].as_str().unwrap_or_default());
     if let Some(ngrok) = startup.get("monitor").and_then(|m| m.get("ngrok")) {
         line.push_str(&format!(
-            "; mobile monitor at {} with passcode {}",
+            "; remote access at {} with passcode {}",
             ngrok["url"].as_str().unwrap_or_default(),
             ngrok["passcode"].as_str().unwrap_or_default()
         ));
@@ -216,7 +216,7 @@ fn announce(addr: SocketAddr, monitor: Option<MonitorReady>, json: bool) {
     let _ = stdout.flush();
 }
 
-/// The startup line. The phone passcode of a mobile monitor is on it, because
+/// The startup line. The phone passcode of remote access is on it, because
 /// this is the one place the person who started `serve` is sure to look.
 fn startup_line(addr: SocketAddr, monitor: Option<&MonitorReady>, json: bool) -> String {
     let url = format!("http://127.0.0.1:{}/", addr.port());
@@ -237,7 +237,7 @@ fn startup_line(addr: SocketAddr, monitor: Option<&MonitorReady>, json: bool) ->
         let mut line = format!("Serving at {url}");
         if let Some(monitor) = monitor {
             line.push_str(&format!(
-                "; mobile monitor at {} with passcode {}",
+                "; remote access at {} with passcode {}",
                 monitor.url,
                 monitor.passcode.expose()
             ));
@@ -345,7 +345,7 @@ mod tests {
     fn the_monitor_line_shows_the_url_and_the_four_digit_passcode() {
         assert_eq!(
             startup_line(addr(), Some(&ready()), false),
-            "Serving at http://127.0.0.1:7461/; mobile monitor at https://abc.ngrok.app with passcode 0037 (press Ctrl+C to stop)"
+            "Serving at http://127.0.0.1:7461/; remote access at https://abc.ngrok.app with passcode 0037 (press Ctrl+C to stop)"
         );
     }
 

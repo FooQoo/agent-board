@@ -26,7 +26,7 @@ An agent such as Claude Code or Codex already has what it needs to act: tools, c
 
 - **A plan.** Epics group the work and set its order, and tasks are the pieces that can be reviewed on their own. The agent reads the order to know what to do next.
 - **Acceptance conditions.** Each task says up front what has to be true for it to be finished, and the agent checks them before it calls the task done.
-- **Questions the agent must stop for.** When a decision is yours, the agent asks with choices and waits. The question and your answer are recorded once, whichever window you answer in.
+- **Questions the agent must stop for.** When a decision is yours, the agent asks with choices and waits. The question and your answer are recorded once, whichever monitor you answer in.
 - **A history.** Every move, question, answer, and check is recorded with its reason, so a new session or a different agent can continue from where the last one stopped, and you can read back what happened.
 
 Everything is stored as plain files on your machine, and you and the agent read and write the same files. See [The work model](./work-model) for the elements, the states, and what Agent Board guarantees.
@@ -56,14 +56,14 @@ flowchart LR
 
 ## Watching and answering
 
-The board is one window onto the work. Your phone, the chat, and the CLI show the same work and take the same answers. Wherever you look from, there are two ways to take part.
+The board is one monitor for the work. A monitor is not watch-only: your phone, the chat, and the CLI show the same work, take the same answers, and let you step in. Wherever you look from, there are two ways to take part.
 
 - **Answer when asked (human in the loop).** When the agent stops for a decision, you answer on the board, on your phone, in the chat, or with the CLI. The answer is recorded once, and the agent resumes. See [Decisions](./delegate/decisions).
 - **Watch and step in (human on the loop).** The agent keeps working while you look. You move a card back, check an acceptance condition, or rewrite a plan, and the agent follows the change the next time it reads the board. See [The board](./watch/board).
 
 ![Desktop board with a question on its task, acceptance counts, and four detail tabs](../images/board.png){.screenshot}
 
-The board shows Todo, Doing, and Done. Here a task in Doing is waiting for your answer, and every task shows how many of its acceptance conditions are done. On the go, the [mobile monitor](./watch/mobile-monitor) shows the same work on your phone. The agent's own window is the chat, and the `agboard` command is the one the agent and your scripts use.
+The board shows Todo, Doing, and Done. Here a task in Doing is waiting for your answer, and every task shows how many of its acceptance conditions are done. On the go, the [remote access](./watch/remote-access) shows the same work on your phone. The agent's own monitor is the chat, and the `agboard` command is the one the agent and your scripts use.
 
 ## Where to start
 
@@ -84,7 +84,7 @@ New here? Read the first four pages in order.
 | Group tasks and see what to do next | [Epics and progress](./watch/epics) |
 | Write a task and attach images | [Editing and image attachments](./watch/editing) |
 | Read and edit the project's Markdown documents | [Project docs](./watch/docs) |
-| Check on the board from my phone | [Mobile monitor](./watch/mobile-monitor) |
+| Check on the board from my phone | [Remote access](./watch/remote-access) |
 | Look up a command | [CLI reference](./reference/cli) |
 | Edit `TASK.md` or `EPIC.md` by hand | [Markdown file format](./reference/file-format) |
 | Know where files live, back them up | [Data and backups](./operations/data) |

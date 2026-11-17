@@ -9,7 +9,8 @@ const moved: [string, string][] = [
   ['guide/automation/agents', 'guide/delegate/agents'],
   ['guide/use/decisions', 'guide/delegate/decisions'],
   ['guide/use/board', 'guide/watch/board'],
-  ['guide/operations/mobile-monitor', 'guide/watch/mobile-monitor'],
+  ['guide/operations/mobile-monitor', 'guide/watch/remote-access'],
+  ['guide/watch/mobile-monitor', 'guide/watch/remote-access'],
   ['guide/use/epics', 'guide/watch/epics'],
   ['guide/use/editing', 'guide/watch/editing'],
   ['guide/use/docs', 'guide/watch/docs'],
@@ -17,7 +18,7 @@ const moved: [string, string][] = [
   ['guide/automation/file-format', 'guide/reference/file-format'],
 ]
 
-// Old path -> new path for English and Japanese (20 entries).
+// Old path -> new path for English and Japanese (22 entries).
 export const redirects: Record<string, string> = Object.fromEntries(
   moved.flatMap(([from, to]) => [
     [from, to],

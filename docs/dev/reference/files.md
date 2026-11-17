@@ -177,7 +177,7 @@ Back up a project by copying `shared/projects/<project-id>/`; restore it by stop
 
 ## Monitor connection settings
 
-The ngrok mobile connection keeps its non-secret settings in `<data-root>/.internal/monitor-connection.json`. The file belongs to the application: it is written only by the PC settings screen and `serve`, not by hand, and it is not part of the shared area, so it is not backed up with a project. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+The ngrok remote connection keeps its non-secret settings in `<data-root>/.internal/monitor-connection.json`. The file belongs to the application: it is written only by the PC settings screen and `serve`, not by hand, and it is not part of the shared area, so it is not backed up with a project. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
 
 ```json
 {

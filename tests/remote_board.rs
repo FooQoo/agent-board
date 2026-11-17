@@ -550,7 +550,7 @@ fn the_local_entrance_keeps_its_token_page_and_checks_with_the_tunnel_up() {
 
 // ------------------------------------------------------- the old monitor is gone
 
-/// Every address the old mobile monitor had, whatever the method.
+/// Every address the old remote access had, whatever the method.
 const OLD_MONITOR_PATHS: [&str; 12] = [
     "/monitor",
     "/monitor/",

@@ -48,8 +48,8 @@
 
 | モジュール | 責務 |
 | --- | --- |
-| `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、モバイル接続の`monitor_connections`）。 |
-| `monitor_connection/` | ngrokのモバイル接続。監督役と状態（`lifecycle`・`restore`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
+| `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による受入条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、リモート接続の`monitor_connections`）。 |
+| `monitor_connection/` | ngrokのリモート接続。監督役と状態（`lifecycle`・`restore`・`start`・`run`）、保存する設定（`config`）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、`/api/preferences`の`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | 入口のアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認。 |
@@ -127,7 +127,7 @@
 | ファイルの監視 | notify 8.2 | macOSのFSEventsとWindowsのReadDirectoryChangesW。イベントは別のdebouncerなしでtokio上で集約する。 |
 | frontmatter | serde_yaml_ng 0.10 | `serde_yaml`は非推奨、`serde_yml`は保守終了。未知のキーは`Value`として保持する。 |
 | JSON・日時・ハッシュ | serde / serde_json<br>chrono<br>sha2 | 出力とAPIで共通の型、UTCでの保存、内容のversion。 |
-| ほかのRustのクレート | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit<br>ngrok<br>keyring | ホームディレクトリ、型付きのエラー、乱数のIDとトークン、`wait`のSSE、`setup`でのコメントを保つTOMLの編集、モバイルモニター用のプロセス内ngrokトンネル、保存したngrokトークンのためのOSの資格情報ストア。 |
+| ほかのRustのクレート | dirs<br>thiserror<br>getrandom<br>reqwest + eventsource-stream<br>toml_edit<br>ngrok<br>keyring | ホームディレクトリ、型付きのエラー、乱数のIDとトークン、`wait`のSSE、`setup`でのコメントを保つTOMLの編集、リモートアクセス用のプロセス内ngrokトンネル、保存したngrokトークンのためのOSの資格情報ストア。 |
 | 画面 | TypeScript<br>Vite<br>React | 画面の状態とAPIの形を型で固定する。ビルドはバイナリに埋め込む。 |
 | 画面のライブラリ | nuqs<br>shadcn/ui（Radix）<br>Tailwind CSS<br>lucide-react<br>i18next<br>@dnd-kit/react | URLの状態、アクセシブルな部品、スタイル、アイコン、英語と日本語の文言、ドラッグ＆ドロップ。 |
 | Markdown | react-markdown + remark-gfm<br>Milkdown Crepe 7.22<br>mermaid 12 | 生のHTMLなしの表示、Markdownとの相互変換に対応するWYSIWYG編集、strictモードの図。 |

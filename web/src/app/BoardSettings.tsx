@@ -18,7 +18,7 @@ const boardPreferences: PreferencesEndpoint | undefined =
 const phoneConnection = import.meta.env.MODE !== 'demo';
 
 /**
- * The settings dialog of the PC board and the mobile connection dialog its entry row opens.
+ * The settings dialog of the PC board and the remote connection dialog its entry row opens.
  * The two dialogs are siblings: the settings dialog closes before the connection dialog opens,
  * so only one of them is ever on the screen.
  */

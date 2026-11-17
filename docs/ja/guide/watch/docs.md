@@ -74,7 +74,7 @@ agboard --project "My project" workspace --json
 - 表示できるMarkdownとMDXは、2 MiBまでのUTF-8のテキストです。画像は10 MiBまでです。
 - `docs/`は、プロジェクトを作ったときに、アプリの言語で書いた短い`README.md`と一緒に作られます。`docs/`のない古いプロジェクトでは、サーバーの起動時に作ります。削除した`README.md`を作り直すことはありません。
 - `agboard project rm`でプロジェクトを削除すると、`docs/`フォルダも削除されます。残したいものは先にコピーしてください。
-- [モバイルモニター](./mobile-monitor)ではドキュメントを表示しません。
+- [リモートアクセス](./remote-access)ではドキュメントを表示しません。
 
 ## 次に読む
 

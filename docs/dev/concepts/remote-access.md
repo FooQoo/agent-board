@@ -1,6 +1,6 @@
-# The mobile monitor
+# Remote access
 
-By default the board is reachable only from the same machine. A phone, or a browser on another computer, reaches the board app itself through an ngrok tunnel, behind a passcode session. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [mobile monitor guide](../../guide/watch/mobile-monitor.md); the routes are in [Entrance routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
+By default the board is reachable only from the same machine. A phone, or a browser on another computer, reaches the board app itself through an ngrok tunnel, behind a passcode session. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [remote access guide](../../guide/watch/remote-access.md); the routes are in [Entrance routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
 
 ## How it is put together
 
@@ -81,7 +81,7 @@ No token, passcode, or session secret appears in static JS or CSS, manifests, AP
 
 ## The old monitor addresses
 
-The earlier read-mostly mobile monitor is gone. Its addresses, `/monitor`, `/monitor/` and everything under `/monitor/` (including `/monitor/api/` and `/monitor/assets/`), answer 404 on the entrance, with or without a session and without a redirect. The local listener answers 404 for them too. A phone that kept an old bookmark opens the root address instead, which asks for the passcode and shows the board.
+The earlier read-mostly phone monitor is gone. Its addresses, `/monitor`, `/monitor/` and everything under `/monitor/` (including `/monitor/api/` and `/monitor/assets/`), answer 404 on the entrance, with or without a session and without a redirect. The local listener answers 404 for them too. A phone that kept an old bookmark opens the root address instead, which asks for the passcode and shows the board.
 
 The phone address that the PC dialog and its QR code show is the board's root with the project in the query, `https://<host>/?project=<ProjectId>`. The board app picks the project from `?project=`, as it does on the PC.
 

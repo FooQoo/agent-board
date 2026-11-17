@@ -12,7 +12,7 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | Versions, file watching, and live updates | [docs/dev/concepts/notifications.md](docs/dev/concepts/notifications.md) |
 | Request handling, the web UI, and its failure behavior | [docs/dev/concepts/server-and-ui.md](docs/dev/concepts/server-and-ui.md) |
 | The skill, the hook, `wait`, and `setup` | [docs/dev/concepts/agents.md](docs/dev/concepts/agents.md) |
-| The mobile monitor | [docs/dev/concepts/remote-access.md](docs/dev/concepts/remote-access.md) |
+| Remote access | [docs/dev/concepts/remote-access.md](docs/dev/concepts/remote-access.md) |
 | The browser demo and its suite | [docs/dev/concepts/demo.md](docs/dev/concepts/demo.md) |
 | What is protected and what is not | [docs/dev/concepts/security.md](docs/dev/concepts/security.md) |
 | Every stored file and its fields | [docs/dev/reference/files.md](docs/dev/reference/files.md) |
@@ -20,7 +20,7 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | Entrance routes and the code map | [entrance routes](docs/dev/reference/remote-routes.md), [code-map](docs/dev/reference/code-map.md) |
 | A failure you cannot explain | [docs/dev/troubleshooting.md](docs/dev/troubleshooting.md) |
 | Board, cards, and decisions as users see them | [board](docs/guide/watch/board.md), [decisions](docs/guide/delegate/decisions.md), [editing](docs/guide/watch/editing.md), [epics](docs/guide/watch/epics.md) |
-| CLI commands, data area, and mobile monitor for users | [cli](docs/guide/reference/cli.md), [data](docs/guide/operations/data.md), [mobile-monitor](docs/guide/watch/mobile-monitor.md) |
+| CLI commands, data area, and remote access for users | [cli](docs/guide/reference/cli.md), [data](docs/guide/operations/data.md), [remote-access](docs/guide/watch/remote-access.md) |
 | Build, run, and install | [Set up and run](docs/dev/getting-started/setup.md) |
 | Language, paths, privacy, doc updates, and UI checks | [Conventions](docs/dev/getting-started/pull-request.md#conventions) |
 | Verification commands and test rules | [Verification](docs/dev/getting-started/pull-request.md#verification) |

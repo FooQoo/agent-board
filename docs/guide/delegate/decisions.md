@@ -8,7 +8,7 @@ A decision is a question an agent asks when it cannot continue without you. It i
 
 ## How you notice a question
 
-A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [mobile monitor](../watch/mobile-monitor).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [remote access](../watch/remote-access).
 
 Every open question of the project is also listed in the **Unanswered questions** band above the lanes. The band is always there, and it starts closed: its header shows the title and the number of open questions, and **Answer them** (or **Continue answering** and **Review and send** while you hold answers) stays in the header. Select the header, or its arrow, to open the list; select it again to close it. The band does not remember its state, so it is closed again when you reload the page.
 
@@ -63,13 +63,13 @@ The dialog keeps your answers and shows **Could not save. Try again.** Select **
 
 ## Answer on your phone
 
-On the mobile monitor, the same **Unanswered questions** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. An item in the open list opens the sheet with only that question, and **Send** sends it at once. With no questions the header shows a count of 0 and does not open.
+On remote access, the same **Unanswered questions** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band works as it does on the PC: it starts closed, shows the count in its header, and opens and closes when you select the header. Its one button, **Answer them**, or **Review and send** while you have answers that are not sent, stays in the header. An item in the open list opens the sheet with only that question, and **Send** sends it at once. With no questions the header shows a count of 0 and does not open.
 
 The answer sheet slides up from the bottom. It shows the task and the position, such as **2 / 5**, then the question and your answer. Dots show your progress. **Previous** and **Next** stay at the bottom, so they are in reach as you scroll. After the last question, the review lists your answers, and **Send all** sends them. Opened from a task's **Answer the question** button, the sheet shows only that task's questions, and **Send** on the last one sends them without the review. An item of the band works the same way for its one question.
 
 ![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
-Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../watch/mobile-monitor) for connecting a phone.
+Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Remote access](../watch/remote-access) for connecting a phone.
 
 If you close the sheet with an answer that is not sent, and the question is then answered elsewhere or withdrawn, the review keeps that answer, marked as one that cannot be sent. Select **Discard** to remove it.
 

@@ -1,6 +1,6 @@
 //! The Docs routes of the board router: the tree, a file, an image, and opening
 //! the folder or a file in the computer's own apps. The board only reads the Docs.
-//! They are not on the mobile monitor's router. Each handler checks its input
+//! They are not on remote access's router. Each handler checks its input
 //! and hands the work to `crate::docs`.
 
 mod assets;

@@ -45,7 +45,7 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `PUT /api/preferences` | Saves the `locale`, `theme`, or both, from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Unknown fields and invalid values are 422 `invalid_preferences`; a failed write is 500 `preferences_unavailable`. A refused or failed save leaves the saved value unchanged. |
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
-| `GET /api/monitor-connections` and the routes under it | The ngrok mobile connection. See [Mobile connection](#mobile-connection). |
+| `GET /api/monitor-connections` and the routes under it | The ngrok remote connection. See [Remote connection](#remote-connection). |
 
 ### Summary and Detail
 
@@ -106,7 +106,7 @@ A client that sees a gap in `seq`, a new `instanceId`, or an event it does not k
 
 The server compares the parsed data before and after every reload, so a save that changes nothing the Summary or a Detail shows sends no event. A file that cannot be parsed changes every facet of its resource. A stream that fell too far behind gets `resync` (`{"instanceId", "seq"}`, the newest number) instead of the events it missed, and the client fetches everything again.
 
-### Mobile connection
+### Remote connection
 
 These routes exist only on the local listener (`127.0.0.1`); the ngrok entrance never serves them. A read must come from the local page: a foreign Host, cross-site `Sec-Fetch-Site`, or foreign Origin is 403. The writes pass the same browser write guard as other writes.
 
@@ -133,7 +133,7 @@ The state object has these fields:
 | `failure` | `null`, or one of `connect_failed`, `endpoint_failed`, `public_url_invalid`, `internal`, `config_unreadable`, `config_invalid`. |
 | `passcode` | The 4-digit passcode of the running connection, for the PC to show. Present only while `status` is `ready`; omitted when the connection is starting, stopped, or failed. It is the one secret this API returns. |
 
-A start reports its progress through this state; poll `GET` until `status` leaves `starting`. The token, the count of wrong guesses, and sessions never appear in any response or in the settings file, and the passcode appears only here (and on the `serve` startup line). The settings are stored as described in [Shared files](./files.md#monitor-connection-settings). The error codes are in [Error codes](./errors.md#mobile-connection).
+A start reports its progress through this state; poll `GET` until `status` leaves `starting`. The token, the count of wrong guesses, and sessions never appear in any response or in the settings file, and the passcode appears only here (and on the `serve` startup line). The settings are stored as described in [Shared files](./files.md#monitor-connection-settings). The error codes are in [Error codes](./errors.md#remote-connection).
 
 ### Display preferences
 

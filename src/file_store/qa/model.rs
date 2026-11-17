@@ -32,7 +32,7 @@ impl QuestionKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnswerVia {
-    /// The board on the computer or the mobile monitor.
+    /// The board on the computer or remote access.
     Ui,
     /// An agent wrote back the answer a person gave in its chat.
     Chat,

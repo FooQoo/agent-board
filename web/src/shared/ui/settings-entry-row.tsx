@@ -5,7 +5,7 @@ import '../styles/settings-entry.css';
 
 /**
  * One entry row of the settings dialog: an icon tile, a title over one line of description, and an
- * outlined button that opens the feature. The tutorial and the mobile connection share it, so both
+ * outlined button that opens the feature. The tutorial and the remote connection share it, so both
  * rows look and wrap the same.
  */
 export function SettingsEntryRow({

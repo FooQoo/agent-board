@@ -66,7 +66,7 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
     // The settings dialog is gone and the connection dialog is the only one on the screen.
     await waitFor(() => expect(view.queryAllByRole('radio')).toHaveLength(0));
     await waitFor(() => expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1));
-    await expect(await view.findByRole('heading', { name: 'Mobile connection' })).toBeVisible();
+    await expect(await view.findByRole('heading', { name: 'Remote connection' })).toBeVisible();
     await expect(await view.findByLabelText('ngrok auth token')).toBeVisible();
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(view.queryAllByRole('dialog', { hidden: true })).toHaveLength(0));

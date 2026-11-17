@@ -41,7 +41,7 @@ fn the_documented_stages_match_the_confirmed_classification() {
         .filter_map(|line| line.split_once("anchor: '"))
         .map(|(_, rest)| rest.split('\'').next().unwrap().to_string())
         .collect();
-    assert_eq!(in_product, ["docs", "mobile-monitor", "listen"]);
+    assert_eq!(in_product, ["docs", "remote-access", "listen"]);
     let mut expected = in_product.clone();
     expected.sort();
 
@@ -71,8 +71,8 @@ fn the_documented_stages_match_the_confirmed_classification() {
                 "Docs",
                 "ドキュメント",
                 "listen",
-                "Mobile monitor",
-                "モバイルモニター",
+                "Remote access",
+                "リモートアクセス",
             ] {
                 let cell = row.split('|').nth(1).unwrap();
                 assert!(!cell.contains(name), "{path}: {name} is listed as GA");

@@ -81,9 +81,9 @@
 | `invalid_sections` | Detail経路の`sections`クエリが`document`・`history`・`document,history`のいずれでもない。[Web API](./web-api.md#summaryとdetail)を参照。 | なし | 400 |
 | `not_implemented` | SummaryまたはDetailの経路はあるが、ハンドラーがまだ書かれていない。 | なし | 501 |
 
-## モバイル接続
+## リモート接続
 
-`/api/monitor-connections`の経路（[Web API](./web-api.md#モバイル接続)を参照）が返すコードです。秘密の値は含みません。
+`/api/monitor-connections`の経路（[Web API](./web-api.md#リモート接続)を参照）が返すコードです。秘密の値は含みません。
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
@@ -95,7 +95,7 @@
 | `start_failed` | 内部の理由で接続を開始できなかった。 | なし | 500 |
 | `invalid_value` | トークン・本文が規則に反する（例: トークンなしの`save`、未知のフィールド）。 | なし | 422 |
 
-コマンドラインでは、`serve --monitor ngrok`のオプションが足りない、または不正な場合は`invalid_argument`で終了コード2、接続を開始できない場合は終了コード1です。状態の`failure`のコードは[Web API](./web-api.md#モバイル接続)に一覧があります。
+コマンドラインでは、`serve --monitor ngrok`のオプションが足りない、または不正な場合は`invalid_argument`で終了コード2、接続を開始できない場合は終了コード1です。状態の`failure`のコードは[Web API](./web-api.md#リモート接続)に一覧があります。
 
 ngrokの入口では、Hostの確認に失敗した要求は理由`not available`の403 `forbidden`、sessionがない・期限切れなら401 `session_required`、公開Origin・同一オリジンのメタデータ・CSRFトークンのない書き込みは403 `forbidden`です。`POST /api/remote/unlock`は、間違った合言葉に403 `unlock_failed`を返し、連続5回間違えたあとはすべての試行に429 `unlock_locked`を返します。どちらも残りの回数は示しません。
 
