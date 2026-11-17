@@ -18,7 +18,7 @@ agboard project create "My project"
 agboard serve
 ```
 
-Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/) and select **My project** in the header. The board is empty, and it stays that way: you do not write the plan.
+Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/) and select **My project** in the header. The board is empty for now. The agent writes the plan, so you do not need to add any tasks yourself.
 
 Start a new agent session in the same folder, so that it loads the plugin. The agent finds the project from the folder.
 
