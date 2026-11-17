@@ -239,6 +239,10 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
             get(message_detail),
         )
         .route(
+            "/api/projects/{project_id}/messages/{message_id}/attachments/{name}",
+            get(message_attachment),
+        )
+        .route(
             "/api/projects/{project_id}/messages/{message_id}/withdraw",
             post(message_withdraw),
         )

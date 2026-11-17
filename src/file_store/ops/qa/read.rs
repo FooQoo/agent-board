@@ -7,6 +7,7 @@ use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::qa::{MessageView, QuestionView, RequestView};
 use crate::file_store::reader;
+use crate::file_store::{io, layout, qa};
 
 /// The questions and the requests of a project, read while its lock is held.
 pub(super) fn views_locked(
@@ -80,5 +81,51 @@ impl FileStore {
                 expected: "request".into(),
             }),
         }
+    }
+
+    /// The bytes and media type of an image sent with a message, read from
+    /// `qa/<id>/attachments/<name>`. A name that is not a plain file name, a file that is not
+    /// there, and a path through a symbolic link are `attachment_not_found`; an unknown
+    /// message is `message_not_found`. The media type comes from the file's own bytes.
+    pub fn message_attachment(
+        &self,
+        project: &ProjectId,
+        id: &str,
+        name: &str,
+    ) -> Result<(String, Vec<u8>), AgboardError> {
+        let shared = self.shared_dir();
+        let project_dir = reader::project_dir_checked(shared, project)?;
+        let dir = qa::message_dir(&project_dir, id);
+        if qa::question_number(id).is_none() || !dir.is_dir() {
+            return Err(AgboardError::MessageNotFound { id: id.to_owned() });
+        }
+        let not_found = || AgboardError::AttachmentNotFound {
+            id: name.to_owned(),
+        };
+        let plain = !name.is_empty()
+            && name.len() <= 100
+            && !name.starts_with('.')
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'));
+        if !plain {
+            return Err(not_found());
+        }
+        let path = qa::attachments_dir(&dir).join(name);
+        let label = layout::shared_label(shared, &path);
+        let linked = layout::has_symlink_below(&project_dir, &path)
+            .map_err(|e| io::read_error(&label, e))?;
+        if linked || !path.is_file() {
+            return Err(not_found());
+        }
+        let bytes = io::read_bytes(&path, &label)?;
+        let media_type = match image::guess_format(&bytes) {
+            Ok(image::ImageFormat::Png) => "image/png",
+            Ok(image::ImageFormat::Jpeg) => "image/jpeg",
+            Ok(image::ImageFormat::WebP) => "image/webp",
+            Ok(image::ImageFormat::Gif) => "image/gif",
+            _ => return Err(not_found()),
+        };
+        Ok((media_type.to_owned(), bytes))
     }
 }
