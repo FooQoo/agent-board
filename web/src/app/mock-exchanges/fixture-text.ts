@@ -30,7 +30,7 @@ export function fixtureText(ja: boolean) {
         r11: 'ダークモードで表の罫線が見えにくい',
         r11Body: 'ダークモードで、表の罫線が背景に溶けて見えにくいです。',
         askDraft:
-          '## パスワードを忘れたとき\n\nログイン画面に、パスワードを忘れた人が戻れる導線を足してください。\n\n![](draft.png)',
+          '## パスワードを忘れたとき\n\nログイン画面に、パスワードを忘れた人が戻れる導線を足してください。\n\n![login.png](attachment:a5a00000000000000000000000000001)',
         q9: 'リリースノートは英語だけでよいですか',
         goal: 'ログイン画面を作り直し、パスワードを忘れたときも自分で復旧できるようにする。',
         goalMore:
@@ -81,7 +81,7 @@ If you keep it, each account is converted at its next login. If you drop it, eve
         r11: 'Table borders are hard to see in dark mode',
         r11Body: 'In dark mode the table borders blend into the background.',
         askDraft:
-          '## Forgotten password\n\nAdd a way back on the login screen for people who forgot their password.\n\n![](draft.png)',
+          '## Forgotten password\n\nAdd a way back on the login screen for people who forgot their password.\n\n![login.png](attachment:a5a00000000000000000000000000001)',
         q9: 'Are English-only release notes enough?',
         goal: 'Rebuild the login screen so people can recover a forgotten password by themselves.',
         goalMore:

@@ -1,16 +1,34 @@
-import { ImagePlusIcon, XIcon } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/shared/ui/button';
-import { Label } from '@/shared/ui/label';
-import { Textarea } from '@/shared/ui/textarea';
+import {
+  RichMarkdownEditor,
+  type RichMarkdownEditorHandle,
+} from '../../shared/rich-editor/RichMarkdownEditor';
 import { DialogFrame } from '../../shared/ui/dialog-frame/DialogFrame';
+import { AttachmentPanel } from '../../shared/ui/editor/AttachmentPanel';
+import type { EditorAttachment, StoredAttachment } from '../../shared/ui/editor/attachmentTypes';
+import { useAttachmentState } from '../../shared/ui/editor/useAttachmentState';
+import '../../shared/styles/rich-table.css';
+import '../../shared/styles/rich-body.css';
+import '../../shared/styles/editor.css';
+import '../../shared/styles/modal.css';
 import './exchanges-mock.css';
 import { Surface } from './Surface';
 import { useMockText } from './text';
 
+/** The images a filled draft starts with; the first one is placed in the draft text. */
+function draftImages(count: number): StoredAttachment[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `a5a${String(index + 1).padStart(29, '0')}`,
+    name: index === 0 ? 'login.png' : `screen-${index + 1}.png`,
+    mediaType: 'image/png',
+    size: 182_000,
+  }));
+}
+
 /**
- * The "Ask AI" dialog: one Markdown text and images. It has no epic selector and no manual
- * creation, because a request is linked to neither tasks nor epics.
+ * The "Ask AI" dialog: one Markdown text in the rich editor the task dialogs use, and images. It has
+ * no epic selector and no manual creation, because a request is linked to neither tasks nor epics.
  */
 export function AskAiDialog({
   kind = 'dialog',
@@ -25,42 +43,71 @@ export function AskAiDialog({
   initialImages?: number;
 }) {
   const m = useMockText();
-  const fieldId = useId();
+  const editor = useRef<RichMarkdownEditorHandle>(null);
   const [text, setText] = useState(initialText);
-  const [images, setImages] = useState(initialImages);
   const [error, setError] = useState('');
+  const images = useAttachmentState({
+    initial: draftImages(initialImages),
+    resolveStoredUrl: () => '/sample-attachment.png',
+  });
+  const insertImage = (attachment: EditorAttachment) => {
+    const alt = attachment.name.replace(/[\\[\]!*_`]/g, '\\$&');
+    editor.current?.insert(`\n\n![${alt}](attachment:${attachment.id})\n\n`);
+  };
+  const addImages = (files: File[]) => {
+    const pictures = files.filter((file) => file.type.startsWith('image/'));
+    if (pictures.length > 0) images.addFiles(pictures);
+  };
   const fields = (
-    <>
-      <div className="xask__field">
-        <Label htmlFor={fieldId}>{m.askPrompt}</Label>
-        <Textarea
-          id={fieldId}
-          className="xask__text"
+    <div
+      role="region"
+      aria-label={m.askTitle}
+      className="xask__field"
+      onPasteCapture={(event) => {
+        const files = Array.from(event.clipboardData.files);
+        if (!files.some((file) => file.type.startsWith('image/'))) return;
+        event.preventDefault();
+        event.stopPropagation();
+        addImages(files);
+      }}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes('Files')) event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (event.dataTransfer.files.length === 0) return;
+        event.preventDefault();
+        addImages(Array.from(event.dataTransfer.files));
+      }}
+    >
+      <span className="xask__label">{m.askPrompt}</span>
+      <div
+        className="editor__box xask__box"
+        onPointerDown={(event) => {
+          const target = event.target;
+          if (target instanceof Element && target.closest('.ProseMirror, button, a')) return;
+          editor.current?.focus();
+        }}
+      >
+        <RichMarkdownEditor
+          ref={editor}
           value={text}
+          onChange={setText}
+          aria-label={m.askPrompt}
           placeholder={m.askPlaceholder}
-          onChange={(event) => setText(event.target.value)}
+          resolveAttachment={(id) => images.attachments.find((item) => item.id === id)?.url ?? null}
         />
-        <p className="xask__hint">{m.askMarkdownHint}</p>
       </div>
-      <div className="xask__images">
-        {Array.from({ length: images }, (_, index) => (
-          <span key={index} className="xask__thumb">
-            <img src="/sample-attachment.png" alt="" />
-            <button
-              type="button"
-              aria-label={m.close}
-              onClick={() => setImages((current) => current - 1)}
-            >
-              <XIcon className="xask__remove-icon" aria-hidden="true" />
-            </button>
-          </span>
-        ))}
-        <button type="button" className="xask__add" onClick={() => setImages((n) => n + 1)}>
-          <ImagePlusIcon aria-hidden="true" />
-          {m.askAddImage}
-        </button>
-      </div>
-    </>
+      <AttachmentPanel
+        attachments={images.attachments}
+        onFiles={addImages}
+        onRemove={images.remove}
+        onInsert={insertImage}
+        notice={images.error}
+        className="request-dialog__attachments xask__images"
+        optionalHeader
+        layout="tray"
+      />
+    </div>
   );
   if (kind === 'sheet') {
     return (
@@ -103,12 +150,12 @@ export function AskAiDialog({
       title={m.askTitle}
       submitLabel={m.askSubmit}
       onClose={onClose}
-      dirty={text.trim() !== ''}
+      dirty={text.trim() !== '' || images.attachments.length > 0}
       validate={() => (text.trim() === '' ? m.askRequired : null)}
       save={async () => {}}
       footerNote={<p className="xask__note">{m.askNote}</p>}
       scrollBody
-      className="xask"
+      className="request-dialog xask"
     >
       {fields}
     </DialogFrame>
