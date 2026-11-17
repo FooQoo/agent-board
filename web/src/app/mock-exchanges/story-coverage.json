@@ -114,12 +114,12 @@
           "name": "ExchangePanel",
           "stories": [
             {
-              "id": "mocks-exchanges-desktop--panel-your-turn",
+              "id": "mocks-exchanges-desktop--panel-ai-questions",
               "states": ["your turn tab"],
               "interaction": true
             },
             {
-              "id": "mocks-exchanges-desktop--panel-ai-turn",
+              "id": "mocks-exchanges-desktop--panel-your-requests",
               "states": ["AI turn tab", "waiting to be picked up"],
               "interaction": false
             },

@@ -268,15 +268,14 @@ export function openQuestionsOf(fixture: Fixture, ids: string[]): MockExchange[]
   );
 }
 
-/** The counts of the band: your turn with its breakdown, the AI's turn, and requests not picked up. */
+/** The counts of the band: open questions and approvals from the AI, and your requests not yet accepted. */
 export function countExchanges(exchanges: MockExchange[]) {
-  const human = exchanges.filter((e) => e.turn === 'human');
-  const ai = exchanges.filter((e) => e.turn === 'ai');
+  const fromAi = exchanges.filter((e) => e.turn === 'human');
+  const fromYou = exchanges.filter((e) => e.type === 'request' && e.turn === 'ai');
   return {
-    human: human.length,
-    questions: human.filter((e) => e.type === 'question').length,
-    approvals: human.filter((e) => e.type === 'approval').length,
-    ai: ai.length,
-    unpicked: ai.filter((e) => e.type === 'request').length,
+    fromAi: fromAi.length,
+    questions: fromAi.filter((e) => e.type === 'question').length,
+    approvals: fromAi.filter((e) => e.type === 'approval').length,
+    fromYou: fromYou.length,
   };
 }

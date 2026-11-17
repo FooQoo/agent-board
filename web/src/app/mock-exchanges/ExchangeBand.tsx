@@ -6,7 +6,7 @@ import './exchanges-mock.css';
 import { countExchanges, type MockExchange } from './data';
 import { useMockText } from './text';
 
-/** The band above the lanes that replaces the unanswered-questions band: whose turn it is, in counts. */
+/** The band above the lanes that replaces the unanswered-questions band: the AI's open questions and your open requests. */
 export function ExchangeBand({
   exchanges,
   variant,
@@ -18,7 +18,7 @@ export function ExchangeBand({
 }) {
   const m = useMockText();
   const count = countExchanges(exchanges);
-  const idle = count.human === 0;
+  const idle = count.fromAi === 0;
   const Icon = idle ? CircleCheckIcon : ArrowRightLeftIcon;
   return (
     <section
@@ -36,9 +36,9 @@ export function ExchangeBand({
         </h2>
         <ul className="xband__chips">
           <li>
-            <Badge variant={idle ? 'muted' : 'pending'} className="xband__chip">
-              {m.bandYourTurn} <strong>{count.human}</strong>
-              {count.human > 0 && (
+            <Badge variant={count.fromAi === 0 ? 'muted' : 'pending'} className="xband__chip">
+              {m.bandFromAi} <strong>{count.fromAi}</strong>
+              {count.fromAi > 0 && (
                 <span className="xband__sub">
                   （{m.bandBreakdown(count.questions, count.approvals)}）
                 </span>
@@ -47,16 +47,10 @@ export function ExchangeBand({
           </li>
           <li>
             <Badge variant="outline" className="xband__chip">
-              {m.bandAiTurn} <strong>{count.ai}</strong>
+              {m.bandFromYou} <strong>{count.fromYou}</strong>
+              {count.fromYou > 0 && <span className="xband__sub">（{m.bandUnpicked}）</span>}
             </Badge>
           </li>
-          {count.unpicked > 0 && (
-            <li>
-              <Badge variant="muted" className="xband__chip">
-                {m.bandUnpicked(count.unpicked)}
-              </Badge>
-            </li>
-          )}
         </ul>
         <Button type="button" size="s" className="xband__open" onClick={onOpen}>
           {m.bandOpen}

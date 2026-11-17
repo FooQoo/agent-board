@@ -26,7 +26,7 @@ export const BandAndLanes: Story = {
 
 /** 7. The exchanges panel as a bottom sheet. */
 export const PanelSheet: Story = {
-  args: { initial: { kind: 'panel', tab: 'human' } },
+  args: { initial: { kind: 'panel', tab: 'fromAi' } },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: 'Exchanges' })).toBeInTheDocument();
   },
@@ -34,7 +34,7 @@ export const PanelSheet: Story = {
 
 /** 7. An opened question in the sheet. */
 export const PanelSheetQuestion: Story = {
-  args: { initial: { kind: 'panel', tab: 'human', openId: 'Q-12' } },
+  args: { initial: { kind: 'panel', tab: 'fromAi', openId: 'Q-12' } },
 };
 
 /** 7. The plan review as a sheet, with a question open. */

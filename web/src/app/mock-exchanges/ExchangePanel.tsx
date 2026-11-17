@@ -10,7 +10,7 @@ import { Surface } from './Surface';
 import { type MockText, useMockText } from './text';
 import './exchanges-mock.css';
 
-export type ExchangeTab = 'human' | 'ai' | 'done';
+export type ExchangeTab = 'fromAi' | 'fromYou' | 'done';
 
 const TYPE_ICONS = {
   question: CircleHelpIcon,
@@ -29,12 +29,18 @@ function shortTime(iso: string): string {
 
 /** Which tab a row belongs to. */
 export function tabOf(exchange: MockExchange): ExchangeTab {
-  return exchange.turn ?? 'done';
+  if (exchange.turn === null) return 'done';
+  return exchange.from === 'ai' ? 'fromAi' : 'fromYou';
 }
 
 function TurnBadge({ exchange }: { exchange: MockExchange }) {
   const m = useMockText();
-  if (exchange.turn === 'human') return <Badge variant="pending">{m.turnHuman}</Badge>;
+  if (exchange.turn === 'human')
+    return (
+      <Badge variant="pending">
+        {exchange.type === 'approval' ? m.awaitingApproval : m.unanswered}
+      </Badge>
+    );
   if (exchange.turn === 'ai') {
     // A request nobody picked up yet: say so, so it is clear that no agent has it.
     return <Badge variant="muted">{m.waitingPickup}</Badge>;
@@ -43,7 +49,7 @@ function TurnBadge({ exchange }: { exchange: MockExchange }) {
   return <Badge variant="muted">{done}</Badge>;
 }
 
-/** One row: the kind, the direction, whose turn it is and the first line. */
+/** One row: the kind, the direction, its state and the first line. */
 function ExchangeRow({ exchange, onOpen }: { exchange: MockExchange; onOpen: () => void }) {
   const m = useMockText();
   const Icon = TYPE_ICONS[exchange.type];
@@ -179,8 +185,8 @@ export function ExchangePanelBody({
   if (opened?.type === 'request')
     return <RequestDetail exchange={opened} onBack={() => onOpenChange(null)} />;
   const tabs: { id: ExchangeTab; label: string }[] = [
-    { id: 'human', label: m.tabHuman },
-    { id: 'ai', label: m.tabAi },
+    { id: 'fromAi', label: m.tabFromAi },
+    { id: 'fromYou', label: m.tabFromYou },
     { id: 'done', label: m.tabDone },
   ];
   const rows = exchanges.filter((exchange) => tabOf(exchange) === tab);
@@ -224,7 +230,7 @@ export function ExchangePanelBody({
 export function ExchangePanel({
   kind,
   exchanges,
-  initialTab = 'human',
+  initialTab = 'fromAi',
   initialOpenId = null,
   onClose,
   onOpenPlan,

@@ -58,28 +58,28 @@ export const SingleDraftTasks: Story = { args: { scenario: 'singleDraft' } };
 /** 5. Every approval shape on one board. */
 export const AllApprovals: Story = { args: { scenario: 'all' } };
 
-/** 4. The panel, "your turn" tab: questions and the approval. */
-export const PanelYourTurn: Story = {
-  args: { initial: { kind: 'panel', tab: 'human' } },
+/** 4. The panel, "AI's questions" tab: open questions and the approval. */
+export const PanelAiQuestions: Story = {
+  args: { initial: { kind: 'panel', tab: 'fromAi' } },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: 'Exchanges' })).toBeInTheDocument();
   },
 };
 
-/** 4. The panel, "AI's turn" tab: a request nobody picked up yet shows "Waiting to be picked up". */
-export const PanelAiTurn: Story = { args: { initial: { kind: 'panel', tab: 'ai' } } };
+/** 4. The panel, "Your requests" tab: a request nobody picked up yet shows "Waiting to be picked up". */
+export const PanelYourRequests: Story = { args: { initial: { kind: 'panel', tab: 'fromYou' } } };
 
 /** 4. The panel, "done" tab. */
 export const PanelDone: Story = { args: { initial: { kind: 'panel', tab: 'done' } } };
 
 /** 4. An opened question shows the existing answer UI. */
 export const PanelQuestionOpen: Story = {
-  args: { initial: { kind: 'panel', tab: 'human', openId: 'Q-12' } },
+  args: { initial: { kind: 'panel', tab: 'fromAi', openId: 'Q-12' } },
 };
 
 /** 4. An opened request: the sent text, and the AI's only reply is "accepted". */
 export const PanelRequestOpen: Story = {
-  args: { initial: { kind: 'panel', tab: 'ai', openId: 'Q-14' } },
+  args: { initial: { kind: 'panel', tab: 'fromYou', openId: 'Q-14' } },
 };
 
 /** 6. The plan review while a question is open: Start is disabled and says why. */
