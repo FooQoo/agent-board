@@ -47,7 +47,7 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
 
 The files are plain Markdown and JSON. What each file must contain is described in [Markdown file format](../reference/file-format). A file whose `formatVersion` is not 1 is unsupported: the application reports it and leaves the file unchanged. It never migrates, falls back to, deletes, or resets old data.
 
-The `.internal/` folder holds the app's own settings. `preferences.json` keeps the language and color theme you chose in **Settings**, and it applies to every browser on this PC and to the mobile monitor. The app writes this file, so do not edit it by hand. It is outside `shared/`, so it is not part of a project's files.
+The `.internal/` folder holds the app's own settings. `preferences.json` keeps the language and color theme you chose in **Settings**, and it applies to every browser on this PC and to remote access. The app writes this file, so do not edit it by hand. It is outside `shared/`, so it is not part of a project's files.
 
 Each project's `qa/` folder holds the questions agents asked and the answers given, one folder per set of questions. Questions have project-wide IDs such as `Q-12`, and a task refers to them from the `questions` list in its `TASK.md`. Read them with `agboard qa ls` and `agboard qa show`; do not edit `request.json` by hand. See [Decisions](../delegate/decisions).
 

@@ -63,7 +63,7 @@ landing:
         steps:
           - { actor: auto, title: 完了, text: 確かめた条件がすべてそろうと、自動で完了へ移ります。 }
   features:
-    eyebrow: 仕事を映す窓
+    eyebrow: 仕事を映すモニター
     title: どこからでも、見守って介入する。
     previewLabel: パブリックプレビュー
     items:
@@ -78,14 +78,15 @@ landing:
         link: { text: エピックと進行表, link: /ja/guide/watch/epics }
         alt: タスクの進行表とMarkdown本文を持つエピック編集画面
       - image: mobile
-        title: スマホで確認
-        text: 席を離れていても、スマホのモニターから仕事を見守り、エージェントの質問に答えられます。
-        link: { text: モバイルモニター, link: /ja/guide/watch/mobile-monitor }
-        preview: /ja/guide/feature-stages#mobile-monitor
+        title: どこからでも確認
+        text: 席を離れていても、スマホやタブレットでボードを開き、仕事を見守り、エージェントの質問に答えられます。
+        link: { text: リモートアクセス, link: /ja/guide/watch/remote-access }
+        preview: /ja/guide/feature-stages#remote-access
+        tabletAlt: "タブレットで開いた同じボード。未着手・進行中・完了の列が並び、待機中のタスクと「質問に回答する」ボタンが見える"
         alts:
-          - 待機中のタスクと「質問に回答する」ボタンが見える、モバイルモニターのカードの一覧
-          - 選択肢を選び、送信ボタンが出ているモバイルモニターの質問
-          - モバイルモニターの下部のドロワーで、受入条件のタブを開いたタスク
+          - 待機中のタスクと「質問に回答する」ボタンが見える、リモートアクセスのカードの一覧
+          - 選択肢を選び、送信ボタンが出ているリモートアクセスの質問
+          - リモートアクセスの下部のドロワーで、受入条件のタブを開いたタスク
       - image: docs
         title: プロジェクトのドキュメント
         text: プロジェクトのdocs/にある設計書や仕様を、ボードから開いて読めます。
@@ -130,7 +131,7 @@ landing:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
       - { title: エージェントとプロジェクトを設定する, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: ボードを開く, commands: [agboard serve] }
-    note: "バージョン1.0.0には、ドキュメントやモバイルモニターなど、パブリックプレビューの機能が含まれます。詳しくは"
+    note: "バージョン1.0.0には、ドキュメントやリモートアクセスなど、パブリックプレビューの機能が含まれます。詳しくは"
     noteLinks:
       - { text: 機能の提供段階, link: /ja/guide/feature-stages }
     noteJoin: と

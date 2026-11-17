@@ -2,7 +2,7 @@
 //! by itself can stop once nobody needs it.
 //!
 //! A request (except `GET /api/health`), a change the watcher saw, an open
-//! event stream and a mobile monitor connection all count as use. The decision
+//! event stream and a remote access connection all count as use. The decision
 //! to stop and the acceptance of new requests share one lock: once the server
 //! has decided to stop, every new request is refused.
 
@@ -123,7 +123,7 @@ impl Activity {
         self.lock().board_seen
     }
 
-    /// Whether to stop at `now`. Open streams and `busy` (a mobile monitor
+    /// Whether to stop at `now`. Open streams and `busy` (remote access
     /// connection) are use for as long as they last. A `true` is final: from
     /// then on every request is refused.
     pub(crate) fn decide_stop(&self, now: Instant, timeout: Duration, busy: bool) -> bool {

@@ -65,7 +65,7 @@ A static site has no computer and no `agboard serve` to reach, so the demo hides
 | Feature | Where it is hidden | Why |
 | --- | --- | --- |
 | Project Docs | `BoardWorkspace.tsx` passes no `onDocs`, so the header has no **Docs** button | Docs open files and folders on the computer. |
-| Mobile connection | `BoardSettings.tsx` leaves out the connection row and dialog | A phone connects to an `agboard serve`. |
+| Remote connection | `BoardSettings.tsx` leaves out the connection row and dialog | A phone connects to an `agboard serve`. |
 | Attachments | `EditorBody.tsx` and `RequestDialog.tsx` offer no images panel and ignore pasted or dropped images | Nothing is saved, so there is nowhere to keep them. |
 | Saved language and theme | `app/entry/board.tsx` and `BoardSettings.tsx` skip `/api/preferences` | There is no server to keep them. The theme stays in the browser, as in the sample-data mode; the language follows the browser on each page load. |
 
@@ -96,7 +96,7 @@ The suite (`e2e/playwright.demo.config.ts` and `e2e/demo/`) serves `docs/.vitepr
 - the guide starts on page load and runs to the end, including answering its question, at desktop width and at phone width
 - after the guide, a card can be dragged to another lane
 - answering a waiting card and checking its last acceptance conditions moves it to Done automatically
-- the Docs button and the mobile connection are absent, and a reload starts again from the sample data
+- the Docs button and the remote connection are absent, and a reload starts again from the sample data
 - in a `ja-JP` browser, the screens, the guide, and the sample cards start in Japanese
 - a language chosen in the settings lasts until the page is reloaded, and a reload starts in the browser's language again
 

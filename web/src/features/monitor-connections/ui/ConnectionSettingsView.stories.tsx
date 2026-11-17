@@ -51,7 +51,9 @@ export const NeedsConfig: Story = {
     // The design's size, and both steps with a divider as long as the 280px row.
     await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 560]);
     await expect(view.getByText('Not connected')).toBeInTheDocument();
-    await expect(view.getByText('Check the board on your phone from outside.')).toBeInTheDocument();
+    await expect(
+      view.getByText('Open the board from your phone or tablet when you are away.'),
+    ).toBeInTheDocument();
     const steps = view.getAllByRole('listitem');
     await expect(steps).toHaveLength(2);
     // The public preview notice sits above the steps. The dialog keeps its design size, so the
@@ -285,7 +287,7 @@ export const ConnectedWithoutProjectJa: Story = {
   play: noProjectPlay('ja'),
 };
 
-/** The mobile monitor is in public preview: the badge beside the heading, the notice under the description. */
+/** Remote access is in public preview: the badge beside the heading, the notice under the description. */
 export const PublicPreview: Story = {
   play: async () => {
     const view = within(document.body);
@@ -293,7 +295,7 @@ export const PublicPreview: Story = {
       view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
     ).toBeGreaterThan(0);
     const link = view.getByRole('link', { name: 'documentation' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#mobile-monitor`);
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#remote-access`);
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },
@@ -308,7 +310,7 @@ export const PublicPreviewJapaneseDarkNarrow: Story = {
       view.getAllByText('パブリックプレビュー', { selector: '[data-slot="badge"]' }).length,
     ).toBeGreaterThan(0);
     const link = view.getByRole('link', { name: 'ドキュメント' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.ja}#mobile-monitor`);
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.ja}#remote-access`);
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },

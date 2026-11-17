@@ -38,7 +38,7 @@ describe('the list of preview features', () => {
     );
     expect(Object.values(PREVIEW_FEATURES).map((f) => f.anchor)).toEqual([
       'docs',
-      'mobile-monitor',
+      'remote-access',
       'listen',
     ]);
   });
@@ -46,7 +46,7 @@ describe('the list of preview features', () => {
   it('builds the documentation link from the language and the anchor', () => {
     expect(FEATURE_STAGES_URL).toEqual({ en: EN, ja: JA });
     expect(featureStagesUrl('docs', 'en')).toBe(`${EN}#docs`);
-    expect(featureStagesUrl('mobileMonitor', 'ja')).toBe(`${JA}#mobile-monitor`);
+    expect(featureStagesUrl('mobileMonitor', 'ja')).toBe(`${JA}#remote-access`);
   });
 });
 

@@ -48,13 +48,13 @@ flowchart LR
 
 関わり方は二つあります。エージェントが止まって聞くときは、答えやすい場所で答えれば、回答は一度だけ記録されます（Human-in-the-Loop）。作業の間は、止めずに見守り、カードを戻す、条件にチェックを付ける、計画を書き換える、ができて、エージェントは変更に従います（Human-on-the-Loop）。[仕事のモデル](https://fooqoo.github.io/agent-board/ja/guide/work-model)と[クイックスタート](https://fooqoo.github.io/agent-board/ja/guide/quickstart)を参照してください。
 
-## 仕事を映す窓
+## 仕事を映すモニター
 
-ボードは、仕事を見るための窓の一つです。
+ボードは、仕事を見るモニターの一つです。見るだけでなく、答えて、介入する場所でもあります。
 
 - **ボード。** 仕事が未着手・進行中・完了と進むのを見守れます。エージェントを止めずにカードへ介入でき、質問への回答も、タスクの上でそのまま行えます。[ボードの使い方](https://fooqoo.github.io/agent-board/ja/guide/watch/board)
 - **エピックと進行表。** エピックが計画とタスクの順序を持ち、進行表が、いま進められる作業をエージェントに返します。[エピックと進行表](https://fooqoo.github.io/agent-board/ja/guide/watch/epics)
-- **スマホで確認。** 席を離れていても、スマホのモニターから仕事を見守り、エージェントの質問に答えられます。パブリックプレビューです。[モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor)
+- **どこからでも確認。** 席を離れていても、リモートアクセスでスマホやタブレットから仕事を見守り、エージェントの質問に答えられます。パブリックプレビューです。[リモートアクセス](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access)
 - **プロジェクトのドキュメント。** プロジェクトの`docs/`にある設計書や仕様を、ボードから開いて読めます。パブリックプレビューです。[プロジェクトのドキュメント](https://fooqoo.github.io/agent-board/ja/guide/watch/docs)
 
 エージェントとのチャットで答えることもでき、`agboard`コマンドはエージェントやスクリプトが使う入口です。計画と結果は、手元のMarkdownファイル（`EPIC.md`と`TASK.md`）に残り、受入条件と履歴はfrontmatterに入ります。
@@ -101,7 +101,7 @@ agboard serve
 
 [http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開き、プロジェクトを選んでタスクを追加します。エージェントのためにサーバーを動かし続ける必要はありません。あなたを待つコマンドとエージェントのHookが裏で起動し、30分使われないと自分で止まります。こうして起動したサーバーは、ボードのタブが開いていなければプロジェクトのボードをブラウザーで開きます。`agboard open`でいつでも開けます。`agboard progress`とHookはカレントフォルダに最も近い登録済みプロジェクトを使います。別プロジェクトを対象にする場合は`--project NAME`で指定します。
 
-スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[モバイルモニターのガイド](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor)で説明しています。
+スマホから進捗の確認や質問への回答をするには、**設定** → **リモート接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[リモートアクセスのガイド](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access)で説明しています。
 
 ## 更新する
 
@@ -116,7 +116,7 @@ agboard update
 
 ## 機能の提供段階
 
-v1.0.0には、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。ドキュメント、タスクの受け取り、モバイルモニターはパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
+v1.0.0には、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。ドキュメント、タスクの受け取り、リモートアクセスはパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
 
 ## ライセンス
 
@@ -125,7 +125,7 @@ Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱�
 ## ドキュメント
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
-- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
+- [リモートアクセス](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
 - [リリース](https://github.com/FooQoo/agent-board/releases) — 公開した各版の変更点。
 - [Agent Boardプラグイン（英語）](plugins/agent-board/README.md) — `setup`がClaude CodeとCodexに導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

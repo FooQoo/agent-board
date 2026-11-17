@@ -104,12 +104,12 @@ for (const lang of langs) {
     await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
     await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(2);
 
-    // Four features; only the mobile monitor and Docs carry the public preview badge.
+    // Four features; only remote access and Docs carry the public preview badge.
     await expect(landing.locator('.lp-feature')).toHaveCount(4);
     const badges = landing.getByRole('link', { name: en ? 'Public preview' : 'パブリックプレビュー' });
     const stages = `/agent-board/${pagePath(lang, 'feature-stages')}`;
     expect(await badges.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual([
-      `${stages}#mobile-monitor`,
+      `${stages}#remote-access`,
       `${stages}#docs`,
     ]);
 
@@ -261,10 +261,11 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
       [pagePath(lang, 'home'), 'mobile-cards'],
       [pagePath(lang, 'home'), 'mobile-question'],
       [pagePath(lang, 'home'), 'mobile'],
+      [pagePath(lang, 'home'), 'tablet'],
       [pagePath(lang, 'index'), 'board'],
       [pagePath(lang, 'watch/epics'), 'epic'],
       [pagePath(lang, 'delegate/decisions'), 'mobile-question'],
-      [pagePath(lang, 'watch/mobile-monitor'), 'mobile'],
+      [pagePath(lang, 'watch/remote-access'), 'mobile'],
     ];
     for (const [url, name] of targets) {
       await page.goto(url);
@@ -272,7 +273,8 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
       expect(match.length, `${lang} ${url} should show ${name}`).toBeGreaterThan(0);
       const img = page.locator(`img[src="${match[0]}"]`).first();
       await img.scrollIntoViewIfNeeded();
-      expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+      // The landing images load lazily, so give each one a moment after it scrolls into view.
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth), { message: `${lang} ${url} ${name}` }).toBeGreaterThan(0);
     }
   }
 });
@@ -441,5 +443,5 @@ test('the removed usage and mobile-monitor pages return 404', async ({ request }
     expect(response.status(), url).toBe(404);
   }
   // The guide version of the mobile page is the replacement.
-  expect((await request.get('guide/watch/mobile-monitor')).status()).toBe(200);
+  expect((await request.get('guide/watch/remote-access')).status()).toBe(200);
 });

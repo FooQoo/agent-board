@@ -54,8 +54,8 @@ export const monitorEn = {
     },
   },
   monitorConnection: {
-    title: 'Mobile connection',
-    intro: 'Check the board on your phone from outside.',
+    title: 'Remote connection',
+    intro: 'Open the board from your phone or tablet when you are away.',
     statusOff: 'Not connected',
     statusStopped: 'Stopped',
     stoppedTitle: 'You can connect again with the saved settings.',
@@ -102,8 +102,8 @@ export const monitorEn = {
     resetToken: 'Reset token',
     stop: 'Stop connection',
     stopping: 'Stopping…',
-    entryTitle: 'Mobile connection',
-    entryBody: 'Check progress from your smartphone.',
+    entryTitle: 'Remote connection',
+    entryBody: 'Check progress from your phone or tablet.',
     entryAction: 'Connection settings',
     phone: {
       passcodeTitle: 'Enter the passcode',

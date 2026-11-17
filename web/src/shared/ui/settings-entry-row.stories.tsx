@@ -46,7 +46,7 @@ export const Tutorial: Story = {
 export const MobileConnection: Story = {
   args: {
     icon: SmartphoneIcon,
-    title: 'Mobile connection',
+    title: 'Remote connection',
     body: 'Check progress from your smartphone.',
     action: 'Connection settings',
   },
@@ -75,7 +75,7 @@ export const RowsInDialog: Story = {
       <SettingsEntryRow
         {...args}
         icon={SmartphoneIcon}
-        title="Mobile connection"
+        title="Remote connection"
         body="Check progress from your smartphone."
         action="Connection settings"
       />
@@ -102,7 +102,7 @@ export const RowsInDialog: Story = {
 export const NarrowDialog: Story = {
   args: {
     icon: SmartphoneIcon,
-    title: 'Mobile connection',
+    title: 'Remote connection',
     body: 'Check progress from your smartphone.',
     action: 'Connection settings',
   },

@@ -6,7 +6,7 @@ import { requestTutorial } from '../onboarding/tutorialRequest';
 
 /**
  * The settings dialog of the board's phone screen: the language and theme, and the row that shows
- * the guide again, as on the PC board. The mobile connection is set up on a PC, so it is not here.
+ * the guide again, as on the PC board. The remote connection is set up on a PC, so it is not here.
  */
 export function PhoneSettings({
   open,

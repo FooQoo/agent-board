@@ -112,7 +112,7 @@ pub struct ServeArgs {
     /// Port to listen on (127.0.0.1 only) [default: 7420]
     #[arg(long, value_name = "PORT")]
     pub port: Option<u16>,
-    /// Built-in mobile monitor connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
+    /// Built-in remote access connection; ngrok is the only mode (a 4-digit passcode is printed at startup)
     #[arg(long, value_name = "MODE")]
     pub monitor: Option<String>,
     /// Run in the background and return once the server is ready; stop it with `agboard stop`. Output goes to serve.log in the data directory

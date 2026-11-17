@@ -11,11 +11,11 @@ Agent Board is a **work harness** on top of it. It keeps the plan, the acceptanc
 ```mermaid
 flowchart LR
     Agent["Agent harness<br/>tools, context, loop"] --> Work["Agent Board<br/>plan, conditions,<br/>questions, history"]
-    Work --> Windows["Windows<br/>board, phone, chat, CLI"]
-    Person["Person"] --> Windows
+    Work --> Monitors["Monitors<br/>board, phone, chat, CLI"]
+    Person["Person"] --> Monitors
 ```
 
-The board, the phone monitor, the chat, and the `agboard` command are windows onto the same work model, not separate features. Each one reads and writes the same files through the same operations, so a rule holds the same way whichever window you use. [The work model in code](./work-model.md) lists those rules, where the code enforces each one, and which parts still rely on the agent. The user's view of the model is in [The work model](../../guide/work-model.md).
+The board, the phone, the chat, and the `agboard` command are monitors for the same work model, places to watch, answer, and step in, not separate features. Each one reads and writes the same files through the same operations, so a rule holds the same way whichever monitor you use. [The work model in code](./work-model.md) lists those rules, where the code enforces each one, and which parts still rely on the agent. The user's view of the model is in [The work model](../../guide/work-model.md).
 
 The rest of this page describes the implementation that carries the model.
 
@@ -66,9 +66,9 @@ flowchart LR
 - **SSE.** One `changed` event names the tasks, epics, and facets that changed, with an `instanceId` and a `seq`. A gap in `seq`, or a new `instanceId`, tells the browser to drop its cache and read the Summary again.
 - **Cache.** The browser holds the Summary of the last four projects and a limited number of Details, least recently used first. A change never updates the cache from the notification alone: the browser reads the data again.
 
-### Mobile monitor
+### Remote access
 
-A phone browser reaches the read-mostly monitor through an ngrok tunnel that runs inside `serve`. You start it from **Settings** or with `agboard serve --monitor ngrok`; the exact public Host and a 4-digit passcode made for each start guard it. The tunnel forwards to a dedicated loopback entry. That entry uses the same FileStore, file watcher, and notifications as local access. See [The mobile monitor](./remote-access.md).
+A phone browser reaches the read-mostly monitor through an ngrok tunnel that runs inside `serve`. You start it from **Settings** or with `agboard serve --monitor ngrok`; the exact public Host and a 4-digit passcode made for each start guard it. The tunnel forwards to a dedicated loopback entry. That entry uses the same FileStore, file watcher, and notifications as local access. See [Remote access](./remote-access.md).
 
 ```mermaid
 flowchart LR
@@ -129,5 +129,5 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 - [History and decisions](./history-and-decisions.md): history, questions and answers, and automatic Done.
 - [Saving and recovery](./saving-and-recovery.md): locks, atomic saves, and failures.
 - [Change notifications](./notifications.md): how a change reaches browsers and waiting agents.
-- [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [The mobile monitor](./remote-access.md), and [Security model](./security.md).
+- [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [Remote access](./remote-access.md), and [Security model](./security.md).
 - [Code map](../reference/code-map.md) when you need to find a file.

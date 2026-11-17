@@ -1,5 +1,5 @@
 //! A person checking or unchecking one acceptance condition from the board
-//! or the mobile monitor.
+//! or remote access.
 
 use chrono::{DateTime, Utc};
 

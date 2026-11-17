@@ -54,8 +54,8 @@ export const monitorJa = {
     },
   },
   monitorConnection: {
-    title: 'モバイル接続',
-    intro: '外出先からスマホでボードを確認できます。',
+    title: 'リモート接続',
+    intro: '外出先のスマホやタブレットからボードを開けます。',
     statusOff: '未接続',
     statusStopped: '接続停止中',
     stoppedTitle: '保存した設定で、もう一度接続できます。',
@@ -101,8 +101,8 @@ export const monitorJa = {
     resetToken: 'トークン再設定',
     stop: '接続を停止',
     stopping: '停止しています…',
-    entryTitle: 'モバイル接続',
-    entryBody: 'スマートフォンから進捗を確認できます。',
+    entryTitle: 'リモート接続',
+    entryBody: '外出先のスマホやタブレットから進捗を確認できます。',
     entryAction: '接続設定',
     phone: {
       passcodeTitle: '合言葉を入力',

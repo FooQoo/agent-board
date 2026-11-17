@@ -13,7 +13,7 @@ import {
   toWireTask,
 } from './wire.ts';
 
-// A person checking or unchecking one acceptance condition, from the board or the mobile monitor.
+// A person checking or unchecking one acceptance condition, from the board or remote access.
 
 const ACCEPTANCE_PATH = /^\/api\/projects\/([^/]+)\/tasks\/(\d+)\/acceptance\/([^/]+)$/;
 

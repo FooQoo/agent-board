@@ -31,7 +31,7 @@ export const Notice: Story = {
   args: { feature: 'mobileMonitor' },
   play: async ({ canvasElement }) => {
     const link = within(canvasElement).getByRole('link', { name: 'documentation' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#mobile-monitor`);
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#remote-access`);
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },

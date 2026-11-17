@@ -1,5 +1,5 @@
 //! A person checking or unchecking one acceptance condition, from the board
-//! or the mobile monitor. No version is sent: the person's choice is saved
+//! or remote access. No version is sent: the person's choice is saved
 //! over the latest file (see `FileStore::set_acceptance_done`).
 
 use std::sync::Arc;

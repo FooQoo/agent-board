@@ -255,7 +255,7 @@ test.describe('site sources', () => {
     const dist = path.join(repoRoot, 'docs', '.vitepress', 'dist');
     const source = readRepoFile('docs', '.vitepress', 'redirects.ts');
     const pairs = [...source.matchAll(/\['(guide\/[^']+)', '(guide\/[^']+)'\]/g)].map((m) => [m[1], m[2]]);
-    expect(pairs).toHaveLength(10);
+    expect(pairs).toHaveLength(11);
     for (const [from, to] of pairs.flatMap(([f, t]) => [[f, t], [`ja/${f}`, `ja/${t}`]])) {
       const html = fs.readFileSync(path.join(dist, `${from}.html`), 'utf8');
       expect(html, from).toContain(`<link rel="canonical" href="/agent-board/${to}">`);

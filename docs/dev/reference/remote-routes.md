@@ -1,6 +1,6 @@
 # Entrance routes
 
-The routes served behind the ngrok entrance: the board app, which is the same app and API as on the PC. How the entry, the Host check, sessions, and the tunnel fit together is in [The mobile monitor](../concepts/remote-access.md). The connection settings API is a local route, described in [Web API](./web-api.md#mobile-connection).
+The routes served behind the ngrok entrance: the board app, which is the same app and API as on the PC. How the entry, the Host check, sessions, and the tunnel fit together is in [Remote access](../concepts/remote-access.md). The connection settings API is a local route, described in [Web API](./web-api.md#remote-connection).
 
 ## The board app through the entrance
 
@@ -25,7 +25,7 @@ A phone lists and switches projects the same way the PC does. `GET /api/projects
 
 ## The old monitor addresses are gone
 
-The earlier mobile monitor had its own page, API, and assets under `/monitor/`. None of them is served any more.
+The earlier phone monitor had its own page, API, and assets under `/monitor/`. None of them is served any more.
 
 | Route | Answer |
 | --- | --- |

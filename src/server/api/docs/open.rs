@@ -2,7 +2,7 @@
 //! the project's Docs folder in the computer's file manager; with one it opens
 //! that file in the app the computer uses for it, where the user edits it. The
 //! path is checked like a read (inside the folder, no links, an existing file).
-//! The write guard in `api` checks the request first, and the mobile monitor's
+//! The write guard in `api` checks the request first, and remote access's
 //! router has no such route.
 
 use std::path::Path as FsPath;

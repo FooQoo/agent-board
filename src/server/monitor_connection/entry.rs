@@ -75,7 +75,7 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     }
     strip_untrusted(request.headers_mut());
     let path = request.uri().path().to_owned();
-    // The old mobile monitor's addresses are gone: they are not found, session or none.
+    // The old remote access addresses are gone: they are not found, session or none.
     if path == "/monitor" || path.starts_with("/monitor/") {
         // Read a small body first: a reply that leaves it unread can close the
         // connection while the client is still sending it, and the client sees

@@ -141,11 +141,11 @@ test.describe('in an English browser', () => {
     await expect(header.getByRole('button', { name: 'Settings' })).toBeVisible();
     await expect(header.getByRole('button', { name: 'Docs' })).toHaveCount(0);
 
-    // No mobile connection: there is no `agboard serve` for a phone to reach.
+    // No remote connection: there is no `agboard serve` for a phone to reach.
     await header.getByRole('button', { name: 'Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await expect(settings.getByRole('region', { name: 'Tutorial' })).toBeVisible();
-    await expect(settings.getByText('Mobile connection')).toHaveCount(0);
+    await expect(settings.getByText('Remote connection')).toHaveCount(0);
     await settings.getByRole('button', { name: 'Close' }).click();
 
     // A reload starts again from the sample data, with the guide offered again.

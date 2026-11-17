@@ -35,7 +35,7 @@ Everything below serves one of these two goals. When a protection only restrains
 
 ## The ngrok entrance
 
-Anyone who can open the ngrok address reaches ngrok's Edge first, not the board. The endpoint is opened without a Traffic Policy, because the free ngrok plan rejects one, so the Edge does no sign-in and adds nothing. A request must pass every layer below, in order. The layers and the lifecycle are described in [The mobile monitor](./remote-access.md#authentication-and-write-protection).
+Anyone who can open the ngrok address reaches ngrok's Edge first, not the board. The endpoint is opened without a Traffic Policy, because the free ngrok plan rejects one, so the Edge does no sign-in and adds nothing. A request must pass every layer below, in order. The layers and the lifecycle are described in [Remote access](./remote-access.md#authentication-and-write-protection).
 
 | Layer | What it checks | What it stops |
 | --- | --- | --- |

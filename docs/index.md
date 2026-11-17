@@ -63,7 +63,7 @@ landing:
         steps:
           - { actor: auto, title: Done, text: Moves to Done once every verified condition is met. }
   features:
-    eyebrow: Windows on the work
+    eyebrow: Monitors for the work
     title: Watch and step in from anywhere.
     previewLabel: Public preview
     items:
@@ -78,14 +78,15 @@ landing:
         link: { text: Epics and progress, link: /guide/watch/epics }
         alt: The epic editor with the task progress panel and the Markdown details
       - image: mobile
-        title: Check from your phone
-        text: Away from your desk, watch the work and answer the agent from the mobile monitor.
-        link: { text: Mobile monitor, link: /guide/watch/mobile-monitor }
-        preview: /guide/feature-stages#mobile-monitor
+        title: Check from anywhere
+        text: Away from your desk, open the board on your phone or tablet, watch the work, and answer the agent.
+        link: { text: Remote access, link: /guide/watch/remote-access }
+        preview: /guide/feature-stages#remote-access
+        tabletAlt: "The same board opened on a tablet: the Todo, Doing, and Done lanes side by side, with a waiting task and its Answer the question button"
         alts:
-          - The mobile monitor's card list, with a waiting task and its Answer the question button
-          - A question on the mobile monitor with a choice picked and the Send button
-          - A task open in the bottom drawer of the mobile monitor, on its Conditions tab
+          - The remote access card list, with a waiting task and its Answer the question button
+          - A question on remote access with a choice picked and the Send button
+          - A task open in the bottom drawer of remote access, on its Conditions tab
       - image: docs
         title: Project docs
         text: Open the design notes and specs in your project's docs/ folder right from the board.
@@ -130,7 +131,7 @@ landing:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
       - { title: Set up your agent and a project, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: Open the board, commands: [agboard serve] }
-    note: "Version 1.0.0 includes features in public preview, such as Docs and the mobile monitor. See "
+    note: "Version 1.0.0 includes features in public preview, such as Docs and remote access. See "
     noteLinks:
       - { text: Feature stages, link: /guide/feature-stages }
     noteJoin: " and "

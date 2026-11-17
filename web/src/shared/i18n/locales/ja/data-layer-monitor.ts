@@ -16,7 +16,7 @@ export const dataLayerMonitorJa = {
         title: 'プロジェクトが見つかりません',
         body: '削除されたか、見つからない可能性があります。',
       },
-      guide: 'PCのモバイル接続の設定を開き、QRコードを読み取り直してください。',
+      guide: 'PCのリモート接続の設定を開き、QRコードを読み取り直してください。',
     },
   },
 } as const;

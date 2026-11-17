@@ -7,7 +7,7 @@ const boardSettings = preloadable(() =>
 );
 
 /**
- * The settings dialog of the PC board: language, theme and the mobile connection.
+ * The settings dialog of the PC board: language, theme and the remote connection.
  * The phone monitor uses the plain `settingsSlot`, so it never offers the connection.
  */
 export const boardSettingsSlot: HeaderSettings = {

@@ -129,7 +129,7 @@ const openButton = (card: HTMLElement) =>
 const todoCard = () => screen.getByRole('article', { name: /Todo decision/ });
 const band = () => screen.getByRole('region', { name: 'Unanswered questions' });
 
-describe('mobile monitor lanes and task actions', () => {
+describe('remote access lanes and task actions', () => {
   it('counts tasks once by taskStatus and keeps run state inline', () => {
     render(<Connected />);
 

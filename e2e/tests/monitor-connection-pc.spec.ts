@@ -7,7 +7,7 @@ import {
   type PhoneEntrance,
 } from '../helpers/monitor';
 
-// The PC side of the mobile connection: the settings dialog hands over to the connection dialog,
+// The PC side of the remote connection: the settings dialog hands over to the connection dialog,
 // the connected view shows the QR code and the passcode, and Reset token and Stop connection lead
 // back to the setup. The tunnel is a fake one that opens without any network, so "connected" here
 // proves what the PC dialog shows and does, not a real ngrok connection.
@@ -37,14 +37,14 @@ async function openConnection(page: Page) {
   await page.getByRole('button', { name: 'Connection settings' }).click();
   // The settings dialog closes first: only the connection dialog is on the screen.
   await expect(page.getByRole('dialog')).toHaveCount(1);
-  await expect(page.getByRole('dialog', { name: 'Mobile connection' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Remote connection' })).toBeVisible();
 }
 
 test('the settings dialog closes and the connected dialog shows the QR code and the passcode', async ({ page }) => {
   // The QR code and the copied URL name the selected project, so the board opens on one.
   await page.goto(`${entrance.pcOrigin}/?project=${monitorProjectId(home, 'Alpha')}`);
   await openConnection(page);
-  const dialog = page.getByRole('dialog', { name: 'Mobile connection' });
+  const dialog = page.getByRole('dialog', { name: 'Remote connection' });
   await expect(dialog.getByText('Accepting connections')).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Scan the QR code' })).toBeVisible();
   await expect(dialog.getByRole('img', { name: 'QR code for the phone URL' })).toBeVisible();
@@ -63,7 +63,7 @@ test('the settings dialog closes and the connected dialog shows the QR code and 
 test('Reset token shows the setup without stopping, and closing the dialog keeps the connection', async ({ page }) => {
   await page.goto(`${entrance.pcOrigin}/`);
   await openConnection(page);
-  const dialog = page.getByRole('dialog', { name: 'Mobile connection' });
+  const dialog = page.getByRole('dialog', { name: 'Remote connection' });
   await dialog.getByRole('button', { name: 'Reset token' }).click();
   await expect(dialog.getByText('Not connected')).toBeVisible();
   await expect(dialog.getByLabel('ngrok auth token')).toBeVisible();
@@ -75,13 +75,13 @@ test('Reset token shows the setup without stopping, and closing the dialog keeps
   await expect(page.getByRole('button', { name: 'Settings' })).toBeFocused();
   expect(await status(page)).toBe('ready');
   await openConnection(page);
-  await expect(page.getByRole('dialog', { name: 'Mobile connection' }).getByText('Accepting connections')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Remote connection' }).getByText('Accepting connections')).toBeVisible();
 });
 
 test('Stop connection returns to the setup, and Save and connect connects again with the saved token', async ({ page }) => {
   await page.goto(`${entrance.pcOrigin}/`);
   await openConnection(page);
-  const dialog = page.getByRole('dialog', { name: 'Mobile connection' });
+  const dialog = page.getByRole('dialog', { name: 'Remote connection' });
   await dialog.getByRole('button', { name: 'Stop connection' }).click();
   await expect(dialog.getByText('Not connected')).toBeVisible();
   await expect(dialog.getByLabel('ngrok auth token')).toBeVisible();

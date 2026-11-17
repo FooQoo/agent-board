@@ -17,7 +17,7 @@ export const guideFiles = [
   'delegate/agents',
   'delegate/decisions',
   'watch/board',
-  'watch/mobile-monitor',
+  'watch/remote-access',
   'watch/epics',
   'watch/editing',
   'watch/docs',

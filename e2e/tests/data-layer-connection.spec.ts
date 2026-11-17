@@ -38,7 +38,7 @@ test.afterAll(async () => {
 async function openConnection(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Connection settings' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Mobile connection' });
+  const dialog = page.getByRole('dialog', { name: 'Remote connection' });
   await expect(dialog).toBeVisible();
   return dialog;
 }

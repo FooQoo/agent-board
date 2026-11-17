@@ -8,7 +8,7 @@ import type { Locale } from '@/shared/i18n';
  */
 export const PREVIEW_FEATURES = {
   docs: { anchor: 'docs' },
-  mobileMonitor: { anchor: 'mobile-monitor' },
+  mobileMonitor: { anchor: 'remote-access' },
   listen: { anchor: 'listen' },
 } as const;
 

@@ -88,7 +88,7 @@ fn open_unless_connected(url: &str, board: &BoardPages, grace: Duration) {
 }
 
 /// Whether `serve -d` with `port` and `monitor` asks for something the running
-/// automatic server is not: another port, or a mobile monitor.
+/// automatic server is not: another port, or remote access.
 pub fn conflicts(port: Option<u16>, monitor: Option<&str>, info: &ServeInfo) -> bool {
     monitor.is_some() || port.is_some_and(|port| port != info.port)
 }
