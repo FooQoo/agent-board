@@ -24,9 +24,12 @@ body {
   overscroll-behavior: none;
 }
 
-/* Double-tap must not zoom the page; pinch zoom and panning stay available. */
+/* Double-tap must not zoom the page; pinch zoom and panning stay available. iOS Safari must not
+ * enlarge the text of a wide block, such as a long column of a Markdown table, on its own. */
 html {
   touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* A long press on a control must not select its label or open the iOS callout. Text bodies,

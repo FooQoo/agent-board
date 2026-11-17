@@ -12,6 +12,12 @@ body {
   color: var(--r-text2);
 }
 
+/* iOS Safari must not enlarge the text of a wide block, such as a long table column, on its own. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* The page scrolls inside the frame; the space at the end matches the Docs body. */
 body {
   padding-bottom: 28px;
