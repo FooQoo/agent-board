@@ -28,7 +28,7 @@ brew install fooqoo/tap/agboard
 
 You can hand big work to an AI agent, but it rarely finishes unless someone keeps watching: turning the request into a plan, noticing when it is stuck, catching a question buried in the log, explaining the work again in the next session, and checking at the end that it is really done.
 
-Agent Board is a **work harness** that sits on top of your agent, such as Claude Code or Codex. It does not run the agent. It holds the work as one model that both of you read and write: a plan (epics and tasks in order), acceptance conditions that say when each task is done, questions the agent must stop for, and a history of what happened and why. The model lives in plain files on your machine, with no account or hosted service.
+Agent Board is a **work harness** that sits on top of your agent, such as Claude Code or Codex. It does not run the agent. It holds the work in one place that both of you read and write: a plan (epics and tasks in order), acceptance conditions that say when each task is done, questions the agent must stop for, and a history of what happened and why. It all lives in plain files on your machine, with no account or hosted service.
 
 ```mermaid
 flowchart LR
@@ -50,7 +50,7 @@ You take part in two ways. When the agent stops to ask, you answer wherever is e
 
 ## Windows on the work
 
-The board is one window onto the work, not the product itself.
+The board is one window onto the work, not the whole of it.
 
 - **The board.** Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/watch/board)
 - **Epics and progress.** An epic holds the plan and the order of its tasks, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/watch/epics)

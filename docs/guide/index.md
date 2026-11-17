@@ -22,14 +22,14 @@ Agent Board is built to cut that watching down. It does not run the agent. It gi
 
 ## Agent Board: a work harness
 
-An agent such as Claude Code or Codex already has what it needs to act: tools, context, and a loop. What it lacks is a shared model of the work itself. Agent Board is that layer, a **work harness** that sits on top of your agent. It keeps four things in one place:
+An agent such as Claude Code or Codex already has what it needs to act: tools, context, and a loop. What it lacks is a shared model of the work itself. Agent Board is that layer, a **work harness** that sits on top of your agent. Like a harness on a horse or a climber, it does not supply the power; it gives that power a direction and the points where it must stop. It keeps four things in one place:
 
 - **A plan.** Epics group the work and set its order, and tasks are the pieces that can be reviewed on their own. The agent reads the order to know what to do next.
 - **Acceptance conditions.** Each task says up front what has to be true for it to be finished, and the agent checks them before it calls the task done.
 - **Questions the agent must stop for.** When a decision is yours, the agent asks with choices and waits. The question and your answer are recorded once, whichever window you answer in.
 - **A history.** Every move, question, answer, and check is recorded with its reason, so a new session or a different agent can continue from where the last one stopped, and you can read back what happened.
 
-Everything is stored as plain files on your machine, and you and the agent read and write the same files. See [The work model](./work-model) for the elements, the states, and what the model guarantees.
+Everything is stored as plain files on your machine, and you and the agent read and write the same files. See [The work model](./work-model) for the elements, the states, and what Agent Board guarantees.
 
 ## How delegation works
 
@@ -54,9 +54,9 @@ flowchart LR
 
 [Quickstart](./quickstart) takes you through this once, and [Working with agents](./delegate/agents) describes it in full.
 
-## Windows on the work
+## Watching and answering
 
-The board is not the product; it is one window onto the model. You use the windows to watch the work, and there are two ways to take part.
+The board is one window onto the work. Your phone, the chat, and the CLI show the same work and take the same answers. Wherever you look from, there are two ways to take part.
 
 - **Answer when asked (human in the loop).** When the agent stops for a decision, you answer on the board, on your phone, in the chat, or with the CLI. The answer is recorded once, and the agent resumes. See [Decisions](./delegate/decisions).
 - **Watch and step in (human on the loop).** The agent keeps working while you look. You move a card back, check an acceptance condition, or rewrite a plan, and the agent follows the change the next time it reads the board. See [The board](./watch/board).

@@ -19,7 +19,7 @@ landing:
   problem:
     eyebrow: Why a work harness
     title: Today, handing off means watching over it.
-    lead: You write the plan, catch questions buried in the log, and check whether it is really done. Put the plan, the questions, and the conditions in one model, and you can ask for the work and step away until the agent needs you.
+    lead: You write the plan, catch questions buried in the log, and check whether it is really done. Put the plan, the questions, and the conditions in one place, and you can ask for the work and step away until the agent needs you.
     terminal:
       label: Only in the terminal
       caption: The question scrolls past in the middle of the log.
