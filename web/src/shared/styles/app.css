@@ -36,7 +36,7 @@ html {
  * inputs and textareas are not listed, so they stay selectable. */
 button,
 [role="tab"],
-.question-band__header,
+.message-band__header,
 .mobile-drawer__handle {
   -webkit-user-select: none;
   user-select: none;
@@ -289,13 +289,13 @@ ol {
   padding: 24px;
 }
 
-/* The band of unanswered questions sits above the lanes; the lanes take the height left. */
+/* The band of messages sits above the lanes; the lanes take the height left. */
 .board--with-band {
   display: flex;
   flex-direction: column;
 }
 
-.board--with-band > .question-band {
+.board--with-band > .message-band {
   margin: 24px 24px 0;
 }
 
@@ -1025,6 +1025,8 @@ ol {
 @media (pointer: coarse) {
   .project-switcher {
     min-height: var(--btn-l-h);
+    /* The crowded header may squeeze the name away, but never the finger's target. */
+    min-width: var(--btn-l-h);
   }
 
   /* The label keeps its look; the transparent area around it is what a finger can hit. */
