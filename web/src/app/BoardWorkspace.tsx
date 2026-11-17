@@ -16,13 +16,14 @@ import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
 import { PlanReviewContainer } from '../features/tasks/plans/PlanReviewContainer';
 import type { EpicRef, ProjectId } from '../shared/api/contracts';
+import type { Message } from '../shared/data/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
 /**
- * The board's band of messages, with the list it opens. `onAsk` and `onOpenApproval` are left out
- * until the "Ask AI" dialog and the plan review are wired: the PC band has no Ask button anyway.
+ * The board's band of messages, with the list it opens. An approval row opens the plan review.
+ * The PC band has no Ask button: "Ask AI" is in the header.
  */
-function boardBand(model: AppControllerModel) {
+function boardBand(model: AppControllerModel, onOpenApproval: (message: Message) => void) {
   const { messages, activeId, boardData } = model;
   if (boardData === null || !isProjectId(activeId)) return null;
   return (
@@ -33,6 +34,7 @@ function boardBand(model: AppControllerModel) {
       panel={messages.panel}
       api={messagesApi}
       onChanged={() => model.refreshProject(activeId)}
+      onOpenApproval={onOpenApproval}
       resolveAttachment={(message, id) =>
         message.tasks[0] === undefined
           ? null
@@ -152,7 +154,7 @@ export function BoardWorkspace({
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
             onAnswer={model.messages.openForTask}
-            band={boardBand(model)}
+            band={boardBand(model, (message) => setReviewId(message.id))}
             plans={boardData?.plans}
             onOpenPlan={(plan) => setReviewId(plan.id)}
             onOpenEpic={actions.onOpenEpic}

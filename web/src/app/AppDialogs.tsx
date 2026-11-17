@@ -14,7 +14,7 @@ export function AppDialogs({
   epicApi,
 }: AppDialogsProps) {
   const { t } = useTranslation();
-  const { session, tasks, boardData, projects } = model;
+  const { session, tasks, projects } = model;
   const dialog = session.dialog;
   const operation = session.operation;
   const bulkArchive = session.bulkArchive;

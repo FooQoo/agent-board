@@ -19,6 +19,7 @@ import type {
 } from './contracts';
 import { PlanReviewContainer } from '../../features/tasks/plans/PlanReviewContainer';
 import { plansOfSummary } from '../../features/tasks/plans/model/plan';
+import { AskAiSheet } from '../../features/messages/ask/AskAi';
 import { MonitorView } from './View';
 import { monitorFreshness } from './model/freshness';
 import { selectMonitorTasks } from './model/select';
@@ -116,6 +117,8 @@ export function MonitorScreen({
   const summary = useSummary(projectId);
   const [detailOpen, setDetailOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
+  // The phone band's "Ask AI" sheet.
+  const [asking, setAsking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
@@ -124,7 +127,7 @@ export function MonitorScreen({
   // in it as it happens. Reloading for a new build waits for either, since a reload would lose an
   // answer being written.
   usePresentationHold(detailOpen, 'drawer');
-  useBuildReload(build, detailOpen || messagesOpen);
+  useBuildReload(build, detailOpen || messagesOpen || asking);
 
   const gone = httpStatusOf(summary.error) === 404;
   useEffect(() => {
@@ -170,6 +173,7 @@ export function MonitorScreen({
     messagesApi,
     // Answers are shown at once: the Summary is read again without waiting for the hold.
     onMessagesChanged: () => void summary.refresh(),
+    onAsk: () => setAsking(true),
     readResolvers,
     preferences,
     settings,
@@ -196,5 +200,16 @@ export function MonitorScreen({
       />
     ),
   };
-  return <MonitorView {...props} />;
+  return (
+    <>
+      <MonitorView {...props} />
+      {asking && (
+        <AskAiSheet
+          projectId={projectId}
+          onClose={() => setAsking(false)}
+          onSent={() => void summary.refresh()}
+        />
+      )}
+    </>
+  );
 }

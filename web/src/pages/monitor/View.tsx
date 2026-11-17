@@ -101,7 +101,10 @@ export function MonitorView(props: MonitorViewProps) {
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
           onAsk={props.onAsk}
-          onOpenApproval={props.onOpenApproval}
+          onOpenApproval={(message) => {
+            props.onOpenApproval?.(message);
+            setReviewId(message.id);
+          }}
           resolveAttachment={resolveAttachment}
         />
       )}
