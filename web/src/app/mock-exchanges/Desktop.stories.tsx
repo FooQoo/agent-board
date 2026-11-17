@@ -44,7 +44,7 @@ export const AskAiDialogFilled: Story = {
 export const BandAndPlanCard: Story = {
   args: { scenario: 'newEpic' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('region', { name: 'Exchanges' })).toBeVisible();
+    await expect(within(canvasElement).getByRole('region', { name: 'Messages' })).toBeVisible();
     await expect(within(canvasElement).getByText('Review and start')).toBeVisible();
   },
 };
@@ -62,7 +62,7 @@ export const AllApprovals: Story = { args: { scenario: 'all' } };
 export const PanelAiQuestions: Story = {
   args: { initial: { kind: 'panel', tab: 'fromAi' } },
   play: async () => {
-    await expect(await page().findByRole('dialog', { name: 'Exchanges' })).toBeInTheDocument();
+    await expect(await page().findByRole('dialog', { name: 'Messages' })).toBeInTheDocument();
   },
 };
 

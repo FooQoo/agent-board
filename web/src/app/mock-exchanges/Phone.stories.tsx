@@ -20,7 +20,7 @@ const page = () => within(document.body);
 /** 7. The band above the lanes, with the plan card at the top of Todo. */
 export const BandAndLanes: Story = {
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('region', { name: 'Exchanges' })).toBeVisible();
+    await expect(within(canvasElement).getByRole('region', { name: 'Messages' })).toBeVisible();
   },
 };
 
@@ -28,7 +28,7 @@ export const BandAndLanes: Story = {
 export const PanelSheet: Story = {
   args: { initial: { kind: 'panel', tab: 'fromAi' } },
   play: async () => {
-    await expect(await page().findByRole('dialog', { name: 'Exchanges' })).toBeInTheDocument();
+    await expect(await page().findByRole('dialog', { name: 'Messages' })).toBeInTheDocument();
   },
 };
 
