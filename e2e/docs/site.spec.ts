@@ -84,7 +84,7 @@ for (const lang of langs) {
     const landing = page.locator('.landing');
     await expect(landing.locator('h1')).toHaveCount(1);
     await expect(landing.locator('h1')).toHaveText(
-      en ? /^Delegate big work\.\s*Stop babysitting it\.$/ : /^大きな仕事を任せて、\s*張り付くのはやめよう。$/,
+      en ? /^Delegate big work\.\s*Stop babysitting it\.$/ : /^頼むだけで、\s*計画から完了まで\s*AIが進めてくれる。$/,
     );
 
     // The install command is shown and copied as plain text.

@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
 
-**大きな仕事を任せて、張り付くのはやめよう。**
+**頼むだけで、計画から完了までAIが進めてくれる。**
 
 Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を受入条件つきの計画に直し、一度の承認で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
 

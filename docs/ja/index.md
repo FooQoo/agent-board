@@ -9,7 +9,7 @@ landing:
     label: コマンドをコピー
     done: コピーしました
   hero:
-    title: "大きな仕事を任せて、\n張り付くのはやめよう。"
+    title: "頼むだけで、\n計画から完了まで\nAIが進めてくれる。"
     lead: Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を受入条件つきの計画に直し、一度の承認で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
     install: brew install fooqoo/tap/agboard
     primary: { text: はじめる, link: /ja/guide/getting-started }
