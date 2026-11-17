@@ -10,7 +10,7 @@ export function fixtureText(ja: boolean) {
 
 ログインの作り直しで、保存済みのパスワードのハッシュ形式が変わります。切り替え方を決めてください。
 
-![現在のログイン画面](attachment:${ATTACHMENT_ID})
+![いまの画面](attachment:${ATTACHMENT_ID})
 
 残す場合は、初回ログイン時に新しい形式へ変換します。消す場合は、全員にパスワードの再設定をお願いします。`,
         keep: '残す(初回ログイン時に変換)',
@@ -26,9 +26,11 @@ export function fixtureText(ja: boolean) {
 - ログインボタンの下に「パスワードを忘れた方」のリンク
 - 押すとメールアドレスの入力画面へ
 
-![ログイン画面の下書き](attachment:${ATTACHMENT_ID})`,
+![いまの画面](attachment:${ATTACHMENT_ID})`,
         r11: 'ダークモードで表の罫線が見えにくい',
         r11Body: 'ダークモードで、表の罫線が背景に溶けて見えにくいです。',
+        askDraft:
+          '## パスワードを忘れたとき\n\nログイン画面に、パスワードを忘れた人が戻れる導線を足してください。\n\n![](draft.png)',
         q9: 'リリースノートは英語だけでよいですか',
         goal: 'ログイン画面を作り直し、パスワードを忘れたときも自分で復旧できるようにする。',
         goalMore:
@@ -59,7 +61,7 @@ export function fixtureText(ja: boolean) {
 
 Rebuilding the login changes the hash format of stored passwords. Decide how to switch over.
 
-![Current login screen](attachment:${ATTACHMENT_ID})
+![Current screen](attachment:${ATTACHMENT_ID})
 
 If you keep it, each account is converted at its next login. If you drop it, everyone is asked to reset their password.`,
         keep: 'Keep (convert at next login)',
@@ -75,9 +77,11 @@ If you keep it, each account is converted at its next login. If you drop it, eve
 - A "Forgot your password?" link under the login button
 - It opens a screen to enter an email address
 
-![Draft of the login screen](attachment:${ATTACHMENT_ID})`,
+![Current screen](attachment:${ATTACHMENT_ID})`,
         r11: 'Table borders are hard to see in dark mode',
         r11Body: 'In dark mode the table borders blend into the background.',
+        askDraft:
+          '## Forgotten password\n\nAdd a way back on the login screen for people who forgot their password.\n\n![](draft.png)',
         q9: 'Are English-only release notes enough?',
         goal: 'Rebuild the login screen so people can recover a forgotten password by themselves.',
         goalMore:

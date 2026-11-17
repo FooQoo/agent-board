@@ -16,6 +16,7 @@ import {
   type Plan,
   type Scenario,
 } from './data';
+import { fixtureText } from './fixture-text';
 import { ExchangeBand } from './ExchangeBand';
 import { ExchangePanel, type ExchangeTab } from './ExchangePanel';
 import { DraftTaskCard, PlanCard } from './PlanCards';
@@ -26,7 +27,7 @@ import './exchanges-mock.css';
 /** What is open above the screen. */
 export type Overlay =
   | { kind: 'none' }
-  | { kind: 'ask'; text?: string; images?: number }
+  | { kind: 'ask'; text?: string; images?: number; draft?: boolean }
   | { kind: 'panel'; tab?: ExchangeTab; openId?: string }
   | { kind: 'review'; planId: string };
 
@@ -201,7 +202,11 @@ export function ExchangesScreen({
         </main>
       )}
       {overlay.kind === 'ask' && (
-        <AskAiDialog onClose={close} initialText={overlay.text} initialImages={overlay.images} />
+        <AskAiDialog
+          onClose={close}
+          initialText={overlay.draft ? fixtureText(ja).askDraft : overlay.text}
+          initialImages={overlay.images}
+        />
       )}
       {overlay.kind === 'panel' && (
         <ExchangePanel

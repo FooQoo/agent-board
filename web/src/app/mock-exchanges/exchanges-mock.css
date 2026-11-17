@@ -355,6 +355,15 @@
   justify-content: flex-end;
 }
 
+[data-slot="dialog-content"].xmodal:focus,
+.xsurface__body:focus {
+  outline: none;
+}
+
+.mobile-drawer.xsheet .mobile-drawer__identity {
+  font-family: inherit;
+}
+
 /* ---- Plan card, draft card ---- */
 
 .xplan {

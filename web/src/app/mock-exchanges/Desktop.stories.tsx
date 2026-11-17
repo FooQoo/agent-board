@@ -34,7 +34,7 @@ export const AskAiDialogFilled: Story = {
   args: {
     initial: {
       kind: 'ask',
-      text: '## Forgotten password\n\nAdd a way back on the login screen for people who forgot their password.\n\n![](draft.png)',
+      draft: true,
       images: 2,
     },
   },

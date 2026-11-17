@@ -155,6 +155,13 @@ function RequestDetail({ exchange, onBack }: { exchange: MockExchange; onBack: (
         question={exchange.body ?? exchange.title}
         resolveAttachment={resolveAttachment}
       />
+      {exchange.turn === 'ai' && (
+        <div className="xdetail__bar">
+          <Button type="button" variant="outline" className="xdetail__withdraw" onClick={onBack}>
+            {m.withdraw}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

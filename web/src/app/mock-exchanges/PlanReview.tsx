@@ -114,7 +114,7 @@ export function PlanReview({
           </section>
         )}
         <section className="xreview__section">
-          <h4>{m.reviewTasks}</h4>
+          <h4>{plan.tasks.length === 1 ? m.reviewTaskSingle : m.reviewTasks}</h4>
           <ol className="xreview__tasks">
             {plan.tasks.map((task, index) => (
               <li key={task.id}>

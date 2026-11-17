@@ -38,8 +38,11 @@ export function Surface({
         title={title}
         closeLabel={m.close}
         className={`xsheet ${className}`.trim()}
+        initialFocusSelector=".xsurface__body"
       >
-        <div className="xsurface__body">{children}</div>
+        <div className="xsurface__body" tabIndex={-1}>
+          {children}
+        </div>
         {footer && <div className="xsurface__footer">{footer}</div>}
       </Drawer>
     );
@@ -50,6 +53,12 @@ export function Surface({
         className={`modal xmodal ${className}`.trim()}
         showCloseButton={false}
         aria-describedby={undefined}
+        onOpenAutoFocus={(event) => {
+          // The dialog itself takes the focus, so no button shows a ring on open.
+          event.preventDefault();
+          if (event.currentTarget instanceof HTMLElement)
+            event.currentTarget.focus({ preventScroll: true });
+        }}
       >
         <div className="modal__header">
           <DialogTitle className="modal__title">{title}</DialogTitle>
