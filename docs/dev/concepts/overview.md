@@ -1,6 +1,23 @@
 # How Agent Board works
 
-Start here. This page gives you the mental model: what runs, where the data lives, and how one change travels from an agent to the browser. The other concept pages go deeper into each part.
+Start here. This page gives you the mental model: what Agent Board is for, what runs, where the data lives, and how one change travels from an agent to the browser. The other concept pages go deeper into each part.
+
+## Two layers of harness
+
+An AI agent such as Claude Code or Codex runs inside its own **harness**: the tools it can call, the context it holds, and the loop that drives it. That harness decides how the agent works inside one session. It does not decide what the work is, when it is finished, or when to ask a person, and it does not outlive the session.
+
+Agent Board is a **work harness** on top of it. It keeps the plan, the acceptance conditions that say when a task is finished, the questions that stop the agent until a person answers, and the history that lets the next session continue. These live in files, outside any one agent, so a different agent or a new session can pick the work up where the last one stopped.
+
+```mermaid
+flowchart LR
+    Agent["Agent harness<br/>tools, context, loop"] --> Work["Agent Board<br/>plan, conditions,<br/>questions, history"]
+    Work --> Windows["Windows<br/>board, phone, chat, CLI"]
+    Person["Person"] --> Windows
+```
+
+The board, the phone monitor, the chat, and the `agboard` command are windows onto the same work model, not separate features. Each one reads and writes the same files through the same operations, so a rule holds the same way whichever window you use. [The work model in code](./work-model.md) lists those rules, where the code enforces each one, and which parts still rely on the agent. The user's view of the model is in [The work model](../../guide/work-model.md).
+
+The rest of this page describes the implementation that carries the model.
 
 ## The big picture
 
