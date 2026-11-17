@@ -163,5 +163,6 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 created_at: q.created_at.clone(),
             })
             .collect(),
+        messages: projection.messages.clone(),
     }
 }

@@ -135,6 +135,10 @@ pub enum AgboardError {
     QuestionWithdrawn {
         ids: Vec<String>,
     },
+    /// A start was refused: these questions about the draft have no reply yet. Nothing was written.
+    StartBlockedByQuestions {
+        ids: Vec<String>,
+    },
     /// No question or request has this ID.
     MessageNotFound {
         id: String,

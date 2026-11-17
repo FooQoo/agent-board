@@ -77,6 +77,10 @@ fn messages_and_reasons_follow_the_design_table() {
             "A withdrawn question takes no answer. Ask a new question if one is still needed.",
         ),
         (
+            "cannot start while Q-2 has no answer.",
+            "Answer the questions (the board, or \"agboard message answer\"), then start again.",
+        ),
+        (
             "message Q-3 not found.",
             "Run \"agboard message ls --status all\" to see the messages of the project.",
         ),

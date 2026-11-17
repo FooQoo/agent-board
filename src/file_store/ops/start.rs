@@ -11,6 +11,7 @@ use crate::file_store::history_language::HistoryLanguage;
 use crate::file_store::io;
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, HistoryRecord, TaskFile, TaskView};
+use crate::file_store::qa::{MessageState, QaIndex, question_number};
 use crate::file_store::reader;
 use crate::file_store::transaction::{FileChange, save_batch_locked};
 use crate::file_store::validate::EpicId;
@@ -32,12 +33,23 @@ pub struct EpicStarted {
 /// anything is written. `epic` is set when an epic is started, and `tasks` holds
 /// the AI-draft tasks that the start would clear.
 fn ensure_startable(
-    _shared: &Path,
-    _project: &ProjectId,
+    shared: &Path,
+    project: &ProjectId,
     _epic: Option<&EpicId>,
-    _tasks: &[i64],
+    tasks: &[i64],
 ) -> Result<(), AgboardError> {
-    Ok(())
+    let project_dir = layout::project_dir(shared, project);
+    let index = QaIndex::load(shared, &project_dir)?;
+    let mut open: Vec<_> = index
+        .questions()
+        .filter(|q| q.state() == MessageState::Open && q.tasks.iter().any(|t| tasks.contains(t)))
+        .map(|q| q.id.clone())
+        .collect();
+    if open.is_empty() {
+        return Ok(());
+    }
+    open.sort_by_key(|id| question_number(id).unwrap_or(i64::MAX));
+    Err(AgboardError::StartBlockedByQuestions { ids: open })
 }
 
 fn ensure_person(actor: Actor) -> Result<(), AgboardError> {

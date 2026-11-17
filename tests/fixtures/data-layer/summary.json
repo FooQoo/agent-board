@@ -74,5 +74,29 @@
       "referencedBy": [303],
       "createdAt": "2026-10-22T10:01:00Z"
     }
+  ],
+  "messages": [
+    {
+      "id": "Q-1",
+      "type": "question",
+      "from": "ai",
+      "to": "human",
+      "turn": "human",
+      "title": "Pick the transport.",
+      "createdAt": "2026-10-22T10:01:00Z",
+      "tasks": [303],
+      "epicId": null
+    },
+    {
+      "id": "EPIC-1",
+      "type": "approval",
+      "from": "ai",
+      "to": "human",
+      "turn": "human",
+      "title": "Data layer",
+      "createdAt": "2026-10-22T09:45:32Z",
+      "tasks": [302],
+      "epicId": "EPIC-1"
+    }
   ]
 }

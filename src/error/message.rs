@@ -63,6 +63,9 @@ impl AgboardError {
             AgboardError::QuestionWithdrawn { ids } => {
                 format!("{} withdrawn.", ids.join(", "))
             }
+            AgboardError::StartBlockedByQuestions { ids } => {
+                format!("cannot start while {} has no answer.", ids.join(", "))
+            }
             AgboardError::MessageNotFound { id } => format!("message {id} not found."),
             AgboardError::MessageClosed { id } => {
                 format!("message {id} already has its reply.")

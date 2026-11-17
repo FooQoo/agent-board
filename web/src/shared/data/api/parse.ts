@@ -7,6 +7,7 @@ import type {
   Summary,
   SummaryEpic,
   SummaryProblem,
+  Message,
   SummaryQuestion,
   SummaryTask,
 } from './contracts';
@@ -132,6 +133,34 @@ function parseProblem(value: unknown, path: string): SummaryProblem {
   };
 }
 
+const MESSAGE_TYPES = ['question', 'request', 'approval'] as const;
+const PARTIES = ['ai', 'human'] as const;
+
+function parseMessage(value: unknown, path: string): Message {
+  const o = exact(value, path, [
+    'id',
+    'type',
+    'from',
+    'to',
+    'turn',
+    'title',
+    'createdAt',
+    'tasks',
+    'epicId',
+  ]);
+  return {
+    id: str(o.id, `${path}.id`),
+    type: oneOf(o.type, `${path}.type`, MESSAGE_TYPES),
+    from: oneOf(o.from, `${path}.from`, PARTIES),
+    to: oneOf(o.to, `${path}.to`, PARTIES),
+    turn: o.turn === null ? null : oneOf(o.turn, `${path}.turn`, PARTIES),
+    title: str(o.title, `${path}.title`),
+    createdAt: str(o.createdAt, `${path}.createdAt`),
+    tasks: list(o.tasks, `${path}.tasks`, (v, q) => int(v, q, 1)),
+    epicId: nullableStr(o.epicId, `${path}.epicId`),
+  };
+}
+
 function parseQuestion(value: unknown, path: string): SummaryQuestion {
   const o = exact(value, path, ['id', 'title', 'recommendedChoiceId', 'referencedBy', 'createdAt']);
   return {
@@ -149,7 +178,7 @@ export function parseSummary(value: unknown): Summary {
     value,
     'summary',
     ['project', 'version', 'tasks', 'epics', 'problems'],
-    ['questions'],
+    ['questions', 'messages'],
   );
   const project = exact(o.project, 'summary.project', ['id', 'name']);
   const summary: Summary = {
@@ -164,6 +193,9 @@ export function parseSummary(value: unknown): Summary {
   };
   if (o.questions !== undefined) {
     summary.questions = list(o.questions, 'summary.questions', parseQuestion);
+  }
+  if (o.messages !== undefined) {
+    summary.messages = list(o.messages, 'summary.messages', parseMessage);
   }
   return summary;
 }
