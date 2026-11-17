@@ -13,6 +13,8 @@ use crate::server::messages::{
 };
 use crate::server::messages_send::send_request;
 use crate::server::request::ApiJson;
+use crate::server::response::{agboard_error_response, file_response};
+use crate::server::store::{parse_project_id, with_files};
 
 pub(super) async fn message_detail(
     State(state): State<Arc<AppState>>,
@@ -56,4 +58,24 @@ pub(super) async fn message_send_request(
     multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
 ) -> Response {
     send_request(headers, state, project, multipart).await
+}
+
+/// `GET …/messages/{id}/attachments/{name}`: an image sent with a message. The name is the
+/// file name the body refers to as `attachments/<name>`.
+pub(super) async fn message_attachment(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, id, name)): Path<(String, String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    match with_files(&state, move |store| {
+        store.message_attachment(&project_id, &id, &name)
+    })
+    .await
+    {
+        Ok((media_type, bytes)) => file_response(&media_type, bytes),
+        Err(error) => agboard_error_response(&error),
+    }
 }
