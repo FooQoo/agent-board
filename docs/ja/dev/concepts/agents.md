@@ -70,7 +70,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 人からの依頼がエージェントに届く場所は三つあります。進行表の`requests`配列、Hookが出す同じ進行表、そして`wait --until task`の`requests`結果です。依頼は、エージェントが`message accept`で引き受けるか、人が取り下げるまで未処理です。依頼が新しく届く、受理される、取り下げられると、プロジェクトの`messages`リソースが変わるので、待ち受け中のエージェントは新しいタスクと同じ`changed`イベントで起きます。waitはタスクより先に未処理の依頼を返し、どれかが受理されるまで同じ依頼を返し続けます。受理は明示の操作なので、waitが返しただけで依頼が引き受けられることはありません。未処理の依頼があってもタスクはPendingになりません。Pendingになるのは、未回答の質問か、読めないメッセージファイルがあるときだけです。
 
-一つのセッションで続けて作業する手順として、タスク情報の補完、承認確認、回答待ち、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md)に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
+一つのセッションで続けて作業する手順として、タスク情報の補完、計画の確認、回答待ち、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md)に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
 ## 自動Done
 

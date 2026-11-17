@@ -61,7 +61,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 
 ## Drafts
 
-A draft is a task or epic that is not put to work yet. `draft` says who still owns it: `null` (a normal task), `"human"` (a person is writing it in the browser), or `"ai"` (an agent proposed it, and only a person can start it). Files of earlier versions hold `isDraft`; `true` reads as `human` and `false` as `null`, and writing uses `draft` only. Drafts never expire, and `wait` and automatic Done skip every draft.
+A draft is a task or epic that is not put to work yet. `draft` says who still owns it: `null` (a normal task), `"human"` (a person is writing it in the browser), or `"ai"` (an agent proposed it, and only a person can start it). The stored field is described in [Shared files](../reference/files.md). Drafts never expire, and `wait` and automatic Done skip every draft.
 
 - A task or epic an agent creates (CLI `add` and `epic add`, whoever it is assigned to) is an AI draft. What a person creates is `null`, or `human` when the browser creates it as a draft.
 - The preview enters a person's draft at its first real change: `PUT /tasks/{id}/draft` with `draft: "human"` for a task, and `PATCH /epics/{id}` with `draft: "human"` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either. A person who edits an AI proposal enters `human` the same way and saves with `draft: "ai"`, which returns it to the proposal.

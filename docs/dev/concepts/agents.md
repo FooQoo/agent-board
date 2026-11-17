@@ -70,7 +70,7 @@ The selector uses `ordered_tasks`, the same ordering as the progress table: epic
 
 A person's request reaches an agent in three places: the `requests` array of the progress table, the same table in the hook, and the `requests` result of `wait --until task`. A request is open until an agent accepts it with `message accept` or the person withdraws it. A new, accepted, or withdrawn request changes the project's `messages` resource, so a listening agent wakes on the same `changed` event as for a new task. The wait returns open requests before tasks and returns the same ones again until one is accepted; accepting is explicit, so a request is never taken because a wait returned it. An open request does not make any task Pending: only an open question or an unreadable message file does.
 
-For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md) describes task enrichment, approval checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
+For one-session orchestration, the [agent-board listener procedure](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md) describes task enrichment, plan checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
 
 ## Automatic Done
 
