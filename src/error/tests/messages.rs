@@ -41,6 +41,14 @@ fn messages_and_reasons_follow_the_design_table() {
             "Wait for the user to finalize it, then try again.",
         ),
         (
+            "task #5 is an AI draft; a person starts it instead.",
+            "Start the task (or its epic) instead of finalizing it.",
+        ),
+        (
+            "start is for a person only.",
+            "Ask the user to do this in the web UI or run it with --actor human.",
+        ),
+        (
             "task #5 is done and read-only for agents.",
             "A person must move the task out of Done before you can change it.",
         ),

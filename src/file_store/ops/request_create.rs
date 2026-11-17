@@ -101,7 +101,7 @@ impl FileStore {
             task_status: Column::Todo,
             agent_status: RunState::Idle,
             position,
-            is_draft: false,
+            draft: None,
             archived_at: None,
             request_answers: Vec::new(),
             created_at: at,

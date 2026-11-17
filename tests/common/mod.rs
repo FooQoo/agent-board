@@ -86,7 +86,7 @@ pub fn demo_project(home: &Path) {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");

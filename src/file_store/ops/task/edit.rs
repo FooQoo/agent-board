@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Actor, Changed, ProjectId, validate_title};
+use crate::domain::{Actor, Changed, Draft, ProjectId, validate_title};
 use crate::error::AgboardError;
 use crate::file_store::history_language::HistoryLanguage;
 use crate::file_store::model::TaskView;
@@ -17,7 +17,7 @@ use super::{normalize_description, view};
 
 impl FileStore {
     /// Change the title and/or the body of a task that is neither archived nor
-    /// a draft. An unchanged value changes nothing and writes nothing.
+    /// a person's draft. An AI draft can be edited. An unchanged value changes nothing and writes nothing.
     pub fn edit_task(
         &self,
         project: &ProjectId,
@@ -34,7 +34,7 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        if task.is_draft {
+        if task.draft == Some(Draft::Human) {
             return Err(AgboardError::TaskIsDraft { id });
         }
         ensure_ai_task_not_done(&task, Actor::Ai)?;
@@ -70,7 +70,7 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        if task.is_draft {
+        if task.draft == Some(Draft::Human) {
             return Err(AgboardError::TaskIsDraft { id });
         }
         ensure_ai_task_not_done(&task, Actor::Ai)?;
@@ -110,6 +110,29 @@ impl FileStore {
         finalize: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
+        self.edit_draft_task_to(
+            project,
+            id,
+            title,
+            description,
+            finalize.then_some(None),
+            now,
+        )
+    }
+
+    /// Like `edit_draft_task`, with the draft the task ends as: `None` saves and
+    /// keeps the draft, `Some(None)` finalizes it, and `Some(Some(Draft::Ai))`
+    /// returns a person's edit of an AI proposal to that proposal. An AI draft
+    /// cannot be finalized: it is started with `start_task`.
+    pub fn edit_draft_task_to(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        description: Option<&str>,
+        finalize: Option<Option<Draft>>,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
@@ -118,12 +141,14 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        if !task.is_draft {
+        let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
-        }
+        };
+        let current = Some(owner);
+        let target = resolve_finalize(id, owner, finalize)?;
         let (text_changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
-        if !text_changed && !finalize {
+        if !text_changed && target == current {
             return Ok(Changed {
                 value: view(shared, project, id)?,
                 changed: false,
@@ -133,11 +158,11 @@ impl FileStore {
         if text_changed {
             task.updated_at = at;
         }
-        if finalize {
-            task.is_draft = false;
+        if target != current {
+            task.draft = target;
             task.history.push(draft_event(
                 &task,
-                false,
+                target,
                 false,
                 at,
                 match markdown.as_deref() {
@@ -165,6 +190,19 @@ impl FileStore {
         finalize: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
+        self.edit_draft_task_parts_to(project, id, title, parts, finalize.then_some(None), now)
+    }
+
+    /// `edit_draft_task_to` for body and acceptance parts.
+    pub fn edit_draft_task_parts_to(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        title: Option<&str>,
+        parts: TaskTextParts<'_>,
+        finalize: Option<Option<Draft>>,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
@@ -172,9 +210,11 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        if !task.is_draft {
+        let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
-        }
+        };
+        let current = Some(owner);
+        let target = resolve_finalize(id, owner, finalize)?;
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
             shared,
@@ -184,7 +224,7 @@ impl FileStore {
             parts.acceptance,
         )?;
         let text_changed = title_changed || markdown.is_some();
-        if !text_changed && !finalize {
+        if !text_changed && target == current {
             return Ok(Changed {
                 value: view(shared, project, id)?,
                 changed: false,
@@ -197,11 +237,11 @@ impl FileStore {
         if let Some(title) = title {
             task.title = title;
         }
-        if finalize {
-            task.is_draft = false;
+        if target != current {
+            task.draft = target;
             task.history.push(draft_event(
                 &task,
-                false,
+                target,
                 false,
                 at,
                 match markdown.as_deref() {
@@ -217,5 +257,23 @@ impl FileStore {
             value: view(shared, project, id)?,
             changed: true,
         })
+    }
+}
+
+/// The draft a saved edit leaves: the current one when `finalize` is `None`.
+/// Finalizing an AI draft is refused, because only starting it clears it.
+fn resolve_finalize(
+    id: i64,
+    current: Draft,
+    finalize: Option<Option<Draft>>,
+) -> Result<Option<Draft>, AgboardError> {
+    match finalize {
+        None => Ok(Some(current)),
+        Some(None) if current == Draft::Ai => Err(AgboardError::AiDraftNeedsStart {
+            target: format!("task #{id}"),
+        }),
+        Some(None) => Ok(None),
+        Some(Some(Draft::Ai)) => Ok(Some(Draft::Ai)),
+        Some(Some(Draft::Human)) => Ok(Some(Draft::Human)),
     }
 }

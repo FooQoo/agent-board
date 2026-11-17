@@ -29,7 +29,7 @@ pub struct TaskSummaryFields {
     pub task_status: Column,
     pub agent_status: RunState,
     pub assignee: Assignee,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     pub position: i64,
     pub epic_id: Option<String>,
     pub acceptance_done: u32,
@@ -70,7 +70,7 @@ pub struct EpicSummaryFields {
     pub id: String,
     pub name: String,
     pub color: String,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     /// The epic's task order (EPIC.md `priority`) and whether it could not be read.
     pub priority: Vec<i64>,
     pub priority_error: bool,

@@ -24,6 +24,8 @@ impl AgboardError {
             AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
             AgboardError::TaskIsDraft { .. } => "task_is_draft",
             AgboardError::EpicIsDraft { .. } => "epic_is_draft",
+            AgboardError::AiDraftNeedsStart { .. } => "ai_draft_needs_start",
+            AgboardError::HumanOnly { .. } => "human_only",
             AgboardError::TaskIsDone { .. } => "task_is_done",
             AgboardError::AcceptanceUnmet { .. } => "acceptance_unmet",
             AgboardError::TaskNotDraft { .. } => "task_not_draft",

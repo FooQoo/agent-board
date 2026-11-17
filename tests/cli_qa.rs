@@ -271,7 +271,7 @@ fn questions_are_listed_shown_and_linked_to_tasks() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");

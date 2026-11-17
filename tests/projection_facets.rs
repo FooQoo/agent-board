@@ -47,7 +47,7 @@ impl Fx {
                     id: "ALPHA".into(),
                     name: "Alpha epic".into(),
                     color: Some("#336699".into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 at(1),
@@ -61,7 +61,7 @@ impl Fx {
                     description: common::BODY.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Human,
-                    is_draft: false,
+                    draft: None,
                 },
                 at(2),
             )
@@ -501,7 +501,7 @@ fn add_second_task(fx: &Fx) {
                 description: common::BODY.into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             at(3),
         )

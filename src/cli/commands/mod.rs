@@ -19,6 +19,7 @@ pub mod serve_auto;
 pub mod setup;
 pub mod show;
 pub mod snapshot;
+pub mod start;
 pub mod state;
 pub mod stop;
 pub mod workspace;

@@ -62,7 +62,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
                 "--assignee",
                 "ai",
                 "--actor",
-                "ai"
+                "human"
             ]
         )
         .status
@@ -265,7 +265,7 @@ fn a_change_to_another_project_does_not_end_the_wait() {
     let added = agboard_for(
         home.path(),
         "Other",
-        &["add", "Elsewhere", "--assignee", "ai", "--actor", "ai"],
+        &["add", "Elsewhere", "--assignee", "ai", "--actor", "human"],
     );
     assert!(added.status.success());
     let output = waiter.wait_with_output().unwrap();

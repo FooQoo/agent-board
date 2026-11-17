@@ -130,7 +130,7 @@ fn select(snapshot: &ProjectSnapshot) -> Option<&TaskView> {
             task.assignee == Assignee::Ai
                 && matches!(task.task_status, Column::Todo | Column::Doing)
                 && task.agent_status == RunState::Idle
-                && !task.is_draft
+                && task.draft.is_none()
                 && task.archived_at.is_none()
         })
 }

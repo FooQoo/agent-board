@@ -280,7 +280,7 @@ fn a_manual_server_and_a_question_open_nothing() {
         "--assignee",
         "ai",
         "--actor",
-        "ai",
+        "human",
     ]);
     assert!(added.status.success(), "{added:?}");
     let asked = board.run(&[

@@ -48,6 +48,12 @@ impl AgboardError {
             AgboardError::EpicIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
+            AgboardError::AiDraftNeedsStart { .. } => {
+                "Start the task (or its epic) instead of finalizing it.".into()
+            }
+            AgboardError::HumanOnly { .. } => {
+                "Ask the user to do this in the web UI or run it with --actor human.".into()
+            }
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
             }

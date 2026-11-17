@@ -252,7 +252,7 @@ fn commands_that_do_not_need_the_server_start_none() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
         vec!["--project", "Auto", "ls"],
         vec!["--project", "Auto", "progress"],
@@ -289,7 +289,7 @@ fn a_question_that_waits_starts_the_server_before_it_is_saved() {
         "--assignee",
         "ai",
         "--actor",
-        "ai",
+        "human",
     ]);
     assert!(added.status.success(), "{added:?}");
     let asked = board.run(&[

@@ -80,7 +80,11 @@ fn write_task(out: &mut String, task: &ProgressTask) {
         RunState::Running => "running",
         RunState::Pending => "pending",
     };
-    let draft = if task.is_draft { ", draft" } else { "" };
+    let draft = match task.draft {
+        None => "",
+        Some(crate::domain::Draft::Human) => ", draft",
+        Some(crate::domain::Draft::Ai) => ", AI draft",
+    };
     let _ = writeln!(
         out,
         "  #{} {} [{assignee}, {column}, {state}{draft}] acceptance {}/{}",

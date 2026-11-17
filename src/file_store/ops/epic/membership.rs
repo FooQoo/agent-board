@@ -65,7 +65,7 @@ impl FileStore {
             if task.archived_at.is_some() {
                 return Err(AgboardError::TaskArchived { id: task_id });
             }
-            if task.is_draft {
+            if task.draft == Some(crate::domain::Draft::Human) {
                 return Err(AgboardError::TaskIsDraft { id: task_id });
             }
         }

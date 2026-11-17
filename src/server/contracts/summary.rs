@@ -51,7 +51,7 @@ pub struct SummaryTask {
     pub task_status: Column,
     pub agent_status: RunState,
     pub assignee: Assignee,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     pub position: i64,
     pub epic_id: Option<String>,
     pub acceptance: AcceptanceCount,
@@ -105,7 +105,7 @@ pub struct SummaryEpic {
     pub name: String,
     /// `#RRGGBB`.
     pub color: String,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     /// The IDs of the epic's tasks in the order the epic sets; empty when it sets none.
     pub priority: Vec<i64>,
     /// The stored order cannot be read, so it is ignored.

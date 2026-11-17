@@ -71,8 +71,8 @@ impl Fixture {
                     title: "Task".into(),
                     description: description.into(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 Utc.with_ymd_and_hms(2026, 10, 14, 0, 0, 0).unwrap(),
             )
@@ -149,7 +149,7 @@ fn malformed_history_keeps_body_and_acceptance_but_blocks_updates() {
     );
     let before_json = fs::read(fx.task_dir(id).join("task.json")).unwrap();
     assert!(matches!(
-        fx.store.set_draft(&fx.project, id, true, false, Utc::now()),
+        fx.store.set_draft(&fx.project, id, Some(agent_board::domain::Draft::Human), false, Utc::now()),
         Err(AgboardError::FileInvalid { field, .. }) if field == "history"
     ));
     assert_eq!(

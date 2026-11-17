@@ -77,7 +77,7 @@ fn add(home: &Path, project: &str, title: &str, assignee: &str, epic: Option<&st
         "--assignee",
         assignee,
         "--actor",
-        "ai",
+        "human",
         "--json",
     ];
     if let Some(epic) = epic {
@@ -297,8 +297,8 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
                 title: "draft".into(),
                 description: "draft body".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: true,
+                actor: Actor::Human,
+                draft: Some(agent_board::domain::Draft::Human),
             },
             chrono::Utc::now(),
         )

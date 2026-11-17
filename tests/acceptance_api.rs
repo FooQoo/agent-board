@@ -90,7 +90,7 @@ fn saving_a_body_keeps_the_conditions_and_other_frontmatter_keys() {
             .write(
                 "PUT",
                 &format!("{task_path}/draft"),
-                Some(r#"{"isDraft":true}"#)
+                Some(r#"{"draft":"human"}"#)
             )
             .status,
         200
@@ -133,7 +133,7 @@ fn a_refused_conditions_list_saves_nothing() {
             .write(
                 "PUT",
                 &format!("{task_path}/draft"),
-                Some(r#"{"isDraft":true}"#)
+                Some(r#"{"draft":"human"}"#)
             )
             .status,
         200
@@ -172,7 +172,7 @@ fn editing_a_draft_body_keeps_the_current_markdown_history() {
                 "assignee": "ai",
                 "body": "Before edit.\n",
                 "acceptance": [{"id": "AC-1", "text": "Keep this condition", "done": false}],
-                "isDraft": true,
+                "draft": "human",
             })
             .to_string(),
         ),

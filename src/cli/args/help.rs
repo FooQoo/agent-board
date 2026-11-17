@@ -70,8 +70,11 @@ Descriptions and drafts:
   - Snapshots, `show`, and `wait` return descriptions in full. Progress and hooks
     return metadata only. If the hook's progress table exceeds 256 KiB, it reports AGBOARD_ERROR
     (context_too_large) instead; read only the needed EPIC.md and TASK.md files.
-  - A task with \"isDraft\": true is a draft the user is still writing. It is
-    read-only for you: `edit`, `mv`, and `state` fail with task_is_draft
-    (exit code 1) and change nothing. Do not retry. Wait for the user to
-    finalize it, and work on other tasks meanwhile. `add`, `show`, `ls`,
-    `snapshot`, and `wait` still work.";
+  - A task with \"draft\": \"human\" is a draft the user is still writing. It is
+    read-only for you: `edit`, `mv`, `state`, and `history add` fail with
+    task_is_draft (exit code 1) and change nothing. Do not retry. Wait for the
+    user to finalize it, and work on other tasks meanwhile.
+  - Every task and epic you create is an AI draft (\"draft\": \"ai\"), also when it
+    is for the user. You can `edit` it and add `history`; `mv` and `state` fail
+    with task_is_draft. Only a person starts it (`start`, `epic start`); you get
+    human_only if you try. `add`, `show`, `ls`, `snapshot`, and `wait` still work.";

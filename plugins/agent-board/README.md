@@ -57,7 +57,7 @@ After `brew upgrade fooqoo/tap/agboard`, run `agboard update` (or `agboard updat
 
 The project folder holds plain files that the CLI and the browser read. Agents may read them at any time. Agents may edit only these, and only as the folder's README allows:
 
-- A task's `TASK.md`, to record its plan and verification results in the body and to set its completion conditions (`done`) in the frontmatter. Operation history is recorded by the CLI; do not write a chronological log in the body. Never edit the `TASK.md` of a draft task (`"isDraft": true`); wait until the user finalizes it.
+- A task's `TASK.md`, to record its plan and verification results in the body and to set its completion conditions (`done`) in the frontmatter. Operation history is recorded by the CLI; do not write a chronological log in the body. Never edit the `TASK.md` of a draft task (`"draft": "human"`); wait until the user finalizes it.
 - An epic's `PLAN.md`.
 
 Never edit `task.json`, `epic.json`, or `project.json` directly; use the `agboard` CLI for every change to a task, an epic, or a project. Never delete a task folder or an epic folder: ask a person to delete a task or an epic with the CLI. Do not put a machine-specific absolute path into a shared file.

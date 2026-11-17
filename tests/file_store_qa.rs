@@ -46,8 +46,8 @@ impl Fixture {
                     title: title.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 Utc::now(),
             )

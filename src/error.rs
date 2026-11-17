@@ -92,6 +92,15 @@ pub enum AgboardError {
     EpicIsDraft {
         id: String,
     },
+    /// A finalize was asked of an AI draft; only starting it clears the draft.
+    AiDraftNeedsStart {
+        /// The task or epic, as named to the reader: `task #5`, `epic EPIC-1`.
+        target: String,
+    },
+    /// An agent asked for something only a person may do.
+    HumanOnly {
+        action: String,
+    },
     /// An agent tried to change a completed task.
     TaskIsDone {
         id: i64,

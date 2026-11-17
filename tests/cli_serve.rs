@@ -52,7 +52,7 @@ fn run(home: &Path, args: &[&str]) -> Output {
     let mut args = args.to_vec();
     let command = args.first().copied();
     match command {
-        Some("add") => args.extend(["--assignee", "ai", "--actor", "ai"]),
+        Some("add") => args.extend(["--assignee", "ai", "--actor", "human"]),
         Some("mv") => args.extend(["--actor", "ai", "--reason", "test change"]),
         Some("state") => args.extend(["--actor", "ai", "--reason", "test change"]),
         _ => {}

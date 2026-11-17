@@ -46,7 +46,7 @@ fn error_code(assert: assert_cmd::assert::Assert, exit: i32) -> String {
         .to_string()
 }
 
-const TASK: [&str; 5] = ["--assignee", "ai", "--actor", "ai", "--json"];
+const TASK: [&str; 5] = ["--assignee", "ai", "--actor", "human", "--json"];
 
 fn add_task(home: &Path, project: &str, title: &str) -> Value {
     let mut args = vec!["--project", project, "add", title];
@@ -236,7 +236,7 @@ fn every_project_command_refuses_a_missing_project() {
     let cursor = "0123456789abcdef0123456789abcdef:1";
     let commands: Vec<Vec<&str>> = vec![
         vec!["init"],
-        vec!["add", "x", "--assignee", "ai", "--actor", "ai"],
+        vec!["add", "x", "--assignee", "ai", "--actor", "human"],
         vec!["edit", "1", "--title", "x"],
         vec!["mv", "1", "doing", "--actor", "ai", "--reason", "r"],
         vec!["state", "1", "running", "--actor", "ai", "--reason", "r"],
@@ -301,7 +301,7 @@ fn an_unknown_project_is_not_found_and_never_replaced_by_another() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--json",
         ],
         vec!["--project", "Nope", "project", "rename", "N2", "--json"],
@@ -649,7 +649,7 @@ fn only_a_confirmed_real_change_notifies_once_and_to_the_data_directory() {
         }
         (code, err, calls)
     };
-    let task = ["--assignee", "ai", "--actor", "ai"];
+    let task = ["--assignee", "ai", "--actor", "human"];
     let add = |p| [&["--project", p, "add", "x"][..], &task].concat();
 
     // Real changes: one notification each.
@@ -837,8 +837,8 @@ mod races {
                     title: task.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 at,
             )

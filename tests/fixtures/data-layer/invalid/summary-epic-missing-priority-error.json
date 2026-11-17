@@ -11,7 +11,7 @@
       "taskStatus": "doing",
       "agentStatus": "running",
       "assignee": "ai",
-      "isDraft": false,
+      "draft": null,
       "position": 1,
       "epicId": "EPIC-1",
       "acceptance": {
@@ -39,7 +39,7 @@
       "taskStatus": "doing",
       "agentStatus": "pending",
       "assignee": "ai",
-      "isDraft": false,
+      "draft": null,
       "position": 2,
       "epicId": null,
       "acceptance": {
@@ -80,7 +80,7 @@
       "id": "EPIC-1",
       "name": "Data layer",
       "color": "#3366CC",
-      "isDraft": false,
+      "draft": null,
       "priority": [
         303,
         302

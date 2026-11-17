@@ -42,6 +42,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::EpicNotFound { .. }
         | AgboardError::QuestionNotFound { .. }
         | AgboardError::RequestNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::HumanOnly { .. } => StatusCode::FORBIDDEN,
         AgboardError::QuestionsUnanswered { .. }
         | AgboardError::QuestionAnswered { .. }
         | AgboardError::QuestionWithdrawn { .. }
@@ -49,6 +50,7 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
         | AgboardError::EpicIsDraft { .. }
+        | AgboardError::AiDraftNeedsStart { .. }
         | AgboardError::TaskIsDone { .. }
         | AgboardError::TaskNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }

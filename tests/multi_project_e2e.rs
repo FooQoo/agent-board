@@ -590,7 +590,7 @@ fn every_command_that_works_on_a_project_refuses_to_guess_one() {
         vec!["ls"],
         vec!["show", "1"],
         vec!["snapshot"],
-        vec!["add", "x", "--assignee", "ai", "--actor", "ai"],
+        vec!["add", "x", "--assignee", "ai", "--actor", "human"],
         vec!["edit", "1", "--title", "x"],
         vec!["mv", "1", "doing", "--actor", "human", "--reason", "x"],
         vec!["state", "1", "running", "--actor", "ai", "--reason", "x"],
@@ -944,7 +944,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     ));
     let received = stdout_json(&finish(waiter, Duration::from_secs(15)));
@@ -976,7 +976,7 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         ok(&agboard(
             home.path(),
             "Alpha Two",
-            &["add", "New project", "--assignee", "ai", "--actor", "ai"],
+            &["add", "New project", "--assignee", "ai", "--actor", "human"],
         ));
         let output = finish(
             spawn_wait(home.path(), "Alpha Two", &after, Some("2")),

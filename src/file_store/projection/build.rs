@@ -32,7 +32,7 @@ fn task_fields(task: &TaskView) -> TaskSummaryFields {
         task_status: task.task_status,
         agent_status: task.agent_status,
         assignee: task.assignee,
-        is_draft: task.is_draft,
+        draft: task.draft,
         position: task.position,
         epic_id: task.epic_id.clone(),
         acceptance_done: task.acceptance.iter().filter(|item| item.done).count() as u32,
@@ -79,7 +79,7 @@ fn epic_projection(epic: &EpicView, progress: EpicProgress, damaged: bool) -> Ep
         id: epic.id.as_str().to_string(),
         name: epic.name.clone(),
         color: epic.color.clone(),
-        is_draft: epic.is_draft,
+        draft: epic.draft,
         priority: epic.priority.clone(),
         priority_error: epic.priority_error,
     };

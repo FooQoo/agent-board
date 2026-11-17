@@ -18,7 +18,7 @@ pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use task::BoardMeta;
 pub use work::{
     Actor, Assignee, Attachment, AttachmentData, AttachmentInput, BulkArchiveResult, ChangeContext,
-    Changed, HistoryEvent, NewTask, Task, ValidatedAttachment, ValidatedBoard,
+    Changed, Draft, HistoryEvent, NewTask, Task, ValidatedAttachment, ValidatedBoard,
 };
 
 const WORK_REASON_MAX: usize = 10_000;

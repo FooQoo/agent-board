@@ -61,6 +61,8 @@ pub enum Command {
     Mv(MvArgs),
     /// Report a task's run state: idle or running
     State(StateArgs),
+    /// Start an AI draft task (a person only)
+    Start(StartArgs),
     /// Append a work note to a task history
     History(HistoryArgs),
     /// Ask the user questions, wait for the answers, and record answers
@@ -116,6 +118,7 @@ impl Command {
             Command::Edit(_) => "edit",
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
+            Command::Start(_) => "start",
             Command::History(_) => "history",
             Command::Qa(_) => "qa",
             Command::Rm(_) => "rm",

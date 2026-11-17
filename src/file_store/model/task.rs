@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::{Choice, HistoryRecord, RequestAnswer};
-use crate::domain::{Assignee, Attachment, AttachmentInput, Column, RunState};
+use crate::domain::{Assignee, Attachment, AttachmentInput, Column, Draft, RunState};
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::onboarding_model::OnboardingSample;
 use crate::file_store::validate::EpicId;
@@ -22,7 +22,7 @@ pub struct TaskFile {
     pub task_status: Column,
     pub agent_status: RunState,
     pub position: i64,
-    pub is_draft: bool,
+    pub draft: Option<Draft>,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     /// Answers to decision requests of earlier versions. Kept as a record; never added to.
@@ -74,7 +74,13 @@ pub struct TaskMetadata {
     pub task_status: Column,
     pub agent_status: RunState,
     pub position: i64,
-    pub is_draft: bool,
+    /// Files of earlier versions hold `isDraft`, read as `draft`.
+    #[serde(
+        default,
+        alias = "isDraft",
+        deserialize_with = "Draft::deserialize_stored"
+    )]
+    pub draft: Option<Draft>,
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     /// The decision request of earlier versions. Read and ignored; never written again.
@@ -111,7 +117,7 @@ impl From<&TaskFile> for TaskMetadata {
             task_status: task.task_status,
             agent_status: task.agent_status,
             position: task.position,
-            is_draft: task.is_draft,
+            draft: task.draft,
             archived_at: task.archived_at,
             pending_request_id: None,
             pending_request: None,
@@ -144,7 +150,7 @@ impl TaskMetadata {
             task_status: self.task_status,
             agent_status,
             position: self.position,
-            is_draft: self.is_draft,
+            draft: self.draft,
             archived_at: self.archived_at,
             request_answers: self.request_answers,
             created_at: self.created_at,
@@ -188,7 +194,7 @@ pub struct TaskView {
     pub position: i64,
     /// The run state as shown: `pending` while an AI task in Todo or Doing waits for a person.
     pub agent_status: RunState,
-    pub is_draft: bool,
+    pub draft: Option<Draft>,
     /// The question IDs in the `questions` frontmatter.
     pub question_ids: Vec<String>,
     /// The `questions` frontmatter cannot be read; the task then counts as waiting.

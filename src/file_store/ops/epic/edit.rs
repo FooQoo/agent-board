@@ -4,7 +4,7 @@ use std::fs;
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Changed, ProjectId};
+use crate::domain::{Changed, Draft, ProjectId};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::frontmatter;
@@ -63,7 +63,7 @@ impl FileStore {
             id: id.clone(),
             name,
             color,
-            is_draft: new.is_draft,
+            draft: new.draft,
             attachments: Vec::new(),
             created_at: at,
             updated_at: at,
@@ -121,7 +121,7 @@ impl FileStore {
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
-        if update.refuse_if_draft && file.is_draft {
+        if update.refuse_if_draft && file.draft == Some(Draft::Human) {
             return Err(AgboardError::EpicIsDraft { id: id.to_string() });
         }
 
@@ -142,10 +142,24 @@ impl FileStore {
             changed = true;
             content_changed = true;
         }
-        if let Some(is_draft) = update.is_draft
-            && is_draft != file.is_draft
+        if let Some(draft) = update.draft
+            && draft != file.draft
         {
-            file.is_draft = is_draft;
+            match (file.draft, draft) {
+                (Some(Draft::Ai), None) => {
+                    return Err(AgboardError::AiDraftNeedsStart {
+                        target: format!("epic {id}"),
+                    });
+                }
+                (None, Some(Draft::Ai)) => {
+                    return Err(AgboardError::InvalidValue {
+                        field: "draft".into(),
+                        reason: "An AI draft is created by an agent.".into(),
+                    });
+                }
+                _ => {}
+            }
+            file.draft = draft;
             changed = true;
         }
         let current_document = read_document(shared, &dir)?;
@@ -191,7 +205,7 @@ impl FileStore {
         let shared = self.shared_dir();
         let (_project_dir, _lock) = lock_project(shared, project)?;
         let (dir, mut file) = read_epic_file(shared, project, id)?;
-        if refuse_if_draft && file.is_draft {
+        if refuse_if_draft && file.draft == Some(Draft::Human) {
             return Err(AgboardError::EpicIsDraft { id: id.to_string() });
         }
         let members: Vec<i64> = reader::read_snapshot_locked(shared, project)?

@@ -34,7 +34,15 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     invoke(home.path(), &["add", "Work"]).failure();
     let created = invoke(
         home.path(),
-        &["add", "Work", "--assignee", "ai", "--actor", "ai", "--json"],
+        &[
+            "add",
+            "Work",
+            "--assignee",
+            "ai",
+            "--actor",
+            "human",
+            "--json",
+        ],
     )
     .success()
     .get_output()
@@ -152,7 +160,15 @@ fn add_task(home: &std::path::Path, project: &str, title: &str) -> Value {
     json_of(invoke_for(
         home,
         project,
-        &["add", title, "--assignee", "ai", "--actor", "ai", "--json"],
+        &[
+            "add",
+            title,
+            "--assignee",
+            "ai",
+            "--actor",
+            "human",
+            "--json",
+        ],
     ))
 }
 
@@ -214,7 +230,7 @@ fn a_command_needs_a_project_that_exists_and_never_guesses_one() {
     invoke_for(
         home.path(),
         "Nope",
-        &["add", "x", "--assignee", "ai", "--actor", "ai"],
+        &["add", "x", "--assignee", "ai", "--actor", "human"],
     )
     .failure()
     .code(4);
@@ -229,7 +245,13 @@ fn make_draft(home: &std::path::Path, project: &str, id: i64) {
     let files = agent_board::file_store::FileStore::open(&home.join("shared"));
     let meta = files.project_by_name(project).unwrap();
     files
-        .set_draft(&meta.id, id, true, false, chrono::Utc::now())
+        .set_draft(
+            &meta.id,
+            id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            chrono::Utc::now(),
+        )
         .unwrap();
 }
 
@@ -268,26 +290,26 @@ fn ls_and_show_mark_drafts_and_json_carries_is_draft() {
     assert!(!stdout_of(invoke(home.path(), &["ls", "--column", "doing"])).contains("[draft]"));
 
     let listed = json_of(invoke(home.path(), &["ls", "--json"]));
-    assert_eq!(listed["tasks"][0]["isDraft"], false);
-    assert_eq!(listed["tasks"][1]["isDraft"], true);
+    assert_eq!(listed["tasks"][0]["draft"], serde_json::Value::Null);
+    assert_eq!(listed["tasks"][1]["draft"], "human");
     let all = json_of(invoke_none(
         home.path(),
         &["ls", "--all-projects", "--json"],
     ));
-    assert_eq!(all["projects"][0]["tasks"][1]["isDraft"], true);
+    assert_eq!(all["projects"][0]["tasks"][1]["draft"], "human");
     let all_text = stdout_of(invoke_none(home.path(), &["ls", "--all-projects"]));
     assert!(all_text.contains("#2 Sketch [AI] [draft]"));
 
     let shown = stdout_of(invoke(home.path(), &["show", "2"]));
-    assert!(shown.contains("Draft: yes\n"), "{shown}");
+    assert!(shown.contains("Draft: human\n"), "{shown}");
     assert!(!stdout_of(invoke(home.path(), &["show", "1"])).contains("Draft"));
     assert_eq!(
-        json_of(invoke(home.path(), &["show", "2", "--json"]))["task"]["isDraft"],
-        true
+        json_of(invoke(home.path(), &["show", "2", "--json"]))["task"]["draft"],
+        "human"
     );
     assert_eq!(
-        snapshot_of(home.path(), "Agent Board")["tasks"][1]["isDraft"],
-        true
+        snapshot_of(home.path(), "Agent Board")["tasks"][1]["draft"],
+        "human"
     );
 }
 
@@ -349,8 +371,8 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
     assert!(invoke(home.path(), &["ls"]).get_output().status.success());
     add_task(home.path(), "Agent Board", "Another");
     assert_eq!(
-        snapshot_of(home.path(), "Agent Board")["tasks"][1]["isDraft"],
-        false
+        snapshot_of(home.path(), "Agent Board")["tasks"][1]["draft"],
+        serde_json::Value::Null
     );
 }
 
@@ -369,7 +391,7 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--json",
         ],
     ));
@@ -451,7 +473,7 @@ fn help_describes_markdown_limits_and_drafts() {
     };
     let top = help(&["--help"]);
     for needle in [
-        "isDraft",
+        "draft: human",
         "task_is_draft",
         "read-only",
         "--desc-file",

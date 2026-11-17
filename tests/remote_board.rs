@@ -126,7 +126,7 @@ fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
         &session,
         "POST",
         &format!("{base}/tasks"),
-        &json!({"title": "From the phone", "assignee": "human", "isDraft": true}),
+        &json!({"title": "From the phone", "assignee": "human", "draft": "human"}),
     );
     assert!(created.status < 300, "{} {}", created.status, created.body);
     let id = json_of(&created)["task"]["id"].as_i64().unwrap();
@@ -625,7 +625,7 @@ fn projects_are_listed_and_switched_through_the_entrance_as_on_the_pc() {
                 description: String::new(),
                 assignee: agent_board::domain::Assignee::Human,
                 actor: agent_board::domain::Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             chrono::Utc::now(),
         )

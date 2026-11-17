@@ -51,13 +51,15 @@ impl Loaded {
             }
             Loaded::Task(task) if block_drafts => {
                 ensure_ai_task_not_done(task, crate::domain::Actor::Ai)?;
-                if task.is_draft {
+                if task.draft == Some(crate::domain::Draft::Human) {
                     Err(AgboardError::TaskIsDraft { id: task.id })
                 } else {
                     Ok(())
                 }
             }
-            Loaded::Task(task) if block_drafts && task.is_draft => {
+            Loaded::Task(task)
+                if block_drafts && task.draft == Some(crate::domain::Draft::Human) =>
+            {
                 Err(AgboardError::TaskIsDraft { id: task.id })
             }
             _ => Ok(()),

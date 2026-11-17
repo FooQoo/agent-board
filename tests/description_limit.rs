@@ -21,7 +21,7 @@ fn add_with_body(home: &std::path::Path, body: &str) -> (i32, String) {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--desc-file",
             file.to_str().unwrap(),
         ],

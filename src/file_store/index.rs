@@ -254,7 +254,7 @@ mod tests {
             description: "Body".into(),
             assignee: Assignee::Ai,
             actor: Actor::Human,
-            is_draft: false,
+            draft: None,
         };
         store.create_task(&id, new_task("First"), now).unwrap();
         let mut index = ProjectIndex::default();

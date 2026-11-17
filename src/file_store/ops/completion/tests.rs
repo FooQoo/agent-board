@@ -38,8 +38,8 @@ impl Fixture {
                     title: name.into(),
                     description: body.into(),
                     assignee,
-                    actor: Actor::Ai,
-                    is_draft: draft,
+                    actor: Actor::Human,
+                    draft: draft.then_some(crate::domain::Draft::Human),
                 },
                 at(1),
             )

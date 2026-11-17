@@ -38,6 +38,10 @@ impl AgboardError {
             AgboardError::EpicIsDraft { id } => {
                 format!("epic {id} is a draft and read-only for the CLI.")
             }
+            AgboardError::AiDraftNeedsStart { target } => {
+                format!("{target} is an AI draft; a person starts it instead.")
+            }
+            AgboardError::HumanOnly { action } => format!("{action} is for a person only."),
             AgboardError::TaskIsDone { id } => {
                 format!("task #{id} is done and read-only for agents.")
             }

@@ -138,7 +138,7 @@ pub(crate) fn task_view(
         task_status: task.task_status,
         position: task.position,
         agent_status: task.agent_status,
-        is_draft: task.is_draft,
+        draft: task.draft,
         questions_error: questions.is_err(),
         question_ids: questions.unwrap_or_default(),
         open_question_ids: Vec::new(),

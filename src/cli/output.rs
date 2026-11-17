@@ -38,7 +38,7 @@ const KEY_ORDER: [&str; 35] = [
     "agentStatus",
     "pendingReason",
     "pendingRequestId",
-    "isDraft",
+    "draft",
     "createdAt",
     "updatedAt",
     "agentStatusChangedAt",
@@ -106,8 +106,11 @@ pub fn ls_text(tasks: &[TaskView], columns: &[Column]) -> String {
                 crate::domain::Assignee::Ai => " [AI]",
                 crate::domain::Assignee::Human => " [User]",
             });
-            if task.is_draft {
-                out.push_str(" [draft]");
+            if let Some(draft) = task.draft {
+                out.push_str(match draft {
+                    crate::domain::Draft::Human => " [draft]",
+                    crate::domain::Draft::Ai => " [AI draft]",
+                });
             }
             if let Some(epic) = &task.epic_id {
                 out.push_str(&format!(" [{epic}]"));
@@ -144,8 +147,11 @@ pub fn show_text(task: &TaskView) -> String {
     if let Some(epic) = &task.epic_id {
         out.push_str(&format!("Epic: {epic}\n"));
     }
-    if task.is_draft {
-        out.push_str("Draft: yes\n");
+    if let Some(draft) = task.draft {
+        out.push_str(match draft {
+            crate::domain::Draft::Human => "Draft: human\n",
+            crate::domain::Draft::Ai => "Draft: ai\n",
+        });
     }
     if let Some(archived_at) = task.archived_at {
         out.push_str(&format!("Archived at: {}\n", archived_at.to_rfc3339()));

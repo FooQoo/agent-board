@@ -114,7 +114,7 @@ impl FileStore {
             });
         }
         ensure_ai_task_not_done(&task, ctx.actor)?;
-        if block_drafts && task.is_draft {
+        if block_drafts && task.draft.is_some() {
             return Err(AgboardError::TaskIsDraft { id });
         }
         if ctx.actor == Actor::Ai && to == Column::Done && task.task_status != Column::Done {
@@ -181,7 +181,7 @@ impl FileStore {
             return Err(AgboardError::TaskArchived { id });
         }
         ensure_ai_task_not_done(&task, ctx.actor)?;
-        if task.is_draft {
+        if task.draft.is_some() {
             return Err(AgboardError::TaskIsDraft { id });
         }
         check_work_state(task.assignee, task.task_status, state)?;

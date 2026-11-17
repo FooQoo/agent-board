@@ -15,7 +15,7 @@ use super::journal::{Phase, hash};
 use super::paths::reject_symlinks;
 use crate::error::AgboardError;
 use crate::file_store::io::{random_hex, sync_dir, write_atomic, write_error};
-use crate::file_store::validate::is_hex32;
+use crate::file_store::validate::{EpicId, is_hex32};
 
 const DIR: &str = ".internal/batches";
 
@@ -65,6 +65,7 @@ fn validate_target(project: &Path, target: &Path) -> Result<(), AgboardError> {
                         && id.bytes().all(|b| b.is_ascii_digit())
                         && id.parse::<i64>().is_ok_and(|n| n > 0)
                 }
+                (Some("epics"), Some(id), Some("epic.json")) => id.parse::<EpicId>().is_ok(),
                 _ => false,
             }
         }
@@ -73,7 +74,7 @@ fn validate_target(project: &Path, target: &Path) -> Result<(), AgboardError> {
     if !ok {
         return Err(write_error(
             DIR,
-            "Batch targets must be request or task files.",
+            "Batch targets must be request, task or epic files.",
         ));
     }
     reject_symlinks(project, target)

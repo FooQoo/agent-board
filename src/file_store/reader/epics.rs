@@ -78,7 +78,7 @@ pub(in crate::file_store) fn read_epics(
             id: file.id,
             name: file.name,
             color: file.color,
-            is_draft: file.is_draft,
+            draft: file.draft,
             document,
             body: parts.body,
             priority,

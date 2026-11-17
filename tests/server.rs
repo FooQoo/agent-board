@@ -173,10 +173,10 @@ fn board_home() -> tempfile::TempDir {
                     description: BODY.into(),
                     assignee,
                     actor: match assignee {
-                        Assignee::Ai => Actor::Ai,
+                        Assignee::Ai => Actor::Human,
                         Assignee::Human => Actor::Human,
                     },
-                    is_draft: false,
+                    draft: None,
                 },
                 t(1),
             )
@@ -575,8 +575,8 @@ fn summary_reflects_changes_made_after_the_server_started() {
                 title: "Late task".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(10),
         )
@@ -761,7 +761,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 id: "epic-1".into(),
                 name: "Archived epic".into(),
                 color: Some("#3366cc".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(12),
@@ -774,7 +774,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 id: "epic-2".into(),
                 name: "Live epic".into(),
                 color: Some("#cc3366".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(13),
@@ -844,8 +844,8 @@ fn add_other_project(home: &Path) -> ProjectId {
                 title: "Other first".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(1),
         )
@@ -1294,8 +1294,8 @@ fn notify_sends_changed_to_every_connected_client() {
                 title: "Notified".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(12),
         )
@@ -1325,7 +1325,7 @@ fn each_notify_sends_one_changed() {
                     description: BODY.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
-                    is_draft: false,
+                    draft: None,
                 },
                 t(12),
             )
@@ -1583,8 +1583,8 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
                 title: "From the CLI side".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(12),
         )
@@ -1836,7 +1836,7 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
                 id: "epic-1".into(),
                 name: "First epic".into(),
                 color: Some("#3366cc".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(12),
@@ -1852,7 +1852,7 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
     assert_eq!(epic["id"], "EPIC-1");
     assert_eq!(epic["name"], "First epic");
     assert_eq!(epic["color"], "#3366CC");
-    assert_eq!(epic["isDraft"], false);
+    assert_eq!(epic["draft"], serde_json::Value::Null);
     assert_eq!(epic["priority"], serde_json::json!([]));
     assert_eq!(epic["priorityError"], false);
     let mut keys: Vec<&str> = epic
@@ -1867,8 +1867,8 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
         [
             "color",
             "detailVersions",
+            "draft",
             "id",
-            "isDraft",
             "name",
             "priority",
             "priorityError",
@@ -2023,7 +2023,7 @@ fn the_summary_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
                     id: id.into(),
                     name: name.into(),
                     color: Some("#3366cc".into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 t(minute),

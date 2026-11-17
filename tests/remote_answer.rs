@@ -25,8 +25,8 @@ fn pending_fixture() -> tempfile::TempDir {
                 title: "Doing question".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             chrono::Utc::now(),
         )

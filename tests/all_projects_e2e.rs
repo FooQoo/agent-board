@@ -852,7 +852,7 @@ fn only_a_list_may_ask_for_every_project_and_never_together_with_a_project() {
         vec!["--json", "ls", "--state", "pending"],
         vec!["--json", "snapshot"],
         vec!["--json", "show", "1"],
-        vec!["--json", "add", "x", "--assignee", "ai", "--actor", "ai"],
+        vec!["--json", "add", "x", "--assignee", "ai", "--actor", "human"],
         vec![
             "--json", "mv", "1", "doing", "--actor", "ai", "--reason", "r",
         ],

@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, Changed, NewTask, ProjectId};
+use agent_board::domain::{Actor, Assignee, Changed, Draft, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::FileStore;
 use agent_board::file_store::model::TaskView;
@@ -23,8 +23,8 @@ fn new_task(title: &str, description: &str) -> NewTask {
         title: title.into(),
         description: description.into(),
         assignee: Assignee::Ai,
-        actor: Actor::Ai,
-        is_draft: false,
+        actor: Actor::Human,
+        draft: None,
     }
 }
 
@@ -276,7 +276,7 @@ fn a_draft_refuses_agent_edits_and_its_files_stay_unchanged() {
     let fx = fixture();
     fx.create("Draft");
     fx.store
-        .set_draft(&fx.project, 1, true, false, now())
+        .set_draft(&fx.project, 1, Some(Draft::Human), false, now())
         .unwrap();
     let task = fx.task_bytes(1);
     let body = fx.body_bytes(1);
@@ -301,18 +301,18 @@ fn setting_the_draft_flag_adds_a_draft_event_and_keeps_the_update_time() {
 
     let changed = fx
         .store
-        .set_draft(&fx.project, 1, true, false, later())
+        .set_draft(&fx.project, 1, Some(Draft::Human), false, later())
         .unwrap();
     assert!(changed.changed);
-    assert!(changed.value.is_draft);
+    assert!(changed.value.draft.is_some());
     let raw = fx.raw_task(1);
-    assert_eq!(raw["isDraft"], true);
+    assert_eq!(raw["draft"], "human");
     assert_eq!(raw["updatedAt"], updated);
     assert_eq!(fx.history(1)[1]["reason"], "Marked task as draft.");
 
     let same = fx
         .store
-        .set_draft(&fx.project, 1, true, false, later())
+        .set_draft(&fx.project, 1, Some(Draft::Human), false, later())
         .unwrap();
     assert!(!same.changed);
 }
@@ -322,12 +322,12 @@ fn discarding_a_draft_records_a_discard_event_and_refuses_it_with_the_draft_flag
     let fx = fixture();
     fx.create("Draft");
     fx.store
-        .set_draft(&fx.project, 1, true, false, now())
+        .set_draft(&fx.project, 1, Some(Draft::Human), false, now())
         .unwrap();
 
     let err = fx
         .store
-        .set_draft(&fx.project, 1, true, true, later())
+        .set_draft(&fx.project, 1, Some(Draft::Human), true, later())
         .unwrap_err();
     assert!(
         matches!(err, AgboardError::InvalidArgument { .. }),
@@ -336,10 +336,10 @@ fn discarding_a_draft_records_a_discard_event_and_refuses_it_with_the_draft_flag
 
     let left = fx
         .store
-        .set_draft(&fx.project, 1, false, true, later())
+        .set_draft(&fx.project, 1, None, true, later())
         .unwrap();
     assert!(left.changed);
-    assert!(!left.value.is_draft);
+    assert!(left.value.draft.is_none());
     assert_eq!(
         fx.history(1).as_array().unwrap().last().unwrap()["reason"],
         "Discarded draft changes."
@@ -351,7 +351,7 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
     let fx = fixture();
     fx.create("Draft");
     fx.store
-        .set_draft(&fx.project, 1, true, false, now())
+        .set_draft(&fx.project, 1, Some(Draft::Human), false, now())
         .unwrap();
 
     let Changed { value, changed } = fx
@@ -359,12 +359,12 @@ fn finalizing_a_draft_saves_its_body_and_clears_the_flag() {
         .edit_draft_task(&fx.project, 1, None, Some(VALID_BODY), true, later())
         .unwrap();
     assert!(changed);
-    assert!(!value.is_draft);
+    assert!(value.draft.is_none());
     let body = String::from_utf8(fx.body_bytes(1)).unwrap();
     assert!(body.contains("history:\n"));
     assert!(body.ends_with("---\n\nDo the work.\n"));
     let raw = fx.raw_task(1);
-    assert_eq!(raw["isDraft"], false);
+    assert_eq!(raw["draft"], serde_json::Value::Null);
     assert_eq!(
         fx.history(1).as_array().unwrap().last().unwrap()["reason"],
         "Finalized task draft."

@@ -99,7 +99,7 @@ fn a_saved_change_says_when_the_recorded_server_is_gone() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ])
         .output()
         .unwrap();

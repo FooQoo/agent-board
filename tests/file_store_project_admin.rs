@@ -48,8 +48,8 @@ impl Fixture {
                     title: "task".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 now(),
             )

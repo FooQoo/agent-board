@@ -102,7 +102,7 @@ impl FileStore {
             if task.archived_at.is_some() {
                 return Err(AgboardError::TaskArchived { id: *id });
             }
-            if task.is_draft {
+            if task.draft == Some(crate::domain::Draft::Human) {
                 return Err(AgboardError::TaskIsDraft { id: *id });
             }
             ensure_ai_task_not_done(&task, input.actor)?;

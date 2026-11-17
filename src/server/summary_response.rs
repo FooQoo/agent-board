@@ -84,7 +84,7 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                     task_status: f.task_status,
                     agent_status: f.agent_status,
                     assignee: f.assignee,
-                    is_draft: f.is_draft,
+                    draft: f.draft,
                     position: f.position,
                     epic_id: f.epic_id.clone(),
                     acceptance: AcceptanceCount {
@@ -128,7 +128,7 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 id: epic.fields.id.clone(),
                 name: epic.fields.name.clone(),
                 color: epic.fields.color.clone(),
-                is_draft: epic.fields.is_draft,
+                draft: epic.fields.draft,
                 priority: epic.fields.priority.clone(),
                 priority_error: epic.fields.priority_error,
                 progress: SummaryEpicProgress {

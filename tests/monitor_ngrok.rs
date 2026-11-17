@@ -51,8 +51,8 @@ fn fixture() -> tempfile::TempDir {
                 title: "Second".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             chrono::Utc::now(),
         )

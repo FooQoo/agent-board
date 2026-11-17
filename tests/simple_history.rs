@@ -34,8 +34,8 @@ fn minimal_history_is_readable_and_creation_has_only_at_and_reason() {
                 title: "Work".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             Utc::now(),
         )
@@ -62,8 +62,8 @@ fn answers_survive_later_questions_restart_and_empty_history() {
                 title: "Decision".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             Utc::now(),
         )
@@ -155,8 +155,8 @@ fn invalid_answer_records_are_rejected_and_legacy_requests_are_ignored() {
                 title: "Validation".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             Utc::now(),
         )
@@ -231,8 +231,8 @@ fn only_lane_changes_update_task_status_changed_at() {
                 title: "Timing".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             at(1),
         )

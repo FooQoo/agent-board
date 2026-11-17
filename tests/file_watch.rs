@@ -45,7 +45,7 @@ impl Fixture {
                     description: String::new(),
                     assignee: Assignee::Ai,
                     actor: Actor::Human,
-                    is_draft: false,
+                    draft: None,
                 },
                 now(),
             )

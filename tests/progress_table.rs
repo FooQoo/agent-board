@@ -67,7 +67,7 @@ fn add(home: &Path, title: &str, epic: Option<&str>) -> i64 {
         "--assignee",
         "ai",
         "--actor",
-        "ai",
+        "human",
         "--json",
     ];
     if let Some(epic) = epic {
