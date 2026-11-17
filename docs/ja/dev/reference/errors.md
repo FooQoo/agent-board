@@ -12,7 +12,7 @@
 | `task_archived` | アーカイブ済みのタスクへの書き込み。 | 1 | 409 |
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
 | `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
-| `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。 | 1 | 409 |
+| `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。`reason`は、人の下書きでは「ユーザーが確定するのを待つ」、AIの下書きでは「人が開始するのを待つ」と伝えます。 | 1 | 409 |
 | `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
 | `human_only` | エージェントが`start`または`epic start`を実行した、または依頼を取り下げようとした。これらを行えるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |

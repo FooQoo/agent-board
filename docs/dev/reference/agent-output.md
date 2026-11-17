@@ -39,6 +39,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 
 - Only Todo and Doing tasks that are not waiting for a person appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
 - With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question`: the open question with the smallest ID, up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
+- When a person's request is open (not accepted and not withdrawn), the table has a `requests` array in ID order. Each entry is `{"id":"Q-3","createdAt":"…","title":"…"}`: `title` is the first non-empty line of the request without heading marks, up to 80 characters (longer ones end with `…`). Without an open request the field is absent. An agent reads the whole text with `message show` and takes the request with `message accept`.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - The paths appear only in local CLI and hook output, never in remote JSON.
@@ -72,7 +73,13 @@ Abbreviated example; task fields are omitted.
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":"…/epics/DESIGN/EPIC.md"}
 ```
 
-If the requested interval passes with no eligible task, the command returns a successful result (exit code 0):
+When a request is open, the wait returns it before any task, because a person asked for it. The result lists every open request in the same shape as the progress table. The agent reads one with `message show`, takes it with `message accept`, and then listens again; until it does, the next wait returns the same request.
+
+```json
+{"kind":"requests","projectId":"<id>","cursor":"<cursor>","requests":[{"id":"Q-3","createdAt":"2026-11-17T09:00:00Z","title":"Add a reset link"}]}
+```
+
+If the requested interval passes with no eligible task and no open request, the command returns a successful result (exit code 0):
 
 ```json
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}

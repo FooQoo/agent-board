@@ -26,6 +26,7 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         },
         AgboardError::InvalidStateForAssignee,
         AgboardError::TaskIsDraft { id: 5 },
+        AgboardError::TaskIsAiDraft { id: 5 },
         AgboardError::EpicIsDraft { id: "E".into() },
         AgboardError::AiDraftNeedsStart {
             target: "task #5".into(),
@@ -160,6 +161,7 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("invalid_value", 2),
             ("invalid_state_for_column", 1),
             ("invalid_state_for_assignee", 2),
+            ("task_is_draft", 1),
             ("task_is_draft", 1),
             ("epic_is_draft", 1),
             ("ai_draft_needs_start", 1),

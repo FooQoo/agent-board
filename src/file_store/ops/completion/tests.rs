@@ -47,6 +47,23 @@ impl Fixture {
             .id
     }
 
+    fn ai_draft(&self, name: &str, body: &str) -> i64 {
+        self.store
+            .create_task(
+                &self.project,
+                NewTask {
+                    title: name.into(),
+                    description: body.into(),
+                    assignee: Assignee::Ai,
+                    actor: Actor::Ai,
+                    draft: Some(crate::domain::Draft::Ai),
+                },
+                at(1),
+            )
+            .unwrap()
+            .id
+    }
+
     fn path(&self, id: i64) -> PathBuf {
         self.store
             .shared_dir()
@@ -127,6 +144,7 @@ fn only_valid_nonempty_fully_done_ai_conditions_are_eligible() {
     let open = f.task("Open", Assignee::Ai, OPEN, false);
     let human = f.task("Human", Assignee::Human, COMPLETE, false);
     let draft = f.task("Draft", Assignee::Ai, COMPLETE, true);
+    let ai_draft = f.ai_draft("AI draft", COMPLETE);
     let none = f.task(
         "None",
         Assignee::Ai,
@@ -144,7 +162,7 @@ fn only_valid_nonempty_fully_done_ai_conditions_are_eligible() {
 
     f.store.auto_complete_all(at(2)).unwrap();
 
-    for id in [open, human, draft, none, invalid] {
+    for id in [open, human, draft, ai_draft, none, invalid] {
         assert_ne!(
             f.store.task(&f.project, id).unwrap().task_status,
             Column::Done

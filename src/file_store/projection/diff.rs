@@ -27,7 +27,7 @@ pub fn diff(old: &Projection, new: &Projection) -> Vec<ResourceChange> {
     let mut changes = Vec::new();
     if old.qa_hash != new.qa_hash {
         changes.push(change(
-            Resource::Qa,
+            Resource::Messages,
             ResourceId::Named(new.project_id.clone()),
             &[Facet::Summary],
         ));

@@ -546,3 +546,39 @@ fn the_api_starts_tasks_and_epics_and_keeps_an_ai_draft_after_a_persons_edit() {
     assert_eq!(reply.status, 404, "{}", reply.body);
     server.stop();
 }
+
+#[test]
+fn moving_a_draft_says_who_it_waits_for() {
+    let f = fx();
+    let ai = f.task(Actor::Ai, Assignee::Ai, Some(Draft::Ai));
+    let human = f.task(Actor::Human, Assignee::Ai, Some(Draft::Human));
+    let reason = |id: i64| {
+        let ctx = agent_board::domain::ChangeContext {
+            actor: Actor::Ai,
+            reason: "go".into(),
+        };
+        f.store
+            .move_work_task(
+                &f.project,
+                id,
+                agent_board::domain::Column::Doing,
+                ctx,
+                now(),
+            )
+            .unwrap_err()
+    };
+    let err = reason(ai);
+    assert_eq!(err.code(), "task_is_draft");
+    assert!(
+        err.reason().contains("person to start it"),
+        "{}",
+        err.reason()
+    );
+    let err = reason(human);
+    assert_eq!(err.code(), "task_is_draft");
+    assert!(
+        err.reason().contains("user to finalize"),
+        "{}",
+        err.reason()
+    );
+}

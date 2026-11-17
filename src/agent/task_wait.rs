@@ -12,6 +12,7 @@ use crate::file_store::FileStore;
 use crate::file_store::layout;
 use crate::file_store::model::TaskView;
 use crate::file_store::reader::ProjectSnapshot;
+use crate::progress::{ProgressRequest, open_requests};
 
 struct Reader<'a> {
     shared: &'a Path,
@@ -57,6 +58,17 @@ struct TaskOutput {
     document_path: Option<std::path::PathBuf>,
 }
 
+/// Open requests from a person. The agent reads one with `message show` and takes it with
+/// `message accept`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RequestsOutput {
+    kind: &'static str,
+    project_id: ProjectId,
+    cursor: crate::domain::ChangeCursor,
+    requests: Vec<ProgressRequest>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct IdleTimeoutOutput {
@@ -93,21 +105,16 @@ pub async fn wait_for_task(
 
     // Work already on the board when listening starts is returned immediately.
     let initial = reader.read()?;
-    if let Some(task) = select(&initial) {
-        return render_task(shared, &initial, &project_id, task);
+    if let Some(output) = ready(shared, &initial, &project_id)? {
+        return Ok(output);
     }
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(idle_timeout_seconds);
     match wait_until(shared, &reader, Some(deadline), |snapshot| {
-        match select(snapshot) {
-            Some(task) => Ok(Evaluation::Ready(render_task(
-                shared,
-                snapshot,
-                &project_id,
-                task,
-            )?)),
-            None => Ok(Evaluation::Continue),
-        }
+        Ok(match ready(shared, snapshot, &project_id)? {
+            Some(output) => Evaluation::Ready(output),
+            None => Evaluation::Continue,
+        })
     })
     .await?
     {
@@ -121,6 +128,30 @@ pub async fn wait_for_task(
             reason: error.to_string(),
         }),
     }
+}
+
+/// What ends the wait: an open request first (a person asked for it), else the next task.
+fn ready(
+    shared: &Path,
+    snapshot: &ProjectSnapshot,
+    project_id: &ProjectId,
+) -> Result<Option<String>, AgboardError> {
+    let requests = open_requests(snapshot);
+    if !requests.is_empty() {
+        return serde_json::to_string(&RequestsOutput {
+            kind: "requests",
+            project_id: project_id.clone(),
+            cursor: snapshot.cursor.clone(),
+            requests,
+        })
+        .map(Some)
+        .map_err(|error| AgboardError::BoardUnavailable {
+            reason: error.to_string(),
+        });
+    }
+    select(snapshot)
+        .map(|task| render_task(shared, snapshot, project_id, task))
+        .transpose()
 }
 
 fn select(snapshot: &ProjectSnapshot) -> Option<&TaskView> {

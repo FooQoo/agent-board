@@ -8,6 +8,11 @@
 //! The caller can ask for two more sections with [`Include`]: the tasks waiting
 //! for a decision (with the question) and the most recently completed tasks.
 //! They are separate fields, so the default table is unchanged.
+//!
+//! Open requests are always listed, so an agent sees what a person asked it.
+
+mod requests;
+mod text;
 
 use std::path::PathBuf;
 
@@ -34,6 +39,10 @@ pub struct Progress {
     pub epics: Vec<ProgressEpic>,
     /// Listed tasks that belong to no epic, in ID order.
     pub unassigned: Vec<ProgressTask>,
+    /// Requests from a person that no agent has accepted or withdrawn, in ID order. Left out
+    /// when there are none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub requests: Vec<ProgressRequest>,
     /// Tasks waiting for a decision, in ID order. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending: Option<Vec<ProgressTask>>,
@@ -53,15 +62,14 @@ pub struct Include {
     pub done: usize,
 }
 
-/// Longest question text in the table, in characters.
-const QUESTION_LIMIT: usize = 200;
-
 /// Conditions met out of conditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Count {
     pub done: usize,
     pub total: usize,
 }
+
+pub use requests::{ProgressRequest, open_requests};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -166,6 +174,7 @@ pub fn build_with(
             .into_iter()
             .map(|task| task_of(task, &project_dir))
             .collect(),
+        requests: open_requests(snapshot),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks
@@ -253,17 +262,6 @@ fn is_waiting(task: &TaskView) -> bool {
         && !is_sample(task)
 }
 
-/// The question on one line, cut to `QUESTION_LIMIT` characters with an
-/// ellipsis when it was longer.
-fn short_question(text: &str) -> String {
-    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    if flat.chars().count() <= QUESTION_LIMIT {
-        return flat;
-    }
-    let cut: String = flat.chars().take(QUESTION_LIMIT).collect();
-    format!("{cut}…")
-}
-
 /// Position in the priority list; a task that is not listed comes after all
 /// listed tasks.
 fn rank(priority: &[i64], id: i64) -> usize {
@@ -292,7 +290,7 @@ fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
         acceptance: count(&task.acceptance),
         acceptance_error: task.acceptance_error,
         question: if is_waiting(task) {
-            task.pending_reason.as_deref().map(short_question)
+            task.pending_reason.as_deref().map(text::short_question)
         } else {
             None
         },

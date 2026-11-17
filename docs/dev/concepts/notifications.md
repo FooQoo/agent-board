@@ -42,7 +42,7 @@ flowchart LR
 {"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
   {"resource": "task", "id": 302, "facets": ["summary", "history"]},
   {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
-  {"resource": "qa", "id": "…", "facets": ["summary"]},
+  {"resource": "messages", "id": "…", "facets": ["summary"]},
   {"resource": "project", "id": "…", "facets": ["deleted"]}
 ]}
 ```
@@ -55,7 +55,7 @@ flowchart LR
 | `history` | The history. |
 | `deleted` | The resource is gone. A project has only `summary` or `deleted`. |
 
-Any change to a project's `qa/*/QA.md` files sends a `qa` change whose `id` is the project ID and whose only facet is `summary`; clients read the Summary again. Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
+Any change to a project's `qa/*/QA.md` files sends a `messages` change whose `id` is the project ID and whose only facet is `summary`; clients read the Summary again. Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
 
 The `seq` grows by one for each `changed` within one `instanceId`. The `instanceId` is new at every server start, so a client can tell that `seq` began again.
 
