@@ -12,7 +12,8 @@ import { MonitorLanes, type LaneItems, type MonitorLanesProps } from './MonitorL
 import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
-export interface MonitorLanesScreenProps extends Pick<MonitorLanesProps, 'previewRevealed'> {
+export interface MonitorLanesScreenProps
+  extends Pick<MonitorLanesProps, 'previewRevealed' | 'plans' | 'onOpenPlan'> {
   lanes: LaneItems;
   projectName: string;
   /** The lane the screen opens on. After that the tabs and the swipes own it. */
@@ -61,6 +62,8 @@ export function MonitorLanesScreen({
   onArchive,
   onBulkArchive,
   previewRevealed,
+  plans = [],
+  onOpenPlan,
 }: MonitorLanesScreenProps) {
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -92,7 +95,11 @@ export function MonitorLanesScreen({
         ref={tabsRef}
         lane={lane}
         controlsId={lanesId}
-        counts={{ todo: lanes.todo.length, doing: lanes.doing.length, done: lanes.done.length }}
+        counts={{
+          todo: lanes.todo.length + plans.length,
+          doing: lanes.doing.length,
+          done: lanes.done.length,
+        }}
         onLaneChange={setLane}
       />
       <MonitorLanes
@@ -115,6 +122,8 @@ export function MonitorLanesScreen({
             : undefined
         }
         previewRevealed={previewRevealed}
+        plans={plans}
+        onOpenPlan={onOpenPlan}
       />
       <MonitorLaneDialogs
         pending={pending}

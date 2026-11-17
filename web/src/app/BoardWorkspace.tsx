@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useState } from 'react';
 import { MessageCenter } from '../features/tasks/messages/MessageCenter';
 import { messagesApi } from '../features/tasks/messages/api';
 import { Header } from '../shared/ui/app-header/Header';
@@ -14,6 +14,7 @@ import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
 import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
+import { PlanReviewContainer } from '../features/tasks/plans/PlanReviewContainer';
 import type { EpicRef, ProjectId } from '../shared/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
@@ -83,6 +84,8 @@ export function BoardWorkspace({
     restoreFailure,
   } = model;
   const operation = session.operation;
+  // The approval whose plan review is open.
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const projectSwitcher = (
     <ProjectSwitcher
       projects={projects.projects ?? []}
@@ -150,6 +153,8 @@ export function BoardWorkspace({
             projectId={activeId as ProjectId}
             onAnswer={model.messages.openForTask}
             band={boardBand(model)}
+            plans={boardData?.plans}
+            onOpenPlan={(plan) => setReviewId(plan.id)}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}
             onReorder={actions.onReorder}
@@ -255,6 +260,20 @@ export function BoardWorkspace({
                           : 'notSynced'
         }
       />
+      {reviewId !== null && boardData && isProjectId(activeId) ? (
+        <PlanReviewContainer
+          projectId={activeId}
+          plans={boardData.plans}
+          approval={reviewId}
+          kind="dialog"
+          onClose={() => setReviewId(null)}
+          onOpenQuestion={(questionId) => {
+            setReviewId(null);
+            model.messages.panel.open({ tab: 'fromAi', openId: questionId });
+          }}
+          onChanged={() => model.refreshProject(activeId)}
+        />
+      ) : null}
     </>
   );
 }

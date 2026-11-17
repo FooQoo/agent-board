@@ -16,6 +16,8 @@ The monitor shows one project at a time. The address names it (`?project=`), and
 
 The **Messages** band sits above the lane tabs. It shows how many questions and approvals wait on you and how many of your requests no agent has picked up. **Open the list** slides up a sheet with the open messages in two tabs; pick a question to answer it there, with **Later** and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)).
 
+A **Proposed plan** card sits at the top of the Todo lane for each plan that waits for you, and the Todo tab counts it. AI-drafted tasks are not listed as cards of their own. **Review and start** opens the plan review as a bottom sheet, with the goal, the tasks that will start, and any unanswered questions; **Start with this plan** is disabled until they are answered (see [Proposed plans](./board#proposed-plans)). The plan cards are not swipeable.
+
 ![Remote access showing the Doing lane with its tab bar, the Messages band, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
 
 ### Switch lanes

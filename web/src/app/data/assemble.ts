@@ -14,6 +14,7 @@ import type {
   SummaryTask,
 } from '../../shared/data/api';
 import type { DocumentData } from '../../shared/data/core';
+import { type Plan, plansOfSummary } from '../../features/tasks/plans/model/plan';
 
 /**
  * What the app builds from the data layer. The list shows `TaskSummary` cards made from the
@@ -32,6 +33,8 @@ export interface BoardView {
   problems: Problem[];
   /** The open questions, requests and approvals of the project, oldest first. */
   messages: Message[];
+  /** The approvals waiting for a person, built from the Summary's messages. */
+  plans: Plan[];
 }
 
 const refOf = (epic: SummaryEpic): EpicRef => ({
@@ -92,6 +95,7 @@ export function toBoardView(summary: Summary): BoardView {
     epicTaskCounts: counts,
     problems: summary.problems,
     messages: summary.messages ?? [],
+    plans: plansOfSummary(summary),
   };
 }
 

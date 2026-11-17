@@ -105,7 +105,7 @@ When you ask an agent for work that is more than one task, it puts a provisional
 
 1. **Questions about the plan.** The agent asks what it cannot settle itself, as ordinary questions with choices and a recommendation. A task that refers to an open question shows **Pending** until you answer.
 2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
-3. **Start.** When the plan reads right, you start it: `agboard epic start <EPIC-ID> --actor human` for the epic and all its drafts, or `agboard start <id> --actor human` for one task. No agent starts the tasks before that.
+3. **Start.** When the plan reads right, you start it. On the board, the plan is one **Proposed plan** card at the top of Todo, and **Review and start** opens the review with the goal, the tasks in order, and any open questions (see [Proposed plans](../watch/board#proposed-plans)). **Start with this plan** is disabled while a question about the plan is unanswered. From the command line, run `agboard epic start <EPIC-ID> --actor human` for the epic and all its drafts, or `agboard start <id> --actor human` for one task. No agent starts the tasks before that.
 4. **Work.** After the start, the agent works through the tasks in the epic's order without asking each time.
 
 After the start, the agent calls you only when:

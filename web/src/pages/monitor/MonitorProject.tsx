@@ -17,6 +17,8 @@ import type {
   MonitorViewProps,
   MonitorWrites,
 } from './contracts';
+import { PlanReviewContainer } from '../../features/tasks/plans/PlanReviewContainer';
+import { plansOfSummary } from '../../features/tasks/plans/model/plan';
 import { MonitorView } from './View';
 import { monitorFreshness } from './model/freshness';
 import { selectMonitorTasks } from './model/select';
@@ -143,6 +145,7 @@ export function MonitorScreen({
     stream,
     lastFetchedAt,
   });
+  const plans = useMemo(() => (data === null ? [] : plansOfSummary(data)), [data]);
   const visible = selectMonitorTasks(tasks);
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -157,7 +160,7 @@ export function MonitorScreen({
       data === null || freshness.state === 'partial'
         ? null
         : {
-            todo: visible.todo.length,
+            todo: visible.todo.length + plans.length,
             doing: visible.doing.length,
             done: visible.done.length,
           },
@@ -180,6 +183,18 @@ export function MonitorScreen({
     writes,
     projectName: header?.projects?.find((project) => project.id === projectId)?.name ?? '',
     onWritten: () => void summary.refresh(),
+    plans,
+    renderPlanReview: ({ approvalId, onClose, onOpenQuestion }) => (
+      <PlanReviewContainer
+        projectId={projectId}
+        plans={plans}
+        approval={approvalId}
+        kind="sheet"
+        onClose={onClose}
+        onOpenQuestion={onOpenQuestion}
+        onChanged={() => void summary.refresh()}
+      />
+    ),
   };
   return <MonitorView {...props} />;
 }
