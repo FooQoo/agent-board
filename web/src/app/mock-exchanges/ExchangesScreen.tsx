@@ -226,9 +226,6 @@ export function ExchangesScreen({
           plan={review}
           openQuestions={openQuestionsOf(fixture, review.questionIds)}
           onClose={close}
-          onFix={() =>
-            setOverlay({ kind: 'ask', text: review.epicName ? `${review.epicId} ` : '' })
-          }
           onAnswer={(question) => setOverlay({ kind: 'panel', openId: question.id })}
         />
       )}

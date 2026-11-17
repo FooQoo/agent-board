@@ -15,7 +15,6 @@ export function PlanReview({
   plan,
   openQuestions,
   onClose,
-  onFix,
   onAnswer,
 }: {
   kind: 'dialog' | 'sheet';
@@ -23,8 +22,6 @@ export function PlanReview({
   /** The unanswered questions that name this plan's epic or tasks. */
   openQuestions: MockExchange[];
   onClose: () => void;
-  /** "Ask for changes": opens the Ask AI dialog. */
-  onFix: () => void;
   onAnswer: (question: MockExchange) => void;
 }) {
   const m = useMockText();
@@ -50,8 +47,8 @@ export function PlanReview({
         </p>
       )}
       <div className="xreview__buttons">
-        <Button type="button" variant="outline" onClick={onFix}>
-          {m.reviewFix}
+        <Button type="button" variant="outline" onClick={onClose}>
+          {m.reviewLater}
         </Button>
         <Button type="button" disabled={blocked} onClick={onClose}>
           {m.reviewStart}
