@@ -87,13 +87,13 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let pending = agboard(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &common::decision_json("Need the user's direction"),
             "--no-wait",
             "--json",
@@ -131,13 +131,15 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let answer = agboard(
         home.path(),
         &[
-            "qa",
+            "message",
             "answer",
             "Q-1",
             "--actor",
             "human",
             "--via",
             "chat",
+            "--choice",
+            "a",
             "--text",
             "Keep the current behavior and explain the tradeoff.",
         ],

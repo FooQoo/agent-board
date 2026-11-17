@@ -157,8 +157,6 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
             .iter()
             .map(|q| super::contracts::summary::SummaryQuestion {
                 id: q.id.clone(),
-                request_id: q.request_id.clone(),
-                kind: q.kind,
                 title: q.title.clone(),
                 recommended_choice_id: q.recommended_choice_id.clone(),
                 referenced_by: q.referenced_by.clone(),

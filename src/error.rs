@@ -101,6 +101,10 @@ pub enum AgboardError {
     HumanOnly {
         action: String,
     },
+    /// A person asked for something only an agent may do.
+    AiOnly {
+        action: String,
+    },
     /// An agent tried to change a completed task.
     TaskIsDone {
         id: i64,
@@ -131,14 +135,26 @@ pub enum AgboardError {
     QuestionWithdrawn {
         ids: Vec<String>,
     },
-    QuestionNotFound {
+    /// No question or request has this ID.
+    MessageNotFound {
         id: String,
     },
-    RequestNotFound {
+    /// The message has its reply, so it can no longer be withdrawn.
+    MessageClosed {
         id: String,
     },
-    /// The request has every answer, so it can no longer be withdrawn.
-    RequestAnswered {
+    /// The command is for the other kind of message: a question was named where a request
+    /// belongs, or the other way around.
+    MessageTypeMismatch {
+        id: String,
+        expected: String,
+    },
+    /// The request was accepted before; nothing was written.
+    RequestAccepted {
+        id: String,
+    },
+    /// The request was withdrawn, so nobody can accept it.
+    RequestWithdrawn {
         id: String,
     },
     /// A move named the status it started from, and the task is no longer there.
@@ -173,8 +189,8 @@ pub enum AgboardError {
         expected: u32,
     },
     /// The answer names a choice that is not part of the question.
-    RequestChoiceUnknown {
-        request_id: String,
+    ChoiceUnknown {
+        question_id: String,
         choice_id: String,
     },
     DatabaseBusy,

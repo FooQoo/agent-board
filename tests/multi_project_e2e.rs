@@ -130,13 +130,13 @@ fn import_fixture(home: &Path, project: &str, file: &str) {
             let request = common::decision_json(reason);
             let args: Vec<&str> = if state == "pending" {
                 vec![
-                    "qa",
+                    "message",
                     "ask",
                     "--actor",
                     "ai",
                     "--task",
                     &id,
-                    "--request-json",
+                    "--questions-json",
                     &request,
                     "--no-wait",
                 ]
@@ -860,13 +860,13 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
         home.path(),
         "Beta",
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "3",
-            "--request-json",
+            "--questions-json",
             &common::decision_json("Beta asks as well"),
             "--no-wait",
         ],
@@ -877,8 +877,8 @@ fn hook_and_wait_follow_one_project_from_a_web_answer_to_the_resumed_agent() {
     );
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{alpha_id}/qa/answers"),
-        Some(&json!({ "answers": [{ "questionId": pending_request(home.path(), "Alpha", 2), "text": "Use the MIT license." }] })),
+        &format!("/api/projects/{alpha_id}/messages/answers"),
+        Some(&json!({ "answers": [{ "questionId": pending_request(home.path(), "Alpha", 2), "choiceId": "a", "text": "Use the MIT license." }] })),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
     let output = finish(waiter, Duration::from_secs(15));

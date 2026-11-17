@@ -142,19 +142,19 @@ fn the_skill_plans_first_and_starts_after_one_approval() {
         skill.contains("Do not ask before registering it"),
         "the Skill must not ask before registering the plan"
     );
-    // Plan questions come first; one start approval follows the revised plan.
+    // Plan questions come first; the user then starts the AI drafts.
     assert!(
         skill.contains("**Ask the plan questions.**")
-            && skill.contains("**Ask one start approval.**")
-            && skill.find("**Ask the plan questions.**")
-                < skill.find("**Ask one start approval.**"),
-        "the Skill must ask plan questions before the start approval"
+            && skill.contains("**Wait for the start.**")
+            && skill.find("**Ask the plan questions.**") < skill.find("**Wait for the start.**"),
+        "the Skill must ask plan questions before the start"
     );
     assert!(skill.contains("With no plan questions, go to step 5"));
-    // The plan's tasks wait on one start approval.
-    for needed in ["\"start_approval\"", "approvingChoiceIds", "qa unlink"] {
+    // The plan's tasks are AI drafts that a person starts.
+    for needed in ["agboard epic start", "agboard start"] {
         assert!(skill.contains(needed), "the Skill omits {needed}");
     }
+    assert!(!skill.contains("start_approval") && !skill.contains("approvingChoiceIds"));
     // After the start, only four cases call the user.
     for case in [
         "**Intent**",
@@ -173,7 +173,7 @@ fn the_skill_plans_first_and_starts_after_one_approval() {
 fn the_skill_asks_on_the_board_and_in_the_chat() {
     let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
     assert!(
-        skill.contains("Every question goes on the board with `qa ask`, never only in chat"),
+        skill.contains("Every question goes on the board with `message ask`, never only in chat"),
         "every question must go to the board"
     );
     assert!(
@@ -193,12 +193,12 @@ fn the_skill_asks_on_the_board_and_in_the_chat() {
         "chat replies must follow the user's language"
     );
     assert!(
-        skill.contains("qa answer <Q-id> --actor human --via chat"),
+        skill.contains("message answer <Q-id> --actor human --via chat"),
         "a chat answer must be written back to the board"
     );
     assert!(skill.contains("question_answered"));
     assert!(
-        skill.contains("qa wait <request-id>"),
+        skill.contains("message wait <Q-id>"),
         "the Skill must wait again after a timeout"
     );
     assert!(

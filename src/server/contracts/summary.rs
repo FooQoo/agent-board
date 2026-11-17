@@ -20,13 +20,11 @@ pub struct Summary {
     pub questions: Vec<SummaryQuestion>,
 }
 
-/// An open question: enough to list it; the full text is read with `GET …/qa/{questionId}`.
+/// An open question: enough to list it; the full text is read with `GET …/messages/{id}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct SummaryQuestion {
     pub id: String,
-    pub request_id: String,
-    pub kind: crate::file_store::qa::QuestionKind,
     /// The first line of the question, up to 200 characters.
     pub title: String,
     pub recommended_choice_id: Option<String>,

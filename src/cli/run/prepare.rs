@@ -1,7 +1,7 @@
 //! Resolving the target project for a command and dispatching it to its
 //! handler, for the commands that work on a board.
 
-use crate::cli::args::{Cli, Command, EpicCommand, ProjectCommand, QaCommand};
+use crate::cli::args::{Cli, Command, EpicCommand, MessageCommand, ProjectCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -45,8 +45,10 @@ fn access(command: &Command) -> Access {
             ProjectCommand::Create(_) | ProjectCommand::Bind(_) => Access::Catalog,
             ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
         },
-        Command::Qa(args) => match args.command {
-            QaCommand::Ls(_) | QaCommand::Show(_) | QaCommand::Wait(_) => Access::ReadProject,
+        Command::Message(args) => match args.command {
+            MessageCommand::Ls(_) | MessageCommand::Show(_) | MessageCommand::Wait(_) => {
+                Access::ReadProject
+            }
             _ => Access::ChangeProject,
         },
         Command::Init(_) => Access::ChangeOrCreateProject,
@@ -137,7 +139,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Open(args) => commands::open::run(ctx, args),
         Command::Remote(_) => commands::remote::run(ctx),
         Command::Hook(_)
-        | Command::Qa(_)
+        | Command::Message(_)
         | Command::Wait(_)
         | Command::Serve(_)
         | Command::Stop(_)

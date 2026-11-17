@@ -174,8 +174,7 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
             crate::file_store::AskInput {
                 actor: Actor::Ai,
                 questions: vec![crate::file_store::AskQuestion {
-                    kind: crate::file_store::qa::QuestionKind::Task,
-                    question: "Question".into(),
+                    body: "Question".into(),
                     choices: vec![
                         crate::file_store::model::Choice {
                             id: "a".into(),
@@ -187,7 +186,6 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
                         },
                     ],
                     recommended_choice_id: None,
-                    approving_choice_ids: Vec::new(),
                     tasks: Vec::new(),
                 }],
                 tasks: vec![id],

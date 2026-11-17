@@ -105,7 +105,7 @@ fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
         format!("{base}/tasks/1/detail"),
         format!("{base}/archive"),
         format!("{base}/epics"),
-        format!("{base}/qa"),
+        format!("{base}/messages"),
         format!("{base}/docs/tree"),
         "/api/preferences".to_string(),
         "/api/onboarding".to_string(),
@@ -561,7 +561,7 @@ const OLD_MONITOR_PATHS: [&str; 12] = [
     "/monitor/api/events?project=0123456789abcdef0123456789abcdef",
     "/monitor/api/preferences",
     "/monitor/api/projects/0123456789abcdef0123456789abcdef/summary",
-    "/monitor/api/projects/0123456789abcdef0123456789abcdef/qa/answers",
+    "/monitor/api/projects/0123456789abcdef0123456789abcdef/messages/answers",
     "/monitor/assets/monitor/monitor-x.js",
     "/monitor/assets/docs-sandbox",
 ];

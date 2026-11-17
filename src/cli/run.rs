@@ -182,9 +182,9 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             Err(error) => fail(env, &error, cli.json),
         };
     }
-    // `qa` prints its own lines: a wait streams events and ends with its own exit code.
-    if let Command::Qa(args) = &cli.command {
-        return commands::qa::execute(&cli, env, args);
+    // `message` prints its own lines: a wait streams events and ends with its own exit code.
+    if let Command::Message(args) = &cli.command {
+        return commands::message::execute(&cli, env, args);
     }
     match prepare_and_run(&cli, env) {
         Ok((ctx, outcome)) => {

@@ -42,6 +42,7 @@ impl AgboardError {
                 format!("{target} is an AI draft; a person starts it instead.")
             }
             AgboardError::HumanOnly { action } => format!("{action} is for a person only."),
+            AgboardError::AiOnly { action } => format!("{action} is for an agent only."),
             AgboardError::TaskIsDone { id } => {
                 format!("task #{id} is done and read-only for agents.")
             }
@@ -62,11 +63,15 @@ impl AgboardError {
             AgboardError::QuestionWithdrawn { ids } => {
                 format!("{} withdrawn.", ids.join(", "))
             }
-            AgboardError::QuestionNotFound { id } => format!("question {id} not found."),
-            AgboardError::RequestNotFound { id } => format!("request {id} not found."),
-            AgboardError::RequestAnswered { id } => {
-                format!("request {id} is already answered.")
+            AgboardError::MessageNotFound { id } => format!("message {id} not found."),
+            AgboardError::MessageClosed { id } => {
+                format!("message {id} already has its reply.")
             }
+            AgboardError::MessageTypeMismatch { id, expected } => {
+                format!("{id} is not a {expected}.")
+            }
+            AgboardError::RequestAccepted { id } => format!("request {id} was already accepted."),
+            AgboardError::RequestWithdrawn { id } => format!("request {id} was withdrawn."),
             AgboardError::TaskStatusChanged { id, current } => {
                 format!("task #{id} is now {}.", current.as_str())
             }
@@ -82,9 +87,7 @@ impl AgboardError {
             AgboardError::FormatUnsupported { file, .. } => {
                 format!("{file} has an unsupported format version.")
             }
-            AgboardError::RequestChoiceUnknown { .. } => {
-                "the choice is not part of this question.".into()
-            }
+            AgboardError::ChoiceUnknown { .. } => "the choice is not part of this question.".into(),
             AgboardError::DatabaseBusy => "the board is busy.".to_string(),
             AgboardError::DatabaseError { .. } => "cannot open the board.".to_string(),
             AgboardError::AlreadyServing { .. } => "the board is already being served.".to_string(),

@@ -377,7 +377,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
         request(
             backend,
             "POST",
-            "/api/projects/0123456789abcdef0123456789abcdef/qa/answers",
+            "/api/projects/0123456789abcdef0123456789abcdef/messages/answers",
             &admitted,
             "{}"
         )

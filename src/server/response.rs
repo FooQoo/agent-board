@@ -40,13 +40,14 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::ProjectNotFound { .. }
         | AgboardError::AttachmentNotFound { .. }
         | AgboardError::EpicNotFound { .. }
-        | AgboardError::QuestionNotFound { .. }
-        | AgboardError::RequestNotFound { .. } => StatusCode::NOT_FOUND,
-        AgboardError::HumanOnly { .. } => StatusCode::FORBIDDEN,
+        | AgboardError::MessageNotFound { .. } => StatusCode::NOT_FOUND,
+        AgboardError::HumanOnly { .. } | AgboardError::AiOnly { .. } => StatusCode::FORBIDDEN,
         AgboardError::QuestionsUnanswered { .. }
         | AgboardError::QuestionAnswered { .. }
         | AgboardError::QuestionWithdrawn { .. }
-        | AgboardError::RequestAnswered { .. }
+        | AgboardError::MessageClosed { .. }
+        | AgboardError::RequestAccepted { .. }
+        | AgboardError::RequestWithdrawn { .. }
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
         | AgboardError::EpicIsDraft { .. }
@@ -65,7 +66,8 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::FileInvalid { .. }
         | AgboardError::InvalidStateForColumn { .. }
         | AgboardError::InvalidStateForAssignee
-        | AgboardError::RequestChoiceUnknown { .. }
+        | AgboardError::ChoiceUnknown { .. }
+        | AgboardError::MessageTypeMismatch { .. }
         | AgboardError::AttachmentLimitExceeded => StatusCode::UNPROCESSABLE_ENTITY,
         AgboardError::DatabaseBusy => StatusCode::SERVICE_UNAVAILABLE,
         AgboardError::DocsPathInvalid { .. } => StatusCode::BAD_REQUEST,

@@ -66,21 +66,21 @@ fn the_entrance_answers_questions_together_without_moving_the_tasks() {
     assert_eq!(questions[0]["id"], "Q-1");
     assert_eq!(questions[0]["referencedBy"], serde_json::json!([1]));
 
-    let question = server.get(&session, &format!("{base}/qa/Q-1"));
+    let question = server.get(&session, &format!("{base}/messages/Q-1"));
     assert_eq!(question.status, 200, "{}", question.body);
     let question: serde_json::Value = serde_json::from_str(&question.body).unwrap();
-    assert_eq!(question["question"]["question"], "Choose the first path");
+    assert_eq!(question["question"]["body"], "Choose the first path");
 
     let response = server.write(
         &session,
         "POST",
-        &format!("{base}/qa/answers"),
-        r#"{"answers":[{"questionId":"Q-1","choiceId":"keep","text":"Keep it"},{"questionId":"Q-2","text":"Continue"}]}"#,
+        &format!("{base}/messages/answers"),
+        r#"{"answers":[{"questionId":"Q-1","choiceId":"keep","text":"Keep it"},{"questionId":"Q-2","choiceId":"yes","text":"Continue"}]}"#,
     );
     assert_eq!(response.status, 200, "{}", response.body);
     let body: serde_json::Value = serde_json::from_str(&response.body).unwrap();
-    assert_eq!(body["questions"][0]["answer"]["via"], "ui");
-    assert_eq!(body["questions"][1]["answer"]["text"], "Continue");
+    assert_eq!(body["questions"][0]["reply"]["via"], "ui");
+    assert_eq!(body["questions"][1]["reply"]["text"], "Continue");
 
     let board = server.get(&session, &format!("{base}/summary"));
     let board: serde_json::Value = serde_json::from_str(&board.body).unwrap();
@@ -99,11 +99,11 @@ fn the_entrance_answers_questions_together_without_moving_the_tasks() {
     let again = server.write(
         &session,
         "POST",
-        &format!("{base}/qa/answers"),
+        &format!("{base}/messages/answers"),
         r#"{"answers":[{"questionId":"Q-1","choiceId":"reset"}]}"#,
     );
     assert_eq!(again.status, 409, "{}", again.body);
     let again: serde_json::Value = serde_json::from_str(&again.body).unwrap();
     assert_eq!(again["questionAnswered"], serde_json::json!(["Q-1"]));
-    assert_eq!(again["questions"][0]["answer"]["choiceId"], "keep");
+    assert_eq!(again["questions"][0]["reply"]["choiceId"], "keep");
 }

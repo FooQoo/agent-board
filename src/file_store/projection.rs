@@ -101,8 +101,6 @@ pub struct EpicProjection {
 #[serde(rename_all = "camelCase")]
 pub struct QuestionSummary {
     pub id: String,
-    pub request_id: String,
-    pub kind: crate::file_store::qa::QuestionKind,
     /// The first line of the question, up to 200 characters.
     pub title: String,
     pub recommended_choice_id: Option<String>,

@@ -3,7 +3,7 @@
 
 use agent_board::domain::{Actor, ProjectId};
 use agent_board::file_store::model::Choice;
-use agent_board::file_store::qa::{AnswerVia, QaRequestFile, QuestionKind};
+use agent_board::file_store::qa::{AnswerVia, Question};
 use agent_board::file_store::{AnswerItem, AskInput, AskQuestion, FileStore};
 
 pub fn choices(pairs: &[(&str, &str)]) -> Vec<Choice> {
@@ -16,45 +16,23 @@ pub fn choices(pairs: &[(&str, &str)]) -> Vec<Choice> {
         .collect()
 }
 
-/// One task question with the given choices, asked by the AI for `tasks`.
+/// One question with the given choices, asked by the AI for `tasks`.
 pub fn ask(
     store: &FileStore,
     project: &ProjectId,
     tasks: &[i64],
-    question: &str,
+    body: &str,
     options: &[(&str, &str)],
-) -> QaRequestFile {
-    ask_kind(
-        store,
-        project,
-        tasks,
-        QuestionKind::Task,
-        question,
-        options,
-        &[],
-    )
-}
-
-pub fn ask_kind(
-    store: &FileStore,
-    project: &ProjectId,
-    tasks: &[i64],
-    kind: QuestionKind,
-    question: &str,
-    options: &[(&str, &str)],
-    approving: &[&str],
-) -> QaRequestFile {
+) -> Question {
     store
         .ask_questions(
             project,
             AskInput {
                 actor: Actor::Ai,
                 questions: vec![AskQuestion {
-                    kind,
-                    question: question.into(),
+                    body: body.into(),
                     choices: choices(options),
                     recommended_choice_id: None,
-                    approving_choice_ids: approving.iter().map(|s| (*s).into()).collect(),
                     tasks: Vec::new(),
                 }],
                 tasks: tasks.to_vec(),
@@ -62,6 +40,7 @@ pub fn ask_kind(
             chrono::Utc::now(),
         )
         .unwrap()
+        .remove(0)
 }
 
 /// A person's answer through the command line.
@@ -86,25 +65,23 @@ pub fn answer(
         .unwrap();
 }
 
-/// One task question with the given choices, asked by the AI for one task.
+/// One question with the given choices, asked by the AI for one task.
 pub fn ask_choices(
     store: &FileStore,
     project: &ProjectId,
     task: i64,
-    question: &str,
+    body: &str,
     choices: Vec<Choice>,
-) -> QaRequestFile {
+) -> Question {
     store
         .ask_questions(
             project,
             AskInput {
                 actor: Actor::Ai,
                 questions: vec![AskQuestion {
-                    kind: QuestionKind::Task,
-                    question: question.into(),
+                    body: body.into(),
                     choices,
                     recommended_choice_id: None,
-                    approving_choice_ids: Vec::new(),
                     tasks: Vec::new(),
                 }],
                 tasks: vec![task],
@@ -112,4 +89,5 @@ pub fn ask_choices(
             chrono::Utc::now(),
         )
         .unwrap()
+        .remove(0)
 }

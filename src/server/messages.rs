@@ -1,5 +1,5 @@
-//! Project QA over HTTP: reading questions, answering several at once, and withdrawing a
-//! request. The local board and the monitor's write endpoint save answers through here.
+//! Messages over HTTP: reading them, answering several questions at once, sending and
+//! withdrawing requests. The local board and the monitor's write endpoint save through here.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use super::response::{agboard_error_response, json_response};
 use super::store::{parse_project_id, refresh_index, with_request_files};
 use crate::domain::Actor;
 use crate::error::AgboardError;
-use crate::file_store::qa::{AnswerVia, QuestionStatus, QuestionView};
+use crate::file_store::qa::{AnswerVia, MessageView, QuestionStatus, QuestionView};
 use crate::file_store::{AnswerItem, FileStore};
 
 #[derive(Deserialize)]
@@ -32,13 +32,6 @@ pub(crate) struct AnswersInput {
     answers: Vec<AnswerInputItem>,
 }
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct WithdrawInput {
-    #[serde(default)]
-    reason: Option<String>,
-}
-
 /// Run blocking file work against the shared folder.
 async fn on_files<T: Send + 'static>(
     shared: PathBuf,
@@ -51,27 +44,30 @@ async fn on_files<T: Send + 'static>(
         })?
 }
 
-/// `GET …/qa/{questionId}`: one question with its answer and the tasks that refer to it.
-pub(crate) async fn question_response(
-    shared: PathBuf,
-    raw_project: String,
-    id: String,
-) -> Response {
+/// `GET …/messages/{id}`: one message. A question comes with its reply and the tasks that
+/// refer to it; a request with its acceptance.
+pub(crate) async fn message_response(shared: PathBuf, raw_project: String, id: String) -> Response {
     let project = match parse_project_id(&raw_project) {
         Ok(project) => project,
         Err(error) => return agboard_error_response(&error),
     };
-    match on_files(shared, move |store| store.question(&project, &id)).await {
-        Ok(question) => json_response(StatusCode::OK, &serde_json::json!({ "question": question })),
+    match on_files(shared, move |store| store.message(&project, &id)).await {
+        Ok(MessageView::Question(question)) => {
+            json_response(StatusCode::OK, &serde_json::json!({ "question": question }))
+        }
+        Ok(MessageView::Request(request)) => {
+            json_response(StatusCode::OK, &serde_json::json!({ "request": request }))
+        }
         Err(error) => agboard_error_response(&error),
     }
 }
 
-/// `GET …/qa?status=…&limit=…`: questions of one status, newest first.
+/// `GET …/messages?status=…&type=…&limit=…`: messages, newest first.
 pub(crate) async fn list_response(
     shared: PathBuf,
     raw_project: String,
     status: Option<String>,
+    kind: Option<String>,
     limit: Option<String>,
 ) -> Response {
     let project = match parse_project_id(&raw_project) {
@@ -84,27 +80,38 @@ pub(crate) async fn list_response(
             reason: reason.into(),
         })
     };
-    let status = match status.as_deref().unwrap_or("answered") {
-        "open" => Some(QuestionStatus::Open),
-        "answered" => Some(QuestionStatus::Answered),
-        "withdrawn" => Some(QuestionStatus::Withdrawn),
+    let status = match status.as_deref().unwrap_or("open") {
+        "open" => Some("open"),
+        "closed" => Some("closed"),
+        "withdrawn" => Some("withdrawn"),
         "all" => None,
-        _ => return invalid("status", "status is open, answered, withdrawn, or all."),
+        _ => return invalid("status", "status is open, closed, withdrawn, or all."),
+    };
+    let kind = match kind.as_deref() {
+        None => None,
+        Some(k @ ("question" | "request")) => Some(k),
+        Some(_) => return invalid("type", "type is question or request."),
     };
     let limit = match limit.as_deref().map(str::parse::<usize>) {
         None => 50,
         Some(Ok(n)) if (1..=500).contains(&n) => n,
         Some(_) => return invalid("limit", "limit is a number from 1 to 500."),
     };
-    match on_files(shared, move |store| store.questions(&project)).await {
-        Ok(questions) => {
-            let mut picked: Vec<QuestionView> = questions
+    match on_files(shared, move |store| store.messages(&project)).await {
+        Ok(messages) => {
+            let mut picked: Vec<MessageView> = messages
                 .into_iter()
-                .filter(|q| status.is_none_or(|s| q.status == s))
+                .filter(|m| status.is_none_or(|s| m.state() == s))
+                .filter(|m| {
+                    kind.is_none_or(|k| match m {
+                        MessageView::Question(_) => k == "question",
+                        MessageView::Request(_) => k == "request",
+                    })
+                })
                 .collect();
-            picked.sort_by_key(|q| std::cmp::Reverse(q.number()));
+            picked.sort_by_key(|m| std::cmp::Reverse(m.number()));
             picked.truncate(limit);
-            json_response(StatusCode::OK, &serde_json::json!({ "questions": picked }))
+            json_response(StatusCode::OK, &serde_json::json!({ "messages": picked }))
         }
         Err(error) => agboard_error_response(&error),
     }
@@ -152,7 +159,7 @@ fn conflict_response(
     )
 }
 
-/// `POST …/qa/answers`: a person's answers, written together or not at all.
+/// `POST …/messages/answers`: a person's answers, written together or not at all.
 pub(crate) async fn answer_questions(
     headers: HeaderMap,
     state: Arc<AppState>,
@@ -203,41 +210,29 @@ pub(crate) async fn answer_questions(
     }
 }
 
-/// `POST …/qa/requests/{requestId}/withdraw`: a person withdraws a request.
-pub(crate) async fn withdraw_request(
+/// `POST …/messages/{id}/withdraw`: a person withdraws a request.
+pub(crate) async fn withdraw_message(
     headers: HeaderMap,
     state: Arc<AppState>,
     raw_project: String,
-    request_id: String,
-    input: WithdrawInput,
+    id: String,
 ) -> Response {
     let project = match parse_project_id(&raw_project) {
         Ok(project) => project,
         Err(error) => return agboard_error_response(&error),
     };
     let result = with_request_files(&state, &headers, move |store| {
-        store.withdraw_request(
-            &project,
-            &request_id,
-            Actor::Human,
-            input.reason.as_deref(),
-            chrono::Utc::now(),
-        )?;
-        store.request(&project, &request_id)
+        store.withdraw_message(&project, &id, Actor::Human, chrono::Utc::now())
     })
     .await;
     match result {
-        Ok((request, questions)) => {
+        Ok(changed) => {
             refresh_index(&state);
-            json_response(
-                StatusCode::OK,
-                &serde_json::json!({
-                    "requestId": request.request_id,
-                    "withdrawnAt": request.withdrawn_at.map(crate::clock::format_utc),
-                    "withdrawReason": request.withdraw_reason,
-                    "questions": questions,
-                }),
-            )
+            let body = match changed.value {
+                MessageView::Question(q) => serde_json::json!({ "question": q }),
+                MessageView::Request(r) => serde_json::json!({ "request": r }),
+            };
+            json_response(StatusCode::OK, &body)
         }
         Err(error) => agboard_error_response(&error),
     }

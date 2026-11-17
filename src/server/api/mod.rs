@@ -7,13 +7,13 @@ mod docs;
 mod epic_attachments;
 mod epics;
 mod guards;
+mod messages;
 mod monitor_connections;
 mod multipart;
 mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
-mod qa;
 mod start;
 mod summary;
 mod task_acceptance;
@@ -43,12 +43,12 @@ use docs::*;
 use epic_attachments::*;
 use epics::*;
 use guards::{host_guard, no_referrer, write_guard};
+use messages::*;
 use monitor_connections::*;
 use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
-use qa::*;
 use start::*;
 use summary::summary;
 use task_acceptance::*;
@@ -225,15 +225,22 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
             "/api/projects/{project_id}/tasks/{id}/agent-status",
             post(set_agent_status),
         )
-        .route("/api/projects/{project_id}/qa", get(qa_list))
-        .route("/api/projects/{project_id}/qa/answers", post(qa_answers))
+        .route("/api/projects/{project_id}/messages", get(message_list))
         .route(
-            "/api/projects/{project_id}/qa/{question_id}",
-            get(qa_question),
+            "/api/projects/{project_id}/messages/answers",
+            post(message_answers),
         )
         .route(
-            "/api/projects/{project_id}/qa/requests/{request_id}/withdraw",
-            post(qa_withdraw),
+            "/api/projects/{project_id}/messages/requests",
+            post(message_send_request),
+        )
+        .route(
+            "/api/projects/{project_id}/messages/{message_id}",
+            get(message_detail),
+        )
+        .route(
+            "/api/projects/{project_id}/messages/{message_id}/withdraw",
+            post(message_withdraw),
         )
         .route("/api/onboarding", get(get_onboarding))
         .route("/api/onboarding/seen", post(mark_onboarding_seen))

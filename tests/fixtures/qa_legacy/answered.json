@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "requestId": "c2d3e4f506172839405a6b7c8d9e0f1b",
+  "createdAt": "2026-11-12T11:00:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-6",
+      "kind": "task",
+      "question": "Log the import progress?",
+      "choices": [
+        { "id": "yes", "label": "Yes" },
+        { "id": "no", "label": "No" }
+      ],
+      "recommendedChoiceId": "yes",
+      "approvingChoiceIds": [],
+      "answer": {
+        "choiceId": "yes",
+        "choiceLabel": "Yes",
+        "text": null,
+        "actor": "human",
+        "via": "chat",
+        "at": "2026-11-12T11:20:00Z"
+      }
+    }
+  ]
+}

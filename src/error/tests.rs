@@ -50,12 +50,16 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         AgboardError::QuestionWithdrawn {
             ids: vec!["Q-2".into()],
         },
-        AgboardError::QuestionNotFound { id: "Q-3".into() },
-        AgboardError::RequestNotFound {
-            id: "0123456789abcdef0123456789abcdef".into(),
+        AgboardError::MessageNotFound { id: "Q-3".into() },
+        AgboardError::MessageClosed { id: "Q-3".into() },
+        AgboardError::MessageTypeMismatch {
+            id: "Q-3".into(),
+            expected: "request".into(),
         },
-        AgboardError::RequestAnswered {
-            id: "0123456789abcdef0123456789abcdef".into(),
+        AgboardError::RequestAccepted { id: "Q-4".into() },
+        AgboardError::RequestWithdrawn { id: "Q-4".into() },
+        AgboardError::AiOnly {
+            action: "withdrawing a question".into(),
         },
         AgboardError::TaskStatusChanged {
             id: 5,
@@ -83,8 +87,8 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
             version: "2".into(),
             expected: 1,
         },
-        AgboardError::RequestChoiceUnknown {
-            request_id: "a".into(),
+        AgboardError::ChoiceUnknown {
+            question_id: "Q-1".into(),
             choice_id: "b".into(),
         },
         AgboardError::DatabaseBusy,
@@ -167,16 +171,19 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("questions_unanswered", 1),
             ("question_answered", 1),
             ("question_withdrawn", 1),
-            ("question_not_found", 3),
-            ("request_not_found", 3),
-            ("request_answered", 1),
+            ("message_not_found", 3),
+            ("message_closed", 1),
+            ("message_type_mismatch", 2),
+            ("request_accepted", 1),
+            ("request_withdrawn", 1),
+            ("ai_only", 1),
             ("task_status_changed", 1),
             ("confirmation_required", 1),
             ("file_error", 1),
             ("file_invalid", 1),
             ("file_unreadable", 1),
             ("format_unsupported", 1),
-            ("request_choice_unknown", 2),
+            ("choice_unknown", 2),
             ("database_busy", 1),
             ("database_error", 1),
             ("already_serving", 1),

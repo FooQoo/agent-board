@@ -1,155 +1,144 @@
-//! Checks of a stored `request.json`. A file with a defect is left out of every list.
+//! The rules of a stored `QA.md`. A file with a defect is left out of every list.
 
 use std::collections::HashSet;
 
-use super::model::{QaQuestion, QaRequestFile, QuestionKind, question_number};
-use crate::domain::Actor;
-use crate::file_store::model::Choice;
-use crate::file_store::validate::{
-    Defect, choice_defect, is_hex32, normalize_answer_text, normalize_question,
-};
+use super::model::{Message, Question, Request, question_number};
+use crate::file_store::validate::{Defect, choice_defect};
 
-/// The most questions one request holds.
+/// The most questions one `ask` registers.
 pub const MAX_QUESTIONS: usize = 20;
-/// The most characters of a withdrawal reason.
-pub const MAX_WITHDRAW_REASON_CHARS: usize = 2_000;
+/// The most characters of a question's text.
+pub const MAX_QUESTION_CHARS: usize = 5_000;
+/// The most characters of a request's text.
+pub const MAX_REQUEST_CHARS: usize = 20_000;
+/// The most characters of a text reply.
+pub const MAX_REPLY_CHARS: usize = 2_000;
+/// The most characters of the agent that accepts a request.
+pub const MAX_ACCEPTED_BY_CHARS: usize = 200;
 
-fn defect(field: impl Into<String>, reason: impl Into<String>) -> Defect {
+fn defect(field: &str, reason: &str) -> Defect {
     Defect {
         field: field.into(),
         reason: reason.into(),
     }
 }
 
-/// The defects of the parts of a question that its asker supplies (no answer).
-pub fn question_defect(question: &QaQuestion) -> Option<Defect> {
-    if normalize_question(&question.question).ok().as_deref() != Some(question.question.as_str()) {
-        return Some(defect(
-            "question",
-            "Questions must be 1 to 5000 characters.",
-        ));
-    }
-    if let Some(d) = choice_defect(&question.choices) {
+fn body_defect(body: &str, limit: usize) -> Option<Defect> {
+    let count = body.trim().chars().count();
+    (count == 0 || count > limit).then(|| {
+        defect(
+            "body",
+            &format!("The text must be 1 to {limit} characters."),
+        )
+    })
+}
+
+/// The defects of the parts of a question that its asker supplies (no reply).
+pub fn question_defect(question: &Question) -> Option<Defect> {
+    if let Some(d) = body_defect(&question.body, MAX_QUESTION_CHARS) {
         return Some(d);
     }
-    let known = |id: &String| question.choices.iter().any(|c| &c.id == id);
-    if question
-        .recommended_choice_id
-        .as_ref()
-        .is_some_and(|id| !known(id))
+    if !question.choices.is_empty()
+        && let Some(d) = choice_defect(&question.choices)
+    {
+        return Some(d);
+    }
+    if let Some(id) = &question.recommended
+        && !question.choices.iter().any(|c| &c.id == id)
     {
         return Some(defect(
-            "recommendedChoiceId",
+            "recommended",
             "The recommended choice must be one of the choices.",
         ));
     }
-    if question.kind == QuestionKind::StartApproval {
-        if question.approving_choice_ids.is_empty() {
-            return Some(defect(
-                "approvingChoiceIds",
-                "A start approval needs at least one approving choice.",
-            ));
-        }
-    } else if !question.approving_choice_ids.is_empty() {
-        return Some(defect(
-            "approvingChoiceIds",
-            "Only a start approval has approving choices.",
-        ));
-    }
     let mut seen = HashSet::new();
-    if question
-        .approving_choice_ids
-        .iter()
-        .any(|id| !known(id) || !seen.insert(id))
-    {
-        return Some(defect(
-            "approvingChoiceIds",
-            "Approving choices must be distinct choices of the question.",
-        ));
+    if question.tasks.iter().any(|id| *id < 1 || !seen.insert(id)) {
+        return Some(defect("tasks", "Tasks are distinct positive task numbers."));
     }
     None
 }
 
-fn answer_defect(question: &QaQuestion) -> Option<Defect> {
-    let answer = question.answer.as_ref()?;
-    if answer.actor != Actor::Human {
-        return Some(defect(
-            "answer.actor",
-            "Answers are recorded for people only.",
-        ));
-    }
-    match (&answer.choice_id, &answer.choice_label) {
-        (None, None) => {}
-        (Some(id), Some(label)) => {
-            let found: Option<&Choice> = question.choices.iter().find(|c| &c.id == id);
-            if found.is_none_or(|c| &c.label != label) {
+fn reply_defect(question: &Question) -> Option<Defect> {
+    let reply = question.reply.as_ref()?;
+    if question.choices.is_empty() {
+        if reply.choice.is_some() {
+            return Some(defect(
+                "reply.choice",
+                "A question without choices takes no choice.",
+            ));
+        }
+    } else {
+        match &reply.choice {
+            None => {
                 return Some(defect(
-                    "answer.choiceLabel",
-                    "The selected choice must be one of the question's choices.",
+                    "reply.choice",
+                    "A question with choices needs a choice.",
                 ));
+            }
+            Some(id) if !question.choices.iter().any(|c| &c.id == id) => {
+                return Some(defect(
+                    "reply.choice",
+                    "The choice must be one of the question's choices.",
+                ));
+            }
+            Some(_) => {}
+        }
+    }
+    match &reply.text {
+        Some(text) => {
+            let count = text.chars().count();
+            if text.trim() != text || count == 0 || count > MAX_REPLY_CHARS {
+                return Some(defect("reply.text", "The text is 1 to 2000 characters."));
+            }
+        }
+        None if question.choices.is_empty() => {
+            return Some(defect(
+                "reply.text",
+                "A question without choices needs a text.",
+            ));
+        }
+        None => {}
+    }
+    None
+}
+
+fn request_defect(request: &Request) -> Option<Defect> {
+    if let Some(d) = body_defect(&request.body, MAX_REQUEST_CHARS) {
+        return Some(d);
+    }
+    match (&request.accepted_at, &request.accepted_by) {
+        (None, None) => {}
+        (Some(_), Some(by)) => {
+            let count = by.chars().count();
+            if by.trim() != by || count == 0 || count > MAX_ACCEPTED_BY_CHARS {
+                return Some(defect("acceptedBy", "The agent is 1 to 200 characters."));
             }
         }
         _ => {
             return Some(defect(
-                "answer.choiceLabel",
-                "A selected choice needs its ID and label.",
+                "acceptedAt",
+                "acceptedAt and acceptedBy are written together.",
             ));
         }
-    }
-    if answer
-        .text
-        .as_deref()
-        .is_some_and(|text| normalize_answer_text(text).ok().flatten().as_deref() != Some(text))
-    {
-        return Some(defect(
-            "answer.text",
-            "Answer text must be nonblank and within its limit.",
-        ));
-    }
-    if answer.choice_id.is_none() && answer.text.is_none() {
-        return Some(defect("answer", "An answer needs a choice or text."));
     }
     None
 }
 
-/// Every defect of a request file whose folder is `folder_id`.
-pub fn check_request(file: &QaRequestFile, folder_id: &str) -> Vec<Defect> {
-    let mut out = Vec::new();
-    if !is_hex32(&file.request_id) || file.request_id != folder_id {
-        out.push(defect(
-            "requestId",
-            "The request ID must be 32 lowercase hexadecimal characters and match its folder.",
-        ));
+/// The first defect of a message whose folder is `folder_id`.
+pub fn check_message(message: &Message, folder_id: &str) -> Option<Defect> {
+    if question_number(message.id()).is_none() || message.id() != folder_id {
+        return Some(defect("id", "The folder of a message is named Q-<n>."));
     }
-    if file.withdrawn_at.is_none() && file.withdraw_reason.is_some() {
-        out.push(defect(
-            "withdrawReason",
-            "Only a withdrawn request has a reason.",
-        ));
+    match message {
+        Message::Question(q) => question_defect(q).or_else(|| {
+            reply_defect(q).or_else(|| {
+                (q.reply.is_some() && q.withdrawn_at.is_some())
+                    .then(|| defect("withdrawnAt", "A question with a reply is not withdrawn."))
+            })
+        }),
+        Message::Request(r) => request_defect(r).or_else(|| {
+            (r.accepted_at.is_some() && r.withdrawn_at.is_some())
+                .then(|| defect("withdrawnAt", "An accepted request is not withdrawn."))
+        }),
     }
-    if let Some(reason) = &file.withdraw_reason {
-        let count = reason.trim().chars().count();
-        if count == 0 || count > MAX_WITHDRAW_REASON_CHARS {
-            out.push(defect(
-                "withdrawReason",
-                "Reasons must be 1 to 2000 characters.",
-            ));
-        }
-    }
-    if !(1..=MAX_QUESTIONS).contains(&file.questions.len()) {
-        out.push(defect("questions", "A request has 1 to 20 questions."));
-    }
-    let mut ids = HashSet::new();
-    for (index, question) in file.questions.iter().enumerate() {
-        if question_number(&question.id).is_none() || !ids.insert(question.id.as_str()) {
-            out.push(defect(
-                format!("questions[{index}].id"),
-                "Question IDs are unique Q-<positive integer> values.",
-            ));
-        }
-        if let Some(d) = question_defect(question).or_else(|| answer_defect(question)) {
-            out.push(defect(format!("questions[{index}].{}", d.field), d.reason));
-        }
-    }
-    out
 }

@@ -171,7 +171,7 @@ impl FileStore {
         if state == RunState::Pending {
             return Err(AgboardError::InvalidValue {
                 field: "agentStatus".into(),
-                reason: "The run state is idle or running. Ask questions with qa ask.".into(),
+                reason: "The run state is idle or running. Ask questions with message ask.".into(),
             });
         }
         let shared = self.shared_dir();

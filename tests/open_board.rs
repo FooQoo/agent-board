@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-const QUESTION: &str = r#"{"questions":[{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]}"#;
+const QUESTION: &str = r#"{"questions":[{"body":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]}"#;
 
 struct Board {
     home: tempfile::TempDir,
@@ -286,7 +286,7 @@ fn a_manual_server_and_a_question_open_nothing() {
     let asked = board.run(&[
         "--project",
         "Auto",
-        "qa",
+        "message",
         "ask",
         "--actor",
         "ai",
@@ -294,7 +294,7 @@ fn a_manual_server_and_a_question_open_nothing() {
         "1",
         "--timeout",
         "1",
-        "--request-json",
+        "--questions-json",
         QUESTION,
     ]);
     assert_eq!(asked.status.code(), Some(5), "{asked:?}");

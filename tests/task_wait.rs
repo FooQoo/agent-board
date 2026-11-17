@@ -237,14 +237,14 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
         &[
             "--project",
             "Demo",
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             &pending.to_string(),
-            "--request-json",
-            r#"{"questions":[{"question":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}]}"#,
+            "--questions-json",
+            r#"{"questions":[{"body":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}]}"#,
             "--no-wait",
         ],
     );

@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "requestId": "3f2a9c1e7b4d4c0e8a5f6b7c8d9e0a1b",
+  "createdAt": "2026-11-10T09:15:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-1",
+      "kind": "plan",
+      "question": "Should existing records be deleted or kept?\n\nThe import runs once.",
+      "choices": [
+        { "id": "delete", "label": "Delete them and start clean" },
+        { "id": "keep", "label": "Keep them and migrate" }
+      ],
+      "recommendedChoiceId": "keep",
+      "approvingChoiceIds": [],
+      "answer": null
+    },
+    {
+      "id": "Q-2",
+      "kind": "plan",
+      "question": "Which license should the project use?",
+      "choices": [
+        { "id": "mit", "label": "MIT" },
+        { "id": "apache", "label": "Apache-2.0" }
+      ],
+      "recommendedChoiceId": null,
+      "approvingChoiceIds": [],
+      "answer": {
+        "choiceId": "mit",
+        "choiceLabel": "MIT",
+        "text": "MIT is fine.",
+        "actor": "human",
+        "via": "ui",
+        "at": "2026-11-10T09:30:00Z"
+      }
+    }
+  ]
+}

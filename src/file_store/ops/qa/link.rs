@@ -1,16 +1,17 @@
-//! Adding questions to, or removing them from, the `questions` of a task.
+//! Adding questions to, or removing them from, the `questions` of a task. An open question
+//! also keeps the task in its own `tasks`.
 
 use chrono::{DateTime, Utc};
 
 use super::super::{ensure_ai_task_not_done, lock_project, stamp};
-use super::broken_file_error;
+use super::{broken_file_error, message_change};
 use crate::domain::{Actor, ProjectId};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::frontmatter::compose_questions;
 use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::model::{HistoryRecord, TaskView};
-use crate::file_store::qa::QaIndex;
+use crate::file_store::qa::{Message, MessageState, QaIndex};
 use crate::file_store::transaction::save_batch_locked;
 use crate::file_store::{layout, reader};
 
@@ -42,12 +43,21 @@ impl FileStore {
             return Err(AgboardError::TaskIsDraft { id: task_id });
         }
         ensure_ai_task_not_done(&task, actor)?;
+        let index = QaIndex::load(shared, &project_dir)?;
         if link {
-            let index = QaIndex::load(shared, &project_dir)?;
             for id in ids {
-                if index.find(id).is_none() {
-                    return Err(broken_file_error(&index)
-                        .unwrap_or(AgboardError::QuestionNotFound { id: id.clone() }));
+                match index.find(id) {
+                    Some(Message::Question(_)) => {}
+                    Some(Message::Request(_)) => {
+                        return Err(AgboardError::MessageTypeMismatch {
+                            id: id.clone(),
+                            expected: "question".into(),
+                        });
+                    }
+                    None => {
+                        return Err(broken_file_error(&index)
+                            .unwrap_or(AgboardError::MessageNotFound { id: id.clone() }));
+                    }
                 }
             }
         }
@@ -68,6 +78,7 @@ impl FileStore {
         let language = self.history_language(project, &task)?;
         let at = stamp(now);
         let mut changed = false;
+        let mut changes = Vec::new();
         for id in ids {
             let present = current.contains(id);
             if link == present {
@@ -79,6 +90,22 @@ impl FileStore {
                 current.retain(|q| q != id);
             }
             changed = true;
+            // An open question keeps the list of the tasks it waits for.
+            if let Some(question) = index.question(id)
+                && question.state() == MessageState::Open
+            {
+                let mut question = question.clone();
+                question.tasks.retain(|t| *t != task_id);
+                if link {
+                    question.tasks.push(task_id);
+                    question.tasks.sort_unstable();
+                }
+                changes.push(message_change(
+                    &project_dir,
+                    &Message::Question(question),
+                    false,
+                )?);
+            }
             let (english, japanese) = if link {
                 (
                     format!("Added question {id} to the references."),
@@ -103,12 +130,12 @@ impl FileStore {
                     field: d.field,
                     reason: d.reason,
                 })?;
-            let changes = super::super::save::task_pair_changes(
+            changes.extend(super::super::save::task_pair_changes(
                 shared,
                 &project_dir,
                 &task,
                 Some(&composed),
-            )?;
+            )?);
             save_batch_locked(&project_dir, changes)?;
         }
         reader::read_task_locked(shared, project, task_id)

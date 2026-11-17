@@ -3,13 +3,14 @@
 use chrono::{DateTime, Utc};
 
 use super::super::{lock_project, stamp};
-use super::{broken_file_error, referrers, request_change};
-use crate::domain::{Actor, ProjectId};
+use super::read::views_locked;
+use super::{broken_file_error, message_change, referrers};
+use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::model::HistoryRecord;
 use crate::file_store::qa::{
-    AnswerVia, QaAnswer, QaIndex, QaQuestion, QuestionStatus, QuestionView,
+    AnswerVia, Message, MessageState, QaIndex, Question, QuestionView, Reply,
 };
 use crate::file_store::transaction::save_batch_locked;
 use crate::file_store::validate;
@@ -22,7 +23,7 @@ pub struct AnswerItem {
     pub text: Option<String>,
 }
 
-fn history_text(question: &QaQuestion, answer: &QaAnswer, japanese: bool) -> String {
+fn history_text(question: &Question, reply: &Reply, japanese: bool) -> String {
     let (head, selected, answered, chat) = if japanese {
         (
             "質問に回答しました",
@@ -39,20 +40,66 @@ fn history_text(question: &QaQuestion, answer: &QaAnswer, japanese: bool) -> Str
         )
     };
     let mut text = if japanese {
-        format!("{head}（{}）:\n\n{}", question.id, question.question)
+        format!("{head}（{}）:\n\n{}", question.id, question.body)
     } else {
-        format!("{head} ({}):\n\n{}", question.id, question.question)
+        format!("{head} ({}):\n\n{}", question.id, question.body)
     };
-    if let Some(label) = &answer.choice_label {
+    let label = reply.choice.as_ref().and_then(|id| {
+        question
+            .choices
+            .iter()
+            .find(|c| &c.id == id)
+            .map(|c| c.label.as_str())
+    });
+    if let Some(label) = label {
         text.push_str(&format!("\n\n{selected}: {label}"));
     }
-    if let Some(body) = &answer.text {
+    if let Some(body) = &reply.text {
         text.push_str(&format!("\n\n{answered}: {body}"));
     }
-    if answer.via == AnswerVia::Chat {
+    if reply.via == AnswerVia::Chat {
         text.push_str(&format!("\n\n{chat}"));
     }
     text
+}
+
+/// The question as it is after `item` answers it, or the reason it cannot be answered.
+fn answered(
+    question: &Question,
+    item: &AnswerItem,
+    via: AnswerVia,
+    at: DateTime<Utc>,
+) -> Result<Question, AgboardError> {
+    let text = validate::normalize_answer_text(item.text.as_deref().unwrap_or(""))?;
+    let choice = item.choice_id.clone().filter(|c| !c.is_empty());
+    if let Some(id) = &choice
+        && !question.choices.iter().any(|c| &c.id == id)
+    {
+        return Err(AgboardError::ChoiceUnknown {
+            question_id: question.id.clone(),
+            choice_id: id.clone(),
+        });
+    }
+    if !question.choices.is_empty() && choice.is_none() {
+        return Err(AgboardError::InvalidValue {
+            field: "choice".into(),
+            reason: format!("Choose one of the options of {}.", question.id),
+        });
+    }
+    if question.choices.is_empty() && text.is_none() {
+        return Err(AgboardError::InvalidValue {
+            field: "text".into(),
+            reason: format!("{} has no options; write the answer in words.", question.id),
+        });
+    }
+    let mut next = question.clone();
+    next.reply = Some(Reply {
+        choice,
+        text,
+        via,
+        at,
+    });
+    Ok(next)
 }
 
 impl FileStore {
@@ -74,106 +121,71 @@ impl FileStore {
         }
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut index = QaIndex::load(shared, &project_dir)?;
+        let index = QaIndex::load(shared, &project_dir)?;
         let at = stamp(now);
 
-        let mut answered = Vec::new();
+        let mut done = Vec::new();
         let mut withdrawn = Vec::new();
-        let mut planned: Vec<(String, QaAnswer)> = Vec::new();
-        for item in items {
-            if planned.iter().any(|(id, _)| id == &item.question_id) {
+        let mut planned: Vec<(Question, Question)> = Vec::new();
+        for item in &items {
+            if planned.iter().any(|(old, _)| old.id == item.question_id) {
                 return Err(AgboardError::InvalidValue {
                     field: "answers".into(),
                     reason: format!("{} is answered twice.", item.question_id),
                 });
             }
-            let Some((request, question)) = index.find(&item.question_id) else {
-                return Err(
-                    broken_file_error(&index).unwrap_or(AgboardError::QuestionNotFound {
-                        id: item.question_id,
-                    }),
-                );
+            let question = match index.find(&item.question_id) {
+                Some(Message::Question(q)) => q,
+                Some(Message::Request(_)) => {
+                    return Err(AgboardError::MessageTypeMismatch {
+                        id: item.question_id.clone(),
+                        expected: "question".into(),
+                    });
+                }
+                None => {
+                    return Err(broken_file_error(&index).unwrap_or(
+                        AgboardError::MessageNotFound {
+                            id: item.question_id.clone(),
+                        },
+                    ));
+                }
             };
-            match request.question_status(question) {
-                QuestionStatus::Answered => answered.push(item.question_id.clone()),
-                QuestionStatus::Withdrawn => withdrawn.push(item.question_id.clone()),
-                QuestionStatus::Open => {}
+            match question.state() {
+                MessageState::Closed => done.push(question.id.clone()),
+                MessageState::Withdrawn => withdrawn.push(question.id.clone()),
+                MessageState::Open => {}
             }
-            let text = validate::normalize_answer_text(item.text.as_deref().unwrap_or(""))?;
-            let choice_id = item.choice_id.filter(|c| !c.is_empty());
-            if choice_id.is_none() && text.is_none() {
-                return Err(AgboardError::InvalidValue {
-                    field: "answer".into(),
-                    reason: format!(
-                        "Choose an option, write a text answer, or both for {}.",
-                        item.question_id
-                    ),
-                });
-            }
-            let choice_label = match &choice_id {
-                None => None,
-                Some(choice) => Some(
-                    question
-                        .choices
-                        .iter()
-                        .find(|c| &c.id == choice)
-                        .ok_or_else(|| AgboardError::RequestChoiceUnknown {
-                            request_id: request.request_id.clone(),
-                            choice_id: choice.clone(),
-                        })?
-                        .label
-                        .clone(),
-                ),
-            };
-            planned.push((
-                item.question_id,
-                QaAnswer {
-                    choice_id,
-                    choice_label,
-                    text,
-                    actor: Actor::Human,
-                    via,
-                    at,
-                },
-            ));
+            planned.push((question.clone(), answered(question, item, via, at)?));
         }
-        if !answered.is_empty() {
-            return Err(AgboardError::QuestionAnswered { ids: answered });
+        if !done.is_empty() {
+            return Err(AgboardError::QuestionAnswered { ids: done });
         }
         if !withdrawn.is_empty() {
             return Err(AgboardError::QuestionWithdrawn { ids: withdrawn });
         }
 
-        let mut touched: Vec<String> = Vec::new();
-        for (id, answer) in &planned {
-            for request in &mut index.requests {
-                if let Some(question) = request.questions.iter_mut().find(|q| &q.id == id) {
-                    question.answer = Some(answer.clone());
-                    if !touched.contains(&request.request_id) {
-                        touched.push(request.request_id.clone());
-                    }
-                }
-            }
-        }
         let mut changes = Vec::new();
-        for request_id in &touched {
-            let request = index.request(request_id).expect("touched request");
-            changes.push(request_change(&project_dir, request, false)?);
+        for (_, next) in &planned {
+            changes.push(message_change(
+                &project_dir,
+                &Message::Question(next.clone()),
+                false,
+            )?);
         }
 
-        let ids: Vec<String> = planned.iter().map(|(id, _)| id.clone()).collect();
+        let ids: Vec<String> = planned.iter().map(|(q, _)| q.id.clone()).collect();
         for mut referrer in referrers(shared, project, &project_dir, &ids)? {
             if referrer.task.archived_at.is_some() {
                 continue;
             }
             let language = self.history_language(project, &referrer.task)?;
-            for (id, answer) in &planned {
-                if !referrer.questions.contains(id) {
+            for (_, next) in &planned {
+                if !referrer.questions.contains(&next.id) {
                     continue;
                 }
-                let (_, question) = index.find(id).expect("planned question");
-                let english = history_text(question, answer, false);
-                let japanese = history_text(question, answer, true);
+                let reply = next.reply.as_ref().expect("an answered question");
+                let english = history_text(next, reply, false);
+                let japanese = history_text(next, reply, true);
                 referrer.task.history.push(HistoryRecord {
                     at,
                     reason: language.text(&english, &japanese).to_owned(),
@@ -189,9 +201,8 @@ impl FileStore {
         }
         save_batch_locked(&project_dir, changes)?;
 
-        let snapshot = crate::file_store::reader::read_snapshot_locked(shared, project)?;
-        Ok(snapshot
-            .questions
+        let (questions, _) = views_locked(shared, project)?;
+        Ok(questions
             .into_iter()
             .filter(|q| ids.contains(&q.id))
             .collect())

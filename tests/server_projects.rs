@@ -403,9 +403,7 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
         "Choose",
         qa::choices(&[("a", "A"), ("b", "B")]),
     )
-    .questions[0]
-        .id
-        .clone();
+    .id;
     let task_path = |id: i64| {
         home.path()
             .join("shared")
@@ -457,7 +455,7 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
         "POST",
-        &format!("/api/projects/{project}/qa/answers"),
+        &format!("/api/projects/{project}/messages/answers"),
         Some(&json!({"answers": [{"questionId": request, "choiceId": "a"}]}).to_string()),
     );
     assert_eq!(answer.status, 200, "{}", answer.body);
@@ -743,9 +741,7 @@ fn pending_request(home: &Path, id: &ProjectId) -> String {
     let s = store(home);
     s.move_work_task(id, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
-    qa::ask_choices(&s, id, 2, "Need direction", two_choices()).questions[0]
-        .id
-        .clone()
+    qa::ask_choices(&s, id, 2, "Need direction", two_choices()).id
 }
 
 #[test]
@@ -757,20 +753,21 @@ fn answering_uses_the_questions_of_that_project_and_a_missing_question_changes_n
     let server = Running::start(home.path());
 
     // beta has no questions: alpha's question ID does not answer anything there.
-    let body = json!({"answers": [{"questionId": question_a, "text": "Go"}]}).to_string();
+    let body =
+        json!({"answers": [{"questionId": question_a, "choiceId": "a", "text": "Go"}]}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{b}/qa/answers"),
+        &format!("/api/projects/{b}/messages/answers"),
         Some(&body),
     );
     assert_eq!(reply.status, 404, "{}", reply.body);
-    assert_eq!(reply.code(), "question_not_found");
+    assert_eq!(reply.code(), "message_not_found");
     assert_eq!(snapshot_json(home.path(), &a), before_a);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/qa/answers"),
+        &format!("/api/projects/{a}/messages/answers"),
         Some(&body),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -898,7 +895,7 @@ fn write_routes() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
         ),
         (
             "POST",
-            "/qa/answers",
+            "/messages/answers",
             Some(r#"{"answers":[{"questionId":"Q-1","text":"r"}]}"#),
         ),
         ("DELETE", "/tasks/1", None),
@@ -1140,7 +1137,7 @@ fn changes_that_do_not_change_anything_send_nothing() {
     assert_eq!(invalid.status, 422);
     let wrong_request = server.write(
         "POST",
-        &format!("/api/projects/{a}/qa/answers"),
+        &format!("/api/projects/{a}/messages/answers"),
         Some(r#"{"answers":[{"questionId":"Q-9","text":"Go"}]}"#),
     );
     assert_eq!(wrong_request.status, 404);

@@ -190,7 +190,7 @@ fn state_history_and_questions_survive_reopen() {
     assert_eq!(pending.pending_reason.as_deref(), Some("Continue?"));
     assert_eq!(pending.pending_choices.len(), 2);
     assert_eq!(pending.question_ids, vec!["Q-1".to_string()]);
-    qa::answer(&reopened, &fx.project, "Q-1", None, Some("Proceed"));
+    qa::answer(&reopened, &fx.project, "Q-1", Some("yes"), Some("Proceed"));
     let answered = reopened.task(&fx.project, id).unwrap();
     assert_eq!(answered.agent_status, RunState::Idle);
     let json: serde_json::Value =

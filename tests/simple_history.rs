@@ -69,7 +69,7 @@ fn answers_survive_later_questions_restart_and_empty_history() {
         )
         .unwrap();
     let options = [("yes", "Proceed"), ("other", "Other")];
-    let first = qa::ask(&store, &project, &[task.id], "First question?", &options);
+    qa::ask(&store, &project, &[task.id], "First question?", &options);
     qa::answer(&store, &project, "Q-1", Some("yes"), Some("Do it"));
     qa::ask(&store, &project, &[task.id], "Second question?", &options);
     let path = shared
@@ -88,11 +88,10 @@ fn answers_survive_later_questions_restart_and_empty_history() {
     assert_eq!(pending.open_question_ids, vec!["Q-2".to_string()]);
     assert!(pending.history.is_empty());
     let answered = reopened.question(&project, "Q-1").unwrap();
-    let answer = answered.answer.unwrap();
+    let answer = answered.reply.unwrap();
     assert_eq!(answer.choice_id.as_deref(), Some("yes"));
     assert_eq!(answer.text.as_deref(), Some("Do it"));
-    assert_eq!(answered.request_id, first.request_id);
-    assert!(reopened.question(&project, "Q-2").unwrap().answer.is_none());
+    assert!(reopened.question(&project, "Q-2").unwrap().reply.is_none());
     let metadata: serde_json::Value =
         serde_json::from_slice(&std::fs::read(path.join("task.json")).unwrap()).unwrap();
     assert_eq!(metadata["formatVersion"], 1);

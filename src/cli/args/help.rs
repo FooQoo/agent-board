@@ -19,7 +19,7 @@ Commands:
   mv      Move a task to todo, doing, or done
   history Append a work note
   state   Report a task's run state: idle or running
-  qa      Ask the user questions, wait for the answers, and record answers
+  message Ask the user questions, wait for the answers, and handle requests from the user
   rm      Delete a task (humans only; asks for confirmation)
   ls      List tasks
   show    Show a task and its history
@@ -47,11 +47,12 @@ Workflow for agents:
   agboard --project NAME remote --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
-  agboard --project NAME qa ask --actor ai --task <id> --json --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'
+  agboard --project NAME message ask --actor ai --task <id> --json --questions-json '{\"questions\":[{\"body\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'
 
 Rules for agents:
   - Move a task to doing before you report running.
-  - Ask the user with qa ask: 1 to 20 questions, each with 2 to 10 choices. The
+  - Ask the user with message ask: 1 to 20 questions, each with 2 to 10 choices
+    or none (then the answer is words). Each question is its own message. The
     tasks named with --task wait until the questions are answered.
   - Moving a task to todo or done resets it to idle.
   - You cannot delete tasks or projects, or replace a board. Ask a human to do it.

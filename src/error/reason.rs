@@ -54,6 +54,9 @@ impl AgboardError {
             AgboardError::HumanOnly { .. } => {
                 "Ask the user to do this in the web UI or run it with --actor human.".into()
             }
+            AgboardError::AiOnly { .. } => {
+                "An agent does this with --actor ai; a person has no way to do it.".into()
+            }
             AgboardError::TaskIsDone { .. } => {
                 "A person must move the task out of Done before you can change it.".into()
             }
@@ -67,7 +70,7 @@ impl AgboardError {
                 "Only tasks whose agent status is idle can become drafts. #{id} is not idle."
             ),
             AgboardError::QuestionsUnanswered { .. } => {
-                "Wait for the answers with \"agboard qa wait\", or see the questions with \"agboard qa ls --task ID\".".into()
+                "Wait for the answers with \"agboard message wait\", or see the questions with \"agboard message ls --task ID\".".into()
             }
             AgboardError::QuestionAnswered { .. } => {
                 "The first recorded answer is kept. Compare it with the answer you have, and ask again if they differ.".into()
@@ -75,14 +78,20 @@ impl AgboardError {
             AgboardError::QuestionWithdrawn { .. } => {
                 "A withdrawn question takes no answer. Ask a new question if one is still needed.".into()
             }
-            AgboardError::QuestionNotFound { .. } => {
-                "Run \"agboard qa ls --status all\" to see the questions of the project.".into()
+            AgboardError::MessageNotFound { .. } => {
+                "Run \"agboard message ls --status all\" to see the messages of the project.".into()
             }
-            AgboardError::RequestNotFound { .. } => {
-                "Use the request ID that \"agboard qa ask\" printed.".into()
+            AgboardError::MessageClosed { .. } => {
+                "The message already has its reply; there is nothing to withdraw.".into()
             }
-            AgboardError::RequestAnswered { .. } => {
-                "Every question of the request has an answer; there is nothing to withdraw.".into()
+            AgboardError::MessageTypeMismatch { expected, .. } => {
+                format!("Name a {expected} for this command.")
+            }
+            AgboardError::RequestAccepted { .. } => {
+                "Another agent accepted this request first. Leave it to that agent.".into()
+            }
+            AgboardError::RequestWithdrawn { .. } => {
+                "The person withdrew this request. Nothing is written to a withdrawn request.".into()
             }
             AgboardError::TaskStatusChanged { .. } => {
                 "Another change moved the task first. Check its current status and move it again."
@@ -106,7 +115,7 @@ impl AgboardError {
             } => format!(
                 "Only formatVersion {expected} is supported, found {version}. The file is not converted."
             ),
-            AgboardError::RequestChoiceUnknown { .. } => {
+            AgboardError::ChoiceUnknown { .. } => {
                 "Choose one of the choices of the question.".into()
             }
             AgboardError::DatabaseBusy => "Another agboard command is writing. Try again.".to_string(),

@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "requestId": "a0b1c2d3e4f5460718293a4b5c6d7e8f",
+  "createdAt": "2026-11-12T08:00:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-4",
+      "kind": "start_approval",
+      "question": "Start this plan?\n\n- #3 Write the importer\n- #4 Document the importer",
+      "choices": [
+        { "id": "approve", "label": "Start this plan" },
+        { "id": "revise", "label": "Change the plan" }
+      ],
+      "recommendedChoiceId": "approve",
+      "approvingChoiceIds": ["approve"],
+      "answer": null
+    }
+  ]
+}

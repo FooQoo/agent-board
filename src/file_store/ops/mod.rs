@@ -20,8 +20,9 @@ mod start;
 mod task;
 mod text;
 
+pub(in crate::file_store) use qa::migrate_legacy_locked;
 use qa::task_waits;
-pub use qa::{AnswerItem, AskInput, AskQuestion};
+pub use qa::{AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
 pub use start::EpicStarted;
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};
@@ -57,11 +58,6 @@ pub(super) fn stamp(now: DateTime<Utc>) -> DateTime<Utc> {
     parse_utc(&format_utc(now)).unwrap_or(now)
 }
 
-/// A new 32-character lowercase hexadecimal identifier (request IDs).
-pub(super) fn new_id() -> Result<String, AgboardError> {
-    io::random_hex(16).map_err(|e| io::write_error("task.json", e))
-}
-
 /// Check that the project exists and take its write lock. The returned folder
 /// is the project folder.
 pub(crate) fn lock_project(
@@ -71,6 +67,7 @@ pub(crate) fn lock_project(
     let dir = reader::project_dir_checked(shared, project)?;
     let lock = WriteLock::acquire(&layout::write_lock(&dir))?;
     transaction::recover_locked(&dir)?;
+    migrate_legacy_locked(shared, project, &dir)?;
     Ok((dir, lock))
 }
 

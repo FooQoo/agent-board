@@ -644,28 +644,28 @@ fn protected_api_creates_moves_and_answers_questions_with_full_history() {
         "Need direction",
         qa::choices(&[("a", "Plan A"), ("b", "Plan B")]),
     );
-    let body = r#"{"answers":[{"questionId":"Q-2","text":"Proceed with A"}]}"#;
-    let answered = server.send_json("POST", &server.api("/qa/answers"), body, Some(&token));
+    let body = r#"{"answers":[{"questionId":"Q-2","choiceId":"a","text":"Proceed with A"}]}"#;
+    let answered = server.send_json("POST", &server.api("/messages/answers"), body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"][3]["agentStatus"], "idle");
 
     // Reads and withdrawal of project questions.
-    let listed = server.get(&server.api("/qa?status=answered"));
+    let listed = server.get(&server.api("/messages?status=closed"));
     assert_eq!(listed.status, 200, "{}", listed.body);
     let listed: serde_json::Value = serde_json::from_str(&listed.body).unwrap();
     assert!(
-        listed["questions"]
+        listed["messages"]
             .as_array()
             .unwrap()
             .iter()
             .any(|q| q["id"] == "Q-2")
     );
-    let one = server.get(&server.api("/qa/Q-2"));
+    let one = server.get(&server.api("/messages/Q-2"));
     assert_eq!(one.status, 200, "{}", one.body);
     assert!(one.body.contains("Proceed with A"), "{}", one.body);
-    assert_eq!(server.get(&server.api("/qa/Q-99")).status, 404);
+    assert_eq!(server.get(&server.api("/messages/Q-99")).status, 404);
     let open = qa::ask_choices(
         &store,
         &main_id(home.path()),
@@ -673,19 +673,24 @@ fn protected_api_creates_moves_and_answers_questions_with_full_history() {
         "Ship now?",
         qa::choices(&[("a", "Yes"), ("b", "No")]),
     );
-    let path = format!("/qa/requests/{}/withdraw", open.request_id);
-    let withdrawn = server.send_json(
-        "POST",
-        &server.api(&path),
-        r#"{"reason":"Decided elsewhere."}"#,
-        Some(&token),
-    );
-    assert_eq!(withdrawn.status, 200, "{}", withdrawn.body);
-    let again = server.send_json("POST", &server.api(&path), "", Some(&token));
-    assert_eq!(again.status, 200, "{}", again.body);
-    let detail = server.get(&server.api("/tasks/4/detail?sections=history"));
-    assert_eq!(detail.status, 200, "{}", detail.body);
-    assert_eq!(detail_lines::history(&detail.body).len(), 6);
+    // A person withdraws a request, not a question.
+    let path = format!("/messages/{}/withdraw", open.id);
+    let refused = server.send_json("POST", &server.api(&path), "", Some(&token));
+    assert_eq!(refused.status, 403, "{}", refused.body);
+    assert!(refused.body.contains("ai_only"), "{}", refused.body);
+    store
+        .withdraw_message(
+            &main_id(home.path()),
+            &open.id,
+            agent_board::domain::Actor::Ai,
+            chrono::Utc::now(),
+        )
+        .unwrap();
+    let detail = server.get(&server.api(&format!("/messages/{}", open.id)));
+    assert!(detail.body.contains("\"withdrawn\""), "{}", detail.body);
+    // Created, started, asked and answered Q-2, asked and withdrew Q-3.
+    let task = store.task(&main_id(home.path()), 4).unwrap();
+    assert_eq!(task.history.len(), 6, "{:?}", task.history);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 

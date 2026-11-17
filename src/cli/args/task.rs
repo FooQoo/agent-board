@@ -82,7 +82,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (draft: human or ai) is read-only for agents here: state fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n\nTo ask the user, use qa ask. While a task waits for answers, state running by an agent fails with questions_unanswered (exit code 1).\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 idle --actor ai --reason \"Ready for review\""
+    after_help = "A draft task (draft: human or ai) is read-only for agents here: state fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n\nTo ask the user, use message ask. While a task waits for answers, state running by an agent fails with questions_unanswered (exit code 1).\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 idle --actor ai --reason \"Ready for review\""
 )]
 pub struct StateArgs {
     /// ID of the task

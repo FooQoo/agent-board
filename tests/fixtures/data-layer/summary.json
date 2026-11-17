@@ -69,8 +69,6 @@
   "questions": [
     {
       "id": "Q-1",
-      "requestId": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
-      "kind": "task",
       "title": "Pick the transport.",
       "recommendedChoiceId": "a",
       "referencedBy": [303],

@@ -63,13 +63,13 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     let running = invoke(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &common::decision_json("Need input"),
             "--no-wait",
             "--json",
@@ -92,13 +92,15 @@ fn agboard_requires_assignee_actor_and_reason_and_records_the_exchange() {
     invoke(
         home.path(),
         &[
-            "qa",
+            "message",
             "answer",
             "Q-1",
             "--actor",
             "human",
             "--via",
             "chat",
+            "--choice",
+            "a",
             "--text",
             "Proceed with A",
             "--json",

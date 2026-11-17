@@ -1,4 +1,5 @@
-//! `agboard qa`: asking, waiting, answering, and reading project questions.
+//! `agboard message ask` and `message wait`: the events of a wait and how it ends, and that
+//! asking without waiting needs no server.
 
 mod common;
 
@@ -29,7 +30,7 @@ fn lines(out: &str) -> Vec<Value> {
         .collect()
 }
 
-/// A waiting `qa ask` or `qa wait`, read line by line.
+/// A waiting `message ask` or `message wait`, read line by line.
 struct Waiter {
     child: Child,
     out: BufReader<std::process::ChildStdout>,
@@ -85,30 +86,33 @@ fn ask_without_waiting_needs_no_server_and_a_wait_without_autostart_needs_one() 
         &[
             "--project",
             "Demo",
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &request,
         ],
     );
     assert_eq!((code, err.as_str()), (1, "board_unavailable"));
-    let listed = json_ok(home.path(), &["--project", "Demo", "qa", "ls", "--json"]);
-    assert_eq!(listed["questions"], serde_json::json!([]));
+    let listed = json_ok(
+        home.path(),
+        &["--project", "Demo", "message", "ls", "--json"],
+    );
+    assert_eq!(listed["messages"], serde_json::json!([]));
 
     let (code, out, err) = run(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &request,
             "--no-wait",
             "--json",
@@ -122,11 +126,7 @@ fn ask_without_waiting_needs_no_server_and_a_wait_without_autostart_needs_one() 
     assert_eq!(events[0]["resumed"], false);
 
     let task = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    let task = if task["task"].is_object() {
-        &task["task"]
-    } else {
-        &task
-    };
+    let task = &task["task"];
     assert_eq!(task["agentStatus"], "pending", "{task}");
     assert_eq!(task["openQuestionIds"], serde_json::json!(["Q-1"]));
     // The board answers the question named here.
@@ -145,13 +145,13 @@ fn a_wait_ends_with_an_answer_a_timeout_or_a_withdrawal() {
     let mut waiter = Waiter::spawn(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &request,
             "--timeout",
             "1",
@@ -160,7 +160,7 @@ fn a_wait_ends_with_an_answer_a_timeout_or_a_withdrawal() {
     );
     let registered = waiter.next();
     assert_eq!(registered["type"], "registered");
-    let request_id = registered["requestId"].as_str().unwrap().to_string();
+    assert_eq!(registered["questions"][0]["id"], "Q-1");
     let (last, code) = waiter.finish();
     assert_eq!(
         (last["type"].as_str(), code),
@@ -170,14 +170,14 @@ fn a_wait_ends_with_an_answer_a_timeout_or_a_withdrawal() {
     assert_eq!(last["answered"], 0);
 
     // Waiting again, then an answer from the CLI: exit 0.
-    let mut waiter = Waiter::spawn(home.path(), &["qa", "wait", &request_id, "--json"]);
+    let mut waiter = Waiter::spawn(home.path(), &["message", "wait", "Q-1", "--json"]);
     let resumed = waiter.next();
     assert_eq!(resumed["type"], "registered");
     assert_eq!(resumed["resumed"], true);
     let (code, _, err) = run(
         home.path(),
         &[
-            "qa", "answer", "Q-1", "--actor", "human", "--via", "cli", "--choice", "b",
+            "message", "answer", "Q-1", "--actor", "human", "--via", "cli", "--choice", "b",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -195,43 +195,35 @@ fn a_wait_ends_with_an_answer_a_timeout_or_a_withdrawal() {
     let (code, _, err) = run(
         home.path(),
         &[
-            "qa", "answer", "Q-1", "--actor", "human", "--via", "chat", "--choice", "a", "--json",
+            "message", "answer", "Q-1", "--actor", "human", "--via", "chat", "--choice", "a",
+            "--json",
         ],
     );
     assert_eq!(code, 1);
     let error: Value = serde_json::from_str(&err).unwrap();
     assert_eq!(error["error"]["code"], "question_answered");
-    assert_eq!(error["questions"][0]["answer"]["choiceId"], "b", "{error}");
+    assert_eq!(error["questions"][0]["reply"]["choiceId"], "b", "{error}");
 
     // Withdrawal: exit 6.
     let mut waiter = Waiter::spawn(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &request,
             "--json",
         ],
     );
     let registered = waiter.next();
-    let second = registered["requestId"].as_str().unwrap().to_string();
     assert_eq!(registered["questions"][0]["id"], "Q-2");
     let (code, _, err) = run(
         home.path(),
-        &[
-            "qa",
-            "withdraw",
-            &second,
-            "--actor",
-            "ai",
-            "--reason",
-            "No longer needed.",
-        ],
+        &["message", "withdraw", "Q-2", "--actor", "ai"],
     );
     assert_eq!(code, 0, "{err}");
     let (last, code) = waiter.finish();
@@ -240,114 +232,74 @@ fn a_wait_ends_with_an_answer_a_timeout_or_a_withdrawal() {
         (Some("withdrawn"), 6),
         "{last}"
     );
-    assert_eq!(last["reason"], "No longer needed.");
+    assert_eq!(last["ids"], serde_json::json!(["Q-2"]));
 
-    // Withdrawing an answered request is refused.
+    // Withdrawing an answered question is refused.
     let (code, err) = json_error(
         home.path(),
         &[
             "--project",
             "Demo",
-            "qa",
+            "message",
             "withdraw",
-            &request_id,
+            "Q-1",
             "--actor",
             "ai",
         ],
     );
-    assert_eq!((code, err.as_str()), (1, "request_answered"));
+    assert_eq!((code, err.as_str()), (1, "message_closed"));
     server.stop();
 }
 
 #[test]
-fn questions_are_listed_shown_and_linked_to_tasks() {
+fn one_wait_follows_several_questions_to_the_last_answer() {
     let home = tempdir().unwrap();
     demo_project(home.path());
-    let (code, _, err) = run(
+    let server = Running::start(home.path());
+    let both = r#"{"questions":[{"body":"First?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]},{"body":"Second?"}]}"#;
+    let mut waiter = Waiter::spawn(
         home.path(),
         &[
-            "add",
-            "Write the guide",
-            "--assignee",
-            "ai",
-            "--actor",
-            "human",
-        ],
-    );
-    assert_eq!(code, 0, "{err}");
-    let request = decision_json("Which plan?");
-    let (code, out, err) = run(
-        home.path(),
-        &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
-            &request,
-            "--no-wait",
+            "--questions-json",
+            both,
             "--json",
+        ],
+    );
+    let registered = waiter.next();
+    assert_eq!(
+        registered["questions"],
+        serde_json::json!([{"id": "Q-1"}, {"id": "Q-2"}])
+    );
+    let (code, _, err) = run(
+        home.path(),
+        &[
+            "message", "answer", "Q-2", "--actor", "human", "--via", "cli", "--text", "Later.",
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let request_id = lines(&out)[0]["requestId"].as_str().unwrap().to_string();
-
-    let listed = json_ok(home.path(), &["--project", "Demo", "qa", "ls", "--json"]);
-    assert_eq!(listed["questions"][0]["id"], "Q-1");
-    assert_eq!(listed["questions"][0]["status"], "open");
-
-    let shown = json_ok(
-        home.path(),
-        &["--project", "Demo", "qa", "show", "Q-1", "--json"],
-    );
-    assert_eq!(shown["question"]["requestId"], request_id.as_str());
-    let shown = json_ok(
-        home.path(),
-        &["--project", "Demo", "qa", "show", &request_id, "--json"],
-    );
-    assert_eq!(shown["request"]["status"], "open");
-    assert_eq!(shown["questions"][0]["id"], "Q-1");
-
-    let linked = json_ok(
+    // One answer is not the end: the wait goes on until the other is answered too.
+    let (code, _, err) = run(
         home.path(),
         &[
-            "--project",
-            "Demo",
-            "qa",
-            "link",
-            "Q-1",
-            "--task",
-            "2",
-            "--json",
+            "message", "answer", "Q-1", "--actor", "human", "--via", "cli", "--choice", "a",
         ],
     );
-    assert_eq!(linked["task"]["questionIds"], serde_json::json!(["Q-1"]));
-    assert_eq!(linked["task"]["agentStatus"], "pending");
-    let unlinked = json_ok(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "qa",
-            "unlink",
-            "Q-1",
-            "--task",
-            "2",
-            "--json",
-        ],
+    assert_eq!(code, 0, "{err}");
+    let (last, code) = waiter.finish();
+    assert_eq!(
+        (last["type"].as_str(), code),
+        (Some("answered"), 0),
+        "{last}"
     );
-    assert_eq!(unlinked["task"]["questionIds"], serde_json::json!([]));
-    assert_eq!(unlinked["task"]["agentStatus"], "idle");
-
-    let (code, err) = json_error(home.path(), &["--project", "Demo", "qa", "show", "Q-9"]);
-    assert_eq!((code, err.as_str()), (3, "question_not_found"));
-    let (code, err) = json_error(
-        home.path(),
-        &["--project", "Demo", "qa", "link", "Q-9", "--task", "2"],
-    );
-    assert_eq!((code, err.as_str()), (3, "question_not_found"));
+    assert_eq!(last["ids"], serde_json::json!(["Q-1", "Q-2"]));
+    assert_eq!(last["answers"][1]["text"], "Later.");
+    server.stop();
 }
 
 #[test]
@@ -358,13 +310,13 @@ fn edit_with_desc_file_keeps_question_refs_and_the_task_stays_pending() {
     let (code, _, err) = run(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &request,
             "--no-wait",
             "--json",

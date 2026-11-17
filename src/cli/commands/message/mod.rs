@@ -1,4 +1,4 @@
-//! `qa`: asking the user, waiting for the answers, and recording answers.
+//! `message`: asking the user, waiting for the answers, recording answers, and requests.
 //!
 //! Every subcommand prints its own output. `ask` and `wait` stream one event per line and end
 //! with an exit code of their own: 0 answered, 5 timeout, 6 withdrawn.
@@ -6,17 +6,18 @@
 mod answer;
 mod input;
 mod read;
+mod request;
 mod stream;
 
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::cli::args::{Cli, QaArgs, QaCommand};
+use crate::cli::args::{Cli, MessageArgs, MessageCommand};
 use crate::cli::run::{fail, write_text};
 use crate::cli::{Context, Env, output};
 use crate::error::AgboardError;
-use crate::file_store::qa::{QaAnswer, QuestionView};
+use crate::file_store::qa::ReplyView;
 
 /// What a finished subcommand prints, and whether it changed the board.
 pub(super) struct Printed {
@@ -25,20 +26,22 @@ pub(super) struct Printed {
     pub json: Value,
 }
 
-pub fn execute(cli: &Cli, env: &mut Env, args: &QaArgs) -> i32 {
+pub fn execute(cli: &Cli, env: &mut Env, args: &MessageArgs) -> i32 {
     let mut ctx = match crate::cli::run::prepare(cli, env) {
         Ok(ctx) => ctx,
         Err(error) => return fail(env, &error, cli.json),
     };
     let result = match &args.command {
-        QaCommand::Ask(ask) => return stream::ask(&mut ctx, env, ask),
-        QaCommand::Wait(wait) => return stream::wait(&mut ctx, env, wait),
-        QaCommand::Answer(answer) => return answer::run(&mut ctx, env, answer),
-        QaCommand::Ls(ls) => read::list(&ctx, ls),
-        QaCommand::Show(show) => read::show(&ctx, show),
-        QaCommand::Withdraw(withdraw) => read::withdraw(&ctx, withdraw),
-        QaCommand::Link(link) => read::link(&ctx, link, true),
-        QaCommand::Unlink(link) => read::link(&ctx, link, false),
+        MessageCommand::Ask(ask) => return stream::ask(&mut ctx, env, ask),
+        MessageCommand::Wait(wait) => return stream::wait(&mut ctx, env, wait),
+        MessageCommand::Answer(answer) => return answer::run(&mut ctx, env, answer),
+        MessageCommand::Ls(ls) => read::list(&ctx, ls),
+        MessageCommand::Show(show) => read::show(&ctx, show),
+        MessageCommand::Withdraw(withdraw) => read::withdraw(&ctx, withdraw),
+        MessageCommand::Link(link) => read::link(&ctx, link, true),
+        MessageCommand::Unlink(link) => read::link(&ctx, link, false),
+        MessageCommand::Send(send) => request::send(&ctx, send),
+        MessageCommand::Accept(accept) => request::accept(&ctx, accept),
     };
     match result {
         Ok(printed) => finish(&ctx, env, printed),
@@ -74,9 +77,9 @@ fn notify(ctx: &Context, env: &mut Env) {
     (env.after_commit)(ctx, &dir);
 }
 
-/// One answer as one line: `label — text`.
-fn answer_text(answer: &QaAnswer) -> String {
-    match (&answer.choice_label, &answer.text) {
+/// One reply as one line: `label — text`.
+fn answer_text(reply: &ReplyView) -> String {
+    match (&reply.choice_label, &reply.text) {
         (Some(label), Some(text)) => format!("{label} — {text}"),
         (Some(label), None) => label.clone(),
         (None, Some(text)) => text.clone(),
@@ -84,9 +87,9 @@ fn answer_text(answer: &QaAnswer) -> String {
     }
 }
 
-/// The first line of a question, cut to `limit` characters.
-fn head(question: &QuestionView, limit: usize) -> String {
-    let first = question.question.lines().next().unwrap_or_default();
+/// The first line of a text, cut to `limit` characters.
+fn head(text: &str, limit: usize) -> String {
+    let first = text.lines().next().unwrap_or_default();
     if first.chars().count() > limit {
         format!("{}…", first.chars().take(limit).collect::<String>())
     } else {
@@ -97,6 +100,6 @@ fn head(question: &QuestionView, limit: usize) -> String {
 fn invalid(command: &str, message: impl Into<String>) -> AgboardError {
     AgboardError::InvalidArgument {
         message: message.into(),
-        command: Some(format!("qa {command}")),
+        command: Some(format!("message {command}")),
     }
 }

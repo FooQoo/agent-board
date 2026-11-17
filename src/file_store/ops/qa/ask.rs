@@ -1,37 +1,34 @@
-//! Registering a request: the questions, their IDs, and the tasks that wait on them.
+//! Asking questions: one file for each, their IDs, and the tasks that wait on them.
 
 use chrono::{DateTime, Utc};
 
 use super::super::{
-    HistoryKind, Transition, ensure_ai_task_not_done, lock_project, new_id, save_project, stamp,
+    HistoryKind, Transition, ensure_ai_task_not_done, lock_project, save_project, stamp,
     transition_event,
 };
-use super::{options_line, request_change};
+use super::{message_change, options_line};
 use crate::domain::{Actor, ProjectId, RunState};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::frontmatter::compose_questions;
 use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::model::{Choice, HistoryRecord};
-use crate::file_store::qa::{
-    MAX_QUESTIONS, QaQuestion, QaRequestFile, QuestionKind, question_defect,
-};
+use crate::file_store::qa::{MAX_QUESTIONS, Message, Question, question_defect};
 use crate::file_store::transaction::save_batch_locked;
 use crate::file_store::{io, layout, reader, validate};
 
 /// One question as an agent asks it.
 #[derive(Debug, Clone)]
 pub struct AskQuestion {
-    pub kind: QuestionKind,
-    pub question: String,
+    pub body: String,
+    /// Empty for a question answered in words; otherwise 2 to 10.
     pub choices: Vec<Choice>,
     pub recommended_choice_id: Option<String>,
-    pub approving_choice_ids: Vec<String>,
     /// Tasks that wait on this question only.
     pub tasks: Vec<i64>,
 }
 
-/// A request to register.
+/// The questions one `ask` registers; each becomes its own file.
 #[derive(Debug, Clone)]
 pub struct AskInput {
     pub actor: Actor,
@@ -48,20 +45,34 @@ fn invalid(field: impl Into<String>, reason: impl Into<String>) -> AgboardError 
 }
 
 /// Check and normalize the questions before anything is read or written.
-fn normalize(input: &AskInput) -> Result<Vec<QaQuestion>, AgboardError> {
+fn normalize(input: &AskInput) -> Result<Vec<Question>, AgboardError> {
+    if input.actor != Actor::Ai {
+        return Err(AgboardError::AiOnly {
+            action: "asking a question".into(),
+        });
+    }
     if !(1..=MAX_QUESTIONS).contains(&input.questions.len()) {
-        return Err(invalid("questions", "A request has 1 to 20 questions."));
+        return Err(invalid("questions", "Ask 1 to 20 questions at a time."));
     }
     let mut out = Vec::new();
     for (index, asked) in input.questions.iter().enumerate() {
-        let question = QaQuestion {
+        let mut tasks: Vec<i64> = input.tasks.iter().chain(&asked.tasks).copied().collect();
+        tasks.sort_unstable();
+        tasks.dedup();
+        let choices = if asked.choices.is_empty() {
+            Vec::new()
+        } else {
+            validate::normalize_choices(asked.choices.clone())?
+        };
+        let question = Question {
             id: String::new(),
-            kind: asked.kind,
-            question: validate::normalize_question(&asked.question)?,
-            choices: validate::normalize_choices(asked.choices.clone())?,
-            recommended_choice_id: asked.recommended_choice_id.clone(),
-            approving_choice_ids: asked.approving_choice_ids.clone(),
-            answer: None,
+            body: validate::normalize_question(&asked.body)?,
+            tasks,
+            choices,
+            recommended: asked.recommended_choice_id.clone(),
+            reply: None,
+            withdrawn_at: None,
+            created_at: chrono::DateTime::<Utc>::UNIX_EPOCH,
         };
         if let Some(d) = question_defect(&question) {
             return Err(invalid(format!("questions[{index}].{}", d.field), d.reason));
@@ -72,14 +83,14 @@ fn normalize(input: &AskInput) -> Result<Vec<QaQuestion>, AgboardError> {
 }
 
 impl FileStore {
-    /// Register a request: number its questions, publish `request.json`, and add the questions
-    /// to the `questions` of the tasks named. Every file is written, or none.
+    /// Ask questions: number them, publish a `QA.md` for each, and add the questions to the
+    /// `questions` of the tasks named. Every file is written, or none.
     pub fn ask_questions(
         &self,
         project: &ProjectId,
         input: AskInput,
         now: DateTime<Utc>,
-    ) -> Result<QaRequestFile, AgboardError> {
+    ) -> Result<Vec<Question>, AgboardError> {
         let mut questions = normalize(&input)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
@@ -121,16 +132,17 @@ impl FileStore {
         }
 
         let at = stamp(now);
-        let request = QaRequestFile {
-            format_version: layout::FORMAT_VERSION,
-            request_id: new_id()?,
-            created_at: at,
-            created_by: input.actor,
-            withdrawn_at: None,
-            withdraw_reason: None,
-            questions,
-        };
-        let mut changes = vec![request_change(&project_dir, &request, true)?];
+        for question in &mut questions {
+            question.created_at = at;
+        }
+        let mut changes = Vec::new();
+        for question in &questions {
+            changes.push(message_change(
+                &project_dir,
+                &Message::Question(question.clone()),
+                true,
+            )?);
+        }
         for (mut task, (_, indices)) in tasks.into_iter().zip(&per_task) {
             let text = reader::read_body(shared, project, task.id)?;
             let parsed = parse_task(&text, ParseMode::Stored);
@@ -148,18 +160,18 @@ impl FileStore {
             let mut ids = parsed.questions.clone();
             let language = self.history_language(project, &task)?;
             for index in indices {
-                let question = &request.questions[*index];
+                let question = &questions[*index];
                 if !ids.contains(&question.id) {
                     ids.push(question.id.clone());
                 }
                 let options = options_line(&question.choices);
                 let english = format!(
                     "Asked a question ({}):\n\n{}\n\nOptions: {options}",
-                    question.id, question.question
+                    question.id, question.body
                 );
                 let japanese = format!(
                     "質問しました（{}）:\n\n{}\n\n選択肢: {options}",
-                    question.id, question.question
+                    question.id, question.body
                 );
                 task.history.push(HistoryRecord {
                     at,
@@ -169,7 +181,7 @@ impl FileStore {
             if task.agent_status == RunState::Running {
                 let listed = indices
                     .iter()
-                    .map(|i| request.questions[*i].id.as_str())
+                    .map(|i| questions[*i].id.as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
                 let english = format!("Waiting for the answers to {listed}.");
@@ -202,6 +214,6 @@ impl FileStore {
             )?);
         }
         save_batch_locked(&project_dir, changes)?;
-        Ok(request)
+        Ok(questions)
     }
 }

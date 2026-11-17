@@ -1,17 +1,23 @@
-//! Writes of project QA: asking, answering, withdrawing, and the task references.
+//! Writes of messages: asking, answering, sending and accepting requests, withdrawing, and the
+//! task references.
 //!
-//! Each write takes the project lock, reads the latest request files and tasks, and saves the
-//! request files and the TASK.md pairs it changes as one batch, so either every file changes
+//! Each write takes the project lock, reads the latest message files and tasks, and saves the
+//! message files and the TASK.md pairs it changes as one batch, so either every file changes
 //! or none does. The readable record goes to the history of the tasks that refer to a question.
 
+mod accept;
 mod answer;
 mod ask;
 mod link;
+mod migrate;
 mod read;
+mod send;
 mod withdraw;
 
 pub use answer::AnswerItem;
 pub use ask::{AskInput, AskQuestion};
+pub(in crate::file_store) use migrate::migrate_legacy_locked;
+pub use send::{RequestImage, SendRequestInput};
 
 use std::path::Path;
 
@@ -20,25 +26,25 @@ use crate::error::AgboardError;
 use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::io;
 use crate::file_store::model::{Choice, TaskFile};
-use crate::file_store::qa::{self, QaIndex, QaRequestFile};
+use crate::file_store::qa::{self, Message, QaIndex, render_message};
 use crate::file_store::transaction::FileChange;
 use crate::file_store::{layout, reader};
 
-/// The bytes of a request file as it is stored.
-fn request_bytes(file: &QaRequestFile) -> Result<Vec<u8>, AgboardError> {
-    let mut bytes = serde_json::to_vec_pretty(file)
-        .map_err(|e| io::write_error(&format!("qa/{}/request.json", file.request_id), e))?;
-    bytes.push(b'\n');
-    Ok(bytes)
+/// The bytes of a message file as it is stored.
+fn message_bytes(message: &Message) -> Result<Vec<u8>, AgboardError> {
+    let id = message.id();
+    render_message(message)
+        .map(String::into_bytes)
+        .map_err(|d| io::write_error(&format!("qa/{id}/QA.md"), d.reason))
 }
 
-/// The change that writes `file`, from the bytes it has now (`None` when it is new).
-fn request_change(
+/// The change that writes `message`, from the bytes it has now (`None` when it is new).
+fn message_change(
     project_dir: &Path,
-    file: &QaRequestFile,
+    message: &Message,
     is_new: bool,
 ) -> Result<FileChange, AgboardError> {
-    let target = qa::request_relative(&file.request_id);
+    let target = qa::message_relative(message.id());
     let old = if is_new {
         None
     } else {
@@ -48,7 +54,7 @@ fn request_change(
     Ok(FileChange {
         target,
         old,
-        new: Some(request_bytes(file)?),
+        new: Some(message_bytes(message)?),
     })
 }
 
@@ -117,7 +123,7 @@ pub(in crate::file_store) fn task_waits(
     Ok(QaIndex::load(shared, &project_dir)?.is_waiting(&ids, error))
 }
 
-/// The defect of a broken request file, as the error a write reports.
+/// The defect of a broken message file, as the error a write reports.
 fn broken_file_error(index: &QaIndex) -> Option<AgboardError> {
     index.problems.first().map(|p| AgboardError::FileInvalid {
         file: p.file.clone(),

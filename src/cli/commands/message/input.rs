@@ -1,4 +1,4 @@
-//! Reading the JSON and the limits that `qa` takes on the command line.
+//! Reading the JSON and the limits that `message` takes on the command line.
 
 use std::io::Read;
 
@@ -7,8 +7,7 @@ use serde::Deserialize;
 use crate::domain::Actor;
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::model::Choice;
-use crate::file_store::qa::QuestionKind;
-use crate::file_store::{AnswerItem, AskInput, AskQuestion};
+use crate::file_store::{AskInput, AskQuestion};
 
 /// The default wait, in seconds.
 pub(super) const DEFAULT_TIMEOUT: u64 = 600;
@@ -17,44 +16,24 @@ const MAX_TIMEOUT: u64 = 86_400;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RequestJson {
+struct QuestionsJson {
     questions: Vec<QuestionJson>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct QuestionJson {
-    #[serde(default)]
-    kind: Option<QuestionKind>,
-    question: String,
+    body: String,
     #[serde(default)]
     choices: Vec<Choice>,
     #[serde(default)]
     recommended_choice_id: Option<String>,
     #[serde(default)]
-    approving_choice_ids: Vec<String>,
-    #[serde(default)]
     tasks: Vec<i64>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AnswersJson {
-    answers: Vec<AnswerJson>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct AnswerJson {
-    id: String,
-    #[serde(default)]
-    choice_id: Option<String>,
-    #[serde(default)]
-    text: Option<String>,
-}
-
 /// The value itself, or standard input when the value is `-`.
-fn text_of(value: &str) -> Result<String, AgboardError> {
+pub(super) fn text_of(value: &str) -> Result<String, AgboardError> {
     if value != "-" {
         return Ok(value.to_string());
     }
@@ -69,57 +48,34 @@ fn text_of(value: &str) -> Result<String, AgboardError> {
     Ok(text)
 }
 
-/// The questions of `--request-json` and the tasks of `--task`.
+/// The questions of `--questions-json` and the tasks of `--task`.
 pub(super) fn ask_input(
     value: &str,
     actor: Actor,
     tasks: &[i64],
 ) -> Result<AskInput, AgboardError> {
     let text = text_of(value)?;
-    let request: RequestJson =
+    let parsed: QuestionsJson =
         serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
-            field: "request-json".into(),
+            field: "questions-json".into(),
             reason: format!(
-                "The request must be JSON with 1 to 20 questions, each with 2 to 10 choices: {e}."
+                "The questions must be JSON with 1 to 20 questions, each with a body and, if it has choices, 2 to 10 of them: {e}."
             ),
         })?;
     Ok(AskInput {
         actor,
         tasks: tasks.to_vec(),
-        questions: request
+        questions: parsed
             .questions
             .into_iter()
             .map(|q| AskQuestion {
-                kind: q.kind.unwrap_or(QuestionKind::Task),
-                question: q.question,
+                body: q.body,
                 choices: q.choices,
                 recommended_choice_id: q.recommended_choice_id,
-                approving_choice_ids: q.approving_choice_ids,
                 tasks: q.tasks,
             })
             .collect(),
     })
-}
-
-/// The answers of `--answers-json`.
-pub(super) fn answer_items(value: &str) -> Result<Vec<AnswerItem>, AgboardError> {
-    let text = text_of(value)?;
-    let answers: AnswersJson =
-        serde_json::from_str(&text).map_err(|e| AgboardError::InvalidValue {
-            field: "answers-json".into(),
-            reason: format!(
-                "The answers must be JSON: {{\"answers\":[{{\"id\",\"choiceId\",\"text\"}}]}}: {e}."
-            ),
-        })?;
-    Ok(answers
-        .answers
-        .into_iter()
-        .map(|a| AnswerItem {
-            question_id: a.id,
-            choice_id: a.choice_id,
-            text: a.text,
-        })
-        .collect())
 }
 
 /// `--timeout`: seconds from 1 to 86400, or `none` for no limit. The default is 600.
@@ -153,15 +109,27 @@ mod tests {
     }
 
     #[test]
-    fn a_question_without_kind_is_a_task_question() {
+    fn questions_take_a_body_and_optional_choices_and_tasks() {
         let input = ask_input(
-            r#"{"questions":[{"question":"Q?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}],"tasks":[3]}]}"#,
+            r#"{"questions":[{"body":"Q?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}],"tasks":[3]},{"body":"Why?"}]}"#,
             Actor::Ai,
             &[1],
         )
         .unwrap();
-        assert_eq!(input.questions[0].kind, QuestionKind::Task);
+        assert_eq!(input.questions.len(), 2);
         assert_eq!(input.questions[0].tasks, vec![3]);
+        assert!(input.questions[1].choices.is_empty());
         assert_eq!(input.tasks, vec![1]);
+    }
+
+    #[test]
+    fn the_old_question_keys_are_refused() {
+        for json in [
+            r#"{"questions":[{"question":"Q?"}]}"#,
+            r#"{"questions":[{"body":"Q?","kind":"plan"}]}"#,
+            r#"{"questions":[{"body":"Q?","approvingChoiceIds":["a"]}]}"#,
+        ] {
+            assert!(ask_input(json, Actor::Ai, &[]).is_err(), "{json}");
+        }
     }
 }

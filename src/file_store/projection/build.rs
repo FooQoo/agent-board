@@ -128,11 +128,9 @@ fn raw_digest(files: &[std::path::PathBuf]) -> String {
 }
 
 fn question_summary(question: &QuestionView) -> QuestionSummary {
-    let first = question.question.lines().next().unwrap_or_default();
+    let first = question.body.lines().next().unwrap_or_default();
     QuestionSummary {
         id: question.id.clone(),
-        request_id: question.request_id.clone(),
-        kind: question.kind,
         title: first.chars().take(200).collect(),
         recommended_choice_id: question.recommended_choice_id.clone(),
         referenced_by: question.referenced_by.clone(),
@@ -205,8 +203,8 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         .filter(|q| q.status == QuestionStatus::Open)
         .map(question_summary)
         .collect();
-    // Every question counts, so an answer or a withdrawal is a change of the QA.
-    let qa_hash = digest(&snapshot.questions);
+    // Every message counts, so a reply or a withdrawal is a change of the QA.
+    let qa_hash = digest(&(&snapshot.questions, &snapshot.requests));
     let version = digest(&(
         &qa_hash,
         &project_id,
