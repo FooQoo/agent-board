@@ -88,6 +88,7 @@ The agent calls you only in four cases: your intent is unclear, your preference 
 Some things are not enforced by Agent Board yet. They depend on the agent following its Skill, so know where they are:
 
 - **Before a plan is linked to a question.** The agent registers a plan's tasks first and links its questions right after. In between, the tasks are Idle in Todo, so another agent could pick one up.
+- **A task reused in a new plan.** Any approved start approval linked to a task counts. If the task still refers to an approval from an earlier plan, a new plan question holds it only until that question is answered, not until the new plan is approved.
 - **Withdrawing a question.** The command that withdraws a question does not check who runs it, so an agent could withdraw one and release the wait. This relies on the agent not doing so.
 - **Tasks with no conditions.** An agent could move a task without any acceptance conditions to Done by hand. Automatic Done never does this.
 - **Who answered.** Agent Board does not check who actually typed an answer. When you reply in the chat, the agent records your words on the board.
