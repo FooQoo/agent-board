@@ -106,7 +106,7 @@ A `task.json` looks like this:
 - `pendingRequestId` and `pendingRequest`, written by earlier versions, are ignored when read and are not written on the next save.
 - Older short-request tasks may contain `simpleRequest` metadata. It remains readable for compatibility but new tasks do not write or use it to detect repeats.
 
-In `TASK.md`, `history` is required (`history: []` is valid). New-task input may omit it or pass an empty list; non-empty history in creation input is rejected. Body and acceptance edits keep the latest history, and `edit --desc-file` never appends. A direct append may add only `at`/`reason` entries while keeping everything else; the CLI is preferred because it handles time and atomicity.
+In `TASK.md`, `history` is required (`history: []` is valid). New-task input may omit it or pass an empty list; non-empty history in creation input is rejected. Body and acceptance edits keep the latest history, and `edit --desc-file` never appends. `edit --desc-file` also keeps the stored `questions` refs and ignores `history` and `questions` in its input. A direct append may add only `at`/`reason` entries while keeping everything else; the CLI is preferred because it handles time and atomicity.
 
 ```yaml
 ---

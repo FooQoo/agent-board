@@ -78,7 +78,7 @@ history:
 
 Agent Board adds an entry whenever an operation happens: a move, a state change, a question and its answer, archiving and restoring, and automatic completion. The browser's reason field is optional; a missing or blank reason is generated from the current state. The History tab, `show`, and `snapshot` all read the same history.
 
-Agents add meaningful progress with [`history add`](./cli#report-work), without asking for approval each time. Moves and state changes already record themselves, so do not add a duplicate. The command assigns the timestamp, appends atomically, and applies AI write permissions: an AI cannot append to drafts, archived tasks, or Done tasks. A direct edit may append entries that have only `at` and `reason` and must keep the existing history, body, conditions, and other metadata; do not rewrite the whole file just to append history. Ordinary body and condition edits keep the latest history, and `edit --desc-file` ignores any history in its input.
+Agents add meaningful progress with [`history add`](./cli#report-work), without asking for approval each time. Moves and state changes already record themselves, so do not add a duplicate. The command assigns the timestamp, appends atomically, and applies AI write permissions: an AI cannot append to drafts, archived tasks, or Done tasks. A direct edit may append entries that have only `at` and `reason` and must keep the existing history, body, conditions, and other metadata; do not rewrite the whole file just to append history. Ordinary body and condition edits keep the latest history, and `edit --desc-file` ignores any `history` and `questions` in its input and keeps the stored ones.
 
 ### Check conditions and finish
 

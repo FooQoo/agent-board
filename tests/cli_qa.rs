@@ -349,3 +349,54 @@ fn questions_are_listed_shown_and_linked_to_tasks() {
     );
     assert_eq!((code, err.as_str()), (3, "question_not_found"));
 }
+
+#[test]
+fn edit_with_desc_file_keeps_question_refs_and_the_task_stays_pending() {
+    let home = tempdir().unwrap();
+    demo_project(home.path());
+    let request = decision_json("Which plan?");
+    let (code, _, err) = run(
+        home.path(),
+        &[
+            "qa",
+            "ask",
+            "--actor",
+            "ai",
+            "--task",
+            "1",
+            "--request-json",
+            &request,
+            "--no-wait",
+            "--json",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let before = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(before["task"]["questionIds"], serde_json::json!(["Q-1"]));
+    assert_eq!(before["task"]["agentStatus"], "pending");
+
+    // A desc file that names other questions neither adds nor removes any ref.
+    let file = home.path().join("desc.md");
+    std::fs::write(&file, "---\nquestions: [Q-9]\n---\nReplaced body\n").unwrap();
+    let path = file.to_str().unwrap();
+    let (code, _, err) = agboard(
+        home.path(),
+        &["--project", "Demo", "edit", "1", "--desc-file", path],
+    );
+    assert_eq!(code, 0, "{err}");
+    let after = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(after["task"]["body"], "Replaced body");
+    assert_eq!(after["task"]["questionIds"], serde_json::json!(["Q-1"]));
+    assert_eq!(after["task"]["agentStatus"], "pending");
+
+    // The same holds for a plain file without frontmatter.
+    std::fs::write(&file, "Second body\n").unwrap();
+    let (code, _, err) = agboard(
+        home.path(),
+        &["--project", "Demo", "edit", "1", "--desc-file", path],
+    );
+    assert_eq!(code, 0, "{err}");
+    let after = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
+    assert_eq!(after["task"]["questionIds"], serde_json::json!(["Q-1"]));
+    assert_eq!(after["task"]["agentStatus"], "pending");
+}

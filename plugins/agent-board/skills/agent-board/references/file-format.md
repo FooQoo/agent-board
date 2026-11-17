@@ -53,7 +53,7 @@ agboard --project "<name>" history add <id> --reason-file <path>
 
 Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
 
-Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation. Read history in the board or with `show`/`snapshot`.
+Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation, and it also keeps the stored `questions` refs (`history` and `questions` in its input are ignored; use `qa link`/`qa unlink` to change refs). Read history in the board or with `show`/`snapshot`.
 
 ## Format versions
 

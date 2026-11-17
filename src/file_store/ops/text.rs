@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
-use crate::file_store::frontmatter::AcceptanceItem;
+use crate::file_store::frontmatter::{AcceptanceItem, compose_questions, questions_of};
 use crate::file_store::history::{ParseMode, compose_task, parse_task};
 use crate::file_store::io;
 use crate::file_store::layout;
@@ -38,18 +38,26 @@ pub(super) fn write_text(
         );
         crate::file_store::validate::ensure_task_body(&next_body, &label)?;
         let parts = crate::file_store::frontmatter::parse(&next_body);
+        let invalid = |defect: crate::file_store::validate::Defect| AgboardError::FileInvalid {
+            file: label.clone(),
+            field: defect.field,
+            reason: defect.reason,
+        };
         let composed = compose_task(
             &next_body,
             &parts.body,
             Some(&parts.acceptance),
             &task.history,
         )
-        .map_err(|defect| AgboardError::FileInvalid {
-            file: label.clone(),
-            field: defect.field,
-            reason: defect.reason,
-        })?;
-        replacement = Some(composed);
+        .map_err(invalid)?;
+        // Like `history`, the question refs belong to the stored file, never to the new text:
+        // a `questions` list in the input is replaced by the stored one.
+        let stored = io::read_text(
+            &layout::task_md(&layout::task_dir(project_dir, task.id)),
+            &label,
+        )?;
+        let questions = questions_of(&stored).map_err(invalid)?;
+        replacement = Some(compose_questions(&composed, &questions).map_err(invalid)?);
     }
     task.title = next_title;
     Ok((true, replacement))
