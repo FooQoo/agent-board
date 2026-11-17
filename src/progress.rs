@@ -1,16 +1,14 @@
-//! The progress table: the tasks an agent can pick up, grouped by epic in
-//! priority order. `agboard progress` and the agent hook print this same table.
+//! The progress table: the tasks an agent can pick up, grouped by epic in priority order.
+//! `agboard progress` and the agent hook print this same table.
 //!
-//! A task is listed when it is in Todo or Doing and its agent status is not
-//! Pending. Done tasks and archived tasks are never listed. Human-assigned
-//! tasks and drafts are listed, so the agent can see them and skip them.
+//! A task is listed when it is in Todo or Doing and its agent status is not Pending. Done and
+//! archived tasks are never listed; human-assigned tasks and drafts are, so the agent skips them.
 //!
-//! The caller can ask for two more sections with [`Include`]: the tasks waiting
-//! for a decision (with the question) and the most recently completed tasks.
-//! They are separate fields, so the default table is unchanged.
-//!
-//! Open requests are always listed, so an agent sees what a person asked it.
+//! Open requests and the answers no agent accepted yet are always listed. With [`Include`]
+//! the caller also asks for the tasks waiting for a decision and the most recently completed
+//! tasks, in separate fields, so the default table is unchanged.
 
+mod answers;
 mod requests;
 mod text;
 
@@ -39,10 +37,12 @@ pub struct Progress {
     pub epics: Vec<ProgressEpic>,
     /// Listed tasks that belong to no epic, in ID order.
     pub unassigned: Vec<ProgressTask>,
-    /// Requests from a person that no agent has accepted or withdrawn, in ID order. Left out
-    /// when there are none.
+    /// Requests no agent accepted and nobody withdrew, in ID order; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub requests: Vec<ProgressRequest>,
+    /// Answered questions whose answer no agent accepted, in ID order; left out when none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub answers: Vec<ProgressAnswer>,
     /// Tasks waiting for a decision, in ID order. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending: Option<Vec<ProgressTask>>,
@@ -69,6 +69,7 @@ pub struct Count {
     pub total: usize,
 }
 
+pub use answers::{ProgressAnswer, unaccepted_answers};
 pub use requests::{ProgressRequest, open_requests};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -175,6 +176,7 @@ pub fn build_with(
             .map(|task| task_of(task, &project_dir))
             .collect(),
         requests: open_requests(snapshot),
+        answers: unaccepted_answers(snapshot),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks

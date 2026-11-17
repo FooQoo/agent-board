@@ -689,21 +689,31 @@ test.describe('two projects with the same task numbers', () => {
       waiter.kill();
     }
 
-    // The agent resumes; the hook hands over active progress for Alpha only, while answer history stays with wait.
+    // The agent resumes; the hook hands over active progress for Alpha only. A plain wait does not take the answer
+    // in, so the hook carries it until the agent accepts it.
     agboardOk('Alpha', ['state', '2', 'running', '--actor', 'ai', '--reason', 'Resuming with the MIT license.'], home);
-    const hook = spawnSync(agboardBinary(), ['--project', 'Alpha', 'hook', '--agent', 'claude'], {
-      env,
-      encoding: 'utf8',
-      input: JSON.stringify({ hook_event_name: 'PostToolUse' }),
-    });
-    expect(hook.status).toBe(0);
-    const context = (JSON.parse(hook.stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
-      .additionalContext;
+    const hookContext = () => {
+      const hook = spawnSync(agboardBinary(), ['--project', 'Alpha', 'hook', '--agent', 'claude'], {
+        env,
+        encoding: 'utf8',
+        input: JSON.stringify({ hook_event_name: 'PostToolUse' }),
+      });
+      expect(hook.status).toBe(0);
+      return (JSON.parse(hook.stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
+        .additionalContext;
+    };
+    const context = hookContext();
     expect(context.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
     expect(context).toContain('Alpha: choose the license');
     expect(context).not.toContain('Beta');
-    expect(context).not.toContain('Use the MIT license, please.');
     expect(context).not.toContain('Resuming with the MIT license.');
+    const progress = JSON.parse(context.slice('AGBOARD_PROGRESS\n'.length).split('\n\n')[0]) as {
+      answers?: { id: string; tasks: number[]; text: string | null }[];
+    };
+    const answer = progress.answers?.find(({ tasks }) => tasks.includes(2));
+    expect(answer?.text).toBe('Use the MIT license, please.');
+    agboardOk('Alpha', ['message', 'accept', answer!.id, '--actor', 'ai'], home);
+    expect(hookContext()).not.toContain('Use the MIT license, please.');
     // The change arrives live; closing the details does not hold it back either.
     await page.getByRole('button', { name: 'Close details' }).click();
     await expect(task(page, 2)).toContainText('Running', { timeout: 10_000 });

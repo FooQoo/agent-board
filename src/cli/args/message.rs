@@ -32,7 +32,7 @@ pub enum MessageCommand {
     Unlink(MessageLinkArgs),
     /// Send a request to the agents (a person)
     Send(MessageSendArgs),
-    /// Accept a request (an agent)
+    /// Accept a request, or the answer of a question (an agent)
     Accept(MessageAcceptArgs),
 }
 
@@ -237,10 +237,10 @@ pub struct MessageSendArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "The first acceptance is final: accepting again fails with request_accepted (exit 1), so two agents never take the same request.\n\nExamples:\n  agboard --project demo message accept Q-14 --actor ai"
+    after_help = "Accepting a request takes it, so two agents never take the same request: accepting again fails with request_accepted (exit 1). Accepting an answered question records that its answer was taken in, so it leaves the progress table and the hook; message ask and message wait do this for the answers they return.\n\nExamples:\n  agboard --project demo message accept Q-14 --actor ai"
 )]
 pub struct MessageAcceptArgs {
-    /// The request to accept
+    /// The request, or the answered question, to accept
     pub id: String,
     /// Who accepts: only an agent
     #[arg(long, value_enum, required = true)]

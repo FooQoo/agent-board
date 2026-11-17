@@ -32,7 +32,7 @@ title: トラブルシューティング
 | `acceptance_unmet` | 未達成の条件があるタスクを、エージェントが完了へ移そうとした。 | エージェントに条件を検証させて達成にします。そうすればタスクは自動で完了します。 |
 | `question_answered`または`question_withdrawn` | 質問がすでに回答された、または取り下げられた。最初に記録された回答が残る。 | `agboard message show`で質問を読み直し、現在の質問があれば回答します。 |
 | `start_blocked_by_questions` | タスク、またはエピックのタスクに、まだ誰も答えていない質問があるため、開始できない。 | メッセージが示す質問に答えて（ボード上、または`agboard message answer`）、もう一度開始します。 |
-| `request_accepted`・`request_withdrawn`・`message_closed` | 依頼がすでに受け付けられた、または取り下げられた。あるいは、すでに回答や受け付けのあるメッセージを取り下げようとした。 | `agboard message show`でメッセージを確認します。ほかに必要な操作はありません。 |
+| `request_accepted`・`answer_accepted`・`question_open`・`request_withdrawn`・`message_closed` | 依頼がすでに受け付けられた、または取り下げられた。回答がすでに受け取られた、または質問にまだ回答がない。あるいは、すでに回答や受け付けのあるメッセージを取り下げようとした。 | `agboard message show`でメッセージを確認します。ほかに必要な操作はありません。 |
 | `ai_only`・`message_type_mismatch`・`choice_unknown` | 人が質問を取り下げようとした、メッセージの種類に合わないコマンド（依頼に回答するなど）を使った、または選択肢が質問の選択肢にない。 | そのメッセージの種類に合うコマンドを使い、`message show`に出る選択肢を指定します。 |
 | `questions_unanswered` | タスクが回答を待っているため、エージェントが稼働中にも完了にもできない。 | ボードで質問に回答するか、エージェントに取り下げてもらいます。 |
 | `folder_unbound`・`bound_project_missing` | エージェントのフォルダがプロジェクトに登録されていない、またはプロジェクトが削除された（登録されていないフォルダでは、Hook自体は何も出力しません。このエラーは`agboard progress`と、削除されたプロジェクトで出ます）。 | フォルダを登録します: `agboard project bind "My project"`。[データとバックアップ](./data#フォルダを登録する)を参照。 |

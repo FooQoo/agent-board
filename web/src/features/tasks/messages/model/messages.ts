@@ -11,7 +11,7 @@ export function tabOf(message: Message): MessageTab | null {
 }
 
 export interface MessageCount {
-  /** Questions and approvals waiting for you. */
+  /** Questions and approvals waiting for you. An answer the AI has not taken in is not counted. */
   fromAi: number;
   questions: number;
   approvals: number;
@@ -25,6 +25,7 @@ export function countMessages(messages: readonly Message[]): MessageCount {
   for (const message of messages) {
     const tab = tabOf(message);
     if (tab === 'fromAi') {
+      if (message.turn !== 'human') continue;
       count.fromAi += 1;
       if (message.type === 'approval') count.approvals += 1;
       else count.questions += 1;
@@ -70,6 +71,14 @@ export function canSendAnswer(
 
 export type MessageStatus = 'open' | 'answered' | 'accepted' | 'withdrawn';
 
+/** The answer of a question, as the opened question shows it once it is sent. */
+export interface MessageReply {
+  choiceLabel: string | null;
+  text: string | null;
+  /** When an AI took the answer in; null until then. */
+  acceptedAt: string | null;
+}
+
 /** One message as `GET .../messages/{id}` returns it: what the opened row shows. */
 export interface MessageDetail {
   id: string;
@@ -80,6 +89,15 @@ export interface MessageDetail {
   status: MessageStatus;
   /** The cards that wait on a question. */
   referencedBy: number[];
+  /** The answer of an answered question; absent or null otherwise. */
+  reply?: MessageReply | null;
+}
+
+function replyOf(value: unknown): MessageReply | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const reply = value as Record<string, unknown>;
+  const text = (key: string) => (typeof reply[key] === 'string' ? (reply[key] as string) : null);
+  return { choiceLabel: text('choiceLabel'), text: text('text'), acceptedAt: text('acceptedAt') };
 }
 
 /** Parses a message as the route returns it: `{question}` or `{request}`. */
@@ -105,6 +123,7 @@ export function parseMessageDetail(value: unknown): MessageDetail {
     referencedBy: Array.isArray(body.referencedBy)
       ? (body.referencedBy as unknown[]).filter((id): id is number => typeof id === 'number')
       : [],
+    reply: replyOf(body.reply),
   };
 }
 

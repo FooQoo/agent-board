@@ -26,11 +26,14 @@ export const messagesEn = {
     state: {
       unanswered: 'Unanswered',
       awaitingApproval: 'Awaiting approval',
+      answerWaitingPickup: 'Answered, waiting for an AI',
       waitingPickup: 'Waiting to be picked up',
     },
     detail: {
       back: 'Back to list',
       blocks: '{{tasks}} stay blocked until you reply',
+      answerNote: 'It leaves the list once an AI takes your answer in.',
+      yourAnswer: 'Your answer',
       requestNote: 'It leaves the list once an AI picks it up.',
       withdraw: 'Withdraw',
       withdrawing: 'Withdrawing…',

@@ -98,6 +98,8 @@ fn answered(
         text,
         via,
         at,
+        // An answer from the chat is written by the agent that was told it: it has it already.
+        accepted_at: (via == AnswerVia::Chat).then_some(at),
     });
     Ok(next)
 }

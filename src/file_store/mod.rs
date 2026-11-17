@@ -36,7 +36,9 @@ use std::path::{Path, PathBuf};
 use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 use model::TaskView;
-pub use ops::{AnswerItem, AskInput, AskQuestion, EpicStarted, RequestImage, SendRequestInput};
+pub use ops::{
+    Accepted, AnswerItem, AskInput, AskQuestion, EpicStarted, RequestImage, SendRequestInput,
+};
 use reader::ProjectSnapshot;
 
 /// Optional TASK.md fields applied together to the latest stored Markdown.

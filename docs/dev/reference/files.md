@@ -137,6 +137,7 @@ reply:
   choice: keep
   via: ui
   at: 2026-11-14T02:41:10Z
+  acceptedAt: 2026-11-14T02:50:00Z
 createdAt: 2026-11-14T02:30:00Z
 ---
 Should existing records be deleted or kept?
@@ -170,7 +171,7 @@ Fields of a question:
 | `tasks` | Optional. The task numbers the question was asked for. It is kept in step with those tasks' `questions` by `message link` and `message unlink`. |
 | `choices` | Optional. 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. Without choices, the question is answered with text. |
 | `recommended` | Optional. One choice ID. |
-| `reply` | `null` until answered. `choice` is set exactly when the question has choices; `text` is 1 to 2,000 characters and required when there are no choices; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. |
+| `reply` | `null` until answered. `choice` is set exactly when the question has choices; `text` is 1 to 2,000 characters and required when there are no choices; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. `acceptedAt` is optional: absent or `null` until an agent takes the answer in, then when it did. |
 
 Fields of a request:
 
@@ -180,7 +181,7 @@ Fields of a request:
 
 The state is not stored. A message is withdrawn when `withdrawnAt` is set, closed when its question has a `reply` or its request is accepted, and open otherwise. The CLI and API report a question's status as `open`, `answered`, or `withdrawn`, and a request's as `open`, `accepted`, or `withdrawn`; the filter words shared by both are `open`, `closed`, and `withdrawn`.
 
-A reply is written once, by a person, and an acceptance once, by an agent. Nothing is written after a withdrawal. The tasks that refer to a question (`referencedBy`) are found from the tasks' `questions`, not from this file.
+A reply is written once, by a person, and an acceptance once, by an agent. That holds for a request's `acceptedAt` and for a reply's `acceptedAt` alike. An answer a person gave in the chat and an agent recorded for them (`via: chat`) is written already accepted. Nothing is written after a withdrawal. The tasks that refer to a question (`referencedBy`) are found from the tasks' `questions`, not from this file.
 
 A `QA.md` that cannot be read, breaks a rule above, or is in a folder not named `Q-<n>` is left out of every list and reported in `problems` as `projects/<id>/qa/Q-<n>/QA.md`; writes to it fail with `file_invalid`. A task that refers to a question whose file cannot be read stays Pending.
 

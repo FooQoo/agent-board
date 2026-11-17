@@ -12,7 +12,7 @@ use crate::file_store::FileStore;
 use crate::file_store::layout;
 use crate::file_store::model::TaskView;
 use crate::file_store::reader::ProjectSnapshot;
-use crate::progress::{ProgressRequest, open_requests};
+use crate::progress::{ProgressAnswer, ProgressRequest, open_requests, unaccepted_answers};
 
 struct Reader<'a> {
     shared: &'a Path,
@@ -56,6 +56,17 @@ struct TaskOutput {
     task: TaskView,
     task_path: std::path::PathBuf,
     document_path: Option<std::path::PathBuf>,
+}
+
+/// Answers a person gave that no agent accepted. The agent acts on them and records the receipt
+/// with `message accept`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnswersOutput {
+    kind: &'static str,
+    project_id: ProjectId,
+    cursor: crate::domain::ChangeCursor,
+    answers: Vec<ProgressAnswer>,
 }
 
 /// Open requests from a person. The agent reads one with `message show` and takes it with
@@ -130,12 +141,26 @@ pub async fn wait_for_task(
     }
 }
 
-/// What ends the wait: an open request first (a person asked for it), else the next task.
+/// What ends the wait: an answer no agent accepted first (work waits on it), then an open
+/// request (a person asked for it), else the next task.
 fn ready(
     shared: &Path,
     snapshot: &ProjectSnapshot,
     project_id: &ProjectId,
 ) -> Result<Option<String>, AgboardError> {
+    let answers = unaccepted_answers(snapshot);
+    if !answers.is_empty() {
+        return serde_json::to_string(&AnswersOutput {
+            kind: "answers",
+            project_id: project_id.clone(),
+            cursor: snapshot.cursor.clone(),
+            answers,
+        })
+        .map(Some)
+        .map_err(|error| AgboardError::BoardUnavailable {
+            reason: error.to_string(),
+        });
+    }
     let requests = open_requests(snapshot);
     if !requests.is_empty() {
         return serde_json::to_string(&RequestsOutput {

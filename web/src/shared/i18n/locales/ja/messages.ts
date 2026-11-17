@@ -26,11 +26,14 @@ export const messagesJa = {
     state: {
       unanswered: '未回答',
       awaitingApproval: '承認待ち',
+      answerWaitingPickup: '回答済み・AI の受け取り待ち',
       waitingPickup: '受け取り待ち',
     },
     detail: {
       back: '一覧へ戻る',
       blocks: '返事があるまで {{tasks}} は止まります',
+      answerNote: 'AI があなたの回答を受け取ると、この質問は一覧から消えます。',
+      yourAnswer: 'あなたの回答',
       requestNote: 'AI が受け取ると、この依頼は一覧から消えます。',
       withdraw: '取り下げる',
       withdrawing: '取り下げています…',

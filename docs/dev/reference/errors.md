@@ -33,10 +33,12 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `start_blocked_by_questions` | A person tried to start a task, or an epic, while a question about that task (or about an AI-draft task of the epic) has no reply. Nothing is saved; the message names the questions. | 1 | 409 |
 | `message_not_found` | The question or request ID does not exist in the project. | 3 | 404 |
 | `message_closed` | A withdrawal names a question that already has a reply, or a request that was already accepted. | 1 | 409 |
-| `message_type_mismatch` | A command or request for one kind names the other: for example, `answer` with a request ID, or `accept` with a question ID. | 2 | 422 |
+| `message_type_mismatch` | A command or request for one kind names the other: for example, `answer` with a request ID. | 2 | 422 |
 | `request_accepted` | An acceptance names a request that was already accepted. | 1 | 409 |
-| `request_withdrawn` | An acceptance or a second withdrawal names a request that was withdrawn. | 1 | 409 |
-| `ai_only` | A person withdraws a question, asks one, or accepts a request. Only an agent can do these. | 1 | 403 |
+| `answer_accepted` | An acceptance names a question whose answer an agent already took in. | 1 | 409 |
+| `question_open` | An acceptance names a question that has no answer yet. | 1 | 409 |
+| `request_withdrawn` | An acceptance or a second withdrawal names a request that was withdrawn. An acceptance of a withdrawn question is `question_withdrawn`. | 1 | 409 |
+| `ai_only` | A person withdraws a question, asks one, or accepts a request or an answer. Only an agent can do these. | 1 | 403 |
 | `choice_unknown` | The answer names a choice that is not in the question. | 2 | 422 |
 | `task_status_changed` | A move named the status it started from (`fromStatus`), and the task is no longer in it. Nothing is written; the body adds `currentStatus`. | 1 | 409 |
 

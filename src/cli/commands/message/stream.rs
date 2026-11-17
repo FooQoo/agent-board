@@ -191,16 +191,28 @@ fn wait_and_print(
     };
     let result = wait_for_questions(
         ctx.files.shared_dir(),
-        project,
+        project.clone(),
         ids,
         timeout,
         heartbeat,
         |beat| events.waiting(ids, beat),
     );
-    match result {
-        Ok(end) => events.end(end),
-        Err(error) => events.error(&error, &mut *env.stderr),
+    let (code, handed) = match result {
+        Ok(end) => {
+            let handed = !matches!(end, MessageWaitEnd::Timeout(_));
+            (events.end(end), handed)
+        }
+        Err(error) => return events.error(&error, &mut *env.stderr),
+    };
+    // The answers just printed are in the agent's hands: they leave the progress table and the
+    // hook. A failure here loses nothing; the answers stay listed until they are accepted.
+    if handed
+        && let Ok(written) = ctx.files.accept_answers(&project, ids, ctx.clock.now())
+        && !written.is_empty()
+    {
+        notify(ctx, env);
     }
+    code
 }
 
 pub(super) fn ask(ctx: &mut Context, env: &mut Env, args: &MessageAskArgs) -> i32 {

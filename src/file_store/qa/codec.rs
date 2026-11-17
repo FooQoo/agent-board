@@ -27,6 +27,12 @@ struct ReplyFront {
     via: AnswerVia,
     #[serde(with = "crate::clock::serde_utc")]
     at: DateTime<Utc>,
+    #[serde(
+        default,
+        with = "crate::clock::serde_opt_utc",
+        skip_serializing_if = "Option::is_none"
+    )]
+    accepted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -101,6 +107,7 @@ pub fn parse_message(id: &str, text: &str) -> Result<Message, Defect> {
                     text: r.text,
                     via: r.via,
                     at: r.at,
+                    accepted_at: r.accepted_at,
                 }),
                 withdrawn_at: f.withdrawn_at,
                 created_at: f.created_at,
@@ -141,6 +148,7 @@ pub fn render_message(message: &Message) -> Result<String, Defect> {
                     text: r.text.clone(),
                     via: r.via,
                     at: r.at,
+                    accepted_at: r.accepted_at,
                 }),
                 withdrawn_at: q.withdrawn_at,
                 created_at: q.created_at,
@@ -202,6 +210,7 @@ mod tests {
                 text: Some("The smaller one.".into()),
                 via: AnswerVia::Cli,
                 at,
+                accepted_at: Some(at),
             }),
             withdrawn_at: None,
             created_at: at,

@@ -11,7 +11,7 @@ use agent_board::domain::{Actor, Assignee, ChangeContext, Column, NewTask, Proje
 use agent_board::error::AgboardError;
 use agent_board::file_store::qa::{AnswerVia, MessageView, QuestionStatus, RequestStatus};
 use agent_board::file_store::{
-    AnswerItem, AskInput, AskQuestion, FileStore, RequestImage, SendRequestInput,
+    Accepted, AnswerItem, AskInput, AskQuestion, FileStore, RequestImage, SendRequestInput,
 };
 use chrono::Utc;
 
@@ -352,26 +352,29 @@ fn a_request_is_accepted_once_by_one_agent() {
 
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &request, Actor::Human, Utc::now()),
+            .accept_message(&f.project, &request, Actor::Human, Utc::now()),
         Err(AgboardError::AiOnly { .. })
     ));
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &question, Actor::Ai, Utc::now()),
-        Err(AgboardError::MessageTypeMismatch { .. })
+            .accept_message(&f.project, &question, Actor::Ai, Utc::now()),
+        Err(AgboardError::QuestionOpen { .. })
     ));
 
     let accepted = f
         .store
-        .accept_request(&f.project, &request, Actor::Ai, Utc::now())
+        .accept_message(&f.project, &request, Actor::Ai, Utc::now())
         .unwrap();
+    let Accepted::Request(accepted) = accepted else {
+        panic!("a request")
+    };
     assert_eq!(accepted.status, RequestStatus::Accepted);
     let text = f.file(&request);
     assert!(!text.contains("acceptedAt: null") && !text.contains("acceptedBy"));
 
     let second = f
         .store
-        .accept_request(&f.project, &request, Actor::Ai, Utc::now())
+        .accept_message(&f.project, &request, Actor::Ai, Utc::now())
         .unwrap_err();
     assert!(matches!(second, AgboardError::RequestAccepted { .. }));
     assert_eq!(f.file(&request), text);
@@ -385,9 +388,72 @@ fn a_request_is_accepted_once_by_one_agent() {
     f.withdraw(&withdrawn, Actor::Human).unwrap();
     assert!(matches!(
         f.store
-            .accept_request(&f.project, &withdrawn, Actor::Ai, Utc::now()),
+            .accept_message(&f.project, &withdrawn, Actor::Ai, Utc::now()),
         Err(AgboardError::RequestWithdrawn { .. })
     ));
+}
+
+#[test]
+fn an_answer_is_accepted_once_and_a_chat_answer_is_accepted_as_it_is_written() {
+    let f = fixture();
+    let ui = f.ask("Keep?", &[("keep", "Keep"), ("drop", "Drop")], &[]);
+    let open = f.ask("Which name?", &[], &[]);
+    f.answer(&ui, Some("keep"), None).unwrap();
+    assert!(!f.file(&ui).contains("acceptedAt"));
+
+    assert!(matches!(
+        f.store
+            .accept_message(&f.project, &ui, Actor::Human, Utc::now()),
+        Err(AgboardError::AiOnly { .. })
+    ));
+    assert!(matches!(
+        f.store
+            .accept_message(&f.project, &open, Actor::Ai, Utc::now()),
+        Err(AgboardError::QuestionOpen { .. })
+    ));
+    let Accepted::Question(view) = f
+        .store
+        .accept_message(&f.project, &ui, Actor::Ai, Utc::now())
+        .unwrap()
+    else {
+        panic!("a question")
+    };
+    assert!(view.reply.unwrap().accepted_at.is_some());
+    let text = f.file(&ui);
+    assert!(text.contains("  acceptedAt: "), "{text}");
+    assert!(matches!(
+        f.store
+            .accept_message(&f.project, &ui, Actor::Ai, Utc::now()),
+        Err(AgboardError::AnswerAccepted { .. })
+    ));
+    assert_eq!(f.file(&ui), text);
+
+    // An answer an agent writes back from its chat is in its hands already.
+    let chat = f.ask("Which colour?", &[], &[]);
+    f.store
+        .answer_questions(
+            &f.project,
+            vec![AnswerItem {
+                question_id: chat.clone(),
+                choice_id: None,
+                text: Some("Blue".into()),
+            }],
+            AnswerVia::Chat,
+            Utc::now(),
+        )
+        .unwrap();
+    assert!(f.file(&chat).contains("  acceptedAt: "));
+
+    // The waits accept what they hand over, and only that.
+    let later = f.ask("Ship it?", &[], &[]);
+    f.answer(&later, None, Some("Yes")).unwrap();
+    let ids = vec![open.clone(), ui.clone(), later.clone()];
+    let written = f
+        .store
+        .accept_answers(&f.project, &ids, Utc::now())
+        .unwrap();
+    assert_eq!(written, vec![later.clone()]);
+    assert!(!f.file(&open).contains("acceptedAt"));
 }
 
 #[test]
@@ -401,7 +467,7 @@ fn two_agents_never_both_take_one_request() {
                 let (project, request) = (f.project.clone(), request.clone());
                 scope.spawn(move || {
                     store
-                        .accept_request(&project, &request, Actor::Ai, Utc::now())
+                        .accept_message(&project, &request, Actor::Ai, Utc::now())
                         .is_ok()
                 })
             })

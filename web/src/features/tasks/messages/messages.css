@@ -228,6 +228,25 @@
   font-size: 12px;
 }
 
+.message-detail__answer {
+  margin: 16px 0 0;
+  padding: 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+}
+
+.message-detail__answer h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--r-muted);
+}
+
+.message-detail__answer p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .message-detail__error {
   margin: 12px 0 0;
   font-size: 12px;

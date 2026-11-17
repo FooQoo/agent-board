@@ -35,6 +35,15 @@ pub struct Reply {
     pub text: Option<String>,
     pub via: AnswerVia,
     pub at: DateTime<Utc>,
+    /// When an agent took the reply in; `None` until then. Written once.
+    pub accepted_at: Option<DateTime<Utc>>,
+}
+
+impl Reply {
+    /// Whether the reply waits for an agent to take it in.
+    pub fn unaccepted(&self) -> bool {
+        self.accepted_at.is_none()
+    }
 }
 
 /// A question an agent asks a person.
@@ -89,6 +98,11 @@ impl MessageState {
 }
 
 impl Question {
+    /// The reply no agent has taken in yet.
+    pub fn unaccepted_reply(&self) -> Option<&Reply> {
+        self.reply.as_ref().filter(|reply| reply.unaccepted())
+    }
+
     pub fn state(&self) -> MessageState {
         if self.withdrawn_at.is_some() {
             MessageState::Withdrawn

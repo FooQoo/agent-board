@@ -98,6 +98,14 @@ fn messages_and_reasons_follow_the_design_table() {
             "Another agent accepted this request first. Leave it to that agent.",
         ),
         (
+            "the answer of Q-4 was already accepted.",
+            "An agent took this answer in before. Read it with \"agboard message show ID\".",
+        ),
+        (
+            "question Q-4 has no answer yet.",
+            "Only an answered question can be accepted. Wait for the answer with \"agboard message wait\".",
+        ),
+        (
             "request Q-4 was withdrawn.",
             "The person withdrew this request. Nothing is written to a withdrawn request.",
         ),

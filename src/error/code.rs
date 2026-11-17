@@ -40,6 +40,8 @@ impl AgboardError {
             AgboardError::MessageClosed { .. } => "message_closed",
             AgboardError::MessageTypeMismatch { .. } => "message_type_mismatch",
             AgboardError::RequestAccepted { .. } => "request_accepted",
+            AgboardError::AnswerAccepted { .. } => "answer_accepted",
+            AgboardError::QuestionOpen { .. } => "question_open",
             AgboardError::RequestWithdrawn { .. } => "request_withdrawn",
             AgboardError::TaskStatusChanged { .. } => "task_status_changed",
             AgboardError::ConfirmationRequired { .. } => "confirmation_required",

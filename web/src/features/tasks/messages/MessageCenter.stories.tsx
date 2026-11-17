@@ -5,6 +5,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { MessageCenter } from './MessageCenter';
 import {
+  answeredSample,
   resolveSampleAttachment,
   SAMPLE_PROJECT,
   sampleMessages,
@@ -23,6 +24,8 @@ interface HarnessProps {
   read?: MessagesApi['read'];
   onAsk?: () => void;
   onOpenApproval: () => void;
+  /** Adds a question the person answered that no agent took in yet. */
+  withAnswered?: boolean;
 }
 
 /** The band and the list it opens, over the sample messages. */
@@ -34,10 +37,17 @@ function Harness({
   read,
   onAsk,
   onOpenApproval,
+  withAnswered,
 }: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
-  const messages = useMemo(() => sampleMessages(i18n.language), [i18n.language]);
+  const messages = useMemo(
+    () => [
+      ...sampleMessages(i18n.language),
+      ...(withAnswered ? [answeredSample(i18n.language)] : []),
+    ],
+    [i18n.language, withAnswered],
+  );
   const api = useMemo(
     () => sampleMessagesApi(i18n.language, { answer, withdraw, ...(read ? { read } : {}) }),
     [i18n.language, answer, withdraw, read],
@@ -143,6 +153,30 @@ export const QuestionOpen: Story = {
     await expect(answer.getBoundingClientRect().left).toBeGreaterThanOrEqual(
       question.getBoundingClientRect().right - 1,
     );
+  },
+};
+
+/**
+ * An answered question no agent took in yet stays in "AI の質問" without counting as unanswered,
+ * and opens read only with the answer.
+ */
+export const AnsweredWaitingPickup: Story = {
+  args: { withAnswered: true, initial: { tab: 'fromAi' } },
+  play: async ({ canvasElement }) => {
+    const list = await page().findByRole('dialog', { name: 'メッセージ' });
+    await expect(within(list).getAllByText('未回答')).toHaveLength(2);
+    const state = within(list).getByText('回答済み・AI の受け取り待ち');
+    // The band counts only what waits for the person.
+    const band = within(canvasElement).getByRole('region', { name: 'メッセージ', hidden: true });
+    await expect(band.querySelector('strong')).toHaveTextContent('3');
+    const row = state.closest('button');
+    if (!row) throw new Error('The answered row is not a button.');
+    await userEvent.click(row);
+    await within(list).findByRole('heading', { name: 'ログイン画面の文言' });
+    const answer = within(list).getByRole('region', { name: 'あなたの回答' });
+    await expect(answer).toHaveTextContent('変えてよい — ボタンの色はそのままで。');
+    await expect(within(list).queryByRole('button', { name: '回答を送る' })).toBeNull();
+    await expect(within(list).queryByRole('radio')).toBeNull();
   },
 };
 

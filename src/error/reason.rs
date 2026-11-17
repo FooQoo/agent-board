@@ -96,6 +96,13 @@ impl AgboardError {
             AgboardError::RequestAccepted { .. } => {
                 "Another agent accepted this request first. Leave it to that agent.".into()
             }
+            AgboardError::AnswerAccepted { .. } => {
+                "An agent took this answer in before. Read it with \"agboard message show ID\".".into()
+            }
+            AgboardError::QuestionOpen { .. } => {
+                "Only an answered question can be accepted. Wait for the answer with \"agboard message wait\"."
+                    .into()
+            }
             AgboardError::RequestWithdrawn { .. } => {
                 "The person withdrew this request. Nothing is written to a withdrawn request.".into()
             }

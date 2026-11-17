@@ -219,6 +219,27 @@ export function MessagesSurface({
         <DetailState state={state === 'failed' ? 'failed' : 'loading'} onReload={reload} />
       </div>
     );
+  } else if (opened.type === 'question' && !answering) {
+    // Answered: the question and the answer, read only, until an AI takes the answer in.
+    const reply = detail.reply;
+    const answer = [reply?.choiceLabel, reply?.text].filter(Boolean).join(' — ');
+    body = (
+      <div className="message-detail">
+        {back}
+        <p className="message-detail__blocks">{t('messages.detail.answerNote')}</p>
+        <DecisionQuestion
+          question={detail.body}
+          resolveAttachment={resolveAttachment}
+          resolveImage={resolveImage}
+        />
+        {answer !== '' && (
+          <section className="message-detail__answer" aria-label={t('messages.detail.yourAnswer')}>
+            <h3>{t('messages.detail.yourAnswer')}</h3>
+            <p>{answer}</p>
+          </section>
+        )}
+      </div>
+    );
   } else if (opened.type === 'question') {
     body = (
       <div className="decision-panel message-detail message-detail--panel">

@@ -48,6 +48,8 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::StartBlockedByQuestions { .. }
         | AgboardError::MessageClosed { .. }
         | AgboardError::RequestAccepted { .. }
+        | AgboardError::AnswerAccepted { .. }
+        | AgboardError::QuestionOpen { .. }
         | AgboardError::RequestWithdrawn { .. }
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }

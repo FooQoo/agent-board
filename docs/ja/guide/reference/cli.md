@@ -144,6 +144,8 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
+タスクより先に、`{"kind":"answers",…}`（エージェントがまだ受け取っていない回答）や`{"kind":"requests",…}`（未処理の依頼）を返すことがあり、回答が先です。それぞれ`message accept`で受け取ってから、あらためて待ちます。
+
 指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。質問への回答にはなりません。
 
 ## サーバーを起動する

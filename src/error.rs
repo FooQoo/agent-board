@@ -161,6 +161,14 @@ pub enum AgboardError {
     RequestAccepted {
         id: String,
     },
+    /// The answer of the question was taken in before; nothing was written.
+    AnswerAccepted {
+        id: String,
+    },
+    /// The question has no answer yet, so there is nothing to take in.
+    QuestionOpen {
+        id: String,
+    },
     /// The request was withdrawn, so nobody can accept it.
     RequestWithdrawn {
         id: String,

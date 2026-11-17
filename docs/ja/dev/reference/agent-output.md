@@ -39,6 +39,7 @@
 
 - 既定では、人の判断待ちでないTodoとDoingのタスクだけが載ります。タスクはエピックごとに`priority`の順で並び、エピックのないタスクは`unassigned`に入ります。
 - `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
+- 人が質問に回答し、まだどのエージェントも回答を受け取っていない（`reply`に`acceptedAt`がない）とき、表に`answers`配列がID順で加わります。各要素は`{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`で、`title`は依頼のタイトルと同じ規則、`tasks`はその質問を参照しているアーカイブされていないタスク、`choiceId`・`choiceLabel`・`text`は該当する部分がなければ`null`です。該当する回答がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で受け取ります。
 - 人からの依頼が未処理（受理も取り下げもされていない）のとき、表に`requests`配列がID順で加わります。各要素は`{"id":"Q-3","createdAt":"…","title":"…"}`で、`title`は依頼の最初の空でない行から見出しの記号を除いた80文字までです（超える分は`…`で終わります）。未処理の依頼がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で依頼を引き受けます。
 - 本文も履歴もありません。エージェントは、必要な`documentPath`と`taskPath`のファイルを読みます。
 - `cursor`は`wait --after`に渡す値です。
@@ -73,13 +74,19 @@ taskの項目を省略した例です。
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":"…/epics/DESIGN/EPIC.md"}
 ```
 
-未処理の依頼があるとき、waitは人が頼んだものなので、どのタスクよりも先にその依頼を返します。結果には、未処理の依頼すべてが進行表と同じ形で入ります。エージェントは`message show`で読み、`message accept`で引き受けてから、あらためて待ち受けます。引き受けるまでは、次のwaitも同じ依頼を返します。
+受け取っていない回答があるとき、waitは何よりも先にその回答を返します。結果には、そうした回答すべてが進行表の`answers`と同じ形で入ります。エージェントは`message show`で読み、回答に基づいて動き、`message accept`で受け取ってから、あらためて待ち受けます。受け取るまでは、次のwaitも同じ回答を返します。
+
+```json
+{"kind":"answers","projectId":"<id>","cursor":"<cursor>","answers":[{"id":"Q-12","title":"Keep the old records?","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}]}
+```
+
+未処理の回答がなく、未処理の依頼があるとき、waitは人が頼んだものなので、どのタスクよりも先にその依頼を返します。結果には、未処理の依頼すべてが進行表と同じ形で入ります。エージェントは`message show`で読み、`message accept`で引き受けてから、あらためて待ち受けます。引き受けるまでは、次のwaitも同じ依頼を返します。順序は、回答、依頼、タスクの順です。
 
 ```json
 {"kind":"requests","projectId":"<id>","cursor":"<cursor>","requests":[{"id":"Q-3","createdAt":"2026-11-17T09:00:00Z","title":"Add a reset link"}]}
 ```
 
-指定時間に対象タスクも未処理の依頼も現れない場合は、成功結果（終了コード0）を返します。
+指定時間に対象タスクも、未処理の依頼も、受け取っていない回答も現れない場合は、成功結果（終了コード0）を返します。
 
 ```json
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}
@@ -153,10 +160,13 @@ taskの項目を省略した例です。
 | `message answer` | `{questions}`: 記録した質問。すでに回答済みの質問があれば、エラーの出力に記録済みの回答を含む`questions`を加えます。 |
 | `message ls` | `{messages}`: 質問と依頼をまとめたもの。 |
 | `message show` | `{question}`または`{request}`。 |
-| `message send`、`message accept` | `{request}`。 |
+| `message send` | `{request}`。 |
+| `message accept` | 依頼なら`{request}`、回答済みの質問なら`{question}`。質問のテキスト出力は`Accepted the answer of Q-12.`です。 |
 | `message withdraw` | 取り下げたものに応じて`{question}`または`{request}`。 |
 
-質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
+質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`・`acceptedAt`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。`reply`の`acceptedAt`は常にあり、AIが回答を受け取るまでは`null`、受け取るとタイムスタンプです。`message show`は、受け取り済みの回答に`Accepted at …`の行を出します。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
+
+`message ask`と`message wait`は、質問が回答または取り下げで終わって待機が終わったとき、返した回答を受け取ります。タイムアウトでは何も受け取りません。エージェントがチャットから人の代わりに記録した回答（`message answer --via chat`）は、受け付け済みで書かれます。したがって`message accept`が必要なのは、Hook・進行表・`wait --until task`で見た回答だけです。
 
 ## 初回案内のサンプルカード
 

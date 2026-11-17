@@ -250,16 +250,19 @@ test('the band and the list show the open questions, and each is answered on its
   await fillAnswer(answerDialog(page), { choice: 'Plan A', text: 'Replace it.' });
   await send(page);
   await expect(messageList(page).getByRole('tab', { name: /^AI's questions 1$/ })).toBeVisible();
-  await expect(rows).toHaveCount(1);
+  // The answered question stays listed, not counted, until an agent takes the answer in.
+  await expect(rows).toHaveCount(2);
+  await expect(listRow(page, /Which way for #13\?/)).toContainText('Answered, waiting for an AI');
   expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
   expect(show(12).agentStatus).toBe('pending');
   expectHistoryNote(show(13).history.at(-1), ['Which way for #13?', 'Plan A', 'Replace it.']);
 
-  // Answering the other one empties the list.
-  await rows.first().click();
+  // Answering the other one leaves nothing waiting for the person.
+  await rows.filter({ hasText: 'Unanswered' }).click();
   await fillAnswer(answerDialog(page), { choice: 'Allow breaking changes' });
   await send(page);
-  await expect(messageList(page).getByText('No messages in this tab.')).toBeVisible();
+  await expect(messageList(page).getByRole('tab', { name: /^AI's questions 0$/ })).toBeVisible();
+  await expect(rows.filter({ hasText: 'Unanswered' })).toHaveCount(0);
   await closeMessages(page);
   await expect(band.getByRole('listitem').first()).toContainText(/AI's questions\s*0/);
   expect(show(12)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });

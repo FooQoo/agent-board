@@ -26,6 +26,10 @@ interface SampleText {
   r14: string;
   r14Body: string;
   epic: string;
+  q11: string;
+  q11Body: string;
+  q11a: string;
+  q11Note: string;
 }
 
 const ja: SampleText = {
@@ -51,6 +55,10 @@ const ja: SampleText = {
 
 ![いまの画面](attachment:${SAMPLE_ATTACHMENT_ID})`,
   epic: 'ログインの改善',
+  q11: 'ログイン画面の文言を変えてよいですか',
+  q11Body: '## ログイン画面の文言\n\nボタンの文言を「ログイン」から「続ける」に変えてよいですか。',
+  q11a: '変えてよい',
+  q11Note: 'ボタンの色はそのままで。',
 };
 
 const en: SampleText = {
@@ -77,6 +85,10 @@ If you keep it, each account is converted at its next login. If you drop it, eve
 
 ![Current screen](attachment:${SAMPLE_ATTACHMENT_ID})`,
   epic: 'Improve login',
+  q11: 'May the login screen change its wording?',
+  q11Body: '## Login screen wording\n\nMay the button say "Continue" instead of "Log in"?',
+  q11a: 'Yes, change it',
+  q11Note: 'Keep the button color as it is.',
 };
 
 const textOf = (language: string) => (language.startsWith('ja') ? ja : en);
@@ -132,6 +144,21 @@ export function sampleMessages(language: string): Message[] {
   ];
 }
 
+/** A question the person answered that no agent took in yet: it stays listed until one does. */
+export function answeredSample(language: string): Message {
+  return {
+    id: 'Q-11',
+    type: 'question',
+    from: 'ai',
+    to: 'human',
+    turn: 'ai',
+    title: textOf(language).q11,
+    createdAt: '2026-11-17T08:10:00.000Z',
+    tasks: [21],
+    epicId: 'LOGIN-1',
+  };
+}
+
 /** The routes of the Stories: they read the samples, and answering or withdrawing does nothing. */
 export function sampleMessagesApi(language: string, over: Partial<MessagesApi> = {}): MessagesApi {
   const s = textOf(language);
@@ -172,6 +199,17 @@ export function sampleMessagesApi(language: string, over: Partial<MessagesApi> =
           recommendedChoiceId: null,
           status: 'open',
           referencedBy: [],
+        };
+      if (id === 'Q-11')
+        return {
+          id,
+          type: 'question',
+          body: s.q11Body,
+          choices: [{ id: 'yes', label: s.q11a }],
+          recommendedChoiceId: 'yes',
+          status: 'answered',
+          referencedBy: [21],
+          reply: { choiceLabel: s.q11a, text: s.q11Note, acceptedAt: null },
         };
       throw new Error(`No sample message ${id}.`);
     },

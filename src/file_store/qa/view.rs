@@ -53,6 +53,9 @@ pub struct ReplyView {
     pub via: AnswerVia,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
+    /// When an agent took the reply in; `null` until then.
+    #[serde(with = "crate::clock::serde_opt_utc")]
+    pub accepted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -91,6 +94,7 @@ impl QuestionView {
             text: reply.text.clone(),
             via: reply.via,
             at: reply.at,
+            accepted_at: reply.accepted_at,
         });
         QuestionView {
             id: question.id.clone(),

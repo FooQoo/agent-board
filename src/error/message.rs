@@ -77,6 +77,10 @@ impl AgboardError {
                 format!("{id} is not a {expected}.")
             }
             AgboardError::RequestAccepted { id } => format!("request {id} was already accepted."),
+            AgboardError::AnswerAccepted { id } => {
+                format!("the answer of {id} was already accepted.")
+            }
+            AgboardError::QuestionOpen { id } => format!("question {id} has no answer yet."),
             AgboardError::RequestWithdrawn { id } => format!("request {id} was withdrawn."),
             AgboardError::TaskStatusChanged { id, current } => {
                 format!("task #{id} is now {}.", current.as_str())

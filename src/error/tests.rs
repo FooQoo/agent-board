@@ -61,6 +61,8 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
             expected: "request".into(),
         },
         AgboardError::RequestAccepted { id: "Q-4".into() },
+        AgboardError::AnswerAccepted { id: "Q-4".into() },
+        AgboardError::QuestionOpen { id: "Q-4".into() },
         AgboardError::RequestWithdrawn { id: "Q-4".into() },
         AgboardError::AiOnly {
             action: "withdrawing a question".into(),
@@ -181,6 +183,8 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("message_closed", 1),
             ("message_type_mismatch", 2),
             ("request_accepted", 1),
+            ("answer_accepted", 1),
+            ("question_open", 1),
             ("request_withdrawn", 1),
             ("ai_only", 1),
             ("task_status_changed", 1),

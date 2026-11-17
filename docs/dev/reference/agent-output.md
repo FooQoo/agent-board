@@ -40,6 +40,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 - Only Todo and Doing tasks that are not waiting for a person appear. Tasks are grouped by epic in `priority` order; tasks without an epic are in `unassigned`.
 - With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question`: the open question with the smallest ID, up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
 - When a person's request is open (not accepted and not withdrawn), the table has a `requests` array in ID order. Each entry is `{"id":"Q-3","createdAt":"…","title":"…"}`: `title` is the first non-empty line of the request without heading marks, up to 80 characters (longer ones end with `…`). Without an open request the field is absent. An agent reads the whole text with `message show` and takes the request with `message accept`.
+- When a person has answered a question and no agent has taken the answer in (the reply has no `acceptedAt`), the table has an `answers` array in ID order. Each entry is `{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`: `title` follows the same rule as a request's title, `tasks` lists the unarchived tasks that refer to the question, and `choiceId`, `choiceLabel`, and `text` are `null` when the answer has no such part. Without such an answer the field is absent. An agent reads the whole answer with `message show` and takes it in with `message accept`.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - The paths appear only in local CLI and hook output, never in remote JSON.
@@ -73,13 +74,19 @@ Abbreviated example; task fields are omitted.
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":"…/epics/DESIGN/EPIC.md"}
 ```
 
-When a request is open, the wait returns it before any task, because a person asked for it. The result lists every open request in the same shape as the progress table. The agent reads one with `message show`, takes it with `message accept`, and then listens again; until it does, the next wait returns the same request.
+When an answer has not been taken in, the wait returns it before anything else. The result lists every such answer in the same shape as the progress table's `answers`. The agent reads it with `message show`, acts on it, takes it in with `message accept`, and then listens again; until it does, the next wait returns the same answer.
+
+```json
+{"kind":"answers","projectId":"<id>","cursor":"<cursor>","answers":[{"id":"Q-12","title":"Keep the old records?","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}]}
+```
+
+When no answer waits and a request is open, the wait returns the request before any task, because a person asked for it. The result lists every open request in the same shape as the progress table. The agent reads one with `message show`, takes it with `message accept`, and then listens again; until it does, the next wait returns the same request. The order is answers, then requests, then tasks.
 
 ```json
 {"kind":"requests","projectId":"<id>","cursor":"<cursor>","requests":[{"id":"Q-3","createdAt":"2026-11-17T09:00:00Z","title":"Add a reset link"}]}
 ```
 
-If the requested interval passes with no eligible task and no open request, the command returns a successful result (exit code 0):
+If the requested interval passes with no eligible task, no open request, and no answer to take in, the command returns a successful result (exit code 0):
 
 ```json
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}
@@ -153,10 +160,13 @@ The other `message` commands print one JSON object with `--json`:
 | `message answer` | `{questions}`: the recorded questions. When a question already has a reply, the error output adds `questions` with the recorded reply. |
 | `message ls` | `{messages}`: questions and requests together. |
 | `message show` | `{question}` or `{request}`. |
-| `message send`, `message accept` | `{request}`. |
+| `message send` | `{request}`. |
+| `message accept` | `{request}` for a request, `{question}` for an answered question. The text output for a question is `Accepted the answer of Q-12.` |
 | `message withdraw` | `{question}` or `{request}`, whichever was withdrawn. |
 
-A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, or `null`), `status`, `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status`, `acceptedAt`, `withdrawnAt`, and `createdAt`. The statuses are described in [Messages](./files.md#messages).
+A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, `acceptedAt`, or `null`), `status`, `referencedBy`, `createdAt`, and `withdrawnAt`. In a reply, `acceptedAt` is always present: `null` until an agent takes the answer in, then a timestamp. `message show` prints an `Accepted at …` line for an accepted answer. A request has `id`, `type`, `from`, `to`, `body`, `status`, `acceptedAt`, `withdrawnAt`, and `createdAt`. The statuses are described in [Messages](./files.md#messages).
+
+`message ask` and `message wait` accept the answers they return when the wait ends because the questions were answered or withdrawn; a timeout accepts nothing. An answer an agent records for a person from the chat (`message answer --via chat`) is written already accepted. So `message accept` is needed only for an answer the agent saw through the hook, the progress table, or `wait --until task`.
 
 ## Sample cards of the first-run guide
 

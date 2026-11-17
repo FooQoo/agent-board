@@ -81,7 +81,16 @@ impl MessageSource for Question<'_> {
             kind: MessageKind::Question,
             from: Party::Ai,
             to: Party::Human,
-            turn: (q.status == QuestionStatus::Open).then_some(Party::Human),
+            // An answer stays listed as the agent's turn until an agent accepts it.
+            turn: match q.status {
+                QuestionStatus::Open => Some(Party::Human),
+                QuestionStatus::Answered
+                    if q.reply.as_ref().is_some_and(|r| r.accepted_at.is_none()) =>
+                {
+                    Some(Party::Ai)
+                }
+                _ => None,
+            },
             title: title_of(&q.body),
             created_at: crate::clock::format_utc(q.created_at),
             tasks: q.tasks.clone(),
@@ -174,8 +183,9 @@ pub fn approvals(epics: &[EpicView], tasks: &[TaskView]) -> Vec<Approval> {
     out
 }
 
-/// The open messages of a project, oldest first (ties by ID). Answered, accepted and
-/// withdrawn messages are left out: nothing is waiting on them, and no screen lists them.
+/// The open messages of a project, oldest first (ties by ID). Accepted and withdrawn messages
+/// are left out: nothing is waiting on them, and no screen lists them. An answer no agent
+/// accepted yet stays, as the agent's turn.
 pub fn messages(snapshot: &ProjectSnapshot) -> Vec<Message> {
     let mut all: Vec<Message> = snapshot
         .questions

@@ -131,7 +131,7 @@ impl Fx {
 }
 
 #[test]
-fn a_question_is_the_humans_turn_until_it_is_answered_and_then_it_leaves_the_list() {
+fn a_question_is_the_humans_turn_until_it_is_answered_then_the_agents_until_it_is_accepted() {
     let f = fx();
     let task = f.task("Work", Actor::Human, None, 1);
     let id = f.ask("## Which database?\nDetails", &[task], 2);
@@ -145,7 +145,13 @@ fn a_question_is_the_humans_turn_until_it_is_answered_and_then_it_leaves_the_lis
         })]
     );
     f.answer(&id, 3);
-    assert!(f.list().is_empty(), "an answered question is over");
+    let list = f.list();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0]["turn"], "ai", "the answer waits for an agent");
+    f.store
+        .accept_message(&f.project, &id, Actor::Ai, at(4))
+        .unwrap();
+    assert!(f.list().is_empty(), "an accepted answer is over");
 }
 
 #[test]
@@ -176,7 +182,7 @@ fn a_request_is_the_agents_turn_until_it_is_accepted_or_withdrawn() {
     assert_eq!(list[0]["turn"], "ai");
     assert_eq!(list[0]["title"], "Add dark mode");
     f.store
-        .accept_request(&f.project, &one, Actor::Ai, at(3))
+        .accept_message(&f.project, &one, Actor::Ai, at(3))
         .unwrap();
     f.store
         .withdraw_message(&f.project, &two, Actor::Human, at(4))

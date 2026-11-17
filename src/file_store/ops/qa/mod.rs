@@ -14,6 +14,7 @@ mod read;
 mod send;
 mod withdraw;
 
+pub use accept::Accepted;
 pub use answer::AnswerItem;
 pub use ask::{AskInput, AskQuestion};
 pub(in crate::file_store) use migrate::migrate_legacy_locked;

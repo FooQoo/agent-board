@@ -144,6 +144,8 @@ On success, task mode prints one JSON object and exits 0:
 {"kind":"task","projectId":"<id>","cursor":"<cursor>","task":{"id":1},"taskPath":"…/tasks/1/TASK.md","documentPath":null}
 ```
 
+Before a task, the wait can return `{"kind":"answers",…}` (answers to questions that no agent has taken in) or `{"kind":"requests",…}` (open requests), answers first. Take each in with `message accept` and wait again.
+
 When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a question.
 
 ## Run the server

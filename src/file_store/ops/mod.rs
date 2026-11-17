@@ -22,7 +22,7 @@ mod text;
 
 pub(in crate::file_store) use qa::migrate_legacy_locked;
 use qa::task_waits;
-pub use qa::{AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
+pub use qa::{Accepted, AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
 pub use start::EpicStarted;
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};

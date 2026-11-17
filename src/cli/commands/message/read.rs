@@ -95,6 +95,9 @@ fn describe_question(q: &QuestionView) -> String {
             reply.via.as_str(),
             answer_text(reply)
         ));
+        if let Some(at) = reply.accepted_at {
+            text.push_str(&format!("Accepted at {}\n", crate::clock::format_utc(at)));
+        }
     }
     text.push_str(&format!("Referenced by: {}\n", referenced(q)));
     text

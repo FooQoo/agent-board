@@ -47,7 +47,7 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. A `requests` array lists the open requests a person sent you (see "Accept a request" in section 4). Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. A `requests` array lists the open requests a person sent you (see "Accept a request" in section 4). An `answers` array lists the answers to your questions that you have not taken in (see "Take in an answer" in section 4). Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
 - `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
@@ -123,6 +123,21 @@ To take one:
 3. Plan it as below. The acceptance carries no text and links to nothing, so tell the person what you did through the plan they will see, and through questions.
 
 Accept a request before you plan it, and plan only requests you have accepted. Do not ask the person what they meant by a request before you have put a plan on the board; ask about what you cannot settle after the plan exists.
+
+### Take in an answer
+
+A person's answer to your question reaches you in the same places as a request, when you did not wait for it with `message ask` or `message wait`:
+
+- `answers` in the progress table (and in the hook output): `[{"id":"Q-12","title":"...","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"..."}]`. The field is absent when every answer was taken in.
+- `wait --until task` returns `{"kind":"answers", ...}` before requests and tasks while an answer waits.
+
+Read it with `agboard --project "<name>" message show <Q-id> --json`, act on it, and then take it in:
+
+```sh
+agboard --project "<name>" message accept <Q-id> --actor ai
+```
+
+Until you accept, the answer stays in `answers` and the person sees it as waiting for an AI. `message ask` and `message wait` already accept the answers they return, and so does an answer you record from the chat, so accept only what you saw through `answers`. `question_open` means the question has no answer yet; `answer_accepted` means it was already taken in.
 
 ### Plan a request: AI drafts, questions, then the person starts them
 

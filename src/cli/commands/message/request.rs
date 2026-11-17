@@ -1,4 +1,5 @@
-//! `message send` and `message accept`: a person's request and an agent's receipt of it.
+//! `message send` and `message accept`: a person's request, and an agent's receipt of a request
+//! or of an answer.
 
 use serde_json::json;
 
@@ -7,7 +8,7 @@ use crate::cli::Context;
 use crate::cli::args::{MessageAcceptArgs, MessageSendArgs, read_reason};
 use crate::domain::Actor;
 use crate::error::{AgboardError, FileAction};
-use crate::file_store::{RequestImage, SendRequestInput};
+use crate::file_store::{Accepted, RequestImage, SendRequestInput};
 
 fn read_image(path: &std::path::Path) -> Result<RequestImage, AgboardError> {
     let bytes = std::fs::read(path).map_err(|e| AgboardError::FileError {
@@ -43,12 +44,19 @@ pub(super) fn send(ctx: &Context, args: &MessageSendArgs) -> Result<Printed, Agb
 }
 
 pub(super) fn accept(ctx: &Context, args: &MessageAcceptArgs) -> Result<Printed, AgboardError> {
-    let request =
+    let accepted =
         ctx.files
-            .accept_request(ctx.project_id()?, &args.id, Actor::Ai, ctx.clock.now())?;
-    Ok(Printed {
-        changed: true,
-        human: format!("Accepted request {}.\n", request.id),
-        json: json!({"request": request}),
+            .accept_message(ctx.project_id()?, &args.id, Actor::Ai, ctx.clock.now())?;
+    Ok(match accepted {
+        Accepted::Request(request) => Printed {
+            changed: true,
+            human: format!("Accepted request {}.\n", request.id),
+            json: json!({"request": request}),
+        },
+        Accepted::Question(question) => Printed {
+            changed: true,
+            human: format!("Accepted the answer of {}.\n", question.id),
+            json: json!({"question": question}),
+        },
     })
 }

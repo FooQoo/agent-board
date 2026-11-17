@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Message } from '@/shared/data/api/contracts';
 import { Badge } from '@/shared/ui/badge';
 import { formatShort } from '../model/format';
-import { type MessageTab, tabOf } from './model/messages';
+import { countMessages, type MessageTab, tabOf } from './model/messages';
 
 const TYPE_ICONS = {
   question: CircleHelpIcon,
@@ -11,7 +11,10 @@ const TYPE_ICONS = {
   approval: ClipboardCheckIcon,
 } as const;
 
-/** The state of an open message: unanswered, awaiting approval, or waiting to be picked up. */
+/**
+ * The state of a listed message: unanswered, awaiting approval, waiting to be picked up, or (a
+ * question) answered and waiting for an AI to take the answer in.
+ */
 function StateBadge({ message }: { message: Message }) {
   const { t } = useTranslation();
   if (message.turn === 'human')
@@ -22,7 +25,13 @@ function StateBadge({ message }: { message: Message }) {
           : t('messages.state.unanswered')}
       </Badge>
     );
-  return <Badge variant="muted">{t('messages.state.waitingPickup')}</Badge>;
+  return (
+    <Badge variant="muted">
+      {message.type === 'question'
+        ? t('messages.state.answerWaitingPickup')
+        : t('messages.state.waitingPickup')}
+    </Badge>
+  );
 }
 
 /** One row: the kind, the direction, its state and the first line. */
@@ -86,6 +95,8 @@ export function MessageList({
     { id: 'fromAi', label: t('messages.list.tabFromAi') },
     { id: 'fromYou', label: t('messages.list.tabFromYou') },
   ];
+  // A tab counts what waits: an answer no AI took in yet is listed but not counted.
+  const count = countMessages(messages);
   // Newest first, whatever order the project lists them in.
   const rows = messages
     .filter((message) => tabOf(message) === tab)
@@ -103,7 +114,7 @@ export function MessageList({
             onClick={() => onTabChange(item.id)}
           >
             {item.label}
-            <strong>{messages.filter((message) => tabOf(message) === item.id).length}</strong>
+            <strong>{count[item.id]}</strong>
           </button>
         ))}
       </div>

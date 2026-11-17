@@ -24,12 +24,13 @@ With nothing open, the counts are 0. Select **Open the list** to read the messag
 | State | Meaning |
 | --- | --- |
 | **Unanswered** | A question that waits on your answer. |
+| **Answered, waiting for an AI** | A question you answered that no agent has taken in yet. It is not counted as waiting on you. |
 | **Awaiting approval** | A plan that waits on your approval. Selecting it opens the review of the plan. |
 | **Waiting to be picked up** | A request you sent that no agent has accepted yet. |
 
-Only open messages are listed. A question you have answered, a request an agent accepted, and a message that was withdrawn leave the list, so nothing you have finished is shown.
+Open messages are listed. A question you have answered stays in the list, marked **Answered, waiting for an AI**, until an agent takes your answer in. Then it leaves the list, as do a request an agent accepted and a message that was withdrawn.
 
-Select a question or a request to open it in place of the list. **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button.
+Select a question or a request to open it in place of the list. An answered question that waits for an AI opens with the question and **Your answer** read-only, and the note "It leaves the list once an AI takes your answer in." **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button.
 
 ![The messages list with the AI's questions tab, showing a question and an approval row](../../images/guide/messages-list.png){.screenshot}
 
@@ -193,7 +194,8 @@ agboard --project "My project" message withdraw Q-13 --actor human
 ```
 
 - `message send` records a request of 1 to 20,000 characters, from `--text` or `--text-file`. Repeat `--image` to attach pictures.
-- `message accept` marks an open request as accepted and records when. Only an agent accepts, and only once.
+- `message accept` marks an open request as accepted and records when. It also takes in the answer of an answered question: `message accept Q-12 --actor ai` prints `Accepted the answer of Q-12.` Only an agent accepts, and only once. A question with no answer yet fails with `question_open`, and one already taken in with `answer_accepted`.
+- An agent that sees an answer through the hook, the progress table, or `wait --until task` takes it in with `message accept`. `message ask` and `message wait` take in the answers they return, and an answer recorded from the chat is accepted as it is written.
 - Only a person withdraws a request, and only while it is open. An accepted request cannot be withdrawn.
 
 ## Next
