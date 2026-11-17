@@ -4,7 +4,7 @@ title: Working with agents
 
 # Working with agents
 
-This is how you hand work to an agent. You ask in the chat; the agent turns the request into a provisional plan on the board, you approve the start once, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
+This is how you hand work to an agent. You ask in the chat; the agent turns the request into a provisional plan on the board, you start it, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
 
 ## Set up your agents {#set-up-your-agents}
 
@@ -77,7 +77,7 @@ flowchart TD
     R --> D["Move to Doing, report Running"]
     D --> L["Record work and verification results"]
     L --> Q{"Decision needed?"}
-    Q -- yes --> PE["Ask with qa ask (task is Pending)"]
+    Q -- yes --> PE["Ask with message ask (task is Pending)"]
     PE --> A["You answer on the task"]
     A --> RE["Read the answer, resume with a reason"]
     RE --> L
@@ -90,7 +90,7 @@ flowchart TD
 1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `EPIC.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
 2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
 3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan and concise results in the body; attach images when visual proof is useful. Moves and state changes already add history, so do not duplicate them.
-4. **Ask when blocked.** Ask with `qa ask` when you need a decision; the task shows Pending until you answer (see [Decisions](./decisions)).
+4. **Ask when blocked.** Ask with `message ask` when you need a decision; the task shows Pending until you answer (see [Decisions](./decisions)).
 5. **Resume.** After an answer, read the task and history, reconsider the plan, and resume with a reason.
 6. **Finish.** Mark acceptance conditions done only after verifying them. Eligible AI tasks move to Done automatically when all conditions are complete.
 7. **Wait.** If no work can proceed, wait for a change (see below).
@@ -101,12 +101,12 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it puts a provisional plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. You can open the cards and read the plan while the agent asks about it.
+When you ask an agent for work that is more than one task, it puts a provisional plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until a person starts it (see [Drafts and errors](#drafts-and-errors)). You can open the cards and read the plan first.
 
-1. **Questions about the plan.** The agent asks what it cannot settle itself, with choices and a recommendation. The plan's tasks refer to these questions, so they show **Pending** from now until you approve the start.
+1. **Questions about the plan.** The agent asks what it cannot settle itself, as ordinary questions with choices and a recommendation. A task that refers to an open question shows **Pending** until you answer.
 2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
-3. **One start approval.** The agent then asks once whether to start the revised plan. No agent starts the tasks until you approve. If the agent has no questions about the plan, it asks only this. If you choose to change the plan, it revises the plan and asks for approval again.
-4. **Work.** After you approve, the agent works through the tasks in the epic's order without asking each time.
+3. **Start.** When the plan reads right, you start it: `agboard epic start <EPIC-ID> --actor human` for the epic and all its drafts, or `agboard start <id> --actor human` for one task. No agent starts the tasks before that.
+4. **Work.** After the start, the agent works through the tasks in the epic's order without asking each time.
 
 After the start, the agent calls you only when:
 
@@ -117,18 +117,18 @@ After the start, the agent calls you only when:
 
 It decides everything else itself and records each decision in the task's history. While it waits for you, it can still work on parts that do not depend on the answer.
 
-A task you put on the board yourself needs no start approval.
+A task you put on the board yourself is not a draft and needs no start.
 
 ### Questions
 
 Every question an agent asks is on the board, with choices, so that the record stays in one place. While you are talking with the agent, it also writes the same question in the chat as plain text, with its choices and its recommendation, and says that the question is on the board. It does not open a question dialog of its own, because that would keep the agent from noticing an answer you give on the board. Answer wherever is easier:
 
-- **In the chat.** Reply in your own words. The agent records them on the board as your answer with `qa answer --via chat` and continues. It never answers a question itself.
+- **In the chat.** Reply in your own words. The agent records them on the board as your answer with `message answer --via chat` and continues. It never answers a question itself.
 - **On the board or your phone.** See [Decisions](./decisions).
 
 Whichever answer is recorded first is the one that counts, and the agent does not ask the same question again in the other place. If you answer on the board and then differently in the chat, the agent tells you which answer was recorded and continues with it.
 
-The agent keeps `qa ask` running until every question is answered, up to 10 minutes at a time, and after a timeout waits again for the same questions. The two agents differ in how they wait:
+The agent keeps `message ask` running until every question is answered, up to 10 minutes at a time, and after a timeout waits again for the same questions. The two agents differ in how they wait:
 
 - **Claude Code** waits in the background and ends its turn. An answer on the board finishes the wait and wakes the agent, so it continues without a message from you. If you reply in the chat instead, the agent records your reply and continues.
 - **Codex** waits in the foreground after writing the question in the chat. Answer on the board, or interrupt the agent and reply in the chat; it then records your reply.

@@ -111,10 +111,10 @@ flowchart LR
 
 ### 人がブラウザで質問に答える
 
-1. ブラウザが`POST /api/projects/{projectId}/qa/answers`に、質問IDと選んだ選択肢、ページに埋め込まれた書き込み用トークンを付けて送ります。
+1. ブラウザが`POST /api/projects/{projectId}/messages/answers`に、質問IDと選んだ選択肢（または文）、ページに埋め込まれた書き込み用トークンを付けて送ります。
 2. サーバーはタスクを探すより前に、Host・Origin・`Sec-Fetch-Site`・トークンを確かめます。
-3. 書き込みロックの中で、質問がまだ未回答であることを確かめ、回答を`qa/<request-id>/request.json`に保存し、質問を参照する各タスクに履歴を追加して、これらのファイルを一つの変更として確定します。
-4. versionが変わり、ブラウザはSSEで更新されます。待っている`qa ask`や`qa wait`のコマンドは同じSSEで起きてリクエストを読み、全問に回答が揃うと回答を出して終わります。`--no-wait`は保存と通知の後に戻ります。
+3. 書き込みロックの中で、質問がまだ未回答であることを確かめ、回答を`qa/Q-<n>/QA.md`に保存し、質問を参照する各タスクに履歴を追加して、これらのファイルを一つの変更として確定します。
+4. versionが変わり、ブラウザはSSEで更新されます。待っている`message ask`や`message wait`のコマンドは同じSSEで起きて自分の質問を読み、開いている質問がなくなると回答を出して終わります。`--no-wait`は保存と通知の後に戻ります。
 
 ### エージェントがTASK.mdを直接編集する
 
@@ -126,7 +126,7 @@ flowchart LR
 
 - [最初の変更を追う](../getting-started/first-change.md): 一つの規則を、コマンドからファイルとテストまで追います。
 - [タスクと状態](./tasks-and-states.md): タスクとは何か、どの状態が有効か。
-- [履歴と判断依頼](./history-and-decisions.md): 履歴、質問と回答、自動Done。
+- [履歴と判断依頼](./history-and-decisions.md): 履歴、メッセージ、自動Done。
 - [保存と復旧](./saving-and-recovery.md): ロック、原子的な保存、失敗。
 - [変更の通知](./notifications.md): 変更がブラウザと待機中のエージェントにどう届くか。
 - [サーバーと画面](./server-and-ui.md)、[エージェント連携](./agents.md)、[リモートアクセス](./remote-access.md)、[セキュリティモデル](./security.md)。

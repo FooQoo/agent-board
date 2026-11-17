@@ -11,8 +11,8 @@
 | `epic_is_draft` | エピックが下書きで、CLIはその詳細や作業順序を変更できない。 | 人が保存か破棄をするまで待つか、確定を頼みます。`epic attachment`と所属の変更は使えます。`EPIC.md`は編集しません。 |
 | `task_is_done` | タスクがDoneで、エージェントは変更できない。 | 人に再開してもらいます。 |
 | `acceptance_unmet` | 受入条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
-| `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `qa wait <request-id>`で回答を待つか、人にボードで回答してもらいます。 |
-| `question_answered`・`question_withdrawn` | 質問にすでに回答がある、またはリクエストが取り下げられた。最初の回答が確定です。 | 質問を読み直し（`qa show <question-id>`）、記録済みの回答に従います。 |
+| `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `message wait <question-id>`で回答を待つか、人にボードで回答してもらいます。 |
+| `question_answered`・`question_withdrawn` | 質問にすでに回答がある、または取り下げられた。最初の回答が確定です。 | 質問を読み直し（`message show <question-id>`）、記録済みの回答に従います。 |
 | `folder_unbound`・`bound_project_missing` | 作業フォルダがプロジェクトに紐付いていない、またはプロジェクトが削除された。 | `--project`でプロジェクトを明示するか、利用者にフォルダの紐付けを頼みます。 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 人に実行してもらいます。確認を省くオプションはありません。 |
 
@@ -33,13 +33,13 @@
 | `already_serving` | 同じデータ領域で別の`serve`が動いている。 | そちらを使うか、先に止めます。自動で起動したサーバーなら、`agboard serve -d`で動かし続けられます。 |
 | `port_in_use` | `serve`に指定したポートが使われている。理由に、別のAgent Boardのサーバーか別のプログラムかが出る。 | `--port`でほかのポートを選びます。7420は通常の利用のために空けておき、テストでは別のポートかポート0を使います。 |
 | `local_network_denied` | OSやサンドボックスが、`agboard`に`127.0.0.1`を使わせない。 | Codexでは`agboard setup`を実行します。それ以外では、サンドボックスの外でコマンドを実行します。 |
-| `wait`・`qa ask`・`qa wait`・Hookの`board_unavailable` | 自動起動が無効、サーバーを起動できない、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。技術的な失敗で、回答ではない。 | 理由を読みます。`serve.log`が示されていればそのファイルを、pidが示されていれば`agboard stop`を実行します。そのうえで`wait`を実行し直します。保存済みの質問は`qa wait <request-id>`で待ち直します。 |
+| `wait`・`message ask`・`message wait`・Hookの`board_unavailable` | 自動起動が無効、サーバーを起動できない、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。技術的な失敗で、回答ではない。 | 理由を読みます。`serve.log`が示されていればそのファイルを、pidが示されていれば`agboard stop`を実行します。そのうえで`wait`を実行し直します。保存済みの質問は`message wait <question-id>`で待ち直します。 |
 | テストが7420でサーバーを起動する | テストが`AGBOARD_AUTOSTART=0`を付けずに`agboard`を実行している。 | `AGBOARD_AUTOSTART=0`を付けます。自動起動そのものの試験では`AGBOARD_AUTOSTART_PORT=0`を付けます。 |
 | テストがブラウザーのウィンドウを開く | 自動起動を有効にしたまま、`AGBOARD_OPEN_BROWSER=0`を付けずに`agboard`を実行している。 | `AGBOARD_OPEN_BROWSER=0`を付けます。開く処理の試験では、代わりに`AGBOARD_BROWSER_OPENER`をアドレスを記録するスクリプトに向けます。 |
 | 自動のサーバーがボードを開かなかった | 待つ時間のうちにボードのページがつながった、または開く処理が無効になっている。 | `serve.log`を読みます。`Opened …`、理由つきの`Did not open …`、`Could not open …`のどれかが書かれています。[ボードを開く](./concepts/server-and-ui.md#opening-the-board)を参照。 |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 同じプロジェクトの`snapshot`から新しい`cursor`を取ります。 |
 | `wait_timeout` | `wait --after`の任意の`--timeout`が経過しても変更がなかった。 | もう一度待ちます。 |
-| `qa ask`や`qa wait`が終了コード5で終わる | すべての質問に回答が付く前に`--timeout`が過ぎた。質問は未回答のまま残る。 | `qa wait <request-id>`をもう一度実行します。 |
+| `message ask`や`message wait`が終了コード5で終わる | すべての質問に回答が付く前に`--timeout`が過ぎた。質問は未回答のまま残る。 | `message wait <question-id>`をもう一度実行します。 |
 
 ## Hook
 

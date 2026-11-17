@@ -102,43 +102,54 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 
 Anything else prints nothing on standard output and exits 1 with `remote_unavailable`: no server is running, or the connection is not `ready`. The error carries no address and no passcode. The server answers this only on its local address, so the passcode reaches the person at this computer and never passes through the tunnel. See [Error codes](./errors.md#server-and-waiting).
 
-## qa events
+## message events
 
-`agboard qa ask --request-json <json> --task <id>…` takes:
+`agboard message ask --actor ai --questions-json <json|-> [--task <id>]…` takes:
 
 ```json
 {
   "questions": [
     {
-      "question": "Should existing records be deleted or kept?",
+      "body": "Should existing records be deleted or kept?",
       "choices": [
         { "id": "delete", "label": "Delete them and start clean" },
         { "id": "keep", "label": "Keep them and migrate" }
       ],
-      "recommendedChoiceId": "keep"
+      "recommendedChoiceId": "keep",
+      "tasks": [12]
     }
   ]
 }
 ```
 
-- `questions`: 1 to 20 items. Each has a `question` (Markdown, 1 to 5,000 characters) and 2 to 10 `choices`; each choice `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the question, and each `label` is 1 to 200 characters.
-- Optional per question: `kind` (`task` by default, `plan`, or `start_approval`), `recommendedChoiceId`, `approvingChoiceIds` (required for `start_approval`), and `tasks`, the IDs of extra tasks that refer to that question only. `--task` tasks refer to every question. Unknown fields are refused.
-- `--timeout` is 1 to 86,400 seconds, or `none` (default 600). `--heartbeat` is 10 to 600 seconds (default 60). `qa wait <request-id>` takes the same two options.
+- `questions`: 1 to 20 items, and each becomes its own question file (`Q-<n>`). Each has a `body` (Markdown, 1 to 5,000 characters).
+- Optional per question: `choices` (2 to 10 items; each choice `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the question, and each `label` is 1 to 200 characters), `recommendedChoiceId` (one of the choices), and `tasks`, the IDs of tasks that refer to that question. A `--task` task refers to every question. A question without `choices` is answered with text. Unknown fields are refused.
+- `--timeout` is 1 to 86,400 seconds, or `none` (default 600). `--heartbeat` is 10 to 600 seconds (default 60). `message wait Q-<n> [Q-<n>]…` takes the same two options.
 
-With `--json`, `qa ask` and `qa wait` write one JSON object per line. Each has a `type`:
+With `--json`, `message ask` and `message wait` write one JSON object per line. Each has a `type`:
 
 | `type` | Fields | When |
 | --- | --- | --- |
-| `registered` | `requestId`, `questions` (`id`, `kind`), `resumed` | First. `resumed` is `true` for `qa wait`. With `--no-wait` it is the only line, and the command exits 0. |
-| `waiting` | `requestId`, `elapsed`, `remaining` (`null` without a timeout), `answered`, `total` | Every `--heartbeat` seconds. It comes from a timer and never reads the board. |
-| `answered` | `requestId`, `answers` (`id`, `choiceId`, `choiceLabel`, `text`, `via`, `at`) | Last, once every question has an answer. Exit 0. |
-| `timeout` | `requestId`, `answered`, `total` | Last, when `--timeout` passes first. The questions stay open. Exit 5. |
-| `withdrawn` | `requestId`, `reason` | Last, when the request was withdrawn. Exit 6. |
+| `registered` | `questions` (`id`), `resumed` | First. `resumed` is `true` for `message wait`. With `--no-wait` it is the only line, and the command exits 0. |
+| `waiting` | `ids`, `elapsed`, `remaining` (`null` without a timeout), `answered`, `total` | Every `--heartbeat` seconds. It comes from a timer and never reads the board. |
+| `answered` | `ids`, `answers` (`id`, `choiceId`, `choiceLabel`, `text`, `via`, `at`) | Last, once no question is open. Exit 0. |
+| `timeout` | `ids`, `answered`, `total` | Last, when `--timeout` passes first. The questions stay open. Exit 5. |
+| `withdrawn` | `ids` (the withdrawn questions), `answers` | Last, when no question is open any more and some were withdrawn. Exit 6. |
 | `error` | `error` (`code`, `message`, `reason`) | Last, when waiting fails, for example with `board_unavailable`. |
 
-A waiting `qa ask` checks the server before it saves anything. `--no-wait` saves without the server.
+A waiting `message ask` checks the server before it saves anything. `--no-wait` saves without the server.
 
-`qa answer --json` prints the recorded questions as `{questions}`. When a question already has an answer, the error output adds `questions` with the recorded answer.
+The other `message` commands print one JSON object with `--json`:
+
+| Command | Output |
+| --- | --- |
+| `message answer` | `{questions}`: the recorded questions. When a question already has a reply, the error output adds `questions` with the recorded reply. |
+| `message ls` | `{messages}`: questions and requests together. |
+| `message show` | `{question}` or `{request}`. |
+| `message send`, `message accept` | `{request}`. |
+| `message withdraw` | `{question}` or `{request}`, whichever was withdrawn. |
+
+A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, or `null`), `status`, `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status`, `acceptedAt`, `acceptedBy`, `withdrawnAt`, and `createdAt`. The statuses are described in [Messages](./files.md#messages).
 
 ## Sample cards of the first-run guide
 

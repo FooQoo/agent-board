@@ -14,7 +14,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. | 1 | 409 |
 | `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
 | `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
-| `human_only` | An agent runs `start` or `epic start`. Only a person can start. | 1 | 403 |
+| `human_only` | An agent runs `start` or `epic start`, or withdraws a request. Only a person can do these. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
 | `task_is_done` | An AI change targets a Done task. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |
@@ -28,13 +28,16 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
 | `questions_unanswered` | An agent tried to set a task to Running, or to move it to Done, while the task waits for a person. | 1 | 409 |
-| `question_answered` | An answer names a question that already has an answer. Nothing is saved; the output includes the recorded questions. | 1 | 409 |
-| `question_withdrawn` | An answer names a question whose request was withdrawn. Nothing is saved. | 1 | 409 |
-| `question_not_found` | The question ID does not exist in the project. | 3 | 404 |
-| `request_not_found` | The request ID does not exist in the project. | 3 | 404 |
-| `request_answered` | A withdrawal names a request whose questions are all answered. | 1 | 409 |
+| `question_answered` | An answer names a question that already has a reply. Nothing is saved; the output includes the recorded questions. | 1 | 409 |
+| `question_withdrawn` | An answer names a question that was withdrawn. Nothing is saved. | 1 | 409 |
+| `message_not_found` | The question or request ID does not exist in the project. | 3 | 404 |
+| `message_closed` | A withdrawal names a question that already has a reply, or a request that was already accepted. | 1 | 409 |
+| `message_type_mismatch` | A command or request for one kind names the other: for example, `answer` with a request ID, or `accept` with a question ID. | 2 | 422 |
+| `request_accepted` | An acceptance names a request that was already accepted. | 1 | 409 |
+| `request_withdrawn` | An acceptance or a second withdrawal names a request that was withdrawn. | 1 | 409 |
+| `ai_only` | A person withdraws a question, asks one, or accepts a request. Only an agent can do these. | 1 | 403 |
+| `choice_unknown` | The answer names a choice that is not in the question. | 2 | 422 |
 | `task_status_changed` | A move named the status it started from (`fromStatus`), and the task is no longer in it. Nothing is written; the body adds `currentStatus`. | 1 | 409 |
-| `request_choice_unknown` | The answer names a choice that is not in the question. | 2 | 422 |
 
 ## Projects, epics, and attachments
 
@@ -55,7 +58,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | A command argument is missing or malformed; for example, `qa answer` with both `--answers-json` and `--choice`. | 2 | 422 |
+| `invalid_argument` | A command argument is missing or malformed; for example, `message answer` with both `--text` and `--text-file`. | 2 | 422 |
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |
@@ -72,11 +75,11 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `already_serving` | Another `serve` already runs on this data area. When it was started automatically, the reason says to run `agboard serve -d` to keep it. | 1 | n/a |
 | `port_in_use` | The port given to `serve` is taken. The reason names what holds it: another Agent Board server with a different data area (with its pid), or another program. An automatic server takes another port instead. | 1 | n/a |
 | `local_network_denied` | The OS or a sandbox refused to let `agboard` listen on or connect to `127.0.0.1` (`EACCES` or `EPERM`). In Codex, `agboard setup` allows `agboard` to run outside the sandbox. | 1 | n/a |
-| `board_unavailable` | A waiting `qa ask`, `qa wait`, `wait`, `open`, or the hook cannot reach the server: autostart is off (`AGBOARD_AUTOSTART=0`), the server could not start (the reason names `serve.log`), the server named in `serve.json` does not answer, or the connection failed. A waiting `qa ask` checks the server before saving, so an unavailable server leaves no question; `--no-wait` needs no server. | 1 | n/a |
+| `board_unavailable` | A waiting `message ask`, `message wait`, `wait`, `open`, or the hook cannot reach the server: autostart is off (`AGBOARD_AUTOSTART=0`), the server could not start (the reason names `serve.log`), the server named in `serve.json` does not answer, or the connection failed. A waiting `message ask` checks the server before saving, so an unavailable server leaves no question; `--no-wait` needs no server. | 1 | n/a |
 | `remote_unavailable` | `remote` has no ready ngrok connection to report: no server is running, or the connection is not `ready` (disabled, starting, reconnecting, failed, and so on). The reason says which; when the connection failed, it names the failure code. Nothing is started, and no address or passcode is printed. | 1 | n/a |
 | `browser_open_failed` | `open` could not start the program that opens the browser (`open`, `xdg-open`, or `AGBOARD_BROWSER_OPENER`). The reason names the address to open by hand. A browser that may not be opened (`AGBOARD_OPEN_BROWSER=0`, SSH, no display) is not an error. | 1 | n/a |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
-| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, with no change. A `qa ask` or `qa wait` that reaches its `--timeout` is not an error: it prints a `timeout` event and exits 5. | 1 | n/a |
+| `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, with no change. A `message ask` or `message wait` that reaches its `--timeout` is not an error: it prints a `timeout` event and exits 5. | 1 | n/a |
 | `hook_cwd_unavailable` | The hook's input `cwd` is an absolute path that does not exist or cannot be read. It is reported as `AGBOARD_ERROR`; a folder that cannot be checked is never treated as unbound. | n/a (hook output) | n/a |
 | `invalid_hook_input` | The hook input is not valid JSON, is too large, or has a `cwd` that is not a string or not an absolute path. Reported as `AGBOARD_ERROR`. | n/a (hook output) | n/a |
 | `forbidden` | A web write failed the guard (Host, Origin, `Sec-Fetch-Site`, or token). | n/a | 403 |
@@ -134,8 +137,8 @@ These are returned by the `/api/preferences` route (see [Web API](./web-api.md#d
 | 2 | The input is wrong. |
 | 3 | The task, question, or request was not found. |
 | 4 | The project was not found or the folder is not bound. |
-| 5 | `qa ask` or `qa wait` reached its `--timeout` before every question was answered. The questions stay open. |
-| 6 | The request `qa ask` or `qa wait` was waiting on was withdrawn. |
+| 5 | `message ask` or `message wait` reached its `--timeout` before every question was answered. The questions stay open. |
+| 6 | Every question that `message ask` or `message wait` was still waiting on was withdrawn. |
 
 Other web statuses: 400 for malformed JSON and 413 for a body over 1 MiB. Guards run before the target is looked up, so a refused request never reveals what exists.
 

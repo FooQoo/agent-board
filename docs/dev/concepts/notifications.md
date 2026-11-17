@@ -55,7 +55,7 @@ flowchart LR
 | `history` | The history. |
 | `deleted` | The resource is gone. A project has only `summary` or `deleted`. |
 
-Any change to a project's `qa/*/request.json` files sends a `qa` change whose `id` is the project ID and whose only facet is `summary`; clients read the Summary again. Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
+Any change to a project's `qa/*/QA.md` files sends a `qa` change whose `id` is the project ID and whose only facet is `summary`; clients read the Summary again. Moving a task to the archive, or restoring it, is a `summary` change. A file that cannot be parsed changes `summary`, `document`, and `history` of its resource; `request` is added only when the request ID that can be read changed.
 
 The `seq` grows by one for each `changed` within one `instanceId`. The `instanceId` is new at every server start, so a client can tell that `seq` began again.
 
@@ -77,7 +77,7 @@ A client that sees a gap in `seq`, a new `instanceId`, or an event it does not k
 
 ## How agent waits use events
 
-Change waits, question waits (`qa ask` and `qa wait`), and next-task waits share `src/agent/wait_engine.rs`. Each caller supplies its purpose-specific condition and an optional monotonic deadline. The engine reads the fixed ProjectId before connecting, checks again after SSE `ready`, and evaluates again after each `changed` event. It ignores changes whose snapshot does not satisfy the caller's condition.
+Change waits, question waits (`message ask` and `message wait`), and next-task waits share `src/agent/wait_engine.rs`. Each caller supplies its purpose-specific condition and an optional monotonic deadline. The engine reads the fixed ProjectId before connecting, checks again after SSE `ready`, and evaluates again after each `changed` event. It ignores changes whose snapshot does not satisfy the caller's condition.
 
 Task mode starts its absolute idle deadline only after the initial snapshot contains no eligible task. Other-project changes and keep-alives cannot reset it. At expiry, the engine takes a final snapshot and evaluates the condition once more, so a task arriving at the boundary wins. A failed final read is an error, never an empty result. Change mode's optional timeout remains an error (`wait_timeout`); task mode's exhausted idle interval is the successful `idle_timeout` result. See [Agent integration](./agents#waiting-for-changes) for the selection predicate and output contract.
 

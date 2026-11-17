@@ -11,7 +11,7 @@ Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Age
 | `TASK.md` | The task's body, acceptance conditions, the questions it refers to, and history. | Yes, unless the task is a draft. |
 | `EPIC.md` | The epic's details and the order of its tasks. | Yes. |
 | `task.json`, `epic.json`, `project.json` | State and metadata. | No. Use the CLI. |
-| `qa/<request-id>/request.json` | A set of questions an agent asked, and their answers. | No. Use `qa` commands or the board. |
+| `qa/Q-<n>/QA.md` | One question an agent asked with its answer, or one request you sent to agents. | No. Use `message` commands or the board. |
 
 ## TASK.md
 
@@ -58,8 +58,8 @@ questions: [Q-12, Q-15]
 ```
 
 - Each value is a question ID such as `Q-12`, and a list must not repeat one. Leaving the key out, `null`, and an empty list all mean no questions.
-- `qa ask --task` and `qa link`/`qa unlink` change this list for you. You can also edit it like any other part of the file.
-- An AI-owned task in Todo or Doing shows Pending while any question it lists is open. Answered and withdrawn questions do not keep it waiting.
+- `message ask --task` and `message link`/`message unlink` change this list for you. You can also edit it like any other part of the file.
+- An AI-owned task in Todo or Doing shows Pending while any question it lists is open. Answered and withdrawn questions do not keep it waiting. A listed message file that cannot be read keeps it waiting too.
 - The questions themselves are stored in the project, not in the task; see [Decisions](../delegate/decisions).
 
 ### History

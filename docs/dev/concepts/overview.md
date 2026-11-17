@@ -111,10 +111,10 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 
 ### A person answers a question in the browser
 
-1. The browser sends `POST /api/projects/{projectId}/qa/answers` with the question ID and the chosen option, plus the write token embedded in the page.
+1. The browser sends `POST /api/projects/{projectId}/messages/answers` with the question ID and the chosen option or text, plus the write token embedded in the page.
 2. The server checks Host, Origin, `Sec-Fetch-Site`, and the token before it reads any file.
-3. Under the write lock it confirms that the question is still open, stores the answer in `qa/<request-id>/request.json`, appends history to each task that refers to the question, and commits these files as one change.
-4. The version changes, browsers update through SSE, and a waiting `qa ask` or `qa wait` command wakes on the same SSE stream and reads the request. It ends with the answers once every question of the request is answered. `--no-wait` returns after saving and notifying.
+3. Under the write lock it confirms that the question is still open, stores the reply in `qa/Q-<n>/QA.md`, appends history to each task that refers to the question, and commits these files as one change.
+4. The version changes, browsers update through SSE, and a waiting `message ask` or `message wait` command wakes on the same SSE stream and reads its questions. It ends with the answers once none of its questions is open. `--no-wait` returns after saving and notifying.
 
 ### An agent edits TASK.md directly
 
@@ -126,7 +126,7 @@ When an agent runs `agboard --project demo mv 12 doing --actor ai`:
 
 - [Follow your first change](../getting-started/first-change.md): trace one rule from the command to the file and its test.
 - [Tasks and states](./tasks-and-states.md): what a task is and which states are valid.
-- [History and decisions](./history-and-decisions.md): history, questions and answers, and automatic Done.
+- [History and decisions](./history-and-decisions.md): history, messages, and automatic Done.
 - [Saving and recovery](./saving-and-recovery.md): locks, atomic saves, and failures.
 - [Change notifications](./notifications.md): how a change reaches browsers and waiting agents.
 - [Server and web UI](./server-and-ui.md), [Agent integration](./agents.md), [Remote access](./remote-access.md), and [Security model](./security.md).

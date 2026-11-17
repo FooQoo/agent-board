@@ -23,10 +23,11 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
 | `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードの移動のダイアログは、いつも`fromStatus`を送る。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
-| `GET /api/projects/{projectId}/qa/{questionId}` | 質問1件を`{question}`で返す。`id`・`requestId`・`kind`・`question`・`choices`・`recommendedChoiceId`・`approvingChoiceIds`・`answer`・`status`・`referencedBy`・`createdAt`・`createdBy`を持つ。未知のIDは404 `question_not_found`。 |
-| `GET /api/projects/{projectId}/qa` | 質問の一覧を`{questions}`で、新しい順に返す。`status`は`open`・`answered`（既定）・`withdrawn`・`all`、`limit`は1〜500（既定50）。 |
-| `POST /api/projects/{projectId}/qa/answers` | `{answers: [{questionId, choiceId?, text?}]}`。未知のフィールドは拒否する。各回答には選択か文、または両方が必要で、未知の選択肢は422 `request_choice_unknown`。回答はまとめて保存し、一部だけ保存することはない。すでに回答済み、または取り下げ済みの質問があれば何も保存せず、409で`error`、`questionAnswered`と`questionWithdrawn`（ID）、`questions`（記録済みの質問）を返す。未知の質問は404 `question_not_found`。 |
-| `POST /api/projects/{projectId}/qa/requests/{requestId}/withdraw` | リクエストの未回答の質問を取り下げる。本文は任意の`{reason}`。すべて回答済みのリクエストは409 `request_answered`、未知のものは404 `request_not_found`。 |
+| `GET /api/projects/{projectId}/messages` | 質問と依頼をまとめて`{messages}`で、新しい順に返す。`status`は`open`（既定）・`closed`・`withdrawn`・`all`、`type`は`question`か`request`、`limit`は1〜500（既定50）。 |
+| `GET /api/projects/{projectId}/messages/{messageId}` | メッセージ1件を`{question}`または`{request}`で返す。質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`、なければ`null`）・`status`（`open`・`answered`・`withdrawn`）・`referencedBy`・`createdAt`・`withdrawnAt`を持つ。依頼は`id`・`type`・`from`・`to`・`body`・`status`（`open`・`accepted`・`withdrawn`）・`acceptedAt`・`acceptedBy`・`withdrawnAt`・`createdAt`を持つ。未知のIDは404 `message_not_found`。 |
+| `POST /api/projects/{projectId}/messages/answers` | `{answers: [{questionId, choiceId?, text?}]}`。未知のフィールドは拒否する。選択肢のある質問には`choiceId`、ない質問には`text`が必要。未知の選択肢は422 `choice_unknown`、依頼のIDは422 `message_type_mismatch`。回答はまとめて保存し、一部だけ保存することはない。すでに回答済み、または取り下げ済みの質問があれば何も保存せず、409で`error`、`questionAnswered`と`questionWithdrawn`（ID）、`questions`（記録済みの質問）を返す。未知の質問は404 `message_not_found`。成功すると`{questions}`を返す。 |
+| `POST /api/projects/{projectId}/messages/requests` | AIへの依頼を送る。本文はmultipartで、`text`のパートと、任意の数の`images`のファイルパート。201で`{request}`を返す。 |
+| `POST /api/projects/{projectId}/messages/{messageId}/withdraw` | 人が依頼を取り下げ、`{request}`を返す。質問は403 `ai_only`、受け付け済みの依頼は409 `message_closed`、すでに取り下げた依頼は409 `request_withdrawn`。依頼の受け付けにエンドポイントはなく、CLIだけが行う。 |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | アーカイブ済みのタスクだけを削除する。それ以外は409 `task_not_archived`。204、すでにないときは404。 |
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・draft・documentまたはbody）。`acceptance`の入力は受け付けない。201。 |
@@ -61,7 +62,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | --- | --- |
 | タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`draft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
 | エピック | `id`（文字列）、`name`、`color`、`draft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
-| 質問 | 未回答の質問をID順に並べる。`id`・`requestId`・`kind`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/qa/{questionId}`で読む。 |
+| 質問 | 未回答の質問をID順に並べる。`id`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
 
 versionはすべて不透明な文字列で、解析済みデータの内容ハッシュです。サーバーの起動回に依存しないため、再起動後も保存済みの値と比べられます。versionは等しいかどうかだけを比べてください。
@@ -198,9 +199,9 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 | ステータス | 意味 |
 | --- | --- |
 | 400 | 壊れたJSON、不正な`sections`クエリ（`invalid_sections`）、または不正なドキュメントのパス（`docs_path_invalid`）。 |
-| 403 | 保護に失敗した。 |
-| 404 | プロジェクト・タスク・エピック・質問・リクエストがない。またはドキュメントのファイルがない。 |
-| 409 | `question_answered`・`question_withdrawn`・`request_answered`・`task_status_changed`・`task_not_draft`・`ai_draft_needs_start`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 403 | 保護に失敗した。または`ai_only`（人が質問を取り下げようとした）。 |
+| 404 | プロジェクト・タスク・エピック・メッセージがない。またはドキュメントのファイルがない。 |
+| 409 | `question_answered`・`question_withdrawn`・`message_closed`・`request_accepted`・`request_withdrawn`・`task_status_changed`・`task_not_draft`・`ai_draft_needs_start`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
 | 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
 | 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |

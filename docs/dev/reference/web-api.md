@@ -23,10 +23,11 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`. Unknown EPIC-ID is 404 `epic_not_found`. |
 | `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`, optional `reason`, and optional `fromStatus`, the status the page showed when the user chose the move. With `fromStatus`, a task that is no longer in that status is 409 `task_status_changed` and nothing is written; the body adds `currentStatus`, the status the task has now, so the page can show it and the user can move again from there. The board's move dialog always sends `fromStatus`. |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | Changes the run state within the state rules. The UI has no entry point for it. |
-| `GET /api/projects/{projectId}/qa/{questionId}` | One question as `{question}`: `id`, `requestId`, `kind`, `question`, `choices`, `recommendedChoiceId`, `approvingChoiceIds`, `answer`, `status`, `referencedBy`, `createdAt`, and `createdBy`. An unknown ID is 404 `question_not_found`. |
-| `GET /api/projects/{projectId}/qa` | Questions as `{questions}`, newest first. `status` is `open`, `answered` (the default), `withdrawn`, or `all`; `limit` is 1 to 500 (default 50). |
-| `POST /api/projects/{projectId}/qa/answers` | `{answers: [{questionId, choiceId?, text?}]}`, with unknown fields refused. Each answer needs a choice, a text, or both; an unknown choice is 422 `request_choice_unknown`. All answers are saved together or none. When a question already has an answer or was withdrawn, nothing is saved and the response is 409 with `error`, `questionAnswered` and `questionWithdrawn` (the IDs), and `questions` (the recorded questions). An unknown question is 404 `question_not_found`. |
-| `POST /api/projects/{projectId}/qa/requests/{requestId}/withdraw` | Withdraws the open questions of a request, with an optional `{reason}`. A request with every question answered is 409 `request_answered`; an unknown one is 404 `request_not_found`. |
+| `GET /api/projects/{projectId}/messages` | Questions and requests together, as `{messages}`, newest first. `status` is `open` (the default), `closed`, `withdrawn`, or `all`; `type` is `question` or `request`; `limit` is 1 to 500 (default 50). |
+| `GET /api/projects/{projectId}/messages/{messageId}` | One message, as `{question}` or `{request}`. A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, or `null`), `status` (`open`, `answered`, `withdrawn`), `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status` (`open`, `accepted`, `withdrawn`), `acceptedAt`, `acceptedBy`, `withdrawnAt`, and `createdAt`. An unknown ID is 404 `message_not_found`. |
+| `POST /api/projects/{projectId}/messages/answers` | `{answers: [{questionId, choiceId?, text?}]}`, with unknown fields refused. A question with choices needs a `choiceId`; one without needs a `text`. An unknown choice is 422 `choice_unknown`, and a request ID is 422 `message_type_mismatch`. All answers are saved together or none. When a question already has an answer or was withdrawn, nothing is saved and the response is 409 with `error`, `questionAnswered` and `questionWithdrawn` (the IDs), and `questions` (the recorded questions). An unknown question is 404 `message_not_found`. Returns `{questions}`. |
+| `POST /api/projects/{projectId}/messages/requests` | Sends a request to an agent. A multipart body with a `text` part and any number of `images` file parts. Returns 201 `{request}`. |
+| `POST /api/projects/{projectId}/messages/{messageId}/withdraw` | A person withdraws a request and gets `{request}`. A question is 403 `ai_only`; a request that was accepted is 409 `message_closed`, and one already withdrawn is 409 `request_withdrawn`. Accepting a request has no endpoint: only the CLI does it. |
 | `DELETE /api/projects/{projectId}/tasks/{id}` | Deletes archived tasks only; others are 409 `task_not_archived`. 204, or 404 when already gone. |
 | `…/tasks/{id}/attachments`, `…/attachments/{attachmentId}` | Task images (GET, POST, DELETE), matched by ProjectId, task ID, and attachment ID. |
 | `GET`/`POST /api/projects/{projectId}/epics` | List and create epics (id, name, color, draft, document or body). No `acceptance` input. 201. |
@@ -61,7 +62,7 @@ The shapes below are fixed by the Rust types in `src/server/contracts/` and by t
 | --- | --- |
 | Task | `id` (integer), `title`, `taskStatus`, `agentStatus`, `assignee`, `draft`, `position`, `epicId` (or `null`), `acceptance` (`done`, `total`), `acceptanceError`, `createdAt`, `updatedAt`, `taskStatusChangedAt`, `agentStatusChangedAt`, `questionIds`, `openQuestionIds`, `pendingRequestId`, `pendingReason`, `pendingChoices`, `onboardingSample` (only on cards written by earlier releases' guide), and `detailVersions` (`document`, `history`). The names match the board's `Task`. |
 | Epic | `id` (string), `name`, `color`, `draft`, `priority` (the task IDs in the order the epic sets; empty when it sets none), `priorityError` (the stored order cannot be read, so `priority` is ignored), `progress` (`todo`, `doing`, `done`, `archived`, `total`), and `detailVersions` (`document`). |
-| Question | The open questions in ID order: `id`, `requestId`, `kind`, `title` (the first line, up to 200 characters), `recommendedChoiceId`, `referencedBy` (the unarchived tasks that refer to it), and `createdAt`. The full text is read with `GET …/qa/{questionId}`. |
+| Question | The open questions in ID order: `id`, `title` (the first line, up to 200 characters), `recommendedChoiceId`, `referencedBy` (the unarchived tasks that refer to it), and `createdAt`. The full text is read with `GET …/messages/{messageId}`. |
 | Problem | `file`, `field`, `reason`, as in the board. |
 
 Every version is an opaque string: a content hash of the parsed data. It does not depend on the server run, so a cached value can be compared after a restart. Compare versions for equality only.
@@ -198,9 +199,9 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 | Status | Meaning |
 | --- | --- |
 | 400 | Malformed JSON, an invalid `sections` query (`invalid_sections`), or an invalid docs path (`docs_path_invalid`). |
-| 403 | A guard failed. |
-| 404 | Project, task, epic, question, or request not found, or a docs file not found. |
-| 409 | `question_answered`, `question_withdrawn`, `request_answered`, `task_status_changed`, `task_not_draft`, `ai_draft_needs_start`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
+| 403 | A guard failed, or `ai_only` (a person tried to withdraw a question). |
+| 404 | Project, task, epic, or message not found, or a docs file not found. |
+| 409 | `question_answered`, `question_withdrawn`, `message_closed`, `request_accepted`, `request_withdrawn`, `task_status_changed`, `task_not_draft`, `ai_draft_needs_start`, `invalid_state_for_draft`, `epic_in_use`, `epic_id_taken`, `task_not_archived`, `archive_targets_changed`. |
 | 413 | Body over 1 MiB, or a docs file over its limit (`docs_too_large`). |
 | 415 | A docs file that is not Markdown, or an image type the docs do not serve (`docs_not_markdown`, `docs_asset_type`). |
 | 422 | Invalid ID syntax, input, or state rule; a docs file that is not UTF-8 (`docs_not_utf8`); or an invalid source file (`file_invalid`) with path, field, and reason. |

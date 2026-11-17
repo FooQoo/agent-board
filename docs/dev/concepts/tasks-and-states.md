@@ -26,14 +26,14 @@ A task's lane says where the work is; its run state says what the agent is doing
 | human | any | idle only |
 
 - **Running** is self-reported, not liveness monitoring. It is never reset automatically, and agents do not change it just because a session started or paused.
-- **Pending** means the task refers to a project question that still waits for a person's answer, or belongs to a plan whose start is not approved yet; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Questions and answers](./history-and-decisions.md#questions-and-answers)).
+- **Pending** means the task refers to a project question that has no reply yet, or to a message file that cannot be read; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Messages](./history-and-decisions.md#messages)).
 - Invalid combinations are never saved. A draft task is Idle or Pending in any lane.
 
 How operations move a task between states:
 
 - **Create** puts the task in Todo, Idle, at the end of the lane, and records a creation entry. Without a body, the product writes an empty `acceptance` and an empty body; a supplied body must pass frontmatter validation.
 - **Lane move** requires `actor`; `reason` is optional. The task goes to the end of the target lane. A real move resets the stored run state to Idle, appends history, and updates `taskStatusChangedAt`. Moving to the same lane changes nothing.
-- **Run state change** requires `actor` and keeps the lane. `state` accepts Idle and Running; only AI Doing can be Running. An AI change to Running is refused with `questions_unanswered` while the task waits for an answer. Questions are asked with `qa ask`, which also returns a Running task to Idle. Moving the lane or archiving keeps the task's questions and references. Re-reporting the same state is not a change.
+- **Run state change** requires `actor` and keeps the lane. `state` accepts Idle and Running; only AI Doing can be Running. An AI change to Running is refused with `questions_unanswered` while the task waits for an answer. Questions are asked with `message ask`, which also returns a Running task to Idle. Moving the lane or archiving keeps the task's questions and references. Re-reporting the same state is not a change.
 - **Edit** changes only the title, body, and acceptance conditions; the assignee never changes. CLI `--desc`/`--desc-file` take the whole file but keep the history and the `questions` refs of the latest stored `TASK.md`; those two keys in the input are ignored, so a task that refers to an open question stays Pending. `epic edit --document-file` replaces the whole `EPIC.md` text. The web UI sends `body` and `acceptance`, applied to the latest file under the lock.
 - **Epic membership** sets or clears `epicId`; only real changes append history. People can change it on draft and archived tasks.
 - **Delete** removes the task folder. The web UI deletes only archived tasks; the CLI asks for terminal confirmation.

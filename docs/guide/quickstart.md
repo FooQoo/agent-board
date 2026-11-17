@@ -4,7 +4,7 @@ title: Quickstart
 
 # Quickstart
 
-In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a provisional plan on the board, you answer its questions and approve the start once, and you watch it work until the tasks reach Done.
+In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a provisional plan on the board, you answer its questions and start it once, and you watch it work until the tasks reach Done.
 
 You need a running installation and an agent. If you have not installed `agboard` and set up your agent, start with [Install and start](./getting-started) and [Working with agents](./delegate/agents#set-up-your-agents).
 
@@ -28,21 +28,21 @@ In the agent's chat, ask for a piece of work that is more than one step, in your
 
 > Add a dark mode to the settings page, and update the docs.
 
-You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a **provisional plan** at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet. Open a card on the board to read the plan while the agent asks about it.
+You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a **provisional plan** at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is a draft until you start it. Open a card on the board to read the plan while the agent asks about it.
 
 ## 3. Answer the plan questions
 
-The agent asks what it cannot settle itself, with choices and a recommendation. It writes each question in the chat, and every question is also on the board, in the **Unanswered questions** band and on the planned tasks, which show **Pending**. Answer wherever is easier: choose an option on the board or on your phone, or reply in the chat in your own words. The first answer recorded is the one that counts. See [Decisions](./delegate/decisions).
+The agent asks what it cannot settle itself, with choices and a recommendation. It writes each question in the chat, and every question is also on the board, in the **Unanswered questions** band and on the tasks that wait for the answer, which show **Pending**. Answer wherever is easier: choose an option on the board or on your phone, or reply in the chat in your own words. The first answer recorded is the one that counts. See [Decisions](./delegate/decisions).
 
 The agent changes the plan as your answers say, and may ask a little more. If it has no questions, it skips this step.
 
-## 4. Approve the start once
+## 4. Start the plan
 
-When the plan is ready, the agent asks one **start approval** question that lists the revised plan. The planned tasks stay Pending until you approve, and no task starts before then. The agent writes the choices, for example "Start this plan" and "Change the plan". Choose the approving one to start, or the other to have the agent revise the plan and ask again. Silence is not an approval.
+When the plan reads right, you start it, for example with `agboard epic start <EPIC-ID> --actor human`. That starts the epic and all its drafts. No task starts before then. If you want something changed, tell the agent in the chat and it revises the plan.
 
 ## 5. Watch it run
 
-After your approval the agent works through the tasks in the epic's order without asking each time. On the board, a task moves to Doing and shows **Running** while the agent works on it. Select a task and open the **History** tab to read what the agent did and why. Check the **Conditions** tab for how many acceptance conditions are done.
+After the start the agent works through the tasks in the epic's order without asking each time. On the board, a task moves to Doing and shows **Running** while the agent works on it. Select a task and open the **History** tab to read what the agent did and why. Check the **Conditions** tab for how many acceptance conditions are done.
 
 The agent stops for you only when your intent is unclear, your preference decides it, an action cannot be undone, or the work grows bigger than you asked. Each stop is a question on the board, and you answer it the same way as before. You can also step in without being asked: move a card back, check or uncheck a condition, or rewrite a task. See [The board](./watch/board).
 
@@ -117,7 +117,7 @@ In the browser, task #2 moves to Doing and shows **Running**. Select it and open
 When an agent needs a decision, it asks a question with choices:
 
 ```sh
-agboard --project "Quickstart" qa ask --actor ai --task 2 --request-json '{"questions":[{"question":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
+agboard --project "Quickstart" message ask --actor ai --task 2 --questions-json '{"questions":[{"body":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
 ```
 
 This command waits for your answer, up to 10 minutes by default, through the server you started. (Without one, it would start a server in the background.) Task #2 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command prints the answer and ends, and the task returns to **Idle**.
@@ -152,7 +152,7 @@ agboard --project "Quickstart" project rm
 ## What you learned
 
 - You ask, and the agent registers a provisional plan; you do not write it.
-- You answer the plan questions, then approve the start once.
+- You answer the plan questions, then start the plan once.
 - Tasks move through **Todo → Doing → Done**, and agents report **Idle**, **Running**, or **Pending**.
 - Every change is recorded in the task's history with a reason.
 - An agent asks you a question with **Pending**, and you answer on the task.

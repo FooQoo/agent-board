@@ -11,8 +11,8 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | `epic_is_draft` | The epic is marked as a draft; the CLI may not edit its details or task order. | Wait for the person to save or discard the draft, or ask them to finalize it. `epic attachment` and membership changes still work. Do not edit its `EPIC.md`. |
 | `task_is_done` | The task is Done; agents may not change it. | Ask the person to reopen it. |
 | `acceptance_unmet` | An agent tried to move a task to Done while an acceptance condition is unmet or the frontmatter is invalid. | Verify the conditions and set `done: true` (the server then moves the task by itself), or fix the frontmatter. |
-| `questions_unanswered` | An agent tried to set a task to Running, or move it to Done, while it waits for a person. | Wait for the answers with `qa wait <request-id>`, or ask the person to answer on the board. |
-| `question_answered` or `question_withdrawn` | The question already has an answer, or its request was withdrawn. The first answer is final. | Read the question again (`qa show <question-id>`) and use the recorded answer. |
+| `questions_unanswered` | An agent tried to set a task to Running, or move it to Done, while it waits for a person. | Wait for the answers with `message wait <question-id>`, or ask the person to answer on the board. |
+| `question_answered` or `question_withdrawn` | The question already has an answer, or it was withdrawn. The first answer is final. | Read the question again (`message show <question-id>`) and use the recorded answer. |
 | `folder_unbound` or `bound_project_missing` | The working folder is not bound to a project, or the project was deleted. | Name the project explicitly with `--project`, or ask the user to bind the folder. |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | Ask a person to run it. There is no option to skip the question. |
 
@@ -33,13 +33,13 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | `already_serving` | Another `serve` runs on the same data area. | Use that one, or stop it first. If it was started automatically, `agboard serve -d` keeps it running. |
 | `port_in_use` | The port given to `serve` is taken; the reason says whether another Agent Board server or another program holds it. | Pick another port with `--port`. Keep 7420 free for normal use; tests must use another port or port 0. |
 | `local_network_denied` | The OS or a sandbox does not let `agboard` use `127.0.0.1`. | In Codex, run `agboard setup`. Elsewhere, run the command outside the sandbox. |
-| `board_unavailable` from `wait`, `qa ask`, `qa wait`, or the hook | Autostart is off, the server could not start, the server in `serve.json` does not answer, or the connection failed. It is a technical failure, not an answer. | Read the reason. When it names `serve.log`, read that file. When it names a pid, run `agboard stop`. Then run `wait` again. For questions already saved, run `qa wait <request-id>`. |
+| `board_unavailable` from `wait`, `message ask`, `message wait`, or the hook | Autostart is off, the server could not start, the server in `serve.json` does not answer, or the connection failed. It is a technical failure, not an answer. | Read the reason. When it names `serve.log`, read that file. When it names a pid, run `agboard stop`. Then run `wait` again. For questions already saved, run `message wait <question-id>`. |
 | A test starts a server on 7420 | The test runs `agboard` without `AGBOARD_AUTOSTART=0`. | Set `AGBOARD_AUTOSTART=0`, or `AGBOARD_AUTOSTART_PORT=0` in a test of autostart itself. |
 | A test opens a browser window | The test runs `agboard` with autostart on and without `AGBOARD_OPEN_BROWSER=0`. | Set `AGBOARD_OPEN_BROWSER=0`. A test of opening sets `AGBOARD_BROWSER_OPENER` to a script that records the address instead. |
 | An automatic server did not open the board | A board page connected within the grace period, or opening is off. | Read `serve.log`: it says `Opened …`, `Did not open …` with the reason, or `Could not open …`. See [Opening the board](./concepts/server-and-ui.md#opening-the-board). |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | Take a fresh `cursor` from `snapshot` for the same project. |
 | `wait_timeout` | The optional `--timeout` of `wait --after` elapsed with no change. | Wait again. |
-| `qa ask` or `qa wait` exits 5 | The `--timeout` passed before every question was answered. The questions stay open. | Run `qa wait <request-id>` again. |
+| `message ask` or `message wait` exits 5 | The `--timeout` passed before every question was answered. The questions stay open. | Run `message wait <question-id>` again. |
 
 ## Hooks
 

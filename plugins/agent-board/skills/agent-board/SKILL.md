@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, turn a request into a provisional plan on the board and get one start approval, report AI progress, ask the user questions with choices on the board and in the chat, wait for their answers, and automatically record work progress in task history.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, turn a request into a provisional plan on the board that the user starts once, report AI progress, ask the user questions with choices on the board and in the chat, wait for their answers, and automatically record work progress in task history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Commands that wait for user answers start the local agboard server when it is not running.
 ---
 
@@ -103,26 +103,18 @@ For these two epics, keep per-task plans, decisions, verification, and results i
 
 Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
 
-### Plan a request: provisional plan, plan questions, then one start approval
+### Plan a request: provisional plan, questions, then the user starts it
 
 When the user asks for work that is more than one task, such as a feature, a change across several areas, or a list of things to do, put a provisional plan on the board first and let the user correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
 2. **Register the provisional plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner, plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Start none of the tasks.
-3. **Ask the plan questions.** Ask what you cannot settle yourself in one `qa ask` request of `plan` questions (section 7), each with choices and a recommendation. List every AI task of the plan in their `tasks`: a task that refers to a `plan` question stays Pending until it also refers to an approved start approval, even after the plan questions are answered. When the request came from a board task, add that task too. With no plan questions, go to step 5.
-4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. If the answers leave something open, ask more `plan` questions the same way.
-5. **Ask one start approval.** Ask one `start_approval` question that shows the revised plan, linked to the same tasks. They stay Pending until it is approved.
+3. **Ask the plan questions.** Ask what you cannot settle yourself in one `message ask` call (section 7), each question with choices and a recommendation. List every AI task of the plan in their `tasks`; a task that refers to an open question stays Pending. When the request came from a board task, add that task too. With no plan questions, go to step 5.
+4. **Revise.** Change the epic and the tasks as the answers say, and record what changed in history. If the answers leave something open, ask more questions the same way.
+5. **Wait for the start.** Everything you create is an AI draft, so nothing starts until the user starts it (`agboard epic start` or `agboard start`, with `--actor human`). Do not start it yourself.
+6. **Proceed.** After the start, work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
 
-   ```json
-   { "questions": [ { "kind": "start_approval", "question": "Start this plan?\n\n- #21 …\n- #22 …",
-     "choices": [ { "id": "approve", "label": "Start this plan" }, { "id": "revise", "label": "Change the plan" } ],
-     "recommendedChoiceId": "approve", "approvingChoiceIds": ["approve"], "tasks": [21, 22] } ] }
-   ```
-
-   If the user chooses to change the plan, revise it, ask a new `start_approval` linked to the tasks, and `qa unlink` the old approval from them. Silence, a timeout, or an unclear reply is not an approval.
-6. **Proceed.** After approval, work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
-
-A task the user already put on the board needs no start approval to work on. Splitting an oversized task plan (section 3) is asked with a question on that task.
+A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task.
 
 ## 5. Lanes and run states
 
@@ -137,7 +129,7 @@ Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing;
 
 - `running` means you are working on it. `pending` means the task refers to a question that is still open. It is never set directly; it follows from the questions (section 7).
 - A real lane move resets the run state to `idle`. It does not withdraw questions: they belong to the project.
-- `running` is self-reported and is not reset automatically. Set it while actively working, return it to `idle` when active work stops, and ask with `qa ask` when you need a user decision. A session starting or resuming alone does not make a task `running`.
+- `running` is self-reported and is not reset automatically. Set it while actively working, return it to `idle` when active work stops, and ask with `message ask` when you need a user decision. A session starting or resuming alone does not make a task `running`.
 - Never report `running` or `pending` on a `human` task.
 - Every `mv` and `state` needs `--actor`, which controls permission. `--reason` is optional for lane and state changes (up to 10,000 characters); missing or blank reasons are generated from the current state. Never use `--actor human` unless the user explicitly gave that direction or you are recording their own chat answer (section 7).
 
@@ -181,13 +173,13 @@ After the start, call the user only when:
 
 Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later, and record the decision in history.
 
-Every question goes on the board with `qa ask`, never only in chat. Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Questions belong to the project; `--task` makes the task refer to them, and the task shows as `pending` while any question it refers to is open. The command records the question in the task's history. Write the request as JSON and pass it with `--request-json`, inline or from standard input with `-`:
+Every question goes on the board with `message ask`, never only in chat. Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Each question is its own message (`Q-<n>`) and belongs to the project; `--task` makes the task refer to it, and the task shows as `pending` while any question it refers to is open. The command records the question in the task's history. Write the questions as JSON and pass them with `--questions-json`, inline or from standard input with `-`:
 
 ```json
 {
   "questions": [
     {
-      "question": "Should existing records be deleted or kept?",
+      "body": "Should existing records be deleted or kept?",
       "choices": [
         { "id": "delete", "label": "Delete them and start clean" },
         { "id": "keep", "label": "Keep them and migrate" }
@@ -199,30 +191,29 @@ Every question goes on the board with `qa ask`, never only in chat. Before askin
 ```
 
 ```sh
-agboard --project "<name>" qa ask --actor ai --task <id> --request-json '<json>' --json
-cat <path> | agboard --project "<name>" qa ask --actor ai --task <id> --request-json - --json
+agboard --project "<name>" message ask --actor ai --task <id> --questions-json '<json>' --json
+cat <path> | agboard --project "<name>" message ask --actor ai --task <id> --questions-json - --json
 ```
 
-- `questions`: 1 to 20 questions, asked together and answered together. `question`: 1 to 5,000 characters, written in Markdown and drawn like the task body. An image attached to the same task uses the reference form in [`references/file-format.md`](references/file-format.md). `choices`: 2 to 10 items; each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the question; each `label` is 1 to 200 characters. `recommendedChoiceId` is optional. `kind` is `task` unless given: `plan` for a question while planning, and `start_approval`, with `approvingChoiceIds`, to ask approval to start (section 4). `tasks` links one question to only those tasks.
-- The command prints one JSON line per event. The first line is `registered`, with the request ID and the question IDs (`Q-<n>`); keep the request ID. While it waits it prints a short `waiting` line every 60 seconds. The last line is `answered` with all answers (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`.
+- `questions`: 1 to 20 questions, asked together. `body`: 1 to 5,000 characters, written in Markdown and drawn like the task body. An image attached to the same task uses the reference form in [`references/file-format.md`](references/file-format.md). `choices`: optional, 2 to 10 items (a question without choices is answered in words); each `id` is 1 to 64 characters of `[A-Za-z0-9_-]`, unique in the question; each `label` is 1 to 200 characters. `recommendedChoiceId` is optional. `tasks` links one question to only those tasks.
+- The command prints one JSON line per event. The first line is `registered`, with the question IDs (`Q-<n>`); keep them. While it waits it prints a short `waiting` line every 60 seconds. The last line is `answered` with all answers (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`.
 - The task must be an AI task in `todo` or `doing`. While it waits, `state <id> running` is refused with `questions_unanswered`.
 
-**Wait for the answers.** Keep the command running until its last line, with the default 600-second limit. Run it in the background where your agent can and is told when it ends (Claude Code); otherwise run it in the foreground (Codex reads a long command in chunks and does not cut it off). After `timeout`, the questions stay open: wait again with `agboard --project "<name>" qa wait <request-id> --json`, the same way, for as long as the answer is needed. Never ask the same questions a second time. `withdrawn` means the request was withdrawn. After an `error` such as `board_unavailable`, wait again with `qa wait`. None of these is an answer, and dependent work waits for the actual answer. A command that waits starts the server itself; do not start `agboard serve` first. Use `--no-wait` only when the user explicitly asks to register a question and return immediately. Nothing on the board wakes you: an answer reaches you through the command that waits for it, or when you next read the board.
+**Wait for the answers.** Keep the command running until its last line, with the default 600-second limit. Run it in the background where your agent can and is told when it ends (Claude Code); otherwise run it in the foreground (Codex reads a long command in chunks and does not cut it off). After `timeout`, the questions stay open: wait again with `agboard --project "<name>" message wait <Q-id> [<Q-id>...] --json`, the same way, for as long as the answer is needed. Never ask the same questions a second time. `withdrawn` means no question is open any more and some were withdrawn. After an `error` such as `board_unavailable`, wait again with `message wait`. None of these is an answer, and dependent work waits for the actual answer. A command that waits starts the server itself; do not start `agboard serve` first. Use `--no-wait` only when the user explicitly asks to register a question and return immediately. Nothing on the board wakes you: an answer reaches you through the command that waits for it, or when you next read the board.
 
 **In a conversation, also show the question in the chat as plain text.** Right after `registered`, write the question, each choice with its `id` and label, and your recommendation in the chat, and say the same question is on the board. Do not use your agent's question tool (such as AskUserQuestion in Claude Code): it blocks you, so you cannot notice an answer given on the board, and dismissing it looks like a refusal. The user may answer in the chat or on the board, whichever comes first. Once either has an answer, never ask the same question again in the other place.
 
-- **Claude Code.** Run `qa ask` in the background, then end your turn. An answer on the board finishes the command and wakes you; read its `answered` line and continue.
-- **Codex.** It cannot be woken from the background, so run `qa ask` in the foreground after showing the question. The user answers on the board, or interrupts and replies in the chat.
+- **Claude Code.** Run `message ask` in the background, then end your turn. An answer on the board finishes the command and wakes you; read its `answered` line and continue.
+- **Codex.** It cannot be woken from the background, so run `message ask` in the foreground after showing the question. The user answers on the board, or interrupts and replies in the chat.
 - **A chat answer.** Record it with the user's own words, then continue:
 
 ```sh
-agboard --project "<name>" qa answer <Q-id> --actor human --via chat --choice <id> [--text "<their words>"]
-agboard --project "<name>" qa answer --actor human --via chat --answers-json '{"answers":[{"id":"Q-12","choiceId":"keep"}]}'
+agboard --project "<name>" message answer <Q-id> --actor human --via chat --choice <id> [--text "<their words>"]
 ```
 
-The waiting command then ends with `answered` on its own; do not record the answer twice. If the board already has an answer, `qa answer` fails with `question_answered` and prints it: the first answer stands. Continue with it, tell the user which answer was recorded, and if they want the other one, ask a new question rather than overwriting. Do not treat a dismissed or ignored chat question as a refusal. Never answer a question yourself, and use `--actor human` only for the user's own words. When nobody is in the conversation, such as while listening or during a long unattended run, ask and wait on the board only.
+The waiting command then ends with `answered` on its own; do not record the answer twice. If the board already has an answer, `message answer` fails with `question_answered` and prints it: the first answer stands. Continue with it, tell the user which answer was recorded, and if they want the other one, ask a new question rather than overwriting. Do not treat a dismissed or ignored chat question as a refusal. Never answer a question yourself, and use `--actor human` only for the user's own words. When nobody is in the conversation, such as while listening or during a long unattended run, ask and wait on the board only.
 
-If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead. To show the user the board, run `agboard open`; it prints the address and opens the project's board in their browser. Read a question and its answer with `agboard --project "<name>" qa show <Q-id> --json`, and the open questions with `qa ls --json`. An answer also appends a concise history reason to each task that refers to the question.
+If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead. To show the user the board, run `agboard open`; it prints the address and opens the project's board in their browser. Read a question and its answer with `agboard --project "<name>" message show <Q-id> --json`, and the open messages with `message ls --json`. An answer also appends a concise history reason to each task that refers to the question.
 
 ### Open the board on the phone
 
@@ -236,9 +227,9 @@ When no work can proceed in the ordinary work loop, wait for a change using the 
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A command that waits starts the server itself; do not start `agboard serve` yourself first. `local_network_denied` means this environment does not allow local network connections: tell the user the reason it gives (in Codex, `agboard setup` allows `agboard` to run outside the sandbox) and make no board-dependent changes until it is fixed. A question remains open until it is answered or its request is withdrawn with `qa withdraw`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
+Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A command that waits starts the server itself; do not start `agboard serve` yourself first. `local_network_denied` means this environment does not allow local network connections: tell the user the reason it gives (in Codex, `agboard setup` allows `agboard` to run outside the sandbox) and make no board-dependent changes until it is fixed. A question remains open until it is answered or withdrawn with `message withdraw <Q-id> --actor ai`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
 
-After `wait` or `qa ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `qa ask`. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
+After `wait` or `message ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `message ask`. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
 
 ```sh
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"
@@ -246,7 +237,7 @@ agboard --project "<name>" state <id> running --actor ai --reason "<how the answ
 
 If the answer changes the scope or completion conditions, update `TASK.md` (and `EPIC.md` if affected) before resuming. If new information still conflicts, ask again.
 
-For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or for answers with `qa ask`. Do not start it implicitly as part of the ordinary work loop.
+For an explicitly requested serial listener, use [`references/listening.md`](references/listening.md) and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or for answers with `message ask`. Do not start it implicitly as part of the ordinary work loop.
 
 ## 9. Drafts and archived tasks
 

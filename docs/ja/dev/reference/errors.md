@@ -14,7 +14,7 @@
 | `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
 | `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。 | 1 | 409 |
 | `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
-| `human_only` | エージェントが`start`または`epic start`を実行した。開始できるのは人だけ。 | 1 | 403 |
+| `human_only` | エージェントが`start`または`epic start`を実行した、または依頼を取り下げようとした。これらを行えるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |
 | `task_is_done` | DoneのタスクへのAIの変更。 | 1 | 409 |
 | `acceptance_unmet` | 条件が未達成、またはfrontmatterが不正なタスクを、AIがDoneへ移そうとした。 | 2 | なし |
@@ -29,12 +29,15 @@
 | --- | --- | --- | --- |
 | `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | 1 | 409 |
 | `question_answered` | 回答が、すでに回答済みの質問を指している。何も保存せず、記録済みの質問を出力に含める。 | 1 | 409 |
-| `question_withdrawn` | 回答が、リクエストごと取り下げられた質問を指している。何も保存しない。 | 1 | 409 |
-| `question_not_found` | 質問のIDがプロジェクトにない。 | 3 | 404 |
-| `request_not_found` | リクエストのIDがプロジェクトにない。 | 3 | 404 |
-| `request_answered` | 取り下げようとしたリクエストの質問が、すべて回答済み。 | 1 | 409 |
+| `question_withdrawn` | 回答が、取り下げられた質問を指している。何も保存しない。 | 1 | 409 |
+| `message_not_found` | 質問または依頼のIDがプロジェクトにない。 | 3 | 404 |
+| `message_closed` | 取り下げようとしたものが、すでに回答のある質問、または受け付け済みの依頼である。 | 1 | 409 |
+| `message_type_mismatch` | 一方の種類のためのコマンドやリクエストが、もう一方を指している。例: 依頼のIDに`answer`、質問のIDに`accept`。 | 2 | 422 |
+| `request_accepted` | 受け付けようとした依頼が、すでに受け付け済み。 | 1 | 409 |
+| `request_withdrawn` | 受け付け、または2回目の取り下げが、取り下げ済みの依頼を指している。 | 1 | 409 |
+| `ai_only` | 人が質問の取り下げ、質問の作成、依頼の受け付けをしようとした。これらを行えるのはAIだけ。 | 1 | 403 |
+| `choice_unknown` | 回答が、質問にない選択肢を指している。 | 2 | 422 |
 | `task_status_changed` | 移動が元の状態（`fromStatus`）を指定したが、タスクがもうその状態にいない。何も書かず、本文に`currentStatus`を加える。 | 1 | 409 |
-| `request_choice_unknown` | 回答が、質問にない選択肢を指している。 | 2 | 422 |
 
 ## プロジェクト・エピック・添付
 
@@ -55,7 +58,7 @@
 
 | コード | 発生条件 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | コマンドの引数がない、または形式が誤っている（例: `qa answer`での`--answers-json`と`--choice`の併用）。 | 2 | 422 |
+| `invalid_argument` | コマンドの引数がない、または形式が誤っている（例: `message answer`での`--text`と`--text-file`の併用）。 | 2 | 422 |
 | `invalid_value` | 値が規則（長さ、形式など）に違反している。 | 2 | 422 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 1 | なし |
 | `file_invalid` | 共有ファイルが壊れている、または形式に違反している。 | 1 | 422 |
@@ -72,11 +75,11 @@
 | `already_serving` | このデータ領域で、すでに別の`serve`が動いている。自動で起動したサーバーなら、理由には動かし続けるための`agboard serve -d`を示す。 | 1 | なし |
 | `port_in_use` | `serve`に指定したポートが使われている。理由には使っているものを示す。データ領域の違う別のAgent Boardのサーバー（pidつき）か、別のプログラム。自動のサーバーは代わりに別のポートを使う。 | 1 | なし |
 | `local_network_denied` | OSやサンドボックスが、`agboard`が`127.0.0.1`で待ち受けることや接続することを拒んだ（`EACCES`か`EPERM`）。Codexでは`agboard setup`で`agboard`をサンドボックスの外で動かせるようにする。 | 1 | なし |
-| `board_unavailable` | 回答を待つ`qa ask`、`qa wait`、`wait`、`open`、Hookがサーバーに届かない。自動起動が無効（`AGBOARD_AUTOSTART=0`）、サーバーを起動できない（理由に`serve.log`を示す）、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。回答を待つ`qa ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
+| `board_unavailable` | 回答を待つ`message ask`、`message wait`、`wait`、`open`、Hookがサーバーに届かない。自動起動が無効（`AGBOARD_AUTOSTART=0`）、サーバーを起動できない（理由に`serve.log`を示す）、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。回答を待つ`message ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
 | `remote_unavailable` | `remote`が報告できる、準備のできたngrok接続がない。サーバーが動いていないか、接続が`ready`ではない（無効、開始中、再接続中、失敗など）。理由にどちらかを示し、接続が失敗したときは失敗コードも示す。何も起動せず、アドレスと合言葉は出力しない。 | 1 | なし |
 | `browser_open_failed` | `open`が、ブラウザーを開くプログラム（`open`、`xdg-open`、`AGBOARD_BROWSER_OPENER`）を起動できなかった。理由に、手で開くアドレスを示す。ブラウザーを開いてはいけないとき（`AGBOARD_OPEN_BROWSER=0`、SSH、画面がない）はエラーではない。 | 1 | なし |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 1 | なし |
-| `wait_timeout` | 変更待ち（`wait --after`）が、変更のないまま任意の`--timeout`に達した。`qa ask`や`qa wait`が`--timeout`に達するのはエラーではなく、`timeout`イベントを出して終了コード5で終わる。 | 1 | なし |
+| `wait_timeout` | 変更待ち（`wait --after`）が、変更のないまま任意の`--timeout`に達した。`message ask`や`message wait`が`--timeout`に達するのはエラーではなく、`timeout`イベントを出して終了コード5で終わる。 | 1 | なし |
 | `hook_cwd_unavailable` | Hookの入力の`cwd`が、存在しない、または読めない絶対パス。`AGBOARD_ERROR`として返す。確認できないフォルダを未登録とは扱わない。 | なし（Hookの出力） | なし |
 | `invalid_hook_input` | Hookの入力がJSONでない、大きすぎる、または`cwd`が文字列でない、絶対パスでない。`AGBOARD_ERROR`として返す。 | なし（Hookの出力） | なし |
 | `forbidden` | Webの書き込みが保護に失敗した（Host・Origin・`Sec-Fetch-Site`・トークン）。 | なし | 403 |
@@ -132,10 +135,10 @@ ngrokの入口では、Hostの確認に失敗した要求は理由`not available
 | 0 | 成功。 |
 | 1 | 今の状態では操作が許されない、または何かが失敗した。 |
 | 2 | 入力が誤っている。 |
-| 3 | タスク・質問・リクエストが見つからない。 |
+| 3 | タスク・質問・依頼が見つからない。 |
 | 4 | プロジェクトが見つからない、またはフォルダが紐付いていない。 |
-| 5 | `qa ask`や`qa wait`が、すべての質問に回答が付く前に`--timeout`に達した。質問は未回答のまま残る。 |
-| 6 | `qa ask`や`qa wait`が待っていたリクエストが取り下げられた。 |
+| 5 | `message ask`や`message wait`が、すべての質問に回答が付く前に`--timeout`に達した。質問は未回答のまま残る。 |
+| 6 | `message ask`や`message wait`がまだ待っていた質問が、すべて取り下げられた。 |
 
 そのほかのHTTPステータス: 壊れたJSONは400、1 MiBを超える本文は413です。保護は対象を探す前に行うので、拒否された要求から何が存在するかは分かりません。
 

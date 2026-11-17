@@ -25,7 +25,7 @@ history: []
   - `text`: one to 2,000 characters after trimming. Write it so that it can be verified. The board draws it as Markdown, like the task body.
   - `done`: `true` or `false`.
 - `history`: a required top-level list in stored `TASK.md` files. An empty list is valid, even when `acceptance` is empty. New-task input may omit it or supply `history: []`; created tasks get a generated initial entry.
-- `questions`: an optional list of the project question IDs the task refers to, such as `[Q-12, Q-15]`, without duplicates. `qa ask --task` and `qa link`/`qa unlink` maintain it. While any of them is open, an AI task in Todo or Doing reads as `pending`.
+- `questions`: an optional list of the project question IDs the task refers to, such as `[Q-12, Q-15]`, without duplicates. `message ask --task` and `message link`/`message unlink` maintain it. While any of them is open, an AI task in Todo or Doing reads as `pending`.
 - An `EPIC.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing `EPIC.md`. This is independent of lane order.
 - Other frontmatter keys are preserved when the board writes the file. An `EPIC.md` without frontmatter is entirely body text; its reference conditions are not parsed by the app.
 - Earlier versions named this file `PLAN.md`; Agent Board renames it to `EPIC.md` on the first read of the project. If an epic folder has both files, do not choose between them yourself; report the conflict to the user.
@@ -53,7 +53,7 @@ agboard --project "<name>" history add <id> --reason-file <path>
 
 Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
 
-Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation, and it also keeps the stored `questions` refs (`history` and `questions` in its input are ignored; use `qa link`/`qa unlink` to change refs). Read history in the board or with `show`/`snapshot`.
+Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation, and it also keeps the stored `questions` refs (`history` and `questions` in its input are ignored; use `message link`/`message unlink` to change refs). Read history in the board or with `show`/`snapshot`.
 
 ## Format versions
 

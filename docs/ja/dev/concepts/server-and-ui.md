@@ -6,7 +6,7 @@
 
 データ領域ごとにサーバーは一つまでです。動き方は二通りあり、`serve.json`の`mode`に記録します。
 
-- **自動**　サーバーがないと動かないコマンドが、裏でサーバーを起動します。対象は`wait --after`、`wait --until task`、`--no-wait`を付けない`qa ask`、未回答のリクエストを待つ`qa wait`です。エージェントのHookも、待たずに起動します。使われなくなると、サーバーは自分で止まります。
+- **自動**　サーバーがないと動かないコマンドが、裏でサーバーを起動します。対象は`wait --after`、`wait --until task`、`--no-wait`を付けない`message ask`、未回答の質問を待つ`message wait`です。エージェントのHookも、待たずに起動します。使われなくなると、サーバーは自分で止まります。
 - **手動**　人が`agboard serve`（前面）か`agboard serve -d`（裏）で起動します。Ctrl+Cか`agboard stop`まで動き続けます。
 
 ほかのコマンドはファイルだけで動き、サーバーを起動しません。
@@ -39,7 +39,7 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 
 自動のサーバーは、起動のきっかけになったプロジェクトのボードを一度だけ開きます。利用者から見た決まりは[CLIリファレンス](../../guide/reference/cli.md#open-the-board-in-the-browser)にあります。
 
-- サーバーを起動するコマンドは、隠しオプション`serve --auto --open-board=<projectId>`でプロジェクトIDを渡します。待つコマンドは待っているプロジェクト、`qa ask`と`qa wait`は依頼のプロジェクト、Hookは出力した進行表のプロジェクトを渡します。`agboard open`は自分でページを開くので、何も渡しません。
+- サーバーを起動するコマンドは、隠しオプション`serve --auto --open-board=<projectId>`でプロジェクトIDを渡します。待つコマンドは待っているプロジェクト、`message ask`と`message wait`は質問のプロジェクト、Hookは出力した進行表のプロジェクトを渡します。`agboard open`は自分でページを開くので、何も渡しません。
 - サーバーの準備ができて`autostart.lock`を外した後、スレッドが3秒待ちます（試験では`AGBOARD_OPEN_GRACE_MS`で変えられ、上限は60,000ミリ秒）。起動してからボードのページが一度もつながっていなければ、`http://127.0.0.1:<port>/?project=<projectId>`を開きます。つながってから閉じたタブも、つながり直すかもしれないので数に入れます。
 - ボードのページとは、`X-Agboard-Wait`ヘッダーのない`GET /api/events`のストリームです。待つコマンドはこのヘッダーを付けるので、起動の直後に開く自分のストリームがタブと取り違えられることはありません。スマホのページがngrokの入口を通して開くのは、sessionの背後にある同じストリームで、同じように数えます。
 - ブラウザーを開けるかどうかは`src/interact/browser.rs`が次の順で決めます。`AGBOARD_OPEN_BROWSER=0`なら開きません。`AGBOARD_BROWSER_OPENER`があれば、そのプログラムをシステムのものの代わりに使います。`SSH_CONNECTION`か`SSH_TTY`があれば開きません。macOSとWindows以外では、`DISPLAY`も`WAYLAND_DISPLAY`もなければ開きません。それ以外なら`open`（macOS）、`explorer`（Windows）、`xdg-open`を、アドレスだけを引数にしてシェルを通さずに起動し、終わるのを待ちません。
@@ -156,8 +156,8 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 **保存と回答**
 
 - 作成・移動・回答を楽観的に反映することはありません。画面は成功を待ち、失敗したら入力と選択を保って再試行できるようにします。
-- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示します（既定では閉じていて、件数は常に見出しに出ます）。各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../qa/{questionId}`で読みます。画面については[判断依頼](../../guide/delegate/decisions)を参照してください。
-- 答えは`AnswerBook`（`web/src/features/tasks/answer/model/answerBook.ts`）が、プロジェクトと質問ごとにメモリ上で保持します。そのためページを再読み込みすると消えます。PCのページとモニターはそれぞれ一つのbookを持ち、`useSyncExternalStore`で読みます。**まとめて送る**、または単独の回答の流れ（カードや帯の項目から開いたもの）の**送る**までは何も送りません。bookはその回答の流れで送れる答えを、`{answers:[{questionId, choiceId?, text?}]}`として一度の`POST .../qa/answers`で送ります。同時に二度は送らず、古いスナップショットが表示されても送信成功後は再送しません。成功すると、次のSummaryを待たずに、送った質問を表示しなくなります。
+- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示します（既定では閉じていて、件数は常に見出しに出ます）。各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../messages/{id}`で読みます。画面については[判断依頼](../../guide/delegate/decisions)を参照してください。
+- 答えは`AnswerBook`（`web/src/features/tasks/answer/model/answerBook.ts`）が、プロジェクトと質問ごとにメモリ上で保持します。そのためページを再読み込みすると消えます。PCのページとモニターはそれぞれ一つのbookを持ち、`useSyncExternalStore`で読みます。**まとめて送る**、または単独の回答の流れ（カードや帯の項目から開いたもの）の**送る**までは何も送りません。bookはその回答の流れで送れる答えを、`{answers:[{questionId, choiceId?, text?}]}`として一度の`POST .../messages/answers`で送ります。同時に二度は送らず、古いスナップショットが表示されても送信成功後は再送しません。成功すると、次のSummaryを待たずに、送った質問を表示しなくなります。
 - 送信は全件か無しかです。`questionAnswered`または`questionWithdrawn`を挙げた409では何も保存されません。bookはそれらの質問を閉じたものとして印を付け、答えは読めるように残し、次の送信から外します。Summaryから消えた質問は、状態を読むまで閉じたものとして扱います。再送時に重複かどうかは判定しません。最初の回答が確定するので、成功の後の再送は`question_answered`で失敗します。画像のアップロードも重複を判別しないので、応答を失った後の再送で同じ画像が二つになることがあります。
 - 回答の流れには単独とまとめての2種類があり、`AnswerStart`（`web/src/features/tasks/answer/answerStart.ts`）がどちらかを示します。単独の流れは、尋ねた質問だけを持ち、確認のステップがありません。`answerStart.question(id)`が帯の項目、`answerStart.task(id)`がカードです。まとめての流れは、開いているすべての質問を持ち、確認のステップと**まとめて送る**で終わります。`answerStart.resume()`が**まとめて答える**と**続きから答える**、`answerStart.review()`が**確認して送る**です。呼び出し側はこの生成関数で開始を作ります。`runPlan(start)`は、その流れが持つ質問、確認のステップの有無、開く位置を1か所で決めます。新しい種類の開始を足すと、`runPlan`が扱うまでコンパイルが通りません。画面での見え方は[判断依頼](../../guide/delegate/decisions.md#ブラウザで回答する)を参照してください。
 - `useAnswerFlow`は、PCのダイアログ（`DecisionAnswerDialog`）とモニターのシート（`DecisionAnswerSheet`）に共通する、質問を順に回る一回分の流れを担います。開いたときに決めた順番、表示中のステップ、確認、送信です。後から届いた質問は最後に加え、閉じた質問は印を付けてその場に残します。`DecisionAnswerPanel`は質問と回答の欄を描きます。答えの送信中も、移動などのほかの操作はできます。

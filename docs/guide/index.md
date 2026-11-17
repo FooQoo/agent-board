@@ -37,7 +37,7 @@ You do not write the plan. You ask, and the agent does the planning on the board
 
 1. **Request.** Tell the agent what you want in the chat, in your own words.
 2. **Provisional plan.** The agent puts a plan on the board right away: an epic, and tasks in work order, each with acceptance conditions. It also asks the questions it cannot settle itself.
-3. **One start approval.** You answer the plan questions, and the agent revises the plan. Then it asks once whether to start. Nothing starts before you approve.
+3. **One start.** You answer the plan questions, and the agent revises the plan. Then you start it. Nothing starts before you do.
 4. **Work in order.** The agent works through the tasks, records what it does, and decides everything else itself.
 5. **Stop only when it must.** After the start, the agent calls you in four cases: your intent is unclear, your preference decides it, an action cannot be undone, or the work grows beyond what you asked.
 6. **Done on its own.** When the agent has verified every acceptance condition of a task and nothing is waiting on you, the task moves to Done by itself.
@@ -45,7 +45,7 @@ You do not write the plan. You ask, and the agent does the planning on the board
 ```mermaid
 flowchart LR
     R["You: request"] --> P["Agent: provisional plan and plan questions"]
-    P --> A["You: one start approval"]
+    P --> A["You: start"]
     A --> W["Agent: works in order"]
     W -- "unclear, preference, irreversible, bigger" --> Q["You: answer"]
     Q --> W

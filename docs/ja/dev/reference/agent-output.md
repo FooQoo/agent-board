@@ -102,43 +102,54 @@ taskの項目を省略した例です。
 
 それ以外のときは、標準出力には何も出さず、終了コード1と`remote_unavailable`で終わります。サーバーが動いていないか、接続が`ready`ではない場合です。エラーにはアドレスも合言葉も含まれません。サーバーはこの情報をローカルのアドレスにだけ返すので、合言葉はこのコンピューターの前にいる人にだけ届き、トンネルは通りません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
 
-## qaのイベント
+## messageのイベント
 
-`agboard qa ask --request-json <json> --task <id>…`は、次の形を受け取ります。
+`agboard message ask --actor ai --questions-json <json|-> [--task <id>]…`は、次の形を受け取ります。
 
 ```json
 {
   "questions": [
     {
-      "question": "Should existing records be deleted or kept?",
+      "body": "Should existing records be deleted or kept?",
       "choices": [
         { "id": "delete", "label": "Delete them and start clean" },
         { "id": "keep", "label": "Keep them and migrate" }
       ],
-      "recommendedChoiceId": "keep"
+      "recommendedChoiceId": "keep",
+      "tasks": [12]
     }
   ]
 }
 ```
 
-- `questions`: 1〜20件。各項目は`question`（Markdown、1〜5,000文字）と2〜10件の`choices`を持ちます。選択肢の`id`は`[A-Za-z0-9_-]`の1〜64文字で質問内で一意、`label`は1〜200文字です。
-- 質問ごとに任意で、`kind`（既定は`task`、ほかに`plan`・`start_approval`）、`recommendedChoiceId`、`approvingChoiceIds`（`start_approval`では必須）、その質問だけを参照させるタスクのID`tasks`を指定できます。`--task`のタスクはすべての質問を参照します。未知のフィールドは拒否します。
-- `--timeout`は1〜86,400秒か`none`（既定600）、`--heartbeat`は10〜600秒（既定60）です。`qa wait <request-id>`も同じ2つのオプションを取ります。
+- `questions`: 1〜20件で、1件ごとに別の質問ファイル（`Q-<n>`）になります。各項目は`body`（Markdown、1〜5,000文字）を持ちます。
+- 質問ごとに任意で、`choices`（2〜10件。選択肢の`id`は`[A-Za-z0-9_-]`の1〜64文字で質問内で一意、`label`は1〜200文字）、`recommendedChoiceId`（選択肢のどれか1つ）、その質問を参照させるタスクのID`tasks`を指定できます。`--task`のタスクはすべての質問を参照します。`choices`のない質問は、テキストで答えます。未知のフィールドは拒否します。
+- `--timeout`は1〜86,400秒か`none`（既定600）、`--heartbeat`は10〜600秒（既定60）です。`message wait Q-<n> [Q-<n>]…`も同じ2つのオプションを取ります。
 
-`--json`を付けると、`qa ask`と`qa wait`は1行に1つのJSONオブジェクトを書きます。どれも`type`を持ちます。
+`--json`を付けると、`message ask`と`message wait`は1行に1つのJSONオブジェクトを書きます。どれも`type`を持ちます。
 
 | `type` | フィールド | 出るとき |
 | --- | --- | --- |
-| `registered` | `requestId`・`questions`（`id`・`kind`）・`resumed` | 最初。`qa wait`では`resumed`が`true`。`--no-wait`ではこの1行だけを書き、終了コード0で終わる。 |
-| `waiting` | `requestId`・`elapsed`・`remaining`（期限なしなら`null`）・`answered`・`total` | `--heartbeat`秒ごと。タイマーから出し、ボードは読まない。 |
-| `answered` | `requestId`・`answers`（`id`・`choiceId`・`choiceLabel`・`text`・`via`・`at`） | 最後。すべての質問に回答が付いたとき。終了コード0。 |
-| `timeout` | `requestId`・`answered`・`total` | 最後。先に`--timeout`が過ぎたとき。質問は未回答のまま。終了コード5。 |
-| `withdrawn` | `requestId`・`reason` | 最後。リクエストが取り下げられたとき。終了コード6。 |
+| `registered` | `questions`（`id`）・`resumed` | 最初。`message wait`では`resumed`が`true`。`--no-wait`ではこの1行だけを書き、終了コード0で終わる。 |
+| `waiting` | `ids`・`elapsed`・`remaining`（期限なしなら`null`）・`answered`・`total` | `--heartbeat`秒ごと。タイマーから出し、ボードは読まない。 |
+| `answered` | `ids`・`answers`（`id`・`choiceId`・`choiceLabel`・`text`・`via`・`at`） | 最後。未回答の質問がなくなったとき。終了コード0。 |
+| `timeout` | `ids`・`answered`・`total` | 最後。先に`--timeout`が過ぎたとき。質問は未回答のまま。終了コード5。 |
+| `withdrawn` | `ids`（取り下げられた質問）・`answers` | 最後。未回答の質問がなくなり、その中に取り下げられたものがあったとき。終了コード6。 |
 | `error` | `error`（`code`・`message`・`reason`） | 最後。`board_unavailable`などで待機に失敗したとき。 |
 
-回答を待つ`qa ask`は、何かを保存する前にサーバーを確認します。`--no-wait`はサーバーなしで保存します。
+回答を待つ`message ask`は、何かを保存する前にサーバーを確認します。`--no-wait`はサーバーなしで保存します。
 
-`qa answer --json`は、記録した質問を`{questions}`で出力します。すでに回答済みの質問があれば、エラーの出力に記録済みの回答を含む`questions`を加えます。
+ほかの`message`コマンドは、`--json`を付けると1つのJSONオブジェクトを出力します。
+
+| コマンド | 出力 |
+| --- | --- |
+| `message answer` | `{questions}`: 記録した質問。すでに回答済みの質問があれば、エラーの出力に記録済みの回答を含む`questions`を加えます。 |
+| `message ls` | `{messages}`: 質問と依頼をまとめたもの。 |
+| `message show` | `{question}`または`{request}`。 |
+| `message send`、`message accept` | `{request}`。 |
+| `message withdraw` | 取り下げたものに応じて`{question}`または`{request}`。 |
+
+質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`acceptedBy`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
 
 ## 初回案内のサンプルカード
 
