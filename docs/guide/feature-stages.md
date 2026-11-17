@@ -54,7 +54,7 @@ Features that are GA show no notice.
 
 The Docs dialog lets you browse and read the files in a project's `docs/` folder. The feature is still changing.
 
-- **Supported range:** the board in a PC browser. Remote access does not show Docs.
+- **Supported range:** the board in a PC browser, and the board through remote access at 768px or wider. Opening a document in an app on the PC works only on the PC.
 - **Limits:** a Markdown or MDX file can be up to 2 MiB, and an image up to 10 MiB.
 - **Guide:** [Project docs](./watch/docs).
 
@@ -68,9 +68,9 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 
 ### Remote access {#remote-access}
 
-Remote access shows the board on a phone and lets you answer an agent's question.
+Remote access opens the board from a phone, a tablet, or another computer, and lets you answer an agent's question.
 
-- **Supported range:** the browser of a smartphone, through ngrok.
+- **Supported range:** a browser on a phone, a tablet, or another computer, through ngrok. Below 768px wide it shows the phone screen; at 768px or wider, the same board as on the PC.
 - **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and the server is running. The way it connects may change.
 - **Guide:** [Remote access](./watch/remote-access).
 
