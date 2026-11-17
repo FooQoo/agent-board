@@ -75,7 +75,7 @@ These checks prove that a request came from the page in a browser. They do not s
 
 ## Deletion is for people
 
-- `rm`, `project rm`, `epic rm`, and `init` on a non-empty project require a human y/N confirmation in a terminal (see the [CLI guide](../../guide/automation/cli.md#output-and-confirmation)). Without a terminal, or with `--json`, they fail instead of asking. There is no option to skip confirmation.
+- `rm`, `project rm`, `epic rm`, and `init` on a non-empty project require a human y/N confirmation in a terminal (see the [CLI guide](../../guide/reference/cli.md#output-and-confirmation)). Without a terminal, or with `--json`, they fail instead of asking. There is no option to skip confirmation.
 - Deleting a project shows the name and that every task and its history will be deleted.
 - The web UI physically deletes only archived tasks, after the write guard. Archiving keeps data; physical deletion removes the task folder (body, state, history, and images). Copies the user made elsewhere are never touched.
 - Breaking changes are allowed before the first release for development-time format changes only; they never waive these confirmations.

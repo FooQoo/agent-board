@@ -4,11 +4,11 @@ title: Decisions
 
 # Decisions
 
-A decision is a question an agent asks when it cannot continue without you. This page shows how you answer on the PC and on your phone, and how an agent asks. For the idea in two sentences, see [Core concepts](../concepts#decisions).
+A decision is a question an agent asks when it cannot continue without you. It is the place where you step in when asked: the agent stops and waits, and your answer lets it resume. This page shows how you answer on the PC and on your phone, and how an agent asks. For the idea in two sentences, see [The work model](../work-model#decisions). To step in without being asked, see [The board](../watch/board).
 
 ## How you notice a question
 
-A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [mobile monitor](../operations/mobile-monitor).
+A question belongs to the project, and a task refers to it. An AI-owned task that refers to an open question is **Pending**. In Todo or Doing, its card says how many questions it waits on, such as **Unanswered questions: 2**, and shows an **Answer the question** button. The button reads **Continue answering** when you have answered and have not sent it yet. A planned task whose plan questions are answered stays Pending until you approve its start; its card then says **Waiting for the start to be approved** and has no answer button. You can also see Pending tasks on the [mobile monitor](../watch/mobile-monitor).
 
 Every open question of the project is also listed in the **Unanswered questions** band above the lanes. The band is always there, and it starts closed: its header shows the title and the number of open questions, and **Answer them** (or **Continue answering** and **Review and send** while you hold answers) stays in the header. Select the header, or its arrow, to open the list; select it again to close it. The band does not remember its state, so it is closed again when you reload the page.
 
@@ -69,17 +69,17 @@ The answer sheet slides up from the bottom. It shows the task and the position, 
 
 ![Answer sheet on the phone with the question, choices, note, and the Previous and Next buttons](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
-Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../operations/mobile-monitor) for connecting a phone.
+Tapping the task itself opens its Body, Conditions, History, and Epic drawer. Swipe sideways to switch tabs. See [Mobile monitor](../watch/mobile-monitor) for connecting a phone.
 
 If you close the sheet with an answer that is not sent, and the question is then answered elsewhere or withdrawn, the review keeps that answer, marked as one that cannot be sent. Select **Discard** to remove it.
 
 ## Answer in the chat
 
-While you are talking with an agent, it writes the same question in the chat as plain text, with its choices and recommendation. Answer there in your own words, or give the id or label of a choice. The agent records your answer on the board with `qa answer --via chat`, and the history notes that it came from the chat. Whichever answer is recorded first counts: if the board already has a different answer, the agent tells you which one was recorded and continues with it. The agent does not ask the question again in the other place. See [Questions](../automation/agents#questions) for how agents wait.
+While you are talking with an agent, it writes the same question in the chat as plain text, with its choices and recommendation. Answer there in your own words, or give the id or label of a choice. The agent records your answer on the board with `qa answer --via chat`, and the history notes that it came from the chat. Whichever answer is recorded first counts: if the board already has a different answer, the agent tells you which one was recorded and continues with it. The agent does not ask the question again in the other place. See [Questions](./agents#questions) for how agents wait.
 
 ## Approve a plan
 
-When an agent plans a request of several tasks, it first asks its questions about the plan and revises the plan. It then asks approval to start the revised plan with a question of the kind `start_approval`. Every task of the plan refers to both and stays Pending, from the first question until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](../automation/agents#break-a-request-into-tasks).
+When an agent plans a request of several tasks, it first asks its questions about the plan and revises the plan. It then asks approval to start the revised plan with a question of the kind `start_approval`. Every task of the plan refers to both and stays Pending, from the first question until you choose an option that approves the plan. If you choose to change the plan, the tasks stay Pending while the agent revises it and asks again. See [Break a request into tasks](./agents#break-a-request-into-tasks).
 
 ## How an agent asks
 
@@ -184,5 +184,5 @@ agboard --project "My project" state 1 running --actor ai --reason "Preparing th
 
 ## Next
 
-- [Working with agents](../automation/agents): the full work loop, including waiting.
+- [Working with agents](./agents): the full work loop, including waiting.
 - [Troubleshooting](../operations/troubleshooting): an answer that is refused or a question that disappeared.

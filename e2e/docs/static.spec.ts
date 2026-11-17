@@ -172,7 +172,7 @@ test.describe('contributor instructions (AC-10)', () => {
       'docs/dev/getting-started/pull-request.md#conventions',
       'docs/dev/getting-started/pull-request.md#verification',
       'docs/dev/docs-and-images.md',
-      'docs/guide/automation/cli.md',
+      'docs/guide/reference/cli.md',
     ]) {
       expect(agents, target).toContain(`](${target})`);
     }
@@ -248,6 +248,20 @@ test.describe('site sources', () => {
       const file = path.join(repoRoot, 'docs', 'public', 'videos', name);
       expect(fs.statSync(file).size, name).toBeGreaterThan(0);
       if (name.endsWith('.mp4')) expect(fs.statSync(file).size, name).toBeLessThanOrEqual(6 * 1024 * 1024);
+    }
+  });
+
+  test('every old guide URL has a redirect page that points at an existing page', () => {
+    const dist = path.join(repoRoot, 'docs', '.vitepress', 'dist');
+    const source = readRepoFile('docs', '.vitepress', 'redirects.ts');
+    const pairs = [...source.matchAll(/\['(guide\/[^']+)', '(guide\/[^']+)'\]/g)].map((m) => [m[1], m[2]]);
+    expect(pairs).toHaveLength(10);
+    for (const [from, to] of pairs.flatMap(([f, t]) => [[f, t], [`ja/${f}`, `ja/${t}`]])) {
+      const html = fs.readFileSync(path.join(dist, `${from}.html`), 'utf8');
+      expect(html, from).toContain(`<link rel="canonical" href="/agent-board/${to}">`);
+      expect(html, from).toContain(`http-equiv="refresh" content="0; url=/agent-board/${to}"`);
+      expect(html, from).toContain(`<a href="/agent-board/${to}">`);
+      expect(fs.existsSync(path.join(dist, `${to}.html`)), to).toBe(true);
     }
   });
 

@@ -47,7 +47,7 @@
 | --- | --- | --- |
 | `context_too_large`の`AGBOARD_ERROR` | 進行表が256 KiBを超える。 | 完了したタスクを整理したり作業を分割したりして、進行表のサイズを減らします。有効な表を取得できるまで、ボードに依存する変更はしません。 |
 | `folder_unbound`の`AGBOARD_ERROR` | フォルダが紐付いていない。 | フォルダをプロジェクトに紐付けるか、プロジェクトを明示します。 |
-| Hookが動かない | Hookが登録されていない、または`agboard`が`PATH`にない。 | [エージェントを設定する](../guide/automation/agents.md#set-up-your-agents)を見て、`command -v agboard`を確かめます。 |
+| Hookが動かない | Hookが登録されていない、または`agboard`が`PATH`にない。 | [エージェントを設定する](../guide/delegate/agents.md#set-up-your-agents)を見て、`command -v agboard`を確かめます。 |
 
 ## ビルドとテスト
 

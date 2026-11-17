@@ -4,7 +4,7 @@ title: The board
 
 # The board
 
-The board is where you add tasks, follow what agents are doing, and review the result. This page covers the daily actions; the ideas behind them are in [Core concepts](../concepts).
+The board is where you watch the work and step in while the agent keeps going. You see what is moving and what is waiting, and you can move a card, check a condition, or rewrite a task without stopping the agent; it follows the change the next time it reads the board. This page covers the daily actions; the ideas behind them are in [The work model](../work-model). When the agent stops to ask you something, you answer in [Decisions](../delegate/decisions).
 
 ## Add a task
 
@@ -56,7 +56,7 @@ The columns mean:
 | Doing | Work in progress. AI-owned tasks also show an agent state. |
 | Done | Completed work. |
 
-AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give from the card's **Answer the question** button or from the **Unanswered questions** band above the lanes (see [Decisions](./decisions)). Moving a task to another column resets a Running task to Idle; an open question stays open, so a waiting task in Todo or Doing stays Pending. Every change and its reason stay in the history.
+AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give from the card's **Answer the question** button or from the **Unanswered questions** band above the lanes (see [Decisions](../delegate/decisions)). Moving a task to another column resets a Running task to Idle; an open question stays open, so a waiting task in Todo or Doing stays Pending. Every change and its reason stay in the history.
 
 ## Change a task
 
@@ -92,7 +92,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Unanswered questions** band above the tabs, which starts closed and shows its count in the header. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
 
-The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Mobile monitor](../operations/mobile-monitor).
+The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Mobile monitor](./mobile-monitor).
 
 ## Updates
 
@@ -115,7 +115,7 @@ The width of the detail panel is not part of these settings. Each browser keeps 
 Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button:
 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again, on the screen you are using.
-- **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](../operations/mobile-monitor).
+- **Mobile connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [mobile monitor guide](./mobile-monitor).
 
 ![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Mobile connection rows](../../images/guide/settings.png){.screenshot}
 
@@ -137,5 +137,5 @@ If the window width changes in the middle of the guide, it continues from the sa
 
 ## Next
 
-- [Decisions](./decisions): answer an agent's question.
+- [Decisions](../delegate/decisions): answer an agent's question.
 - [Epics and progress](./epics): group tasks and see what to do next.

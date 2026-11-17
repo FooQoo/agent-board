@@ -45,13 +45,13 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
         request.json
 ```
 
-The files are plain Markdown and JSON. What each file must contain is described in [Markdown file format](../automation/file-format). A file whose `formatVersion` is not 1 is unsupported: the application reports it and leaves the file unchanged. It never migrates, falls back to, deletes, or resets old data.
+The files are plain Markdown and JSON. What each file must contain is described in [Markdown file format](../reference/file-format). A file whose `formatVersion` is not 1 is unsupported: the application reports it and leaves the file unchanged. It never migrates, falls back to, deletes, or resets old data.
 
 The `.internal/` folder holds the app's own settings. `preferences.json` keeps the language and color theme you chose in **Settings**, and it applies to every browser on this PC and to the mobile monitor. The app writes this file, so do not edit it by hand. It is outside `shared/`, so it is not part of a project's files.
 
-Each project's `qa/` folder holds the questions agents asked and the answers given, one folder per set of questions. Questions have project-wide IDs such as `Q-12`, and a task refers to them from the `questions` list in its `TASK.md`. Read them with `agboard qa ls` and `agboard qa show`; do not edit `request.json` by hand. See [Decisions](../use/decisions).
+Each project's `qa/` folder holds the questions agents asked and the answers given, one folder per set of questions. Questions have project-wide IDs such as `Q-12`, and a task refers to them from the `questions` list in its `TASK.md`. Read them with `agboard qa ls` and `agboard qa show`; do not edit `request.json` by hand. See [Decisions](../delegate/decisions).
 
-Each project's `docs/` folder holds your own Markdown documents, which you read and edit from **Docs** in the board header. Agent Board creates the folder with a short `README.md`, but it does not treat the files as board data: changing them never changes the board. See [Project docs](../use/docs).
+Each project's `docs/` folder holds your own Markdown documents, which you read and edit from **Docs** in the board header. Agent Board creates the folder with a short `README.md`, but it does not treat the files as board data: changing them never changes the board. See [Project docs](../watch/docs).
 
 ## Projects and folders
 
@@ -81,7 +81,7 @@ Registrations live separately in `bindings.json` in the data folder and contain 
 
 ## Set up the shared folder
 
-`agboard setup` prepares the data folder for Codex and Claude Code, and installs the Agent Board plugin (see [Working with agents](../automation/agents#set-up-your-agents)). It needs no project. For the data folder it does the following:
+`agboard setup` prepares the data folder for Codex and Claude Code, and installs the Agent Board plugin (see [Working with agents](../delegate/agents#set-up-your-agents)). It needs no project. For the data folder it does the following:
 
 - creates the data folder and its `shared/` folder;
 - adds the data folder to `sandbox_workspace_write.writable_roots` in Codex's `config.toml`, in `$CODEX_HOME` or `~/.codex`;
@@ -125,5 +125,5 @@ Copying `shared/` does not include `.internal/`, so a project backup does not ca
 
 ## Next
 
-- [Working with agents](../automation/agents): set up an agent to use this folder.
+- [Working with agents](../delegate/agents): set up an agent to use this folder.
 - [Troubleshooting](./troubleshooting): a project or folder that cannot be found.

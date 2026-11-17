@@ -89,5 +89,5 @@ Epics appear in ID order. Within an epic, the `priority` list decides the order 
 
 ## Next
 
-- [Working with agents](../automation/agents): how agents use the table.
-- [Markdown file format](../automation/file-format): the `priority` list and the rest of `EPIC.md`.
+- [Working with agents](../delegate/agents): how agents use the table.
+- [Markdown file format](../reference/file-format): the `priority` list and the rest of `EPIC.md`.

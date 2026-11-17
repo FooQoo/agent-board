@@ -6,7 +6,7 @@ This folder is the Agent Board plugin for Claude Code and Codex. It holds the `a
 agboard setup
 ```
 
-For browser operations, CLI examples, and shared-file editing, see the [usage guide](https://fooqoo.github.io/agent-board/guide/), in particular [CLI reference](https://fooqoo.github.io/agent-board/guide/automation/cli) and [Editing and image attachments](https://fooqoo.github.io/agent-board/guide/use/editing).
+For browser operations, CLI examples, and shared-file editing, see the [usage guide](https://fooqoo.github.io/agent-board/guide/), in particular [CLI reference](https://fooqoo.github.io/agent-board/guide/reference/cli) and [Editing and image attachments](https://fooqoo.github.io/agent-board/guide/watch/editing).
 
 Agent Board hooks read the same read-only progress table as `agboard progress --json` after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work from that table, read only the needed plan and task files, record work, and verify acceptance conditions.
 
@@ -20,7 +20,7 @@ Image attachments follow the same project and task boundaries. Use `agboard --pr
 
 ## Install
 
-`agboard setup` installs this plugin with each agent's own plugin command. The repository is the marketplace of both agents, and setup adds it at the tag of the `agboard` version, so the plugin always matches the command. It also lets the agents use the shared folder and, with your consent, trusts the plugin's hooks in Codex. See [Working with agents](https://fooqoo.github.io/agent-board/guide/automation/agents#set-up-your-agents) for what it asks and changes.
+`agboard setup` installs this plugin with each agent's own plugin command. The repository is the marketplace of both agents, and setup adds it at the tag of the `agboard` version, so the plugin always matches the command. It also lets the agents use the shared folder and, with your consent, trusts the plugin's hooks in Codex. See [Working with agents](https://fooqoo.github.io/agent-board/guide/delegate/agents#set-up-your-agents) for what it asks and changes.
 
 To install the plugin by hand instead, run the same commands, with `X.Y.Z` replaced by the version that `agboard --version` prints:
 

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 import { languageRedirectScript } from './theme/languageChoice'
+import { writeRedirects } from './redirects'
 
 const repo = 'https://github.com/FooQoo/agent-board'
 const base = '/agent-board/'
@@ -12,40 +13,46 @@ type Group = { en: string; ja: string; pages: Page[] }
 const guideGroups: Group[] = [
   {
     en: 'Get started',
-    ja: 'はじめる',
+    ja: 'はじめに',
     pages: [
       { file: 'index', en: 'Introduction', ja: 'はじめに' },
       { file: 'getting-started', en: 'Install and start', ja: 'インストールと起動' },
       { file: 'quickstart', en: 'Quickstart', ja: 'クイックスタート' },
-      { file: 'concepts', en: 'Core concepts', ja: '基本の考え方' },
+      { file: 'work-model', en: 'The work model', ja: '仕事のモデル' },
       { file: 'feature-stages', en: 'Feature stages', ja: '機能の提供段階' },
     ],
   },
   {
-    en: 'Use the board',
-    ja: 'ボードを使う',
+    en: 'Delegate to agents',
+    ja: 'エージェントに任せる',
     pages: [
-      { file: 'use/board', en: 'The board', ja: 'ボード' },
-      { file: 'use/decisions', en: 'Decisions', ja: '判断依頼' },
-      { file: 'use/epics', en: 'Epics and progress', ja: 'エピックと進行表' },
-      { file: 'use/editing', en: 'Editing and image attachments', ja: '編集と画像添付' },
-      { file: 'use/docs', en: 'Project docs', ja: 'プロジェクトのドキュメント' },
+      { file: 'delegate/agents', en: 'Working with agents', ja: 'エージェントとの連携' },
+      { file: 'delegate/decisions', en: 'Decisions', ja: '判断依頼' },
     ],
   },
   {
-    en: 'Agents and the CLI',
-    ja: 'エージェントとCLI',
+    en: 'Watch and step in',
+    ja: '見守って介入する',
     pages: [
-      { file: 'automation/agents', en: 'Working with agents', ja: 'エージェントとの連携' },
-      { file: 'automation/cli', en: 'CLI reference', ja: 'CLIリファレンス' },
-      { file: 'automation/file-format', en: 'Markdown file format', ja: 'Markdownファイルの形式' },
+      { file: 'watch/board', en: 'The board', ja: 'ボード' },
+      { file: 'watch/mobile-monitor', en: 'Mobile monitor', ja: 'モバイルモニター' },
+      { file: 'watch/epics', en: 'Epics and progress', ja: 'エピックと進行表' },
+      { file: 'watch/editing', en: 'Editing and image attachments', ja: '編集と画像添付' },
+      { file: 'watch/docs', en: 'Project docs', ja: 'プロジェクトのドキュメント' },
+    ],
+  },
+  {
+    en: 'Reference',
+    ja: 'リファレンス',
+    pages: [
+      { file: 'reference/cli', en: 'CLI reference', ja: 'CLIリファレンス' },
+      { file: 'reference/file-format', en: 'Markdown file format', ja: 'Markdownファイルの形式' },
     ],
   },
   {
     en: 'Operations',
     ja: '運用',
     pages: [
-      { file: 'operations/mobile-monitor', en: 'Mobile monitor', ja: 'モバイルモニター' },
       { file: 'operations/data', en: 'Data and backups', ja: 'データとバックアップ' },
       { file: 'operations/troubleshooting', en: 'Troubleshooting', ja: 'トラブルシューティング' },
     ],
@@ -141,6 +148,17 @@ export default withMermaid(
       const charset = '<meta charset="utf-8">'
       if (!html.includes(charset)) throw new Error('index.html has no charset meta for the language script')
       return html.replace(charset, `${charset}\n    <script>${languageRedirectScript(base)}</script>`)
+    },
+
+    // The old guide URLs forward to the moved pages. See redirects.ts.
+    buildEnd(siteConfig) {
+      const title = (target: string) => {
+        const lang = target.startsWith('ja/') ? 'ja' : 'en'
+        const file = target.replace(/^(ja\/)?guide\//, '')
+        const page = guideGroups.flatMap((group) => group.pages).find((p) => p.file === file)
+        return page ? page[lang] : file
+      }
+      writeRedirects(siteConfig.outDir, base, title)
     },
 
     locales: {

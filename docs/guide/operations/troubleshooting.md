@@ -10,10 +10,10 @@ Find what you see, read the cause, and do what the last column says. The command
 
 | What you see | Cause | What to do |
 | --- | --- | --- |
-| A task is missing from the board | Its file is damaged, or it has an unsupported `formatVersion`. | Open `agboard --project "My project" snapshot --json` and read `problems`: it names the file, the item, and the reason. Fix the file by hand; Agent Board never rewrites it. See [When a file is invalid](../automation/file-format#when-a-file-is-invalid). |
+| A task is missing from the board | Its file is damaged, or it has an unsupported `formatVersion`. | Open `agboard --project "My project" snapshot --json` and read `problems`: it names the file, the item, and the reason. Fix the file by hand; Agent Board never rewrites it. See [When a file is invalid](../reference/file-format#when-a-file-is-invalid). |
 | A task shows a warning and no conditions | The frontmatter of its `TASK.md` is not valid YAML. | Fix the frontmatter. The body stays visible meanwhile. |
 | The board does not update after an agent changed something | The server is not running, or the files are on a network drive. | Reload the page. The server starts when an agent waits or its hook runs, or start it with `agboard serve -d`. Network drives may not report file changes. |
-| The board opened in the browser by itself | An agent's command or hook started the server in the background, and no board tab was connected. It opens once for each start. | Keep the tab open, or set `AGBOARD_OPEN_BROWSER=0` to turn this off. See [Open the board in the browser](../automation/cli#open-the-board-in-the-browser). |
+| The board opened in the browser by itself | An agent's command or hook started the server in the background, and no board tab was connected. It opens once for each start. | Keep the tab open, or set `AGBOARD_OPEN_BROWSER=0` to turn this off. See [Open the board in the browser](../reference/cli#open-the-board-in-the-browser). |
 | The board did not open when the server started | A board tab connected first, `AGBOARD_OPEN_BROWSER=0` is set, the command ran over SSH, or Linux has no display. `serve.log` in the data folder says which. | Run `agboard open`, or open the address that `agboard open --print` shows. |
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
@@ -69,7 +69,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | The agent does not run the Hook | The agent was not restarted, or the Claude Code Hook is not reviewed. | Start a new session (Claude Code) or restart Codex, then review the Hook with `/hooks`. |
 | A new session says the plugin is of another version | `agboard` was upgraded, but the plugin was not. | Run `agboard update`, then start a new session. |
 
-Exit codes of both commands are in the [CLI reference](../automation/cli#setup-and-update).
+Exit codes of both commands are in the [CLI reference](../reference/cli#setup-and-update).
 
 ## macOS will not run agboard
 

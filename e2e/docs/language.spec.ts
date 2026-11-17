@@ -31,7 +31,7 @@ test.describe('a Japanese browser', () => {
     await expect(page).toHaveURL(/\/agent-board\/ja\/\?from=readme#install$/);
   });
 
-  for (const deepLink of ['guide/', 'guide/use/board', 'dev/', 'releases']) {
+  for (const deepLink of ['guide/', 'guide/watch/board', 'dev/', 'releases']) {
     test(`stays on the deep link ${deepLink}`, async ({ page }) => {
       await page.goto(deepLink);
       await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -88,8 +88,8 @@ test.describe('an English browser', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
 
     // The saved choice moves only the top page; a deep link still opens as linked.
-    await page.goto('guide/use/board');
-    expect(new URL(page.url()).pathname).toBe('/agent-board/guide/use/board');
+    await page.goto('guide/watch/board');
+    expect(new URL(page.url()).pathname).toBe('/agent-board/guide/watch/board');
   });
 
   test('still opens the top page when storage is blocked', async ({ page }) => {

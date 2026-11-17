@@ -89,5 +89,5 @@ agboard progress --include-pending --include-done 5
 
 ## 次に読む
 
-- [エージェントとの連携](../automation/agents): エージェントが表をどう使うか。
-- [Markdownファイルの形式](../automation/file-format): `EPIC.md`の構造と`priority`の書き方。
+- [エージェントとの連携](../delegate/agents): エージェントが表をどう使うか。
+- [Markdownファイルの形式](../reference/file-format): `EPIC.md`の構造と`priority`の書き方。

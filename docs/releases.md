@@ -139,7 +139,7 @@ A release with fixes for the board in Safari and on iPad, and a Skill that confi
 
 ### Changes
 
-- **Break a request into tasks.** When you ask an agent for work that is more than one task, the Skill now has it propose the tasks, their order, and the epic, and add them to the board only after you say yes. See [Break a request into tasks](./guide/automation/agents.md#break-a-request-into-tasks).
+- **Break a request into tasks.** When you ask an agent for work that is more than one task, the Skill now has it propose the tasks, their order, and the epic, and add them to the board only after you say yes. See [Break a request into tasks](./guide/delegate/agents.md#break-a-request-into-tasks).
 
 ### Fixes
 
@@ -199,4 +199,4 @@ agboard connect
 agboard serve
 ```
 
-For later releases, update the command with `brew upgrade fooqoo/tap/agboard`. When a release changes the Skill or the Hook, run `agboard update`, then review the changed Hook with `/hooks` in your agent. Read [Install and start](./guide/getting-started.md) and [Working with agents](./guide/automation/agents.md).
+For later releases, update the command with `brew upgrade fooqoo/tap/agboard`. When a release changes the Skill or the Hook, run `agboard update`, then review the changed Hook with `/hooks` in your agent. Read [Install and start](./guide/getting-started.md) and [Working with agents](./guide/delegate/agents.md).

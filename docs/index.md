@@ -9,17 +9,17 @@ landing:
     label: Copy command
     done: Copied
   hero:
-    title: "People and AI agents,\nworking on one board."
-    lead: See what your agent is doing and what it is waiting on. Tasks, questions, and acceptance conditions share one board, and you can answer from your PC or your phone.
+    title: "Delegate big work.\nStop babysitting it."
+    lead: Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts after one approval, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
     install: brew install fooqoo/tap/agboard
     primary: { text: Get started, link: /guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: "Demo: the agent starts a task and asks a question, you answer on the task, and the agent resumes until the task is done"
   problem:
-    eyebrow: Why a shared board
-    title: Get your agent's state out of the terminal.
-    lead: Hand off long work, and its progress and questions get buried in the terminal. Put them on a board, and people and agents work from the same view.
+    eyebrow: Why a work harness
+    title: Today, handing off means watching over it.
+    lead: You write the plan, catch questions buried in the log, and check whether it is really done. Put the plan, the questions, and the conditions in one model, and you can ask for the work and step away until the agent needs you.
     terminal:
       label: Only in the terminal
       caption: The question scrolls past in the middle of the log.
@@ -45,40 +45,42 @@ landing:
       - { title: How far along is it?, text: Each task keeps its acceptance count and its history. }
   loop:
     eyebrow: How it works
-    title: Ask, answer, and keep going.
-    lead: Before it stops, the agent leaves a question, and your answer lets it resume. When every acceptance condition is met, the task moves to Done on its own.
+    title: Request, approve once, and let it run.
+    lead: Describe what you want. The agent plans it on the board, you approve the start once, and it works in order. It stops for you only when it must, and each task moves to Done on its own once its verified conditions are met.
     actors: { ai: AI, human: You, auto: Auto }
     lanes:
-      - title: Todo → Doing
+      - title: Request → Plan
         steps:
-          - { actor: ai, title: Start, text: Moves the task to Doing and starts work. }
-      - title: Doing (questions and answers)
+          - { actor: human, title: Request, text: Tell your agent what you want, in plain words. }
+          - { actor: ai, title: Plan, text: Puts a provisional plan on the board, with acceptance conditions, and asks its plan questions. }
+      - title: Approve
         steps:
-          - { actor: ai, title: Ask, text: Asks for your decision and offers options. }
-          - { actor: human, title: Answer, text: You choose an option on your PC or phone. }
-          - { actor: ai, title: Resume, text: Reads your answer and carries on. }
+          - { actor: human, title: Approve, text: Answer the plan questions and approve the start once. }
+      - title: Work
+        steps:
+          - { actor: ai, title: Work, text: Works through the tasks in order. It stops only when your intent is unclear, your preference decides, an action cannot be undone, or the work grows. }
       - title: Done
         steps:
-          - { actor: auto, title: Done, text: Moves to Done once every condition is met. }
+          - { actor: auto, title: Done, text: Moves to Done once every verified condition is met. }
   features:
-    eyebrow: Features
-    title: One board for the whole flow of work.
+    eyebrow: Windows on the work
+    title: Watch and step in from anywhere.
     previewLabel: Public preview
     items:
       - image: board
         title: The board
-        text: Todo, Doing, and Done, with Running and Pending states on top. Answer questions right on the task.
-        link: { text: Using the board, link: /guide/use/board }
+        text: Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer its questions right on the task.
+        link: { text: Using the board, link: /guide/watch/board }
         alt: The desktop board with a question on its task, acceptance counts, and the detail panel
       - image: epic
         title: Epics and progress
-        text: Order tasks in an epic, and the progress table returns the work that can move next to your agent.
-        link: { text: Epics and progress, link: /guide/use/epics }
+        text: An epic holds the plan and the order of its tasks. The progress table returns the work that can move next to your agent, and shows you how far the plan has come.
+        link: { text: Epics and progress, link: /guide/watch/epics }
         alt: The epic editor with the task progress panel and the Markdown details
       - image: mobile
         title: Check from your phone
-        text: Away from your desk, check the status and answer questions from the mobile monitor.
-        link: { text: Mobile monitor, link: /guide/operations/mobile-monitor }
+        text: Away from your desk, watch the work and answer the agent from the mobile monitor.
+        link: { text: Mobile monitor, link: /guide/watch/mobile-monitor }
         preview: /guide/feature-stages#mobile-monitor
         alts:
           - The mobile monitor's card list, with a waiting task and its Answer the question button
@@ -87,13 +89,13 @@ landing:
       - image: docs
         title: Project docs
         text: Open the design notes and specs in your project's docs/ folder right from the board.
-        link: { text: Project docs, link: /guide/use/docs }
+        link: { text: Project docs, link: /guide/watch/docs }
         preview: /guide/feature-stages#docs
         alt: The Docs dialog with a file list and a rendered Markdown document
   agents:
     eyebrow: Integrations
     title: Works with the agents you already use.
-    lead: agboard setup installs the Agent Board plugin, with the Skill and the Hook, for Claude Code and Codex. Your agent reads the progress table, adds tasks, asks questions, and waits for your answer.
+    lead: agboard setup installs the Agent Board plugin, with the Skill and the Hook, for Claude Code and Codex. The same work model works across both. Your agent reads the progress table, plans the work, asks questions, and waits for your answer.
     supportedLabel: Supported agents
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
@@ -112,7 +114,7 @@ landing:
         - { kind: answer, text: "│  Yes" }
         - { kind: result, text: "◆  Codex: updated" }
         - { kind: result, text: "◆  Claude Code: updated" }
-    link: { text: Working with agents, link: /guide/automation/agents }
+    link: { text: Working with agents, link: /guide/delegate/agents }
   trust:
     title: Runs on your machine. Your data stays yours.
     items:

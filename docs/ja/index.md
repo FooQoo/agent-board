@@ -9,17 +9,17 @@ landing:
     label: コマンドをコピー
     done: コピーしました
   hero:
-    title: "人とAIが、\n同じボードで仕事を進める。"
-    lead: エージェントが何をしていて、何に答えを待っているか。タスク・質問・受入条件をひとつのボードで共有し、PCでもスマホでも返答できます。
+    title: "大きな仕事を任せて、\n張り付くのはやめよう。"
+    lead: Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を受入条件つきの計画に直し、一度の承認で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
     install: brew install fooqoo/tap/agboard
     primary: { text: はじめる, link: /ja/guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: デモ動画。エージェントがタスクに着手して質問し、タスクの回答欄から返答すると作業を再開して、完了まで進む
   problem:
-    eyebrow: なぜ共有ボードか
-    title: エージェントの状態を、ターミナルの外へ。
-    lead: 長い仕事を任せると、進み具合も質問もターミナルの中に埋もれます。ボードに出せば、人もAIも同じものを見ながら進められます。
+    eyebrow: なぜ仕事のハーネスか
+    title: いまは、任せても目が離せない。
+    lead: 計画を自分で書き、ログに埋もれた質問を拾い、本当に終わったかを確かめる。計画・質問・条件をひとつのモデルに持たせれば、仕事を頼んだら、エージェントが呼ぶまで離れていられます。
     terminal:
       label: ターミナルの中だけ
       caption: 質問は、流れていくログの途中に埋もれてしまう。
@@ -45,40 +45,42 @@ landing:
       - { title: どこまで終わった？, text: 受入条件の達成数と履歴が、タスクごとに残ります。 }
   loop:
     eyebrow: しくみ
-    title: 質問して、答えて、また進む。
-    lead: エージェントは止まる前に質問を残し、あなたの回答で再開します。受入条件がすべてそろうと、タスクは自動で完了へ移ります。
+    title: 頼んで、一度承認したら、あとは任せる。
+    lead: やりたいことを伝えると、エージェントがボードに計画を置きます。開始を一度承認すれば、順に作業が進みます。止まってあなたに聞くのは必要なときだけで、確かめた条件がそろったタスクは、自動で完了へ移ります。
     actors: { ai: AI, human: 人, auto: 自動 }
     lanes:
-      - title: 未着手 → 進行中
+      - title: 要望 → 計画
         steps:
-          - { actor: ai, title: 着手, text: タスクを進行中へ移し、作業を始めます。 }
-      - title: 進行中（質問と回答）
+          - { actor: human, title: 要望, text: やりたいことを、普通の言葉でエージェントに伝えます。 }
+          - { actor: ai, title: 計画, text: 受入条件つきの仮の計画をボードに置き、計画の質問をします。 }
+      - title: 承認
         steps:
-          - { actor: ai, title: 質問, text: 選択肢を添えて、あなたの判断を求めます。 }
-          - { actor: human, title: 回答, text: PCかスマホで、選択肢を選びます。 }
-          - { actor: ai, title: 再開, text: 回答を読み、続きの作業を進めます。 }
+          - { actor: human, title: 承認, text: 計画の質問に答え、開始を一度だけ承認します。 }
+      - title: 作業
+        steps:
+          - { actor: ai, title: 作業, text: 順にタスクを進めます。止まるのは、意図が分からない・好みで決まる・取り返しがつかない・範囲が広がる、のときだけです。 }
       - title: 完了
         steps:
-          - { actor: auto, title: 完了, text: 受入条件がそろうと、自動で完了へ移ります。 }
+          - { actor: auto, title: 完了, text: 確かめた条件がすべてそろうと、自動で完了へ移ります。 }
   features:
-    eyebrow: 機能
-    title: ひとつのボードに、仕事の流れをまとめる。
+    eyebrow: 仕事を映す窓
+    title: どこからでも、見守って介入する。
     previewLabel: パブリックプレビュー
     items:
       - image: board
         title: ボード
-        text: 未着手・進行中・完了の3列に、稼働中・待機中の状態を重ねて表示します。質問への回答も、タスクの上でそのまま行えます。
-        link: { text: ボードの使い方, link: /ja/guide/use/board }
+        text: 仕事が未着手・進行中・完了と進むのを見守れます。エージェントを止めずにカードへ介入でき、質問への回答も、タスクの上でそのまま行えます。
+        link: { text: ボードの使い方, link: /ja/guide/watch/board }
         alt: タスク内の回答欄、受入条件の達成数、詳細パネルを表示したPCボード
       - image: epic
         title: エピックと進行表
-        text: エピックでタスクの順序を決めると、進行表が、いま進められる作業をエージェントに返します。
-        link: { text: エピックと進行表, link: /ja/guide/use/epics }
+        text: エピックが計画とタスクの順序を持ち、進行表が、いま進められる作業をエージェントに返します。計画がどこまで進んだかも見えます。
+        link: { text: エピックと進行表, link: /ja/guide/watch/epics }
         alt: タスクの進行表とMarkdown本文を持つエピック編集画面
       - image: mobile
         title: スマホで確認
-        text: 席を離れていても、スマホのモニターから状況を確かめ、質問に答えられます。
-        link: { text: モバイルモニター, link: /ja/guide/operations/mobile-monitor }
+        text: 席を離れていても、スマホのモニターから仕事を見守り、エージェントの質問に答えられます。
+        link: { text: モバイルモニター, link: /ja/guide/watch/mobile-monitor }
         preview: /ja/guide/feature-stages#mobile-monitor
         alts:
           - 待機中のタスクと「質問に回答する」ボタンが見える、モバイルモニターのカードの一覧
@@ -87,13 +89,13 @@ landing:
       - image: docs
         title: プロジェクトのドキュメント
         text: プロジェクトのdocs/にある設計書や仕様を、ボードから開いて読めます。
-        link: { text: プロジェクトのドキュメント, link: /ja/guide/use/docs }
+        link: { text: プロジェクトのドキュメント, link: /ja/guide/watch/docs }
         preview: /ja/guide/feature-stages#docs
         alt: ファイル一覧とMarkdownの文書を表示した「ドキュメント」ダイアログ
   agents:
     eyebrow: 連携
     title: いつものエージェントから、そのまま。
-    lead: agboard setupが、Claude CodeとCodexにSkillとHookを含むAgent Boardプラグインを導入します。エージェントは進行表を読み、タスクを追加し、質問して回答を待ちます。
+    lead: agboard setupが、Claude CodeとCodexにSkillとHookを含むAgent Boardプラグインを導入します。同じ仕事のモデルを、どちらでも使えます。エージェントは進行表を読み、仕事を計画し、質問して回答を待ちます。
     supportedLabel: 対応エージェント
     supported:
       - { text: Claude Code, link: https://www.claude.com/product/claude-code }
@@ -112,7 +114,7 @@ landing:
         - { kind: answer, text: "│  Yes" }
         - { kind: result, text: "◆  Codex: updated" }
         - { kind: result, text: "◆  Claude Code: updated" }
-    link: { text: エージェントとの連携, link: /ja/guide/automation/agents }
+    link: { text: エージェントとの連携, link: /ja/guide/delegate/agents }
   trust:
     title: 手元で動き、データはあなたのもの。
     items:

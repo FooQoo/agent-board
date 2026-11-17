@@ -18,8 +18,8 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | Endpoints, error codes, and the JSON agents receive | [web-api](docs/dev/reference/web-api.md), [errors](docs/dev/reference/errors.md), [agent-output](docs/dev/reference/agent-output.md) |
 | Entrance routes and the code map | [entrance routes](docs/dev/reference/remote-routes.md), [code-map](docs/dev/reference/code-map.md) |
 | A failure you cannot explain | [docs/dev/troubleshooting.md](docs/dev/troubleshooting.md) |
-| Board, cards, and decisions as users see them | [board](docs/guide/use/board.md), [decisions](docs/guide/use/decisions.md), [editing](docs/guide/use/editing.md), [epics](docs/guide/use/epics.md) |
-| CLI commands, data area, and mobile monitor for users | [cli](docs/guide/automation/cli.md), [data](docs/guide/operations/data.md), [mobile-monitor](docs/guide/operations/mobile-monitor.md) |
+| Board, cards, and decisions as users see them | [board](docs/guide/watch/board.md), [decisions](docs/guide/delegate/decisions.md), [editing](docs/guide/watch/editing.md), [epics](docs/guide/watch/epics.md) |
+| CLI commands, data area, and mobile monitor for users | [cli](docs/guide/reference/cli.md), [data](docs/guide/operations/data.md), [mobile-monitor](docs/guide/watch/mobile-monitor.md) |
 | Build, run, and install | [Set up and run](docs/dev/getting-started/setup.md) |
 | Language, paths, privacy, doc updates, and UI checks | [Conventions](docs/dev/getting-started/pull-request.md#conventions) |
 | Verification commands and test rules | [Verification](docs/dev/getting-started/pull-request.md#verification) |

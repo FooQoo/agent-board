@@ -35,18 +35,18 @@ Features that are GA show no notice.
 
 | Feature | Supported range | Known limits | Guide |
 | --- | --- | --- | --- |
-| Tasks and run states | macOS, the board in a PC browser, viewing on the mobile monitor | An agent cannot change a task that is Done, a draft, or archived. | [The board](./use/board) |
-| Acceptance conditions and history | Same | A history entry has only a time (`at`) and a reason (`reason`). | [The board](./use/board), [Markdown file format](./automation/file-format) |
-| Editing text and images | PC browser | Image size limits apply. | [Editing and image attachments](./use/editing) |
-| Archive and delete | PC browser | Only a person deletes. | [Archive](./use/board#archive) |
-| Decisions and answers | PC, mobile monitor, CLI | An agent waits for your answer without a time limit by default. The waiting command starts the server when it is not running. | [Decisions](./use/decisions) |
-| Epics and progress table | PC browser, CLI | The progress table leaves out Pending tasks. | [Epics and progress](./use/epics) |
-| Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./automation/cli#projects) |
+| Tasks and run states | macOS, the board in a PC browser, viewing on the mobile monitor | An agent cannot change a task that is Done, a draft, or archived. | [The board](./watch/board) |
+| Acceptance conditions and history | Same | A history entry has only a time (`at`) and a reason (`reason`). | [The board](./watch/board), [Markdown file format](./reference/file-format) |
+| Editing text and images | PC browser | Image size limits apply. | [Editing and image attachments](./watch/editing) |
+| Archive and delete | PC browser | Only a person deletes. | [Archive](./watch/board#archive) |
+| Decisions and answers | PC, mobile monitor, CLI | An agent waits for your answer without a time limit by default. The waiting command starts the server when it is not running. | [Decisions](./delegate/decisions) |
+| Epics and progress table | PC browser, CLI | The progress table leaves out Pending tasks. | [Epics and progress](./watch/epics) |
+| Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./reference/cli#projects) |
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
-| Language and themes | PC, mobile monitor | English and Japanese, and 24 themes. | [Settings](./use/board#settings) |
-| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the Skill must match the installed `agboard`; run `agboard update` after upgrading it. You start the agent yourself. | [Working with agents](./automation/agents) |
-| `setup` and `update` | macOS, with Claude Code or Codex found on your `PATH` and a network connection to GitHub | On a terminal both commands ask first; `--yes` agrees in advance. They depend on the plugin commands of Claude Code and Codex. | [Working with agents](./automation/agents#set-up-your-agents), [CLI reference](./automation/cli#setup-and-update) |
-| First-run welcome | PC and phone browsers | It is offered once for a data area, and you can show it again from Settings. It runs in the browser and never changes your board. | [The first-run guide](./use/board#the-first-run-guide) |
+| Language and themes | PC, mobile monitor | English and Japanese, and 24 themes. | [Settings](./watch/board#settings) |
+| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the Skill must match the installed `agboard`; run `agboard update` after upgrading it. You start the agent yourself. | [Working with agents](./delegate/agents) |
+| `setup` and `update` | macOS, with Claude Code or Codex found on your `PATH` and a network connection to GitHub | On a terminal both commands ask first; `--yes` agrees in advance. They depend on the plugin commands of Claude Code and Codex. | [Working with agents](./delegate/agents#set-up-your-agents), [CLI reference](./reference/cli#setup-and-update) |
+| First-run welcome | PC and phone browsers | It is offered once for a data area, and you can show it again from Settings. It runs in the browser and never changes your board. | [The first-run guide](./watch/board#the-first-run-guide) |
 
 ## Features in public preview
 
@@ -56,7 +56,7 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 
 - **Supported range:** the board in a PC browser. The mobile monitor does not show Docs.
 - **Limits:** a Markdown or MDX file can be up to 2 MiB, and an image up to 10 MiB.
-- **Guide:** [Project docs](./use/docs).
+- **Guide:** [Project docs](./watch/docs).
 
 ### Task listening {#listen}
 
@@ -64,7 +64,7 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 
 - **Supported range:** Claude Code and Codex, following the procedure in the agent skill.
 - **Limits:** it does not guarantee that two sessions will not pick the same task. A person starts the continuous run in the agent's session.
-- **Guide:** [Listen for the next task](./automation/agents#listen-for-the-next-task).
+- **Guide:** [Listen for the next task](./delegate/agents#listen-for-the-next-task).
 
 ### Mobile monitor {#mobile-monitor}
 
@@ -72,7 +72,7 @@ The mobile monitor shows the board on a phone and lets you answer an agent's que
 
 - **Supported range:** the browser of a smartphone, through ngrok.
 - **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and the server is running. The way it connects may change.
-- **Guide:** [Mobile monitor](./operations/mobile-monitor).
+- **Guide:** [Mobile monitor](./watch/mobile-monitor).
 
 ## Related
 
