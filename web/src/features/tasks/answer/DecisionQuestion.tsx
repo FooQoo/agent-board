@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from 'react';
 import { preloadable } from '@/shared/lib/lazy/preloadable';
-import type { AttachmentResolver } from '@/shared/markdown/model';
+import type { AttachmentResolver, RelativeImageResolver } from '@/shared/markdown/model';
 import './decision-answer.css';
 
 /** The Markdown renderer loads after the first screen; the question shows as plain text until then. */
@@ -18,10 +18,16 @@ export interface DecisionQuestionProps {
   question: string | null;
   /** Turns an `attachment:<id>` image into its URL; null when the card has no such file. */
   resolveAttachment?: AttachmentResolver;
+  /** Turns an image written as a relative path (`attachments/<name>`) into its URL. */
+  resolveImage?: RelativeImageResolver;
 }
 
 /** The question the agent asked, drawn as the task body is. */
-export function DecisionQuestion({ question, resolveAttachment }: DecisionQuestionProps) {
+export function DecisionQuestion({
+  question,
+  resolveAttachment,
+  resolveImage,
+}: DecisionQuestionProps) {
   const blocks = useMemo(
     () => [{ id: 'question', kind: 'markdown' as const, source: question ?? '' }],
     [question],
@@ -34,6 +40,7 @@ export function DecisionQuestion({ question, resolveAttachment }: DecisionQuesti
           blocks={blocks}
           variant="wide"
           resolveAttachment={resolveAttachment}
+          resolveImage={resolveImage}
         />
       </Suspense>
     </div>

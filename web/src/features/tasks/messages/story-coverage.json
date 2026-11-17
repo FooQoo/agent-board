@@ -88,6 +88,11 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--request-with-image",
+              "states": ["request body image", "resolved by the message route"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--list-en-dark",
               "states": ["english", "dark", "list"],
               "interaction": true

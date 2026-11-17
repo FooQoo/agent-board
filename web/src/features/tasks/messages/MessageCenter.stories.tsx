@@ -19,18 +19,28 @@ interface HarnessProps {
   initial?: MessagesPanelTarget;
   answer: MessagesApi['answer'];
   withdraw: MessagesApi['withdraw'];
+  /** Replaces the sample's read, to give a message another body. */
+  read?: MessagesApi['read'];
   onAsk?: () => void;
   onOpenApproval: () => void;
 }
 
 /** The band and the list it opens, over the sample messages. */
-function Harness({ variant, initial, answer, withdraw, onAsk, onOpenApproval }: HarnessProps) {
+function Harness({
+  variant,
+  initial,
+  answer,
+  withdraw,
+  read,
+  onAsk,
+  onOpenApproval,
+}: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
   const messages = useMemo(() => sampleMessages(i18n.language), [i18n.language]);
   const api = useMemo(
-    () => sampleMessagesApi(i18n.language, { answer, withdraw }),
-    [i18n.language, answer, withdraw],
+    () => sampleMessagesApi(i18n.language, { answer, withdraw, ...(read ? { read } : {}) }),
+    [i18n.language, answer, withdraw, read],
   );
   const { open } = panel;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the list opens once, as a Story starts.
@@ -156,6 +166,33 @@ export const RequestOpen: Story = {
     await within(dialog).findByText(/パスワードを忘れたときの導線を足してください/);
     await userEvent.click(within(dialog).getByRole('button', { name: '取り下げる' }));
     await waitFor(() => expect(args.withdraw).toHaveBeenCalledWith(SAMPLE_PROJECT, 'Q-14'));
+  },
+};
+
+/** An image written `attachments/<name>` in a request body is read from the message's own route. */
+export const RequestWithImage: Story = {
+  args: {
+    initial: { tab: 'fromYou', openId: 'Q-14' },
+    read: async (_projectId, id) => ({
+      id,
+      type: 'request',
+      body: '![画面](attachments/shot.png)',
+      choices: [],
+      recommendedChoiceId: null,
+      status: 'open',
+      referencedBy: [],
+    }),
+  },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    const image = await waitFor(() => {
+      const found = dialog.querySelector('img.md__image-picture');
+      expect(found).not.toBeNull();
+      return found as HTMLImageElement;
+    });
+    await expect(image.getAttribute('src')).toBe(
+      `/api/projects/${SAMPLE_PROJECT}/messages/Q-14/attachments/shot.png`,
+    );
   },
 };
 

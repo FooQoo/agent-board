@@ -2,6 +2,7 @@ import { ArrowLeftIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
+import { resolveMessageImage } from '@/shared/api/messageAttachment';
 import { WriteError } from '@/shared/api/writeErrors';
 import type { Message } from '@/shared/data/api/contracts';
 import { Button } from '@/shared/ui/button';
@@ -176,6 +177,10 @@ export function MessagesSurface({
   };
   const resolveAttachment =
     resolveFor && opened ? (id: string) => resolveFor(opened, id) : undefined;
+  // The images sent with the message are written `attachments/<name>` in its body.
+  const resolveImage = opened
+    ? (src: string) => resolveMessageImage(projectId, opened.id, src)
+    : undefined;
   const failureText =
     failure === null
       ? null
@@ -214,7 +219,11 @@ export function MessagesSurface({
         <div className="decision-panel__question message-detail__question">
           {back}
           {blocks}
-          <DecisionQuestion question={detail.body} resolveAttachment={resolveAttachment} />
+          <DecisionQuestion
+            question={detail.body}
+            resolveAttachment={resolveAttachment}
+            resolveImage={resolveImage}
+          />
         </div>
         <div className="decision-panel__answer">
           <DecisionAnswerFields
@@ -240,7 +249,11 @@ export function MessagesSurface({
       <div className="message-detail">
         {back}
         <p className="message-detail__blocks">{t('messages.detail.requestNote')}</p>
-        <DecisionQuestion question={detail.body} resolveAttachment={resolveAttachment} />
+        <DecisionQuestion
+          question={detail.body}
+          resolveAttachment={resolveAttachment}
+          resolveImage={resolveImage}
+        />
         {failureText !== null && (
           <p className="message-detail__error" role="alert">
             {failureText}

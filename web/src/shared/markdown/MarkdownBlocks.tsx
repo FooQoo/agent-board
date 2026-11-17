@@ -2,8 +2,13 @@ import { Suspense, useMemo } from 'react';
 import { preloadable } from '../lib/lazy/preloadable';
 import { MarkdownBlock } from './MarkdownBlock';
 import { blockKey, shouldVirtualize, type MarkdownBlockData } from './model/blocks';
-import { ChapterHeadingsContext, RenderScopeContext, ResolverContext } from './renderScope';
-import type { AttachmentResolver } from './model';
+import {
+  ChapterHeadingsContext,
+  RelativeImageContext,
+  RenderScopeContext,
+  ResolverContext,
+} from './renderScope';
+import type { AttachmentResolver, RelativeImageResolver } from './model';
 import './markdown.css';
 
 export type MarkdownVariant = 'compact' | 'wide';
@@ -19,6 +24,8 @@ export interface MarkdownBlocksProps {
   isStreaming?: boolean;
   variant?: MarkdownVariant;
   resolveAttachment?: AttachmentResolver;
+  /** Turns an image written as a relative path in the text into its URL; null leaves it unresolved. */
+  resolveImage?: RelativeImageResolver;
   /** Draw each H2 as an H3 that looks like an H2, for a document that sits under an H2 title. */
   chapterHeadings?: boolean;
 }
@@ -93,7 +100,9 @@ function MarkdownBlocksBody({
 export function MarkdownBlocks(props: MarkdownBlocksProps) {
   return (
     <ChapterHeadingsContext.Provider value={props.chapterHeadings ?? false}>
-      <MarkdownBlocksBody {...props} />
+      <RelativeImageContext.Provider value={props.resolveImage}>
+        <MarkdownBlocksBody {...props} />
+      </RelativeImageContext.Provider>
     </ChapterHeadingsContext.Provider>
   );
 }
