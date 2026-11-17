@@ -52,7 +52,7 @@ When the agent has verified every acceptance condition of a task and nothing is 
 
 ## Practice the loop by hand
 
-If you want to see the loop without an agent, you can play the agent yourself with a few `agboard` commands. This is a way to learn the mechanics, not how you normally work. To keep your own board untouched, run `export AGBOARD_HOME="$(mktemp -d)"` in every terminal you use below. Skip it to use your real board.
+If you want to see the loop without an agent, you can play the agent yourself with a few `agboard` commands. This is a way to learn the mechanics, not how you normally work. To keep your own board untouched, create one temporary data folder first: run `export AGBOARD_HOME="$(mktemp -d)"` and `echo "$AGBOARD_HOME"` in the first terminal. In every other terminal you use below, run `export AGBOARD_HOME="<the printed path>"` so that all of them share that folder. Skip this to use your real board.
 
 ### The first-run guide
 

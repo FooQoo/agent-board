@@ -65,7 +65,7 @@ These rules are kept by Agent Board itself, not left to the agent's good manners
 - **The agent waits when you have not answered.** A task that refers to an open question is Pending, and the agent cannot mark it Running. Asking a question puts a Running task back to Idle at the same moment.
 - **A plan does not start without your approval.** A planned task waits for an approved start approval, and a rejected approval keeps it waiting.
 - **Your answer is recorded as yours, once.** The first answer stands and is not overwritten. A question, its answer, and the history of the tasks that refer to it are saved together.
-- **Done means the conditions are met.** An AI-owned task needs at least one acceptance condition, all of them done, and no open question. The check is made again on the latest files at the moment it moves, and the reason goes into the history. An agent that moves a task to Done by hand has to meet the same conditions.
+- **Done means the conditions are met.** An AI-owned task needs at least one acceptance condition, all of them done, and no open question. The check is made again on the latest files at the moment it moves, and the reason goes into the history. This is what automatic Done checks. An agent that moves a task to Done by hand also needs every condition done and no open question, but a task with no conditions is not refused; see [What still relies on the agent](#relies-on-agent).
 - **Finished work stays finished.** An agent cannot change a Done task. If you move it back, it can be worked on again. A Done task does not go back by itself when you uncheck a condition.
 - **Drafts and archives are fenced off.** An agent cannot touch your drafts, and nobody can write to an archived task.
 - **Everything leaves a reason.** Changes to columns, states, questions, answers, and checked conditions are recorded in the history, and a malformed history is refused rather than guessed at. Task and question numbers are never reused.
@@ -82,7 +82,7 @@ There are two ways to take part, and both go through the same model.
 
 The agent calls you only in four cases: your intent is unclear, your preference decides it, an action cannot be undone, or the work grows bigger than you asked. This line is part of the agent's Skill, and the model makes sure that once the agent has asked, it stops. See [Working with agents](./delegate/agents).
 
-## What still relies on the agent
+## What still relies on the agent {#relies-on-agent}
 
 Some things are not enforced by the model yet. They depend on the agent following its Skill, so know where they are:
 
