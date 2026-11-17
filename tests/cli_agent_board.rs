@@ -473,7 +473,7 @@ fn help_describes_markdown_limits_and_drafts() {
     };
     let top = help(&["--help"]);
     for needle in [
-        "draft: human",
+        "\"draft\": \"human\"",
         "task_is_draft",
         "read-only",
         "--desc-file",
