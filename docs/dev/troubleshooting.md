@@ -13,6 +13,7 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | `acceptance_unmet` | An agent tried to move a task to Done while an acceptance condition is unmet or the frontmatter is invalid. | Verify the conditions and set `done: true` (the server then moves the task by itself), or fix the frontmatter. |
 | `questions_unanswered` | An agent tried to set a task to Running, or move it to Done, while it waits for a person. | Wait for the answers with `message wait <question-id>`, or ask the person to answer on the board. |
 | `question_answered` or `question_withdrawn` | The question already has an answer, or it was withdrawn. The first answer is final. | Read the question again (`message show <question-id>`) and use the recorded answer. |
+| `start_blocked_by_questions` | A start was refused because a question about the draft has no reply. | Answer the named questions (`message answer`, or on the board), then start again. |
 | `folder_unbound` or `bound_project_missing` | The working folder is not bound to a project, or the project was deleted. | Name the project explicitly with `--project`, or ask the user to bind the folder. |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | Ask a person to run it. There is no option to skip the question. |
 

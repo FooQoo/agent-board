@@ -30,6 +30,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `questions_unanswered` | An agent tried to set a task to Running, or to move it to Done, while the task waits for a person. | 1 | 409 |
 | `question_answered` | An answer names a question that already has a reply. Nothing is saved; the output includes the recorded questions. | 1 | 409 |
 | `question_withdrawn` | An answer names a question that was withdrawn. Nothing is saved. | 1 | 409 |
+| `start_blocked_by_questions` | A person tried to start a task, or an epic, while a question about that task (or about an AI-draft task of the epic) has no reply. Nothing is saved; the message names the questions. | 1 | 409 |
 | `message_not_found` | The question or request ID does not exist in the project. | 3 | 404 |
 | `message_closed` | A withdrawal names a question that already has a reply, or a request that was already accepted. | 1 | 409 |
 | `message_type_mismatch` | A command or request for one kind names the other: for example, `answer` with a request ID, or `accept` with a question ID. | 2 | 422 |

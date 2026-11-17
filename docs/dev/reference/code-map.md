@@ -35,6 +35,7 @@ Inside `file_store`, the pieces you will touch most often are:
 | `layout` | Builds owned paths only from validated IDs.<br>Strings never become paths directly. |
 | `frontmatter`<br>`history`<br>`validate` | Split body and frontmatter, parse acceptance and history, and validate files while keeping unknown keys. |
 | `transaction` | Saves and recovers the `task.json`/`TASK.md` pair with a durable journal, and saves several files together with the batch journal (`batch.rs`). |
+| `message.rs` | The common shape of questions, requests, and approvals (`Message`, the `MessageSource` trait, and the `Question`, `Request`, and `Approval` types) and the `messages` list of the Summary. |
 | `qa/` | Messages: the question and request models (`model.rs`), reading and writing `QA.md` (`codec.rs`), the rules a file must meet (`check.rs`), where messages live and how they are read (`store.rs`), the state derived for tasks (`derive.rs`), and the views callers receive (`view.rs`). |
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
 | `projection` | The Summary of a project, built from a parsed snapshot, and the change sets between two projections. It holds the versions of each task and epic. |
