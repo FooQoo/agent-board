@@ -348,6 +348,11 @@
               "id": "pages-monitor-components-monitorlanes--tab-switches-lane",
               "states": ["tap on a tab switches the lane"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--plan-cards-in-todo",
+              "states": ["plan cards at the top of Todo", "tab count includes plans"],
+              "interaction": true
             }
           ]
         }
@@ -428,6 +433,11 @@
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["all gestures"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--plan-cards-in-todo",
+              "states": ["plan cards at the top of Todo", "tab count includes plans"],
+              "interaction": true
             }
           ]
         }
@@ -472,6 +482,11 @@
             {
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["whole screen"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--plan-cards-in-todo",
+              "states": ["plan cards at the top of Todo", "tab count includes plans"],
               "interaction": true
             }
           ]

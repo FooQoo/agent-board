@@ -57,6 +57,8 @@ export function MonitorView(props: MonitorViewProps) {
     setAnswerOpen(true);
   };
   const { todo, doing, done, freshness, guideLink } = props;
+  const plans = props.plans ?? [];
+  const [reviewId, setReviewId] = useState<string | null>(null);
   // A guide step is about the cards of one lane: that lane comes on screen.
   const guideLane = usePhoneGuideLane(guideLink);
   useEffect(() => {
@@ -102,7 +104,7 @@ export function MonitorView(props: MonitorViewProps) {
         lane={lane}
         controlsId={lanesId}
         counts={{
-          todo: ordered.todo.length,
+          todo: ordered.todo.length + plans.length,
           doing: ordered.doing.length,
           done: ordered.done.length,
         }}
@@ -126,7 +128,18 @@ export function MonitorView(props: MonitorViewProps) {
           openAnswer(first ? answerStart.task(item.task.id) : answerStart.resume());
         }}
         answerController={props.answerController}
+        plans={plans}
+        onOpenPlan={(plan) => setReviewId(plan.id)}
       />
+      {reviewId !== null &&
+        props.renderPlanReview?.({
+          approvalId: reviewId,
+          onClose: () => setReviewId(null),
+          onOpenQuestion: (questionId) => {
+            setReviewId(null);
+            openAnswer(answerStart.question(questionId));
+          },
+        })}
       {writes && (
         <MonitorLaneDialogs
           pending={pending}

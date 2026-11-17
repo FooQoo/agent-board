@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "files": [
+    {
+      "file": "features/tasks/plans/PlanCard.tsx",
+      "exports": [
+        {
+          "name": "PlanCard",
+          "stories": [
+            {
+              "id": "task-plans-plancard--new-epic",
+              "states": ["new epic plan card", "dashed border", "review button"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-plancard--new-epic-with-open-question",
+              "states": ["open question count"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-plancard--added-to-epic",
+              "states": ["tasks added to a running epic"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "DraftTaskCard",
+          "stories": [
+            {
+              "id": "task-plans-plancard--single-draft-task",
+              "states": ["single AI draft", "start button"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-plancard--single-draft-task-blocked",
+              "states": ["disabled start", "reason"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "PlanCardFor",
+          "stories": [
+            {
+              "id": "task-plans-plancard--new-epic",
+              "states": ["epic plan card"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-plancard--single-draft-task",
+              "states": ["single task card"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/plans/PlanReview.tsx",
+      "exports": [
+        {
+          "name": "PlanReview",
+          "stories": [
+            {
+              "id": "task-plans-planreview--with-open-question",
+              "states": ["modal", "open question", "disabled start with reason", "question button"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--ready",
+              "states": ["goal", "tasks that will start", "start"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--later",
+              "states": ["later closes only"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--added-tasks",
+              "states": ["no goal", "added tasks scope"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--single-task",
+              "states": ["no numbering", "no order wording"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--starting",
+              "states": ["buttons wait"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--refused-by-question",
+              "states": ["refusal reason"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--english-dark",
+              "states": ["english", "dark"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--sheet-with-open-question",
+              "states": ["bottom sheet", "open question"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--sheet-ready",
+              "states": ["bottom sheet", "ready"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreview--sheet-single-task",
+              "states": ["bottom sheet", "single task"],
+              "interaction": false
+            },
+            {
+              "id": "task-plans-planreview--sheet-english-dark",
+              "states": ["bottom sheet", "english", "dark"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/plans/PlanReviewContainer.tsx",
+      "exports": [
+        {
+          "name": "PlanReviewContainer",
+          "stories": [
+            {
+              "id": "task-plans-planreviewcontainer--start",
+              "states": ["goal from the epic document", "start", "close"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreviewcontainer--blocked-by-question",
+              "states": ["disabled start", "open the question"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreviewcontainer--refused-by-new-question",
+              "states": ["409 start_blocked_by_questions"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreviewcontainer--failed-start",
+              "states": ["failed start message"],
+              "interaction": true
+            },
+            {
+              "id": "task-plans-planreviewcontainer--single-task",
+              "states": ["single task start"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

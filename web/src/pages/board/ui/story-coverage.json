@@ -27,6 +27,21 @@
               "id": "pages-board-board--failed",
               "states": ["load error", "retry"],
               "interaction": true
+            },
+            {
+              "id": "pages-board-board--plan-cards-in-todo",
+              "states": [
+                "plan cards at the top of Todo",
+                "AI drafts hidden",
+                "lane count includes plans",
+                "person draft kept"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-board-board--plan-cards-ja-dark",
+              "states": ["japanese", "dark"],
+              "interaction": false
             }
           ]
         }
