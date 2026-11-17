@@ -70,7 +70,7 @@ Use `qa ask` to ask the user one or more questions. Questions belong to the proj
 agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
 ```
 
-It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting needs the server: the command starts it in the background when none is running, before it saves the questions. `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../use/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../use/epics).
+It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting needs the server: the command starts it in the background when none is running, before it saves the questions. `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../delegate/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../watch/epics).
 
 ## Edit long text from a file
 
@@ -121,13 +121,13 @@ Renaming keeps the project's ID, folder registrations, and tasks. Folder registr
 
 ## Wait for changes or a task
 
-The `wait` command has two modes. `--after <cursor>` waits for a project change as described in [Working with agents](./agents#wait-for-changes). `--until task` returns one eligible AI task, including one that was already in Todo or an idle task in Doing before listening started:
+The `wait` command has two modes. `--after <cursor>` waits for a project change as described in [Working with agents](../delegate/agents#wait-for-changes). `--until task` returns one eligible AI task, including one that was already in Todo or an idle task in Doing before listening started:
 
 ```sh
 agboard --project "My project" wait --until task --idle-timeout 300 --json
 ```
 
-`--idle-timeout` is required with `--until task` and accepts 1 to 86,400 seconds. It has no default. Each invocation returns at most one task, in the same order as the progress table; it does not claim or change the task. After resolving the returned task, call `wait` again to continue. See [Working with agents](./agents#listen-for-the-next-task) for the full session workflow and how Pending tasks are handled.
+`--idle-timeout` is required with `--until task` and accepts 1 to 86,400 seconds. It has no default. Each invocation returns at most one task, in the same order as the progress table; it does not claim or change the task. After resolving the returned task, call `wait` again to continue. See [Working with agents](../delegate/agents#listen-for-the-next-task) for the full session workflow and how Pending tasks are handled.
 
 On success, task mode prints one JSON object and exits 0:
 
@@ -183,7 +183,7 @@ Start it yourself to keep it running, to choose the port, or to connect a phone 
 
 The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. An invalid `--monitor` value, a missing `NGROK_AUTHTOKEN`, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
 
-When the connection is ready, the startup line shows the phone address and the passcode: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`. With `--json`, the startup line has the `url` of the board and `monitor` with `mode: "ngrok"`, and the phone `url` and `passcode` in `ngrok`. The passcode is printed only here and in the board's connection dialog; tokens and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../operations/mobile-monitor).
+When the connection is ready, the startup line shows the phone address and the passcode: `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`. With `--json`, the startup line has the `url` of the board and `monitor` with `mode: "ngrok"`, and the phone `url` and `passcode` in `ngrok`. The passcode is printed only here and in the board's connection dialog; tokens and policies are never printed. You can also set up the connection from the board's **Settings**; see the [mobile monitor guide](../watch/mobile-monitor).
 
 ### Run in the background
 
@@ -216,7 +216,7 @@ Project: My project
 
 `remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
 
-The server gives the passcode only to the local address of your PC, so it is printed to the person running the command and never travels through ngrok. If an agent pastes it into a chat, everyone who can read that chat can open the board for as long as the connection is up. Stop the connection when you are done; see the [mobile monitor guide](../operations/mobile-monitor).
+The server gives the passcode only to the local address of your PC, so it is printed to the person running the command and never travels through ngrok. If an agent pastes it into a chat, everyone who can read that chat can open the board for as long as the connection is up. Stop the connection when you are done; see the [mobile monitor guide](../watch/mobile-monitor).
 
 The background server writes its output to `serve.log` in the data folder. The file is readable only by you, because it holds the phone passcode, and it is replaced at every `serve -d`. If the background server cannot start (for example the port is in use), `serve -d` exits with code 1 and shows the reason. The server does not restart by itself after a reboot.
 
@@ -226,7 +226,7 @@ If a server you started is already running, or the options differ, `serve -d` as
 
 ## Setup and update {#setup-and-update}
 
-`setup` creates the data folder and installs the Agent Board plugin (the Skill and the Hook) for Codex, Claude Code, or both. `update` moves an installed plugin to the version of the command. What they ask and change is in [Working with agents](./agents#set-up-your-agents).
+`setup` creates the data folder and installs the Agent Board plugin (the Skill and the Hook) for Codex, Claude Code, or both. `update` moves an installed plugin to the version of the command. What they ask and change is in [Working with agents](../delegate/agents#set-up-your-agents).
 
 ```sh
 agboard setup
@@ -258,5 +258,5 @@ Deleting a task, epic, or project, and emptying a project with `init`, needs a p
 
 ## Next
 
-- [Working with agents](./agents): where these commands fit in the work loop.
+- [Working with agents](../delegate/agents): where these commands fit in the work loop.
 - [Troubleshooting](../operations/troubleshooting): what an error code means.

@@ -4,7 +4,7 @@ title: Working with agents
 
 # Working with agents
 
-Agents work from the same board as you. A hook gives them a short progress table, they pick a task, report what they do, ask you when a decision is needed, and wait for the answer. This page shows how to set up an agent and what the loop looks like. You can see the loop by hand in the [Quickstart](../quickstart).
+This is how you hand work to an agent. You ask in the chat; the agent turns the request into a provisional plan on the board, you approve the start once, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
 
 ## Set up your agents {#set-up-your-agents}
 
@@ -56,7 +56,7 @@ You do not have to remember this. When the plugin and the command differ, a new 
 ### What the hook does
 
 - **Folder resolution.** The hook command is fixed, `agboard hook --agent claude --plugin-version <version>`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A folder with no binding at all is not an error: the hook prints nothing and exits normally, so the Hook does not disturb work in other folders. A broken binding, a bound project that was deleted, or an unreadable `cwd` returns `AGBOARD_ERROR`; the hook never guesses another project.
-- **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out unless you add `--include-pending` or `--include-done COUNT` to the hook command (see [Epics and progress](../use/epics)). If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
+- **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out unless you add `--include-pending` or `--include-done COUNT` to the hook command (see [Epics and progress](../watch/epics)). If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
 
 ### What agents may edit
 
@@ -65,7 +65,7 @@ You do not have to remember this. When the plugin and the command differ, a new 
 - Task operations add history automatically; agents use `history add` for meaningful progress, and keep plans and concise verification results in the body.
 - Agents never edit `epic.json` or `project.json`, never delete task or epic folders, and never put machine-specific absolute paths in shared files.
 
-The format is in [Markdown file format](./file-format).
+The format is in [Markdown file format](../reference/file-format).
 
 Agents write history in the same language as the task body. Generated notes from browser operations use your selected screen language. CLI operations and automatic completion use Japanese when the body contains Japanese characters, otherwise English; empty bodies and the default template use the title. Existing history and reasons you entered stay unchanged.
 
@@ -90,12 +90,12 @@ flowchart TD
 1. **Choose.** Read `agboard progress --json` and select a ready AI-owned task, following its epic's saved task order. Read only the selected epic's `EPIC.md` and the task's `TASK.md`; use `show` when you need its history or an open question.
 2. **Start.** Move the task to Doing with a reason, then report Running. Review a user-owned task only when it affects the work.
 3. **Work and record.** Record meaningful progress with `history add`, with concise reasons based on actual work and verification. Keep the plan and concise results in the body; attach images when visual proof is useful. Moves and state changes already add history, so do not duplicate them.
-4. **Ask when blocked.** Ask with `qa ask` when you need a decision; the task shows Pending until you answer (see [Decisions](../use/decisions)).
+4. **Ask when blocked.** Ask with `qa ask` when you need a decision; the task shows Pending until you answer (see [Decisions](./decisions)).
 5. **Resume.** After an answer, read the task and history, reconsider the plan, and resume with a reason.
 6. **Finish.** Mark acceptance conditions done only after verifying them. Eligible AI tasks move to Done automatically when all conditions are complete.
 7. **Wait.** If no work can proceed, wait for a change (see below).
 
-For the progress table, see [Epics and progress](../use/epics).
+For the progress table, see [Epics and progress](../watch/epics).
 
 After reading an editable AI task, the agent shortens an unclear title to describe the affected area and requested change before starting work. The original request and images stay in the task body and attachments. An already clear title stays as it is. This happens in the agent session, including listener mode; the form still initially uses the request's first non-empty line. Completed tasks are not renamed by the agent.
 
@@ -124,7 +124,7 @@ A task you put on the board yourself needs no start approval.
 Every question an agent asks is on the board, with choices, so that the record stays in one place. While you are talking with the agent, it also writes the same question in the chat as plain text, with its choices and its recommendation, and says that the question is on the board. It does not open a question dialog of its own, because that would keep the agent from noticing an answer you give on the board. Answer wherever is easier:
 
 - **In the chat.** Reply in your own words. The agent records them on the board as your answer with `qa answer --via chat` and continues. It never answers a question itself.
-- **On the board or your phone.** See [Decisions](../use/decisions).
+- **On the board or your phone.** See [Decisions](./decisions).
 
 Whichever answer is recorded first is the one that counts, and the agent does not ask the same question again in the other place. If you answer on the board and then differently in the chat, the agent tells you which answer was recorded and continues with it.
 
@@ -147,7 +147,7 @@ agboard --project "My project" wait --after "<cursor>" --json
 A cursor has the format `f1:<project-id>:<version>`. Use the value that `snapshot` returns; do not construct one.
 
 - `wait` needs the server of the same data area. It starts one in the background when none runs, then listens for changes without polling.
-- A server started in the background, by `wait`, a question that waits, or the hook, opens the project's board in your browser once, unless a board tab is already connected. See [Open the board in the browser](./cli#open-the-board-in-the-browser) for when it does not, and for `agboard open`.
+- A server started in the background, by `wait`, a question that waits, or the hook, opens the project's board in your browser once, unless a board tab is already connected. See [Open the board in the browser](../reference/cli#open-the-board-in-the-browser) for when it does not, and for `agboard open`.
 - It follows the same project through a rename, so update the name in future commands and hooks. Changes to other projects do not end it. If the project is deleted, it fails with `project_not_found`.
 - `wait_timeout`, `board_unavailable`, `cursor_invalid`, and `project_not_found` are errors, never answers.
 - When `wait` returns, read the full snapshot and history, reconsider the user's reason, then resume or ask a follow-up question.
@@ -164,7 +164,7 @@ The timeout is required and must be from 1 to 86,400 seconds; there is no defaul
 
 Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
 
-`idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](./cli#wait-for-changes-or-a-task) for the output and error codes.
+`idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](../reference/cli#wait-for-changes-or-a-task) for the output and error codes.
 
 ## Drafts and errors
 
@@ -174,5 +174,5 @@ On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unr
 
 ## Next
 
-- [CLI reference](./cli): every command an agent uses.
-- [Decisions](../use/decisions): how agents ask, and how you answer.
+- [CLI reference](../reference/cli): every command an agent uses.
+- [Decisions](./decisions): how agents ask, and how you answer.

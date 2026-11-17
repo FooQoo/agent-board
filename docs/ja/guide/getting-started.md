@@ -50,7 +50,7 @@ agboard project bind "My project"
 agboard setup
 ```
 
-`setup`は、使うエージェントを尋ねて計画を表示し、`y`と答えると、Claude Code、Codex、または両方にAgent Boardプラグイン（SkillとHook）を導入します。コンピューターごとに一度実行すればよく、どのフォルダでも実行できます。尋ねる内容、変更するもの、その後の操作は、[エージェントを設定する](./automation/agents#set-up-your-agents)を参照してください。
+`setup`は、使うエージェントを尋ねて計画を表示し、`y`と答えると、Claude Code、Codex、または両方にAgent Boardプラグイン（SkillとHook）を導入します。コンピューターごとに一度実行すればよく、どのフォルダでも実行できます。尋ねる内容、変更するもの、その後の操作は、[エージェントを設定する](./delegate/agents#set-up-your-agents)を参照してください。
 
 ## ボードを開始する
 
@@ -78,7 +78,7 @@ agboard --version
 agboard update
 ```
 
-`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントのプラグインは変わりません。それを更新するのが`agboard update`で、プラグインがあるすべてのエージェントが対象です。変更内容を表示して確認を求めます。`agboard update --yes`は、その質問にあらかじめ答えます。詳しくは[プラグインを更新する](./automation/agents#update-the-plugin)を参照してください。
+`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントのプラグインは変わりません。それを更新するのが`agboard update`で、プラグインがあるすべてのエージェントが対象です。変更内容を表示して確認を求めます。`agboard update --yes`は、その質問にあらかじめ答えます。詳しくは[プラグインを更新する](./delegate/agents#update-the-plugin)を参照してください。
 
 更新したら、新しいコマンドと画面を使うために、`agboard serve`を止めて起動し直します。開いているボードやモニターは、サーバーが戻ると自動で再読み込みします。編集中や回答の入力中は、それが終わるまで待ちます。
 
@@ -89,5 +89,5 @@ Hookとエージェントのスキルは、`PATH`の`agboard`を実行するの�
 ## 次に読む
 
 - [クイックスタート](./quickstart): 一つのタスクを作成から完了まで進めます。
-- [エージェントとの連携](./automation/agents): `setup`が尋ねる内容と、エージェントがボードで作業する流れです。
+- [エージェントとの連携](./delegate/agents): `setup`が尋ねる内容と、エージェントがボードで作業する流れです。
 - [機能の提供段階](./feature-stages): 一般提供の機能と、パブリックプレビューの機能を確認します。

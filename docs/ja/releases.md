@@ -139,7 +139,7 @@ SafariやiPadでの表示の修正と、カードを追加する前に分け方�
 
 ### 変更点
 
-- **依頼をタスクに分けます。** 1枚のタスクに収まらない作業を頼むと、エージェントがタスク・順番・エピックを提案し、あなたが「はい」と答えたときだけボードに追加するようになりました。詳しくは[依頼をタスクに分ける](./guide/automation/agents.md#依頼をタスクに分ける)をご覧ください。
+- **依頼をタスクに分けます。** 1枚のタスクに収まらない作業を頼むと、エージェントがタスク・順番・エピックを提案し、あなたが「はい」と答えたときだけボードに追加するようになりました。詳しくは[依頼をタスクに分ける](./guide/delegate/agents.md#依頼をタスクに分ける)をご覧ください。
 
 ### 不具合修正
 
@@ -199,4 +199,4 @@ agboard connect
 agboard serve
 ```
 
-以降の版では、`brew upgrade fooqoo/tap/agboard`でコマンドを更新します。SkillやHookが変わる版では、`agboard update`を実行し、変更されたHookをエージェントの`/hooks`で確認してください。詳しくは[インストールと起動](./guide/getting-started.md)と[エージェントとの連携](./guide/automation/agents.md)をご覧ください。
+以降の版では、`brew upgrade fooqoo/tap/agboard`でコマンドを更新します。SkillやHookが変わる版では、`agboard update`を実行し、変更されたHookをエージェントの`/hooks`で確認してください。詳しくは[インストールと起動](./guide/getting-started.md)と[エージェントとの連携](./guide/delegate/agents.md)をご覧ください。

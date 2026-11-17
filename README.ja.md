@@ -6,9 +6,9 @@
 
 [![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
 
-**人とAIが、同じボードで仕事を進める。**
+**大きな仕事を任せて、張り付くのはやめよう。**
 
-エージェントが何をしていて、何に答えを待っているか。タスク・質問・受入条件をひとつのボードで共有し、PCでもスマホでも返答できます。
+Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を受入条件つきの計画に直し、一度の承認で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
 
 ```sh
 brew install fooqoo/tap/agboard
@@ -26,25 +26,38 @@ brew install fooqoo/tap/agboard
 
 ## Agent Boardとは
 
-エージェントに長い仕事を任せると、進み具合も質問もターミナルの中に埋もれます。Agent Boardは、それを履歴付きの共有ボードに出します。エージェントが質問し、あなたがPCかスマホでタスクの上から答えると、エージェントは作業を再開します。受入条件がすべてそろうと、タスクは自動で完了へ移ります。
+大きな仕事をAIエージェントに渡しても、誰かが見張っていないと、最後まで進まないことが多くあります。依頼を計画に直す、止まっていないかを見る、ログに埋もれた質問を拾う、次のセッションで経緯を説明し直す、終わりに本当に終わったかを確かめる。
+
+Agent Boardは、Claude CodeやCodexのようなエージェントの上にかぶせる**仕事のハーネス**です。エージェントを動かすのではなく、仕事を一つのモデルとして持ち、あなたとエージェントが同じものを読み書きします。モデルは、計画（順序つきのエピックとタスク）、各タスクがいつ終わりかを示す受入条件、エージェントが止まって聞く質問、何がなぜ起きたかの履歴でできています。モデルは手元の通常のファイルに保存され、アカウントやクラウドサービスは要りません。
 
 ```mermaid
 flowchart LR
-    A["AIエージェント"] -- "agboard CLI・Hook" --> D[("ローカルの共有フォルダ")]
-    U["ユーザー"] -- "Agent Board UI" --> D
-    D -- "ローカルサーバー" --> B["ブラウザ"]
+    A["AIエージェント"] -- "agboard CLI・Hook" --> M[("仕事のモデル: 通常のファイル")]
+    U["あなた: ボード・スマホ・チャット・CLI"] --> M
 ```
 
 実際に触ってみたい場合は、[デモ](https://fooqoo.github.io/agent-board/demo/)をブラウザで試せます。インストールは不要です。サンプルデータで初回の案内が始まり、ページを再読み込みすると最初からやり直せます。
 
-## 特徴
+## 任せる流れ
 
-- **ボード。** 未着手・進行中・完了の3列に、稼働中・待機中の状態を重ねて表示します。質問への回答も、タスクの上でそのまま行えます。[ボードの使い方](https://fooqoo.github.io/agent-board/ja/guide/use/board)
-- **エピックと進行表。** エピックでタスクの順序を決めると、進行表が、いま進められる作業をエージェントに返します。[エピックと進行表](https://fooqoo.github.io/agent-board/ja/guide/use/epics)
-- **スマホで確認。** 席を離れていても、スマホのモニターから状況を確かめ、質問に答えられます。パブリックプレビューです。[モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor)
-- **プロジェクトのドキュメント。** プロジェクトの`docs/`にある設計書や仕様を、ボードから開いて読めます。パブリックプレビューです。[プロジェクトのドキュメント](https://fooqoo.github.io/agent-board/ja/guide/use/docs)
+1. **要望。** やりたいことを、普通の言葉でエージェントに伝えます。
+2. **仮の計画。** エージェントが、受入条件つきのエピックとタスクをボードに置き、自分では決められないことを質問します。
+3. **一度の開始の承認。** あなたが答え、エージェントが計画を直し、あなたが開始を一度承認します。それまでは何も始まりません。
+4. **順に作業。** エージェントはタスクを進め、あなたのために止まるのは、意図が分からない、好みで決まる、取り返しがつかない、頼んだ範囲を超えて広がる、のときだけです。
+5. **自動で完了。** エージェントがタスクのすべての受入条件を確かめ、あなたを待つものがなくなると、タスクは自動で完了に移ります。
 
-計画と結果は、手元のMarkdownファイル（`EPIC.md`と`TASK.md`）に残り、受入条件と履歴はfrontmatterに入ります。アカウントやクラウドサービスは要りません。
+関わり方は二つあります。エージェントが止まって聞くときは、答えやすい場所で答えれば、回答は一度だけ記録されます（Human-in-the-Loop）。作業の間は、止めずに見守り、カードを戻す、条件にチェックを付ける、計画を書き換える、ができて、エージェントは変更に従います（Human-on-the-Loop）。[仕事のモデル](https://fooqoo.github.io/agent-board/ja/guide/work-model)と[クイックスタート](https://fooqoo.github.io/agent-board/ja/guide/quickstart)を参照してください。
+
+## 仕事を映す窓
+
+ボードは製品そのものではなく、仕事を映す窓の一つです。
+
+- **ボード。** 仕事が未着手・進行中・完了と進むのを見守れます。エージェントを止めずにカードへ介入でき、質問への回答も、タスクの上でそのまま行えます。[ボードの使い方](https://fooqoo.github.io/agent-board/ja/guide/watch/board)
+- **エピックと進行表。** エピックが計画とタスクの順序を持ち、進行表が、いま進められる作業をエージェントに返します。[エピックと進行表](https://fooqoo.github.io/agent-board/ja/guide/watch/epics)
+- **スマホで確認。** 席を離れていても、スマホのモニターから仕事を見守り、エージェントの質問に答えられます。パブリックプレビューです。[モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor)
+- **プロジェクトのドキュメント。** プロジェクトの`docs/`にある設計書や仕様を、ボードから開いて読めます。パブリックプレビューです。[プロジェクトのドキュメント](https://fooqoo.github.io/agent-board/ja/guide/watch/docs)
+
+エージェントとのチャットで答えることもでき、`agboard`コマンドはエージェントやスクリプトが使う入口です。計画と結果は、手元のMarkdownファイル（`EPIC.md`と`TASK.md`）に残り、受入条件と履歴はfrontmatterに入ります。
 
 編集・画像添付・アーカイブ・設定の詳細は[使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/)を参照してください。
 
@@ -78,7 +91,7 @@ cd my-project
 agboard project create "My project"
 ```
 
-`setup`はデータフォルダを作成し、使うエージェント（Codex、Claude Code、または両方）を尋ねます。計画を表示し、`y`と答えると、各エージェント自身のプラグインコマンドでAgent Boardプラグイン（SkillとHook）を導入し、エージェントが共有フォルダを使えるようにします。Codexでは、プラグインのHookを信頼済みにします。どのフォルダでも実行でき、プロジェクトは不要です。`project create`は、現在のフォルダをプロジェクトに登録します。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/automation/agents#set-up-your-agents)を参照してください。
+`setup`はデータフォルダを作成し、使うエージェント（Codex、Claude Code、または両方）を尋ねます。計画を表示し、`y`と答えると、各エージェント自身のプラグインコマンドでAgent Boardプラグイン（SkillとHook）を導入し、エージェントが共有フォルダを使えるようにします。Codexでは、プラグインのHookを信頼済みにします。どのフォルダでも実行でき、プロジェクトは不要です。`project create`は、現在のフォルダをプロジェクトに登録します。既存のプロジェクトを使うときは`agboard project bind "My project"`を実行します。詳しくは[エージェントとの連携](https://fooqoo.github.io/agent-board/ja/guide/delegate/agents#set-up-your-agents)を参照してください。
 
 ## 使い始める
 
@@ -88,7 +101,7 @@ agboard serve
 
 [http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開き、プロジェクトを選んでタスクを追加します。エージェントのためにサーバーを動かし続ける必要はありません。あなたを待つコマンドとエージェントのHookが裏で起動し、30分使われないと自分で止まります。こうして起動したサーバーは、ボードのタブが開いていなければプロジェクトのボードをブラウザーで開きます。`agboard open`でいつでも開けます。`agboard progress`とHookはカレントフォルダに最も近い登録済みプロジェクトを使います。別プロジェクトを対象にする場合は`--project NAME`で指定します。
 
-スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[モバイルモニターのガイド](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor)で説明しています。
+スマホから進捗の確認や質問への回答をするには、**設定** → **モバイル接続**を開き、ngrokのauthtokenで接続します。スマホでは、ボードがコンピューターに表示する4桁の合言葉（接続を開始するたびに変わります）を入力します。ボード全体はあなたのコンピューターに残ります。環境変数`NGROK_AUTHTOKEN`を設定して`agboard serve --monitor ngrok`で起動することもでき、その場合は合言葉が表示されます。4桁の合言葉はアカウント認証より弱いため、URLは他の人に教えないでください。制限は[モバイルモニターのガイド](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor)で説明しています。
 
 ## 更新する
 
@@ -112,7 +125,7 @@ Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱�
 ## ドキュメント
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
-- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/operations/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
+- [モバイルモニター](https://fooqoo.github.io/agent-board/ja/guide/watch/mobile-monitor) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
 - [リリース](https://github.com/FooQoo/agent-board/releases) — 公開した各版の変更点。
 - [Agent Boardプラグイン（英語）](plugins/agent-board/README.md) — `setup`がClaude CodeとCodexに導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

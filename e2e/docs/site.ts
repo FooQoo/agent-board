@@ -12,17 +12,17 @@ export const guideFiles = [
   'index',
   'getting-started',
   'quickstart',
-  'concepts',
+  'work-model',
   'feature-stages',
-  'use/board',
-  'use/decisions',
-  'use/epics',
-  'use/editing',
-  'use/docs',
-  'automation/agents',
-  'automation/cli',
-  'automation/file-format',
-  'operations/mobile-monitor',
+  'delegate/agents',
+  'delegate/decisions',
+  'watch/board',
+  'watch/mobile-monitor',
+  'watch/epics',
+  'watch/editing',
+  'watch/docs',
+  'reference/cli',
+  'reference/file-format',
   'operations/data',
   'operations/troubleshooting',
 ] as const;
@@ -76,19 +76,19 @@ export const allPages: { lang: Lang; file: string; path: string }[] = (['en', 'j
 ]);
 
 // Pages that must render a Mermaid diagram.
-export const mermaidFiles: PageFile[] = ['index', 'use/decisions', 'automation/agents'];
+export const mermaidFiles: PageFile[] = ['index', 'delegate/decisions', 'delegate/agents'];
 
 // The eight guide screenshots covered by the page-level language checks (sixteen files with the Japanese set)
 // and the guide page that shows each one.
 export const guideScreenshots: Record<string, GuideFile> = {
-  'card-detail': 'use/board',
-  archive: 'use/board',
-  settings: 'use/board',
-  'board-dark': 'use/board',
-  question: 'use/decisions',
-  editor: 'use/editing',
-  'task-request': 'use/editing',
-  docs: 'use/docs',
+  'card-detail': 'watch/board',
+  archive: 'watch/board',
+  settings: 'watch/board',
+  'board-dark': 'watch/board',
+  question: 'delegate/decisions',
+  editor: 'watch/editing',
+  'task-request': 'watch/editing',
+  docs: 'watch/docs',
 };
 
 export function screenshotFile(name: string, lang: Lang): string {

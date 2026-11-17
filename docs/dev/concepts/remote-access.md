@@ -1,6 +1,6 @@
 # The mobile monitor
 
-By default the board is reachable only from the same machine. A phone, or a browser on another computer, reaches the board app itself through an ngrok tunnel, behind a passcode session. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [mobile monitor guide](../../guide/operations/mobile-monitor.md); the routes are in [Entrance routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
+By default the board is reachable only from the same machine. A phone, or a browser on another computer, reaches the board app itself through an ngrok tunnel, behind a passcode session. The tunnel lives inside the `serve` process and is controlled from the board's **Settings** or from `agboard serve --monitor ngrok`. Setup steps for users are in the [mobile monitor guide](../../guide/watch/mobile-monitor.md); the routes are in [Entrance routes](../reference/remote-routes.md); the protections are summarized in the [Security model](./security.md#the-ngrok-entrance).
 
 ## How it is put together
 

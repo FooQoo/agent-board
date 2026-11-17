@@ -6,9 +6,9 @@
 
 [![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
 
-**People and AI agents, working on one board.**
+**Delegate big work. Stop babysitting it.**
 
-See what your agent is doing and what it is waiting on. Tasks, questions, and acceptance conditions share one board, and you can answer from your PC or your phone.
+Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts after one approval, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
 
 ```sh
 brew install fooqoo/tap/agboard
@@ -26,25 +26,38 @@ brew install fooqoo/tap/agboard
 
 ## What is Agent Board?
 
-Hand off long work to an agent, and its progress and questions get buried in the terminal. Agent Board puts them on one shared, history-backed board. The agent asks, you answer on the task from your PC or phone, and the agent resumes. When every acceptance condition is met, the task moves to Done on its own.
+You can hand big work to an AI agent, but it rarely finishes unless someone keeps watching: turning the request into a plan, noticing when it is stuck, catching a question buried in the log, explaining the work again in the next session, and checking at the end that it is really done.
+
+Agent Board is a **work harness** that sits on top of your agent, such as Claude Code or Codex. It does not run the agent. It holds the work as one model that both of you read and write: a plan (epics and tasks in order), acceptance conditions that say when each task is done, questions the agent must stop for, and a history of what happened and why. The model lives in plain files on your machine, with no account or hosted service.
 
 ```mermaid
 flowchart LR
-    A["AI agent"] -- "agboard CLI + hooks" --> D[("Local shared folder")]
-    U["User"] -- "Agent Board UI" --> D
-    D -- "local server" --> B["Browser"]
+    A["AI agent"] -- "agboard CLI + hooks" --> M[("Work model: plain files")]
+    U["You: board, phone, chat, CLI"] --> M
 ```
 
 To see it for yourself, [try the demo](https://fooqoo.github.io/agent-board/demo/) in your browser, with nothing to install. It walks you through the first-run guide on sample data, and reloading the page starts it over.
 
-## Features
+## How delegation works
 
-- **The board.** Todo, Doing, and Done, with Running and Pending states on top. Answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/use/board)
-- **Epics and progress.** Order tasks in an epic, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/use/epics)
-- **Check from your phone.** Away from your desk, check the status and answer questions from the mobile monitor. In public preview. [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor)
-- **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/use/docs)
+1. **Request.** Tell your agent what you want, in plain words.
+2. **Provisional plan.** The agent puts an epic and its tasks on the board, each with acceptance conditions, and asks the questions it cannot settle itself.
+3. **One start approval.** You answer, the agent revises the plan, and you approve the start once. Nothing starts before that.
+4. **Work in order.** The agent works through the tasks and stops for you only when your intent is unclear, your preference decides it, an action cannot be undone, or the work grows beyond what you asked.
+5. **Done on its own.** When the agent has verified every acceptance condition of a task and nothing is waiting on you, the task moves to Done by itself.
 
-Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter. No account or hosted service is needed.
+You take part in two ways. When the agent stops to ask, you answer wherever is easiest, and the answer is recorded once (human in the loop). While it works, you can watch, move a card back, check a condition, or rewrite a plan without stopping it, and the agent follows the change (human on the loop). See [The work model](https://fooqoo.github.io/agent-board/guide/work-model) and the [Quickstart](https://fooqoo.github.io/agent-board/guide/quickstart).
+
+## Windows on the work
+
+The board is one window onto the work, not the product itself.
+
+- **The board.** Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/watch/board)
+- **Epics and progress.** An epic holds the plan and the order of its tasks, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/watch/epics)
+- **Check from your phone.** Away from your desk, watch the work and answer the agent from the mobile monitor. In public preview. [Mobile monitor](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor)
+- **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/watch/docs)
+
+You can also answer in the chat with your agent, and the `agboard` command is what the agent and your scripts use. Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter.
 
 See the [usage guide](https://fooqoo.github.io/agent-board/guide/) for editing, attachments, archiving, and settings.
 
@@ -78,7 +91,7 @@ cd my-project
 agboard project create "My project"
 ```
 
-`setup` creates the data folder and asks which agents you use (Codex, Claude Code, or both). It shows the plan, and after you answer `y` it installs the Agent Board plugin (the Skill and the Hook) with each agent's own plugin command, lets the agents use the shared folder, and, for Codex, trusts the plugin's hooks. It works in any folder and needs no project. `project create` binds the current folder to a project; for an existing project, run `agboard project bind "My project"`. See [Working with agents](https://fooqoo.github.io/agent-board/guide/automation/agents#set-up-your-agents).
+`setup` creates the data folder and asks which agents you use (Codex, Claude Code, or both). It shows the plan, and after you answer `y` it installs the Agent Board plugin (the Skill and the Hook) with each agent's own plugin command, lets the agents use the shared folder, and, for Codex, trusts the plugin's hooks. It works in any folder and needs no project. `project create` binds the current folder to a project; for an existing project, run `agboard project bind "My project"`. See [Working with agents](https://fooqoo.github.io/agent-board/guide/delegate/agents#set-up-your-agents).
 
 ## Start
 
@@ -88,7 +101,7 @@ agboard serve
 
 Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/), select your project, and add a task. Agents do not need you to keep it running: a command that waits for you, and the agent hook, start the server in the background, and it stops by itself after 30 minutes without use. A server started this way opens the project's board in your browser unless a board tab is already open, and `agboard open` opens it at any time. Most board commands use `--project NAME`; `agboard progress` and hooks resolve the project from the current folder unless explicitly overridden.
 
-To check progress and answer questions from your phone, open **Settings** → **Mobile connection** and connect with your ngrok authtoken. The phone has to enter a 4-digit passcode that the board shows on your computer and that changes each time the connection starts; the full board stays on your computer. You can also start it with `NGROK_AUTHTOKEN` set and `agboard serve --monitor ngrok`, which prints the passcode. A 4-digit passcode is weaker than an account sign-in, so keep the address private; the [mobile monitor guide](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor) explains the limits.
+To check progress and answer questions from your phone, open **Settings** → **Mobile connection** and connect with your ngrok authtoken. The phone has to enter a 4-digit passcode that the board shows on your computer and that changes each time the connection starts; the full board stays on your computer. You can also start it with `NGROK_AUTHTOKEN` set and `agboard serve --monitor ngrok`, which prints the passcode. A 4-digit passcode is weaker than an account sign-in, so keep the address private; the [mobile monitor guide](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor) explains the limits.
 
 ## Update
 
@@ -114,7 +127,7 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 ## Documentation
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
-- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
+- [Mobile monitor](https://fooqoo.github.io/agent-board/guide/watch/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
 - [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
 - [The Agent Board plugin](plugins/agent-board/README.md) — what `setup` installs for Claude Code and Codex, and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.

@@ -37,7 +37,7 @@ Started the Agent Board server at http://127.0.0.1:7420/ in the background. It s
 
 ### ボードを開く {#opening-the-board}
 
-自動のサーバーは、起動のきっかけになったプロジェクトのボードを一度だけ開きます。利用者から見た決まりは[CLIリファレンス](../../guide/automation/cli.md#open-the-board-in-the-browser)にあります。
+自動のサーバーは、起動のきっかけになったプロジェクトのボードを一度だけ開きます。利用者から見た決まりは[CLIリファレンス](../../guide/reference/cli.md#open-the-board-in-the-browser)にあります。
 
 - サーバーを起動するコマンドは、隠しオプション`serve --auto --open-board=<projectId>`でプロジェクトIDを渡します。待つコマンドは待っているプロジェクト、`qa ask`と`qa wait`は依頼のプロジェクト、Hookは出力した進行表のプロジェクトを渡します。`agboard open`は自分でページを開くので、何も渡しません。
 - サーバーの準備ができて`autostart.lock`を外した後、スレッドが3秒待ちます（試験では`AGBOARD_OPEN_GRACE_MS`で変えられ、上限は60,000ミリ秒）。起動してからボードのページが一度もつながっていなければ、`http://127.0.0.1:<port>/?project=<projectId>`を開きます。つながってから閉じたタブも、つながり直すかもしれないので数に入れます。
@@ -87,9 +87,9 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 - `web/`はVite・TypeScript・Reactのアプリです。nuqsが選択対象のプロジェクトをURLで管理し（`useQueryState('project', parseAsString)`）、`useBoard`がプロジェクトごとの取得・購読・読み込みを担い、一つの`useReducer`が適用中のプロジェクト・切り替え待ち・タスクの選択・ダイアログを連動させます。部品内の入力は`useState`です。ほかの状態管理やフォームのライブラリは足しません。
 - 初回のプロジェクト選択はブラウザ履歴を置き換え、メニューからの選択は履歴に追加します。戻る・進むはnuqsのadapterに従います。History APIを直接使ったり、独自に`popstate`を処理したりはしません。
-- 一つのアプリが二つの表示を受け持ちます。`useNarrowViewport`（`web/src/shared/lib/viewport/useNarrowViewport.ts`）が`matchMedia('(max-width: 767px)')`に従うので、幅を変えるとその場で画面が切り替わります。768px未満では、`App`は`BoardWorkspace`の代わりにスマホ幅の画面（`web/src/app/mobile/MobileBoard.tsx`）を描きます。この画面は必要になったときに読み込むので、ボードの初回読み込みは変わりません。768px以上ではPC向けのボードを描きます。初回の案内はどちらの表示でも動きます。詳しくは[初回の案内](#初回の案内)を参照してください。利用者から見た画面は[ボード](../../guide/use/board.md#narrow-windows-and-phones)を参照してください。
+- 一つのアプリが二つの表示を受け持ちます。`useNarrowViewport`（`web/src/shared/lib/viewport/useNarrowViewport.ts`）が`matchMedia('(max-width: 767px)')`に従うので、幅を変えるとその場で画面が切り替わります。768px未満では、`App`は`BoardWorkspace`の代わりにスマホ幅の画面（`web/src/app/mobile/MobileBoard.tsx`）を描きます。この画面は必要になったときに読み込むので、ボードの初回読み込みは変わりません。768px以上ではPC向けのボードを描きます。初回の案内はどちらの表示でも動きます。詳しくは[初回の案内](#初回の案内)を参照してください。利用者から見た画面は[ボード](../../guide/watch/board.md#narrow-windows-and-phones)を参照してください。
 - スマホ幅の画面（`web/src/pages/monitor/MonitorProject.tsx`の`MonitorScreen`）は、アプリが依存先を渡します。渡すのは、添付の読み取り先と受入条件の書き込み（`MonitorReadResolvers`）、言語とテーマの保存先（`PreferencesEndpoint`）、質問の読み取りと回答の書き込み、ヘッダーのプロジェクト切り替えです。ボードのアプリはボード自身のルートと、ページの資格情報（トークン、ngrokの入口ではsessionのCSRFトークン）を渡します（`web/src/app/mobile/boardEnvironment.ts`）。2つ目のアプリはなく、旧モニター専用の入口とビルドは廃止しました。
-- スマホ幅の画面は、一度に一つのレーンを表示します。`LaneTabs`と`MonitorLanes`は表示中のレーンを共有するので、タブのタップとカルーセルのスワイプは食い違いません。タッチを受けるのは表示中のレーンだけです（残る二つは`inert`）。カードがスライドするのは、長押しで選ばれた後だけです（`SwipeableCard`）。ほかのカードの横方向の動きはカルーセルのものになります。カード自身は何も書き込みません。レーンのボタンは移動のダイアログ、アーカイブのボタンはアーカイブの確認、完了レーンの**まとめてアーカイブ**は一括の確認を開き、書き込みはユーザーが確認した後にだけ画面が依頼します。書き込みが使えるときは、画面がボードのルート経由で送り、`useLaneOverlay`が結果を次の読み取りまで画面に残します。使えないとき（デモやサンプルデータ）は、スワイプしても何も尋ねず、何も変えません。ユーザーから見た画面は[モバイルモニター](../../guide/operations/mobile-monitor.md#レーンを切り替える)を参照してください。
+- スマホ幅の画面は、一度に一つのレーンを表示します。`LaneTabs`と`MonitorLanes`は表示中のレーンを共有するので、タブのタップとカルーセルのスワイプは食い違いません。タッチを受けるのは表示中のレーンだけです（残る二つは`inert`）。カードがスライドするのは、長押しで選ばれた後だけです（`SwipeableCard`）。ほかのカードの横方向の動きはカルーセルのものになります。カード自身は何も書き込みません。レーンのボタンは移動のダイアログ、アーカイブのボタンはアーカイブの確認、完了レーンの**まとめてアーカイブ**は一括の確認を開き、書き込みはユーザーが確認した後にだけ画面が依頼します。書き込みが使えるときは、画面がボードのルート経由で送り、`useLaneOverlay`が結果を次の読み取りまで画面に残します。使えないとき（デモやサンプルデータ）は、スワイプしても何も尋ねず、何も変えません。ユーザーから見た画面は[モバイルモニター](../../guide/watch/mobile-monitor.md#レーンを切り替える)を参照してください。
 - `watchStableHeight`（`web/src/shared/viewport/stableHeight.ts`。`web/src/app/entry/board.tsx`で開始）は、ソフトウェアキーボードが開く前のページの高さを、ルートの`--stable-vh`に保ちます。入力欄にフォーカスがある間のビューポートの縮みはキーボードとみなして無視し、それ以外の変化（回転、ウィンドウのサイズ変更、ブラウザのツールバー）には追従します。CSSは`svh`を代替にして`--stable-vh`を使うので、ボードがキーボードの上の細い領域に押しつぶされません。保持した高さがビューポートより高い間は、ルートに`data-keyboard`が付き、CSSが中央のダイアログを上へ寄せ、スマホのボトムシートの上端を画面内に残すので、入力中の欄がキーボードの上に見えます。
 - 幅の切り替えの上には、一つのコントローラー（`useAppController`）が残ります。適用中のプロジェクト、データ層が持つSummary、ストリーム、送信前の回答を持つ一つの`AnswerBook`はこのコントローラーのもので、二つの画面が同じものを読みます。どちらかの画面で選んだプロジェクトはもう一方でもそのプロジェクトで、送信前に保持した回答は幅を変えても残り、同じleaseでプロジェクトの切り替えも止め続けます。ドロワー、回答シート、スクロール位置は画面ごとのもので、切り替えるとやり直しになります。`AppDialogs`のダイアログは残るので、ウィンドウを狭めたときに開いていたフォームは失われません。
 - `pnpm --dir web build`は、`index.html`、入口のスクリプトとスタイルシート`assets/app-[hash].js`・`assets/app-[hash].css`、動的な分割チャンク`assets/chunk-[name]-[hash].js`としてのエディターとMermaid、さらに2つ目のViteビルドによるDocsサンドボックスのスクリプトを出力します。ボードのビルドは、チャンクごとのimport・`web/src/`のモジュール・パッケージを記した`chunk-graph.json`も書き出します。最後の手順で、すべてのスクリプトとスタイルシートの横に`.gz`を書き出します。
@@ -104,7 +104,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 
 **入力されたテキストの表示。** テキストはReactの通常のエスケープで表示し、`dangerouslySetInnerHTML`は使いません。MarkdownはReact要素にし（react-markdown・remark-gfm、`rehype-raw`は使わない）、生のHTMLは文字として表示します。有効なリンクは`http`と`https`だけで、新しいタブで開きます。タスクやエピックに添付された画像（`assets/<id>.<ext>`、`attachment:<id>`）は画像APIに解決し、外部の画像は`http`/`https`からだけ`referrerpolicy="no-referrer"`で読み込み、失敗すれば「No image」にします。Mermaidは`securityLevel: 'strict'`で描画し、挿入するのはそれが生成したSVGだけです。
 
-**下から出るシートのドラッグ。** シート上端のハンドルをドラッグしても、Reactのstateは更新しません。`useDrawerDrag`（`web/src/shared/ui/use-drawer-drag.ts`）がポインターと引き下げ量をrefに持ち、ドラッグの開始時にシートの高さを一度だけ測り、引き下げ量を1アニメーションフレームにつき最大1回、シートの`--drawer-drag-y`とバックドロップの`--drawer-swipe-progress`に書き込みます。スタイルシートがこれらを`translate`と`opacity`に変えます。シートの高さの4分の1を超える引き下げか、24px以上を0.5px/msより速く動かすフリックで閉じます。それより短い、またはキャンセルされたドラッグは、シートが開いている間だけ有効なtransitionで元の位置に戻すので、transitionとkeyframeが同時に`translate`を動かすことはありません。閉じたシートは退出のkeyframeのために引き下げ量を保ち、開くシートは描画の前に以前の引き下げ量を捨てます。動作は[モバイルモニター](../../guide/operations/mobile-monitor.md)を参照してください。
+**下から出るシートのドラッグ。** シート上端のハンドルをドラッグしても、Reactのstateは更新しません。`useDrawerDrag`（`web/src/shared/ui/use-drawer-drag.ts`）がポインターと引き下げ量をrefに持ち、ドラッグの開始時にシートの高さを一度だけ測り、引き下げ量を1アニメーションフレームにつき最大1回、シートの`--drawer-drag-y`とバックドロップの`--drawer-swipe-progress`に書き込みます。スタイルシートがこれらを`translate`と`opacity`に変えます。シートの高さの4分の1を超える引き下げか、24px以上を0.5px/msより速く動かすフリックで閉じます。それより短い、またはキャンセルされたドラッグは、シートが開いている間だけ有効なtransitionで元の位置に戻すので、transitionとkeyframeが同時に`translate`を動かすことはありません。閉じたシートは退出のkeyframeのために引き下げ量を保ち、開くシートは描画の前に以前の引き下げ量を捨てます。動作は[モバイルモニター](../../guide/watch/mobile-monitor.md)を参照してください。
 
 **エディター。** `RichMarkdownEditor`（Milkdown Crepe）は`MarkdownEditor`と同じ契約を保ちます。`value`・`onChange`・`onCursorChange`・`disabled`と、`goTo`・`focus`・`insert`を持つrefです。遅延読み込みで、その間は`MarkdownView`を表示します。有効にするのはCodeMirror・ListItem・ImageBlock・Cursor・Placeholder・LinkTooltip・Toolbar・Tableだけで、Crepeのテーマは使いません。初期値はマウント時に一度だけ渡し、`onChange`は利用者の編集でだけ呼びます。編集していない文書は元の文字列のまま保存するので、変えていないMarkdownの書式は崩れません。アップロードは保留中の添付になり、`assets/<id>.<ext>`で参照します。Mermaidのプレビューと閲覧は`renderMermaid`を共有します。`web/src/shared/rich-editor/`の中では、`RichMarkdownEditor.impl.tsx`は外部の値でセッションを作り直す境界だけを持ち、`useRichEditorSession.ts`がセッション（元の文章・編集済みかどうか・初期化前のコマンド・見出し位置・後始末）、`createEditor.ts`が機能の組み合わせ、`editorCommands.ts`が`goTo`・`focus`・`insert`・`markdown`のハンドル、`MermaidPreviews.ts`が図のプレビューを受け持ちます。図のエラー文は画面の翻訳を受け取って作ります。ハンドルのコマンドが動くのは、Crepeがエディターを作り終えた後の最初のアニメーションフレームからです。それより前のコマンドはそこまで待ちます。そのフレームでCrepeのリスト項目が描画時の選択位置を戻すため、先に実行すると`goTo`や`insert`の結果が打ち消されるからです。
 
@@ -156,10 +156,10 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 **保存と回答**
 
 - 作成・移動・回答を楽観的に反映することはありません。画面は成功を待ち、失敗したら入力と選択を保って再試行できるようにします。
-- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示します（既定では閉じていて、件数は常に見出しに出ます）。各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../qa/{questionId}`で読みます。画面については[判断依頼](../../guide/use/decisions)を参照してください。
+- Summaryの`questions[]`は、プロジェクトの未回答の質問の一覧です。**未回答の質問**の帯（`QuestionBand`）がこれを表示します（既定では閉じていて、件数は常に見出しに出ます）。各タスクは`openQuestionIds`を持ちます。質問の全文は、そのステップを表示するときに`GET .../qa/{questionId}`で読みます。画面については[判断依頼](../../guide/delegate/decisions)を参照してください。
 - 答えは`AnswerBook`（`web/src/features/tasks/answer/model/answerBook.ts`）が、プロジェクトと質問ごとにメモリ上で保持します。そのためページを再読み込みすると消えます。PCのページとモニターはそれぞれ一つのbookを持ち、`useSyncExternalStore`で読みます。**まとめて送る**、または単独の回答の流れ（カードや帯の項目から開いたもの）の**送る**までは何も送りません。bookはその回答の流れで送れる答えを、`{answers:[{questionId, choiceId?, text?}]}`として一度の`POST .../qa/answers`で送ります。同時に二度は送らず、古いスナップショットが表示されても送信成功後は再送しません。成功すると、次のSummaryを待たずに、送った質問を表示しなくなります。
 - 送信は全件か無しかです。`questionAnswered`または`questionWithdrawn`を挙げた409では何も保存されません。bookはそれらの質問を閉じたものとして印を付け、答えは読めるように残し、次の送信から外します。Summaryから消えた質問は、状態を読むまで閉じたものとして扱います。再送時に重複かどうかは判定しません。最初の回答が確定するので、成功の後の再送は`question_answered`で失敗します。画像のアップロードも重複を判別しないので、応答を失った後の再送で同じ画像が二つになることがあります。
-- 回答の流れには単独とまとめての2種類があり、`AnswerStart`（`web/src/features/tasks/answer/answerStart.ts`）がどちらかを示します。単独の流れは、尋ねた質問だけを持ち、確認のステップがありません。`answerStart.question(id)`が帯の項目、`answerStart.task(id)`がカードです。まとめての流れは、開いているすべての質問を持ち、確認のステップと**まとめて送る**で終わります。`answerStart.resume()`が**まとめて答える**と**続きから答える**、`answerStart.review()`が**確認して送る**です。呼び出し側はこの生成関数で開始を作ります。`runPlan(start)`は、その流れが持つ質問、確認のステップの有無、開く位置を1か所で決めます。新しい種類の開始を足すと、`runPlan`が扱うまでコンパイルが通りません。画面での見え方は[判断依頼](../../guide/use/decisions.md#ブラウザで回答する)を参照してください。
+- 回答の流れには単独とまとめての2種類があり、`AnswerStart`（`web/src/features/tasks/answer/answerStart.ts`）がどちらかを示します。単独の流れは、尋ねた質問だけを持ち、確認のステップがありません。`answerStart.question(id)`が帯の項目、`answerStart.task(id)`がカードです。まとめての流れは、開いているすべての質問を持ち、確認のステップと**まとめて送る**で終わります。`answerStart.resume()`が**まとめて答える**と**続きから答える**、`answerStart.review()`が**確認して送る**です。呼び出し側はこの生成関数で開始を作ります。`runPlan(start)`は、その流れが持つ質問、確認のステップの有無、開く位置を1か所で決めます。新しい種類の開始を足すと、`runPlan`が扱うまでコンパイルが通りません。画面での見え方は[判断依頼](../../guide/delegate/decisions.md#ブラウザで回答する)を参照してください。
 - `useAnswerFlow`は、PCのダイアログ（`DecisionAnswerDialog`）とモニターのシート（`DecisionAnswerSheet`）に共通する、質問を順に回る一回分の流れを担います。開いたときに決めた順番、表示中のステップ、確認、送信です。後から届いた質問は最後に加え、閉じた質問は印を付けてその場に残します。`DecisionAnswerPanel`は質問と回答の欄を描きます。答えの送信中も、移動などのほかの操作はできます。
 
 **下書きと編集**
@@ -192,7 +192,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 
 ### ドキュメントのダイアログ
 
-ダイアログのデータは`DocsDialogContainer`（`web/src/features/docs/ui/`）が持ちます。画面と状態は[利用者ガイド](../../guide/use/docs.md)で説明しています。
+ダイアログのデータは`DocsDialogContainer`（`web/src/features/docs/ui/`）が持ちます。画面と状態は[利用者ガイド](../../guide/watch/docs.md)で説明しています。
 
 - ダイアログはファイルを表示するだけです。`useDocsTree`は、ダイアログを開いたときにツリーを取得します。`useDocument`はファイルを選ぶたびにそのファイルを取得し、選択の間で何も保持しません。読み込みごとにIDを付けて表示部品のキーにします。Markdownは`disabled`の`RichMarkdownEditor`、`.mdx`は`MdxFrame`（サンドボックスのページ）、画像は`FileViewer`で表示します。フロントマターは`splitFrontmatter`（`shared/markdown/frontmatter.ts`）で分け、本文の上に表示します。
 - **エディターで開く**は`docs/open?path=`を送り、サーバーがそのファイルをコンピュータのアプリで開きます。

@@ -44,6 +44,8 @@ const poster = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.jpg
 const href = (link: string) => (link.startsWith('/') ? withBase(link) : link)
 const lines = (text: string) => text.split('\n')
 const laneTone = ['todo', 'doing', 'done']
+// The loop has four lanes: request and plan, approval, work, and done.
+const loopTone = ['todo', 'todo', 'doing', 'done']
 const featureTone: Record<string, string> = { board: 'doing', epic: 'todo', mobile: 'pending', docs: 'done' }
 
 // Copy a command and show the copied state briefly.
@@ -158,7 +160,7 @@ onMounted(() => {
         </header>
         <ol class="lp-loop">
           <li v-for="(lane, li) in c.loop.lanes" :key="lane.title" class="lp-loop__lane">
-            <p class="lp-loop__title" :class="`lp-dot--${laneTone[li]}`">{{ lane.title }}</p>
+            <p class="lp-loop__title" :class="`lp-dot--${loopTone[li]}`">{{ lane.title }}</p>
             <ol class="lp-loop__cards">
               <li
                 v-for="(step, si) in lane.steps as Step[]"
@@ -827,11 +829,8 @@ onMounted(() => {
 }
 @media (min-width: 960px) {
   .lp-loop {
-    grid-template-columns: 260px minmax(0, 1fr) 260px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: start;
-  }
-  .lp-loop__lane:nth-child(2) .lp-loop__cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

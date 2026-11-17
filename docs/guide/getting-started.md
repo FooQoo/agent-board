@@ -50,7 +50,7 @@ For renaming projects and registering other folders, see [Data and backups](./op
 agboard setup
 ```
 
-`setup` asks which agents you use, shows the plan, and after you answer `y` installs the Agent Board plugin (the Skill and the Hook) for Claude Code, Codex, or both. You run it once on your computer; it works in any folder. See [Set up your agents](./automation/agents#set-up-your-agents) for what it asks, what it changes, and what to do afterwards.
+`setup` asks which agents you use, shows the plan, and after you answer `y` installs the Agent Board plugin (the Skill and the Hook) for Claude Code, Codex, or both. You run it once on your computer; it works in any folder. See [Set up your agents](./delegate/agents#set-up-your-agents) for what it asks, what it changes, and what to do afterwards.
 
 ## Start the board
 
@@ -78,7 +78,7 @@ agboard --version
 agboard update
 ```
 
-`brew upgrade` replaces the command and the web UI inside it. It does not change the plugin in your agents. `agboard update` does that, for every agent that has the plugin. It shows what will change and asks for confirmation; `agboard update --yes` answers the question in advance. See [Update the plugin](./automation/agents#update-the-plugin).
+`brew upgrade` replaces the command and the web UI inside it. It does not change the plugin in your agents. `agboard update` does that, for every agent that has the plugin. It shows what will change and asks for confirmation; `agboard update --yes` answers the question in advance. See [Update the plugin](./delegate/agents#update-the-plugin).
 
 Stop and restart `agboard serve` after an upgrade to use the new command and UI. Open boards and monitors reload themselves once the server is back, after you finish any edit or answer in progress.
 
@@ -89,5 +89,5 @@ Hooks and the agent Skill run `agboard` from your `PATH`, so they use the instal
 ## Next
 
 - [Quickstart](./quickstart): take one task from creation to Done.
-- [Working with agents](./automation/agents): what `setup` asks, and how agents work on the board.
+- [Working with agents](./delegate/agents): what `setup` asks, and how agents work on the board.
 - [Feature stages](./feature-stages): which features are generally available and which are in public preview.

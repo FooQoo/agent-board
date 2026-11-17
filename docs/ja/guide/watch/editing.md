@@ -4,7 +4,7 @@ title: 編集と画像添付
 
 # 編集と画像添付
 
-タスクとエピックは、Markdownのエディターで書きます。タスクの完了条件は本文の下のパネルにあり、タスクには画像を添付できます。検証結果はタスクの本文や履歴に記録します。エージェントも、共有フォルダに保存された同じファイルを編集します。このページはエディターと画像を扱い、ファイルの形式は[Markdownファイルの形式](../automation/file-format)にあります。
+タスクとエピックは、Markdownのエディターで書きます。タスクの完了条件は本文の下のパネルにあり、タスクには画像を添付できます。検証結果はタスクの本文や履歴に記録します。エージェントも、共有フォルダに保存された同じファイルを編集します。このページはエディターと画像を扱い、ファイルの形式は[Markdownファイルの形式](../reference/file-format)にあります。
 
 ## エディターでタスクとエピックの詳細を書く
 
@@ -78,9 +78,9 @@ agboard --project "My project" workspace --json
 
 結果には、`folder`（プロジェクトの絶対パス）、`projectId`、`readme`、`tasks`、`epics`が含まれます。まずプロジェクトの`README.md`を読みます。ボードが書きかけのファイルを読まないよう、同じフォルダに一時ファイルを書いて、元のファイルへ名前を変更して置き換えます（rename）。メタデータや状態の変更にはCLIを使い、`task.json`・`epic.json`・`project.json`・ロックのファイルは編集せず、タスクやエピックのフォルダを手で削除しません。共有ファイルに個人の絶対パスを書かないでください。
 
-これらのファイルに必要な構造は、[Markdownファイルの形式](../automation/file-format)にあります。
+これらのファイルに必要な構造は、[Markdownファイルの形式](../reference/file-format)にあります。
 
 ## 次に読む
 
-- [Markdownファイルの形式](../automation/file-format): frontmatter、履歴、自動完了。
-- [CLIリファレンス](../automation/cli): すべてのコマンド。
+- [Markdownファイルの形式](../reference/file-format): frontmatter、履歴、自動完了。
+- [CLIリファレンス](../reference/cli): すべてのコマンド。

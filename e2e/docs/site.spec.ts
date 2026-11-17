@@ -84,7 +84,7 @@ for (const lang of langs) {
     const landing = page.locator('.landing');
     await expect(landing.locator('h1')).toHaveCount(1);
     await expect(landing.locator('h1')).toHaveText(
-      en ? /^People and AI agents,\s*working on one board\.$/ : /^人とAIが、\s*同じボードで仕事を進める。$/,
+      en ? /^Delegate big work\.\s*Stop babysitting it\.$/ : /^大きな仕事を任せて、\s*張り付くのはやめよう。$/,
     );
 
     // The install command is shown and copied as plain text.
@@ -99,10 +99,10 @@ for (const lang of langs) {
     await expect(start).toHaveAttribute('href', en ? '/agent-board/guide/getting-started' : '/agent-board/ja/guide/getting-started');
     await expect(hero.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', repoUrl);
 
-    // The loop has five steps across three lanes, and only the answer is the user's.
-    await expect(landing.locator('.lp-loop__lane')).toHaveCount(3);
+    // The loop has five steps across four lanes, and the request and the approval are the user's.
+    await expect(landing.locator('.lp-loop__lane')).toHaveCount(4);
     await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
-    await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(1);
+    await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(2);
 
     // Four features; only the mobile monitor and Docs carry the public preview badge.
     await expect(landing.locator('.lp-feature')).toHaveCount(4);
@@ -174,11 +174,11 @@ for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'h
   });
 }
 
-test('the sidebar lists the sixteen guide pages in four groups, in the same order in both languages', async ({ page }) => {
+test('the sidebar lists the sixteen guide pages in five groups, in the same order in both languages', async ({ page }) => {
   const hrefs: Record<Lang, string[]> = { en: [], ja: [] };
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'index'));
-    await expect(page.locator('.VPSidebar .VPSidebarItem.level-0')).toHaveCount(4);
+    await expect(page.locator('.VPSidebar .VPSidebarItem.level-0')).toHaveCount(5);
     const links = page.locator('.VPSidebar .VPSidebarItem.level-1 > .item a.link');
     await expect(links).toHaveCount(guideFiles.length);
     hrefs[lang] = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
@@ -262,9 +262,9 @@ test('board, epic, and mobile screenshots appear on the home and feature pages',
       [pagePath(lang, 'home'), 'mobile-question'],
       [pagePath(lang, 'home'), 'mobile'],
       [pagePath(lang, 'index'), 'board'],
-      [pagePath(lang, 'use/epics'), 'epic'],
-      [pagePath(lang, 'use/decisions'), 'mobile-question'],
-      [pagePath(lang, 'operations/mobile-monitor'), 'mobile'],
+      [pagePath(lang, 'watch/epics'), 'epic'],
+      [pagePath(lang, 'delegate/decisions'), 'mobile-question'],
+      [pagePath(lang, 'watch/mobile-monitor'), 'mobile'],
     ];
     for (const [url, name] of targets) {
       await page.goto(url);
@@ -296,10 +296,10 @@ for (const lang of langs) {
 
 // AC-7: local search
 const searchCases: { lang: Lang; term: string; hrefPart: string }[] = [
-  { lang: 'en', term: 'epic', hrefPart: '/agent-board/guide/use/epics' },
-  { lang: 'en', term: 'archive', hrefPart: '/agent-board/guide/use/board' },
-  { lang: 'ja', term: 'エピック', hrefPart: '/agent-board/ja/guide/use/epics' },
-  { lang: 'ja', term: 'アーカイブ', hrefPart: '/agent-board/ja/guide/use/board' },
+  { lang: 'en', term: 'epic', hrefPart: '/agent-board/guide/watch/epics' },
+  { lang: 'en', term: 'archive', hrefPart: '/agent-board/guide/watch/board' },
+  { lang: 'ja', term: 'エピック', hrefPart: '/agent-board/ja/guide/watch/epics' },
+  { lang: 'ja', term: 'アーカイブ', hrefPart: '/agent-board/ja/guide/watch/board' },
 ];
 for (const { lang, term, hrefPart } of searchCases) {
   test(`search (${lang}) finds "${term}"`, async ({ page }) => {
@@ -441,5 +441,5 @@ test('the removed usage and mobile-monitor pages return 404', async ({ request }
     expect(response.status(), url).toBe(404);
   }
   // The guide version of the mobile page is the replacement.
-  expect((await request.get('guide/operations/mobile-monitor')).status()).toBe(200);
+  expect((await request.get('guide/watch/mobile-monitor')).status()).toBe(200);
 });

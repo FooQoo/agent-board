@@ -1,6 +1,6 @@
 # モバイルモニター
 
-既定では、ボードに接続できるのは同じマシンからだけです。スマホやほかのコンピューターのブラウザは、ngrokのトンネルを通してボードのアプリそのものを、合言葉のsessionの背後で開きます。トンネルは`serve`プロセスの中にあり、ボードの**設定**か`agboard serve --monitor ngrok`で操作します。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/operations/mobile-monitor.md)、経路は[入口のルート](../reference/remote-routes.md)にあります。保護の概要は[セキュリティモデル](./security.md#ngrokの入口)にまとめています。
+既定では、ボードに接続できるのは同じマシンからだけです。スマホやほかのコンピューターのブラウザは、ngrokのトンネルを通してボードのアプリそのものを、合言葉のsessionの背後で開きます。トンネルは`serve`プロセスの中にあり、ボードの**設定**か`agboard serve --monitor ngrok`で操作します。利用者向けの設定手順は[モバイルモニターのガイド](../../guide/watch/mobile-monitor.md)、経路は[入口のルート](../reference/remote-routes.md)にあります。保護の概要は[セキュリティモデル](./security.md#ngrokの入口)にまとめています。
 
 ## 全体の構成
 

@@ -4,7 +4,7 @@ title: Markdown file format
 
 # Markdown file format
 
-Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Agents and people may edit them directly; the board follows the changes. This page describes what the files must contain. To find them, see [Edit the files directly](../use/editing#edit-the-files-directly).
+Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Agents and people may edit them directly; the board follows the changes. This page describes what the files must contain. To find them, see [Edit the files directly](../watch/editing#edit-the-files-directly).
 
 | File | Holds | Edit it? |
 | --- | --- | --- |
@@ -60,7 +60,7 @@ questions: [Q-12, Q-15]
 - Each value is a question ID such as `Q-12`, and a list must not repeat one. Leaving the key out, `null`, and an empty list all mean no questions.
 - `qa ask --task` and `qa link`/`qa unlink` change this list for you. You can also edit it like any other part of the file.
 - An AI-owned task in Todo or Doing shows Pending while any question it lists is open. Answered and withdrawn questions do not keep it waiting.
-- The questions themselves are stored in the project, not in the task; see [Decisions](../use/decisions).
+- The questions themselves are stored in the project, not in the task; see [Decisions](../delegate/decisions).
 
 ### History
 

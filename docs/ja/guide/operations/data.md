@@ -45,13 +45,13 @@ Agent Boardのデータは、すべて手元のマシンの一つのフォルダ
         request.json
 ```
 
-ファイルはプレーンなMarkdownとJSONです。各ファイルに必要な内容は[Markdownファイルの形式](../automation/file-format)に説明があります。`formatVersion`が1でないファイルは未対応で、アプリは問題として報告し、ファイルを変更しません。移行、旧形式へのフォールバック、旧データの削除・初期化は行いません。
+ファイルはプレーンなMarkdownとJSONです。各ファイルに必要な内容は[Markdownファイルの形式](../reference/file-format)に説明があります。`formatVersion`が1でないファイルは未対応で、アプリは問題として報告し、ファイルを変更しません。移行、旧形式へのフォールバック、旧データの削除・初期化は行いません。
 
 `.internal/`フォルダには、アプリ自身の設定が入ります。`preferences.json`には、**設定**で選んだ言語とカラーテーマを保存します。この設定は、このPCのすべてのブラウザとモバイルモニターに適用されます。ファイルはアプリが書き込むので、手で編集しないでください。`shared/`の外にあるため、プロジェクトのファイルには含まれません。
 
-各プロジェクトの`qa/`には、エージェントが出した質問と、その回答を、質問のまとまりごとに1フォルダで置きます。質問には`Q-12`のようなプロジェクト内のIDが付き、タスクは`TASK.md`の`questions`の一覧から質問を参照します。中身は`agboard qa ls`や`agboard qa show`で読み、`request.json`は手で編集しないでください。[判断依頼](../use/decisions)を参照してください。
+各プロジェクトの`qa/`には、エージェントが出した質問と、その回答を、質問のまとまりごとに1フォルダで置きます。質問には`Q-12`のようなプロジェクト内のIDが付き、タスクは`TASK.md`の`questions`の一覧から質問を参照します。中身は`agboard qa ls`や`agboard qa show`で読み、`request.json`は手で編集しないでください。[判断依頼](../delegate/decisions)を参照してください。
 
-各プロジェクトの`docs/`には、自分のMarkdown文書を置きます。ボードのヘッダーの**ドキュメント**から読んだり編集したりできます。フォルダは短い`README.md`とともにAgent Boardが作りますが、中のファイルはボードのデータとして扱いません。変更してもボードは変わりません。詳しくは[プロジェクトのドキュメント](../use/docs)を参照してください。
+各プロジェクトの`docs/`には、自分のMarkdown文書を置きます。ボードのヘッダーの**ドキュメント**から読んだり編集したりできます。フォルダは短い`README.md`とともにAgent Boardが作りますが、中のファイルはボードのデータとして扱いません。変更してもボードは変わりません。詳しくは[プロジェクトのドキュメント](../watch/docs)を参照してください。
 
 ## プロジェクトとフォルダ {#projects-and-folders}
 
@@ -81,7 +81,7 @@ agboard project bind "My project" --folder ./docs
 
 ## 共有フォルダをセットアップする
 
-`agboard setup`は、CodexとClaude Codeのためにデータフォルダを準備し、Agent Boardプラグインを導入します（[エージェントとの連携](../automation/agents#set-up-your-agents)を参照）。プロジェクトは不要です。データフォルダについては、次のことを行います。
+`agboard setup`は、CodexとClaude Codeのためにデータフォルダを準備し、Agent Boardプラグインを導入します（[エージェントとの連携](../delegate/agents#set-up-your-agents)を参照）。プロジェクトは不要です。データフォルダについては、次のことを行います。
 
 - データフォルダと、その中の`shared/`フォルダを作成します。
 - `$CODEX_HOME`または`~/.codex`にあるCodexの`config.toml`で、`sandbox_workspace_write.writable_roots`にデータフォルダを追加します。
@@ -125,5 +125,5 @@ setupはあなたが実行する手順です。通常の作業中にエージェ
 
 ## 次に読む
 
-- [エージェントとの連携](../automation/agents): エージェントをこのフォルダにつなぎます。
+- [エージェントとの連携](../delegate/agents): エージェントをこのフォルダにつなぎます。
 - [トラブルシューティング](./troubleshooting): プロジェクトやフォルダが見つからない。

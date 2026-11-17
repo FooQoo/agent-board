@@ -14,7 +14,7 @@ This feature is in public preview. Its behavior and specifications may change. S
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
-The **Unanswered questions** band sits above the lane tabs. It shows the number of open questions and starts closed; select its header to list them, pick one to answer it alone, or answer them in a row and send them together (see [Decisions](../use/decisions#answer-on-your-phone)).
+The **Unanswered questions** band sits above the lane tabs. It shows the number of open questions and starts closed; select its header to list them, pick one to answer it alone, or answer them in a row and send them together (see [Decisions](../delegate/decisions#answer-on-your-phone)).
 
 ![Mobile monitor showing the Doing lane with its tab bar, the collapsed Unanswered questions band, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
 
@@ -40,7 +40,7 @@ The Done lane has an **Archive all** button above its list. It opens **Archive c
 
 ### Read a task
 
-Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](../use/board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
+Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](./board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
 
 ![Mobile monitor with a task drawer open on the Conditions tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
 
@@ -91,7 +91,7 @@ While it connects, the dialog shows **Connecting to ngrok…** in place of the t
 
 The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
 
-To give someone the address and passcode while the connection is up, run `agboard --project "<name>" remote`; it prints both on this PC only. See [Give the phone address and passcode](../automation/cli#give-the-phone-address-and-passcode). Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
+To give someone the address and passcode while the connection is up, run `agboard --project "<name>" remote`; it prints both on this PC only. See [Give the phone address and passcode](../reference/cli#give-the-phone-address-and-passcode). Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
 
 If ngrok cannot be reached, the dialog says so and gives the reason. Check the token and the internet connection, then choose **Save and connect** again. The board on the PC keeps working.
 
@@ -147,7 +147,7 @@ export NGROK_AUTHTOKEN=<your authtoken>
 agboard serve --monitor ngrok
 ```
 
-The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../automation/cli).
+The command prints the phone address and the passcode with the local address, for example `Serving at http://127.0.0.1:7420/; mobile monitor at https://… with passcode 4821`, or in the `monitor` field with `--json`. The passcode changes each time the server starts. If the connection cannot start, `serve` stops with exit code 1. The other options are in the [CLI guide](../reference/cli).
 
 When the computer sleeps or the server stops, the monitor is unavailable until the server and the connection run again. A server that an agent's command started keeps the saved connection and does not stop by itself while the phone is connected; stop the connection on the PC to let it stop.
 
@@ -157,5 +157,5 @@ On a tablet or phone, the page keeps the height it had before the software keybo
 
 ## Next
 
-- [Decisions](../use/decisions): answer a question from your phone.
-- [Troubleshooting](./troubleshooting): the page does not load or does not update.
+- [Decisions](../delegate/decisions): answer a question from your phone.
+- [Troubleshooting](../operations/troubleshooting): the page does not load or does not update.
