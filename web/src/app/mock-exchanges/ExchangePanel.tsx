@@ -102,7 +102,15 @@ function useAnswerState() {
 }
 
 /** An opened question: the existing answer UI, a choice and a note. */
-function QuestionDetail({ exchange, onBack }: { exchange: MockExchange; onBack: () => void }) {
+function QuestionDetail({
+  exchange,
+  onBack,
+  onClose,
+}: {
+  exchange: MockExchange;
+  onBack: () => void;
+  onClose: () => void;
+}) {
   const m = useMockText();
   const answer = useAnswerState();
   const answered = exchange.turn === null;
@@ -131,6 +139,9 @@ function QuestionDetail({ exchange, onBack }: { exchange: MockExchange; onBack: 
             onClear={answer.onClear}
           />
           <div className="xdetail__bar">
+            <Button type="button" variant="outline" onClick={onClose}>
+              {m.later}
+            </Button>
             <Button type="button" disabled={!answer.view.sendable}>
               {m.answerSend}
             </Button>
@@ -177,6 +188,7 @@ export function ExchangePanelBody({
   openId,
   onOpenChange,
   onOpenPlan,
+  onClose,
 }: {
   exchanges: MockExchange[];
   tab: ExchangeTab;
@@ -184,11 +196,13 @@ export function ExchangePanelBody({
   openId: string | null;
   onOpenChange: (id: string | null) => void;
   onOpenPlan: (exchange: MockExchange) => void;
+  /** Closes the whole panel; "Later" in an opened question uses it. */
+  onClose: () => void;
 }) {
   const m = useMockText();
   const opened = exchanges.find((exchange) => exchange.id === openId);
   if (opened?.type === 'question')
-    return <QuestionDetail exchange={opened} onBack={() => onOpenChange(null)} />;
+    return <QuestionDetail exchange={opened} onBack={() => onOpenChange(null)} onClose={onClose} />;
   if (opened?.type === 'request')
     return <RequestDetail exchange={opened} onBack={() => onOpenChange(null)} />;
   const tabs: { id: ExchangeTab; label: string }[] = [
@@ -260,6 +274,7 @@ export function ExchangePanel({
         openId={openId}
         onOpenChange={setOpenId}
         onOpenPlan={onOpenPlan}
+        onClose={onClose}
       />
     </Surface>
   );

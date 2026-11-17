@@ -1,4 +1,4 @@
-import { ArrowRightLeftIcon, ChevronRightIcon, CircleCheckIcon } from 'lucide-react';
+import { ArrowRightLeftIcon, ChevronRightIcon, CircleCheckIcon, SparklesIcon } from 'lucide-react';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import '../../features/tasks/answer/question-band.css';
@@ -11,10 +11,13 @@ export function ExchangeBand({
   exchanges,
   variant,
   onOpen,
+  onAsk,
 }: {
   exchanges: MockExchange[];
   variant: 'board' | 'phone';
   onOpen: () => void;
+  /** Phone only: the board header carries "Ask AI" on the desktop, so the phone band does. */
+  onAsk?: () => void;
 }) {
   const m = useMockText();
   const count = countExchanges(exchanges);
@@ -52,10 +55,24 @@ export function ExchangeBand({
             </Badge>
           </li>
         </ul>
-        <Button type="button" size="s" className="xband__open" onClick={onOpen}>
-          {m.bandOpen}
-          <ChevronRightIcon aria-hidden="true" />
-        </Button>
+        <div className="xband__actions">
+          {variant === 'phone' && onAsk && (
+            <Button type="button" size="s" className="xband__ask" onClick={onAsk}>
+              <SparklesIcon aria-hidden="true" />
+              {m.askAi}
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="s"
+            variant={variant === 'phone' && onAsk ? 'outline' : 'default'}
+            className="xband__open"
+            onClick={onOpen}
+          >
+            {m.bandOpen}
+            <ChevronRightIcon aria-hidden="true" />
+          </Button>
+        </div>
       </header>
     </section>
   );

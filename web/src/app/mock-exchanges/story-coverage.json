@@ -75,7 +75,7 @@
             },
             {
               "id": "mocks-exchanges-phone--band-and-lanes",
-              "states": ["phone band"],
+              "states": ["phone band", "ask AI button"],
               "interaction": true
             }
           ]
@@ -96,6 +96,16 @@
             {
               "id": "mocks-exchanges-desktop--ask-ai-dialog-filled",
               "states": ["text and images"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-exchanges-phone--ask-ai-sheet",
+              "states": ["sheet empty"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-exchanges-phone--ask-ai-sheet-filled",
+              "states": ["sheet text and images"],
               "interaction": false
             }
           ]

@@ -52,12 +52,27 @@
   font-weight: 400;
 }
 
-.xband__open {
+.xband__actions {
+  display: flex;
+  gap: 8px;
   margin-left: auto;
 }
 
-.xband[data-variant="phone"] .xband__open {
+.xband__ask svg,
+.xband__open svg {
+  flex: none;
+}
+
+.xband[data-variant="phone"] .xband__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
   margin-left: 0;
+}
+
+.xband[data-variant="phone"] .xband__actions > * {
+  min-width: 0;
+  justify-content: center;
 }
 
 /* ---- Ask AI dialog ---- */
@@ -353,6 +368,7 @@
 .xdetail__bar {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 [data-slot="dialog-content"].xmodal:focus,
@@ -588,6 +604,18 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.xask__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.xask__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--r-danger);
 }
 
 .xsheet .xreview__buttons {

@@ -150,6 +150,7 @@ export function ExchangesScreen({
       exchanges={fixture.exchanges}
       variant={variant === 'phone' ? 'phone' : 'board'}
       onOpen={() => setOverlay({ kind: 'panel' })}
+      onAsk={() => setOverlay({ kind: 'ask' })}
     />
   );
   const review = overlay.kind === 'review' ? planOf(fixture, overlay.planId) : null;
@@ -203,6 +204,7 @@ export function ExchangesScreen({
       )}
       {overlay.kind === 'ask' && (
         <AskAiDialog
+          kind={kind}
           onClose={close}
           initialText={overlay.draft ? fixtureText(ja).askDraft : overlay.text}
           initialImages={overlay.images}

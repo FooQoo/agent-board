@@ -1,9 +1,11 @@
 import { ImagePlusIcon, XIcon } from 'lucide-react';
 import { useId, useState } from 'react';
+import { Button } from '@/shared/ui/button';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
 import { DialogFrame } from '../../shared/ui/dialog-frame/DialogFrame';
 import './exchanges-mock.css';
+import { Surface } from './Surface';
 import { useMockText } from './text';
 
 /**
@@ -11,10 +13,13 @@ import { useMockText } from './text';
  * creation, because a request is linked to neither tasks nor epics.
  */
 export function AskAiDialog({
+  kind = 'dialog',
   onClose,
   initialText = '',
   initialImages = 0,
 }: {
+  /** A modal on the board, a bottom sheet on a phone. */
+  kind?: 'dialog' | 'sheet';
   onClose: () => void;
   initialText?: string;
   initialImages?: number;
@@ -23,18 +28,9 @@ export function AskAiDialog({
   const fieldId = useId();
   const [text, setText] = useState(initialText);
   const [images, setImages] = useState(initialImages);
-  return (
-    <DialogFrame
-      title={m.askTitle}
-      submitLabel={m.askSubmit}
-      onClose={onClose}
-      dirty={text.trim() !== ''}
-      validate={() => (text.trim() === '' ? m.askRequired : null)}
-      save={async () => {}}
-      footerNote={<p className="xask__note">{m.askNote}</p>}
-      scrollBody
-      className="xask"
-    >
+  const [error, setError] = useState('');
+  const fields = (
+    <>
       <div className="xask__field">
         <Label htmlFor={fieldId}>{m.askPrompt}</Label>
         <Textarea
@@ -64,6 +60,57 @@ export function AskAiDialog({
           {m.askAddImage}
         </button>
       </div>
+    </>
+  );
+  if (kind === 'sheet') {
+    return (
+      <Surface
+        kind="sheet"
+        title={m.askTitle}
+        onClose={onClose}
+        className="xask-surface"
+        footer={
+          <>
+            {error && (
+              <p className="xask__error" role="alert">
+                {error}
+              </p>
+            )}
+            <p className="xask__note">{m.askNote}</p>
+            <div className="xask__buttons">
+              <Button type="button" variant="outline" onClick={onClose}>
+                {m.cancel}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (text.trim() === '') setError(m.askRequired);
+                  else onClose();
+                }}
+              >
+                {m.askSubmit}
+              </Button>
+            </div>
+          </>
+        }
+      >
+        <div className="xask xask--sheet">{fields}</div>
+      </Surface>
+    );
+  }
+  return (
+    <DialogFrame
+      title={m.askTitle}
+      submitLabel={m.askSubmit}
+      onClose={onClose}
+      dirty={text.trim() !== ''}
+      validate={() => (text.trim() === '' ? m.askRequired : null)}
+      save={async () => {}}
+      footerNote={<p className="xask__note">{m.askNote}</p>}
+      scrollBody
+      className="xask"
+    >
+      {fields}
     </DialogFrame>
   );
 }

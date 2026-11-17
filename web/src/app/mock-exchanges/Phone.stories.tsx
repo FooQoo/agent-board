@@ -37,6 +37,19 @@ export const PanelSheetQuestion: Story = {
   args: { initial: { kind: 'panel', tab: 'fromAi', openId: 'Q-12' } },
 };
 
+/** 7. "Ask AI" as a bottom sheet, opened from the band. */
+export const AskAiSheet: Story = {
+  args: { initial: { kind: 'ask' } },
+  play: async () => {
+    await expect(await page().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+  },
+};
+
+/** 7. "Ask AI" as a sheet with a draft text and images. */
+export const AskAiSheetFilled: Story = {
+  args: { initial: { kind: 'ask', draft: true, images: 2 } },
+};
+
 /** 7. The plan review as a sheet, with a question open. */
 export const PlanReviewSheetWithOpenQuestion: Story = {
   args: { scenario: 'newEpic', initial: { kind: 'review', planId: 'LOGIN-1' } },

@@ -48,7 +48,7 @@ export function PlanReview({
       )}
       <div className="xreview__buttons">
         <Button type="button" variant="outline" onClick={onClose}>
-          {m.reviewLater}
+          {m.later}
         </Button>
         <Button type="button" disabled={blocked} onClick={onClose}>
           {m.reviewStart}
