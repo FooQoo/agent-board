@@ -35,7 +35,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
 | `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
-| `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・受入条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
+| `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・完了条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にある文書を読むだけのルート。フォルダのツリー、MarkdownかMDXのファイル1つ、画像、フォルダやファイルをコンピュータのアプリで開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
 | `GET /assets/{name}` | `build.rs`が生成した表にある、内容から名前を付けたスクリプトとスタイルシートだけ。ほかは404。immutableでキャッシュする。`Accept-Encoding`が許せばgzipで送り、`Vary: Accept-Encoding`を付ける。 |
@@ -53,7 +53,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 
 以下の形は、`src/server/contracts/`のRustの型と、`tests/fixtures/data-layer/`のゴールデン例で固定します。RustとTypeScriptのテストは、同じゴールデン例を読みます。
 
-**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`questions`、`problems`を返します。本文、受入条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
+**Summary。** `GET …/summary`は、`project`（`id`・`name`）、`version`、`tasks`、`epics`、`questions`、`problems`を返します。本文、完了条件の文章、履歴、エピックのドキュメント、画像のバイト列は含みません。応答はインデックスの投影から作るため、ファイルは読みません。アーカイブ済みのタスクは一覧に含めません（エピックの件数には数えます）。`version`は解析済みデータのハッシュで、`ETag`（`"<version>"`）にもなります。`If-None-Match`がこの値を指す要求（複数の値、弱い形式、`*`も一致）には、本文なしの`304`を返します。存在しないプロジェクトは404 `project_not_found`、形式の誤ったIDは422 `invalid_value`、`project.json`を読めないプロジェクトはそのファイルのエラーです。
 
 | 項目 | フィールド |
 | --- | --- |
@@ -72,12 +72,12 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `section-start` | `section`（`document`または`history`） | セクションを開く。 |
 | `attachments` | `items` | 要求したリソースの添付画像。`document`セクションで1回だけ送り、`section-start`の直後、最初のブロックの前に置く。`section-end`の`count`には数えない。 |
 | `block` | `kind`（`markdown`または`mermaid`）、`text`、任意の`images` | ドキュメントの最上位のMarkdownブロック。ブロックを連結すると本文になる。各画像は`src`（`text`中のURL）を持ち、ファイルのヘッダーを読めたときは`width`と`height`も持つ。 |
-| `acceptance` | `id`、`text`、`done` | 受入条件1件の全文。タスクのみ。ブロックの後に続く。 |
+| `acceptance` | `id`、`text`、`done` | 完了条件1件の全文。タスクのみ。ブロックの後に続く。 |
 | `history-item` | `at`、`reason` | 履歴1件。古い順。タスクのみ。 |
 | `section-end` | `section`、`count` | セクションを閉じる。`count`はそのセクションの項目行の数。 |
 | `complete` | `versions` | 最後の行。`start`と同じ`versions`を繰り返す。どちらも1つのスナップショットから計算する。 |
 
-順序は、`start`、要求した各セクションの`section-start`・項目・`section-end`、最後に`complete`です。`document`は`history`より前に置きます。タスクの`document`セクションは、ブロックの後に受入条件が続きます。エピックには`document`セクションしかありません。`complete`なしで終わったストリームは不完全であり、クライアントは受け取った内容を破棄します。
+順序は、`start`、要求した各セクションの`section-start`・項目・`section-end`、最後に`complete`です。`document`は`history`より前に置きます。タスクの`document`セクションは、ブロックの後に完了条件が続きます。エピックには`document`セクションしかありません。`complete`なしで終わったストリームは不完全であり、クライアントは受け取った内容を破棄します。
 
 `?sections=document`、`?sections=history`、`?sections=document,history`でセクションを選びます。指定しなければ両方を送ります。エピックに`history`はありません。ほかの値は400 `invalid_sections`です。プロジェクト、タスク、エピックがなければ、ストリームの開始前に404を返します。最初の行の後で失敗したときは`complete`を送らず、接続を閉じます。
 
@@ -100,7 +100,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId` | 変更が属するプロジェクト。ストリームは全プロジェクトを送り、画面は現在のプロジェクト以外を無視する。 |
 | `changes[].resource` | `task`、`epic`、`project`（プロジェクト一覧の変化: 作成・名前の変更・削除）。 |
 | `changes[].id` | タスクは整数、エピックとプロジェクトは文字列。 |
-| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・判断待ちの質問・受入条件の件数。`request`はタスクが待っている質問が変わったこと（質問・回答・取り下げ・参照の追加や削除）。タスクだけで、必ず`summary`と一緒。`document`は本文と受入条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
+| `changes[].facets` | 重複のない、空でない一覧。`summary`はタイトル・状態・位置・エピック・判断待ちの質問・完了条件の件数。`request`はタスクが待っている質問が変わったこと（質問・回答・取り下げ・参照の追加や削除）。タスクだけで、必ず`summary`と一緒。`document`は本文と完了条件の文章。`history`は履歴。`deleted`はリソースが消えたこと。プロジェクトは`summary`か`deleted`だけ。タスクをアーカイブへ移す、または戻すことは`summary`の変更。 |
 
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 

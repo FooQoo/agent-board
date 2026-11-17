@@ -38,7 +38,7 @@ test.describe('PC condition tab', () => {
         await expect(detail.getByRole('tab')).toHaveCount(4);
         await expect(detail.locator('.detail__dock')).toHaveCount(0);
         await expect(detail.getByRole('tabpanel').getByText('Task check 1', { exact: true })).toHaveCount(0);
-        const conditionTab = detail.getByRole('tab', { name: locale === 'ja' ? '受入条件' : 'Conditions', exact: true });
+        const conditionTab = detail.getByRole('tab', { name: locale === 'ja' ? '完了条件' : 'Conditions', exact: true });
         await conditionTab.click();
         const panel = detail.getByRole('tabpanel');
         await expect(panel.getByRole('checkbox')).toHaveCount(24);
