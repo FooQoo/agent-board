@@ -58,16 +58,35 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
   }, [column]);
   useLayoutEffect(() => {
     measure();
+    // The board can mount after the guide opens, and the lane then appears without the page changing size.
+    // Look again on the next frames until the lane is there.
+    let frame = 0;
+    let tries = 0;
+    const waitForLane = () => {
+      if (
+        !column ||
+        document.querySelector(`section.lane[data-column="${column}"]`) ||
+        tries >= 120
+      )
+        return;
+      tries += 1;
+      frame = requestAnimationFrame(() => {
+        measure();
+        waitForLane();
+      });
+    };
+    waitForLane();
     const observer = new ResizeObserver(measure);
     observer.observe(document.body);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [measure]);
+  }, [measure, column]);
   return rect;
 }
 
