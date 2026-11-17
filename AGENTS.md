@@ -5,6 +5,7 @@ Read the page for the area you are about to change. Start with [docs/dev/index.m
 | When you need | Read |
 | --- | --- |
 | The overall design and how a change travels through the system | [docs/dev/concepts/overview.md](docs/dev/concepts/overview.md) |
+| What the work model guarantees and where the code enforces it | [docs/dev/concepts/work-model.md](docs/dev/concepts/work-model.md) |
 | Projects, tasks, lanes, run states, epics, drafts, and archive | [docs/dev/concepts/tasks-and-states.md](docs/dev/concepts/tasks-and-states.md) |
 | History, decision requests, acceptance conditions, and automatic Done | [docs/dev/concepts/history-and-decisions.md](docs/dev/concepts/history-and-decisions.md) |
 | Locks, atomic saves, recovery, and invalid files | [docs/dev/concepts/saving-and-recovery.md](docs/dev/concepts/saving-and-recovery.md) |

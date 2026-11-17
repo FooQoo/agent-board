@@ -16,7 +16,7 @@ flowchart LR
 | Part | What you will find | Read it when |
 | --- | --- | --- |
 | [Get started](./getting-started/setup.md) | Set up and run, follow a first change, use Storybook, verify and open a pull request. | You want to build and change something. |
-| [Concepts](./concepts/overview.md) | Short pages that explain one idea each: the overall design, tasks and states, history and decisions, saving and recovery, notifications, the server, agents, the mobile monitor, and security. | You want to understand how it works before you change it. |
+| [Concepts](./concepts/overview.md) | Short pages that explain one idea each: the overall design, the work model in code, tasks and states, history and decisions, saving and recovery, notifications, the server, agents, the mobile monitor, and security. | You want to understand how it works before you change it. |
 | [Reference](./reference/files.md) | Facts to look up: shared files, the web API, error codes, the JSON that agents receive, entrance routes, and the code map. | You know what you are looking for. |
 | [Troubleshooting](./troubleshooting.md) | Symptoms, causes, and what to do. | Something fails. |
 | [Documentation and images](./docs-and-images.md) | Previewing the site, UI Stories, and regenerating screenshots and videos. | You change `docs/` or the UI. |
@@ -25,9 +25,10 @@ flowchart LR
 
 1. [Set up and run](./getting-started/setup.md): build it and run it against a temporary board.
 2. [How Agent Board works](./concepts/overview.md): read the overview and follow one change through the system.
-3. [Follow your first change](./getting-started/first-change.md): trace one rule from the CLI to the file and to its test.
-4. [Tasks and states](./concepts/tasks-and-states.md), then the concept page of the area you will touch.
-5. [Verify and open a pull request](./getting-started/pull-request.md).
+3. [The work model in code](./concepts/work-model.md): see which rules Agent Board enforces, where, and which tests cover them.
+4. [Follow your first change](./getting-started/first-change.md): trace one rule from the CLI to the file and to its test.
+5. [Tasks and states](./concepts/tasks-and-states.md), then the concept page of the area you will touch.
+6. [Verify and open a pull request](./getting-started/pull-request.md).
 
 ## Keeping these pages current
 

@@ -36,6 +36,14 @@ node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg
 
 Both scripts use disposable data in a temporary `AGBOARD_HOME` and their own loopback ports, so your saved board and port 7420 are untouched. Review the generated images and videos before committing them.
 
+## Move a page and keep its old URL
+
+Old guide URLs are published in the README, the plugin README, and other people's links, so a page that moves must keep answering at its old address. `docs/.vitepress/redirects.ts` holds the list of moved pages as pairs of an old path and a new path, without a leading slash and without an extension, for example `guide/use/board` and `guide/watch/board`. For each pair the build writes a small HTML page at the old path that forwards to the new page.
+
+- When you move or rename a page, add one entry to the list, and the file expands it into the English and the Japanese path (`ja/...`). Move the Japanese page in the same change.
+- The build fails when a target page was not built, so a typo in the map is caught before it is published. It also fails when an old path is still a real page, so delete the old file when you add the entry.
+- The redirect pages are written after the search index is built, so they do not appear in search.
+
 ## Check published release notes
 
 The site header shows no version. Before the build, `node scripts/release/docs-release.mjs` reads the published GitHub Releases and checks their notes, so a malformed Release stops the build.

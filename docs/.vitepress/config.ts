@@ -75,6 +75,7 @@ const devGroups: Group[] = [
     ja: '基本の考え方',
     pages: [
       { file: 'concepts/overview', en: 'How Agent Board works', ja: 'Agent Boardの仕組み' },
+      { file: 'concepts/work-model', en: 'The work model in code', ja: '仕事のモデルと実装' },
       { file: 'concepts/tasks-and-states', en: 'Tasks and states', ja: 'タスクと状態' },
       { file: 'concepts/history-and-decisions', en: 'History and decisions', ja: '履歴と判断依頼' },
       { file: 'concepts/saving-and-recovery', en: 'Saving and recovery', ja: '保存と復旧' },
