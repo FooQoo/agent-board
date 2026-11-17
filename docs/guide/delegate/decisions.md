@@ -29,7 +29,7 @@ With nothing open, the counts are 0. Select **Open the list** to read the messag
 
 Only open messages are listed. A question you have answered, a request an agent accepted, and a message that was withdrawn leave the list, so nothing you have finished is shown.
 
-Select a question or a request to open it in place of the list. **Back to list** returns to the list.
+Select a question or a request to open it in place of the list. **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button.
 
 ![The messages list with the AI's questions tab, showing a question and an approval row](../../images/guide/messages-list.png){.screenshot}
 

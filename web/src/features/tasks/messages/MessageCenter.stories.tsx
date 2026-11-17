@@ -102,6 +102,12 @@ export const ListFromYou: Story = {
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getByText('受け取り待ち')).toBeInTheDocument();
     await expect(within(list).queryByText('未回答')).toBeNull();
+    // A message opened from the list offers the way back to it.
+    const row = within(list).getByText('受け取り待ち').closest('button');
+    if (!row) throw new Error('The request row is not a button.');
+    await userEvent.click(row);
+    await userEvent.click(await within(list).findByRole('button', { name: '一覧へ戻る' }));
+    await expect(await within(list).findByText('受け取り待ち')).toBeInTheDocument();
   },
 };
 
@@ -122,6 +128,8 @@ export const QuestionOpen: Story = {
   play: async () => {
     const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
     await within(dialog).findByRole('heading', { name: '既存のユーザーデータの扱い' });
+    // Opened straight from its card, the question has no list to go back to.
+    await expect(within(dialog).queryByRole('button', { name: '一覧へ戻る' })).toBeNull();
     const send = within(dialog).getByRole('button', { name: '回答を送る' });
     await expect(send).toBeDisabled();
     await expect(within(dialog).getByRole('button', { name: 'あとでやる' })).toBeInTheDocument();

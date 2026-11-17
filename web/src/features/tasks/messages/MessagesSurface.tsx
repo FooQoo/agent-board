@@ -97,6 +97,9 @@ export function MessagesSurface({
   const { t } = useTranslation();
   const [tab, setTab] = useState<MessageTab>(target.tab ?? 'fromAi');
   const [openId, setOpenId] = useState<string | null>(target.openId ?? null);
+  // A message opened from a card or a review comes straight to its detail; only one opened from
+  // the list offers the way back to it.
+  const [fromList, setFromList] = useState(false);
   const [choiceId, setChoiceId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -188,7 +191,7 @@ export function MessagesSurface({
         ? t('messages.detail.withdrawFailed')
         : t(`messages.detail.${failure}`);
 
-  const back = <BackButton onBack={() => show(null)} />;
+  const back = fromList ? <BackButton onBack={() => show(null)} /> : null;
   const blocks = opened && opened.tasks.length > 0 && (
     <p className="message-detail__blocks">
       {t('messages.detail.blocks', { tasks: opened.tasks.map((id) => `#${id}`).join(' ') })}
@@ -202,7 +205,10 @@ export function MessagesSurface({
         messages={messages}
         tab={tab}
         onTabChange={setTab}
-        onOpen={(message) => show(message.id)}
+        onOpen={(message) => {
+          setFromList(true);
+          show(message.id);
+        }}
         onOpenApproval={onOpenApproval}
       />
     );
