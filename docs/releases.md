@@ -2,6 +2,46 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.4.0
+
+A release that turns questions into messages: the AI's questions and your requests to the AI share one band, and a plan the AI proposes is reviewed and started as one card.
+
+### Changes
+
+- **Messages on the board.** A **Messages** band above the lanes shows **AI's questions** (questions and plans to approve) and **Your requests** (waiting to be picked up). **Open the list** to answer a question, review a plan, or withdraw a request. On a phone the list opens as a bottom sheet.
+- **Ask AI.** **Ask AI** in the header, and on the phone's band, sends the agents a request written in the same rich editor as a task, with pasted or attached images. A request is not tied to a task or an epic; it shows as **Waiting to be picked up** until an agent accepts it. Adding a task yourself stays in the menu next to it, as **Add a task manually**.
+- **Plans start when you say so.** Tasks and epics an agent creates are AI drafts. They are not shown as lane cards: one dashed **Proposed plan** card at the top of Todo, or its row in the list, opens a review with the goal, the tasks that will start, and the open questions. **Start with this plan** starts them, and **Later** leaves them as they are. A plan cannot start while a question about it is unanswered. Only a person can start a plan, also from the command line with `agboard epic start <EPIC-ID>` or `agboard start <id>`.
+- **One file per question or request.** Each question and request is one Markdown file, and its answer or acceptance is written into the same file. A question has choices or none; without choices it is answered in words. The commands are `agboard message ask`, `answer`, `send`, `accept`, `ls`, `show`, `withdraw`, `wait`, `link`, and `unlink`.
+- **Agents pick up requests.** Open requests appear in the progress table and the hook output, `agboard wait --until task` returns them before any task, and an agent takes one with `agboard message accept`, so two agents do not take the same request.
+- **Simpler waiting.** A task waits (Pending) only while a question it refers to has no answer, or a file it refers to cannot be read.
+- **完了条件 in Japanese.** The Japanese screens and documentation call acceptance conditions 完了条件.
+- **The guide follows the new work model.** The user guide explains the Messages band, Ask AI, and the plan review, and the guide's pages are arranged around how you hand work to agents.
+
+### Fixes
+
+- Replacing a task's body with `agboard edit --desc-file` no longer drops the task's references to its questions.
+- iOS Safari no longer enlarges the text in a wide table column.
+- The Messages band keeps its margin above the lanes, and the project switcher keeps a finger-sized button in a crowded header on a touch screen.
+- The first-run guide no longer loses its highlight when the board appears after the guide opens.
+
+### Breaking changes
+
+- **`agboard qa` is replaced by `agboard message`.** The API moves from `/api/projects/{id}/qa…` to `/api/projects/{id}/messages…`, and the board summary returns `messages`.
+- **Start approvals are gone.** An agent no longer asks a "start this plan?" question. It places the plan as AI drafts, and a person starts it from the board or the command line. Questions no longer have a `kind`.
+- **`isDraft` is replaced by `draft`.** Task and epic files and the API use `draft` with `null`, `human` (a person's unsaved draft), or `ai` (an agent's proposal).
+- **Earlier questions are converted once.** On first read, unanswered questions move to the new files and answered ones are dropped. An unanswered start approval becomes AI drafts of the tasks it covered, which you start from the board.
+
+### Required update steps
+
+Update the command, then move the plugin to the same version:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+agboard update
+```
+
+`agboard update` is needed: the Skill now tells agents to accept requests and place plans as AI drafts with `agboard message`, and the plugin's version must match the command; otherwise a new agent session asks you to run it. Restart `agboard serve` after the upgrade, and start new agent sessions so they load the new Skill.
+
 ## v1.3.0
 
 A release that brings the whole board to your phone: below 768px the board shows one lane at a time, and the ngrok address opens the same board behind its passcode.
