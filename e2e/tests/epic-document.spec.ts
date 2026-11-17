@@ -141,7 +141,7 @@ test('starting the server keeps every byte of each EPIC.md, the card membership,
     expect(readFileSync(path.join(fixture.folder, 'tasks', String(id), 'task.json'), 'utf8')).toBe(taskJsonBefore[id]);
   }
   const alphaMeta = JSON.parse(epicJsonBefore.ALPHA);
-  expect(Object.keys(alphaMeta).sort()).toEqual(['attachments', 'color', 'createdAt', 'formatVersion', 'id', 'isDraft', 'name', 'updatedAt']);
+  expect(Object.keys(alphaMeta).sort()).toEqual(['attachments', 'color', 'createdAt', 'draft', 'formatVersion', 'id', 'name', 'updatedAt']);
   const tasks = json(fixture.home, ['ls', '--json']).tasks as { id: number; epicId: string | null }[];
   expect(tasks.map(({ id, epicId }) => [id, epicId])).toEqual([
     [1, 'ALPHA'], [2, 'ALPHA'], [3, 'ALPHA'], [4, 'BETA'], [5, 'BETA'], [6, null],

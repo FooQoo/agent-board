@@ -27,7 +27,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 		'--assignee',
 		'ai',
 		'--actor',
-		'ai',
+		'human',
 	]);
 	const imagePath = testInfo.outputPath('archive-attachment.png');
 	writeFileSync(imagePath, png);
@@ -42,7 +42,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 		'--assignee',
 		'human',
 		'--actor',
-		'ai',
+		'human',
 	]);
 	agboardOk(mainProject, ['mv', String(deleteId), 'done', '--actor', 'ai', '--reason', 'Prepare delete E2E']);
 

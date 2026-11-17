@@ -2,21 +2,24 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '../helpers/fixtures';
-import { agboardOk, askArgs, decisionJson, mainProject, resetBoard, type TaskJson } from '../helpers/agboard';
+import { agboardOk, askArgs, decisionJson, mainProject, questionJson, resetBoard, type TaskJson } from '../helpers/agboard';
 import {
   answerButton,
   answerDialog,
   answerNote,
-  bandCount,
-  bandToggle,
-  expandBand,
   answerSend,
+  fillAnswer,
+  laterButton,
+  listRow,
+  messageBand,
+  messageList,
   openAnswer,
-  reachSend,
+  openMessageList,
   pressSend,
-  questionBand,
+  send,
   sendAnswer,
 } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 import { expectHistoryNote } from '../helpers/history';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
@@ -37,6 +40,11 @@ function show(id: number): Shown {
 /** The agent asks on card #13 (Doing, idle on a fresh board) and does not wait; returns the question id. */
 function ask(question: string): string {
   return JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson(question))]).stdout.split('\n')[0]).questions[0].id as string;
+}
+
+/** Like `ask`, for a question without options, which is answered with a note alone. */
+function askNote(question: string): string {
+  return JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', questionJson(question, []))]).stdout.split('\n')[0]).questions[0].id as string;
 }
 
 const png = Buffer.from(
@@ -73,64 +81,75 @@ test('the card button answers with a choice only, a note only, or both, and the 
   await expect(lane(page, 'Doing').getByRole('textbox')).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('radio')).toHaveCount(0);
 
-  await sendAnswer(page, 13, { choice: 'Plan A' });
+  // A question with options needs one of them chosen before it can be sent.
+  const dialog = await openAnswer(page, 13);
+  await expect(answerSend(page)).toBeDisabled();
+  await fillAnswer(dialog, { choice: 'Plan A' });
+  await expect(answerSend(page)).toBeEnabled();
+  await send(page);
+  await closeMessages(page);
   await expect(answerButton(page, 13)).toHaveCount(0);
   expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
   expectHistoryNote(show(13).history.at(-1), ['First question?', 'Plan A']);
 
-  ask('Second question?');
+  // A question without options is answered with a note alone, and is sent only once there is text.
+  askNote('Second question?');
   await expect(answerButton(page, 13)).toBeVisible();
-  await sendAnswer(page, 13, { text: 'Only a note.' });
+  const second = await openAnswer(page, 13);
+  await expect(answerSend(page)).toBeDisabled();
+  await fillAnswer(second, { text: 'Only a note.' });
+  await send(page);
+  await closeMessages(page);
   expectHistoryNote(show(13).history.at(-1), ['Second question?', 'Only a note.']);
   expect(show(13).history.at(-1)).not.toHaveProperty('choiceId');
 
   ask('Third question?');
   await expect(answerButton(page, 13)).toBeVisible();
   await sendAnswer(page, 13, { choice: 'Plan B', text: 'Both, then.' });
+  await closeMessages(page);
   expectHistoryNote(show(13).history.at(-1), ['Third question?', 'Plan B', 'Both, then.']);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#13 AI Idle / })).toBeVisible();
 });
 
-// DM-2: closing keeps the input, the board goes on updating, and Clear shows only while there is input.
-test('a closed dialog keeps its input while the board keeps updating', async ({ page }) => {
+// DM-2: Later closes the dialog without sending or keeping the input, and the board goes on updating.
+test('Later closes the dialog without answering, and the board keeps updating', async ({ page }) => {
   ask('Keep me?');
   const dialog = await openAnswer(page, 13);
   await expect(dialog.getByRole('button', { name: 'Clear', exact: true })).toHaveCount(0);
   await answerNote(page).fill('Half an answer.');
   await expect(dialog.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await laterButton(page).click();
   await expect(dialog).toBeHidden();
-  await expect(answerButton(page, 13)).toHaveText('Continue answering');
-  await expect(answerButton(page, 13)).toBeFocused();
+  await expect(answerButton(page, 13)).toHaveText('Answer the question');
 
-  // A change made through the CLI shows up although an answer is kept.
-  agboardOk(mainProject, ['add', 'Added while an answer was kept']);
-  await expect(lane(page, 'Todo').getByText('Added while an answer was kept')).toBeVisible({ timeout: 15_000 });
+  // A change made through the CLI shows up, and nothing was sent.
+  agboardOk(mainProject, ['add', 'Added while a question was open']);
+  await expect(lane(page, 'Todo').getByText('Added while a question was open')).toBeVisible({ timeout: 15_000 });
+  expect(show(13).agentStatus).toBe('pending');
 
+  // The typed note is not kept: the question opens empty again, and Clear removes what is typed.
   await openAnswer(page, 13);
-  await expect(answerNote(page)).toHaveValue('Half an answer.');
+  await expect(answerNote(page)).toHaveValue('');
+  await answerNote(page).fill('Another half.');
   await answerDialog(page).getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(answerNote(page)).toHaveValue('');
   await page.keyboard.press('Escape');
-  await expect(answerButton(page, 13)).toHaveText('Answer the question');
+  await expect(answerDialog(page)).toBeHidden();
   expect(show(13).agentStatus).toBe('pending');
 });
 
-// DM-3: a withdrawn question stays readable, and only closing is left.
-test('a withdrawn question stays readable in the open dialog and cannot be sent', async ({ page }) => {
+// DM-3: a question withdrawn while its dialog is open leaves the dialog, and cannot be answered any more.
+test('a withdrawn question leaves the open dialog and cannot be answered', async ({ page }) => {
   const request = ask('Will this stay?');
   const dialog = await openAnswer(page, 13);
   await answerNote(page).fill('Typed before it was withdrawn.');
 
-  // The agent withdraws the question while the dialog is open.
+  // The agent withdraws the question while the dialog is open: the dialog shows the list, without the question.
   agboardOk(mainProject, ['message', 'withdraw', request, '--actor', 'ai']);
-  await expect(dialog).toContainText('This question was withdrawn. You can no longer answer it.');
-  await expect(dialog).toContainText('Will this stay?');
-  await expect(answerNote(page)).toHaveValue('Typed before it was withdrawn.');
-  await expect(answerNote(page)).toBeDisabled();
-  // A card's run has no review: the last question's Send is disabled, as nothing is left to send.
-  await reachSend(page);
-  await expect(answerSend(page)).toBeDisabled();
+  await expect(dialog.getByRole('region', { name: 'Your answer' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Send answer' })).toHaveCount(0);
+  await expect(dialog).not.toContainText('Will this stay?');
+  expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
@@ -195,56 +214,53 @@ test('a failed send keeps the input and the retry sends the same answer', async 
   await dialog.getByRole('radio', { name: 'Plan B' }).check();
   await answerNote(page).fill('Same answer, twice.');
   await pressSend(page);
-  await expect(dialog.getByRole('alert')).toContainText('Could not save. Try again.');
+  await expect(dialog.getByRole('alert')).toContainText('It could not be sent. Try again.');
   // The dialog still holds the answer.
   await expect(dialog).toContainText('Plan B');
   await expect(dialog).toContainText('Same answer, twice.');
   expect(show(13).agentStatus).toBe('pending');
 
   fail = false;
-  await dialog.getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(dialog).toBeHidden();
+  // Sending again is the retry.
+  await send(page);
+  await expect(dialog.getByRole('region', { name: 'Your answer' })).toHaveCount(0);
   expect(bodies).toHaveLength(2);
   expect(JSON.parse(bodies[1])).toEqual(JSON.parse(bodies[0]));
   expectHistoryNote(show(13).history.at(-1), ['Will it fail?', 'Plan B', 'Same answer, twice.']);
 });
 
-// DM-6: the band lists every open question; they are answered in a row and sent together.
-test('the band lists the open questions, and the answers are sent together from the review', async ({ page }) => {
-  const band = questionBand(page);
-  // The band starts closed; its header already counts the waiting card, #12, of the fresh board.
-  await expect(bandCount(page)).toHaveText('1');
-  await expect(band.getByRole('listitem')).toHaveCount(0);
-  await expandBand(page);
-  await expect(band.getByRole('listitem')).toHaveCount(1);
+// DM-6: the Messages band counts the open questions, the list shows each one, and each is answered on its own.
+test('the band and the list show the open questions, and each is answered on its own', async ({ page }) => {
+  const band = messageBand(page);
+  // The fresh board already has one waiting card, #12.
+  await expect(band.getByRole('listitem').first()).toContainText("AI's questions");
+  await expect(band.getByRole('listitem').first()).toContainText('1 question, 0 approvals');
   ask('Which way for #13?');
-  await expect(band.getByRole('listitem')).toHaveCount(2);
-  await expect(band).toContainText('Which way for #13?');
-  await expect(band).toContainText('#13');
+  await expect(band.getByRole('listitem').first()).toContainText('2 questions, 0 approvals');
 
-  await band.getByRole('button', { name: 'Answer them' }).click();
-  const dialog = answerDialog(page);
-  await expect(dialog).toContainText('1 / 2');
-  await answerNote(page).fill('Replace it.');
-  await dialog.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(dialog).toContainText('2 / 2');
-  await dialog.getByRole('radio', { name: 'Plan A' }).check();
-  // Closing keeps both answers: the band offers to review them, and nothing is sent yet.
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(band.getByText('Answered, not sent', { exact: true })).toHaveCount(2);
-  expect(show(13).agentStatus).toBe('pending');
-  expect(show(12).agentStatus).toBe('pending');
+  const list = await openMessageList(page);
+  await expect(list.getByRole('tab', { name: /^AI's questions 2$/ })).toBeVisible();
+  const rows = list.getByRole('button', { name: /^Question AI/ });
+  await expect(rows).toHaveCount(2);
+  await expect(listRow(page, /Which way for #13\?/)).toContainText('Unanswered');
 
-  await band.getByRole('button', { name: 'Review and send' }).click();
-  await expect(dialog.getByRole('button', { name: /^Change:/ })).toHaveCount(2);
-  await dialog.getByRole('button', { name: 'Send all', exact: true }).click();
-  await expect(dialog).toBeHidden();
-  // Nothing is left to open: the header stays with a count of 0, and no list shows.
-  await expect(bandCount(page)).toHaveText('0');
-  await expect(bandToggle(page)).toBeDisabled();
-  await expect(band.getByRole('listitem')).toHaveCount(0);
-  expect(show(12)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
+  // Opening a row shows that question in the same dialog; the first is answered and the list comes back.
+  await listRow(page, /Which way for #13\?/).click();
+  await expect(answerDialog(page)).toContainText('#13 stay blocked until you reply');
+  await fillAnswer(answerDialog(page), { choice: 'Plan A', text: 'Replace it.' });
+  await send(page);
+  await expect(messageList(page).getByRole('tab', { name: /^AI's questions 1$/ })).toBeVisible();
+  await expect(rows).toHaveCount(1);
   expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
-  expectHistoryNote(show(13).history.at(-1), ['Which way for #13?', 'Plan A']);
+  expect(show(12).agentStatus).toBe('pending');
+  expectHistoryNote(show(13).history.at(-1), ['Which way for #13?', 'Plan A', 'Replace it.']);
+
+  // Answering the other one empties the list.
+  await rows.first().click();
+  await fillAnswer(answerDialog(page), { choice: 'Allow breaking changes' });
+  await send(page);
+  await expect(messageList(page).getByText('No messages in this tab.')).toBeVisible();
+  await closeMessages(page);
+  await expect(band.getByRole('listitem').first()).toContainText(/AI's questions\s*0/);
+  expect(show(12)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
 });

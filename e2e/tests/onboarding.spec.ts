@@ -56,7 +56,7 @@ async function walkToComplete(page: Page, answer: (page: Page) => ReturnType<Pag
 	await stage.getByRole('button', { name: 'Answer the question' }).click();
 	const form = answer(page);
 	await form.getByLabel('Keep it brief').check();
-	await form.getByRole('button', { name: 'Send', exact: true }).click();
+	await form.getByRole('button', { name: 'Send answer', exact: true }).click();
 
 	await expect(page.getByText('Guide 4 / 4')).toBeVisible();
 	await page.getByRole('button', { name: 'Next' }).click({ timeout: 15_000 });
@@ -166,7 +166,7 @@ test('OB-06: at phone width the guide runs to the end, with the answer given in 
 	await expect(page.locator('.onboarding-panel--compact')).toBeVisible();
 	const sheet = dialogWithNote(page);
 	await sheet.getByLabel('Keep it brief').check();
-	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+	await sheet.getByRole('button', { name: 'Send answer', exact: true }).click();
 
 	await expect(page.getByText('Guide 4 / 4')).toBeVisible();
 	await expect(page.locator('.onboarding-panel--compact')).toHaveCount(0);

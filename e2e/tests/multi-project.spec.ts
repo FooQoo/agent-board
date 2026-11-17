@@ -18,7 +18,8 @@ import {
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
 import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
-import { answerButton, answerNote, answerSend, openAnswer, reachSend, sendAnswer } from '../helpers/answer';
+import { answerButton, fillAnswer, openAnswer, send } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // Several projects in one data area, shown by one serve. The CLI, the shared files, the HTTP server and
 // the browser are real. The browser's requests are touched only where a test needs a slow or failing
@@ -105,6 +106,16 @@ function snapshotOf(project: string, home: string): unknown {
   return parsed;
 }
 
+/** Answers the question of a card from its dialog (the first option when it has options), and closes the list the dialog returns to. */
+async function answerCard(page: Page, id: number, text: string): Promise<void> {
+  const dialog = await openAnswer(page, id);
+  const options = dialog.getByRole('radio');
+  await fillAnswer(dialog, { text });
+  if ((await options.count()) > 0) await options.first().check();
+  await send(page);
+  await closeMessages(page);
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let pageErrors: string[] = [];
@@ -130,7 +141,7 @@ test.describe('a new data area', () => {
     await expect(page.getByRole('contentinfo')).toContainText('No projects');
     await expect(switcher(page)).toHaveText('No projects');
     await expect(switcher(page)).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
     await expect(page).toHaveTitle('Agent Board');
     await expect.poll(() => projectParam(page)).toBeNull();
 
@@ -143,7 +154,7 @@ test.describe('a new data area', () => {
     await expect(switcher(page)).toHaveText('Alpha');
     await expect(page).toHaveTitle('Alpha - Agent Board');
     await expect(page.getByText('No tasks yet.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add task' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Ask AI' })).toBeEnabled();
     await expect.poll(() => projectParam(page)).toBe(projectId('Alpha', home));
     expect(await page.evaluate(() => (window as unknown as { __opened?: boolean }).__opened)).toBe(true);
 
@@ -211,7 +222,7 @@ test.describe('two projects with the same task numbers', () => {
     const fresh = nextTaskId('Alpha', home);
 
     // Answer the pending request in Alpha with the board's own dialog.
-    await sendAnswer(page, 2, { text: 'Use the MIT license.' });
+    await answerCard(page, 2, 'Use the MIT license.');
     await expect(answerButton(page, 2)).toHaveCount(0);
     await expect(task(page, 2)).toContainText('Idle');
     await expect(details(page).getByRole('listitem').first()).toContainText('Use the MIT license.');
@@ -257,7 +268,7 @@ test.describe('two projects with the same task numbers', () => {
 
     // And acting in Beta leaves Alpha as it was.
     const alphaBefore = snapshotOf('Alpha', home);
-    await sendAnswer(page, 2, { text: 'Use plain files.' });
+    await answerCard(page, 2, 'Use plain files.');
     await expect(answerButton(page, 2)).toHaveCount(0);
     await expect(task(page, 2)).toContainText('Idle');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
@@ -381,11 +392,11 @@ test.describe('two projects with the same task numbers', () => {
     await expect(switcher(page)).toBeFocused();
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
-    // The header order is project, Add card, Archive, Settings.
-    await expect(page.getByRole('button', { name: 'Add task', exact: true })).toBeFocused();
+    // The header order is project, Ask AI, the menu of other ways to add, Docs, Epics, Archive, Settings.
+    await expect(page.getByRole('button', { name: 'Ask AI', exact: true })).toBeFocused();
   });
 
-  for (const kind of ['create', 'move', 'answer', 'delete'] as const) {
+  for (const kind of ['create', 'move', 'delete'] as const) {
     test(`while a ${kind} form is open the menu is disabled, and it works again when the form is done`, async ({
       page,
     }) => {
@@ -400,16 +411,6 @@ test.describe('two projects with the same task numbers', () => {
         const dialog = await dragTaskTo(page, 1, 'Doing');
         close = async () => {
           await dialog.getByRole('button', { name: 'Cancel' }).click();
-        };
-      } else if (kind === 'answer') {
-        await task(page, 2).click();
-        const dialog = await openAnswer(page, 2);
-        // Typed text in the open dialog holds the project in place; Clear drops it and frees the menu.
-        await answerNote(page).fill('Typed in the form.');
-        close = async () => {
-          await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
-          await page.keyboard.press('Escape');
-          await expect(dialog).toBeHidden();
         };
       } else {
         await task(page, 3).click();
@@ -428,29 +429,6 @@ test.describe('two projects with the same task numbers', () => {
       await expect.poll(() => projectParam(page)).toBe(beta);
     });
   }
-
-  test('an answer kept unsent holds the project even with the dialog closed; clearing it lets the project go', async ({
-    page,
-  }) => {
-    await open(page, alpha);
-    const dialog = await openAnswer(page, 2);
-    await answerNote(page).fill('Kept while closed.');
-    await expect(switcherBehindDialog(page)).toBeDisabled();
-    await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
-    await expect(answerButton(page, 2)).toHaveText('Continue answering');
-    // The answer is not sent yet, so the project stays and the band offers to send it.
-    await expect(switcher(page)).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Review and send', exact: true })).toBeVisible();
-    await openAnswer(page, 2);
-    await expect(answerNote(page)).toHaveValue('Kept while closed.');
-    await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
-    await page.keyboard.press('Escape');
-    await expect(dialog).toBeHidden();
-    await expect(switcher(page)).toBeEnabled();
-    await choose(page, 'Beta');
-    await expect.poll(() => projectParam(page)).toBe(beta);
-  });
 
   test('back and forward during a form are applied after it is done, and the form writes to the project it started in', async ({
     page,
@@ -539,23 +517,33 @@ test.describe('two projects with the same task numbers', () => {
     await expect(switcher(page)).toHaveText('Beta');
     await task(page, 2).click();
     const answer = await openAnswer(page, 2);
-    await answerNote(page).fill('Beta answer.');
+    await fillAnswer(answer, { text: 'Beta answer.' });
+    // The answer is not held: going back applies at once, the dialog is dropped, and nothing is written anywhere.
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
-    await expect(switcherBehindDialog(page)).toHaveText('Beta');
-    await expect(answerNote(page)).toHaveValue('Beta answer.');
-    await reachSend(page);
-    await expect(answerSend(page)).toBeEnabled();
+    await expect(switcher(page)).toHaveText('Alpha');
+    await expect(answer).toBeHidden();
+    expect(listTasks('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('pending');
+    expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
+
+    // Answered again in Beta, the answer goes to Beta's request and never to Alpha's card #2.
+    await page.goForward();
+    await expect(switcher(page)).toHaveText('Beta');
+    const dialog = await openAnswer(page, 2);
+    const options = dialog.getByRole('radio');
+    if ((await options.count()) > 0) await options.first().check();
+    await fillAnswer(dialog, { text: 'Beta answer.' });
     const answerResponse = page.waitForResponse((response) =>
       response.url().includes(`/api/projects/${beta}/messages/answers`),
     );
-    await answerSend(page).click();
+    await send(page);
     expect((await answerResponse).status()).toBe(200);
-    await expect(answer).toBeHidden();
+    await closeMessages(page);
+    expect(listTasks('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
+    await page.goBack();
     await expect(switcher(page)).toHaveText('Alpha');
     // Alpha has its own pending #2, so an ID-only locator now resolves to Alpha's answer button.
     await expect(answerButton(page, 2)).toBeVisible();
-    expect(listTasks('Beta', home).find(({ id }) => id === 2)?.agentStatus).toBe('idle');
     expect(listTasks('Alpha', home).find(({ id }) => id === 2)?.agentStatus).toBe('pending');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
   });
@@ -684,7 +672,7 @@ test.describe('two projects with the same task numbers', () => {
       // The person answers the request of Alpha's card #2 on the page.
       await open(page, alpha);
       await task(page, 2).click();
-      await sendAnswer(page, 2, { text: 'Use the MIT license, please.' });
+      await answerCard(page, 2, 'Use the MIT license, please.');
       await expect(answerButton(page, 2)).toHaveCount(0);
 
       expect(await ended).toBe(0);
@@ -802,7 +790,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(page.getByText('Try again, or switch to another project.')).toBeVisible();
     await expect(switcher(page)).toHaveText('Beta');
     await expect(page.getByRole('contentinfo')).toContainText('Not synced');
-    await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
     // Retry while it still fails shows the same state; after it works, Retry loads the board.
     await page.getByRole('button', { name: 'Retry' }).click();
     await expect(page.getByText('Could not load this board.')).toBeVisible();
@@ -828,7 +816,7 @@ test.describe('two projects with the same task numbers', () => {
     });
     await page.goto(`/?project=${alpha}`);
     await expect(page.getByText('Could not load the board.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
     listFails = false;
     await page.getByRole('button', { name: 'Retry' }).click();
     await expect(task(page, 1)).toHaveText(/Alpha: draft the release notes/);
@@ -843,7 +831,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(switcher(page)).toHaveText('Choose a project');
     await expect(page.getByRole('contentinfo')).toContainText('No project selected');
     await expect.poll(() => projectParam(page)).toBe(beta);
-    await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
     await expect(task(page, 1)).toHaveCount(0);
     await switcher(page).click();
     await expect(page.getByRole('menu').getByRole('menuitemradio')).toHaveText(['Alpha']);
@@ -883,7 +871,7 @@ test.describe('two projects with the same task numbers', () => {
     await setPreferences({ locale: 'ja' }, statesOrigin());
     await open(page, alpha);
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-    await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'AI に依頼' })).toBeVisible();
     await expect(lane(page, '進行中')).toBeVisible();
     await switcher(page).click();
     await expect(page.getByRole('menu', { name: 'Alpha' })).toContainText('プロジェクト');
@@ -974,7 +962,7 @@ test.describe('long names and many projects', () => {
     const width = page.viewportSize()!.width;
     const parts = [
       switcher(page),
-      page.getByRole('button', { name: 'Add task' }),
+      page.getByRole('button', { name: 'Ask AI' }),
       page.getByRole('button', { name: 'Settings' }),
     ];
     const boxes: { x: number; y: number; width: number; height: number }[] = [];
@@ -1022,7 +1010,8 @@ test.describe('long names and many projects', () => {
       // The whole name is shown on a desktop screen (cut only when the header runs out of room), and it is
       // not the whole header either.
       const nameBox = (await button.boundingBox())!;
-      expect(nameBox.width).toBeGreaterThan(200);
+      // The header now also carries Ask AI and its menu, so the name has a little less room than before.
+      expect(nameBox.width).toBeGreaterThan(180);
       expect(nameBox.width).toBeLessThan(viewport.width / 2);
       await expect(page.getByRole('contentinfo')).toContainText('1 task');
 
@@ -1088,10 +1077,10 @@ test.describe('long names and many projects', () => {
     await setPreferences({ locale: 'ja' }, statesOrigin());
     await page.setViewportSize({ width: 1024, height: 768 });
     await open(page, projectId(longName, home));
-    await expect(page.getByRole('button', { name: 'タスク追加' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'AI に依頼' })).toBeVisible();
     await expect(page.getByRole('button', { name: '設定' })).toBeVisible();
     const width = 1024;
-    for (const name of ['タスク追加', '設定']) {
+    for (const name of ['AI に依頼', '設定']) {
       const box = (await page.getByRole('button', { name }).boundingBox())!;
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     }

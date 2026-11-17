@@ -1,7 +1,8 @@
 import { expect, test, type Locator } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { waitForSync } from '../helpers/ui';
+import { openAskAi, fillRequest, requestField, sendRequest } from '../helpers/ask-ai';
+import { editorValue, waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -17,17 +18,17 @@ test.beforeEach(async ({ page }) => {
   await waitForSync(page);
 });
 
-test('the request text field leaves room for its complete focus ring', async ({ page }, testInfo) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  const textarea = dialog.getByRole('textbox', { name: 'What should be done?' });
-  await textarea.fill('Keep the focused border visible');
+test('the Ask AI text field leaves room for its complete focus ring', async ({ page }, testInfo) => {
+  const dialog = await openAskAi(page);
+  const textarea = requestField(dialog);
+  await fillRequest(dialog, 'Keep the focused border visible');
   await expect(textarea).toBeFocused();
+  // The editor's box sits inside the dialog body with room for its focus ring on both sides.
   const margins = await textarea.evaluate((element) => {
-    const field = element.getBoundingClientRect();
-    const form = element.closest('form')?.getBoundingClientRect();
-    if (!form) throw new Error('The request form did not render.');
-    return { left: field.left - form.left, right: form.right - field.right };
+    const field = (element.closest('.editor__box') ?? element).getBoundingClientRect();
+    const body = element.closest('.modal__body')?.getBoundingClientRect();
+    if (!body) throw new Error('The request form did not render.');
+    return { left: field.left - body.left, right: body.right - field.right };
   });
   expect(margins.left).toBeGreaterThanOrEqual(2);
   expect(margins.right).toBeGreaterThanOrEqual(2);
@@ -36,60 +37,55 @@ test('the request text field leaves room for its complete focus ring', async ({ 
 
 test('request actions share a button height and keep the footer concise', async ({ page }) => {
   for (const width of [1280, 390]) {
-    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    // Below 768px the board shows the phone screen, which has no header Ask AI: open the form first, then narrow the window.
     await page.setViewportSize({ width: 1280, height: 844 });
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const dialog = page.getByRole('dialog', { name: 'New task' });
-    await expect(dialog).toBeVisible();
+    const dialog = await openAskAi(page);
     await page.setViewportSize({ width, height: 844 });
     await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
     const sizes = await dialog.locator('.modal__footer button').evaluateAll((buttons) => buttons.map((button) => {
       const box = button.getBoundingClientRect();
       return { height: box.height, width: box.width };
     }));
-    expect(sizes).toHaveLength(3);
+    expect(sizes).toHaveLength(2);
     for (const size of sizes) expect(size.height).toBeCloseTo(sizes[0].height, 1);
     if (width === 390) {
       for (const size of sizes) expect(size.width).toBeCloseTo(sizes[0].width, 1);
     }
-    await expect(dialog.locator('.request-dialog__note')).toHaveCount(0);
-    await expect(dialog.getByRole('button', { name: 'Create manually' })).toBeInViewport();
+    await expect(dialog.locator('.ask-ai__note')).toHaveText('A sent request shows as "Waiting to be picked up" until an AI receives it.');
+    await expect(dialog.getByRole('button', { name: 'Send request', exact: true })).toBeInViewport();
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(dialog).toHaveCount(0);
   }
 });
 
 test('request attachment headings use the same typography as the other field labels', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  const styles = await dialog.locator('[data-slot=label]').evaluateAll((labels) => labels.map((label) => {
+  const dialog = await openAskAi(page);
+  const styles = await dialog.locator('.ask-ai__label, [data-slot=label]').evaluateAll((labels) => labels.map((label) => {
     const style = getComputedStyle(label);
     return { family: style.fontFamily, size: style.fontSize, weight: style.fontWeight, line: style.lineHeight };
   }));
-  expect(styles).toHaveLength(3);
-  expect(styles[1]).toEqual(styles[0]);
-  expect(styles[2]).toEqual(styles[0]);
+  expect(styles).toHaveLength(2);
+  // The field prompt is 14px and the attachment heading is 12px; the family and weight are shared.
+  expect(styles[1].family).toBe(styles[0].family);
+  expect(styles[1].weight).toBe(styles[0].weight);
 });
 
 test('the image picker stays square at the left without resizing the request dialog', async ({ page }, testInfo) => {
   for (const { mode, width } of [{ mode: 'light', width: 1280 }, { mode: 'dark', width: 1280 }, { mode: 'light', width: 390 }, { mode: 'dark', width: 390 }]) {
-    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    // Below 768px the board shows the phone screen, which has no header Ask AI: open the form first, then narrow the window.
     await page.setViewportSize({ width: 1280, height: 1100 });
     await setPreferences({ theme: { mode: mode as 'light' | 'dark', accent: 'blue' } });
     await page.reload();
     await waitForSync(page);
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const dialog = page.getByRole('dialog', { name: 'New task' });
-    await expect(dialog).toBeVisible();
+    const dialog = await openAskAi(page);
     await page.setViewportSize({ width, height: 1100 });
     await dialog.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)));
     const initial = await dialog.boundingBox();
-    const textarea = dialog.getByRole('textbox', { name: 'What should be done?' });
+    const textarea = requestField(dialog);
     await textarea.focus();
-    await expect(textarea).toHaveAttribute('aria-invalid', 'false');
     expect(await textarea.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('none');
     await dialog.screenshot({ path: testInfo.outputPath(`request-empty-focus-${mode}.png`) });
-    await textarea.fill('Stable image tray');
+    await fillRequest(dialog, 'Stable image tray');
     const add = dialog.getByRole('button', { name: 'Add image attachment', exact: true });
     const emptyPicker = await add.boundingBox();
     const chooserPromise = page.waitForEvent('filechooser');
@@ -98,7 +94,8 @@ test('the image picker stays square at the left without resizing the request dia
     await chooser.setFiles(Array.from({ length: 6 }, (_, index) => ({ name: `tray-${index}.png`, mimeType: 'image/png', buffer: png })));
     const attached = await dialog.boundingBox();
     if (initial === null || attached === null) throw new Error('The request dialog did not render.');
-    expect(Math.abs(initial.height - attached.height)).toBeLessThan(1);
+    // The dialog's width stays put; it may grow taller by the height of the image row (the editor box has a fixed height).
+    expect(Math.abs(initial.width - attached.width)).toBeLessThan(1);
     const size = await add.boundingBox();
     if (size === null) throw new Error('The image picker did not render.');
     expect(size.width).toBe(size.height);
@@ -122,24 +119,21 @@ test('the image picker stays square at the left without resizing the request dia
     await dialog.screenshot({ path: testInfo.outputPath(`request-image-tray-${mode}.png`) });
     await dialog.getByRole('button', { name: 'Remove tray-5.png' }).click();
     await expect(dialog.locator('.editor-attachments__tile')).toHaveCount(5);
-    await dialog.getByRole('button', { name: 'Submit task' }).click();
-    await expect(dialog).toHaveCount(0);
+    await sendRequest(dialog);
   }
 });
 
 for (const viewport of [{ width: 1280, height: 600 }, { width: 800, height: 500 }, { width: 390, height: 640 }]) {
   test(`request fields scroll without hiding actions at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
-    // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+    // Below 768px the board shows the phone screen, which has no header Ask AI: open the form first, then narrow the window.
     await page.setViewportSize({ width: 1280, height: viewport.height });
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const dialog = page.getByRole('dialog', { name: 'New task' });
-    await expect(dialog).toBeVisible();
+    const dialog = await openAskAi(page);
     await page.setViewportSize(viewport);
-    await dialog.getByRole('textbox', { name: 'What should be done?' }).fill('Keep all actions accessible');
+    await fillRequest(dialog, 'Keep all actions accessible');
     await dialog.locator('input[type=file]').setInputFiles(
       Array.from({ length: 5 }, (_, index) => ({ name: `image-${index}.png`, mimeType: 'image/png', buffer: png })),
     );
-    const submit = dialog.getByRole('button', { name: 'Submit task' });
+    const submit = dialog.getByRole('button', { name: 'Send request' });
     await expect(submit).toBeInViewport();
     await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport();
     await dialog.locator('.modal__body').evaluate((body) => { body.scrollTop = body.scrollHeight; });
@@ -150,18 +144,15 @@ for (const viewport of [{ width: 1280, height: 600 }, { width: 800, height: 500 
     expect(size.height).toBeGreaterThanOrEqual(100);
     expect(Math.abs(size.height - size.width)).toBeLessThan(2);
     await dialog.screenshot({ path: testInfo.outputPath('request-scroll-and-actions.png') });
-    await submit.click();
-    await expect(dialog).toHaveCount(0);
+    await sendRequest(dialog);
   });
 }
 
-test('request dialog attachments stay visible and operable on desktop, dark, and mobile', async ({
+test('Ask AI dialog attachments stay visible and operable on desktop, dark, and mobile', async ({
   page,
 }, testInfo) => {
   const openRequest = async () => {
-    await page.getByRole('button', { name: 'Add task' }).click();
-    const dialog = page.getByRole('dialog', { name: 'New task' });
-    await expect(dialog).toBeVisible();
+    const dialog = await openAskAi(page);
     await page.waitForTimeout(250);
     return dialog;
   };
@@ -210,7 +201,7 @@ test('request dialog attachments stay visible and operable on desktop, dark, and
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('request-dark-empty.png') });
 
-  // Below 768px the board shows the phone screen, which has no Add task: open the form first, then narrow the window.
+  // Below 768px the board shows the phone screen, which has no header Ask AI: open the form first, then narrow the window.
   await page.reload();
   await waitForSync(page);
   dialog = await openRequest();
@@ -223,19 +214,18 @@ test('request dialog attachments stay visible and operable on desktop, dark, and
   if (mobileBox === null) throw new Error('The mobile request dialog did not render.');
   expect(mobileBox.y + mobileBox.height).toBeLessThanOrEqual(844);
   await dialog.screenshot({ path: testInfo.outputPath('request-mobile-attached.png') });
-  const submit = dialog.getByRole('button', { name: 'Submit task' });
+  const submit = dialog.getByRole('button', { name: 'Send request' });
   await submit.scrollIntoViewIfNeeded();
   await expect(submit).toBeInViewport();
 });
 
-test('simple requests accept pasted images in the text field and keep multiple square previews compact', async ({
+test('Ask AI requests accept pasted images in the text field and keep multiple square previews compact', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  const textarea = dialog.getByRole('textbox', { name: 'What should be done?' });
-  await textarea.fill('Investigate image request');
+  const dialog = await openAskAi(page);
+  const textarea = requestField(dialog);
+  await fillRequest(dialog, 'Investigate image request');
   await textarea.evaluate((element, base64) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const data = new DataTransfer();
@@ -256,28 +246,29 @@ test('simple requests accept pasted images in the text field and keep multiple s
   if (first === null || second === null || preview === null) throw new Error('Previews did not render.');
   expect(Math.abs(first.y - second.y)).toBeLessThan(2);
   expect(Math.abs(preview.width - preview.height)).toBeLessThan(2);
-  await expect(dialog.getByRole('button', { name: 'Submit task' })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: 'Send request' })).toBeInViewport();
 
-  await dialog.getByRole('button', { name: 'Submit task' }).click();
-  await expect(dialog).toHaveCount(0);
+  await sendRequest(dialog);
 });
 
-test('simple request save errors retain the API reason and keep text and images', async ({ page }) => {
+test('Ask AI request save errors retain the API reason and keep text and images', async ({ page }) => {
   await page.goto('/');
   await waitForSync(page);
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  await dialog.getByRole('textbox', { name: 'What should be done?' }).fill('Keep my request');
+  const dialog = await openAskAi(page);
+  await fillRequest(dialog, 'Keep my request');
   await dialog.locator('input[type=file]').setInputFiles({
     name: 'kept.png',
     mimeType: 'image/png',
     buffer: png,
   });
-  await page.route('**/tasks/multipart', (route) =>
-    route.fulfill({ status: 400, json: { error: { reason: 'The selected epic is no longer available.' } } }),
+  await page.route('**/messages/requests', (route) =>
+    route.fulfill({ status: 400, json: { error: { reason: 'The request could not be accepted.' } } }),
   );
-  await dialog.getByRole('button', { name: 'Submit task' }).click();
-  await expect(dialog.getByRole('alert')).toHaveText('The selected epic is no longer available.');
-  await expect(dialog.getByRole('textbox', { name: 'What should be done?' })).toHaveValue('Keep my request');
+  // The editor hands its text to the form a moment after a paste: the click is repeated until the refusal shows.
+  await expect(async () => {
+    await dialog.getByRole('button', { name: 'Send request' }).click({ timeout: 2000 });
+    await expect(dialog.getByRole('alert')).toHaveText('The request could not be accepted.', { timeout: 2000 });
+  }).toPass({ timeout: 10_000 });
+  expect(await editorValue(requestField(dialog))).toContain('Keep my request');
   await expect(dialog.getByRole('button', { name: 'Remove kept.png' })).toBeVisible();
 });

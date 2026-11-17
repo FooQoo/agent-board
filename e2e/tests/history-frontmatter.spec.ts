@@ -15,6 +15,8 @@ import {
 import { removeMonitorHome, startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
 import { waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
+import { answerDialog, fillAnswer, pressSend } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 1280, height: 900 }, timezoneId: 'UTC', locale: 'en-US' });
@@ -33,7 +35,7 @@ interface TaskView {
 	taskStatus: string;
 	taskStatusChangedAt: string;
 	agentStatus: string;
-	isDraft: boolean;
+	draft: 'human' | 'ai' | null;
 	pendingRequestId: string | null;
 	description: string;
 	body: string;
@@ -189,17 +191,15 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const article = page.getByRole('article', { name: new RegExp(`Pending history answer`) });
 	// The card holds only the button; the answer is given in the sheet.
 	await article.getByRole('button', { name: 'Answer the question' }).click();
-	const sheet = page.getByRole('dialog', { name: /Pending history answer/ });
+	const sheet = answerDialog(page);
 	await expect(sheet.getByText('Which release should ship?')).toBeVisible();
-	await sheet.getByRole('radio', { name: 'Plan B' }).click();
-	await sheet.getByRole('textbox').fill('Ship the stable release.');
+	await fillAnswer(sheet, { choice: 'Plan B', text: 'Ship the stable release.' });
 	const answerRequest = page.waitForResponse((response) =>
 		response.url().includes('/messages/answers') && response.request().method() === 'POST');
-	// The card's only question is the last one, so the sheet sends from it without a review.
-	await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+	await pressSend(page);
 	expect((await answerRequest).status()).toBe(200);
-	await expect(page.getByRole('dialog')).toHaveCount(0);
-	await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
+	await closeMessages(page);
+	await expect(article.getByRole('button', { name: 'Answer the question' })).toHaveCount(0);
 
 	const waited = await waiting.result;
 	expect(waited.code, waited.stderr).toBe(0);
@@ -208,7 +208,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	const task = show(id);
 	expect(task.agentStatus).toBe('idle');
 	expect(task.history.at(-1)).toMatchObject({ reason: expect.stringContaining('Ship the stable release.') });
-	const recorded = JSON.parse(cliOk(['message', 'show', requestId!, '--json']).trim()) as { question: { reply: unknown } };
+	const recorded = JSON.parse(cliOk(['message', 'show', requestId!]).trim()) as { question: { reply: unknown } };
 	expect(recorded.question.reply).toMatchObject({ via: 'ui', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
 	expect(task.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
@@ -252,7 +252,7 @@ test('saving a body edit after a concurrent lane change keeps the newest event a
 	expect(task.history.filter((event) => event.reason === 'Concurrent lane update')).toHaveLength(1);
 	await panel.getByRole('button', { name: 'Finalize', exact: true }).click();
 	// The CLI refuses a draft, so wait until the finalized task is saved.
-	await expect.poll(() => show(id).isDraft).toBe(false);
+	await expect.poll(() => show(id).draft).toBeNull();
 
 	const replacement = path.join(home, 'replacement.md');
 	replaceFileAtomically(replacement, '## Work\n\nCLI replacement without a history field.\n');

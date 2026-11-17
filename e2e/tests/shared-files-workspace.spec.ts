@@ -88,7 +88,7 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   await expect(label).toHaveCount(1);
   await expect(label).toHaveCSS('background-color', 'rgb(124, 58, 237)');
   await expect(task(page, taskId).getByText('FILE-SHARE')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add task', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toBeVisible();
   removeProject(name);
 });
 

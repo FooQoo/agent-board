@@ -68,10 +68,13 @@ export async function pressSend(page: Page): Promise<Locator> {
   return dialog;
 }
 
-/** Sends the open question's answer; the dialog closes when the answer is saved. */
+/**
+ * Sends the open question's answer. When the answer is saved the question leaves the dialog: the list of the
+ * other messages shows in its place, or the dialog closes when nothing is left.
+ */
 export async function send(page: Page): Promise<void> {
   const dialog = await pressSend(page);
-  await expect(dialog).toBeHidden();
+  await expect(dialog.getByRole('region', { name: /^(Your answer|あなたの回答)$/ })).toHaveCount(0);
 }
 
 /** Opens the card's question, fills it, and sends it. */

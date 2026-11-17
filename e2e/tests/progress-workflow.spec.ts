@@ -14,7 +14,8 @@ import {
   workspace,
 } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
-import { answerNote, send, openAnswer } from '../helpers/answer';
+import { fillAnswer, send, openAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 function run(args: string[], home: string, cwd: string, input = ''): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
@@ -134,9 +135,9 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     const answer = await openAnswer(page, publish);
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });
-    await answerNote(page).fill('Choose Plan A and publish after review.');
+    await fillAnswer(answer, { choice: 'Plan A', text: 'Choose Plan A and publish after review.' });
     await send(page);
-    await expect(answer).toBeHidden();
+    await closeMessages(page);
 
     const completed = await waitResult;
     expect(completed.code, completed.stderr).toBe(0);

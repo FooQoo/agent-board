@@ -2,7 +2,8 @@ import { expect, test } from '../helpers/fixtures';
 import { agboardOk, askArgs, mainProject, nextTaskId, projectId, questionJson, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, openAnswer } from '../helpers/answer';
+import { answerButton, answerSend, openAnswer, send } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 test.beforeEach(() => resetPreferences());
 
@@ -90,17 +91,14 @@ for (const { locale, theme, height } of [
 
     // The dialog reads the whole question and keeps the answer in view.
     const dialog = await openAnswer(page, id);
-    await expect(dialog.locator('.decision-panel').getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
-    // The card's only question is the last, so the footer button is Send rather than Next.
-    const sendName = locale === 'ja' ? '送る' : 'Send';
-    await expect(answerDialog(page).getByRole('button', { name: sendName, exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(answerSend(page)).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-answer.png') });
     await dialog.getByText('この計画を承認する', { exact: true }).click();
-    const send = answerDialog(page).getByRole('button', { name: sendName, exact: true });
-    await expect(send).toBeInViewport({ ratio: 1 });
-    await send.click();
-    await expect(dialog).toBeHidden();
+    await expect(answerSend(page)).toBeInViewport({ ratio: 1 });
+    await send(page);
+    await closeMessages(page);
     await expect(answer).toHaveCount(0);
     const result = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
     expect(result.agentStatus).toBe('idle');

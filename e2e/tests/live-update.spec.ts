@@ -2,6 +2,7 @@ import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { openAnswer, sendAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -208,7 +209,8 @@ test('a user answer returns a pending task to idle and records the full answer i
   // The request stays read-only in details; the response is entered in the card's answer dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
-  await sendAnswer(page, 12, { text: fullAnswer });
+  await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: fullAnswer });
+  await closeMessages(page);
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);

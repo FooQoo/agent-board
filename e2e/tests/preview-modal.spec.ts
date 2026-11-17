@@ -23,7 +23,7 @@ interface ShownTask {
   id: number;
   title: string;
   description: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
   taskStatus: string;
   agentStatus: string;
   history: { at: string; reason: string }[];
@@ -96,7 +96,7 @@ test('PM-1 opening and closing a preview only reads: no draft, no history, no fi
   await expect(dialog.getByRole('button', { name: 'Close', exact: true }).first()).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   // Nothing is stored while it is open.
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
 
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
@@ -115,7 +115,7 @@ test('PM-2 the first change makes a draft the CLI refuses, and saving gives the 
   await expect(dialog.getByText('Draft', { exact: true })).toBeVisible();
   await expect(dialog.getByText(LOCKED)).toBeVisible();
   await expect(saveButton(dialog)).toBeEnabled();
-  await expect.poll(() => show(id).isDraft).toBe(true);
+  await expect.poll(() => show(id).draft).toBe('human');
 
   // The agent's CLI is refused, in text and in the machine-readable error.
   const refused = agboard(mainProject, ['edit', String(id), '--title', 'By an agent']);
@@ -128,7 +128,7 @@ test('PM-2 the first change makes a draft the CLI refuses, and saving gives the 
   // Saving stores the change and hands the task back.
   await saveButton(dialog).click();
   await expect(dialog).toHaveCount(0);
-  await expect.poll(() => show(id).isDraft).toBe(false);
+  await expect.poll(() => show(id).draft).toBeNull();
   expect(show(id).title).toBe('Changed in the preview, again');
   expect(agboard(mainProject, ['edit', String(id), '--title', 'By an agent after']).code).toBe(0);
 });
@@ -141,13 +141,13 @@ test('PM-2 Cmd+S and Ctrl+S save like the Save button, from the title and from t
   let dialog = await openPreview(page, id);
   await page.keyboard.press('Control+s');
   await expect(dialog).toBeVisible();
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
 
   await titleField(dialog).fill('Saved with Ctrl+S');
   await expect(saveButton(dialog)).toBeEnabled();
   await page.keyboard.press('Control+s');
   await expect(dialog).toHaveCount(0);
-  await expect.poll(() => show(id).isDraft).toBe(false);
+  await expect.poll(() => show(id).draft).toBeNull();
   expect(show(id).title).toBe('Saved with Ctrl+S');
 
   // The rich editor keeps the keys from nobody: the same keys save from the body.
@@ -168,13 +168,13 @@ test('PM-3 discarding takes the draft back, with the discard in the history and 
   let dialog = await openPreview(page, id);
 
   await titleField(dialog).fill('Typed and discarded');
-  await expect.poll(() => show(id).isDraft).toBe(true);
+  await expect.poll(() => show(id).draft).toBe('human');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
 
   // The real server took the discard: the draft is gone, the title is as before, and the history says so.
-  await expect.poll(() => show(id).isDraft).toBe(false);
+  await expect.poll(() => show(id).draft).toBeNull();
   const reasons = show(id).history.map((note) => note.reason);
   expect(reasons).toContain('Marked task as draft.');
   expect(reasons).toContain('Discarded draft changes.');
@@ -184,13 +184,13 @@ test('PM-3 discarding takes the draft back, with the discard in the history and 
   // Typing back to the original keeps the draft until the dialog closes, and closing takes it back.
   dialog = await openPreview(page, id);
   await titleField(dialog).fill('Briefly different');
-  await expect.poll(() => show(id).isDraft).toBe(true);
+  await expect.poll(() => show(id).draft).toBe('human');
   await titleField(dialog).fill('Discarded in the preview');
   await expect(dialog.getByRole('button', { name: 'Close', exact: true }).first()).toBeVisible();
-  expect(show(id).isDraft).toBe(true);
+  expect(show(id).draft).toBe('human');
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
-  await expect.poll(() => show(id).isDraft).toBe(false);
+  await expect.poll(() => show(id).draft).toBeNull();
 
   // A task that was a draft before stays a draft after a discard.
   agboardOk(mainProject, ['edit', String(id), '--title', 'Draft from before']);
@@ -201,7 +201,7 @@ test('PM-3 discarding takes the draft back, with the discard in the history and 
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
-  expect(show(id)).toMatchObject({ isDraft: true, title: 'Draft from before' });
+  expect(show(id)).toMatchObject({ draft: 'human', title: 'Draft from before' });
 });
 
 test('PM-4 a running task opens read-only, and a task that starts running turns the preview read-only', async ({ page }) => {
@@ -220,7 +220,7 @@ test('PM-4 a running task opens read-only, and a task that starts running turns 
   await expect(dialog.getByText('Read-only while an agent is working.')).toBeVisible();
   await expect(titleField(dialog)).toBeDisabled();
   await expect(saveButton(dialog)).toBeDisabled();
-  expect(show(running).isDraft).toBe(false);
+  expect(show(running).draft).toBeNull();
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
 
@@ -252,7 +252,7 @@ test('PM-4 a run that began before the first change stops the save and keeps the
   await expect(dialog.getByText('You have unsaved changes.')).toBeVisible();
   await expect(titleField(dialog)).toHaveValue('Typed while it runs');
   await expect(saveButton(dialog)).toBeDisabled();
-  expect(show(id)).toMatchObject({ isDraft: false, title: 'Runs under the dialog', agentStatus: 'running' });
+  expect(show(id)).toMatchObject({ draft: null, title: 'Runs under the dialog', agentStatus: 'running' });
 });
 
 test('PM-5 an untouched preview follows the latest and shows when; a change that slipped in stops the save', async ({
@@ -286,7 +286,7 @@ test('PM-5 an untouched preview follows the latest and shows when; a change that
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(dialog).toHaveCount(0);
-  await expect.poll(() => show(crossed).isDraft).toBe(false);
+  await expect.poll(() => show(crossed).draft).toBeNull();
   expect(show(crossed).title).toBe('Crossed, by the agent');
 
   // Only the state and the history changed: that is not a crossing, and the change can be saved.
@@ -302,7 +302,7 @@ test('PM-5 an untouched preview follows the latest and shows when; a change that
   await saveButton(dialog).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => show(statusOnly).title).toBe('Status only, saved');
-  expect(show(statusOnly)).toMatchObject({ isDraft: false, taskStatus: 'doing' });
+  expect(show(statusOnly)).toMatchObject({ draft: null, taskStatus: 'doing' });
 });
 
 test('PM-6 the epic tab and the epic details open the epic preview; a draft epic is refused by the CLI, discarded and saved on the server', async ({
@@ -314,7 +314,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await openBoard(page);
   const epic = () => JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PREVIEWEP', '--json']).stdout).epic as {
     name: string;
-    isDraft: boolean;
+    draft: 'human' | 'ai' | null;
   };
   const epicDialog = page.getByRole('dialog', { name: /Epic preview/ });
 
@@ -326,7 +326,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await expect(epicDialog).toBeVisible();
   await expect(epicDialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Preview epic');
   await expect(epicDialog.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
-  expect(epic().isDraft).toBe(false);
+  expect(epic().draft).toBeNull();
   await epicDialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(epicDialog).toHaveCount(0);
 
@@ -340,7 +340,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
 
   // The first change makes a draft, and the CLI is refused.
   await name.fill('Preview epic, changed');
-  await expect.poll(() => epic().isDraft).toBe(true);
+  await expect.poll(() => epic().draft).toBe('human');
   const refused = agboard(mainProject, ['epic', 'edit', 'PREVIEWEP', '--name', 'By an agent', '--json']);
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stderr || refused.stdout).error.code).toBe('epic_is_draft');
@@ -357,7 +357,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await epicDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(epicDialog).toHaveCount(0);
-  await expect.poll(() => epic().isDraft).toBe(false);
+  await expect.poll(() => epic().draft).toBeNull();
   expect(epic().name).toBe('Preview epic');
   expect(agboard(mainProject, ['epic', 'edit', 'PREVIEWEP', '--name', 'Preview epic']).code).toBe(0);
 
@@ -365,11 +365,11 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
   await page.getByRole('button', { name: 'Edit epic' }).click();
   await expect(epicDialog).toBeVisible();
   await name.fill('Preview epic, saved');
-  await expect.poll(() => epic().isDraft).toBe(true);
+  await expect.poll(() => epic().draft).toBe('human');
   await epicDialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(epicDialog).toHaveCount(0);
   await expect.poll(() => epic().name).toBe('Preview epic, saved');
-  expect(epic().isDraft).toBe(false);
+  expect(epic().draft).toBeNull();
 
   // Cmd+S and Ctrl+S save an epic as the Save button does.
   for (const [keys, text] of [['Meta+s', 'Saved with Cmd+S'], ['Control+s', 'Saved with Ctrl+S']]) {
@@ -380,7 +380,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
     await page.keyboard.press(keys);
     await expect(epicDialog).toHaveCount(0);
     await expect.poll(() => epic().name).toBe(text);
-    expect(epic().isDraft).toBe(false);
+    expect(epic().draft).toBeNull();
   }
 });
 
@@ -397,10 +397,10 @@ test('PM-4 a task opened from the archive is read-only and never becomes a draft
   await expect(dialog.getByText('Read-only because it is archived.')).toBeVisible();
   await expect(titleField(dialog)).toBeDisabled();
   await expect(saveButton(dialog)).toBeDisabled();
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
   await expect(dialog).toHaveCount(0);
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
 });
 
 test('PM-4 a task archived while its preview is open turns the preview read-only', async ({ page }) => {
@@ -412,5 +412,5 @@ test('PM-4 a task archived while its preview is open turns the preview read-only
   await expect(dialog).toHaveAttribute('data-read-only', '', { timeout: 15_000 });
   await expect(dialog.getByText('Read-only because it is archived.')).toBeVisible();
   await expect(titleField(dialog)).toBeDisabled();
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
 });

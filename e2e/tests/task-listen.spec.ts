@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { expect, test } from '../helpers/fixtures';
-import { agboard, agboardOk, mainProject, resetBoard, workspace } from '../helpers/agboard';
-import { readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { agboard, agboardOk, mainProject, resetBoard } from '../helpers/agboard';
+import { fillRequest, openAskAi, sendRequest } from '../helpers/ask-ai';
+import { waitForSync } from '../helpers/ui';
 
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -10,24 +10,15 @@ const png = Buffer.from(
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
-  agboardOk(mainProject, ['epic', 'add', 'LISTEN', '--name', 'Listening', '--actor', 'ai']);
   await page.goto('/');
   await waitForSync(page);
-  // The epic is known to the server 200 ms after the CLI wrote it: read the board again before the dialog opens.
-  await readBoardAfterReset(page);
 });
 
-test('a submitted request with an epic and image is returned by task wait as an ordinary AI task', async ({
-  page,
-}, testInfo) => {
+test('a request sent through Ask AI with an image is returned by task wait as a request', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 1100 });
-  await page.getByRole('button', { name: 'Add task', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  const description = 'Investigate the listener request\nKeep the source wording intact.';
-  await dialog.getByRole('textbox', { name: 'What should be done?' }).fill(description);
-
-  await dialog.getByRole('button', { name: 'Epic (optional)' }).click();
-  await page.getByRole('menuitemradio', { name: 'Listening' }).click();
+  const dialog = await openAskAi(page);
+  const description = 'Investigate the listener request\n\nKeep the source wording intact.';
+  await fillRequest(dialog, description);
   await dialog.locator('input[type=file]').setInputFiles({
     name: 'request.png',
     mimeType: 'image/png',
@@ -37,48 +28,34 @@ test('a submitted request with an epic and image is returned by task wait as an 
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('task-listen-request-attached.png') });
   await page.screenshot({ path: testInfo.outputPath('task-listen-request-attached-viewport.png') });
-  await dialog.getByRole('button', { name: 'Submit task' }).click();
-  await expect(dialog).toHaveCount(0);
+  await sendRequest(dialog);
 
-  const snapshot = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout) as {
-    tasks: { id: number; title: string; assignee: string; taskStatus: string; agentStatus: string; epicId: string | null }[];
-  };
-  const created = snapshot.tasks.find((task) => task.title === 'Investigate the listener request');
-  expect(created).toMatchObject({
-    title: 'Investigate the listener request',
-    assignee: 'ai',
-    taskStatus: 'todo',
-    agentStatus: 'idle',
-    epicId: 'LISTEN',
-  });
-  if (!created) throw new Error('The submitted request was not stored as a task.');
+  // A request is not a task: no card appears, and the wait returns the request before any task.
+  const snapshot = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout) as { tasks: { title: string }[] };
+  expect(snapshot.tasks.map(({ title }) => title)).not.toContain('Investigate the listener request');
 
   const waited = agboard(mainProject, ['wait', '--until', 'task', '--idle-timeout', '1', '--json']);
   expect(waited.code, waited.stderr).toBe(0);
   expect(waited.stderr).toBe('');
   const selected = JSON.parse(waited.stdout) as {
     kind: string;
-    task: { id: number; title: string; taskStatus: string; agentStatus: string };
-    taskPath: string;
-    documentPath: string | null;
+    cursor: string;
+    requests: { id: string; createdAt: string; title: string }[];
   };
-  expect(selected.kind).toBe('task');
-  expect(selected.task).toMatchObject({
-    id: created.id,
-    title: 'Investigate the listener request',
-    taskStatus: 'todo',
-    agentStatus: 'idle',
-  });
-  expect(selected.taskPath).toContain('/tasks/');
-  expect(selected.taskPath.endsWith('/TASK.md')).toBe(true);
-  expect(selected.documentPath).not.toBeNull();
+  expect(selected.kind).toBe('requests');
+  expect(selected.requests).toHaveLength(1);
+  expect(selected.requests[0].title).toBe('Investigate the listener request');
 
-  const taskMarkdown = readFileSync(selected.taskPath, 'utf8');
-  expect(taskMarkdown).toContain('## 元の依頼');
-  expect(taskMarkdown).toContain(description);
-  const attachment = JSON.parse(
-    agboardOk(mainProject, ['show', String(created.id), '--json']).stdout,
-  ) as { task: { attachments: { name: string }[] } };
-  expect(attachment.task.attachments.map(({ name }) => name)).toContain('request.png');
-  expect(workspace(mainProject).folder).toContain('projects');
+  // The agent reads the whole text and its image with message show, and the next wait returns the same request until it is accepted.
+  const shown = JSON.parse(agboardOk(mainProject, ['message', 'show', selected.requests[0].id, '--json']).stdout) as {
+    request: { body: string; status: string; from: string };
+  };
+  expect(shown.request.body).toContain('Keep the source wording intact.');
+  expect(shown.request.status).toBe('open');
+  const again = JSON.parse(agboard(mainProject, ['wait', '--until', 'task', '--idle-timeout', '1', '--json']).stdout) as { kind: string };
+  expect(again.kind).toBe('requests');
+  agboardOk(mainProject, ['message', 'accept', selected.requests[0].id, '--actor', 'ai', '--by', 'e2e-listener', '--json']);
+  // An accepted request no longer wakes the wait: the board's own todo task is returned instead.
+  const next = JSON.parse(agboard(mainProject, ['wait', '--until', 'task', '--idle-timeout', '1', '--json']).stdout) as { kind: string };
+  expect(next.kind).not.toBe('requests');
 });

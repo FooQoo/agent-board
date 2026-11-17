@@ -94,7 +94,7 @@ export function createMonitorHome(): string {
   const alphaFolder = workspace('Alpha', home).folder;
   const draftPath = path.join(alphaFolder, 'tasks', String(draftId), 'task.json');
   const draft = JSON.parse(readFileSync(draftPath, 'utf8')) as Record<string, unknown>;
-  writeJson(draftPath, { ...draft, isDraft: true });
+  writeJson(draftPath, { ...draft, draft: 'human' });
 
   // Keep both draft and ordinary Todo cards, and an idle card already in Doing,
   // so the view proves its columns come from taskStatus rather than agentStatus.

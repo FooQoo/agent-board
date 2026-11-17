@@ -5,6 +5,7 @@ import {
   type Serve, type TaskJson,
 } from '../helpers/agboard';
 import { answerButton, send, openAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // Asking a pending question with no wait setting waits for the answer. This runs the real CLI as a child
 // process against its own data area and serve, answers in the browser, and expects the same child to finish.
@@ -63,7 +64,7 @@ test('default pending waits for a browser answer', async ({ page }) => {
     expect(last?.answers?.[0]).toMatchObject({ id: 'Q-1', choiceId: 'b', choiceLabel: 'Plan B', via: 'ui' });
     expect(show(home, 1)).toMatchObject({ id: 1, agentStatus: 'idle', pendingRequestId: null });
     expect(show(home, 1)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
-    await expect(request).toBeHidden();
+    await closeMessages(page);
     await expect(answerButton(page, 1)).toHaveCount(0);
   } finally {
     await reap(waiter);

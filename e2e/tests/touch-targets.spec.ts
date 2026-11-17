@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
-import { answerButton, bandToggle } from '../helpers/answer';
+import { answerButton, openListButton } from '../helpers/answer';
+import { openAskAi } from '../helpers/ask-ai';
 
 // An iPad held upright: the desktop layout, a finger as the pointer, and the detail panel open.
 test.use({ viewport: { width: 834, height: 1194 }, hasTouch: true, isMobile: true });
@@ -28,10 +29,8 @@ const openCard = async (page: Page, id: number) => {
   await expect(page.locator('.detail__close')).toBeVisible();
 };
 
-test('opening the new task dialog leaves the software keyboard down', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New task' });
-  await expect(dialog).toBeVisible();
+test('opening the Ask AI dialog leaves the software keyboard down', async ({ page }) => {
+  const dialog = await openAskAi(page);
   await expect.poll(() => dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
   const focused = await page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null;
@@ -48,12 +47,12 @@ test('the header, the band, the detail panel and the dialogs have finger-sized c
   page,
 }) => {
   const header = page.getByRole('banner');
-  await expectFingerSized(header.getByRole('button', { name: 'Add task' }), 'Add task');
+  await expectFingerSized(header.getByRole('button', { name: 'Ask AI' }), 'Ask AI');
   await expectFingerSized(header.getByRole('button', { name: 'Settings' }), 'Settings');
   await expectFingerSized(header.locator('.project-switcher'), 'project switcher');
   expect((await header.boundingBox())?.height).toBe(56);
 
-  await expectFingerSized(bandToggle(page), 'band toggle');
+  await expectFingerSized(openListButton(page), 'Open the list');
 
   await openCard(page, 16);
   await expectFingerSized(page.locator('.detail__close'), 'detail close');
