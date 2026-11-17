@@ -1,0 +1,125 @@
+/*
+ * The band of messages (MessageBand) above the lanes. It keeps the look of the band it replaced: a
+ * bordered strip with a title, then the two counts, then the buttons. The lengths follow the
+ * approved mock.
+ */
+
+.message-band {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 12px;
+  background: var(--r-surface);
+}
+
+.message-band[data-state="empty"] {
+  border-color: var(--r-border);
+}
+
+.message-band__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+}
+
+.message-band__heading {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 6px 4px 2px;
+  font: inherit;
+}
+
+.message-band__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--r-pend-tx);
+}
+
+.message-band[data-state="empty"] .message-band__icon {
+  color: var(--r-done);
+}
+
+.message-band__title {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--r-text);
+}
+
+.message-band__chips {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message-band__chip {
+  height: 26px;
+  font-size: 12px;
+}
+
+.message-band__chip strong {
+  font-weight: 700;
+}
+
+.message-band__sub {
+  font-weight: 400;
+}
+
+.message-band__actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.message-band__actions svg {
+  flex: none;
+}
+
+/* ---- The phone band under the monitor's header ---- */
+
+.message-band[data-variant="phone"] {
+  padding: 10px;
+}
+
+.message-band[data-variant="phone"] .message-band__title {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.message-band[data-variant="phone"] .message-band__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  margin-left: 0;
+}
+
+.message-band[data-variant="phone"] .message-band__actions > * {
+  min-width: 0;
+  justify-content: center;
+}
+
+/* Touch screens: the header is finger-sized. */
+@media (pointer: coarse) {
+  .message-band__header {
+    min-height: var(--btn-l-h);
+  }
+}

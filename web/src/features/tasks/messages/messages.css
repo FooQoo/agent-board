@@ -1,0 +1,254 @@
+/*
+ * The list of messages (MessagesSurface): the two tabs, the rows, and the opened question or
+ * request. The modal and the sheet themselves are the shared Surface; an open question takes the
+ * size of the old answer dialog and is the container of the two-column rules of decision-answer.css.
+ * The lengths follow the approved mock.
+ */
+
+/* ---- An open question on the PC: the answer dialog's size, the buttons pinned ---- */
+
+.modal.surface-modal.message-surface--answering {
+  width: min(1120px, calc(100vw - 48px));
+  height: calc(var(--stable-vh, 100svh) - 48px);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  container: decision-dialog / inline-size;
+}
+
+@media (min-width: 900px) {
+  .modal.surface-modal.message-surface--answering {
+    height: min(800px, calc(var(--stable-vh, 100svh) - 48px));
+  }
+}
+
+.message-surface--answering .modal__header {
+  flex: none;
+  padding: 18px 28px 14px;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.message-surface--answering .surface__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.message-surface--answering .surface__footer {
+  flex-direction: row;
+  justify-content: flex-end;
+  padding: 14px 28px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+/* ---- The list ---- */
+
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--r-lane);
+}
+
+.message-tabs__tab {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.message-tabs__tab[aria-selected="true"] {
+  background: var(--r-surface);
+  color: var(--r-text);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
+}
+
+.message-tabs__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--r-accent);
+}
+
+.message-tabs__tab strong {
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.message-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message-list__empty {
+  margin: 0;
+  padding: 32px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--r-muted);
+}
+
+.message-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-row:hover:not(:disabled) {
+  background: var(--r-lane);
+}
+
+.message-row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--r-accent);
+}
+
+.message-row:disabled {
+  cursor: default;
+}
+
+.message-row__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.message-row[data-type="approval"] .message-row__icon {
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+}
+
+.message-row__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.message-row__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.message-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--r-muted);
+}
+
+.message-row__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--r-muted);
+}
+
+.message-row__title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-row > [data-slot="badge"] {
+  flex: none;
+}
+
+/* ---- An opened question or request ---- */
+
+.message-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The question keeps the product's own layout: stacked, or two columns inside the dialog. */
+.message-detail--panel {
+  gap: 0;
+}
+
+.message-detail__question {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-detail__back {
+  align-self: flex-start;
+}
+
+.message-detail__blocks {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+  font-size: 12px;
+}
+
+.message-detail__error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--destructive);
+}
+
+.message-detail__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--r-muted);
+}
+
+.message-detail__state p {
+  margin: 0;
+}
+
+.message-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

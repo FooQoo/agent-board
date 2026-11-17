@@ -6,7 +6,6 @@ import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable } from '@dnd-kit/react/sortable';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
@@ -24,7 +23,6 @@ export interface BoardProps {
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
   /** The band of unanswered questions above the lanes. */
@@ -42,7 +40,6 @@ export function Board({
   onArchiveDone,
   onOpenEpic,
   projectId,
-  answers,
   onAnswer,
   layoutRef,
   band,
@@ -104,7 +101,6 @@ export function Board({
               onArchive={column === 'done' ? onArchiveDone : undefined}
               onOpenEpic={onOpenEpic}
               projectId={projectId}
-              answers={answers}
               onAnswer={onAnswer}
             />
           ))}

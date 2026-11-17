@@ -24,7 +24,7 @@ const TARGET_RESUMED: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 
 function SampleAnswerButton() {
   return (
     <div className="card__answer">
-      <DecisionAnswerButton taskId={pendingSample.id} continuing={false} onClick={noop} />
+      <DecisionAnswerButton taskId={pendingSample.id} onClick={noop} />
     </div>
   );
 }

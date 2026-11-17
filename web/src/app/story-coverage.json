@@ -84,26 +84,22 @@
               "interaction": false
             },
             {
-              "id": "app-board-workspace--question-band-open",
+              "id": "app-board-workspace--message-band-open",
               "states": [
-                "question band closed above the lanes",
-                "opens from its header",
+                "message band above the lanes",
+                "counts questions and approvals",
+                "opens the list",
                 "cards with unanswered questions"
               ],
               "interaction": true
             },
             {
-              "id": "app-board-workspace--question-band-held",
-              "states": ["answers held", "review and send", "continue answering"],
+              "id": "app-board-workspace--message-band-empty",
+              "states": ["empty band keeps its place", "count 0"],
               "interaction": true
             },
             {
-              "id": "app-board-workspace--question-band-empty",
-              "states": ["empty band keeps its place", "count 0", "toggle disabled"],
-              "interaction": true
-            },
-            {
-              "id": "app-board-workspace--question-band-dark",
+              "id": "app-board-workspace--message-band-dark",
               "states": ["band in dark mode"],
               "interaction": false
             }

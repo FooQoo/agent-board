@@ -5,7 +5,7 @@ import { DecisionAnswerButton, decisionAnswerButtonSelector } from './DecisionAn
 const meta = {
   title: 'Task/Answer/DecisionAnswerButton',
   component: DecisionAnswerButton,
-  args: { continuing: false, onClick: fn(), taskId: 11 },
+  args: { onClick: fn(), taskId: 11 },
   decorators: [
     (Story) => (
       <div style={{ width: 228, padding: 8, background: 'var(--r-pend-bg)' }}>
@@ -26,16 +26,6 @@ export const Open: Story = {
     await expect(canvasElement.querySelector(decisionAnswerButtonSelector(11))).toBe(button);
     await userEvent.click(button);
     await expect(args.onClick).toHaveBeenCalledTimes(1);
-  },
-};
-
-/** An answer is already started: the button says so, in the outline. */
-export const Continuing: Story = {
-  args: { continuing: true },
-  play: async ({ canvasElement }) => {
-    await expect(
-      within(canvasElement).getByRole('button', { name: 'Continue answering' }),
-    ).toHaveAttribute('data-variant', 'outline');
   },
 };
 

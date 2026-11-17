@@ -1,17 +1,6 @@
 import type { Epic, Project, ProjectId, Task, TaskSummary } from '../../../shared/api/contracts';
 import { getJson, projectPath } from '../../../shared/api/http';
 import { toTask, type WireTask } from '../../../shared/api/wire';
-import { parseQuestionDetail, type QuestionDetail } from '../answer/model/qa';
-
-/** One question of the project, with its full text and options. */
-export async function fetchQuestion(
-  projectId: ProjectId,
-  questionId: string,
-): Promise<QuestionDetail> {
-  return parseQuestionDetail(
-    await getJson<unknown>(`${projectPath(projectId)}/messages/${encodeURIComponent(questionId)}`),
-  );
-}
 
 /** An archived card as the archive lists it: no text, conditions or history. Its Detail is read when it is opened. */
 export type ArchivedTask = TaskSummary & { archivedAt?: string | null };

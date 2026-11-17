@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "owner": "U472",
+  "files": [
+    {
+      "file": "features/tasks/messages/MessageBand.tsx",
+      "exports": [
+        {
+          "name": "MessageBand",
+          "stories": [
+            {
+              "id": "task-messages-messageband--counts",
+              "states": [
+                "questions and approvals counted",
+                "unpicked requests counted",
+                "open the list"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messageband--empty",
+              "states": ["nothing open", "count of 0"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messageband--requests-only",
+              "states": ["only requests open", "english"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messageband--counts-en-dark",
+              "states": ["english", "dark", "plural counts"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messageband--phone-with-ask",
+              "states": ["phone band", "ask AI button"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messageband--phone-without-ask",
+              "states": ["phone band", "no ask button", "dark"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/messages/MessageCenter.tsx",
+      "exports": [
+        {
+          "name": "MessageCenter",
+          "stories": [
+            {
+              "id": "task-messages-messagecenter--list-from-ai",
+              "states": [
+                "list as a modal",
+                "tab: AI's questions",
+                "unanswered",
+                "awaiting approval"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--list-from-you",
+              "states": ["tab: your requests", "waiting to be picked up"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--approval-row",
+              "states": ["approval row", "hand over to the review"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--question-open",
+              "states": ["open question", "two columns", "fixed buttons", "blocked cards"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--question-needs-choice",
+              "states": ["choice required", "note alone not sendable", "send", "dark"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--request-open",
+              "states": ["open request", "withdraw"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--list-en-dark",
+              "states": ["english", "dark", "list"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--question-open-ja-dark",
+              "states": ["japanese", "dark", "open question"],
+              "interaction": false
+            },
+            {
+              "id": "task-messages-messagecenter--phone-band",
+              "states": ["phone band", "ask AI button"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-list",
+              "states": ["bottom sheet", "list"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-question",
+              "states": ["bottom sheet", "stacked question and answer", "fixed buttons"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-request-en-dark",
+              "states": ["bottom sheet", "open request", "english", "dark"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/messages/MessagesSurface.tsx",
+      "exports": [
+        {
+          "name": "MessagesSurface",
+          "stories": [],
+          "exclusion": "MessagesSurface is the list and the opened message inside the shared Surface; every state of it is a MessageCenter Story, and the routes it calls are covered by the MessageCenter tests."
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/messages/MessageRows.tsx",
+      "exports": [
+        {
+          "name": "MessageList",
+          "stories": [],
+          "exclusion": "MessageList is the two tabs and the rows inside MessagesSurface; its states are the MessageCenter list Stories."
+        }
+      ]
+    }
+  ]
+}

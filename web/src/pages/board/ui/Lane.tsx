@@ -8,7 +8,6 @@ import { TaskCard } from '../../../features/tasks/card/TaskCard';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 export interface LaneProps {
   column: ColumnName;
@@ -18,7 +17,6 @@ export interface LaneProps {
   onArchive?: () => void;
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
 }
 
@@ -30,7 +28,6 @@ export function Lane({
   onArchive,
   onOpenEpic,
   projectId,
-  answers,
   onAnswer,
 }: LaneProps) {
   const { t } = useTranslation();
@@ -66,7 +63,6 @@ export function Lane({
               onSelect={onSelect}
               renderEpic={renderEpic}
               projectId={projectId}
-              answers={answers}
               onAnswer={onAnswer}
             />
           ))}

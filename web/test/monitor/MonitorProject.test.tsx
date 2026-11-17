@@ -5,7 +5,7 @@ import { MonitorClientError } from '../../src/pages/monitor/session';
 import { unconnectedMonitorReadResolvers } from '../../src/pages/monitor/contracts';
 import { MonitorProject } from '../../src/pages/monitor/MonitorProject';
 import { selectLocale } from '../../src/shared/i18n';
-import type { AnswersWriter, QuestionReader } from '../../src/features/tasks/answer/model/qa';
+import type { MessageDetail, MessagesApi } from '../../src/features/tasks/messages/model/messages';
 import {
   changed,
   FakeAdapter,
@@ -26,9 +26,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const readQuestion: QuestionReader = async (_projectId, id) => ({
+const read: MessagesApi['read'] = async (_projectId, id): Promise<MessageDetail> => ({
   id,
-  question: 'Which one?',
+  type: 'question',
+  body: 'Which one?',
   choices: [{ id: 'a', label: 'A' }],
   recommendedChoiceId: null,
   status: 'open',
@@ -41,7 +42,7 @@ function mount(
   extra: {
     onNotFound?: () => void;
     useBuildReload?: () => void;
-    writeAnswers?: AnswersWriter;
+    answer?: MessagesApi['answer'];
   } = {},
 ) {
   return render(
@@ -49,8 +50,11 @@ function mount(
       projectId={P}
       adapter={adapter}
       readResolvers={unconnectedMonitorReadResolvers}
-      readQuestion={readQuestion}
-      writeAnswers={extra.writeAnswers ?? (async () => Promise.reject(new Error('no answer')))}
+      messagesApi={{
+        read,
+        answer: extra.answer ?? (async () => Promise.reject(new Error('no answer'))),
+        withdraw: async () => undefined,
+      }}
       useBuildReload={extra.useBuildReload ?? (() => undefined)}
       onNotFound={extra.onNotFound ?? (() => undefined)}
     />,
@@ -189,13 +193,17 @@ describe('MonitorProject', () => {
       questionIds: ['r1'],
       openQuestionIds: ['r1'],
     });
-    summary.questions = [
+    summary.messages = [
       {
         id: 'r1',
+        type: 'question',
+        from: 'ai',
+        to: 'human',
+        turn: 'human',
         title: 'Which one?',
-        recommendedChoiceId: null,
-        referencedBy: [1],
         createdAt: '2026-01-01T00:00:00Z',
+        tasks: [1],
+        epicId: null,
       },
     ];
     return summary;
@@ -222,30 +230,9 @@ describe('MonitorProject', () => {
     expect(adapter.summaryCalls).toHaveLength(2);
   });
 
-  it('holds the list only while the answer is on its way', async () => {
-    const writeAnswers = vi.fn(() => new Promise<never>(() => undefined));
-    mount({ writeAnswers });
-    await openAndLoad(pendingSummary());
-    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
-    await user.click(
-      within(screen.getByRole('article', { name: /Which one\?/ })).getByRole('button', {
-        name: 'Answer the question',
-      }),
-    );
-    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
-    await user.click(screen.getByRole('button', { name: /^Send$/ }));
-    expect(writeAnswers).toHaveBeenCalledTimes(1);
-
-    act(() =>
-      adapter.handlers?.onChanged(changed(1, [{ resource: 'task', id: 1, facets: ['summary'] }])),
-    );
-    await tick(1000);
-    expect(adapter.summaryCalls).toHaveLength(1);
-  });
-
   it('shows an answer at once: the Summary is read again without waiting for the hold', async () => {
-    const writeAnswers = vi.fn(async () => undefined);
-    mount({ writeAnswers });
+    const answer = vi.fn(async () => undefined);
+    mount({ answer });
     await openAndLoad(pendingSummary());
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
     await user.click(
@@ -253,14 +240,14 @@ describe('MonitorProject', () => {
         name: 'Answer the question',
       }),
     );
-    await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
-    await user.click(screen.getByRole('button', { name: /^Send$/ }));
+    await user.click(await screen.findByRole('radio', { name: 'A' }));
+    await user.click(screen.getByRole('button', { name: 'Send answer' }));
     await tick();
-    expect(writeAnswers).toHaveBeenCalledTimes(1);
+    expect(answer).toHaveBeenCalledTimes(1);
     expect(adapter.summaryCalls).toHaveLength(2);
   });
 
-  it('waits for a new build while input is left in the sheet, even when it is closed', async () => {
+  it('waits for a new build while the list is open, and not after it is closed', async () => {
     const reloads: Array<boolean> = [];
     mount({
       useBuildReload: ((_served: string | null, busy: boolean) => void reloads.push(busy)) as never,
@@ -275,8 +262,8 @@ describe('MonitorProject', () => {
     );
     await user.type(await screen.findByRole('textbox', { name: 'Note' }), 'Go with A');
     expect(reloads.at(-1)).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Close the answer' }));
+    await user.click(screen.getByRole('button', { name: 'Later' }));
     await tick(500);
-    expect(reloads.at(-1)).toBe(true);
+    expect(reloads.at(-1)).toBe(false);
   });
 });

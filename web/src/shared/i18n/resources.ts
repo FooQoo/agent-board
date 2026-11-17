@@ -6,6 +6,7 @@ import { dataLayerPcEn } from './locales/en/data-layer-pc';
 import { detailEn } from './locales/en/detail';
 import { docsEntryEn } from './locales/en/docs-entry';
 import { editEn } from './locales/en/edit';
+import { messagesEn } from './locales/en/messages';
 import { monitorEn } from './locales/en/monitor';
 import { questionsEn } from './locales/en/questions';
 import { commonJa } from './locales/ja/common';
@@ -16,6 +17,7 @@ import { dataLayerPcJa } from './locales/ja/data-layer-pc';
 import { detailJa } from './locales/ja/detail';
 import { docsEntryJa } from './locales/ja/docs-entry';
 import { editJa } from './locales/ja/edit';
+import { messagesJa } from './locales/ja/messages';
 import { monitorJa } from './locales/ja/monitor';
 import { questionsJa } from './locales/ja/questions';
 
@@ -27,6 +29,7 @@ export const resources = {
       ...detailEn,
       ...docsEntryEn,
       ...editEn,
+      ...messagesEn,
       ...monitorEn,
       ...questionsEn,
       ...dataLayerConnectionEn,
@@ -42,6 +45,7 @@ export const resources = {
       ...detailJa,
       ...docsEntryJa,
       ...editJa,
+      ...messagesJa,
       ...monitorJa,
       ...questionsJa,
       ...dataLayerConnectionJa,

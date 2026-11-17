@@ -1,16 +1,7 @@
 import type { AcceptanceItem, Draft, ProjectId } from '../../../shared/api/contracts';
 import { projectPath } from '../../../shared/api/http';
-import { multipartBody, postTask, sendMultipart, sendTask } from '../../../shared/api/write';
+import { multipartBody, sendMultipart, sendTask } from '../../../shared/api/write';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
-import { type AnswerItem, answersBody } from '../answer/model/qa';
-
-/** Sends a person's answers to questions of the project; the server writes all of them or none. */
-export async function answerQuestions(projectId: ProjectId, answers: AnswerItem[]) {
-  return postTask<{ questions: unknown[] }>(
-    `${projectPath(projectId)}/messages/answers`,
-    answersBody(answers),
-  );
-}
 
 /**
  * Saves the title and/or description of a draft. Body and acceptance are partial inputs applied to

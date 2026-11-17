@@ -27,7 +27,6 @@ export interface MonitorLanesProps {
   onBulkArchive: () => void;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   onOpenAnswer?: (item: MonitorTaskModel) => void;
-  answerController?: MonitorViewProps['answerController'];
   id?: string;
   /** The tab bar: its marker follows the slide between lanes. */
   tabsRef?: RefObject<HTMLElement | null>;
@@ -52,7 +51,6 @@ export function MonitorLanes({
   onBulkArchive,
   onOpenDetail,
   onOpenAnswer,
-  answerController,
   id,
   tabsRef,
   previewRevealed,
@@ -143,7 +141,6 @@ export function MonitorLanes({
                         section={name}
                         onOpenDetail={onOpenDetail}
                         onOpenAnswer={onOpenAnswer}
-                        answerController={answerController}
                       />
                     </SwipeableCard>
                   ))

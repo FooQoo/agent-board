@@ -1,14 +1,15 @@
-// The answer form of the guide's sample question: the product's own answer dialog (PC) or sheet
-// (phone) with a local question. Nothing is sent anywhere; Send only tells the guide to go on.
+// The answer form of the guide's sample question: the product's own list of messages (a modal on
+// the PC, a bottom sheet on the phone) with one local question. Nothing is sent anywhere; Send only
+// tells the guide to go on.
 
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { DecisionAnswerDialog } from '../../features/tasks/answer/DecisionAnswerDialog';
-import { DecisionAnswerSheet } from '../../features/tasks/answer/DecisionAnswerSheet';
-import type { DecisionAnswerView } from '../../features/tasks/answer/decisionAnswerView';
+import { useMemo } from 'react';
+import { MessagesSurface } from '../../features/tasks/messages/MessagesSurface';
+import type { MessagesApi } from '../../features/tasks/messages/model/messages';
+import type { Message } from '../../shared/data/api/contracts';
 import { type GuideLocale, sampleQuestion } from './guideSamples';
 
-const noop = () => {};
+const QUESTION_ID = 'Q-0';
+const NOW = '2026-01-01T00:00:00.000Z';
 
 export function SampleAnswer({
   phone,
@@ -24,59 +25,52 @@ export function SampleAnswer({
   /** The form was closed without sending; the question stays pending. */
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
   const { title, question, choices } = sampleQuestion(locale);
-  const [choiceId, setChoiceId] = useState<string | null>(null);
-  const [text, setText] = useState('');
-  const hasInput = choiceId !== null || text.trim() !== '';
-  const view: DecisionAnswerView = {
-    choiceId,
-    text,
-    phase: 'editing',
-    notice: null,
-    failure: null,
-    tooLong: false,
-    sendable: hasInput,
-    disabled: false,
-    hasInput,
-  };
-  const flow = {
-    identity: t('onboarding.sample.label'),
-    title,
-    steps: [{ id: 'guide-question', label: title, state: hasInput ? 'answered' : 'open' }] as const,
-    current: 0,
-    answeredCount: hasInput ? 1 : 0,
-    panel: {
-      question,
-      choices,
-      view,
-      onChoiceChange: setChoiceId,
-      onTextChange: setText,
-      onClear: () => {
-        setChoiceId(null);
-        setText('');
+  const messages = useMemo<Message[]>(
+    () => [
+      {
+        id: QUESTION_ID,
+        type: 'question',
+        from: 'ai',
+        to: 'human',
+        turn: 'human',
+        title,
+        createdAt: NOW,
+        tasks: [],
+        epicId: null,
       },
-    },
-    loading: null,
-    onReload: noop,
-    review: { items: [], onChange: noop, onDiscard: noop },
-    sending: false,
-    failure: null,
-    canSend: hasInput,
-    direct: true,
-    onPrev: noop,
-    onNext: noop,
-    onSend,
-  };
-  return phone ? (
-    <DecisionAnswerSheet
-      {...flow}
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+    ],
+    [title],
+  );
+  const api = useMemo<MessagesApi>(
+    () => ({
+      read: () =>
+        Promise.resolve({
+          id: QUESTION_ID,
+          type: 'question',
+          body: question,
+          choices,
+          recommendedChoiceId: null,
+          status: 'open',
+          referencedBy: [],
+        }),
+      answer: () => {
+        onSend();
+        return Promise.resolve();
+      },
+      withdraw: () => Promise.reject(new Error('The guide has nothing to withdraw.')),
+    }),
+    [question, choices, onSend],
+  );
+  return (
+    <MessagesSurface
+      projectId="guide"
+      messages={messages}
+      kind={phone ? 'sheet' : 'dialog'}
+      target={{ tab: 'fromAi', openId: QUESTION_ID }}
+      api={api}
+      onChanged={() => {}}
+      onClose={onClose}
     />
-  ) : (
-    <DecisionAnswerDialog {...flow} onStep={noop} onClose={onClose} />
   );
 }

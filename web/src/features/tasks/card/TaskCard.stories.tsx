@@ -112,7 +112,7 @@ export const PendingWithEpic: Story = {
 };
 
 /** A card with a decision request: the button replaces the question, as the board's TaskCard draws it. */
-const answerCard = (continuing: boolean): Story['args'] => ({
+const answerCard = (): Story['args'] => ({
   task: makeTask({
     id: 11,
     title: 'API refactor',
@@ -127,7 +127,7 @@ const answerCard = (continuing: boolean): Story['args'] => ({
   showPendingReason: false,
   children: (
     <div className="card__answer">
-      <DecisionAnswerButton taskId={11} continuing={continuing} onClick={fn()} />
+      <DecisionAnswerButton taskId={11} onClick={fn()} />
     </div>
   ),
 });
@@ -142,7 +142,7 @@ export const PendingStartApproval: Story = {
   },
 };
 export const PendingWithAnswer: Story = {
-  args: answerCard(false),
+  args: answerCard(),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Answer the question' })).toBeInTheDocument();
@@ -152,7 +152,7 @@ export const PendingWithAnswer: Story = {
   },
 };
 export const PendingSelected: Story = {
-  args: { ...answerCard(false), selected: true },
+  args: { ...answerCard(), selected: true },
   play: async ({ canvasElement }) => {
     const button = within(canvasElement).getByRole('button', { name: 'Answer the question' });
     const item = button.closest<HTMLElement>('.card__item');
@@ -165,14 +165,6 @@ export const PendingSelected: Story = {
     await expect(getComputedStyle(card).boxShadow).toBe('none');
   },
 };
-export const PendingContinuing: Story = {
-  args: answerCard(true),
-  play: async ({ canvasElement }) =>
-    expect(
-      within(canvasElement).getByRole('button', { name: 'Continue answering' }),
-    ).toBeInTheDocument(),
-};
-
 const contentMeta = {
   title: 'Task/Card/TaskCardContent',
   component: TaskCardContent,

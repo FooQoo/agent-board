@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { makeMonitorTask, makeProject, makeTask } from '../../../../.storybook/support/fixtures';
 import {
   SAMPLE_PROJECT,
-  sampleQuestions,
-  sampleReader,
-} from '../../../features/tasks/answer/questionSamples';
-import { useMonitorInteractions } from '../hooks/useMonitorInteractions';
+  sampleMessages,
+  sampleMessagesApi,
+} from '../../../features/tasks/messages/messageSamples';
+import { firstQuestionOfTask } from '../../../features/tasks/messages/model/messages';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { ColumnName } from '../../../shared/api/contracts';
@@ -38,17 +38,21 @@ function card(
 
 /**
  * The sample board of the lane stories: a few cards in each lane, an AI run in progress, and a
- * card waiting for an answer, with the five questions of the band.
+ * card waiting for an answer, with the messages of the band.
  */
 function useLaneFixture(options: { emptyDone?: boolean } = {}) {
   const { i18n } = useTranslation();
-  const interactions = useMonitorInteractions();
-  const { book } = interactions;
   const project = useMemo(() => makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }), []);
-  const questions = useMemo(() => sampleQuestions(i18n.language), [i18n.language]);
-  useMemo(() => book.reconcile(SAMPLE_PROJECT, questions), [book, questions]);
+  // The first question waits on the card "API refactoring" (#11).
+  const messages = useMemo(
+    () =>
+      sampleMessages(i18n.language).map((message) =>
+        message.id === 'Q-12' ? { ...message, tasks: [11] } : message,
+      ),
+    [i18n.language],
+  );
   const [lanes, setLanes] = useState<LaneItems>(() => {
-    const waits = questions.filter((q) => q.referencedBy.includes(11)).map((q) => q.id);
+    const waits = [firstQuestionOfTask(messages, 11)?.id ?? ''].filter(Boolean);
     return {
       todo: [
         card(project, 14, 'Prepare the Windows build', 'todo', { assignee: 'human' }),
@@ -86,15 +90,8 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
           ],
     };
   });
-  const answerController = useMemo(
-    () => ({
-      book,
-      read: sampleReader(sampleQuestions(i18n.language, true)),
-      write: async () => {},
-    }),
-    [book, i18n.language],
-  );
-  return { lanes, setLanes, questions, answerController, projectId: SAMPLE_PROJECT };
+  const messagesApi = useMemo(() => sampleMessagesApi(i18n.language), [i18n.language]);
+  return { lanes, setLanes, messages, messagesApi, projectId: SAMPLE_PROJECT };
 }
 
 type ScreenArgs = Pick<MonitorLanesScreenProps, 'initialLane' | 'previewRevealed'> & {
@@ -106,7 +103,7 @@ type ScreenArgs = Pick<MonitorLanesScreenProps, 'initialLane' | 'previewRevealed
 
 /** The phone monitor's lane view over sample cards. Confirming a move or an archive changes them. */
 function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) {
-  const { lanes, setLanes, questions, answerController, projectId } = useLaneFixture({ emptyDone });
+  const { lanes, setLanes, messages, messagesApi, projectId } = useLaneFixture({ emptyDone });
   const find = (id?: number) =>
     Object.values(lanes)
       .flat()
@@ -131,8 +128,8 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
       lanes={lanes}
       projectName={LANE_PROJECT_NAME}
       projectId={projectId}
-      questions={questions}
-      answerController={answerController}
+      messages={messages}
+      messagesApi={messagesApi}
       initialPending={initialPending}
       onMove={async (item: MonitorTask, to: ColumnName) => {
         const rest = without(item.task.id);

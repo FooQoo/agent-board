@@ -271,8 +271,8 @@ describe('App', () => {
     expect(screen.getByText('Add a task to get started.')).toBeTruthy();
     for (const lane of ['Todo', 'Doing', 'Done'])
       expect(screen.getByRole('region', { name: lane })).toBeTruthy();
-    // The band of questions keeps its place above the lanes, with nothing in it.
-    expect(screen.getByRole('region', { name: 'Unanswered questions' })).toBeTruthy();
+    // The band of messages keeps its place above the lanes, with nothing in it.
+    expect(screen.getByRole('region', { name: 'Messages' })).toBeTruthy();
     expect(screen.getByText('0 tasks')).toBeTruthy();
   });
 

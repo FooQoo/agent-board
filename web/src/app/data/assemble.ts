@@ -6,9 +6,14 @@ import type {
   Task,
   TaskSummary,
 } from '../../shared/api/contracts';
-import type { Summary, SummaryEpic, SummaryProject, SummaryTask } from '../../shared/data/api';
+import type {
+  Message,
+  Summary,
+  SummaryEpic,
+  SummaryProject,
+  SummaryTask,
+} from '../../shared/data/api';
 import type { DocumentData } from '../../shared/data/core';
-import type { BandQuestion } from '../../features/tasks/answer/model/qa';
 
 /**
  * What the app builds from the data layer. The list shows `TaskSummary` cards made from the
@@ -25,8 +30,8 @@ export interface BoardView {
   epics: Epic[];
   epicTaskCounts: Record<string, EpicTaskCounts>;
   problems: Problem[];
-  /** The open questions of the project, oldest first. */
-  questions: BandQuestion[];
+  /** The open questions, requests and approvals of the project, oldest first. */
+  messages: Message[];
 }
 
 const refOf = (epic: SummaryEpic): EpicRef => ({
@@ -86,11 +91,7 @@ export function toBoardView(summary: Summary): BoardView {
     epics: summary.epics.map(toEpic),
     epicTaskCounts: counts,
     problems: summary.problems,
-    questions: (summary.questions ?? []).map(({ id, title, referencedBy }) => ({
-      id,
-      title,
-      referencedBy,
-    })),
+    messages: summary.messages ?? [],
   };
 }
 
