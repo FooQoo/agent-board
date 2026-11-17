@@ -60,7 +60,7 @@ The epic editor shows the outline on the left, the name and the "Epic details (M
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
 - Drag a task by its handle (or use the handle's keyboard controls), then **Save** to apply the order.
 - Selecting a task opens its details. Change membership in the task editor or on the command line, not in the epic dialog. The epic dialog has no Draft checkbox.
-- While an epic is a draft, `agboard epic edit` refuses changes to its details and task order with `epic_is_draft`. Attachments and a task's membership in the epic still change.
+- While a person has an epic in draft, `agboard epic edit` refuses changes to its details and task order with `epic_is_draft`. Attachments and a task's membership in the epic still change.
 - If a draft is left behind, choose **Finalize** in the epic's details to release it.
 
 ## Read the progress table

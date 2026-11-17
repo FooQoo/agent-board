@@ -11,8 +11,10 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_not_found` | The task ID does not exist in the project. | 3 | 404 |
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
-| `task_is_draft` | An AI write (`edit`, `mv`, `state`, `history add`) targets a draft. | 1 | 409 |
-| `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a draft epic. | 1 | 409 |
+| `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. | 1 | 409 |
+| `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
+| `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
+| `human_only` | An agent runs `start` or `epic start`. Only a person can start. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
 | `task_is_done` | An AI change targets a Done task. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |

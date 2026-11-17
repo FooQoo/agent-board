@@ -168,7 +168,9 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 
 ## 下書きとエラー
 
-下書き（`isDraft: true`）は、エージェントからは読み取り専用です。`edit`・`mv`・`state`は`task_is_draft`で失敗します。ユーザーが確定するまで、ほかのタスクを進めます。
+人が書いている下書き（`draft: "human"`）は、エージェントからは読み取り専用です。`edit`・`mv`・`state`・`history add`は`task_is_draft`で失敗します。ユーザーが確定するまで、ほかのタスクを進めます。
+
+エージェントが作るタスクとエピックは、ユーザー向けのものも含めて、すべてAIの下書き（`draft: "ai"`）になります。エージェントは編集と履歴の追加はできますが、人が開始するまで`mv`と`state`は`task_is_draft`で失敗します。開始は、1件のタスクなら`agboard start <id> --actor human`、エピックとそのAIの下書きすべてなら`agboard epic start <EPIC-ID> --actor human`です。エージェントが`start`を実行すると`human_only`になります。
 
 `AGBOARD_ERROR`が出た場合や、プロジェクトが見つからない・接続できない・ボードを読み込めない場合は、その問題を報告します。有効な進行表を取得できるまで、ボードの情報に依存する変更は行いません。待機が時間切れになったり中断されたりしても、質問は未回答のまま残ります。原因と対処は[トラブルシューティング](../operations/troubleshooting)を参照してください。
 

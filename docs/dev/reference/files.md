@@ -18,7 +18,7 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `taskStatus` | The lane: `todo`, `doing`, or `done`. |
 | `position` | Positive integer, unique among unarchived tasks in the same lane. |
 | `agentStatus` | The AI run state. `task.json` stores `idle` or `running`; reads return `pending` while an AI task in Todo or Doing waits for a person (see [Questions and answers](../concepts/history-and-decisions.md#questions-and-answers)). A stored `pending` reads as `idle`. |
-| `isDraft` | Defaults to `false`. A draft is being prepared by a person. For an epic, the CLI `epic edit` refuses a draft with `epic_is_draft`. |
+| `draft` | `null`, `"human"`, or `"ai"`. `human` is a draft a person is writing in the browser; `ai` is a proposal an agent created, which only a person starts. Files of earlier versions hold `isDraft`: `true` reads as `human` and `false` as `null`; writing uses `draft` only. For an epic, the CLI `epic edit` refuses a `human` draft with `epic_is_draft`. |
 | `questions` | In `TASK.md` frontmatter: the IDs of the project questions the task refers to, such as `[Q-12, Q-15]`. Omitted, `null`, and empty all mean none; duplicates are rejected. |
 | `requestAnswers` | Answers recorded by earlier versions of Agent Board, kept as a record. Nothing adds to it. |
 | `archivedAt` | `null`, or the archive time. |
@@ -91,7 +91,7 @@ A `task.json` looks like this:
   "taskStatus": "todo",
   "agentStatus": "idle",
   "position": 1,
-  "isDraft": false,
+  "draft": null,
   "archivedAt": null,
   "requestAnswers": [],
   "createdAt": "2026-10-10T00:00:00Z",

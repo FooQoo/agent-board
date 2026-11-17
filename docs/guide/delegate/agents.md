@@ -168,7 +168,9 @@ Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/
 
 ## Drafts and errors
 
-A draft (`isDraft: true`) is read-only for agents: `edit`, `mv`, and `state` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
+A draft a person is writing (`draft: "human"`) is read-only for agents: `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
+
+Every task and epic an agent creates is an AI draft (`draft: "ai"`), also when it is for the user. An agent can still edit it and add history, but `mv` and `state` fail with `task_is_draft` until a person starts it: `agboard start <id> --actor human` for one task, or `agboard epic start <EPIC-ID> --actor human` for an epic and all its AI drafts. An agent that runs `start` gets `human_only`.
 
 On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or an interrupted wait does not answer or expire a question. For causes and fixes, see [Troubleshooting](../operations/troubleshooting).
 

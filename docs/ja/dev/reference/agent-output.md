@@ -25,7 +25,7 @@
           "assignee": "ai",
           "taskStatus": "todo",
           "agentStatus": "idle",
-          "isDraft": false,
+          "draft": null,
           "acceptance": { "done": 0, "total": 3 },
           "acceptanceError": false,
           "taskPath": "…/tasks/98/TASK.md"

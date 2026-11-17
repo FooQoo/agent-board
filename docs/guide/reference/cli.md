@@ -56,7 +56,7 @@ agboard --project "My project" history add 1 --reason "Checked the installation 
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
-The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to drafts, archived tasks, or Done tasks.
+The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to a person's drafts, archived tasks, or Done tasks.
 
 ### Finish a task
 
@@ -95,6 +95,15 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
 `--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
+
+Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until a person starts it:
+
+```sh
+agboard --project "My project" start 12 --actor human
+agboard --project "My project" epic start LAUNCH --actor human
+```
+
+`start` clears the AI draft of one task. `epic start` clears the epic and every AI draft task of it in one step, and leaves tasks that a person is still drafting. Each started task records that a person started it. With `--actor ai` both commands fail with `human_only` (exit code 1).
 
 While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--priority` included. Wait until the person saves or discards it, or ask them to finalize a draft that was left behind. `epic attachment` and changing a task's epic still work.
 

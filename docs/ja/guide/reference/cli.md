@@ -96,6 +96,15 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 
 `--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。
 
+エージェントが作るもの（`add`・`epic add`）は、AIの下書きから始まります。エージェントは編集できますが、人が開始するまで`mv`と`state`は`task_is_draft`で失敗します。
+
+```sh
+agboard --project "My project" start 12 --actor human
+agboard --project "My project" epic start LAUNCH --actor human
+```
+
+`start`は1件のタスクのAIの下書きを外します。`epic start`は、エピックとそのAIの下書きのタスクすべてを一度に外し、人がまだ下書きにしているタスクはそのままにします。開始したタスクには、人が開始したことが履歴に残ります。`--actor ai`では、どちらも`human_only`（終了コード1）で失敗します。
+
 人がブラウザでエピックを下書きにしている間は、`--priority`を含む`epic edit`が`epic_is_draft`（終了コード1）で失敗し、何も変わりません。保存か破棄が済むまで待つか、残った下書きなら確定を頼んでください。`epic attachment`とタスクの所属の変更は、引き続き使えます。
 
 ## 一覧を絞り込む

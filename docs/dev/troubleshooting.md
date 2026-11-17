@@ -7,7 +7,7 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | Symptom | Cause | What to do |
 | --- | --- | --- |
 | `database_busy` | Another command or the server held the project write lock for more than 5 seconds. | Run the command again. If it keeps happening, look for a stuck process holding the project. See [Saving and recovery](./concepts/saving-and-recovery.md#locks). |
-| `task_is_draft` | The task is marked as a draft; agents may not change it. | Ask the person to finalize the draft in the web UI, and work on another task. Do not edit its `TASK.md`. |
+| `task_is_draft` | The task is a draft: agents may not change a person's draft, and may not move or run any draft. | Ask the person to finalize the draft in the web UI, and work on another task. Do not edit its `TASK.md`. |
 | `epic_is_draft` | The epic is marked as a draft; the CLI may not edit its details or task order. | Wait for the person to save or discard the draft, or ask them to finalize it. `epic attachment` and membership changes still work. Do not edit its `EPIC.md`. |
 | `task_is_done` | The task is Done; agents may not change it. | Ask the person to reopen it. |
 | `acceptance_unmet` | An agent tried to move a task to Done while an acceptance condition is unmet or the frontmatter is invalid. | Verify the conditions and set `done: true` (the server then moves the task by itself), or fix the frontmatter. |

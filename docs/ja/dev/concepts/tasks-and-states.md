@@ -49,7 +49,7 @@
 | `id` | EPIC-ID。`[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`に合う1〜64文字。小文字の入力は大文字にする。変更不可。 |
 | `name` | 前後の空白を除いて1〜100文字、1行。 |
 | `color` | `#RRGGBB`（大文字）。省略時は作成時に乱数で決める。 |
-| `isDraft` | 人がブラウザで編集しているエピックの印。CLIの`epic edit`と`--priority`は`epic_is_draft`で拒否する。所属タスクと`epic attachment`には影響しない。 |
+| `draft` | タスクと同じく`null`・`"human"`・`"ai"`。人の下書き（`human`）のエピックは、CLIの`epic edit`と`--priority`を`epic_is_draft`で拒否する。AIの下書きのエピックは、エージェントがふつうに編集できる。所属タスクと`epic attachment`には影響しない。 |
 | `document`・`body` | frontmatterを含む`EPIC.md`の全文（0〜100,000文字）と、frontmatterを除いた本文。 |
 | `priority`・`priorityError` | 所属タスクIDの作業順と、その読み込みに失敗したかどうか。 |
 
@@ -61,16 +61,18 @@
 
 ## 下書き
 
-下書きは、人がまだ書いているタスクです。
+下書きは、まだ作業に出していないタスクやエピックです。`draft`は持ち主を表し、`null`（通常のタスク）、`"human"`（人がブラウザで書いている）、`"ai"`（エージェントの提案で、開始できるのは人だけ）のいずれかです。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読みます。書き込みは`draft`だけを使います。下書きが自動で確定されることはなく、`wait`と自動Doneはすべての下書きを飛ばします。
 
-- プレビューは、最初の実際の変更で下書きに入ります。タスクは`PUT /tasks/{id}/draft`で`isDraft: true`を送り、エピックは`PATCH /epics/{id}`で`isDraft: true`を送ります。下書きにできるのはIdleかPendingのタスクだけで、Runningは`invalid_state_for_draft`で拒否します。実際に変わると履歴を追加しますが、`updatedAt`は変えません。エピックの下書きの出入りも`updatedAt`を変えません。
-- CLIの`edit`・`mv`・`state`・`history add`は、書き込みロックの中で`isDraft`を確かめ、`task_is_draft`で失敗します。CLIの`epic edit`と`epic edit --priority`も同じように`isDraft`を確かめ、`epic_is_draft`で失敗します。読み取り・`add`・`epic attachment`・所属の変更は影響を受けません。エピックへのWebの`PATCH`は下書きを拒否しません。時間の経過によって下書きが自動で確定されることはありません。
-- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`isDraft=false`・履歴を一組で確定します。破棄は、`isDraft: false`と`discard: true`を送ります。履歴には`Discarded draft changes.`が残ります。エピックには履歴がないので、破棄は`PATCH /epics/{id}`で`isDraft: false`を送るだけです。
+- エージェントが作ったタスクとエピック（CLIの`add`と`epic add`。担当が誰でも）は、AIの下書きになります。人が作ったものは`null`で、ブラウザで下書きとして作ると`human`です。
+- プレビューは、最初の実際の変更で人の下書きに入ります。タスクは`PUT /tasks/{id}/draft`で`draft: "human"`を送り、エピックは`PATCH /epics/{id}`で`draft: "human"`を送ります。下書きにできるのはIdleかPendingのタスクだけで、Runningは`invalid_state_for_draft`で拒否します。実際に変わると履歴を追加しますが、`updatedAt`は変えません。エピックの下書きの出入りも`updatedAt`を変えません。AIの提案を人が直すときも同じく`human`に入り、`draft: "ai"`で保存すると提案に戻ります。
+- `human`の下書きでは、CLIの`edit`・`mv`・`state`・`history add`が書き込みロックの中で`draft`を確かめ、`task_is_draft`で失敗し、CLIの`epic edit`と`epic edit --priority`は`epic_is_draft`で失敗します。`ai`の下書きでは、`edit`・`history add`・`epic edit`は通り、`mv`と`state`は`task_is_draft`で失敗します。読み取り・`add`・`epic attachment`・所属の変更は影響を受けません。エピックへのWebの`PATCH`は下書きを拒否しません。
+- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`draft: null`・履歴を一組で確定します。破棄は、`draft: null`と`discard: true`を送ります。履歴には`Discarded draft changes.`が残ります。エピックには履歴がないので、破棄は`PATCH /epics/{id}`で`draft: null`を送るだけです。AIの下書きはこの方法では確定できず、`ai_draft_needs_start`で失敗します。
+- **開始。** 開始できるのは人だけです。`agboard start <id> --actor human`と`POST /tasks/{id}/start`は、1件のタスクのAIの下書きを外します。`agboard epic start <EPIC-ID> --actor human`と`POST /epics/{id}/start`は、エピックと、そのエピックの未アーカイブでAIの下書きのタスクを、一度の保存（全体でロールバックするバッチ）で外します。外したタスクごとに「人がタスクを開始しました」を履歴に残し、エピックには履歴がありません。人自身の（`human`）下書きは外さず、下書きでないタスクは何も変えません。`--actor ai`では、CLIは`human_only`で失敗します。開始を断る規則は、`src/file_store/ops/start.rs`の`ensure_startable`という一つの関数に置きます。
 - 下書きの`TASK.md`の直接編集は製品では止められず、READMEとエージェントのスキルで編集しないよう伝えます。
 
 ## アーカイブ
 
-- アーカイブでは、レーン・`isDraft`・`epicId`・positionを保ち、保存した稼働状態をIdleに戻し、質問の参照を保ち、`updatedAt`を更新します。レーンと`taskStatusChangedAt`は変わりません。Web画面のアーカイブと復元は、固定の理由`Archived by user.`と`Restored by user.`を記録します。
+- アーカイブでは、レーン・`draft`・`epicId`・positionを保ち、保存した稼働状態をIdleに戻し、質問の参照を保ち、`updatedAt`を更新します。レーンと`taskStatusChangedAt`は変わりません。Web画面のアーカイブと復元は、固定の理由`Archived by user.`と`Restored by user.`を記録します。
 - 復元したタスクは元のレーンの末尾に置きます。
 - 通常のスナップショット・`ls`・Hookは未アーカイブのタスクだけを返し、`show ID`はアーカイブ済みも表示します。アーカイブ済みへの書き込みは`task_archived`で失敗しますが、画像は読めます。アーカイブ一覧は`archivedAt`の新しい順です。
 

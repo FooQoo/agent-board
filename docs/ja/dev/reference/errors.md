@@ -11,8 +11,10 @@
 | `task_not_found` | タスクIDがプロジェクトにない。 | 3 | 404 |
 | `task_archived` | アーカイブ済みのタスクへの書き込み。 | 1 | 409 |
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
-| `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が下書きのエピックを対象にした。 | 1 | 409 |
-| `task_is_draft` | 下書きへのAIの書き込み（`edit`・`mv`・`state`・`history add`）。 | 1 | 409 |
+| `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
+| `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。 | 1 | 409 |
+| `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
+| `human_only` | エージェントが`start`または`epic start`を実行した。開始できるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |
 | `task_is_done` | DoneのタスクへのAIの変更。 | 1 | 409 |
 | `acceptance_unmet` | 条件が未達成、またはfrontmatterが不正なタスクを、AIがDoneへ移そうとした。 | 2 | なし |
