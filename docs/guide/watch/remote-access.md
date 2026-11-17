@@ -14,6 +14,8 @@ This feature is in public preview. Its behavior and specifications may change. S
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
+A **Proposed plan** card sits at the top of the Todo lane for each plan that waits for you, and the Todo tab counts it. AI-drafted tasks are not listed as cards of their own. **Review and start** opens the plan review as a bottom sheet, with the goal, the tasks that will start, and any unanswered questions; **Start with this plan** is disabled until they are answered (see [Proposed plans](./board#proposed-plans)). The plan cards are not swipeable.
+
 The **Unanswered questions** band sits above the lane tabs. It shows the number of open questions and starts closed; select its header to list them, pick one to answer it alone, or answer them in a row and send them together (see [Decisions](../delegate/decisions#answer-on-your-phone)).
 
 ![Remote access showing the Doing lane with its tab bar, the collapsed Unanswered questions band, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
