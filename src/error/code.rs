@@ -23,6 +23,7 @@ impl AgboardError {
             AgboardError::InvalidStateForColumn { .. } => "invalid_state_for_column",
             AgboardError::InvalidStateForAssignee => "invalid_state_for_assignee",
             AgboardError::TaskIsDraft { .. } => "task_is_draft",
+            AgboardError::TaskIsAiDraft { .. } => "task_is_draft",
             AgboardError::EpicIsDraft { .. } => "epic_is_draft",
             AgboardError::AiDraftNeedsStart { .. } => "ai_draft_needs_start",
             AgboardError::HumanOnly { .. } => "human_only",

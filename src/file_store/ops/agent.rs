@@ -114,8 +114,8 @@ impl FileStore {
             });
         }
         ensure_ai_task_not_done(&task, ctx.actor)?;
-        if block_drafts && task.draft.is_some() {
-            return Err(AgboardError::TaskIsDraft { id });
+        if block_drafts && let Some(draft) = task.draft {
+            return Err(draft_refusal(id, draft));
         }
         if ctx.actor == Actor::Ai && to == Column::Done && task.task_status != Column::Done {
             ensure_acceptance_met(shared, project, id)?;
@@ -181,8 +181,8 @@ impl FileStore {
             return Err(AgboardError::TaskArchived { id });
         }
         ensure_ai_task_not_done(&task, ctx.actor)?;
-        if task.draft.is_some() {
-            return Err(AgboardError::TaskIsDraft { id });
+        if let Some(draft) = task.draft {
+            return Err(draft_refusal(id, draft));
         }
         check_work_state(task.assignee, task.task_status, state)?;
         if ctx.actor == Actor::Ai && state == RunState::Running && task_waits(shared, project, id)?
@@ -215,5 +215,14 @@ impl FileStore {
             value: reader::read_task_locked(shared, project, id)?,
             changed: true,
         })
+    }
+}
+
+/// The refusal of a move or state change on a draft: a person's own draft waits for its
+/// owner to finalize it, an AI draft waits for a person to start it.
+fn draft_refusal(id: i64, draft: crate::domain::Draft) -> AgboardError {
+    match draft {
+        crate::domain::Draft::Human => AgboardError::TaskIsDraft { id },
+        crate::domain::Draft::Ai => AgboardError::TaskIsAiDraft { id },
     }
 }

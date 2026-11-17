@@ -26,6 +26,7 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         },
         AgboardError::InvalidStateForAssignee,
         AgboardError::TaskIsDraft { id: 5 },
+        AgboardError::TaskIsAiDraft { id: 5 },
         AgboardError::EpicIsDraft { id: "E".into() },
         AgboardError::AiDraftNeedsStart {
             target: "task #5".into(),

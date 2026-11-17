@@ -88,6 +88,10 @@ pub enum AgboardError {
     TaskIsDraft {
         id: i64,
     },
+    /// The task is an AI draft: it waits for a person to start it.
+    TaskIsAiDraft {
+        id: i64,
+    },
     /// The epic is a draft: the CLI cannot change it.
     EpicIsDraft {
         id: String,
