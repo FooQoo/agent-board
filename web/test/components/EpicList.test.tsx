@@ -16,7 +16,7 @@ function epic(id: string, overrides: Partial<Epic> = {}): Epic {
     id,
     name: `${id} name`,
     color: '#3366CC',
-    isDraft: false,
+    draft: null,
     document: '',
     body: '',
     priority: [],
@@ -148,7 +148,7 @@ describe('EpicList', () => {
     renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
-        epic={epic('BUG', { isDraft: true, body: 'Plan.' })}
+        epic={epic('BUG', { draft: 'human', body: 'Plan.' })}
         onEdit={() => {}}
         onDelete={async () => {}}
         onFinalize={onFinalize}
@@ -166,7 +166,7 @@ describe('EpicList', () => {
     renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
-        epic={epic('BUG', { isDraft: true, body: 'Plan.' })}
+        epic={epic('BUG', { draft: 'human', body: 'Plan.' })}
         onEdit={() => {}}
         onDelete={async () => {}}
         onFinalize={async () => {
@@ -236,7 +236,7 @@ describe('EpicList', () => {
   });
 
   it('marks a draft epic with the Draft label and leaves the others unmarked', () => {
-    renderList({ epics: [epic('BUG'), epic('DRAFTY', { isDraft: true })] });
+    renderList({ epics: [epic('BUG'), epic('DRAFTY', { draft: 'human' })] });
     expect(within(screen.getByRole('button', { name: /DRAFTY/ })).getByText('Draft')).toBeTruthy();
     expect(within(screen.getByRole('button', { name: /BUG/ })).queryByText('Draft')).toBeNull();
   });
@@ -280,7 +280,7 @@ describe('EpicDetailPanel', () => {
     renderDetail(
       <EpicDetailPanel
         projectId={PROJECT_A.id}
-        epic={epic('DRAFTY', { isDraft: true, body: 'Plan.' })}
+        epic={epic('DRAFTY', { draft: 'human', body: 'Plan.' })}
         onEdit={() => {}}
         onDelete={async () => {}}
         onClose={() => {}}

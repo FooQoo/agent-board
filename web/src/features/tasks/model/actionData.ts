@@ -14,7 +14,7 @@ export interface ActionDialogData {
   /** Move only: the status the dialog showed, which the server checks the task is still in. */
   fromStatus?: ColumnName;
   /** Create: the card is made a draft once it is added. */
-  isDraft?: boolean;
+  draft?: 'human';
   /** Edit only: hand the card back to the agents in the same step. */
   finalize?: boolean;
   attachments?: EditorAttachment[];

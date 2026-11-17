@@ -1,4 +1,4 @@
-import type { AcceptanceItem, ProjectId } from '../../../shared/api/contracts';
+import type { AcceptanceItem, Draft, ProjectId } from '../../../shared/api/contracts';
 import { projectPath } from '../../../shared/api/http';
 import { multipartBody, postTask, sendMultipart, sendTask } from '../../../shared/api/write';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
@@ -56,18 +56,19 @@ export function editTaskMultipart(
 }
 
 /**
- * Makes a card a draft (`true`) or finalizes it (`false`). Only an idle card can become a draft.
+ * Makes a card a person's draft (`'human'`) or finalizes it (`null`); `'ai'` gives it back to the AI
+ * draft it was. Only an idle card can become a draft.
  * `discard` takes the draft back without finalizing it: the history says the changes were
- * discarded. It goes with `isDraft: false` only.
+ * discarded. It goes with `draft: null` only.
  */
 export async function setDraft(
   projectId: ProjectId,
   id: number,
-  isDraft: boolean,
+  draft: Draft | null,
   options: { discard?: boolean } = {},
 ) {
   return sendTask('PUT', `${projectPath(projectId)}/tasks/${id}/draft`, {
-    isDraft,
+    draft,
     ...(options.discard ? { discard: true } : {}),
   });
 }

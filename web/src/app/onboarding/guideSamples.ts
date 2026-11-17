@@ -69,7 +69,7 @@ export function sampleCards(locale: GuideLocale, phase: GuidePhase, at: string):
     epic: null,
     createdAt: at,
     updatedAt: at,
-    isDraft: false,
+    draft: null,
     acceptance: [{ id: 'AC-1', text: text.criteria[ordinal], done: met }],
   });
   const first = base(FIRST_SAMPLE_ID, 0);

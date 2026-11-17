@@ -702,7 +702,7 @@ describe('switching while a form is open', () => {
       title: 'New task',
       description: '---\nacceptance: []\n---\n\n',
       assignee: 'ai',
-      isDraft: false,
+      draft: null,
     });
     expect(app.updates()).toHaveLength(0);
   });

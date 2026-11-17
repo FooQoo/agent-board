@@ -46,7 +46,7 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
             { id: 'a', label: 'Include both' },
             { id: 'b', label: 'Choose one' },
           ],
-          isDraft: true,
+          draft: 'human',
         }),
       ),
     ],

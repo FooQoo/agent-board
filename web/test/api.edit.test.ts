@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('editCard', () => {
   it('PATCHes the task with the token and the changed fields only', async () => {
-    const task = { ...fixtureTask(8), isDraft: true };
+    const task = { ...fixtureTask(8), draft: 'human' };
     const fetchMock = respond(200, { task });
     const result = await editTask(PROJECT, 8, { description: '# New', finalize: true });
     const { path, init, headers } = lastCall(fetchMock);
@@ -47,25 +47,25 @@ describe('editCard', () => {
 
 describe('setDraft', () => {
   it('PUTs the draft flag to the draft path with the token', async () => {
-    const fetchMock = respond(200, { task: { ...fixtureTask(9), isDraft: true } });
-    const result = await setDraft(PROJECT, 9, true);
+    const fetchMock = respond(200, { task: { ...fixtureTask(9), draft: 'human' } });
+    const result = await setDraft(PROJECT, 9, 'human');
     const { path, init, headers } = lastCall(fetchMock);
     expect(path).toBe(`/api/projects/${PROJECT}/tasks/9/draft`);
     expect(init.method).toBe('PUT');
     expect(headers['X-Agboard-Token']).toBe('test-token');
-    expect(JSON.parse(init.body as string)).toEqual({ isDraft: true });
-    expect(result.task.isDraft).toBe(true);
+    expect(JSON.parse(init.body as string)).toEqual({ draft: 'human' });
+    expect(result.task.draft).toBe('human');
   });
 
   it('rejects when the task cannot become a draft', async () => {
     respond(409, {
       error: { code: 'invalid_state_for_draft', message: 'x', reason: 'The agent is working.' },
     });
-    await expect(setDraft(PROJECT, 9, true)).rejects.toThrow('The agent is working.');
+    await expect(setDraft(PROJECT, 9, 'human')).rejects.toThrow('The agent is working.');
   });
 
   it('rejects with a status message when the body has no error', async () => {
     respond(500, {});
-    await expect(setDraft(PROJECT, 9, false)).rejects.toThrow('Request failed (500)');
+    await expect(setDraft(PROJECT, 9, null)).rejects.toThrow('Request failed (500)');
   });
 });

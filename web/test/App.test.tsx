@@ -212,7 +212,7 @@ describe('App', () => {
       id: 'PLAN',
       name: 'Plan',
       color: '#7C3AED',
-      isDraft: false,
+      draft: null,
       document: 'The epic plan.',
       body: 'The epic plan.',
       priority: [],

@@ -102,7 +102,7 @@ export function EditDialog({
     (whole || acceptanceProblem(conditions) === null);
 
   const lock = usePreviewLock({
-    draftAtOpen: task.isDraft,
+    draftAtOpen: task.draft !== null,
     readOnly,
     dirty,
     snapshot: snapshotOf({
@@ -116,7 +116,7 @@ export function EditDialog({
       await leaveDraft?.();
     },
   });
-  const locked = task.isDraft || lock.entered;
+  const locked = task.draft !== null || lock.entered;
 
   const follow = useFollowLatest<EditorContent>({
     subscribe: subscribeChanges,

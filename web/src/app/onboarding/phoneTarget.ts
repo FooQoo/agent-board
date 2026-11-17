@@ -104,7 +104,7 @@ export function phoneItemOf(
     createdAt: card.createdAt ?? card.taskStatusChangedAt,
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt ?? card.taskStatusChangedAt,
-    isDraft: card.isDraft,
+    draft: card.draft,
     history: [],
     attachments: [],
   };

@@ -53,7 +53,7 @@ export function summaryOfBoard(board: Board): Summary {
         taskStatus: task.taskStatus,
         agentStatus: task.agentStatus,
         assignee: task.assignee,
-        isDraft: task.isDraft,
+        draft: task.draft,
         position: task.position,
         epicId: task.epic?.id ?? null,
         acceptance: {
@@ -85,7 +85,7 @@ export function summaryOfBoard(board: Board): Summary {
       id: epic.id,
       name: epic.name,
       color: epic.color,
-      isDraft: epic.isDraft,
+      draft: epic.draft,
       priority: epic.priority,
       priorityError: epic.priorityError,
       progress: board.epicTaskCounts[epic.id] ?? {

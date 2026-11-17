@@ -54,7 +54,7 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
     epic: epic ? refOf(epic) : null,
     updatedAt: task.updatedAt,
     createdAt: task.createdAt,
-    isDraft: task.isDraft,
+    draft: task.draft,
     acceptance: { done: task.acceptance.done, total: task.acceptance.total },
     acceptanceError: task.acceptanceError,
   };
@@ -65,7 +65,7 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
 export function toEpic(epic: SummaryEpic): Epic {
   return {
     ...refOf(epic),
-    isDraft: epic.isDraft,
+    draft: epic.draft,
     document: '',
     body: '',
     priority: [...epic.priority],
@@ -128,7 +128,7 @@ export function taskForEditor(card: TaskSummary, document: DocumentData): Task {
     createdAt: card.createdAt ?? card.updatedAt,
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt,
-    isDraft: card.isDraft,
+    draft: card.draft,
     history: [],
     attachments: document.attachments ? [...document.attachments] : [],
   };

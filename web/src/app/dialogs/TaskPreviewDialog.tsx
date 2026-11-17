@@ -50,12 +50,12 @@ export function TaskPreviewDialog({
     return next;
   }, [archived, isTaskListed, loadTask, projectId, task]);
   const enterDraft = useCallback(async () => {
-    const { task: entered } = await setDraft(projectId, task.id, true);
+    const { task: entered } = await setDraft(projectId, task.id, 'human');
     onChanged();
     return entered;
   }, [onChanged, projectId, task.id]);
   const leaveDraft = useCallback(async () => {
-    await setDraft(projectId, task.id, false, { discard: true });
+    await setDraft(projectId, task.id, null, { discard: true });
     onChanged();
   }, [onChanged, projectId, task.id]);
   return (

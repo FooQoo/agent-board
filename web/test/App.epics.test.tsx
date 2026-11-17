@@ -22,7 +22,7 @@ function epic(id: string, name: string): Epic {
     id,
     name,
     color: '#3366CC',
-    isDraft: false,
+    draft: null,
     document: `# ${name}\n\nThe plan of ${name}.`,
     body: `# ${name}\n\nThe plan of ${name}.`,
     priority: [],

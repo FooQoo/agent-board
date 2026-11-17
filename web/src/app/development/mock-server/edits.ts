@@ -1,4 +1,4 @@
-import type { Epic, Task } from '../../../shared/api/contracts.ts';
+import type { Draft, Epic, Task } from '../../../shared/api/contracts.ts';
 import type { Facet } from '../../../shared/data/api/contracts.ts';
 import type { MockBoard } from './boards.ts';
 import type { MockContext, MockResponse, RouteRequest, Routes } from './types.ts';
@@ -53,7 +53,7 @@ function editEpic(
     ...epic,
     name: typeof patch.name === 'string' ? patch.name : epic.name,
     color: typeof patch.color === 'string' ? patch.color : epic.color,
-    isDraft: typeof patch.isDraft === 'boolean' ? patch.isDraft : epic.isDraft,
+    draft: 'draft' in patch ? asDraft(patch.draft) : epic.draft,
     document: typeof patch.document === 'string' ? patch.document : epic.document,
   };
   context.commit(
@@ -79,7 +79,7 @@ function editTask(
     const input = parseBody(request.body);
     if (!input) return invalidJson();
     if (suffix === '/draft') {
-      next = { ...task, isDraft: Boolean(input.isDraft) };
+      next = { ...task, draft: asDraft(input.draft) };
     } else {
       const epicId = typeof input.epicId === 'string' ? input.epicId : null;
       const epic = epicId ? target.epics.find((item) => item.id === epicId) : undefined;
@@ -101,7 +101,7 @@ function editTask(
 /** The card after the edit dialog's `PATCH`: title, body and acceptance, and `finalize`. */
 function editedTask(task: Task, input: Record<string, unknown>, at: string): Task {
   const history =
-    input.finalize === true && task.isDraft
+    input.finalize === true && task.draft !== null
       ? [...task.history, { at, reason: 'Finalized the draft.' }]
       : task.history;
   const editedBody = typeof input.body === 'string' ? input.body : task.body;
@@ -123,6 +123,11 @@ function editedTask(task: Task, input: Record<string, unknown>, at: string): Tas
         }
       : {}),
     history,
-    ...(input.finalize === true ? { isDraft: false } : {}),
+    ...(input.finalize === true ? { draft: null } : {}),
   };
+}
+
+/** A `draft` of a request body: `human`, `ai`, or none. */
+function asDraft(value: unknown): Draft | null {
+  return value === 'human' || value === 'ai' ? value : null;
 }

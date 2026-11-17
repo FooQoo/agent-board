@@ -7,6 +7,7 @@ import type {
   Attachment,
   Choice,
   ColumnName,
+  Draft,
   ProjectId,
   RunState,
 } from '../../api/contracts';
@@ -40,7 +41,7 @@ export interface SummaryTask {
   taskStatus: ColumnName;
   agentStatus: RunState;
   assignee: Assignee;
-  isDraft: boolean;
+  draft: Draft | null;
   position: number;
   epicId: string | null;
   acceptance: AcceptanceCount;
@@ -75,7 +76,7 @@ export interface SummaryEpic {
   name: string;
   /** `#RRGGBB`. */
   color: string;
-  isDraft: boolean;
+  draft: Draft | null;
   /** The IDs of the epic's tasks in the order the epic sets; empty when it sets none. */
   priority: number[];
   /** The stored order cannot be read, so it is ignored. */

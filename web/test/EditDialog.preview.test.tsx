@@ -89,7 +89,7 @@ describe('task preview', () => {
   });
 
   it('keeps a card that was a draft before opening as a draft', async () => {
-    const { user, onSubmit, onClose, enterDraft } = setup({ task: base({ isDraft: true }) });
+    const { user, onSubmit, onClose, enterDraft } = setup({ task: base({ draft: 'human' }) });
     expect(screen.getByText('Draft')).toBeTruthy();
     await user.type(titleInput(), '!');
     await user.click(save());
@@ -156,7 +156,7 @@ describe('task preview', () => {
   });
 
   it('does not take back a draft that was there before opening', async () => {
-    const { user, onClose, leaveDraft } = setup({ task: base({ isDraft: true }) });
+    const { user, onClose, leaveDraft } = setup({ task: base({ draft: 'human' }) });
     await user.type(titleInput(), '!');
     await user.click(within(footer()).getByRole('button', { name: 'Cancel' }));
     await user.click(await screen.findByRole('button', { name: 'Discard and close' }));
@@ -226,7 +226,7 @@ describe('task preview states', () => {
 
   it('does not treat a change of state or dates alone as a conflict', async () => {
     const enterDraft = vi.fn(async () =>
-      base({ updatedAt: '2030-01-01T00:00:00Z', agentStatus: 'running', isDraft: true }),
+      base({ updatedAt: '2030-01-01T00:00:00Z', agentStatus: 'running', draft: 'human' }),
     );
     const { user } = setup({ enterDraft });
     await user.type(titleInput(), '!');

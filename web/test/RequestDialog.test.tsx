@@ -15,7 +15,7 @@ const epics: Epic[] = [
     id: 'TASK-LISTEN',
     name: 'Task listening',
     color: '#3456ef',
-    isDraft: false,
+    draft: null,
     document: '',
     body: '',
     priority: [],

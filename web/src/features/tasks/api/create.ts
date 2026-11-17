@@ -15,12 +15,12 @@ export async function createTask(
     body?: string;
     acceptance?: AcceptanceItem[];
     assignee: Assignee;
-    isDraft?: boolean;
+    draft?: 'human';
   },
 ) {
   return postTask<{ task: Task }>(`${projectPath(projectId)}/tasks`, {
     ...input,
-    isDraft: input.isDraft ?? false,
+    draft: input.draft ?? null,
   });
 }
 
@@ -30,7 +30,7 @@ export function createTaskMultipart(
     title: string;
     description: string;
     assignee: Assignee;
-    isDraft?: boolean;
+    draft?: 'human';
     requestId?: string;
     attachments: readonly EditorAttachment[];
   },
@@ -71,7 +71,7 @@ export function createSimpleTaskMultipart(
 
 /**
  * Adds a card in one request: with its images when there are some (multipart), and as a draft when
- * `isDraft` is set. A refused request is not repeated here, so a failure never adds two cards.
+ * `draft` is set. A refused request is not repeated here, so a failure never adds two cards.
  */
 export async function createNewTask(
   projectId: ProjectId,
@@ -79,18 +79,17 @@ export async function createNewTask(
     title: string;
     description: string;
     assignee: Assignee;
-    isDraft?: boolean;
+    draft?: 'human';
     requestId?: string;
     attachments?: readonly EditorAttachment[];
   },
 ) {
-  const isDraft = input.isDraft ?? false;
   if (input.attachments?.length)
     return createTaskMultipart(projectId, {
       title: input.title,
       description: input.description,
       assignee: input.assignee,
-      isDraft,
+      draft: input.draft,
       requestId: input.requestId,
       attachments: input.attachments,
     });
@@ -98,6 +97,6 @@ export async function createNewTask(
     title: input.title,
     description: input.description,
     assignee: input.assignee,
-    isDraft,
+    draft: input.draft,
   });
 }

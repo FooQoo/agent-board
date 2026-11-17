@@ -139,7 +139,7 @@ export function TaskCardView({
           {/* The guide's sample cards have no number of their own. */}
           {task.id > 0 && <span className="card__id">#{task.id}</span>}
           <AssigneeLabel assignee={task.assignee} />
-          {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+          {task.draft !== null && <span className="card__draft">{t('draft.label')}</span>}
           <span className="card__spacer" />
           {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
         </span>

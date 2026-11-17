@@ -42,12 +42,12 @@ describe('creating a task', () => {
   });
 
   it('sends the draft flag in the one create request', async () => {
-    const fetchMock = respond(201, { task: { ...fixtureTask(9), isDraft: true } });
+    const fetchMock = respond(201, { task: { ...fixtureTask(9), draft: 'human' } });
     const result = await createNewTask(PROJECT, {
       title: 'New work',
       description: '',
       assignee: 'ai',
-      isDraft: true,
+      draft: 'human',
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -57,9 +57,9 @@ describe('creating a task', () => {
       title: 'New work',
       description: '',
       assignee: 'ai',
-      isDraft: true,
+      draft: 'human',
     });
-    expect(result.task.isDraft).toBe(true);
+    expect(result.task.draft !== null).toBe(true);
   });
 
   it('sends false when the draft box is clear, and a normal task is made', async () => {
@@ -70,12 +70,12 @@ describe('creating a task', () => {
       title: 'Plain',
       description: '',
       assignee: 'human',
-      isDraft: false,
+      draft: null,
     });
   });
 
   it('sends the draft flag in the multipart metadata with the images, in one request', async () => {
-    const fetchMock = respond(201, { task: { ...fixtureTask(9), isDraft: true } });
+    const fetchMock = respond(201, { task: { ...fixtureTask(9), draft: 'human' } });
     const file = new File(['png'], 'shot.png', { type: 'image/png' });
     const attachment: EditorAttachment = {
       id: '0123456789abcdef0123456789abcdef',
@@ -90,7 +90,7 @@ describe('creating a task', () => {
       title: 'With image',
       description: '',
       assignee: 'ai',
-      isDraft: true,
+      draft: 'human',
       requestId: 'req-1',
       attachments: [attachment],
     });
@@ -99,7 +99,7 @@ describe('creating a task', () => {
     expect(url).toBe(`/api/projects/${PROJECT}/tasks/multipart`);
     const form = init.body as FormData;
     const metadata = JSON.parse(String(form.get('metadata')));
-    expect(metadata).toMatchObject({ requestId: 'req-1', isDraft: true, title: 'With image' });
+    expect(metadata).toMatchObject({ requestId: 'req-1', draft: 'human', title: 'With image' });
     expect(form.get('file')).toBeInstanceOf(File);
   });
 
@@ -111,7 +111,7 @@ describe('creating a task', () => {
       title: 'x',
       description: '',
       assignee: 'ai',
-      isDraft: true,
+      draft: 'human',
     }).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(WriteError);
     expect(fetchMock).toHaveBeenCalledTimes(1);

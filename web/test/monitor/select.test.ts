@@ -13,7 +13,7 @@ const item = (
 ): MonitorTask => ({
   projectId,
   projectName: projectId === PROJECT_A.id ? PROJECT_A.name : PROJECT_B.name,
-  task: makeTask({ id, taskStatus, agentStatus, archivedAt, isDraft: true }),
+  task: makeTask({ id, taskStatus, agentStatus, archivedAt, draft: 'human' }),
 });
 
 describe('selectMonitorCards', () => {

@@ -186,7 +186,7 @@ function DetailBody({
     setDraftSaving(true);
     setDraftFailed(false);
     try {
-      await setDraft(projectId, task.id, false);
+      await setDraft(projectId, task.id, null);
       onChanged?.();
     } catch {
       setDraftFailed(true);
@@ -261,7 +261,7 @@ function DetailBody({
       problems={problems}
       attachmentUrl={attachmentUrl}
     >
-      {task.isDraft && !archived && (
+      {task.draft !== null && !archived && (
         <DraftBanner
           busy={draftSaving}
           failed={draftFailed}
@@ -287,7 +287,7 @@ function DetailBody({
           onConfirm={() => onRemove(archived ? 'delete' : 'archive', task)}
         />
       )}
-      {draftFailed && !task.isDraft && (
+      {draftFailed && task.draft === null && (
         <p className="detail__error" role="alert">
           {t('detail.saveError')}
         </p>

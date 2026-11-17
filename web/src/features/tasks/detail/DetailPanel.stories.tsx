@@ -130,7 +130,7 @@ export const CardPhone: Story = {
 
 /** A draft: the banner says agents cannot work on it until it is finalized. */
 export const Draft: Story = {
-  args: { task: sampleCard({ id: 8, isDraft: true }), onPreview: fn() },
+  args: { task: sampleCard({ id: 8, draft: 'human' }), onPreview: fn() },
   play: async ({ canvasElement, args }) => {
     const view = within(canvasElement);
     expect(canvasElement.querySelector('.detail__draft')).not.toBeNull();
@@ -146,7 +146,7 @@ export const Draft: Story = {
 
 /** A draft on a phone: its Preview, archive, and close actions keep equal spacing. */
 export const DraftPhone: Story = {
-  args: { task: sampleCard({ id: 8, isDraft: true }) },
+  args: { task: sampleCard({ id: 8, draft: 'human' }) },
   globals: { width: 'phone-390' },
   play: async ({ canvasElement }) => {
     expect(canvasElement.querySelector('.detail__draft')).not.toBeNull();

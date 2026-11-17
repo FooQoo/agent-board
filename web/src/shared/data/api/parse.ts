@@ -17,6 +17,7 @@ const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
 const RESOURCES = ['task', 'epic', 'project', 'qa'] as const;
 const QUESTION_KINDS = ['plan', 'start_approval', 'task'] as const;
+const DRAFTS = ['human', 'ai'] as const;
 const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
 const TASK_FIELDS = [
@@ -25,7 +26,7 @@ const TASK_FIELDS = [
   'taskStatus',
   'agentStatus',
   'assignee',
-  'isDraft',
+  'draft',
   'position',
   'epicId',
   'acceptance',
@@ -50,7 +51,7 @@ function parseTask(value: unknown, path: string): SummaryTask {
     taskStatus: oneOf(o.taskStatus, `${path}.taskStatus`, STATUSES),
     agentStatus: oneOf(o.agentStatus, `${path}.agentStatus`, RUN_STATES),
     assignee: oneOf(o.assignee, `${path}.assignee`, ASSIGNEES),
-    isDraft: bool(o.isDraft, `${path}.isDraft`),
+    draft: draft(o.draft, `${path}.draft`),
     position: int(o.position, `${path}.position`, Number.MIN_SAFE_INTEGER),
     epicId: nullableStr(o.epicId, `${path}.epicId`),
     acceptance: {
@@ -87,12 +88,17 @@ function parseTask(value: unknown, path: string): SummaryTask {
   return task;
 }
 
+/** The owner of a draft, or `null` when the card or epic is not a draft. */
+function draft(value: unknown, path: string) {
+  return value === null ? null : oneOf(value, path, DRAFTS);
+}
+
 function parseEpic(value: unknown, path: string): SummaryEpic {
   const o = exact(value, path, [
     'id',
     'name',
     'color',
-    'isDraft',
+    'draft',
     'priority',
     'priorityError',
     'progress',
@@ -104,7 +110,7 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     id: str(o.id, `${path}.id`),
     name: str(o.name, `${path}.name`),
     color: str(o.color, `${path}.color`),
-    isDraft: bool(o.isDraft, `${path}.isDraft`),
+    draft: draft(o.draft, `${path}.draft`),
     priority: list(o.priority, `${path}.priority`, (v, p) => int(v, p, 1)),
     priorityError: bool(o.priorityError, `${path}.priorityError`),
     progress: {

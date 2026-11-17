@@ -32,7 +32,7 @@ const summary: Summary = summaryOfBoard({
       id: 'E-1',
       name: 'Epic one',
       color: '#112233',
-      isDraft: true,
+      draft: 'human',
       document: '',
       body: 'epic text',
       priority: [],
@@ -69,7 +69,7 @@ describe('the list bridge', () => {
   it('makes a board view with the epics and their counts from the Summary', () => {
     const view = toBoardView(summary);
     expect(view.tasks.map((task) => task.id)).toEqual([5, 6]);
-    expect(view.epics.map((epic) => [epic.id, epic.isDraft, epic.body])).toEqual([
+    expect(view.epics.map((epic) => [epic.id, epic.draft !== null, epic.body])).toEqual([
       ['E-1', true, ''],
     ]);
     expect(view.epicTaskCounts['E-1']).toEqual({
@@ -106,7 +106,7 @@ describe('what the Summary now keeps', () => {
         id: 'E-2',
         name: 'Ordered',
         color: '#445566',
-        isDraft: false,
+        draft: null,
         document: '',
         body: '',
         priority: [8, 3],

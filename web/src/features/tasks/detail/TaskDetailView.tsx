@@ -125,7 +125,7 @@ export function TaskDetailView({
           {t(`assignee.${task.assignee}`)}
         </span>
       </div>
-      {readOnlyDraft && task.isDraft && <DraftStatus />}
+      {readOnlyDraft && task.draft !== null && <DraftStatus />}
       {children}
       <DetailTabs
         idBase={idBase}

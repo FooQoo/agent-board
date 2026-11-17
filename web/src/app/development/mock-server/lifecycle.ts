@@ -183,7 +183,7 @@ function createTask(
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,
-    isDraft: input.isDraft === true,
+    draft: input.draft === 'human' ? 'human' : null,
     archivedAt: null,
     // The page's language, as `agboard serve` writes the history of the cards it creates.
     history: [

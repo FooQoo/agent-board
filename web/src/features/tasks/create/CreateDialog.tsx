@@ -28,7 +28,7 @@ export interface CreateInput {
   description: string;
   assignee: Assignee;
   /** The card becomes a draft right after it is added. */
-  isDraft?: boolean;
+  draft?: 'human';
   requestId?: string;
   attachments?: EditorAttachment[];
 }
@@ -51,7 +51,7 @@ export function CreateDialog({
   const [description, setDescription] = useState('');
   const [conditions, setConditions] = useState<AcceptanceItem[]>([]);
   const [assignee, setAssignee] = useState<Assignee>('ai');
-  const [isDraft, setIsDraft] = useState(false);
+  const [asDraft, setAsDraft] = useState(false);
   const assigneeId = useId();
   const draftId = useId();
   const flow = useSaveFlow({ onClose, onSavingChange });
@@ -89,7 +89,7 @@ export function CreateDialog({
         title: title.trim(),
         description: text,
         assignee,
-        ...(isDraft ? { isDraft: true } : {}),
+        ...(asDraft ? { draft: 'human' as const } : {}),
         ...(attachmentState.attachments.length ? { attachments: attachmentState.attachments } : {}),
       }),
     );
@@ -111,10 +111,10 @@ export function CreateDialog({
         <div className="editor__draft">
           <Checkbox
             id={draftId}
-            checked={isDraft}
+            checked={asDraft}
             aria-label={t('editor.draft')}
             disabled={flow.saving}
-            onCheckedChange={(checked) => setIsDraft(checked === true)}
+            onCheckedChange={(checked) => setAsDraft(checked === true)}
           />
           <Label htmlFor={draftId}>{t('editor.draft')}</Label>
         </div>

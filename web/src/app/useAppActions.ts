@@ -154,7 +154,7 @@ export function useAppActions(model: AppControllerModel) {
           title: data.title ?? '',
           description: data.description ?? '',
           assignee: data.assignee as Assignee,
-          isDraft: data.isDraft,
+          draft: data.draft,
           requestId: data.requestId,
           attachments: data.attachments,
         });

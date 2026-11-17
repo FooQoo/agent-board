@@ -38,7 +38,7 @@ const summaryCard: TaskSummary = {
   pendingChoices: [],
   epic: null,
   updatedAt: '2026-10-01T09:30:00Z',
-  isDraft: false,
+  draft: null,
   acceptance: { done: 2, total: 4 },
   acceptanceError: false,
 };
@@ -80,7 +80,7 @@ export const FromSummary: Story = {
     await expect(canvas.getByText('2/4')).toBeInTheDocument();
   },
 };
-export const Draft: Story = { args: { task: makeTask({ id: 43, isDraft: true }) } };
+export const Draft: Story = { args: { task: makeTask({ id: 43, draft: 'human' }) } };
 export const PendingWithEpic: Story = {
   args: {
     task: makeTask({

@@ -25,7 +25,7 @@ function renderPanel(task: TaskModel, onChanged = vi.fn()) {
   return onChanged;
 }
 
-const draftOf = (task: TaskModel): TaskModel => ({ ...task, isDraft: true });
+const draftOf = (task: TaskModel): TaskModel => ({ ...task, draft: 'human' });
 
 beforeEach(() => {
   selectLocale('en');
@@ -68,7 +68,7 @@ describe('Finalize', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Finalize' }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(JSON.parse(String(init.body))).toEqual({ isDraft: false });
+    expect(JSON.parse(String(init.body))).toEqual({ draft: null });
   });
 
   it('shows the error in the banner when Finalize fails on the network, and can try again', async () => {
