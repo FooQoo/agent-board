@@ -31,6 +31,8 @@ Only open messages are listed. A question you have answered, a request an agent 
 
 Select a question or a request to open it in place of the list. **Back to list** returns to the list.
 
+![The messages list with the AI's questions tab, showing a question and an approval row](../../images/guide/messages-list.png){.screenshot}
+
 ## Answer in the browser
 
 Select a question in the list, or select **Answer the question** on its card to open the list at that task's first open question. The question opens in a wide modal with two columns:
@@ -58,9 +60,13 @@ A question can be answered somewhere else, for example in the chat, while you ar
 
 The dialog keeps your choice and note and shows **It could not be sent. Try again.** Select **Send answer** again.
 
+## Review a plan
+
+An **Awaiting approval** row is a plan the agent proposed. Selecting it opens the same plan review as **Review and start** on the **Proposed plan** card at the top of Todo. The review shows the goal, the tasks that will start, and the open questions about the plan, each with an **Answer the question** button that opens that question. **Later** closes the review and changes nothing. **Start with this plan** starts the plan, and it is disabled while a question about the plan is unanswered. The review and what starting does are described in [Proposed plans](../watch/board#proposed-plans).
+
 ## Your requests
 
-A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiting to be picked up** until an agent accepts it. Open it to read what you sent, with its images. While it waits, **Withdraw** takes it back. Once an agent has accepted it, it leaves the list, and it can no longer be withdrawn.
+A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiting to be picked up** until an agent accepts it. Open it to read what you sent, with its images. While it waits, **Withdraw** takes it back, and the request leaves the list. Once an agent has accepted it, it leaves the list, and it can no longer be withdrawn.
 
 ## Answer on your phone
 

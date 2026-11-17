@@ -52,10 +52,10 @@ landing:
       - title: 要望 → 計画
         steps:
           - { actor: human, title: 要望, text: やりたいことを、普通の言葉でエージェントに伝えます。 }
-          - { actor: ai, title: 計画, text: 完了条件つきの仮の計画をボードに置き、計画の質問をします。 }
+          - { actor: ai, title: 計画, text: 完了条件つきの計画を提案中としてボードに置き、質問をします。 }
       - title: 開始
         steps:
-          - { actor: human, title: 開始, text: 計画の質問に答え、計画を一度だけ開始します。 }
+          - { actor: human, title: 開始, text: 質問に答え、計画を確認して、一度だけ開始します。 }
       - title: 作業
         steps:
           - { actor: ai, title: 作業, text: 順にタスクを進めます。止まるのは、意図が分からない・好みで決まる・取り返しがつかない・範囲が広がる、のときだけです。 }

@@ -46,6 +46,8 @@ A running task opens read-only, with a **Running** chip and the reason **Read-on
 
 Choose **Ask AI** in the board header to open the request form. On a phone, the **Ask AI** button in the messages band opens the same form as a bottom sheet. Write what you want done, attach images if they help, and choose **Send request**.
 
+![The Ask AI dialog with the rich editor, an attached image, and the Send request button](../../images/guide/ask-ai.png){.screenshot}
+
 The request is a message to the agents, not a task. It is not linked to any task or epic, so the form has no epic picker. When an agent receives it, the agent decides how to turn it into a plan, and the plan appears in Todo for you to review and start. Until then, the band above the lanes lists the request as **Waiting to be picked up**. You can withdraw a request before an agent receives it.
 
 The text field is the same rich Markdown editor the task editor uses. The text is required, up to 20,000 characters. Images use the same PNG, JPEG, WebP, and GIF limits as task attachments. Choose **Add image attachment**, paste an image into the text, or drop one onto the form. **Insert in description** on an attached image places it at the cursor. If sending fails, the form keeps your text and images so you can try again.

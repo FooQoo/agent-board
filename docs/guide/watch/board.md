@@ -90,6 +90,8 @@ Choose **Review and start** to open the plan review, a dialog on a wide window a
 - **Tasks that will start (in this order)**, with the owner and the number of acceptance conditions of each task. A single task has no numbers and no order;
 - the unanswered questions that block the plan, each with an **Answer the question** button that opens the question.
 
+![The plan review with the goal, the tasks that will start, and an open question that disables Start with this plan](../../images/guide/plan-review.png){.screenshot}
+
 **Later** closes the review and changes nothing. **Start with this plan** starts the epic and its AI-drafted tasks, or the single task, and the cards move to the lanes as ordinary tasks. While a question about the plan is unanswered, **Start with this plan** is disabled and the review says why. If a question arrives just as you start, the start is refused and the review names it. The original request is not shown in the review. Only a person can start a plan; an agent cannot.
 
 ## Archive

@@ -4,7 +4,7 @@ title: Quickstart
 
 # Quickstart
 
-In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a provisional plan on the board, you answer its questions and start it once, and you watch it work until the tasks reach Done.
+In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a proposed plan on the board, you answer its questions and start it once, and you watch it work until the tasks reach Done.
 
 You need a running installation and an agent. If you have not installed `agboard` and set up your agent, start with [Install and start](./getting-started) and [Working with agents](./delegate/agents#set-up-your-agents).
 
@@ -28,9 +28,9 @@ In the agent's chat, ask for a piece of work that is more than one step, in your
 
 > Add a dark mode to the settings page, and update the docs.
 
-You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a **provisional plan** at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is a draft until you start it. Open a card on the board to read the plan while the agent asks about it.
+You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a **proposed plan** at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until you start it. On the board the plan is one dashed **Proposed plan** card at the top of Todo, and the AI-drafted tasks are not cards of their own. Select **Review and start** to read the plan while the agent asks about it.
 
-## 3. Answer the plan questions
+## 3. Answer the questions
 
 The agent asks what it cannot settle itself, with choices and a recommendation. It writes each question in the chat, and every question is also on the board, in the **Messages** band and on the tasks that wait for the answer, which show **Pending**. Answer wherever is easier: choose an option on the board or on your phone, or reply in the chat in your own words. The first answer recorded is the one that counts. See [Decisions](./delegate/decisions).
 
@@ -38,7 +38,7 @@ The agent changes the plan as your answers say, and may ask a little more. If it
 
 ## 4. Start the plan
 
-When the plan reads right, you start it, for example with `agboard epic start <EPIC-ID> --actor human`. That starts the epic and all its drafts. No task starts before then. If you want something changed, tell the agent in the chat and it revises the plan.
+When the plan reads right, select **Review and start** on the **Proposed plan** card, then **Start with this plan**. The button stays disabled while a question about the plan is unanswered. You can also start it from the command line with `agboard epic start <EPIC-ID> --actor human`. Either way, the epic and all its AI drafts start together, and no task starts before then. If you want something changed, send the agent a request with **Ask AI** or tell it in the chat.
 
 ## 5. Watch it run
 
@@ -151,8 +151,8 @@ agboard --project "Quickstart" project rm
 
 ## What you learned
 
-- You ask, and the agent registers a provisional plan; you do not write it.
-- You answer the plan questions, then start the plan once.
+- You ask, and the agent proposes a plan; you do not write it.
+- You answer the questions, then start the plan once.
 - Tasks move through **Todo → Doing → Done**, and agents report **Idle**, **Running**, or **Pending**.
 - Every change is recorded in the task's history with a reason.
 - An agent asks you a question with **Pending**, and you answer on the task.

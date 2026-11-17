@@ -52,10 +52,10 @@ landing:
       - title: Request → Plan
         steps:
           - { actor: human, title: Request, text: Tell your agent what you want, in plain words. }
-          - { actor: ai, title: Plan, text: Puts a provisional plan on the board, with acceptance conditions, and asks its plan questions. }
+          - { actor: ai, title: Plan, text: Puts a proposed plan on the board, with acceptance conditions, and asks its questions. }
       - title: Start
         steps:
-          - { actor: human, title: Start, text: Answer the plan questions and start the plan once. }
+          - { actor: human, title: Start, text: Answer the questions, review the plan, and start it once. }
       - title: Work
         steps:
           - { actor: ai, title: Work, text: Works through the tasks in order. It stops only when your intent is unclear, your preference decides, an action cannot be undone, or the work grows. }

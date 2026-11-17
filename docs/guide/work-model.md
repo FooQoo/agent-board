@@ -17,7 +17,7 @@ Agent Board is built around a model of the work, not around a screen. The model 
 | **Question** | A decision the agent asks you for, usually with choices and a recommendation. | Makes the agent stop and wait. |
 | **Request** | A message you write for the agents. | Hands new work to an agent. |
 | **History** | A time-ordered list of what happened, each entry with a time and a reason. | Lets a new session, or another agent, continue from where the last one stopped. |
-| **Draft** | A task or epic you are still writing. | Keeps agents out of it. |
+| **Draft** | A task or epic that has not been started: one you are still writing, or a plan an agent proposed (an AI draft). | Keeps agents from working on it. Only a person starts an AI draft. |
 | **Archive** | Tasks you have put away. | Stops all writes to them. |
 
 A task also has a **title** and a **body** in free Markdown for the plan, the results, and links. A task belongs to at most one epic, and the epic's order and the task's place in a column are separate things.

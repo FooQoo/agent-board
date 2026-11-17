@@ -4,7 +4,7 @@ title: Working with agents
 
 # Working with agents
 
-This is how you hand work to an agent. You ask in the chat; the agent turns the request into a provisional plan on the board, you start it, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
+This is how you hand work to an agent. You ask in the chat; the agent turns the request into a proposed plan on the board, you start it, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
 
 ## Set up your agents {#set-up-your-agents}
 
@@ -101,7 +101,7 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it puts a provisional plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until a person starts it (see [Drafts and errors](#drafts-and-errors)). You can open the cards and read the plan first.
+When you ask an agent for work that is more than one task, it puts a proposed plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until a person starts it (see [Drafts and errors](#drafts-and-errors)). You can open the cards and read the plan first.
 
 1. **Questions about the plan.** The agent asks what it cannot settle itself, as ordinary questions with choices and a recommendation. A task that refers to an open question shows **Pending** until you answer.
 2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
