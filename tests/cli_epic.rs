@@ -29,7 +29,7 @@ fn epic_add(home: &Path, id: &str, name: &str, color: Option<&str>) {
         "--name",
         name,
         "--actor",
-        "ai",
+        "human",
     ];
     if let Some(color) = color {
         args.extend(["--color", color]);
@@ -51,7 +51,7 @@ fn epic_add_writes_the_epic_and_an_empty_document() {
     assert_eq!(shown["epic"]["id"], "FILE-SHARE");
     assert_eq!(shown["epic"]["name"], "File share");
     assert_eq!(shown["epic"]["color"], "#7C3AED");
-    assert_eq!(shown["epic"]["isDraft"], false);
+    assert_eq!(shown["epic"]["draft"], serde_json::Value::Null);
     let document = shown["epic"]["document"].as_str().unwrap();
     assert_eq!(document, "", "the new document is empty");
 }
@@ -326,7 +326,7 @@ fn a_draft_epic_refuses_cli_edit_but_reads_and_member_work_still_work() {
             &project,
             &epic,
             agent_board::file_store::model::EpicUpdate {
-                is_draft: Some(true),
+                draft: Some(Some(agent_board::domain::Draft::Human)),
                 ..Default::default()
             },
             chrono::Utc::now(),
@@ -375,7 +375,13 @@ fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     // A person marks the task as a draft through the Web path (the store API).
     let store = FileStore::open(&home.path().join("shared"));
     store
-        .set_draft(&project_id(home.path()), 1, true, false, chrono::Utc::now())
+        .set_draft(
+            &project_id(home.path()),
+            1,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            chrono::Utc::now(),
+        )
         .unwrap();
 
     let (code, code_name) = json_error(
@@ -399,7 +405,7 @@ fn a_draft_task_refuses_cli_image_and_epic_changes_but_reads_still_work() {
     );
     assert_eq!((code, code_name.as_str()), (1, "task_is_draft"));
     let shown = json_ok(home.path(), &["--project", "Demo", "show", "1", "--json"]);
-    assert_eq!(shown["task"]["isDraft"], true);
+    assert_eq!(shown["task"]["draft"], "human");
     assert_eq!(shown["task"]["epicId"], Value::Null);
 }
 

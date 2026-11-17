@@ -10,7 +10,7 @@ landing:
     done: Copied
   hero:
     title: "Delegate big work.\nStop babysitting it."
-    lead: Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts after one approval, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
+    lead: Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts with one start from you, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
     install: brew install fooqoo/tap/agboard
     primary: { text: Get started, link: /guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
@@ -45,17 +45,17 @@ landing:
       - { title: How far along is it?, text: Each task keeps its acceptance count and its history. }
   loop:
     eyebrow: How it works
-    title: Request, approve once, and let it run.
-    lead: Describe what you want. The agent plans it on the board, you approve the start once, and it works in order. It stops for you only when it must, and each task moves to Done on its own once its verified conditions are met.
+    title: Request, start once, and let it run.
+    lead: Describe what you want. The agent plans it on the board, you start it once, and it works in order. It stops for you only when it must, and each task moves to Done on its own once its verified conditions are met.
     actors: { ai: AI, human: You, auto: Auto }
     lanes:
       - title: Request → Plan
         steps:
           - { actor: human, title: Request, text: Tell your agent what you want, in plain words. }
-          - { actor: ai, title: Plan, text: Puts a provisional plan on the board, with acceptance conditions, and asks its plan questions. }
-      - title: Approve
+          - { actor: ai, title: Plan, text: Puts a proposed plan on the board, with acceptance conditions, and asks its questions. }
+      - title: Start
         steps:
-          - { actor: human, title: Approve, text: Answer the plan questions and approve the start once. }
+          - { actor: human, title: Start, text: Answer the questions, review the plan, and start it once. }
       - title: Work
         steps:
           - { actor: ai, title: Work, text: Works through the tasks in order. It stops only when your intent is unclear, your preference decides, an action cannot be undone, or the work grows. }

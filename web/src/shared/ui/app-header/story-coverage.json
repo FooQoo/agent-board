@@ -52,6 +52,11 @@
           "interaction": true
         },
         {
+          "id": "shared-ui-header--manual-task-menu",
+          "states": ["ask ai", "more ways to add menu", "manual task form"],
+          "interaction": true
+        },
+        {
           "id": "shared-ui-header--settings-opens-and-restores-focus",
           "states": ["settings dialog", "escape", "focus back to settings"],
           "interaction": true

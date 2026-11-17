@@ -136,17 +136,17 @@ export const EnterCallsHandler: Story = {
 };
 
 /** The product's own label, translated at render: the same text as the adopted screen's button. */
-function TranslatedButton({ labelKey }: { labelKey: 'simpleTask.submit' }) {
+function TranslatedButton({ labelKey }: { labelKey: 'askAi.submit' }) {
   const { t } = useTranslation();
   return <Button>{t(labelKey)}</Button>;
 }
 
-/** The primary button of the task form, with the product's own English label ("Submit task"). */
+/** The primary button of the Ask AI form, with the product's own English label ("Send request"). */
 export const ProductSubmitLabel: Story = {
-  render: () => <TranslatedButton labelKey="simpleTask.submit" />,
+  render: () => <TranslatedButton labelKey="askAi.submit" />,
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getByRole('button', { name: 'Submit task' }),
+      within(canvasElement).getByRole('button', { name: 'Send request' }),
     ).toBeInTheDocument();
   },
 };

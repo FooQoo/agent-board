@@ -17,8 +17,8 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `epicId` | An EPIC-ID in the same project, or `null`. |
 | `taskStatus` | The lane: `todo`, `doing`, or `done`. |
 | `position` | Positive integer, unique among unarchived tasks in the same lane. |
-| `agentStatus` | The AI run state. `task.json` stores `idle` or `running`; reads return `pending` while an AI task in Todo or Doing waits for a person (see [Questions and answers](../concepts/history-and-decisions.md#questions-and-answers)). A stored `pending` reads as `idle`. |
-| `isDraft` | Defaults to `false`. A draft is being prepared by a person. For an epic, the CLI `epic edit` refuses a draft with `epic_is_draft`. |
+| `agentStatus` | The AI run state. `task.json` stores `idle` or `running`; reads return `pending` while an AI task in Todo or Doing waits for a person (see [Messages](../concepts/history-and-decisions.md#messages)). A stored `pending` reads as `idle`. |
+| `draft` | `null`, `"human"`, or `"ai"`. `human` is a draft a person is writing in the browser; `ai` is a proposal an agent created, which only a person starts. Files of earlier versions hold `isDraft`: `true` reads as `human` and `false` as `null`; writing uses `draft` only. For an epic, the CLI `epic edit` refuses a `human` draft with `epic_is_draft`. |
 | `questions` | In `TASK.md` frontmatter: the IDs of the project questions the task refers to, such as `[Q-12, Q-15]`. Omitted, `null`, and empty all mean none; duplicates are rejected. |
 | `requestAnswers` | Answers recorded by earlier versions of Agent Board, kept as a record. Nothing adds to it. |
 | `archivedAt` | `null`, or the archive time. |
@@ -45,7 +45,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
         docs/<any folders>/<name>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
-        qa/<request-id>/request.json
+        qa/Q-<n>/{QA.md, attachments/<name>}
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
         .internal/batches/<batch-id>.json
@@ -91,7 +91,7 @@ A `task.json` looks like this:
   "taskStatus": "todo",
   "agentStatus": "idle",
   "position": 1,
-  "isDraft": false,
+  "draft": null,
   "archivedAt": null,
   "requestAnswers": [],
   "createdAt": "2026-10-10T00:00:00Z",
@@ -118,60 +118,72 @@ history:
 ---
 ```
 
-## Questions
+## Messages
 
-A project's questions live in `qa/<request-id>/request.json`, one file for each set of questions asked together. The folder name is the request ID.
+A question from an agent to a person and a request from a person to an agent are both stored as one file, `qa/Q-<n>/QA.md`: YAML frontmatter, then the Markdown text as the body. Images sent with a request are kept in `qa/Q-<n>/attachments/`. Questions and requests share one number sequence, taken from `nextQuestionId` in `project.json`, so `Q-<n>` is unique in the project whichever kind it is. The folder name is the ID.
 
-```json
-{
-  "formatVersion": 1,
-  "requestId": "3f2a9c0d6b1e4f7a8c5d2e1f0a9b8c7d",
-  "createdAt": "2026-11-14T02:30:00Z",
-  "createdBy": "ai",
-  "withdrawnAt": null,
-  "withdrawReason": null,
-  "questions": [
-    {
-      "id": "Q-12",
-      "kind": "task",
-      "question": "Should existing records be deleted or kept?",
-      "choices": [
-        { "id": "delete", "label": "Delete them" },
-        { "id": "keep", "label": "Keep them" }
-      ],
-      "recommendedChoiceId": "keep",
-      "approvingChoiceIds": [],
-      "answer": {
-        "choiceId": "keep",
-        "choiceLabel": "Keep them",
-        "text": null,
-        "actor": "human",
-        "via": "ui",
-        "at": "2026-11-14T02:41:10Z"
-      }
-    }
-  ]
-}
+A question:
+
+```markdown
+---
+from: ai
+to: human
+tasks: [12]
+choices:
+  - { id: delete, label: Delete them }
+  - { id: keep, label: Keep them }
+recommended: keep
+reply:
+  choice: keep
+  via: ui
+  at: 2026-11-14T02:41:10Z
+createdAt: 2026-11-14T02:30:00Z
+---
+Should existing records be deleted or kept?
 ```
+
+A request:
+
+```markdown
+---
+from: human
+to: ai
+acceptedAt: 2026-11-14T03:10:00Z
+acceptedBy: agent-1
+createdAt: 2026-11-14T03:00:00Z
+---
+Add a dark theme to the settings screen.
+```
+
+`from` decides the kind: `ai` is a question (`to: human`), `human` is a request (`to: ai`). Unknown frontmatter keys are refused.
 
 | Field | Rule |
 | --- | --- |
-| `formatVersion` | Always `1`; any other value is `format_unsupported`. |
-| `requestId` | 32 lowercase hexadecimal characters, equal to the folder name. |
-| `createdAt`, `createdBy` | When the request was asked, and the actor (`ai` or `human`). |
-| `withdrawnAt`, `withdrawReason` | When the whole request was withdrawn, and the optional reason (1 to 2,000 characters). |
-| `questions` | 1 to 20 questions in the order they were asked. |
-| `questions[].id` | `Q-<positive integer>`, unique in the project, numbered from `nextQuestionId`. |
-| `questions[].kind` | `task`, `plan`, or `start_approval`. |
-| `questions[].question` | Markdown, 1 to 5,000 characters. |
-| `questions[].choices` | 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. |
-| `questions[].recommendedChoiceId` | `null`, or one of the choices. |
-| `questions[].approvingChoiceIds` | Choices that approve. At least one for `start_approval`; empty for other kinds. |
-| `questions[].answer` | `null` while unanswered. `choiceId` and `choiceLabel` are both `null` or both set, `text` is `null` or 1 to 2,000 characters, and at least one of choice or text is present. `actor` is always `human`; `via` is `ui`, `chat`, or `cli`. |
+| `from`, `to` | `ai` and `human` for a question; `human` and `ai` for a request. |
+| body | The text. A question is 1 to 5,000 characters; a request is 1 to 20,000 characters. |
+| `createdAt` | When the message was created. |
+| `withdrawnAt` | `null` or when it was withdrawn. A message with a reply or an acceptance is not withdrawn. |
 
-Statuses are not stored. A question is `open` while it has no answer and its request is not withdrawn, `answered` once it has an answer, and `withdrawn` when its request was withdrawn before it was answered. A recorded answer is never rewritten. The tasks that refer to a question (`referencedBy`) are found from the tasks' `questions`, not from this file.
+Fields of a question:
 
-A broken `request.json`, or one with another `formatVersion`, is left out of every list and reported in `problems` as `projects/<id>/qa/<request-id>/request.json`; writes to it fail with `file_invalid`.
+| Field | Rule |
+| --- | --- |
+| `tasks` | Optional. The task numbers the question was asked for. It is kept in step with those tasks' `questions` by `message link` and `message unlink`. |
+| `choices` | Optional. 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. Without choices, the question is answered with text. |
+| `recommended` | Optional. One choice ID. |
+| `reply` | `null` until answered. `choice` is set exactly when the question has choices; `text` is 1 to 2,000 characters and required when there are no choices; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. |
+
+Fields of a request:
+
+| Field | Rule |
+| --- | --- |
+| `acceptedAt`, `acceptedBy` | `null` until an agent accepts it; both are written together. `acceptedBy` is the agent or session ID given with `--by` (1 to 200 characters). |
+
+The state is not stored. A message is withdrawn when `withdrawnAt` is set, closed when its question has a `reply` or its request is accepted, and open otherwise. The CLI and API report a question's status as `open`, `answered`, or `withdrawn`, and a request's as `open`, `accepted`, or `withdrawn`; the filter words shared by both are `open`, `closed`, and `withdrawn`.
+
+A reply is written once, by a person, and an acceptance once, by an agent. Nothing is written after a withdrawal. The tasks that refer to a question (`referencedBy`) are found from the tasks' `questions`, not from this file.
+
+A `QA.md` that cannot be read, breaks a rule above, or is in a folder not named `Q-<n>` is left out of every list and reported in `problems` as `projects/<id>/qa/Q-<n>/QA.md`; writes to it fail with `file_invalid`. A task that refers to a question whose file cannot be read stays Pending.
 
 Back up a project by copying `shared/projects/<project-id>/`; restore it by stopping `serve` and putting the folder back. There are no export or import commands. See the [data guide](../../guide/operations/data.md).
 
@@ -229,7 +241,7 @@ The CLI, web API, and hook share one camelCase task representation: the `task.js
 - The project list returns `projects` (id, name, createdAt) and `catalogVersion`, without tasks.
 - `ls --all-projects --json` returns `catalogVersion` and one snapshot per project, sorted by name, each with its own cursor.
 
-`problems` report format defects: `[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`. `field` is `frontmatter`, `acceptance[<index>].<key>`, `questions`, `history`, or `history[<index>].<key>` for a task file, or the item of a `request.json`; `file` is relative to `shared/`; `reason` is English. How defects affect reads and writes is described in [Storage and consistency](../concepts/saving-and-recovery.md#when-files-are-invalid).
+`problems` report format defects: `[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`. `field` is `frontmatter`, `acceptance[<index>].<key>`, `questions`, `history`, or `history[<index>].<key>` for a task file, or the field of a `QA.md`; `file` is relative to `shared/`; `reason` is English. How defects affect reads and writes is described in [Storage and consistency](../concepts/saving-and-recovery.md#when-files-are-invalid).
 
 ## First-run guide
 

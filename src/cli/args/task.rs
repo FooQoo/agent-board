@@ -49,7 +49,7 @@ pub struct AddArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (isDraft) is read-only for agents: edit fails with task_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
+    after_help = "A task a person is drafting (draft: human) is read-only for agents: edit fails with task_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again. A task you created is an AI draft (draft: ai): you can edit it, and a person starts it.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
 )]
 pub struct EditArgs {
     /// ID of the task
@@ -69,7 +69,7 @@ pub struct EditArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (isDraft) is read-only for agents: mv fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
+    after_help = "A draft task (draft: human or ai) is read-only for agents here: mv fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
 )]
 pub struct MvArgs {
     /// ID of the task
@@ -82,7 +82,7 @@ pub struct MvArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (isDraft) is read-only for agents: state fails with task_is_draft (exit code 1). Wait for the user to finalize it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n\nTo ask the user, use qa ask. While a task waits for answers, state running by an agent fails with questions_unanswered (exit code 1).\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 idle --actor ai --reason \"Ready for review\""
+    after_help = "A draft task (draft: human or ai) is read-only for agents here: state fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nRun states:\n  idle     not working on it\n  running  you are working on it now\n\nTo ask the user, use message ask. While a task waits for answers, state running by an agent fails with questions_unanswered (exit code 1).\n\nExamples:\n  agboard --project demo state 12 running --actor ai --reason \"Working\"\n  agboard --project demo state 12 idle --actor ai --reason \"Ready for review\""
 )]
 pub struct StateArgs {
     /// ID of the task
@@ -101,6 +101,18 @@ pub struct StateArgs {
     #[arg(long, value_name = "PATH", group = "reason_source")]
     pub reason_file: Option<PathBuf>,
     /// Who is making this change
+    #[arg(long, value_enum, required = true)]
+    pub actor: ActorArg,
+}
+
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Only a person may start. With --actor ai the command fails with human_only (exit code 1). A task that is not an AI draft changes nothing.\n\nExamples:\n  agboard --project demo start 12 --actor human"
+)]
+pub struct StartArgs {
+    /// ID of the task whose AI draft a person starts
+    pub id: i64,
+    /// Who is making this change; only human can start
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
 }

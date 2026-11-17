@@ -4,10 +4,10 @@ import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes
 
 /**
  * What the last request of a save carries: the name, the color, and the whole text (the Markdown
- * body, or the whole document when the stored order cannot be read). `isDraft: false` finalizes
+ * body, or the whole document when the stored order cannot be read). `draft: null` finalizes
  * the draft the dialog entered; it is left out when the epic was a draft before the dialog opened.
  */
-export type EpicSaveInput = { name: string; color: string; isDraft?: false } & (
+export type EpicSaveInput = { name: string; color: string; draft?: null } & (
   | { document: string }
   | { body: string }
 );
@@ -52,9 +52,9 @@ export function epicApi(projectId: string, epicId: string, changed: () => void):
     save: async (input) => {
       await done(updateEpic(projectId, epicId, input));
     },
-    enterDraft: async () => (await done(updateEpic(projectId, epicId, { isDraft: true }))).epic,
+    enterDraft: async () => (await done(updateEpic(projectId, epicId, { draft: 'human' }))).epic,
     leaveDraft: async () => {
-      await done(updateEpic(projectId, epicId, { isDraft: false }));
+      await done(updateEpic(projectId, epicId, { draft: null }));
     },
     remove: () => done(deleteEpic(projectId, epicId)),
   };

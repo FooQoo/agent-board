@@ -6,9 +6,9 @@ use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
-use crate::domain::Changed;
+use crate::domain::{Changed, Draft};
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::model::{EpicUpdate, NewEpic};
@@ -26,7 +26,7 @@ pub(super) struct CreateEpicInput {
     #[serde(default)]
     color: Option<String>,
     #[serde(default)]
-    is_draft: bool,
+    draft: Option<Draft>,
     /// The whole EPIC.md text, frontmatter included. Not combined with `body`.
     #[serde(default)]
     document: Option<String>,
@@ -41,8 +41,10 @@ pub(super) struct EpicPatchInput {
     name: Option<String>,
     #[serde(default)]
     color: Option<String>,
-    #[serde(default)]
-    is_draft: Option<bool>,
+    /// `"human"` or `null` sets or clears a person's draft; `"ai"` returns it to
+    /// the AI draft it was. An absent field keeps the draft.
+    #[serde(default, deserialize_with = "present_draft")]
+    draft: Option<Option<Draft>>,
     #[serde(default)]
     document: Option<String>,
     #[serde(default)]
@@ -50,6 +52,13 @@ pub(super) struct EpicPatchInput {
     /// The task order of the epic. Replaces the stored order.
     #[serde(default)]
     priority: Option<Vec<i64>>,
+}
+
+/// A `draft` that is present, `null` included, is `Some`; an absent one is `None`.
+pub(super) fn present_draft<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Option<Draft>>, D::Error> {
+    Option::<Draft>::deserialize(deserializer).map(Some)
 }
 
 /// The error for giving a whole file and its parts in one request.
@@ -148,11 +157,14 @@ pub(super) async fn create_epic(
         Ok(document) => document,
         Err(error) => return agboard_error_response(&error),
     };
+    if let Err(error) = super::tasks::person_draft(input.draft) {
+        return agboard_error_response(&error);
+    }
     let new = NewEpic {
         id: input.id,
         name: input.name,
         color: input.color,
-        is_draft: input.is_draft,
+        draft: input.draft,
         document,
     };
     match with_files(&state, move |store| {
@@ -227,7 +239,7 @@ pub(super) async fn update_epic(
         let update = EpicUpdate {
             name: input.name,
             color: input.color,
-            is_draft: input.is_draft,
+            draft: input.draft,
             document,
             refuse_if_draft: false,
         };

@@ -47,7 +47,7 @@ impl Fx {
                     id: "ALPHA".into(),
                     name: "Alpha epic".into(),
                     color: Some("#336699".into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 at(1),
@@ -61,7 +61,7 @@ impl Fx {
                     description: common::BODY.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Human,
-                    is_draft: false,
+                    draft: None,
                 },
                 at(2),
             )
@@ -162,8 +162,9 @@ fn projection_asking_and_answering_a_question_add_the_request_facet_and_a_qa_cha
     fx.doing();
     fx.reload();
     let project = fx.project.as_str().to_string();
-    let qa_change =
-        |sets: &[ChangeSet]| facets_of(sets, Resource::Qa, ResourceId::Named(project.clone()));
+    let qa_change = |sets: &[ChangeSet]| {
+        facets_of(sets, Resource::Messages, ResourceId::Named(project.clone()))
+    };
     qa::ask(
         &fx.store,
         &fx.project,
@@ -501,7 +502,7 @@ fn add_second_task(fx: &Fx) {
                 description: common::BODY.into(),
                 assignee: Assignee::Ai,
                 actor: Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             at(3),
         )

@@ -41,7 +41,7 @@ export const detailEn = {
     heading: 'Your answer',
     note: 'Note',
     notePlaceholder: 'Add a note if you need to…',
-    guide: 'Choose an option, or answer with a note alone.',
+    guide: 'Choose an option. A note is optional.',
     clear: 'Clear',
     sheetClose: 'Close the answer',
     sheetDismiss: 'Swipe down to close the answer',

@@ -64,13 +64,13 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### 質問する
 
-ユーザーに質問するには`qa ask`を使います。1回で複数の質問を出せます。質問はプロジェクトに属し、`--task <id>`を付けるとそのタスクが質問を参照して、回答されるまで待機中になります。コマンドは1行に1つのイベントを出力し（`--json`ならJSON Lines）、全問の回答が揃うまで待ちます。既定の待機時間は600秒です。
+ユーザーに質問するには`message ask`を使います。1回で最大20件の質問を出せます。質問は1件ずつ`Q-12`のようなIDを持つメッセージで、プロジェクトに属し、`--task <id>`を付けるとそのタスクが質問を参照して、回答されるまで待機中になります。コマンドは1行に1つのイベントを出力し（`--json`ならJSON Lines）、未回答の質問がなくなるまで待ちます。既定の待機時間は600秒です。
 
 ```sh
-agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
+agboard --project "My project" message ask --actor ai --task 1 --questions-json - --json < questions.json
 ```
 
-`answered`（終了コード0）、`timeout`（終了コード5。質問は未回答のまま残る）、`withdrawn`（終了コード6）のいずれかで終わります。待ち直すには`qa wait <request-id>`を使います。待機にはサーバーが必要です。動いていなければ、質問を保存する前にコマンドが裏で起動します。`--no-wait`を付けると、質問を登録してすぐに戻り、サーバーも要りません。回答の記録、質問の確認、リクエストの取り下げ、タスクからの参照の変更には、それぞれ`qa answer`、`qa ls`と`qa show`、`qa withdraw`、`qa link`と`qa unlink`を使います。リクエストの形式と各コマンドは[判断依頼](../delegate/decisions)を参照してください。エピックと進行表は[エピックと進行表](../watch/epics)を参照してください。
+`answered`（終了コード0）、`timeout`（終了コード5。質問は未回答のまま残る）、`withdrawn`（終了コード6）のいずれかで終わります。待ち直すには`message wait Q-12 Q-13`を使います。待機にはサーバーが必要です。動いていなければ、質問を保存する前にコマンドが裏で起動します。`--no-wait`を付けると、質問を登録してすぐに戻り、サーバーも要りません。回答の記録、メッセージの確認、質問の取り下げ、タスクからの参照の変更には、それぞれ`message answer`、`message ls`と`message show`、`message withdraw`、`message link`と`message unlink`を使います。人からエージェントへの依頼には`message send`と`message accept`を使います。質問の形式と各コマンドは[判断依頼](../delegate/decisions)を参照してください。エピックと進行表は[エピックと進行表](../watch/epics)を参照してください。
 
 ## ファイルを使って本文を編集する
 
@@ -82,7 +82,7 @@ agboard --project "My project" edit 1 --desc-file task.md
 
 説明は50,000文字まで、エピックの詳細（`EPIC.md`）は100,000文字まで使えます。ファイルは[Markdownファイルの形式](./file-format)に従う必要があります。標準入力から説明を読むには、`--desc -`を使います。
 
-`edit --desc-file`は、本文と完了条件を置き換え、`TASK.md`の最新の履歴と質問への参照（`questions`）を保ちます。入力ファイルの`history`と`questions`は無視されるため、未回答の質問を参照しているタスクは保留のままです。参照を変えるには`qa link`・`qa unlink`を使います。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
+`edit --desc-file`は、本文と完了条件を置き換え、`TASK.md`の最新の履歴と質問への参照（`questions`）を保ちます。入力ファイルの`history`と`questions`は無視されるため、未回答の質問を参照しているタスクは保留のままです。参照を変えるには`message link`・`message unlink`を使います。CLIや画面からの移動・状態の変更などの操作は、`TASK.md`に履歴を追加し、`show`・`snapshot`・ブラウザは同じ履歴を読みます。
 
 ## エピックの詳細を編集する
 
@@ -95,6 +95,15 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
 `--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。
+
+エージェントが作るもの（`add`・`epic add`）は、AIの下書きから始まります。エージェントは編集できますが、人が開始するまで`mv`と`state`は`task_is_draft`で失敗します。
+
+```sh
+agboard --project "My project" start 12 --actor human
+agboard --project "My project" epic start LAUNCH --actor human
+```
+
+`start`は1件のタスクのAIの下書きを外します。`epic start`は、エピックとそのAIの下書きのタスクすべてを一度に外し、人がまだ下書きにしているタスクはそのままにします。開始したタスクには、人が開始したことが履歴に残ります。`--actor ai`では、どちらも`human_only`（終了コード1）で失敗します。
 
 人がブラウザでエピックを下書きにしている間は、`--priority`を含む`epic edit`が`epic_is_draft`（終了コード1）で失敗し、何も変わりません。保存か破棄が済むまで待つか、残った下書きなら確定を頼んでください。`epic attachment`とタスクの所属の変更は、引き続き使えます。
 

@@ -36,7 +36,7 @@ impl FileStore {
                 id: id.into(),
                 name: name.into(),
                 color: Some(color.into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             };
             match self.create_epic(project, new, now) {

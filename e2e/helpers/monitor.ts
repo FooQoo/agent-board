@@ -31,7 +31,7 @@ function run(home: string, args: string[]): string {
 
 function task(home: string, project: string, title: string, description: string): number {
   const value = JSON.parse(
-    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
+    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'human', '--json']),
   ) as { task: { id: number } };
   return value.task.id;
 }
@@ -42,7 +42,7 @@ function move(home: string, project: string, id: number, lane: 'doing' | 'done',
 
 function state(home: string, project: string, id: number, status: 'running' | 'pending', reason: string): void {
   const args = status === 'pending'
-    ? ['qa', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--request-json', decisionJson(reason)]
+    ? ['message', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--questions-json', decisionJson(reason)]
     : ['state', String(id), status, '--actor', 'ai', '--reason', reason];
   run(home, ['--project', project, ...args]);
 }
@@ -94,7 +94,7 @@ export function createMonitorHome(): string {
   const alphaFolder = workspace('Alpha', home).folder;
   const draftPath = path.join(alphaFolder, 'tasks', String(draftId), 'task.json');
   const draft = JSON.parse(readFileSync(draftPath, 'utf8')) as Record<string, unknown>;
-  writeJson(draftPath, { ...draft, isDraft: true });
+  writeJson(draftPath, { ...draft, draft: 'human' });
 
   // Keep both draft and ordinary Todo cards, and an idle card already in Doing,
   // so the view proves its columns come from taskStatus rather than agentStatus.

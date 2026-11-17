@@ -16,7 +16,7 @@ export function inferLanguage(task: Pick<Task, 'body' | 'title'>): 'en' | 'ja' {
 export function completesAutomatically(task: Task): boolean {
   return (
     task.assignee === 'ai' &&
-    !task.isDraft &&
+    task.draft === null &&
     !task.archivedAt &&
     (task.taskStatus === 'todo' || task.taskStatus === 'doing') &&
     task.agentStatus !== 'pending' &&

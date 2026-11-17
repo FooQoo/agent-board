@@ -95,7 +95,7 @@ fn task(title: &str, assignee: Assignee) -> NewTask {
         description: BODY.into(),
         assignee,
         actor: Actor::Human,
-        is_draft: false,
+        draft: None,
     }
 }
 
@@ -384,8 +384,8 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
                 title: title.into(),
                 description: "---\nacceptance:\n  - id: AC-1\n    text: Works\n    done: false\n---\n\nWork.\n".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(1),
         ).unwrap()
@@ -403,9 +403,7 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
         "Choose",
         qa::choices(&[("a", "A"), ("b", "B")]),
     )
-    .questions[0]
-        .id
-        .clone();
+    .id;
     let task_path = |id: i64| {
         home.path()
             .join("shared")
@@ -457,7 +455,7 @@ fn serve_reconciles_existing_completed_tasks_and_rechecks_external_task_edits() 
     replace_task_body_preserving_history(&task_path(pending_task.id), complete);
     let answer = server.write(
         "POST",
-        &format!("/api/projects/{project}/qa/answers"),
+        &format!("/api/projects/{project}/messages/answers"),
         Some(&json!({"answers": [{"questionId": request, "choiceId": "a"}]}).to_string()),
     );
     assert_eq!(answer.status, 200, "{}", answer.body);
@@ -743,9 +741,7 @@ fn pending_request(home: &Path, id: &ProjectId) -> String {
     let s = store(home);
     s.move_work_task(id, 2, Column::Doing, ctx("Start"), t(4))
         .unwrap();
-    qa::ask_choices(&s, id, 2, "Need direction", two_choices()).questions[0]
-        .id
-        .clone()
+    qa::ask_choices(&s, id, 2, "Need direction", two_choices()).id
 }
 
 #[test]
@@ -757,20 +753,21 @@ fn answering_uses_the_questions_of_that_project_and_a_missing_question_changes_n
     let server = Running::start(home.path());
 
     // beta has no questions: alpha's question ID does not answer anything there.
-    let body = json!({"answers": [{"questionId": question_a, "text": "Go"}]}).to_string();
+    let body =
+        json!({"answers": [{"questionId": question_a, "choiceId": "a", "text": "Go"}]}).to_string();
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{b}/qa/answers"),
+        &format!("/api/projects/{b}/messages/answers"),
         Some(&body),
     );
     assert_eq!(reply.status, 404, "{}", reply.body);
-    assert_eq!(reply.code(), "question_not_found");
+    assert_eq!(reply.code(), "message_not_found");
     assert_eq!(snapshot_json(home.path(), &a), before_a);
     assert_eq!(snapshot_json(home.path(), &b), before_b);
 
     let reply = server.write(
         "POST",
-        &format!("/api/projects/{a}/qa/answers"),
+        &format!("/api/projects/{a}/messages/answers"),
         Some(&body),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
@@ -898,7 +895,7 @@ fn write_routes() -> Vec<(&'static str, &'static str, Option<&'static str>)> {
         ),
         (
             "POST",
-            "/qa/answers",
+            "/messages/answers",
             Some(r#"{"answers":[{"questionId":"Q-1","text":"r"}]}"#),
         ),
         ("DELETE", "/tasks/1", None),
@@ -1053,7 +1050,7 @@ fn a_cli_change_reaches_an_open_event_stream_after_ready() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -1112,7 +1109,7 @@ fn changes_that_do_not_change_anything_send_nothing() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     ] {
         agboard(home.path(), &args);
@@ -1140,7 +1137,7 @@ fn changes_that_do_not_change_anything_send_nothing() {
     assert_eq!(invalid.status, 422);
     let wrong_request = server.write(
         "POST",
-        &format!("/api/projects/{a}/qa/answers"),
+        &format!("/api/projects/{a}/messages/answers"),
         Some(r#"{"answers":[{"questionId":"Q-9","text":"Go"}]}"#),
     );
     assert_eq!(wrong_request.status, 404);
@@ -1196,7 +1193,7 @@ fn a_cli_change_notifies_the_server_of_the_same_data_area_only() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -1221,7 +1218,13 @@ fn serving_needs_no_project_and_stopping_removes_serve_json() {
 
 fn draft_task(home: &Path, project: &ProjectId, id: i64) {
     store(home)
-        .set_draft(project, id, true, false, t(9))
+        .set_draft(
+            project,
+            id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            t(9),
+        )
         .unwrap();
 }
 
@@ -1250,7 +1253,7 @@ fn patch_edits_a_draft_and_reports_changes_only_when_something_changed() {
     let reply = server.write("PATCH", &path, Some(r#"{"title":"New title"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["task"]["title"], "New title");
-    assert_eq!(reply.json()["task"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["draft"], "human");
     assert!(events.changed());
     let after = snapshot_json(home.path(), &a);
     assert_ne!(after["version"].as_str().unwrap(), before_revision);
@@ -1302,9 +1305,9 @@ fn patch_with_finalize_saves_and_confirms_in_one_operation() {
         ),
     );
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["isDraft"], false);
+    assert_eq!(reply.json()["task"]["draft"], serde_json::Value::Null);
     let stored = task_json(home.path(), &a, 1);
-    assert_eq!(stored["isDraft"], false);
+    assert_eq!(stored["draft"], serde_json::Value::Null);
     assert_eq!(stored["title"], "Final");
     assert_eq!(stored["body"], body_with("Body"));
     assert!(stored["description"].as_str().unwrap().contains("history:"));
@@ -1428,9 +1431,9 @@ fn put_draft_toggles_idle_tasks_and_records_history_with_markdown_time() {
         .unwrap()
         .to_string();
 
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["draft"], "human");
     assert!(events.changed());
     let after = task_json(home.path(), &a, 1);
     let task_dir = home
@@ -1482,23 +1485,23 @@ fn put_draft_toggles_idle_tasks_and_records_history_with_markdown_time() {
 
     // Same value: 200, no change, no notification.
     let count = events.changed_count();
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
     events.wait_for("never-sent", Duration::from_millis(600));
     assert_eq!(events.changed_count(), count);
 
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":false}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":null}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["isDraft"], false);
+    assert_eq!(reply.json()["task"]["draft"], serde_json::Value::Null);
 
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true,"x":1}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human","x":1}"#));
     assert_eq!(reply.status, 400, "{}", reply.body);
     let reply = server.write("PUT", &path, Some("{}"));
     assert_eq!(reply.status, 422, "{}", reply.body);
     let reply = server.write(
         "PUT",
         &format!("/api/projects/{a}/tasks/99/draft"),
-        Some(r#"{"isDraft":true}"#),
+        Some(r#"{"draft":"human"}"#),
     );
     assert_eq!(reply.status, 404);
 }
@@ -1508,18 +1511,18 @@ fn put_draft_discard_records_a_discard_and_refuses_it_with_the_draft_flag_on() {
     let (home, a, _) = two_projects();
     let server = Running::start(home.path());
     let path = format!("/api/projects/{a}/tasks/1/draft");
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
 
     let before = snapshot_json(home.path(), &a);
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true,"discard":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human","discard":true}"#));
     assert_eq!(reply.status, 422, "{}", reply.body);
     assert_eq!(reply.code(), "invalid_argument");
     assert_eq!(snapshot_json(home.path(), &a), before);
 
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":false,"discard":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":null,"discard":true}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["isDraft"], false);
+    assert_eq!(reply.json()["task"]["draft"], serde_json::Value::Null);
     let history = reply.json()["task"]["history"].clone();
     assert_eq!(
         history.as_array().unwrap().last().unwrap()["reason"],
@@ -1538,15 +1541,15 @@ fn put_draft_refuses_running_but_allows_pending_tasks() {
     let before = snapshot_json(home.path(), &a);
     let server = Running::start(home.path());
     let path = format!("/api/projects/{a}/tasks/2/draft");
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human"}"#));
     assert_eq!(reply.status, 409, "{}", reply.body);
     assert_eq!(reply.code(), "invalid_state_for_draft");
 
     qa::ask_choices(&s, &a, 2, "Ask", two_choices());
     let before_pending = snapshot_json(home.path(), &a);
-    let reply = server.write("PUT", &path, Some(r#"{"isDraft":true}"#));
+    let reply = server.write("PUT", &path, Some(r#"{"draft":"human"}"#));
     assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["draft"], "human");
     assert_ne!(
         snapshot_json(home.path(), &a)["version"],
         before_pending["version"]
@@ -1570,7 +1573,7 @@ fn a_draft_task_can_be_moved_and_deleted_by_the_user_but_not_driven_by_the_ai_ro
     assert_eq!(reply.status, 200, "{}", reply.body);
     assert_eq!(reply.json()["task"]["taskStatus"], "doing");
     assert_eq!(reply.json()["task"]["agentStatus"], "idle");
-    assert_eq!(reply.json()["task"]["isDraft"], true);
+    assert_eq!(reply.json()["task"]["draft"], "human");
 
     let before = snapshot_json(home.path(), &a);
     let reply = server.write(
@@ -1609,8 +1612,8 @@ fn patch_and_put_draft_need_the_write_guard_before_anything_else() {
     for (method, suffix, body) in [
         ("PATCH", "tasks/1", r#"{"title":"Hacked"}"#),
         ("PATCH", "tasks/99", r#"{"title":"Hacked"}"#),
-        ("PUT", "tasks/1/draft", r#"{"isDraft":false}"#),
-        ("PUT", "tasks/99/draft", r#"{"isDraft":false}"#),
+        ("PUT", "tasks/1/draft", r#"{"draft":null}"#),
+        ("PUT", "tasks/99/draft", r#"{"draft":null}"#),
     ] {
         for headers in &attempts {
             let reply = server.request(

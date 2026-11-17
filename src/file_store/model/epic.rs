@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::Attachment;
+use crate::domain::{Attachment, Draft};
 use crate::file_store::validate::EpicId;
 
 /// `epic.json`: an epic's metadata. Its document is in EPIC.md.
@@ -14,7 +14,13 @@ pub struct EpicFile {
     pub id: EpicId,
     pub name: String,
     pub color: String,
-    pub is_draft: bool,
+    /// Files of earlier versions hold `isDraft`, read as `draft`.
+    #[serde(
+        default,
+        alias = "isDraft",
+        deserialize_with = "Draft::deserialize_stored"
+    )]
+    pub draft: Option<Draft>,
     pub attachments: Vec<Attachment>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
@@ -29,7 +35,7 @@ pub struct EpicView {
     pub id: EpicId,
     pub name: String,
     pub color: String,
-    pub is_draft: bool,
+    pub draft: Option<Draft>,
     pub document: String,
     /// EPIC.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
@@ -52,7 +58,7 @@ pub struct NewEpic {
     pub id: String,
     pub name: String,
     pub color: Option<String>,
-    pub is_draft: bool,
+    pub draft: Option<Draft>,
     pub document: Option<String>,
 }
 
@@ -61,9 +67,10 @@ pub struct NewEpic {
 pub struct EpicUpdate {
     pub name: Option<String>,
     pub color: Option<String>,
-    pub is_draft: Option<bool>,
+    /// `Some(None)` clears the draft, `Some(Some(_))` sets it, `None` keeps it.
+    pub draft: Option<Option<Draft>>,
     pub document: Option<String>,
-    /// Refuse the update with `epic_is_draft` while the epic is a draft. The
+    /// Refuse the update with `epic_is_draft` while a person's draft epic. The
     /// check runs under the project lock, so a finalize cannot slip past it.
     pub refuse_if_draft: bool,
 }

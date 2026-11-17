@@ -57,15 +57,15 @@ pub(super) async fn edit_task_multipart(
             "requestId is required.",
         );
     }
-    if payload.meta.is_draft.is_some() {
+    if payload.meta.draft == Some(crate::domain::Draft::Human) {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
             "request body is invalid.",
-            "isDraft is only accepted when a task is added.",
+            "draft \"human\" is only accepted when a task is added.",
         );
     }
-    let finalize = payload.meta.finalize;
+    let finalize = super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft);
     let title = payload.meta.title;
     let description = payload.meta.description;
     let removed = payload.meta.remove_attachment_ids;
@@ -81,7 +81,7 @@ pub(super) async fn edit_task_multipart(
         for input in additions {
             store.add_attachment_for_user(&project_id, &owner, input, now)?;
         }
-        store.edit_draft_task(
+        store.edit_draft_task_to(
             &project_id,
             id,
             title.as_deref(),
@@ -134,7 +134,7 @@ pub(super) async fn create_task_multipart(
     if payload.meta.request_kind.as_deref() == Some("simple") {
         if payload.meta.title.is_some()
             || payload.meta.assignee.is_some()
-            || payload.meta.is_draft.is_some()
+            || payload.meta.draft.is_some()
             || payload.meta.finalize
             || !payload.meta.remove_attachment_ids.is_empty()
         {
@@ -209,7 +209,10 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
-    let is_draft = payload.meta.is_draft.unwrap_or(false);
+    let draft = match super::tasks::person_draft(payload.meta.draft) {
+        Ok(draft) => draft,
+        Err(error) => return agboard_error_response(&error),
+    };
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -242,7 +245,7 @@ pub(super) async fn create_task_multipart(
                 description,
                 assignee,
                 actor: Actor::Human,
-                is_draft,
+                draft,
             },
             now,
         )?;

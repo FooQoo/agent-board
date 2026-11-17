@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react';
-import { answerStart } from '../features/tasks/answer/answerStart';
+import { type CSSProperties, useState } from 'react';
+import { MessageCenter } from '../features/tasks/messages/MessageCenter';
+import { messagesApi } from '../features/tasks/messages/api';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
@@ -13,25 +14,32 @@ import { StatusBar } from '../shared/ui/status-bar/StatusBar';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
 import { isProjectId } from './model/projectSession';
 import { EpicBadge } from '../features/epics/label/EpicBadge';
-import { QuestionBand } from '../features/tasks/answer/QuestionBand';
+import { PlanReviewContainer } from '../features/tasks/plans/PlanReviewContainer';
 import type { EpicRef, ProjectId } from '../shared/api/contracts';
+import type { Message } from '../shared/data/api/contracts';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 
-/** The board's band of unanswered questions, with the answers held for the project. */
-function boardBand(model: AppControllerModel) {
-  const { answers, activeId, boardData } = model;
+/**
+ * The board's band of messages, with the list it opens. An approval row opens the plan review.
+ * The PC band has no Ask button: "Ask AI" is in the header.
+ */
+function boardBand(model: AppControllerModel, onOpenApproval: (message: Message) => void) {
+  const { messages, activeId, boardData } = model;
   if (boardData === null || !isProjectId(activeId)) return null;
-  const { book } = answers;
-  const questions = boardData.questions.filter((question) => !book.isSent(activeId, question.id));
   return (
-    <QuestionBand
-      questions={questions}
-      held={new Set(book.heldIds(activeId))}
-      sendableCount={book.sendableIds(activeId).length}
+    <MessageCenter
+      projectId={activeId}
+      messages={boardData.messages}
       variant="board"
-      onOpen={(questionId) => answers.open(answerStart.question(questionId))}
-      onAnswer={() => answers.open(answerStart.resume())}
-      onReview={() => answers.open(answerStart.review())}
+      panel={messages.panel}
+      api={messagesApi}
+      onChanged={() => model.refreshProject(activeId)}
+      onOpenApproval={onOpenApproval}
+      resolveAttachment={(message, id) =>
+        message.tasks[0] === undefined
+          ? null
+          : `/api/projects/${activeId}/tasks/${message.tasks[0]}/attachments/${id}`
+      }
     />
   );
 }
@@ -78,6 +86,8 @@ export function BoardWorkspace({
     restoreFailure,
   } = model;
   const operation = session.operation;
+  // The approval whose plan review is open.
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const projectSwitcher = (
     <ProjectSwitcher
       projects={projects.projects ?? []}
@@ -101,6 +111,7 @@ export function BoardWorkspace({
         viewMode={session.viewMode}
         onBack={actions.onBack}
         onAdd={actions.onAdd}
+        onAddManually={actions.onAddManually}
         onArchive={actions.onArchive}
         onEpics={actions.onEpics}
         // Docs open the project's files on this computer; the demo has no such files.
@@ -142,9 +153,10 @@ export function BoardWorkspace({
             onRetry={retry}
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
-            answers={model.answers.book}
-            onAnswer={model.answers.openForTask}
-            band={boardBand(model)}
+            onAnswer={model.messages.openForTask}
+            band={boardBand(model, (message) => setReviewId(message.id))}
+            plans={boardData?.plans}
+            onOpenPlan={(plan) => setReviewId(plan.id)}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}
             onReorder={actions.onReorder}
@@ -250,6 +262,20 @@ export function BoardWorkspace({
                           : 'notSynced'
         }
       />
+      {reviewId !== null && boardData && isProjectId(activeId) ? (
+        <PlanReviewContainer
+          projectId={activeId}
+          plans={boardData.plans}
+          approval={reviewId}
+          kind="dialog"
+          onClose={() => setReviewId(null)}
+          onOpenQuestion={(questionId) => {
+            setReviewId(null);
+            model.messages.panel.open({ tab: 'fromAi', openId: questionId });
+          }}
+          onChanged={() => model.refreshProject(activeId)}
+        />
+      ) : null}
     </>
   );
 }

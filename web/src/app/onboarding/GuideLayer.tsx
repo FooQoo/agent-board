@@ -3,10 +3,9 @@
 // cards are local: the board's own cards stay dimmed beneath and are never changed. The view parts
 // stay free of the board, so this file joins them.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '../../shared/api/contracts';
-import { AnswerBook } from '../../features/tasks/answer/model/answerBook';
 import { TaskCard } from '../../features/tasks/card/TaskCard';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import { MonitorTask } from '../../pages/monitor/components/MonitorTask';
@@ -59,16 +58,35 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
   }, [column]);
   useLayoutEffect(() => {
     measure();
+    // The board can mount after the guide opens, and the lane then appears without the page changing size.
+    // Look again on the next frames until the lane is there.
+    let frame = 0;
+    let tries = 0;
+    const waitForLane = () => {
+      if (
+        !column ||
+        document.querySelector(`section.lane[data-column="${column}"]`) ||
+        tries >= 120
+      )
+        return;
+      tries += 1;
+      frame = requestAnimationFrame(() => {
+        measure();
+        waitForLane();
+      });
+    };
+    waitForLane();
     const observer = new ResizeObserver(measure);
     observer.observe(document.body);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [measure]);
+  }, [measure, column]);
   return rect;
 }
 
@@ -114,8 +132,6 @@ export function GuideLayer({
   const laneRect = useLaneRect(phone ? null : stepColumn);
   const phoneRect = usePhoneLaneRect(phone ? stepColumn : null);
   const rect = answering ? null : phone ? phoneRect : laneRect;
-  // The sample cards have no answers held, and nothing to read or send.
-  const book = useMemo(() => new AnswerBook(), []);
   const cards = inLane.map((card) =>
     phone && projectId ? (
       <MonitorTask
@@ -123,11 +139,6 @@ export function GuideLayer({
         item={phoneItemOf(card, projectId, phone.projectName)}
         section={card.taskStatus}
         onOpenAnswer={() => setAnswering(true)}
-        answerController={{
-          book,
-          read: () => Promise.reject(new Error('The guide has no server question.')),
-          write: () => Promise.resolve(),
-        }}
       />
     ) : (
       <TaskCard
@@ -136,7 +147,6 @@ export function GuideLayer({
         selected={false}
         onSelect={noop}
         projectId={projectId ?? undefined}
-        answers={book}
         onAnswer={() => setAnswering(true)}
       />
     ),

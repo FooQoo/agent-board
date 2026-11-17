@@ -140,8 +140,8 @@ impl Fixture {
                     title: "Task".into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 at(4),
             )
@@ -158,7 +158,7 @@ impl Fixture {
                     id: text.into(),
                     name: "Epic".into(),
                     color: Some("#7C3AED".into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 at(4),
@@ -528,7 +528,13 @@ fn archived_and_draft_tasks_refuse_image_changes() {
 
     let draft = f.task();
     f.store
-        .set_draft(&f.project, draft, true, false, at(5))
+        .set_draft(
+            &f.project,
+            draft,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            at(5),
+        )
         .unwrap();
     let err = f
         .store

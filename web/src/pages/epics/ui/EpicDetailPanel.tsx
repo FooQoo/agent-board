@@ -120,7 +120,7 @@ export function EpicDetailPanel({
         identity={
           <>
             <EpicBadge epic={epic} className="epic-detail__badge" icon={false} />
-            {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+            {epic.draft !== null && <span className="card__draft">{t('draft.label')}</span>}
           </>
         }
         onClose={onClose}
@@ -166,7 +166,7 @@ export function EpicDetailPanel({
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>
-      {epic.isDraft && onFinalize !== undefined && (
+      {epic.draft !== null && onFinalize !== undefined && (
         <DraftBanner
           busy={finalizing}
           failed={finalizeFailed}

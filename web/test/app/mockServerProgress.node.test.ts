@@ -115,7 +115,7 @@ describe('automatic Done', () => {
     const { server, events } = start();
     send(server, {
       method: 'POST',
-      url: `/api/projects/${PROJECT}/qa/answers`,
+      url: `/api/projects/${PROJECT}/messages/answers`,
       body: JSON.stringify({
         answers: [{ questionId: '11111111111111111111111111111111', choiceId: 'fifo' }],
       }),
@@ -146,7 +146,7 @@ describe('automatic Done', () => {
     const { server, events } = start();
     send(server, {
       method: 'POST',
-      url: `/api/projects/${PROJECT}/qa/answers`,
+      url: `/api/projects/${PROJECT}/messages/answers`,
       body: JSON.stringify({
         answers: [{ questionId: '0123456789abcdef0123456789abcdef', text: 'Replace it.' }],
       }),

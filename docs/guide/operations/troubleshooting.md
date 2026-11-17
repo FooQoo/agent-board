@@ -17,18 +17,23 @@ Find what you see, read the cause, and do what the last column says. The command
 | The board did not open when the server started | A board tab connected first, `AGBOARD_OPEN_BROWSER=0` is set, the command ran over SSH, or Linux has no display. `serve.log` in the data folder says which. | Run `agboard open`, or open the address that `agboard open --print` shows. |
 | The board says it is disconnected | The connection to the local server dropped. | Wait a moment; the page reconnects by itself and reloads the board. If the server stopped, start it again. |
 | A task stays **Running** after the agent stopped | Running is what the agent last reported; it is not a live check. | Move the task, or ask the agent to report a new state. |
-| A question disappeared | It was answered elsewhere, for example in the chat, or the agent withdrew it. Moving a task does not withdraw its questions. | Open the task's History tab, or run `agboard qa ls --status all`, and answer the current question if there is one. |
+| A question disappeared | It was answered elsewhere, for example in the chat, or the agent withdrew it. Moving a task does not withdraw its questions. | Open the task's History tab, or run `agboard message ls --status all`, and answer the current question if there is one. |
 | A task or epic stays **Draft** after I closed its preview | A window closed with unsaved changes leaves the draft behind, and it stays until someone finalizes it. | Open the task's or epic's details and choose **Finalize**. Saving or discarding in a new preview keeps the draft. |
 
 ## An agent cannot do something
 
 | Error | Cause | What to do |
 | --- | --- | --- |
-| `task_is_draft` | The task is a draft; agents may not change it. | Finalize the draft in the browser. The agent can work on other tasks meanwhile. |
+| `task_is_draft` | The task is a draft; agents may not change a person's draft, or move or run any draft. | Finalize the draft in the browser, or start an AI draft with `agboard start`. The agent can work on other tasks meanwhile. |
+| `ai_draft_needs_start` | A finalize was asked of an AI draft. | Start it instead: `agboard start <id>` or `agboard epic start <EPIC-ID>`. |
+| `human_only` | An agent ran `start` or `epic start`. | A person runs it with `--actor human`. |
 | `epic_is_draft` | The epic is a draft; agents may not change its details or task order. | Wait for the person to save or discard the epic's draft, or ask them to finalize it. Attachments and task membership still work. |
 | `task_is_done` | The task is Done; agents may not change it. | Reopen the task in the browser if more work is needed. |
 | `acceptance_unmet` | The agent tried to move a task to Done while a condition is unmet. | Have the agent verify the conditions and mark them done; the task then finishes by itself. |
-| `question_answered` or `question_withdrawn` | The question was already answered, or its request was withdrawn. The first recorded answer is kept. | Read the question again with `agboard qa show`, and answer the current question if there is one. |
+| `question_answered` or `question_withdrawn` | The question was already answered, or it was withdrawn. The first recorded answer is kept. | Read the question again with `agboard message show`, and answer the current question if there is one. |
+| `start_blocked_by_questions` | The task, or a task of the epic, has a question that nobody has answered, so it cannot start yet. | Answer the questions the message names (on the board or with `agboard message answer`), then start again. |
+| `request_accepted`, `request_withdrawn`, or `message_closed` | The request was already accepted or withdrawn, or the message already has its answer or acceptance and cannot be withdrawn. | Read the message with `agboard message show`; nothing more is needed. |
+| `ai_only`, `message_type_mismatch`, or `choice_unknown` | A person tried to withdraw a question, the command does not fit the kind of message (for example, answering a request), or the choice is not one of the question's options. | Use the command for that kind of message, and a choice shown by `message show`. |
 | `questions_unanswered` | The task waits for an answer, so the agent cannot set it to Running or move it to Done. | Answer the question on the board, or have the agent withdraw it. |
 | `folder_unbound` or `bound_project_missing` | The agent's folder is not registered to a project, or the project was deleted. (The hook itself stays silent in a folder with no binding; this error comes from `agboard progress` and from a deleted project.) | Register the folder: `agboard project bind "My project"`. See [Data and backups](./data#register-a-folder). |
 | `confirmation_required` | Deleting something needs a person's confirmation in a terminal. | Run the command yourself. |

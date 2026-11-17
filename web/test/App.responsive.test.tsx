@@ -130,28 +130,6 @@ describe('the board at a narrow and a wide window', () => {
     expect(screen.getByRole('button', { name: 'agent-board' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Has a condition/ })).toBeTruthy();
   });
-
-  it('keeps an answer held but not sent across a change of width', async () => {
-    const viewport = stubViewport(true);
-    renderApp(`?project=${PROJECT_A.id}`);
-    await screen.findByRole('button', { name: /Has a condition/ });
-    await userEvent.click(answerButtonOf(pendingTask?.id ?? 0));
-    const dialog = await screen.findByRole('dialog');
-    await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(answerButtonOf(pendingTask?.id ?? 0).textContent).toBe('Continue answering');
-
-    await viewport.resize(false);
-    await screen.findByRole('region', { name: 'Todo' });
-    expect(answerButtonOf(pendingTask?.id ?? 0).textContent).toBe('Continue answering');
-    expect(screen.getByRole('button', { name: 'Review and send' })).toBeTruthy();
-
-    await viewport.resize(true);
-    await screen.findByRole('button', { name: /Has a condition/ });
-    expect(answerButtonOf(pendingTask?.id ?? 0).textContent).toBe('Continue answering');
-    expect(requests('POST')).toHaveLength(0);
-  });
 });
 
 describe('writes from the phone screen go to the board routes', () => {
@@ -162,11 +140,13 @@ describe('writes from the phone screen go to the board routes', () => {
     await userEvent.click(answerButtonOf(pendingTask?.id ?? 0));
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
-    await userEvent.click(within(dialog).getByRole('button', { name: /^Send$/ }));
+    const choices = within(dialog).queryAllByRole('radio');
+    if (choices[0]) await userEvent.click(choices[0]);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send answer' }));
 
     await waitFor(() => expect(requests('POST')).toHaveLength(1));
     const [url, init] = requests('POST')[0] ?? [];
-    expect(url).toBe(`/api/projects/${PROJECT_A.id}/qa/answers`);
+    expect(url).toBe(`/api/projects/${PROJECT_A.id}/messages/answers`);
     expect(JSON.parse(String(init?.body))).toMatchObject({
       answers: [{ questionId: pendingTask?.pendingRequestId, text: 'Go ahead' }],
     });

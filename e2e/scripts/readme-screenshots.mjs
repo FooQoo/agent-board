@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect } from '@playwright/test';
 import { setPreferences } from '../helpers/preferences.mjs';
-import { cli, copy, project, repo, seed, settle, startServer, stop } from './lib/sample-board.mjs';
+import { cli, copy, project, repo, seed, seedProposal, settle, startServer, stop } from './lib/sample-board.mjs';
 
 // Build web/ and the CLI first. Only disposable sample data is used.
 // AGBOARD_MEDIA_OUT points the images at another folder, so a check run does not touch the repository's files.
@@ -21,6 +21,7 @@ try {
     try {
       const text = copy[locale];
       const id = seed(home, text);
+      seedProposal(home, text);
       const started = await startServer(home);
       server = started.server;
       const { origin, remote } = started;
@@ -109,16 +110,16 @@ try {
       await expect(swipeCard).toHaveAttribute('data-revealed', 'right');
       await settle(phone);
       await phone.screenshot({ path: path.join(output, `mobile-swipe${suffix}.png`) });
-      // The answer sheet of the waiting card: the question, with the first choice picked and not yet sent.
+      // The question of the waiting card opens in the messages sheet, with the first choice picked and not yet sent.
       await waiting.getByRole('button', { name: answerLabel, exact: true }).scrollIntoViewIfNeeded();
       await waiting.getByRole('button', { name: answerLabel, exact: true }).click();
-      const sheet = phone.getByRole('dialog', { name: text.titles[2], exact: true });
+      const sheet = phone.getByRole('dialog', { name: locale === 'ja' ? 'メッセージ' : 'Messages', exact: true });
       await expect(sheet.getByText(text.question, { exact: true })).toBeVisible();
       await sheet.getByRole('radio', { name: text.choices[0], exact: true }).click();
       await settle(phone);
       await phone.screenshot({ path: path.join(output, `mobile-question${suffix}.png`) });
-      // Closing keeps the picked choice as a draft, so the card then offers "Continue answering".
-      await sheet.getByRole('button', { name: locale === 'ja' ? '回答を閉じる' : 'Close the answer', exact: true }).click();
+      // Later closes the sheet and leaves the question open.
+      await sheet.getByRole('button', { name: locale === 'ja' ? 'あとでやる' : 'Later', exact: true }).click();
       await expect(sheet).toHaveCount(0);
       await phone.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
       await expect(phone.getByRole('tab')).toHaveCount(4);

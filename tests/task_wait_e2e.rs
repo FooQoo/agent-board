@@ -126,7 +126,7 @@ fn wait_cli_returns_a_task_created_in_the_same_session_without_claiming_it() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--json",
         ],
     );

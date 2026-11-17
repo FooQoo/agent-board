@@ -53,7 +53,7 @@ describe('useArchive', () => {
           id: 'EPIC-1',
           name: 'Archived epic',
           color: '#3366CC',
-          isDraft: false,
+          draft: null,
           document: '',
           body: '',
           priority: [],

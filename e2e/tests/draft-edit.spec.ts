@@ -12,7 +12,7 @@ const task = (page: Page, id: number) => page.getByRole('button', { name: new Re
 interface ShownTask extends TaskJson {
   description: string;
   body: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
 }
 
 function show(id: number): ShownTask {
@@ -45,7 +45,7 @@ test.beforeEach(async ({ page }) => {
 /** Starts from a draft: there is no button for it, so the server is asked and the page reads the card again. */
 async function startFromDraft(page: Page): Promise<void> {
   await putDraft(id);
-  await expect.poll(() => show(id).isDraft).toBe(true);
+  await expect.poll(() => show(id).draft).toBe('human');
   await page.goto('/');
   await waitForSync(page);
   await task(page, id).click();
@@ -118,13 +118,13 @@ test('a task becomes a draft, is edited and saved, and finalized from the detail
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => show(id).description).toContain('Plan line.');
-  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', isDraft: true, taskStatus: 'todo', agentStatus: 'idle' });
+  expect(show(id)).toMatchObject({ title: 'Draft me, rewritten', draft: 'human', taskStatus: 'todo', agentStatus: 'idle' });
   expect(show(id).description).toContain('## Notes');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 
   // Finalize from the banner: the page shows the card without the banner.
   await details(page).getByRole('button', { name: 'Finalize' }).click();
-  await expect.poll(() => show(id).isDraft).toBe(false);
+  await expect.poll(() => show(id).draft).toBeNull();
   await expect(details(page).getByRole('heading', { level: 2 })).toHaveText('Draft me, rewritten');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
   await expect(details(page).getByRole('button', { name: 'Open full screen (task)', exact: true })).toBeVisible();
@@ -138,7 +138,7 @@ test('Save keeps the task a draft, and Finalize hands it back', async ({ page })
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
 
-  expect(show(id)).toMatchObject({ isDraft: true });
+  expect(show(id)).toMatchObject({ draft: 'human' });
   expect(show(id).description).toContain('Saved but still a draft.');
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
   await expect(details(page).getByRole('tabpanel')).toContainText('Saved but still a draft.');
@@ -146,7 +146,7 @@ test('Save keeps the task a draft, and Finalize hands it back', async ({ page })
   // Finalize from the banner.
   await details(page).getByRole('button', { name: 'Finalize' }).click();
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
-  expect(show(id).isDraft).toBe(false);
+  expect(show(id).draft).toBeNull();
 });
 
 test('a failed save keeps the dialog and the text, and can be retried', async ({ page }) => {
@@ -173,7 +173,7 @@ test('a failed save keeps the dialog and the text, and can be retried', async ({
   await expect(dialog).toBeVisible();
   expect(await editorValue(editor)).toContain('Typed and not lost.');
   await expect(dialog.getByText('You have unsaved changes.')).toBeVisible();
-  expect(show(id)).toMatchObject({ body: SEED, isDraft: true });
+  expect(show(id)).toMatchObject({ body: SEED, draft: 'human' });
 
   // After a failure the primary button still reads "Save"; the alert's own Retry repeats the save.
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
@@ -242,7 +242,7 @@ test('closing with unsaved changes asks first; closing without changes does not'
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Discard and close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  expect(show(id)).toMatchObject({ body: SEED, isDraft: true });
+  expect(show(id)).toMatchObject({ body: SEED, draft: 'human' });
 
   // The next time the dialog opens with the stored text.
   ({ dialog, editor } = await openEditor(page));
@@ -285,7 +285,7 @@ test('a body of exactly 50,000 characters saves, and one more cannot be saved', 
   const storedBody = stored.description.replace(/^---\n[\s\S]*?\n---\n\n/, '');
   expect([...storedBody].length).toBe(50_000);
   expect(stored.description).toContain('あ'.repeat(40_000));
-  expect(stored.isDraft).toBe(true);
+  expect(stored.draft).toBe('human');
 });
 
 test('every task offers Preview, and a running task opens it read-only', async ({ page }) => {
@@ -304,7 +304,7 @@ test('every task offers Preview, and a running task opens it read-only', async (
   const dialog = page.getByRole('dialog', { name: /^#11 Task preview/ });
   await expect(dialog).toHaveAttribute('data-read-only', '');
   await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeDisabled();
-  expect(show(11).isDraft).toBe(false);
+  expect(show(11).draft).toBeNull();
 });
 
 test('the toolbar puts archive at the right end; its confirmation sits above the tabs and is cancelled or confirmed', async ({
@@ -369,6 +369,6 @@ test('a person can still move a draft task by dragging it', async ({ page }) => 
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(move).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Doing' }).getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).toBeVisible();
-  expect(show(id)).toMatchObject({ taskStatus: 'doing', isDraft: true });
+  expect(show(id)).toMatchObject({ taskStatus: 'doing', draft: 'human' });
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();
 });

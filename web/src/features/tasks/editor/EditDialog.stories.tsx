@@ -11,7 +11,7 @@ const meta = {
   args: {
     task: makeTask({
       id: 12,
-      isDraft: true,
+      draft: 'human',
       title: 'Edit this task',
       description: '## Task details\n\nBody content.',
       acceptance: [{ id: 'AC-1', text: 'Keep the condition panel', done: false }],

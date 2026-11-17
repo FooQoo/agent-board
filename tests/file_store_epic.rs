@@ -59,7 +59,7 @@ impl Fixture {
                 id: id.into(),
                 name: "File share".into(),
                 color: Some("#7c3aed".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             at(4),
@@ -74,8 +74,8 @@ impl Fixture {
                     title: title.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 at(4),
             )
@@ -99,7 +99,7 @@ fn epic_conditions_are_body_text_and_not_managed_frontmatter() {
                 id: "PLAIN".into(),
                 name: "Plain document".into(),
                 color: None,
-                is_draft: false,
+                draft: None,
                 document: Some(document.into()),
             },
             at(4),
@@ -128,7 +128,7 @@ fn a_lowercase_epic_id_is_stored_in_uppercase_with_epic_json_and_document() {
     assert_eq!(json["id"], "FILE-SHARE");
     assert_eq!(json["name"], "File share");
     assert_eq!(json["color"], "#7C3AED");
-    assert_eq!(json["isDraft"], false);
+    assert_eq!(json["draft"], serde_json::Value::Null);
     assert_eq!(json["attachments"], serde_json::json!([]));
     assert_eq!(json["createdAt"], "2026-10-04T00:00:00Z");
     assert_eq!(json["updatedAt"], "2026-10-04T00:00:00Z");
@@ -216,7 +216,7 @@ fn colors_are_stored_as_uppercase_hex_and_other_colors_are_refused() {
                     id: format!("BAD-{}", bad.len()),
                     name: "Bad".into(),
                     color: Some(bad.into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 at(4),
@@ -364,7 +364,13 @@ fn an_agent_cannot_change_the_epic_of_an_archived_or_draft_task_but_a_human_can(
 
     let draft = f.task("Draft");
     f.store
-        .set_draft(&f.project, draft.id, true, false, at(5))
+        .set_draft(
+            &f.project,
+            draft.id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            at(5),
+        )
         .unwrap();
     let err = f
         .store
@@ -392,14 +398,14 @@ fn a_draft_epic_is_refused_when_asked_and_a_draft_toggle_keeps_the_update_time()
             &f.project,
             &id,
             EpicUpdate {
-                is_draft: Some(true),
+                draft: Some(Some(agent_board::domain::Draft::Human)),
                 ..EpicUpdate::default()
             },
             at(20),
         )
         .unwrap();
     assert!(on.changed);
-    assert!(on.value.is_draft);
+    assert!(on.value.draft.is_some());
     assert_eq!(on.value.updated_at, created);
 
     // With the refusal asked for, every kind of change is refused and nothing is written.
@@ -455,13 +461,13 @@ fn a_draft_epic_is_refused_when_asked_and_a_draft_toggle_keeps_the_update_time()
             &id,
             EpicUpdate {
                 name: Some("Web name".into()),
-                is_draft: Some(false),
+                draft: Some(None),
                 ..EpicUpdate::default()
             },
             at(22),
         )
         .unwrap();
-    assert!(!renamed.value.is_draft);
+    assert!(renamed.value.draft.is_none());
     assert_eq!(renamed.value.updated_at, at(22));
 }
 
@@ -479,7 +485,7 @@ fn update_changes_name_color_draft_and_document_and_refuses_a_broken_document() 
             EpicUpdate {
                 name: Some("Renamed".into()),
                 color: Some("#ff0000".into()),
-                is_draft: Some(true),
+                draft: Some(Some(agent_board::domain::Draft::Human)),
                 document: Some(valid_document("Updated goal")),
                 refuse_if_draft: false,
             },
@@ -489,7 +495,7 @@ fn update_changes_name_color_draft_and_document_and_refuses_a_broken_document() 
     assert!(changed.changed);
     assert_eq!(changed.value.name, "Renamed");
     assert_eq!(changed.value.color, "#FF0000");
-    assert!(changed.value.is_draft);
+    assert!(changed.value.draft.is_some());
     assert!(changed.value.document.contains("Updated goal"));
     assert_eq!(changed.value.updated_at, at(5));
 

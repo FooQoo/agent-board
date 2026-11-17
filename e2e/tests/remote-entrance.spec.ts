@@ -3,7 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, request as playwrightRequest, test } from '../helpers/fixtures';
 import { agboard, askArgs, decisionJson } from '../helpers/agboard';
-import { bandCount, expandBand } from '../helpers/answer';
+import { answerDialog, answerSend, fillAnswer, messageBand, openAnswer, openMessageList, send } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 import {
   createMonitorHome,
   monitorProjectId,
@@ -137,7 +138,7 @@ test('the old monitor addresses are not found, with or without a session, and no
 });
 
 // DM-6: the phone answers from the bottom sheet; the card itself carries only the button.
-test('the phone answers the current question from the sheet, and the answer reaches the shared files', async ({ page }) => {
+test('the phone answers a question from the sheet, and the answer reaches the shared files', async ({ page }) => {
   await entrance.open(page, phoneUrl());
   // The phone shows one lane at a time; the card waiting for an answer is in Doing.
   await page.getByRole('tab', { name: /^Doing / }).click();
@@ -145,30 +146,27 @@ test('the phone answers the current question from the sheet, and the answer reac
   // The card shows the button only: no question, no choices, no note.
   await expect(article.getByRole('button', { name: 'Answer the question' })).toBeVisible();
   await expect(article.getByRole('textbox')).toHaveCount(0);
-  await expect(article.getByRole('button', { name: 'Send', exact: true })).toHaveCount(0);
 
-  await article.getByRole('button', { name: 'Answer the question' }).click();
-  const sheet = page.getByRole('dialog', { name: 'Alpha pending review' });
+  const sheet = await openAnswer(page, 1);
   await expect(sheet.getByText('Waiting for the user review.')).toBeVisible();
-  // A card's run has no review; "Send" stays disabled until an answer is held.
-  await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
+  // One question, one button: Send answer stays disabled until an option is chosen.
+  await expect(answerSend(page)).toBeDisabled();
   await expect(sheet.getByRole('button', { name: 'Send all', exact: true })).toHaveCount(0);
+  await expect(sheet.getByRole('button', { name: 'Review and send', exact: true })).toHaveCount(0);
 
-  // Closing without sending keeps the input, and the card then says to continue.
-  await sheet.getByRole('textbox').fill('Reviewed on the phone.');
-  await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
-  await expect(sheet).toHaveCount(0);
-  await expect(article.getByRole('button', { name: 'Continue answering' })).toBeVisible();
+  // Closing without sending (Later) keeps the question open.
+  await sheet.getByRole('button', { name: 'Later' }).click();
+  await closeMessages(page);
+  await expect(article.getByRole('button', { name: 'Answer the question' })).toBeVisible();
 
-  await article.getByRole('button', { name: 'Continue answering' }).click();
-  await expect(sheet.getByRole('textbox')).toHaveValue('Reviewed on the phone.');
-  await sheet.getByRole('radio', { name: 'Plan A' }).click();
+  await openAnswer(page, 1);
+  await fillAnswer(answerDialog(page), { choice: 'Plan A', text: 'Reviewed on the phone.' });
   const answered = page.waitForResponse((response) =>
-    response.url().includes('/qa/answers') && response.request().method() === 'POST');
-  await sheet.getByRole('button', { name: 'Send', exact: true }).click();
+    response.url().includes('/messages/answers') && response.request().method() === 'POST');
+  await send(page);
   expect((await answered).status()).toBe(200);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(article.getByRole('button', { name: /Answer the question|Continue answering/ })).toHaveCount(0);
+  await closeMessages(page);
+  await expect(article.getByRole('button', { name: 'Answer the question' })).toHaveCount(0);
 
   const task = JSON.parse(agboard('Alpha', ['show', '1', '--json'], home).stdout).task as {
     agentStatus: string;
@@ -180,39 +178,40 @@ test('the phone answers the current question from the sheet, and the answer reac
   expect(task.history.at(-1)?.reason).toContain('Reviewed on the phone.');
 });
 
-test('the phone band lists the open questions; an answer held there is sent from the review', async ({ page }) => {
+test('the phone band counts the open questions; a question picked in its list is answered from the sheet', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   await entrance.open(page, phoneUrl());
-  // The band is always there, closed at first, and its header counts the open questions.
-  const band = page.getByRole('region', { name: 'Unanswered questions' });
+  // The band is always there, and its first chip counts the open questions.
+  const band = messageBand(page);
   await expect(band).toBeVisible();
-  await expect(band.getByRole('listitem')).toHaveCount(0);
-  const before = Number(await bandCount(page).textContent());
+  const mine = band.getByRole('listitem').filter({ hasText: /^AI's questions/ });
+  const countOf = async () => Number(/AI's questions\s+(\d+)/.exec(await mine.innerText())?.[1] ?? NaN);
+  await expect.poll(countOf).not.toBeNaN();
+  const before = await countOf();
+  // The phone band carries the Ask AI button too.
+  await expect(band.getByRole('button', { name: 'Ask AI' })).toBeVisible();
 
-  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
   const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
   expect(asked.code, asked.stderr).toBe(0);
-  await expect(bandCount(page)).toHaveText(String(before + 1));
-  await expandBand(page);
-  await expect(band.getByRole('listitem')).toHaveCount(before + 1);
-  await expect(band).toContainText(`#${id}`);
+  await expect.poll(countOf).toBe(before + 1);
 
-  // The item opens the sheet at its question; closing keeps the answer, and the band offers the review.
-  await band.getByRole('button', { name: /Which plan for the band\?/ }).click();
-  const sheet = page.getByRole('dialog', { name: 'Alpha band question' });
+  // The list's row opens the sheet at its question; Later closes it with the question still open.
+  const list = await openMessageList(page);
+  await list.getByRole('button', { name: /Which plan for the band\?/ }).click();
+  const sheet = answerDialog(page);
   await sheet.getByRole('radio', { name: 'Plan B' }).click();
-  await sheet.getByRole('button', { name: 'Close the answer', exact: true }).click();
-  await expect(sheet).toHaveCount(0);
-  await expect(band.getByText('Answered, not sent', { exact: true })).toHaveCount(1);
+  await sheet.getByRole('button', { name: 'Later' }).click();
+  await closeMessages(page);
   expect(json(['show', String(id)]).task.agentStatus).toBe('pending');
 
-  await band.getByRole('button', { name: 'Review and send', exact: true }).click();
-  const review = page.getByRole('dialog', { name: 'Review your answers' });
-  await expect(review.getByRole('button', { name: /^Change:/ })).toHaveCount(1);
-  await review.getByRole('button', { name: 'Send all', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(bandCount(page)).toHaveText(String(before));
+  await openMessageList(page);
+  await answerDialog(page).getByRole('button', { name: /Which plan for the band\?/ }).click();
+  await fillAnswer(answerDialog(page), { choice: 'Plan B' });
+  await send(page);
+  await closeMessages(page);
+  await expect.poll(countOf).toBe(before);
   const stored = json(['show', String(id)]).task as { agentStatus: string; history: { reason: string }[] };
   expect(stored.agentStatus).toBe('idle');
   expect(stored.history.at(-1)?.reason).toContain('Plan B');
@@ -220,7 +219,7 @@ test('the phone band lists the open questions; an answer held there is sent from
 
 test('an image attached to the task shows in the sheet from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start review'], home);
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -236,7 +235,7 @@ test('an image attached to the task shows in the sheet from the attachment route
   await entrance.open(page, phoneUrl());
   await page.getByRole('tab', { name: /^Doing / }).click();
   await page.getByRole('article', { name: /Alpha image question/ }).getByRole('button', { name: 'Answer the question' }).click();
-  const sheet = page.getByRole('dialog', { name: 'Alpha image question' });
+  const sheet = answerDialog(page);
   const image = sheet.getByRole('img', { name: 'the picture' });
   await expect(image).toBeVisible();
   await expect(image).toHaveAttribute('src', new RegExp(`/api/projects/${alpha}/tasks/${id}/attachments/${attachment}$`));
@@ -245,7 +244,7 @@ test('an image attached to the task shows in the sheet from the attachment route
 
 test('an image in a history reason shows in the History tab from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'human']).task.id;
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
     'base64',
@@ -277,7 +276,7 @@ test('nothing is read or answered without a session, and a replaced tunnel needs
     expect((await response.json()).error?.code ?? (await response.json()).code).toBe('session_required');
     expect(response.headers()['set-cookie']).toBeUndefined();
   }
-  const forged = await bare.post(`${base}/projects/${alpha}/qa/answers`, {
+  const forged = await bare.post(`${base}/projects/${alpha}/messages/answers`, {
     headers: { Cookie: 'agboard_ngrok_session=' + '0'.repeat(64), 'X-Agboard-Csrf': '0'.repeat(64) },
     data: { answers: [{ questionId: 'Q-1', text: 'forged' }] },
   });

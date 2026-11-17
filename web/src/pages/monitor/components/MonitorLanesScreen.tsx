@@ -1,8 +1,9 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Header } from '../../../shared/ui/app-header/Header';
 import { settingsSlot } from '../../../features/settings/ui/settingsSlot';
-import { QuestionBand } from '../../../features/tasks/answer/QuestionBand';
-import { type AnswerStart, answerStart } from '../../../features/tasks/answer/answerStart';
+import { MessageCenter } from '../../../features/tasks/messages/MessageCenter';
+import { firstQuestionOfTask } from '../../../features/tasks/messages/model/messages';
+import { useMessagesPanel } from '../../../features/tasks/messages/useMessagesPanel';
 import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorViewProps } from '../contracts';
 import { LaneTabs } from './LaneTabs';
@@ -11,7 +12,8 @@ import { MonitorLanes, type LaneItems, type MonitorLanesProps } from './MonitorL
 import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
-export interface MonitorLanesScreenProps extends Pick<MonitorLanesProps, 'previewRevealed'> {
+export interface MonitorLanesScreenProps
+  extends Pick<MonitorLanesProps, 'previewRevealed' | 'plans' | 'onOpenPlan'> {
   lanes: LaneItems;
   projectName: string;
   /** The lane the screen opens on. After that the tabs and the swipes own it. */
@@ -19,11 +21,14 @@ export interface MonitorLanesScreenProps extends Pick<MonitorLanesProps, 'previe
   /** A confirmation the screen opens with (a story's still picture of it). */
   initialPending?: LanePending;
   header?: MonitorViewProps['header'];
-  /** The questions band, as on the list screen: shown when the first three are given. */
+  /** The messages band, as on the list screen: shown when the first three are given. */
   projectId?: MonitorViewProps['projectId'];
-  questions?: MonitorViewProps['questions'];
-  answerController?: MonitorViewProps['answerController'];
-  onAnswer?: (start: AnswerStart) => void;
+  messages?: MonitorViewProps['messages'];
+  messagesApi?: MonitorViewProps['messagesApi'];
+  /** The list opens at the target the screen starts with (a story's still picture of it). */
+  initialPanel?: Parameters<ReturnType<typeof useMessagesPanel>['open']>[0];
+  onAsk?: MonitorViewProps['onAsk'];
+  onOpenApproval?: MonitorViewProps['onOpenApproval'];
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   /** The writes. The screen asks for them only after the person confirmed. */
   onMove: (
@@ -47,41 +52,54 @@ export function MonitorLanesScreen({
   initialPending = null,
   header,
   projectId,
-  questions,
-  answerController,
-  onAnswer,
+  messages,
+  messagesApi,
+  initialPanel,
+  onAsk,
+  onOpenApproval,
   onOpenDetail,
   onMove,
   onArchive,
   onBulkArchive,
   previewRevealed,
+  plans = [],
+  onOpenPlan,
 }: MonitorLanesScreenProps) {
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
   const [lane, setLane] = useState<MonitorSection>(initialLane);
   const [pending, setPending] = useState<LanePending>(initialPending);
-  const book = answerController?.book;
-  const answer = (start: AnswerStart) => onAnswer?.(start);
+  const panel = useMessagesPanel();
+  const { open: openPanel } = panel;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the list opens once, as the screen does.
+  useEffect(() => {
+    if (initialPanel) openPanel(initialPanel);
+  }, []);
   const close = () => setPending(null);
   return (
     <main className="monitor-shell">
       <Header {...header} settings={settingsSlot} settingsSize="l" />
-      {answerController && projectId && questions && (
-        <QuestionBand
-          questions={questions.filter((question) => !book?.isSent(projectId, question.id))}
-          held={new Set(book?.heldIds(projectId))}
-          sendableCount={book?.sendableIds(projectId).length ?? 0}
+      {messagesApi && projectId && messages && (
+        <MessageCenter
+          projectId={projectId}
+          messages={messages}
           variant="phone"
-          onOpen={(questionId) => answer(answerStart.question(questionId))}
-          onAnswer={() => answer(answerStart.resume())}
-          onReview={() => answer(answerStart.review())}
+          panel={panel}
+          api={messagesApi}
+          onChanged={() => {}}
+          onAsk={onAsk}
+          onOpenApproval={onOpenApproval}
         />
       )}
       <LaneTabs
         ref={tabsRef}
         lane={lane}
         controlsId={lanesId}
-        counts={{ todo: lanes.todo.length, doing: lanes.doing.length, done: lanes.done.length }}
+        counts={{
+          todo: lanes.todo.length + plans.length,
+          doing: lanes.doing.length,
+          done: lanes.done.length,
+        }}
         onLaneChange={setLane}
       />
       <MonitorLanes
@@ -94,9 +112,18 @@ export function MonitorLanesScreen({
         onArchive={(item) => setPending({ kind: 'archive', item })}
         onBulkArchive={() => setPending({ kind: 'bulk' })}
         onOpenDetail={onOpenDetail}
-        onOpenAnswer={() => answer(answerStart.resume())}
-        answerController={answerController}
+        onOpenAnswer={
+          messagesApi
+            ? (item) =>
+                panel.open({
+                  tab: 'fromAi',
+                  openId: firstQuestionOfTask(messages ?? [], item.task.id)?.id ?? null,
+                })
+            : undefined
+        }
         previewRevealed={previewRevealed}
+        plans={plans}
+        onOpenPlan={onOpenPlan}
       />
       <MonitorLaneDialogs
         pending={pending}

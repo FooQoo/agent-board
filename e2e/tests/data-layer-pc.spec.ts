@@ -4,9 +4,10 @@ import path from 'node:path';
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
 import { answerButton, sendAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // Opening a task reads its text, conditions, log and epic once, so every tab shows at once. A status
 // change reads the Summary and the history again but not the text. The details panel beside the board
@@ -133,7 +134,8 @@ test('the details panel does not hold updates; a dialog holds them while open an
 
   // An answer shows at once: the request is gone and the card is idle.
   await expect(answerButton(page)).toBeVisible();
-  await sendAnswer(page, 12, { text: 'Keep the current name.' });
+  await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: 'Keep the current name.' });
+  await closeMessages(page);
   await expect(answerButton(page)).toHaveCount(0, { timeout: 2_000 });
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle / })).toBeVisible({ timeout: 2_000 });
 
@@ -155,9 +157,7 @@ test('the details panel does not hold updates; a dialog holds them while open an
 
   // A change from the CLI made while a dialog is open waits until it has been closed for 3 seconds. The new
   // task dialog closes without saving, so nothing reads the board at once.
-  await page.getByRole('button', { name: 'Add task' }).click();
-  const create = page.getByRole('dialog', { name: 'New task' });
-  await expect(create).toBeVisible();
+  const create = await openManualCreateDialog(page);
   agboardOk(mainProject, ['mv', '15', 'doing']);
   await page.waitForTimeout(1000);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 /, includeHidden: true })).toHaveCount(0);
@@ -249,5 +249,5 @@ test('a 50,000-character document is shown with a bounded page, and is edited an
   await expect.poll(() => JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task.title).toBe('Saved from the first page');
   const stored = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
   expect(stored.body.trim()).toBe(text.trim());
-  expect(stored.isDraft).toBe(true);
+  expect(stored.draft).toBe('human');
 });

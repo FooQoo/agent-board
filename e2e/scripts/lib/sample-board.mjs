@@ -24,6 +24,12 @@ export const copy = {
     epicChecks: ['The launch approach is agreed', 'Desktop and mobile checks pass', 'The release is ready'],
     tab: 'Conditions', ready: 'Connected · Current',
     workNote: 'Reviewed the launch options and recorded the decision criteria.',
+    proposal: {
+      epic: 'Support page', tasks: ['Draft the support page', 'Review the support copy'],
+      goal: '# Support page\n\n## Goal\n\nGive visitors one place to find help and reach the team.',
+      question: 'Which support channel should the page show first?', choices: ['Email', 'Chat'],
+      request: 'Please add a short FAQ to the website, with the three questions we hear most.',
+    },
   },
   ja: {
     design: 'デザインと確認', launch: 'Webサイトの公開',
@@ -38,6 +44,12 @@ export const copy = {
     epicChecks: ['公開方法が決まっている', 'PCとモバイルの確認が終わっている', '公開準備が整っている'],
     tab: '完了条件', ready: '接続中 · 最新',
     workNote: '公開方法を比較し、判断に使う条件を記録しました。',
+    proposal: {
+      epic: 'サポートページ', tasks: ['サポートページを書く', 'サポートページの文面を確認する'],
+      goal: '# サポートページ\n\n## ゴール\n\n訪問者が困ったときに、助けを探してチームに連絡できる場所を用意する。',
+      question: 'サポートページで最初に見せる連絡手段はどれにしますか？', choices: ['メール', 'チャット'],
+      request: 'Webサイトに、よく聞かれる3つの質問をまとめた短いFAQを追加してください。',
+    },
   },
 };
 
@@ -69,20 +81,20 @@ export function seed(home, text) {
   const meta = cli(home, ['project', 'create', project]).project;
   const run = (...args) => cli(home, ['--project', project, ...args]);
   for (const [id, name, color] of [['DESIGN', text.design, '#7C3AED'], ['LAUNCH', text.launch, '#008FCC']]) {
-    run('epic', 'add', id, '--name', name, '--color', color, '--actor', 'ai');
+    run('epic', 'add', id, '--name', name, '--color', color, '--actor', 'human');
   }
   for (let i = 0; i < text.titles.length; i++) {
     const done = i === 5 || i === 7;
     const owner = i === 0 || i === 7 ? 'human' : 'ai';
-    run('add', text.titles[i], '--assignee', owner, '--actor', 'ai',
+    run('add', text.titles[i], '--assignee', owner, '--actor', 'human',
       '--epic', [0, 1, 7].includes(i) ? 'DESIGN' : 'LAUNCH',
       '--desc', markdown(text.body, text.checks, done ? 3 : i === 1 ? 2 : 1));
   }
   for (const id of [2, 3, 7]) run('mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start sample work');
   run('state', '2', 'running', '--actor', 'ai', '--reason', 'Build the landing page');
   run('history', 'add', '3', '--reason', text.workNote);
-  run('qa', 'ask', '--actor', 'ai', '--task', '3', '--no-wait', '--request-json', JSON.stringify({
-    questions: [{ question: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })) }],
+  run('message', 'ask', '--actor', 'ai', '--task', '3', '--no-wait', '--questions-json', JSON.stringify({
+    questions: [{ body: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })) }],
   }));
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.
   run('mv', '8', 'done', '--actor', 'human', '--reason', 'Sample mobile review completed');
@@ -90,6 +102,25 @@ export function seed(home, text) {
   run('epic', 'edit', 'LAUNCH', '--document', plan([3, 4, 7, 5, 6]));
   run('epic', 'edit', 'DESIGN', '--document', plan([1, 2, 8]));
   return meta.id;
+}
+
+/**
+ * A plan the AI proposed and a request the person sent, so the board shows its Messages band, a Proposed plan
+ * card in Todo, and an approval, next to the sample question. Call it after `seed`.
+ */
+export function seedProposal(home, text) {
+  const run = (...args) => cli(home, ['--project', project, ...args]);
+  const { proposal } = text;
+  run('epic', 'add', 'SUPPORT', '--name', proposal.epic, '--color', '#E11D48', '--actor', 'ai');
+  run('epic', 'edit', 'SUPPORT', '--document', `${proposal.goal}\n`);
+  const first = run('add', proposal.tasks[0], '--assignee', 'ai', '--actor', 'ai', '--epic', 'SUPPORT',
+    '--desc', markdown(text.body, text.checks, 0));
+  run('add', proposal.tasks[1], '--assignee', 'human', '--actor', 'ai', '--epic', 'SUPPORT',
+    '--desc', markdown(text.body, text.checks, 0));
+  run('message', 'ask', '--actor', 'ai', '--task', String((first.task ?? first).id), '--no-wait', '--questions-json', JSON.stringify({
+    questions: [{ body: proposal.question, choices: proposal.choices.map((label, i) => ({ id: `channel-${i + 1}`, label })) }],
+  }));
+  run('message', 'send', '--actor', 'human', '--text', proposal.request);
 }
 
 export async function freePort(preferred = 0) {

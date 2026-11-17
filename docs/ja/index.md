@@ -10,7 +10,7 @@ landing:
     done: コピーしました
   hero:
     title: "頼むだけで、\n計画から完了まで\nAIが進めてくれる。"
-    lead: Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を完了条件つきの計画に直し、一度の承認で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
+    lead: Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を完了条件つきの計画に直し、一度の開始操作で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
     install: brew install fooqoo/tap/agboard
     primary: { text: はじめる, link: /ja/guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
@@ -45,17 +45,17 @@ landing:
       - { title: どこまで終わった？, text: 完了条件の達成数と履歴が、タスクごとに残ります。 }
   loop:
     eyebrow: しくみ
-    title: 頼んで、一度承認したら、あとは任せる。
-    lead: やりたいことを伝えると、エージェントがボードに計画を置きます。開始を一度承認すれば、順に作業が進みます。止まってあなたに聞くのは必要なときだけで、確かめた条件がそろったタスクは、自動で完了へ移ります。
+    title: 頼んで、一度開始したら、あとは任せる。
+    lead: やりたいことを伝えると、エージェントがボードに計画を置きます。開始を一度行えば、順に作業が進みます。止まってあなたに聞くのは必要なときだけで、確かめた条件がそろったタスクは、自動で完了へ移ります。
     actors: { ai: AI, human: あなた, auto: 自動 }
     lanes:
       - title: 要望 → 計画
         steps:
           - { actor: human, title: 要望, text: やりたいことを、普通の言葉でエージェントに伝えます。 }
-          - { actor: ai, title: 計画, text: 完了条件つきの仮の計画をボードに置き、計画の質問をします。 }
-      - title: 承認
+          - { actor: ai, title: 計画, text: 完了条件つきの計画を提案中としてボードに置き、質問をします。 }
+      - title: 開始
         steps:
-          - { actor: human, title: 承認, text: 計画の質問に答え、開始を一度だけ承認します。 }
+          - { actor: human, title: 開始, text: 質問に答え、計画を確認して、一度だけ開始します。 }
       - title: 作業
         steps:
           - { actor: ai, title: 作業, text: 順にタスクを進めます。止まるのは、意図が分からない・好みで決まる・取り返しがつかない・範囲が広がる、のときだけです。 }

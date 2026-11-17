@@ -19,7 +19,7 @@ Commands:
   mv      Move a task to todo, doing, or done
   history Append a work note
   state   Report a task's run state: idle or running
-  qa      Ask the user questions, wait for the answers, and record answers
+  message Ask the user questions, wait for the answers, and handle requests from the user
   rm      Delete a task (humans only; asks for confirmation)
   ls      List tasks
   show    Show a task and its history
@@ -47,11 +47,12 @@ Workflow for agents:
   agboard --project NAME remote --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
-  agboard --project NAME qa ask --actor ai --task <id> --json --request-json '{\"questions\":[{\"question\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'
+  agboard --project NAME message ask --actor ai --task <id> --json --questions-json '{\"questions\":[{\"body\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'
 
 Rules for agents:
   - Move a task to doing before you report running.
-  - Ask the user with qa ask: 1 to 20 questions, each with 2 to 10 choices. The
+  - Ask the user with message ask: 1 to 20 questions, each with 2 to 10 choices
+    or none (then the answer is words). Each question is its own message. The
     tasks named with --task wait until the questions are answered.
   - Moving a task to todo or done resets it to idle.
   - You cannot delete tasks or projects, or replace a board. Ask a human to do it.
@@ -70,8 +71,11 @@ Descriptions and drafts:
   - Snapshots, `show`, and `wait` return descriptions in full. Progress and hooks
     return metadata only. If the hook's progress table exceeds 256 KiB, it reports AGBOARD_ERROR
     (context_too_large) instead; read only the needed EPIC.md and TASK.md files.
-  - A task with \"isDraft\": true is a draft the user is still writing. It is
-    read-only for you: `edit`, `mv`, and `state` fail with task_is_draft
-    (exit code 1) and change nothing. Do not retry. Wait for the user to
-    finalize it, and work on other tasks meanwhile. `add`, `show`, `ls`,
-    `snapshot`, and `wait` still work.";
+  - A task with \"draft\": \"human\" is a draft the user is still writing. It is
+    read-only for you: `edit`, `mv`, `state`, and `history add` fail with
+    task_is_draft (exit code 1) and change nothing. Do not retry. Wait for the
+    user to finalize it, and work on other tasks meanwhile.
+  - Every task and epic you create is an AI draft (\"draft\": \"ai\"), also when it
+    is for the user. You can `edit` it and add `history`; `mv` and `state` fail
+    with task_is_draft. Only a person starts it (`start`, `epic start`); you get
+    human_only if you try. `add`, `show`, `ls`, `snapshot`, and `wait` still work.";

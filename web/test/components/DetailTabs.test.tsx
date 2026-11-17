@@ -145,7 +145,7 @@ describe('toolbar', () => {
   });
 
   it('offers the same Preview and Delete for a draft', () => {
-    renderPanel({ ...fixtureTask(8), isDraft: true });
+    renderPanel({ ...fixtureTask(8), draft: 'human' as const });
     expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
@@ -169,14 +169,14 @@ describe('toolbar', () => {
   });
 
   it('keeps Preview and Delete in the History tab', async () => {
-    renderPanel({ ...fixtureTask(8), isDraft: true });
+    renderPanel({ ...fixtureTask(8), draft: 'human' as const });
     await userEvent.click(screen.getByRole('tab', { name: /^History/ }));
     expect(names()).toEqual(['Open full screen', 'Archive task']);
   });
 
   it('calls onPreview with the task when Preview is pressed', async () => {
     const onPreview = vi.fn();
-    const task = { ...fixtureTask(8), isDraft: true };
+    const task = { ...fixtureTask(8), draft: 'human' as const };
     renderPanel(task, { onPreview });
     await userEvent.click(screen.getByRole('button', { name: 'Open full screen (task)' }));
     expect(onPreview).toHaveBeenCalledWith(task);
@@ -252,7 +252,7 @@ describe('toolbar', () => {
 
   it('names the toolbar buttons in Japanese', () => {
     selectLocale('ja');
-    renderPanel({ ...fixtureTask(8), isDraft: true });
+    renderPanel({ ...fixtureTask(8), draft: 'human' as const });
     expect(names()).toEqual(['全画面で開く', 'タスクをアーカイブ']);
   });
 
@@ -270,7 +270,7 @@ describe('epic tab', () => {
     id: 'FILE-SHARE',
     name: 'File share',
     color: '#7C3AED',
-    isDraft: false,
+    draft: null,
     document: '## Plan\n\nEpic plan text.',
     body: '## Plan\n\nEpic plan text.',
     acceptance: [{ id: 'AC-1', text: 'Epic condition', done: true }],

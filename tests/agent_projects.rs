@@ -54,7 +54,7 @@ fn add_task(home: &Path, project: &str, title: &str) {
     ok(&agboard(
         home,
         project,
-        &["add", title, "--assignee", "ai", "--actor", "ai"],
+        &["add", title, "--assignee", "ai", "--actor", "human"],
     ));
 }
 
@@ -298,13 +298,13 @@ fn the_hook_passes_only_the_named_projects_progress_table() {
             home.path(),
             project,
             &[
-                "qa",
+                "message",
                 "ask",
                 "--actor",
                 "ai",
                 "--task",
                 "1",
-                "--request-json",
+                "--questions-json",
                 &common::decision_json(&format!("{project} needs a decision")),
                 "--no-wait",
             ],
@@ -807,8 +807,8 @@ fn deleting_the_project_while_waiting_is_an_error_and_a_same_name_project_is_not
                     title: "Belongs to the new Alpha".into(),
                     description: "## 作業内容\n\nNew.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
                     assignee: agent_board::domain::Assignee::Ai,
-                    actor: agent_board::domain::Actor::Ai,
-                    is_draft: false,
+                    actor: agent_board::domain::Actor::Human,
+                    draft: None,
                 },
                 now,
             )

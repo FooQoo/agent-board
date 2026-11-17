@@ -31,7 +31,7 @@ export function sampleTask(overrides: Partial<Task> & Pick<Task, 'id'>): Task {
     createdAt: RECENT_ISO,
     updatedAt: RECENT_ISO,
     agentStatusChangedAt: RECENT_ISO,
-    isDraft: false,
+    draft: null,
     history: [{ at: RECENT_ISO, reason: 'Created task in Todo.' }],
     attachments: [],
     ...overrides,

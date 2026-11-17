@@ -38,8 +38,25 @@ impl Fixture {
                     title: name.into(),
                     description: body.into(),
                     assignee,
+                    actor: Actor::Human,
+                    draft: draft.then_some(crate::domain::Draft::Human),
+                },
+                at(1),
+            )
+            .unwrap()
+            .id
+    }
+
+    fn ai_draft(&self, name: &str, body: &str) -> i64 {
+        self.store
+            .create_task(
+                &self.project,
+                NewTask {
+                    title: name.into(),
+                    description: body.into(),
+                    assignee: Assignee::Ai,
                     actor: Actor::Ai,
-                    is_draft: draft,
+                    draft: Some(crate::domain::Draft::Ai),
                 },
                 at(1),
             )
@@ -127,6 +144,7 @@ fn only_valid_nonempty_fully_done_ai_conditions_are_eligible() {
     let open = f.task("Open", Assignee::Ai, OPEN, false);
     let human = f.task("Human", Assignee::Human, COMPLETE, false);
     let draft = f.task("Draft", Assignee::Ai, COMPLETE, true);
+    let ai_draft = f.ai_draft("AI draft", COMPLETE);
     let none = f.task(
         "None",
         Assignee::Ai,
@@ -144,7 +162,7 @@ fn only_valid_nonempty_fully_done_ai_conditions_are_eligible() {
 
     f.store.auto_complete_all(at(2)).unwrap();
 
-    for id in [open, human, draft, none, invalid] {
+    for id in [open, human, draft, ai_draft, none, invalid] {
         assert_ne!(
             f.store.task(&f.project, id).unwrap().task_status,
             Column::Done
@@ -174,8 +192,7 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
             crate::file_store::AskInput {
                 actor: Actor::Ai,
                 questions: vec![crate::file_store::AskQuestion {
-                    kind: crate::file_store::qa::QuestionKind::Task,
-                    question: "Question".into(),
+                    body: "Question".into(),
                     choices: vec![
                         crate::file_store::model::Choice {
                             id: "a".into(),
@@ -187,7 +204,6 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
                         },
                     ],
                     recommended_choice_id: None,
-                    approving_choice_ids: Vec::new(),
                     tasks: Vec::new(),
                 }],
                 tasks: vec![id],

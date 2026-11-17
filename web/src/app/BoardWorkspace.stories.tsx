@@ -1,13 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
-import { AnswerBook } from '../features/tasks/answer/model/answerBook';
-import type { BandQuestion } from '../features/tasks/answer/model/qa';
-import {
-  SAMPLE_PROJECT,
-  sampleBook,
-  sampleQuestions,
-} from '../features/tasks/answer/questionSamples';
+import { SAMPLE_PROJECT, sampleMessages } from '../features/tasks/messages/messageSamples';
+import { firstQuestionOfTask } from '../features/tasks/messages/model/messages';
+import { useMessagesPanel } from '../features/tasks/messages/useMessagesPanel';
+import type { Message } from '../shared/data/api/contracts';
 import { initSession } from './model/projectSession';
 import type { AppControllerModel, AppView } from './contracts';
 import { detailFixtureOf, withDetailFixture } from '../features/tasks/detail/detailFixture';
@@ -85,12 +82,24 @@ const boardData = {
   epics: [epic],
   problems: [],
   epicTaskCounts: { release: { todo: 0, doing: 1, done: 0 } },
-  questions: [] as BandQuestion[],
+  messages: [] as Message[],
 };
 
-/** The answer side of the model, with a book that may hold answers. */
-function answersOf(book: AnswerBook): AppControllerModel['answers'] {
-  return { book, target: null, open: () => {}, openForTask: () => {}, close: () => {} };
+/** The board with a list of messages that opens and closes, as the app's controller keeps it. */
+function WithMessages(props: Parameters<typeof BoardWorkspace>[0]) {
+  const panel = useMessagesPanel();
+  const model = {
+    ...props.model,
+    messages: {
+      panel,
+      openForTask: (taskId: number) =>
+        panel.open({
+          tab: 'fromAi' as const,
+          openId: firstQuestionOfTask(props.model.boardData?.messages ?? [], taskId)?.id ?? null,
+        }),
+    },
+  };
+  return <BoardWorkspace {...props} model={model} />;
 }
 
 function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppControllerModel {
@@ -129,7 +138,7 @@ function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppContro
       lastSyncedAt: null,
       reload: () => {},
     },
-    answers: answersOf(new AnswerBook()),
+    messages: { panel: { target: null, open: () => {}, close: () => {} }, openForTask: () => {} },
     tasks: boardTasks,
     selected: task,
     archivedSelected: task,
@@ -251,7 +260,7 @@ const meta = {
     withDetailFixture(
       detailFixtureOf(boardTasks, [epic]),
       <div className="app">
-        <BoardWorkspace {...args} />
+        <WithMessages {...args} />
       </div>,
     ),
   args: { model: makeModel(), actions: { onArchiveDone: () => {} } as never },
@@ -303,23 +312,21 @@ export const BoardErrorWholeScreen: Story = {
 };
 export const Disconnected: Story = { args: { model: makeStateModel('disconnected') } };
 
-/** The board of the approved mock: five questions wait, from five cards and one with none. */
-function makeQuestionModel(held: number, empty = false): AppControllerModel {
+/** The board of the approved mock: two questions and an approval wait, and one request is not picked up. */
+function makeMessageModel(empty = false): AppControllerModel {
   const base = makeModel();
-  const questions = empty ? [] : sampleQuestions('ja');
-  const waiting = (id: number) =>
-    questions.filter((question) => question.referencedBy.includes(id)).map((q) => q.id);
+  const messages = empty ? [] : sampleMessages('ja');
   const card = (
     id: number,
     title: string,
     taskStatus: 'todo' | 'doing' | 'done',
     agentStatus: 'idle' | 'pending' = 'idle',
   ) => {
-    const open = waiting(id);
+    const open = firstQuestionOfTask(messages, id);
     return {
-      ...makeBoardTask(id, title, taskStatus, open.length > 0 ? 'pending' : agentStatus),
-      openQuestionIds: open,
-      questionIds: open,
+      ...makeBoardTask(id, title, taskStatus, open ? 'pending' : agentStatus),
+      openQuestionIds: open ? [open.id] : [],
+      questionIds: open ? [open.id] : [],
     };
   };
   const tasks = [
@@ -333,7 +340,7 @@ function makeQuestionModel(held: number, empty = false): AppControllerModel {
     card(8, 'Initialize the board', 'done'),
   ];
   const project = makeProject({ id: SAMPLE_PROJECT, name: 'agent-board' });
-  const data = { ...boardData, tasks, questions };
+  const data = { ...boardData, tasks, messages };
   return {
     ...base,
     session: { ...base.session, projectId: SAMPLE_PROJECT },
@@ -344,48 +351,36 @@ function makeQuestionModel(held: number, empty = false): AppControllerModel {
     tasks,
     selected: null,
     detailShown: false,
-    answers: answersOf(sampleBook(questions, held)),
   } as unknown as AppControllerModel;
 }
 
-/** The band above the lanes, closed at first; its header opens the five questions. */
-export const QuestionBandOpen: Story = {
-  args: { model: makeQuestionModel(0) },
+/** The band above the lanes counts what waits on you; "一覧を開く" opens the list. */
+export const MessageBandOpen: Story = {
+  args: { model: makeMessageModel() },
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const band = within(canvas.getByRole('region', { name: '未回答の質問' }));
-    await expect(band.queryAllByRole('listitem')).toHaveLength(0);
-    await expect(canvas.getByText('未回答の質問 2 件')).toBeInTheDocument();
-    await userEvent.click(band.getByRole('button', { name: /^未回答の質問を表示する/ }));
-    await expect(band.getAllByRole('listitem')).toHaveLength(5);
+    const band = within(canvas.getByRole('region', { name: 'メッセージ' }));
+    await expect(band.getByText(/質問 2・承認 1/)).toBeVisible();
+    await expect(canvas.getByText('未回答の質問 1 件')).toBeInTheDocument();
+    await userEvent.click(band.getByRole('button', { name: '一覧を開く' }));
+    const list = await within(document.body).findByRole('dialog', { name: 'メッセージ' });
+    await expect(within(list).getAllByRole('tab')).toHaveLength(2);
   },
 };
 
-/** Two answers held: the band and the card say so. */
-export const QuestionBandHeld: Story = {
-  args: { model: makeQuestionModel(2) },
+/** Nothing is open: the band keeps its place above the lanes with a count of 0. */
+export const MessageBandEmpty: Story = {
+  args: { model: makeMessageModel(true) },
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: '確認して送る' })).toBeInTheDocument();
-    await expect(canvas.getByRole('button', { name: '回答を続ける' })).toBeInTheDocument();
-  },
-};
-
-/** No questions: the band keeps its place above the lanes with a count of 0 and nothing to open. */
-export const QuestionBandEmpty: Story = {
-  args: { model: makeQuestionModel(0, true) },
-  globals: { locale: 'ja' },
-  play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: '未回答の質問' });
-    await expect(within(band).getByText('0')).toBeVisible();
-    await expect(within(band).getByRole('button')).toBeDisabled();
+    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
+    await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('0');
   },
 };
 
 /** The board with its band in dark mode. */
-export const QuestionBandDark: Story = {
-  args: { model: makeQuestionModel(2) },
+export const MessageBandDark: Story = {
+  args: { model: makeMessageModel() },
   globals: { locale: 'ja', mode: 'dark' },
 };

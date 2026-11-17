@@ -105,7 +105,7 @@ fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
         format!("{base}/tasks/1/detail"),
         format!("{base}/archive"),
         format!("{base}/epics"),
-        format!("{base}/qa"),
+        format!("{base}/messages"),
         format!("{base}/docs/tree"),
         "/api/preferences".to_string(),
         "/api/onboarding".to_string(),
@@ -126,7 +126,7 @@ fn the_board_works_through_the_entrance_with_a_session_and_the_csrf_token() {
         &session,
         "POST",
         &format!("{base}/tasks"),
-        &json!({"title": "From the phone", "assignee": "human", "isDraft": true}),
+        &json!({"title": "From the phone", "assignee": "human", "draft": "human"}),
     );
     assert!(created.status < 300, "{} {}", created.status, created.body);
     let id = json_of(&created)["task"]["id"].as_i64().unwrap();
@@ -561,7 +561,7 @@ const OLD_MONITOR_PATHS: [&str; 12] = [
     "/monitor/api/events?project=0123456789abcdef0123456789abcdef",
     "/monitor/api/preferences",
     "/monitor/api/projects/0123456789abcdef0123456789abcdef/summary",
-    "/monitor/api/projects/0123456789abcdef0123456789abcdef/qa/answers",
+    "/monitor/api/projects/0123456789abcdef0123456789abcdef/messages/answers",
     "/monitor/assets/monitor/monitor-x.js",
     "/monitor/assets/docs-sandbox",
 ];
@@ -625,7 +625,7 @@ fn projects_are_listed_and_switched_through_the_entrance_as_on_the_pc() {
                 description: String::new(),
                 assignee: agent_board::domain::Assignee::Human,
                 actor: agent_board::domain::Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             chrono::Utc::now(),
         )

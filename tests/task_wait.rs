@@ -77,7 +77,7 @@ fn add(home: &Path, project: &str, title: &str, assignee: &str, epic: Option<&st
         "--assignee",
         assignee,
         "--actor",
-        "ai",
+        "human",
         "--json",
     ];
     if let Some(epic) = epic {
@@ -237,14 +237,14 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
         &[
             "--project",
             "Demo",
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             &pending.to_string(),
-            "--request-json",
-            r#"{"questions":[{"question":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}]}"#,
+            "--questions-json",
+            r#"{"questions":[{"body":"Wait?","choices":[{"id":"yes","label":"Yes"},{"id":"no","label":"No"}]}]}"#,
             "--no-wait",
         ],
     );
@@ -297,8 +297,8 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
                 title: "draft".into(),
                 description: "draft body".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: true,
+                actor: Actor::Human,
+                draft: Some(agent_board::domain::Draft::Human),
             },
             chrono::Utc::now(),
         )
@@ -418,6 +418,77 @@ fn task_wait_returns_new_work_after_a_change_event() {
     let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
     assert_eq!(selected["kind"], "task");
     assert_eq!(selected["task"]["id"], task_id);
+}
+
+#[test]
+fn task_wait_returns_a_request_that_arrives_while_listening() {
+    let (home, _) = demo();
+    let _server = serve(home.path());
+    let waiter = wait(home.path(), "Demo", "10");
+    thread::sleep(Duration::from_millis(250));
+    let sent = json(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "send",
+            "--actor",
+            "human",
+            "--text",
+            "Please add a reset link",
+            "--json",
+        ],
+    );
+    let result = waiter.wait_with_output().unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(selected["kind"], "requests");
+    assert_eq!(selected["requests"][0]["id"], sent["request"]["id"]);
+}
+
+#[test]
+fn an_ai_draft_is_never_picked_by_task_wait_until_a_person_starts_it() {
+    let (home, _) = demo();
+    let _server = serve(home.path());
+    let draft = json(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "add",
+            "Proposed",
+            "--assignee",
+            "ai",
+            "--actor",
+            "ai",
+            "--json",
+        ],
+    )["task"]["id"]
+        .as_i64()
+        .unwrap();
+    let (result, _) = output(wait(home.path(), "Demo", "1"));
+    let idle: Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(idle["kind"], "idle_timeout", "{idle}");
+
+    success(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "start",
+            &draft.to_string(),
+            "--actor",
+            "human",
+        ],
+    );
+    let (result, _) = output(wait(home.path(), "Demo", "1"));
+    let picked: Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(picked["task"]["id"], draft);
 }
 
 #[test]

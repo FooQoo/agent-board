@@ -145,7 +145,7 @@ fn simple_request_publishes_body_and_each_submission_creates_a_task() {
     );
     assert_eq!(first["title"], "Build the thing");
     assert_eq!(first["assignee"], "ai");
-    assert_eq!(first["isDraft"], false);
+    assert_eq!(first["draft"], serde_json::Value::Null);
     assert_eq!(first["attachments"].as_array().unwrap().len(), 2);
     assert!(first["description"].as_str().unwrap().contains("元の依頼"));
     assert_eq!(task_count(&server, &pid), before + 1);

@@ -62,7 +62,7 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
                 "--assignee",
                 "ai",
                 "--actor",
-                "ai"
+                "human"
             ]
         )
         .status
@@ -87,13 +87,13 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let pending = agboard(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
-            "--request-json",
+            "--questions-json",
             &common::decision_json("Need the user's direction"),
             "--no-wait",
             "--json",
@@ -131,13 +131,15 @@ fn wait_returns_the_latest_full_snapshot_for_a_change_around_subscription() {
     let answer = agboard(
         home.path(),
         &[
-            "qa",
+            "message",
             "answer",
             "Q-1",
             "--actor",
             "human",
             "--via",
             "chat",
+            "--choice",
+            "a",
             "--text",
             "Keep the current behavior and explain the tradeoff.",
         ],
@@ -265,7 +267,7 @@ fn a_change_to_another_project_does_not_end_the_wait() {
     let added = agboard_for(
         home.path(),
         "Other",
-        &["add", "Elsewhere", "--assignee", "ai", "--actor", "ai"],
+        &["add", "Elsewhere", "--assignee", "ai", "--actor", "human"],
     );
     assert!(added.status.success());
     let output = waiter.wait_with_output().unwrap();

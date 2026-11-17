@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "requestId": "7d1e0b2c9a8f4e3d8c7b6a5f4e3d2c1b",
+  "createdAt": "2026-11-11T13:00:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": null,
+  "withdrawReason": null,
+  "questions": [
+    {
+      "id": "Q-3",
+      "kind": "task",
+      "question": "Retry failed uploads automatically?",
+      "choices": [
+        { "id": "yes", "label": "Retry up to 3 times" },
+        { "id": "no", "label": "Fail at once" }
+      ],
+      "recommendedChoiceId": "yes",
+      "approvingChoiceIds": [],
+      "answer": null
+    }
+  ]
+}

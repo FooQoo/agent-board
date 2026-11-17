@@ -49,7 +49,7 @@ impl FileStore {
             return Err(AgboardError::TaskArchived { id });
         }
         ensure_ai_task_not_done(&task, Actor::Ai)?;
-        if task.is_draft {
+        if task.draft == Some(crate::domain::Draft::Human) {
             return Err(AgboardError::TaskIsDraft { id });
         }
         let language = self.history_language(project, &task)?;

@@ -90,9 +90,9 @@ test('side attachments render, persist, retry safely and become No image after d
   await edit.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(edit).toHaveCount(0);
   expect(show().attachments).toHaveLength(0);
-  expect(show().isDraft).toBe(true);
+  expect(show().draft).toBe('human');
   await detail.getByRole('button', { name: 'Finalize' }).click();
-  await expect.poll(() => show().isDraft).toBe(false);
+  await expect.poll(() => show().draft).toBeNull();
   await expect(detail.getByText('No image', { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('03-deleted-no-image.png') });
 });

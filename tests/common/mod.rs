@@ -86,7 +86,7 @@ pub fn demo_project(home: &Path) {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -333,10 +333,10 @@ pub fn multipart(
     out
 }
 
-/// A request as the `qa ask --request-json` argument: one question with two choices.
+/// A request as the `message ask --questions-json` argument: one question with two choices.
 pub fn decision_json(question: &str) -> String {
     serde_json::json!({"questions": [{
-        "question": question,
+        "body": question,
         "choices": [
             {"id": "a", "label": "Plan A"},
             {"id": "b", "label": "Plan B"}

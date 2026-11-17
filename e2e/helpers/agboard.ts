@@ -322,7 +322,7 @@ function taskFilesFor(item: FixtureTask, question?: string): { task: Record<stri
     // Waiting is derived from the open question the card refers to; only idle and running are stored.
     agentStatus: item.agentStatus === 'pending' ? 'idle' : item.agentStatus,
     position: item.position,
-    isDraft: false,
+    draft: null,
     archivedAt: null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -332,32 +332,15 @@ function taskFilesFor(item: FixtureTask, question?: string): { task: Record<stri
   return { task: taskJson, markdown: taskMarkdown(item.description, history, question ? [question] : []) };
 }
 
-/** `qa/<request-id>/request.json` with one open question for a pending fixture card. */
-function questionRequestFor(item: FixtureTask, question: string): Record<string, unknown> {
+/** `qa/Q-<n>/QA.md` with one open question for a pending fixture card: frontmatter, then the Markdown body. */
+function questionMarkdownFor(item: FixtureTask): string {
   const choices = item.pendingChoices?.length ? item.pendingChoices : [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }];
-  return {
-    formatVersion: 1,
-    requestId: requestIdFor(item),
-    createdAt: item.agentStatusChangedAt,
-    createdBy: 'ai',
-    withdrawnAt: null,
-    withdrawReason: null,
-    questions: [{
-      id: question,
-      kind: 'task',
-      question: item.pendingReason ?? 'Waiting for a decision.',
-      choices,
-      recommendedChoiceId: null,
-      approvingChoiceIds: [],
-      answer: null,
-    }],
-  };
-}
-
-/** The fixture's request ID when it is one, or one made from the card's ID. */
-function requestIdFor(item: FixtureTask): string {
-  if (item.pendingRequestId && /^[0-9a-f]{32}$/.test(item.pendingRequestId)) return item.pendingRequestId;
-  return item.id.toString(16).padStart(32, '0');
+  const lines = ['---', 'from: ai', 'to: human', `tasks: [${item.id}]`, 'choices:'];
+  for (const choice of choices) {
+    lines.push(`- id: ${yamlScalar(choice.id)}`, `  label: ${yamlScalar(choice.label)}`);
+  }
+  lines.push('reply: null', 'withdrawnAt: null', `createdAt: ${item.agentStatusChangedAt}`, '---', '', item.pendingReason ?? 'Waiting for a decision.', '');
+  return lines.join('\n');
 }
 
 /**
@@ -378,9 +361,9 @@ export function seedProject(project: string, file: string, home: string = mainHo
     let question: string | undefined;
     if (item.agentStatus === 'pending') {
       question = `Q-${nextQuestionId++}`;
-      const requestDir = path.join(folder, 'qa', requestIdFor(item));
-      mkdirSync(requestDir, { recursive: true });
-      writeJson(path.join(requestDir, 'request.json'), questionRequestFor(item, question));
+      const questionDir = path.join(folder, 'qa', question);
+      mkdirSync(questionDir, { recursive: true });
+      replaceFileAtomically(path.join(questionDir, 'QA.md'), questionMarkdownFor(item));
     }
     const { task, markdown } = taskFilesFor(item, question);
     // The screen shows the newer of task.json's updatedAt and TASK.md's modification time, so both files
@@ -475,7 +458,9 @@ export function resetAlphaBeta(home: string, serveUrl?: string): void {
 function withTestDefaults(args: string[]): string[] {
   const result = [...args];
   const command = result[0];
-  if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
+  // A card the tests add is the person's own, so it is not an AI draft and can move at once.
+  if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai');
+  if (command === 'add' && !result.includes('--actor')) result.push('--actor', 'human');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
     result.push('--actor', 'human');
   }
@@ -595,11 +580,11 @@ export async function stopServe(serve: Serve | undefined): Promise<void> {
   }
 }
 
-/** A request for `qa ask --request-json`: one question and two choices. */
+/** A request for `message ask --questions-json`: one question and two choices. */
 export function decisionJson(question: string): string {
   return JSON.stringify({
     questions: [{
-      question,
+      body: question,
       choices: [
         { id: 'a', label: 'Plan A' },
         { id: 'b', label: 'Plan B' },
@@ -608,12 +593,12 @@ export function decisionJson(question: string): string {
   });
 }
 
-/** `qa ask` arguments that make task `id` wait on one question without waiting for its answer. */
-/** A request with one question, in the shape `qa ask --request-json` reads. */
+/** A request with one question, in the shape `message ask --questions-json` reads. */
 export function questionJson(question: string, choices: { id: string; label: string }[]): string {
-  return JSON.stringify({ questions: [{ question, choices }] });
+  return JSON.stringify({ questions: [{ body: question, choices }] });
 }
 
+/** `message ask` arguments that make task `id` wait on one question without waiting for its answer. */
 export function askArgs(id: number | string, request: string): string[] {
-  return ['qa', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--request-json', request];
+  return ['message', 'ask', '--actor', 'ai', '--task', String(id), '--no-wait', '--questions-json', request];
 }

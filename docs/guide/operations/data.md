@@ -41,15 +41,18 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
         epic.json
         EPIC.md
         assets/
-      qa/<request-id>/
-        request.json
+      qa/Q-<n>/
+        QA.md
+        attachments/
 ```
 
 The files are plain Markdown and JSON. What each file must contain is described in [Markdown file format](../reference/file-format). A file whose `formatVersion` is not 1 is unsupported: the application reports it and leaves the file unchanged. It never migrates, falls back to, deletes, or resets old data.
 
 The `.internal/` folder holds the app's own settings. `preferences.json` keeps the language and color theme you chose in **Settings**, and it applies to every browser on this PC and to remote access. The app writes this file, so do not edit it by hand. It is outside `shared/`, so it is not part of a project's files.
 
-Each project's `qa/` folder holds the questions agents asked and the answers given, one folder per set of questions. Questions have project-wide IDs such as `Q-12`, and a task refers to them from the `questions` list in its `TASK.md`. Read them with `agboard qa ls` and `agboard qa show`; do not edit `request.json` by hand. See [Decisions](../delegate/decisions).
+Each project's `qa/` folder holds the messages: the questions agents asked, with the answers given, and the requests you sent to agents. Each message is one folder such as `qa/Q-12/`, with its text and status in `QA.md` and any images in `attachments/`. Questions and requests share one numbering, so an ID such as `Q-12` is either a question or a request. A task refers to questions from the `questions` list in its `TASK.md`. Read them with `agboard message ls` and `agboard message show`; do not edit `QA.md` by hand. See [Decisions](../delegate/decisions).
+
+Projects that were saved by an earlier build are converted once, the first time the project is read or written. Questions that were still unanswered and not withdrawn keep their numbers; answered and withdrawn ones are dropped. Unanswered start approvals are not carried over: the AI tasks that waited for one become AI drafts, which you start with `agboard start`. A folder that cannot be read is moved to `.internal/legacy-qa/`.
 
 Each project's `docs/` folder holds your own Markdown documents, which you read and edit from **Docs** in the board header. Agent Board creates the folder with a short `README.md`, but it does not treat the files as board data: changing them never changes the board. See [Project docs](../watch/docs).
 

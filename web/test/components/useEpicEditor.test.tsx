@@ -16,7 +16,7 @@ const EPIC: Epic = {
   id: 'FILE-SHARE',
   name: 'File share',
   color: '#7C3AED',
-  isDraft: false,
+  draft: null,
   document: '## Goal\n\nShare.',
   body: '## Goal\n\nShare.',
   priority: [],
@@ -46,7 +46,7 @@ function fakeApi(calls: string[]): EpicApi {
     savePriority: vi.fn(async (ids: number[]) => void calls.push(`savePriority:${ids.join(',')}`)),
     enterDraft: vi.fn(async () => {
       calls.push('enterDraft');
-      return { ...EPIC, isDraft: true };
+      return { ...EPIC, draft: 'human' as const };
     }),
     leaveDraft: vi.fn(async () => void calls.push('leaveDraft')),
     remove: vi.fn(async () => void calls.push('remove')),
@@ -82,7 +82,7 @@ describe('useEpicEditor save order', () => {
       name: 'Renamed',
       color: '#7C3AED',
       body: '## Goal\n\nShare.',
-      isDraft: false,
+      draft: null,
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });

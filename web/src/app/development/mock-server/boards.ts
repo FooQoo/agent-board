@@ -56,7 +56,7 @@ export const SAMPLE_EPIC: Epic = {
   id: 'FILE-SHARE',
   name: 'File share',
   color: '#7C3AED',
-  isDraft: false,
+  draft: null,
   document: SAMPLE_DOCUMENT,
   body: SAMPLE_DOCUMENT,
   priority: [],
@@ -141,7 +141,7 @@ function longMarkdownTask(tasks: Task[], description: string): Task {
     agentStatus: 'idle',
     pendingReason: null,
     pendingRequestId: null,
-    isDraft: false,
+    draft: null,
     position: tasks.filter((task) => task.taskStatus === 'todo').length + 1,
   };
 }

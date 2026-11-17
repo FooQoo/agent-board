@@ -26,7 +26,14 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         },
         AgboardError::InvalidStateForAssignee,
         AgboardError::TaskIsDraft { id: 5 },
+        AgboardError::TaskIsAiDraft { id: 5 },
         AgboardError::EpicIsDraft { id: "E".into() },
+        AgboardError::AiDraftNeedsStart {
+            target: "task #5".into(),
+        },
+        AgboardError::HumanOnly {
+            action: "start".into(),
+        },
         AgboardError::TaskIsDone { id: 5 },
         AgboardError::AcceptanceUnmet {
             id: 5,
@@ -44,12 +51,19 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         AgboardError::QuestionWithdrawn {
             ids: vec!["Q-2".into()],
         },
-        AgboardError::QuestionNotFound { id: "Q-3".into() },
-        AgboardError::RequestNotFound {
-            id: "0123456789abcdef0123456789abcdef".into(),
+        AgboardError::StartBlockedByQuestions {
+            ids: vec!["Q-2".into()],
         },
-        AgboardError::RequestAnswered {
-            id: "0123456789abcdef0123456789abcdef".into(),
+        AgboardError::MessageNotFound { id: "Q-3".into() },
+        AgboardError::MessageClosed { id: "Q-3".into() },
+        AgboardError::MessageTypeMismatch {
+            id: "Q-3".into(),
+            expected: "request".into(),
+        },
+        AgboardError::RequestAccepted { id: "Q-4".into() },
+        AgboardError::RequestWithdrawn { id: "Q-4".into() },
+        AgboardError::AiOnly {
+            action: "withdrawing a question".into(),
         },
         AgboardError::TaskStatusChanged {
             id: 5,
@@ -77,8 +91,8 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
             version: "2".into(),
             expected: 1,
         },
-        AgboardError::RequestChoiceUnknown {
-            request_id: "a".into(),
+        AgboardError::ChoiceUnknown {
+            question_id: "Q-1".into(),
             choice_id: "b".into(),
         },
         AgboardError::DatabaseBusy,
@@ -151,7 +165,10 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("invalid_state_for_column", 1),
             ("invalid_state_for_assignee", 2),
             ("task_is_draft", 1),
+            ("task_is_draft", 1),
             ("epic_is_draft", 1),
+            ("ai_draft_needs_start", 1),
+            ("human_only", 1),
             ("task_is_done", 1),
             ("acceptance_unmet", 2),
             ("task_not_draft", 1),
@@ -159,16 +176,20 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("questions_unanswered", 1),
             ("question_answered", 1),
             ("question_withdrawn", 1),
-            ("question_not_found", 3),
-            ("request_not_found", 3),
-            ("request_answered", 1),
+            ("start_blocked_by_questions", 1),
+            ("message_not_found", 3),
+            ("message_closed", 1),
+            ("message_type_mismatch", 2),
+            ("request_accepted", 1),
+            ("request_withdrawn", 1),
+            ("ai_only", 1),
             ("task_status_changed", 1),
             ("confirmation_required", 1),
             ("file_error", 1),
             ("file_invalid", 1),
             ("file_unreadable", 1),
             ("format_unsupported", 1),
-            ("request_choice_unknown", 2),
+            ("choice_unknown", 2),
             ("database_busy", 1),
             ("database_error", 1),
             ("already_serving", 1),

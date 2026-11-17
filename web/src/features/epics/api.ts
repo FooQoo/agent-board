@@ -1,5 +1,5 @@
 import { i18n } from '../../shared/i18n';
-import type { ApiError, Epic, ProjectId } from '../../shared/api/contracts';
+import type { ApiError, Draft, Epic, ProjectId } from '../../shared/api/contracts';
 import { projectPath, authHeaders } from '../../shared/api/http';
 import { writeFailure } from '../../shared/api/writeErrors';
 import type { EditorAttachment } from '../../shared/ui/editor/attachmentTypes';
@@ -57,7 +57,7 @@ export function updateEpic(
   input: {
     name?: string;
     color?: string;
-    isDraft?: boolean;
+    draft?: Draft | null;
     document?: string;
     body?: string;
     /** The card order of the epic: card IDs, first is first. */

@@ -45,7 +45,7 @@ describe('localized board content', () => {
     expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();
     rerender(<BoardMessage kind="empty" />);
     expect(screen.getByText('タスクはまだありません。')).toBeTruthy();
-    expect(screen.getByText('「タスク追加」から登録できます。')).toBeTruthy();
+    expect(screen.getByText('「AI に依頼」から始められます。')).toBeTruthy();
   });
 
   it('keeps recorded reasons and datetime unchanged when the UI language changes', async () => {

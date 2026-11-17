@@ -14,7 +14,8 @@ import {
   workspace,
 } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
-import { answerNote, send, openAnswer } from '../helpers/answer';
+import { fillAnswer, send, openAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 function run(args: string[], home: string, cwd: string, input = ''): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(agboardBinary(), args, {
@@ -30,10 +31,10 @@ function run(args: string[], home: string, cwd: string, input = ''): { code: num
 function startWaiter(home: string, cwd: string, project: string, id: number): ChildProcess {
   const child = spawn(agboardBinary(), [
     '--project', project,
-    'qa', 'ask', '--actor', 'ai', '--task', String(id),
-    '--request-json', JSON.stringify({
+    'message', 'ask', '--actor', 'ai', '--task', String(id),
+    '--questions-json', JSON.stringify({
       questions: [{
-        question: 'Which release plan should we use?',
+        body: 'Which release plan should we use?',
         choices: [{ id: 'a', label: 'Plan A' }, { id: 'b', label: 'Plan B' }],
       }],
     }),
@@ -73,8 +74,8 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
 
     const projectArgs = (args: string[]) => ['--project', project, ...args];
     agboardOk(project, ['epic', 'add', 'RELEASE', '--name', 'Release work', '--actor', 'human'], home);
-    agboardOk(project, ['add', 'Publish release', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Private task body for progress omission check.'], home);
-    agboardOk(project, ['add', 'Prepare release notes', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Another private task body.'], home);
+    agboardOk(project, ['add', 'Publish release', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'human', '--desc', 'Private task body for progress omission check.'], home);
+    agboardOk(project, ['add', 'Prepare release notes', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'human', '--desc', 'Another private task body.'], home);
     const tasks = JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).tasks as Array<{ id: number; title: string }>;
     const publish = tasks.find((task) => task.title === 'Publish release')!.id;
     const notes = tasks.find((task) => task.title === 'Prepare release notes')!.id;
@@ -134,9 +135,9 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     const answer = await openAnswer(page, publish);
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });
-    await answerNote(page).fill('Choose Plan A and publish after review.');
+    await fillAnswer(answer, { choice: 'Plan A', text: 'Choose Plan A and publish after review.' });
     await send(page);
-    await expect(answer).toBeHidden();
+    await closeMessages(page);
 
     const completed = await waitResult;
     expect(completed.code, completed.stderr).toBe(0);

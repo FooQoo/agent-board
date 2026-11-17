@@ -45,7 +45,7 @@ fn add_second_task(home: &Path) {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");
@@ -184,7 +184,7 @@ fn a_person_may_add_images_to_a_draft_but_the_cli_may_not() {
         .set_draft(
             &pid.parse::<ProjectId>().unwrap(),
             1,
-            true,
+            Some(agent_board::domain::Draft::Human),
             false,
             chrono::Utc::now(),
         )
@@ -270,7 +270,7 @@ fn an_image_of_another_project_is_not_found_even_with_the_same_task_number() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
     );
     assert_eq!(code, 0, "{err}");

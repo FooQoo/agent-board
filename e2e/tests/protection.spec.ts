@@ -76,7 +76,7 @@ test('the token appears only in the page, never in the API responses', async ({ 
 
 interface Shown extends TaskJson {
   description: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
 }
 const shown = (id: number): Shown => JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 
@@ -107,10 +107,10 @@ test('the edit and the draft switch are refused without the guard, and nothing c
   await page.goto('/');
   const token = (await page.locator('meta[name="agboard-token"]').getAttribute('content'))!;
   const before = listTasks(mainProject);
-  const draftBefore = shown(13).isDraft;
+  const draftBefore = shown(13).draft;
 
   for (const [method, url, data] of [
-    ['PUT', `${task13}/draft`, { isDraft: true }],
+    ['PUT', `${task13}/draft`, { draft: 'human' }],
     ['PATCH', task13, { title: 'Hijacked' }],
   ] as const) {
     const send = (headers: Record<string, string>) => request.fetch(url, { method, data, headers });
@@ -130,7 +130,7 @@ test('the edit and the draft switch are refused without the guard, and nothing c
     }
   }
   expect(listTasks(mainProject)).toEqual(before);
-  expect(shown(13).isDraft).toBe(draftBefore);
+  expect(shown(13).draft).toBe(draftBefore);
 });
 
 test('with the guard, a draft switch and an edit follow the task rules; a bad body or an oversize one changes nothing', async ({
@@ -141,14 +141,14 @@ test('with the guard, a draft switch and an edit follow the task rules; a bad bo
 
   // A running card is refused; a Pending card can be drafted without answering it.
   for (const running of [11]) {
-    const refused = await fromPage(page, 'PUT', `${base}/${running}/draft`, { isDraft: true });
+    const refused = await fromPage(page, 'PUT', `${base}/${running}/draft`, { draft: 'human' });
     expect(refused.status, `#${running}`).toBe(409);
     expect(refused.body.error?.code, `#${running}`).toBe('invalid_state_for_draft');
-    expect(shown(running).isDraft).toBe(false);
+    expect(shown(running).draft).toBeNull();
   }
   const pendingBefore = shown(12);
-  expect((await fromPage(page, 'PUT', `${base}/12/draft`, { isDraft: true })).status).toBe(200);
-  expect(shown(12)).toMatchObject({ isDraft: true, agentStatus: 'pending', pendingRequestId: pendingBefore.pendingRequestId, pendingReason: pendingBefore.pendingReason });
+  expect((await fromPage(page, 'PUT', `${base}/12/draft`, { draft: 'human' })).status).toBe(200);
+  expect(shown(12)).toMatchObject({ draft: 'human', agentStatus: 'pending', pendingRequestId: pendingBefore.pendingRequestId, pendingReason: pendingBefore.pendingReason });
   // An edit of a card that is not a draft is refused.
   const notDraft = await fromPage(page, 'PATCH', `${base}/13`, { description: 'Not allowed' });
   expect(notDraft.status).toBe(409);
@@ -156,11 +156,11 @@ test('with the guard, a draft switch and an edit follow the task rules; a bad bo
   expect(shown(13).description).toContain('Check the layout at 1280, 800, and 480 px.\nLook for horizontal scrolling.');
 
   // A draft takes an edit; CRLF becomes LF; finalize hands it back in the same step.
-  expect((await fromPage(page, 'PUT', `${base}/13/draft`, { isDraft: true })).status).toBe(200);
+  expect((await fromPage(page, 'PUT', `${base}/13/draft`, { draft: 'human' })).status).toBe(200);
   const edited = await fromPage(page, 'PATCH', `${base}/13`, { description: taskBody('one\r\ntwo') });
   expect(edited.status).toBe(200);
   expect(shown(13).description).toContain('one\ntwo');
-  expect(shown(13).isDraft).toBe(true);
+  expect(shown(13).draft).toBe('human');
 
   // Too long: refused with the reason, and the stored text is the previous one. An empty title and an empty edit too.
   const tooLong = await fromPage(page, 'PATCH', `${base}/13`, { description: 'あ'.repeat(50_001) });
@@ -169,7 +169,7 @@ test('with the guard, a draft switch and an edit follow the task rules; a bad bo
   expect((await fromPage(page, 'PATCH', `${base}/13`, { title: '' })).status).toBeGreaterThanOrEqual(400);
   expect((await fromPage(page, 'PATCH', `${base}/13`, {})).status).toBeGreaterThanOrEqual(400);
   expect(shown(13).description).toContain('one\ntwo');
-  expect(shown(13)).toMatchObject({ title: 'Check the board display', isDraft: true });
+  expect(shown(13)).toMatchObject({ title: 'Check the board display', draft: 'human' });
   // A body over 1 MiB is refused before it is read in full.
   const huge = await fromPage(page, 'PATCH', `${base}/13`, { description: 'x'.repeat(1_200_000) });
   expect(huge.status).toBe(413);
@@ -177,7 +177,7 @@ test('with the guard, a draft switch and an edit follow the task rules; a bad bo
 
   const finalized = await fromPage(page, 'PATCH', `${base}/13`, { title: 'Final title', finalize: true });
   expect(finalized.status).toBe(200);
-  expect(shown(13)).toMatchObject({ title: 'Final title', isDraft: false });
+  expect(shown(13)).toMatchObject({ title: 'Final title', draft: null });
   expect(shown(13).description).toContain('one\ntwo');
   // It is no longer a draft, so the next edit is refused.
   expect((await fromPage(page, 'PATCH', `${base}/13`, { title: 'Again' })).status).toBe(409);

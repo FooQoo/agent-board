@@ -28,7 +28,7 @@ interface Condition {
 
 interface Shown extends TaskJson {
   description: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
   acceptance: Condition[];
   acceptanceError: boolean;
 }
@@ -70,7 +70,7 @@ const THREE: Condition[] = [
 async function startFromDraft(page: Page, id: number): Promise<void> {
   await task(page, id).click();
   await putDraft(id);
-  await expect.poll(() => show(id).isDraft).toBe(true);
+  await expect.poll(() => show(id).draft).toBe('human');
 }
 
 /** Open the card's edit dialog and wait until its text has loaded. */

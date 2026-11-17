@@ -30,7 +30,7 @@ import { putDraft } from '../helpers/drafts';
 interface ShownTask extends TaskJson {
   description: string;
   body: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
   updatedAt: string;
   history: { at: string; reason: string }[];
 }
@@ -86,7 +86,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   // Card #13 is an idle Doing card of the AI, so all three writes are valid for it when it is not a draft.
   await open(page, 13);
   await startFromDraft(page);
-  await expect.poll(() => show(13).isDraft).toBe(true);
+  await expect.poll(() => show(13).draft).toBe('human');
 
   const before = board();
   const refused: [string, string[]][] = [
@@ -109,23 +109,57 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(board()).toBe(before);
 
   // Reading, listing, and adding keep working, and the draft is visible in each.
-  expect(show(13)).toMatchObject({ id: 13, isDraft: true });
-  expect(agboardOk(mainProject, ['show', '13']).stdout).toContain('Draft: yes');
+  expect(show(13)).toMatchObject({ id: 13, draft: 'human' });
+  expect(agboardOk(mainProject, ['show', '13']).stdout).toContain('Draft: human');
   expect(agboardOk(mainProject, ['ls']).stdout).toMatch(/#13 Check the board display \[AI\] \[draft\]/);
   expect(agboardOk(mainProject, ['ls']).stdout).not.toMatch(/#14 .*\[draft\]/);
-  expect(JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).isDraft).toBe(true);
-  expect(JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).isDraft).toBe(true);
+  expect(JSON.parse(agboardOk(mainProject, ['ls', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).draft).toBe('human');
+  expect(JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).tasks.find((c: ShownTask) => c.id === 13).draft).toBe('human');
   const added = JSON.parse(agboardOk(mainProject, ['add', 'Made while a draft exists', '--json']).stdout).task;
-  expect(added).toMatchObject({ isDraft: false, taskStatus: 'todo', agentStatus: 'idle' });
+  expect(added).toMatchObject({ draft: null, taskStatus: 'todo', agentStatus: 'idle' });
 
   // The page and the CLI agree; a person can finalize and the agent can write again.
   await details(page).getByRole('button', { name: 'Finalize' }).click();
   await expect(details(page).getByRole('region', { name: 'Draft' })).toHaveCount(0);
-  expect(show(13).isDraft).toBe(false);
+  expect(show(13).draft).toBeNull();
   expect(agboardOk(mainProject, ['edit', '13', '--title', 'Changed by an agent']).code).toBe(0);
   agboardOk(mainProject, ['state', '13', 'running', '--actor', 'ai', '--reason', 'Resuming.']);
   agboardOk(mainProject, ['mv', '13', 'done', '--actor', 'ai', '--reason', 'Finished.']);
   expect(show(13)).toMatchObject({ title: 'Changed by an agent', taskStatus: 'done' });
+});
+
+test('an AI draft takes edits and history from the AI but not mv or state, and only a person starts it', async () => {
+  const id = nextTaskId(mainProject);
+  agboardOk(mainProject, ['add', 'Proposed by the AI', '--assignee', 'ai', '--actor', 'ai']);
+  expect(show(id)).toMatchObject({ draft: 'ai', taskStatus: 'todo' });
+  expect(agboardOk(mainProject, ['ls']).stdout).toContain(`#${id} Proposed by the AI [AI] [AI draft]`);
+
+  // The AI can keep shaping its own proposal.
+  agboardOk(mainProject, ['edit', String(id), '--title', 'Proposed again']);
+  agboardOk(mainProject, ['history', 'add', String(id), '--reason', 'Refined the plan.']);
+  expect(show(id)).toMatchObject({ title: 'Proposed again', draft: 'ai' });
+
+  // It cannot move or run it, and nothing changes.
+  const before = board();
+  for (const args of [
+    ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.'],
+    ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Go.'],
+  ]) {
+    const refused = agboard(mainProject, [...args, '--json']);
+    expect(refused.code, args[0]).toBe(1);
+    expect(JSON.parse(refused.stderr || refused.stdout).error.code, args[0]).toBe('task_is_draft');
+  }
+  expect(board()).toBe(before);
+
+  // Only a person starts it.
+  const byAi = agboard(mainProject, ['start', String(id), '--actor', 'ai', '--json']);
+  expect(byAi.code).toBe(1);
+  expect(JSON.parse(byAi.stderr || byAi.stdout).error.code).toBe('human_only');
+  expect(show(id).draft).toBe('ai');
+  agboardOk(mainProject, ['start', String(id), '--actor', 'human']);
+  expect(show(id).draft).toBeNull();
+  agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.']);
+  expect(show(id).taskStatus).toBe('doing');
 });
 
 test('a draft stays a draft over time, and toggling it wakes wait; history updates the displayed time', async ({
@@ -148,7 +182,7 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
     await startFromDraft(page);
     expect(await ended).toBe(0);
     const received = JSON.parse(out) as { tasks: ShownTask[]; cursor: string };
-    expect(received.tasks.find((c) => c.id === 13)).toMatchObject({ isDraft: true });
+    expect(received.tasks.find((c) => c.id === 13)).toMatchObject({ draft: 'human' });
     expect(received.cursor).not.toBe(cursor);
   } finally {
     waiter.kill();
@@ -162,7 +196,7 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
 
   // It does not clear by itself.
   await new Promise((resolve) => setTimeout(resolve, 3000));
-  expect(show(13).isDraft).toBe(true);
+  expect(show(13).draft).toBe('human');
 
   // Finalizing is a change too: wait wakes, and it adds one more history event and advances the display time.
   const cursor2 = JSON.parse(agboardOk(mainProject, ['snapshot', '--json']).stdout).cursor as string;
@@ -170,7 +204,7 @@ test('a draft stays a draft over time, and toggling it wakes wait; history updat
   await details(page).getByRole('button', { name: 'Finalize' }).click();
   expect((await second).code).toBe(0);
   const finalized = show(13);
-  expect(finalized.isDraft).toBe(false);
+  expect(finalized.draft).toBeNull();
   expect(Date.parse(finalized.updatedAt)).toBeGreaterThan(Date.parse(drafted.updatedAt));
   expect(finalized.history).toHaveLength(drafted.history.length + 1);
   expect(finalized.history.at(-1)?.reason).toContain('draft');
@@ -196,7 +230,7 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Exact limit', '--desc-file', exactFile]);
   expect([...show(id).body].length).toBe(50_000);
-  const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'ai'], {
+  const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'human'], {
     env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     input: exact,
     encoding: 'utf8',
@@ -227,11 +261,11 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
 test('a backup is a copy of the project folder; copying it back brings a draft back exactly as it left', async ({ page }) => {
   // The fixture has no drafts; every card comes back a non-draft.
   expect(listTasks(mainProject).length).toBe(8);
-  for (const item of listTasks(mainProject)) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
+  for (const item of listTasks(mainProject)) expect(show(item.id).draft, `#${item.id}`).toBeNull();
 
   await open(page, 13);
   await startFromDraft(page);
-  await expect.poll(() => show(13).isDraft).toBe(true);
+  await expect.poll(() => show(13).draft).toBe('human');
 
   // The backup copies the card and epic files of the project (MODEL.md, backups).
   const folder = workspace(mainProject).folder;
@@ -239,18 +273,18 @@ test('a backup is a copy of the project folder; copying it back brings a draft b
   for (const part of ['tasks', 'epics', 'project.json']) {
     if (existsSync(path.join(folder, part))) cpSync(path.join(folder, part), path.join(backup, part), { recursive: true });
   }
-  expect(readFileSync(path.join(backup, 'tasks', '13', 'task.json'), 'utf8')).toContain('"isDraft": true');
+  expect(readFileSync(path.join(backup, 'tasks', '13', 'task.json'), 'utf8')).toContain('"draft": "human"');
 
   // Back to the seeded board, then the backup: the draft returns exactly as it left.
   resetBoard(mainProject);
-  expect(show(13).isDraft).toBe(false);
+  expect(show(13).draft).toBeNull();
   for (const part of ['tasks', 'epics', 'project.json']) {
     rmSync(path.join(folder, part), { recursive: true, force: true });
     if (existsSync(path.join(backup, part))) cpSync(path.join(backup, part), path.join(folder, part), { recursive: true });
   }
-  expect(show(13).isDraft).toBe(true);
+  expect(show(13).draft).toBe('human');
   for (const item of listTasks(mainProject)) {
-    if (item.id !== 13) expect(show(item.id).isDraft, `#${item.id}`).toBe(false);
+    if (item.id !== 13) expect(show(item.id).draft, `#${item.id}`).toBeNull();
   }
 });
 
@@ -274,11 +308,11 @@ test('the hook hands over active progress metadata without task bodies, even whe
   expect(Buffer.byteLength(context)).toBeLessThanOrEqual(256 * 1024);
   expect(context.startsWith('AGBOARD_PROGRESS\n')).toBe(true);
   const progress = JSON.parse(context.slice('AGBOARD_PROGRESS\n'.length)) as {
-    epics: { tasks: (TaskJson & { isDraft: boolean })[] }[];
-    unassigned: (TaskJson & { isDraft: boolean })[];
+    epics: { tasks: (TaskJson & { draft: 'human' | 'ai' | null })[] }[];
+    unassigned: (TaskJson & { draft: 'human' | 'ai' | null })[];
   };
   const handed = [...progress.epics.flatMap((epic) => epic.tasks), ...progress.unassigned].find((c) => c.id === id)!;
-  expect(handed.isDraft).toBe(false);
+  expect(handed.draft).toBeNull();
   expect(context).not.toContain('## Section');
   expect(context).not.toContain('あ');
 
@@ -302,7 +336,7 @@ test('the help explains Markdown descriptions and what a refused write to a draf
   expect(general.code).toBe(0);
   expect(general.stdout).toContain('Markdown');
   expect(general.stdout).toContain('50,000');
-  expect(general.stdout).toContain('isDraft');
+  expect(general.stdout).toContain('"draft"');
   expect(general.stdout).toContain('task_is_draft');
   for (const command of ['add', 'edit']) {
     const help = agboardCatalog([command, '--help']);

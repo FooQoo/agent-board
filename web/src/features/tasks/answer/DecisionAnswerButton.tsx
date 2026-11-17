@@ -1,4 +1,4 @@
-import { CircleHelpIcon, PencilIcon } from 'lucide-react';
+import { CircleHelpIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import './decision-answer.css';
@@ -9,27 +9,23 @@ export function decisionAnswerButtonSelector(taskId: number): string {
 }
 
 export interface DecisionAnswerButtonProps {
-  /** An answer is already started: the button says so and takes the outline. */
-  continuing: boolean;
   onClick: () => void;
   taskId: number;
 }
 
-/** The only control a card with a decision request shows; it opens the answer. */
-export function DecisionAnswerButton({ continuing, onClick, taskId }: DecisionAnswerButtonProps) {
+/** The only control a card with a decision request shows; it opens the list of messages at its question. */
+export function DecisionAnswerButton({ onClick, taskId }: DecisionAnswerButtonProps) {
   const { t } = useTranslation();
-  const Icon = continuing ? PencilIcon : CircleHelpIcon;
   return (
     <Button
       type="button"
-      variant={continuing ? 'outline' : 'default'}
       className="decision-answer-button"
       data-decision-answer=""
       data-task-id={taskId}
       onClick={onClick}
     >
-      <Icon aria-hidden="true" />
-      {continuing ? t('answer.continue') : t('answer.open')}
+      <CircleHelpIcon aria-hidden="true" />
+      {t('answer.open')}
     </Button>
   );
 }

@@ -2,6 +2,8 @@ export type ColumnName = 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
 export type Assignee = 'ai' | 'human';
 export type Actor = 'ai' | 'human';
+/** Who still writes a card or epic: a person in the browser, or an AI proposal a person starts. */
+export type Draft = 'human' | 'ai';
 
 /** One option of a decision request. */
 export interface Choice {
@@ -31,7 +33,7 @@ export interface EpicRef {
 }
 
 export interface Epic extends EpicRef {
-  isDraft: boolean;
+  draft: Draft | null;
   /** The whole EPIC.md text, frontmatter included. */
   document: string;
   /** EPIC.md without its frontmatter. The whole file when the frontmatter has a defect. */
@@ -98,7 +100,7 @@ export interface TaskSummary {
   /** When the task was created; a card built from the Summary carries it. */
   createdAt?: string;
   /** A draft is read-only for agents until a person finalizes it. */
-  isDraft: boolean;
+  draft: Draft | null;
   /** The conditions themselves, or only their counts where the text is not loaded. */
   acceptance: AcceptanceItem[] | AcceptanceCounts;
   /** The conditions cannot be read from the frontmatter. */
@@ -130,7 +132,7 @@ export interface Task {
   updatedAt: string;
   agentStatusChangedAt: string;
   /** A draft is read-only for agents until a person finalizes it. */
-  isDraft: boolean;
+  draft: Draft | null;
   archivedAt?: string | null;
   /** TASK.md frontmatter history, read from the canonical Markdown file. */
   history: HistoryEvent[];

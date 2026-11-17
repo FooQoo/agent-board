@@ -43,7 +43,7 @@ describe('call log', () => {
 describe('epic API fake (EpicDialog contract)', () => {
   it('records each write in order with its arguments, and answers with the given outcome', async () => {
     const { api, calls } = createFakeEpicApi(async () => undefined);
-    await api.saveDetails({ name: 'Renamed', color: '#ff0000', isDraft: false });
+    await api.saveDetails({ name: 'Renamed', color: '#ff0000', draft: null });
     await api.savePlan({ plan: '# Plan' });
     await api.savePriority([3, 1, 2]);
     expect(calls.calls.map(([method]) => method)).toEqual([
@@ -53,7 +53,7 @@ describe('epic API fake (EpicDialog contract)', () => {
     ]);
     expect(calls.calls[0]).toEqual([
       'saveDetails',
-      { name: 'Renamed', color: '#ff0000', isDraft: false },
+      { name: 'Renamed', color: '#ff0000', draft: null },
     ]);
     expect(calls.calls[2]).toEqual(['savePriority', [3, 1, 2]]);
   });
@@ -64,7 +64,7 @@ describe('epic API fake (EpicDialog contract)', () => {
     });
     await api.savePlan({ body: 'Body' });
     await expect(
-      api.saveDetails({ name: 'Retry me', color: '#00ff00', isDraft: true }),
+      api.saveDetails({ name: 'Retry me', color: '#00ff00', draft: 'human' }),
     ).rejects.toThrow('stage 2 failed');
     expect(calls.calls.map(([method]) => method)).toEqual(['savePlan', 'saveDetails']);
   });

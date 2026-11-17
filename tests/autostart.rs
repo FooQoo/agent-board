@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 const STARTED_PREFIX: &str = "Started the Agent Board server at http://127.0.0.1:";
-const QUESTION: &str = r#"{"questions":[{"question":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]}"#;
+const QUESTION: &str = r#"{"questions":[{"body":"Which?","choices":[{"id":"a","label":"A"},{"id":"b","label":"B"}]}]}"#;
 const STARTED_SUFFIX: &str = "/ in the background. It stops by itself after ";
 
 struct Board {
@@ -252,21 +252,21 @@ fn commands_that_do_not_need_the_server_start_none() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
         ],
         vec!["--project", "Auto", "ls"],
         vec!["--project", "Auto", "progress"],
         vec![
             "--project",
             "Auto",
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             "1",
             "--no-wait",
-            "--request-json",
+            "--questions-json",
             QUESTION,
         ],
     ] {
@@ -289,13 +289,13 @@ fn a_question_that_waits_starts_the_server_before_it_is_saved() {
         "--assignee",
         "ai",
         "--actor",
-        "ai",
+        "human",
     ]);
     assert!(added.status.success(), "{added:?}");
     let asked = board.run(&[
         "--project",
         "Auto",
-        "qa",
+        "message",
         "ask",
         "--actor",
         "ai",
@@ -303,7 +303,7 @@ fn a_question_that_waits_starts_the_server_before_it_is_saved() {
         "1",
         "--timeout",
         "1",
-        "--request-json",
+        "--questions-json",
         QUESTION,
         "--json",
     ]);

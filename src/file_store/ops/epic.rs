@@ -58,7 +58,7 @@ fn view_of(file: EpicFile, document: String) -> EpicView {
         id: file.id,
         name: file.name,
         color: file.color,
-        is_draft: file.is_draft,
+        draft: file.draft,
         document,
         body: parts.body,
         priority,

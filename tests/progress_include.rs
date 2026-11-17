@@ -34,7 +34,15 @@ fn json(assert: assert_cmd::assert::Assert) -> Value {
 }
 
 fn add(home: &Path, title: &str, epic: Option<&str>) -> i64 {
-    let mut args = vec!["add", title, "--assignee", "ai", "--actor", "ai", "--json"];
+    let mut args = vec![
+        "add",
+        title,
+        "--assignee",
+        "ai",
+        "--actor",
+        "human",
+        "--json",
+    ];
     if let Some(epic) = epic {
         args.extend(["--epic", epic]);
     }
@@ -93,14 +101,14 @@ fn board() -> Board {
     out(agboard(
         home.path(),
         &[
-            "qa",
+            "message",
             "ask",
             "--actor",
             "ai",
             "--task",
             &w,
-            "--request-json",
-            r#"{"questions":[{"question":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}]}"#,
+            "--questions-json",
+            r#"{"questions":[{"body":"Proceed?","choices":[{"id":"y","label":"Yes"},{"id":"n","label":"No"}]}]}"#,
             "--no-wait",
         ],
     ));

@@ -19,7 +19,7 @@ const DRAFT = makeTask({
   id: 14,
   title: 'CLI target selection',
   description: '## Goal\n\nExplain the target.\n\n## Done when\n\n- [ ] AC-1',
-  isDraft: true,
+  draft: 'human',
 });
 
 function deferred() {
@@ -72,7 +72,7 @@ describe('epic row', () => {
     const task = makeTask({
       id: 15,
       title: 'Labeled draft',
-      isDraft: true,
+      draft: 'human',
       epic: { id: 'SHARED-FILES', name: 'Shared files', color: '#7C3AED' },
     });
     const { dialog } = await openEdit(async () => undefined, task);
@@ -191,7 +191,7 @@ describe('edit dialog layout', () => {
   it('marks the first chapter as current when the text starts before any chapter', async () => {
     const task = makeTask({
       id: 14,
-      isDraft: true,
+      draft: 'human',
       description:
         'An introduction before the first chapter.\n\n## Goal\n\nText.\n\n## Done when\n\n- [ ] AC-1',
     });
@@ -271,7 +271,7 @@ describe('saving', () => {
     const onSubmit = vi.fn(async (_data: Data) => undefined);
     const task = makeTask({
       id: 14,
-      isDraft: true,
+      draft: 'human',
       description: '## Goal\n\nBody.',
       attachments: [
         {
@@ -297,7 +297,7 @@ describe('saving', () => {
   });
 
   it('normalizes CRLF line endings of the stored text', async () => {
-    const task = makeTask({ id: 3, isDraft: true, description: 'a\r\nb' });
+    const task = makeTask({ id: 3, draft: 'human', description: 'a\r\nb' });
     const { dialog } = await openEdit(undefined, task);
     expect(descriptionOf(dialog)).toBe('a\nb');
     expect(button(dialog, 'Save').disabled).toBe(true);
@@ -333,7 +333,7 @@ describe('save failures', () => {
   it('keeps the input and finished steps, shows the message, and retries only what is left', async () => {
     const task = makeTask({
       id: 14,
-      isDraft: true,
+      draft: 'human',
       description: '## Goal\n\nBody.',
       attachments: [
         {

@@ -180,7 +180,7 @@ fn history_add_enforces_write_guards_and_reports_bad_arguments() {
     let draft = server.write(
         "PUT",
         &format!("{task_path}/draft"),
-        Some(r#"{"isDraft":true}"#),
+        Some(r#"{"draft":"human"}"#),
     );
     assert_eq!(draft.status, 200, "{}", draft.body);
     assert_eq!(
@@ -190,7 +190,7 @@ fn history_add_enforces_write_guards_and_reports_bad_arguments() {
     server.write(
         "PUT",
         &format!("{task_path}/draft"),
-        Some(r#"{"isDraft":false}"#),
+        Some(r#"{"draft":null}"#),
     );
     server.write("POST", &format!("{task_path}/archive"), None);
     assert_eq!(

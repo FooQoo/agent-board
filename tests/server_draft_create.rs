@@ -54,13 +54,13 @@ fn a_task_added_as_a_draft_is_a_draft_with_an_idle_agent() {
     let task = created(&post_task(
         &server,
         &pid,
-        r#"{"title":"Draft work","description":"","assignee":"ai","isDraft":true}"#,
+        r#"{"title":"Draft work","description":"","assignee":"ai","draft":"human"}"#,
     ));
-    assert_eq!(task["isDraft"], true);
+    assert_eq!(task["draft"], "human");
     assert_eq!(task["agentStatus"], "idle");
     assert_eq!(task["taskStatus"], "todo");
     let id = task["id"].as_i64().unwrap();
-    assert_eq!(task_in_board(&server, &pid, id)["isDraft"], true);
+    assert_eq!(task_in_board(&server, &pid, id)["draft"], "human");
 }
 
 #[test]
@@ -78,10 +78,10 @@ fn a_task_added_without_the_flag_or_with_false_is_a_normal_task() {
     let explicit = created(&post_task(
         &server,
         &pid,
-        r#"{"title":"Explicit","description":"","assignee":"human","isDraft":false}"#,
+        r#"{"title":"Explicit","description":"","assignee":"human","draft":null}"#,
     ));
-    assert_eq!(absent["isDraft"], false);
-    assert_eq!(explicit["isDraft"], false);
+    assert_eq!(absent["draft"], serde_json::Value::Null);
+    assert_eq!(explicit["draft"], serde_json::Value::Null);
 }
 
 #[test]
@@ -95,14 +95,14 @@ fn the_draft_flag_must_be_a_boolean_and_nothing_is_added_when_it_is_not() {
     let reply = post_task(
         &server,
         &pid,
-        r#"{"title":"Bad flag","description":"","assignee":"ai","isDraft":"yes"}"#,
+        r#"{"title":"Bad flag","description":"","assignee":"ai","draft":"yes"}"#,
     );
     assert_ne!(reply.status, 201, "{}", reply.body);
     assert_eq!(board_tasks(&server, &pid).len(), before);
 }
 
 /// The multipart metadata for a new task with one image, optionally as a draft.
-fn task_with_image_metadata(draft: Option<bool>) -> String {
+fn task_with_image_metadata(draft: Option<&str>) -> String {
     let mut metadata = json!({
         "requestId": "22222222222222222222222222222222",
         "title": "Task with image",
@@ -111,7 +111,7 @@ fn task_with_image_metadata(draft: Option<bool>) -> String {
         "attachments": [{"id": IMAGE_ID, "name": "shot.png"}]
     });
     if let Some(draft) = draft {
-        metadata["isDraft"] = json!(draft);
+        metadata["draft"] = json!(draft);
     }
     metadata.to_string()
 }
@@ -122,7 +122,7 @@ fn a_task_with_an_image_can_be_added_as_a_draft_in_one_request() {
     demo_project(home.path());
     let pid = project_id(home.path());
     let server = Running::start(home.path());
-    let metadata = task_with_image_metadata(Some(true));
+    let metadata = task_with_image_metadata(Some("human"));
     let body = multipart(
         BOUNDARY,
         &[("metadata", &metadata)],
@@ -136,11 +136,11 @@ fn a_task_with_an_image_can_be_added_as_a_draft_in_one_request() {
         BOUNDARY,
     );
     let task = created(&reply);
-    assert_eq!(task["isDraft"], true);
+    assert_eq!(task["draft"], "human");
     assert_eq!(task["agentStatus"], "idle");
     assert_eq!(task["attachments"].as_array().unwrap().len(), 1);
     let id = task["id"].as_i64().unwrap();
-    assert_eq!(task_in_board(&server, &pid, id)["isDraft"], true);
+    assert_eq!(task_in_board(&server, &pid, id)["draft"], "human");
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn a_task_with_an_image_is_a_normal_task_without_the_flag() {
         BOUNDARY,
     );
     let task = created(&reply);
-    assert_eq!(task["isDraft"], false);
+    assert_eq!(task["draft"], serde_json::Value::Null);
 }
 
 #[test]
@@ -181,7 +181,7 @@ fn an_edit_refuses_the_draft_flag_and_changes_nothing() {
     let metadata = json!({
         "requestId": "33333333333333333333333333333333",
         "title": "Changed",
-        "isDraft": true
+        "draft": "human"
     })
     .to_string();
     let body = multipart(BOUNDARY, &[("metadata", &metadata)], &[]);
@@ -195,5 +195,5 @@ fn an_edit_refuses_the_draft_flag_and_changes_nothing() {
     assert_eq!(reply.status, 422, "{}", reply.body);
     let after = task_in_board(&server, &pid, id);
     assert_eq!(after["title"], "Editable");
-    assert_eq!(after["isDraft"], false);
+    assert_eq!(after["draft"], serde_json::Value::Null);
 }

@@ -34,8 +34,8 @@ pub fn home() -> tempfile::TempDir {
         title: "Sample".into(),
         description: "## 作業内容\n\nRead-only fixture\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Verify\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
         assignee: Assignee::Ai,
-        actor: Actor::Ai,
-        is_draft: false,
+        actor: Actor::Human,
+        draft: None,
     }, chrono::Utc::now()).unwrap();
     home
 }

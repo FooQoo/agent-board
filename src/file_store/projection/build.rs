@@ -32,7 +32,7 @@ fn task_fields(task: &TaskView) -> TaskSummaryFields {
         task_status: task.task_status,
         agent_status: task.agent_status,
         assignee: task.assignee,
-        is_draft: task.is_draft,
+        draft: task.draft,
         position: task.position,
         epic_id: task.epic_id.clone(),
         acceptance_done: task.acceptance.iter().filter(|item| item.done).count() as u32,
@@ -79,7 +79,7 @@ fn epic_projection(epic: &EpicView, progress: EpicProgress, damaged: bool) -> Ep
         id: epic.id.as_str().to_string(),
         name: epic.name.clone(),
         color: epic.color.clone(),
-        is_draft: epic.is_draft,
+        draft: epic.draft,
         priority: epic.priority.clone(),
         priority_error: epic.priority_error,
     };
@@ -128,11 +128,9 @@ fn raw_digest(files: &[std::path::PathBuf]) -> String {
 }
 
 fn question_summary(question: &QuestionView) -> QuestionSummary {
-    let first = question.question.lines().next().unwrap_or_default();
+    let first = question.body.lines().next().unwrap_or_default();
     QuestionSummary {
         id: question.id.clone(),
-        request_id: question.request_id.clone(),
-        kind: question.kind,
         title: first.chars().take(200).collect(),
         recommended_choice_id: question.recommended_choice_id.clone(),
         referenced_by: question.referenced_by.clone(),
@@ -205,8 +203,8 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         .filter(|q| q.status == QuestionStatus::Open)
         .map(question_summary)
         .collect();
-    // Every question counts, so an answer or a withdrawal is a change of the QA.
-    let qa_hash = digest(&snapshot.questions);
+    // Every message counts, so a reply or a withdrawal is a change of the QA.
+    let qa_hash = digest(&(&snapshot.questions, &snapshot.requests));
     let version = digest(&(
         &qa_hash,
         &project_id,
@@ -248,6 +246,7 @@ pub fn project(shared: &Path, snapshot: &ProjectSnapshot) -> Projection {
         problems,
         questions,
         qa_hash,
+        messages: crate::file_store::message::messages(snapshot),
         broken_tasks,
         broken_epics,
     }

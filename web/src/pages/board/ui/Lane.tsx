@@ -5,10 +5,11 @@ import { useScrollCue } from '../../../shared/lib/scroll/useScrollCue';
 import type { TaskSummary as TaskModel, ColumnName, EpicRef } from '../../../shared/api/contracts';
 import { EpicLabel } from '../../../features/epics/label/EpicLabel';
 import { TaskCard } from '../../../features/tasks/card/TaskCard';
+import { PlanCardFor } from '../../../features/tasks/plans/PlanCard';
+import type { Plan } from '../../../features/tasks/plans/model/plan';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 export interface LaneProps {
   column: ColumnName;
@@ -18,8 +19,10 @@ export interface LaneProps {
   onArchive?: () => void;
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
+  /** The plans (approvals) shown as cards at the top of Todo; they count in the lane's number. */
+  plans?: Plan[];
+  onOpenPlan?: (plan: Plan) => void;
 }
 
 export function Lane({
@@ -30,8 +33,9 @@ export function Lane({
   onArchive,
   onOpenEpic,
   projectId,
-  answers,
   onAnswer,
+  plans = [],
+  onOpenPlan,
 }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
@@ -54,9 +58,12 @@ export function Lane({
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >
-      <LaneHeader column={column} count={tasks.length} onArchive={onArchive} />
+      <LaneHeader column={column} count={tasks.length + plans.length} onArchive={onArchive} />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <div className="lane__cards" ref={listRef}>
+          {plans.map((plan) => (
+            <PlanCardFor key={plan.id} plan={plan} onReview={() => onOpenPlan?.(plan)} />
+          ))}
           {tasks.map((task, index) => (
             <TaskCard
               key={task.id}
@@ -66,7 +73,6 @@ export function Lane({
               onSelect={onSelect}
               renderEpic={renderEpic}
               projectId={projectId}
-              answers={answers}
               onAnswer={onAnswer}
             />
           ))}

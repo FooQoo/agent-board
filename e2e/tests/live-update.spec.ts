@@ -2,6 +2,7 @@ import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { openAnswer, sendAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // Card IDs are never reused, so the first card a test creates gets the number that is next after the reset.
 let fresh = 0;
@@ -116,7 +117,7 @@ test('agboard state and the question it waits on update the run state without re
   agboardOk(mainProject, ['state', '13', 'running']);
   await expect(doing.getByRole('button', { name: /^#13 AI Running Check the board display / })).toBeVisible();
 
-  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Waiting for a review'))]).stdout);
+  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Waiting for a review'))]).stdout.split('\n')[0]);
   const pending = doing.getByRole('button', { name: /^#13 AI Pending Check the board display / });
   await expect(pending).toBeVisible();
   // The card offers the button only; the question is read in the dialog.
@@ -125,7 +126,7 @@ test('agboard state and the question it waits on update the run state without re
   await page.keyboard.press('Escape');
 
   // Pending comes from the open question, so the wait ends when the question is withdrawn.
-  agboardOk(mainProject, ['qa', 'withdraw', asked.requestId, '--actor', 'ai', '--reason', 'Review no longer needed.']);
+  agboardOk(mainProject, ['message', 'withdraw', asked.questions[0].id, '--actor', 'ai']);
   await expect(doing.getByRole('button', { name: /^#13 AI Idle Check the board display / })).toBeVisible();
   await expect(doing.getByText('Waiting for a review')).toHaveCount(0);
   await notReloaded(page);
@@ -208,7 +209,8 @@ test('a user answer returns a pending task to idle and records the full answer i
   // The request stays read-only in details; the response is entered in the card's answer dialog.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const fullAnswer = 'Keep the current database name.\nDo not migrate or delete user data.';
-  await sendAnswer(page, 12, { text: fullAnswer });
+  await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: fullAnswer });
+  await closeMessages(page);
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);

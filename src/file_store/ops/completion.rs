@@ -44,7 +44,7 @@ impl FileStore {
             };
             let task = loaded.view;
             if task.assignee != crate::domain::Assignee::Ai
-                || task.is_draft
+                || task.draft.is_some()
                 || task.archived_at.is_some()
                 || !matches!(task.task_status, Column::Todo | Column::Doing)
                 || index.is_waiting(&task.question_ids, task.questions_error)
@@ -68,7 +68,7 @@ impl FileStore {
                 || parsed.acceptance.is_empty()
                 || parsed.acceptance.iter().any(|item| !item.done)
                 || task.assignee != crate::domain::Assignee::Ai
-                || task.is_draft
+                || task.draft.is_some()
                 || task.archived_at.is_some()
                 || !matches!(task.task_status, Column::Todo | Column::Doing)
             {

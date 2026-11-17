@@ -60,7 +60,6 @@ export default function MobileBoard({
       key={activeId}
       {...environment}
       projectId={activeId}
-      book={model.answers.book}
       useBuildReload={reloadsElsewhere}
       build={null}
       stream={model.streamDown ? 'disconnected' : 'connected'}

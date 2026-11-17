@@ -2,7 +2,8 @@ import { expect, test } from '../helpers/fixtures';
 import { agboardOk, askArgs, mainProject, nextTaskId, projectId, questionJson, resetBoard } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, openAnswer } from '../helpers/answer';
+import { answerButton, answerSend, openAnswer, send } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 test.beforeEach(() => resetPreferences());
 
@@ -22,7 +23,7 @@ for (const { locale, theme, height } of [
     resetBoard(mainProject);
     for (let i = 0; i < 3; i++) {
       const id = nextTaskId(mainProject);
-      agboardOk(mainProject, ['add', `Pending layout ${i}`, '--assignee', 'ai', '--actor', 'ai']);
+      agboardOk(mainProject, ['add', `Pending layout ${i}`, '--assignee', 'ai', '--actor', 'human']);
       agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Layout sample']);
       agboardOk(mainProject, askArgs(String(id), questionJson(
         `Which approach should be used for sample ${i}?`,
@@ -49,11 +50,11 @@ for (const { locale, theme, height } of [
   test(`a crowded lane keeps a long pending request readable and answerable (${locale}, ${height})`, async ({ page }, testInfo) => {
     resetBoard(mainProject);
     for (let i = 0; i < 12; i++) {
-      agboardOk(mainProject, ['add', `Other work ${i}`, '--assignee', 'ai', '--actor', 'ai']);
+      agboardOk(mainProject, ['add', `Other work ${i}`, '--assignee', 'ai', '--actor', 'human']);
     }
     const id = nextTaskId(mainProject);
     const question = '共有ホームとsetupの全体計画と詳細計画を承認しますか？ ~/.agent-boardを既定の保存先にし、agboard setupでCodex・Claude Codeの共有フォルダ設定へ追加します。既存設定を保持し、旧データの移行は行いません。';
-    agboardOk(mainProject, ['add', '共有ホームとsetupの計画をレビューする', '--assignee', 'ai', '--actor', 'ai']);
+    agboardOk(mainProject, ['add', '共有ホームとsetupの計画をレビューする', '--assignee', 'ai', '--actor', 'human']);
     agboardOk(mainProject, askArgs(String(id), questionJson(
       question,
       [{ id: 'approve', label: 'この計画を承認する' }, { id: 'revise', label: '計画を修正する' }],
@@ -90,17 +91,14 @@ for (const { locale, theme, height } of [
 
     // The dialog reads the whole question and keeps the answer in view.
     const dialog = await openAnswer(page, id);
-    await expect(dialog.locator('.decision-panel').getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(dialog.getByText(question, { exact: true })).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-question.png') });
-    // The card's only question is the last, so the footer button is Send rather than Next.
-    const sendName = locale === 'ja' ? '送る' : 'Send';
-    await expect(answerDialog(page).getByRole('button', { name: sendName, exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(answerSend(page)).toBeInViewport({ ratio: 1 });
     await page.screenshot({ path: testInfo.outputPath('pending-answer.png') });
     await dialog.getByText('この計画を承認する', { exact: true }).click();
-    const send = answerDialog(page).getByRole('button', { name: sendName, exact: true });
-    await expect(send).toBeInViewport({ ratio: 1 });
-    await send.click();
-    await expect(dialog).toBeHidden();
+    await expect(answerSend(page)).toBeInViewport({ ratio: 1 });
+    await send(page);
+    await closeMessages(page);
     await expect(answer).toHaveCount(0);
     const result = JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
     expect(result.agentStatus).toBe('idle');

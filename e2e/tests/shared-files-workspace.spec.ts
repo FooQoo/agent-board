@@ -88,7 +88,7 @@ test('a shared folder and an epic are created by the CLI, and the epic label sho
   await expect(label).toHaveCount(1);
   await expect(label).toHaveCSS('background-color', 'rgb(124, 58, 237)');
   await expect(task(page, taskId).getByText('FILE-SHARE')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add task', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toBeVisible();
   removeProject(name);
 });
 
@@ -216,7 +216,7 @@ test('a second CLI process reads the same board from another folder while the pa
   // Reading from a fresh process in an unrelated directory gives the same card list as the page sees.
   const elsewhere = mkdtempSync(path.join(work, 'elsewhere-'));
   const id = nextTaskId(mainProject);
-  const result = cliFrom(elsewhere, ['--project', mainProject, 'add', 'From another folder', '--assignee', 'ai', '--actor', 'ai']);
+  const result = cliFrom(elsewhere, ['--project', mainProject, 'add', 'From another folder', '--assignee', 'ai', '--actor', 'human']);
   expect(result.code).toBe(0);
   const listed = JSON.parse(cliFrom(elsewhere, ['--project', mainProject, 'ls', '--json']).stdout).tasks as { id: number }[];
   expect(listed.map((c) => c.id)).toContain(id);

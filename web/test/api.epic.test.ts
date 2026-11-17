@@ -10,7 +10,7 @@ import { epicApi } from '../src/features/epics/editor/epicApi';
 import type { EditorAttachment } from '../src/shared/ui/editor/attachmentTypes';
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
-const EPIC = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED', isDraft: false };
+const EPIC = { id: 'FILE-SHARE', name: 'File share', color: '#7C3AED', draft: null };
 
 function stubFetch(status: number, body: unknown) {
   const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -41,7 +41,7 @@ describe('epic writes', () => {
       color: '#7C3AED',
       document: '---\npriority: [1]\n---\n## Goal',
     });
-    await api.save({ name: 'File share', color: '#7C3AED', body: '## Goal', isDraft: false });
+    await api.save({ name: 'File share', color: '#7C3AED', body: '## Goal', draft: null });
     const [first, second] = fetchMock.mock.calls;
     expect(JSON.parse(String(first?.[1]?.body))).toEqual({
       name: 'File share',
@@ -52,19 +52,19 @@ describe('epic writes', () => {
       name: 'File share',
       color: '#7C3AED',
       body: '## Goal',
-      isDraft: false,
+      draft: null,
     });
   });
 
-  it('enters a draft with isDraft and takes it back with a discard', async () => {
-    const fetchMock = stubFetch(200, { epic: { ...EPIC, isDraft: true } });
+  it('enters a draft with draft and takes it back with a discard', async () => {
+    const fetchMock = stubFetch(200, { epic: { ...EPIC, draft: 'human' } });
     const api = epicApi(PROJECT, 'FILE-SHARE', () => {});
-    expect((await api.enterDraft()).isDraft).toBe(true);
+    expect((await api.enterDraft()).draft).toBe('human');
     await api.leaveDraft();
     const [first, second] = fetchMock.mock.calls;
     expect(first?.[1]?.method).toBe('PATCH');
-    expect(JSON.parse(String(first?.[1]?.body))).toEqual({ isDraft: true });
-    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ isDraft: false });
+    expect(JSON.parse(String(first?.[1]?.body))).toEqual({ draft: 'human' });
+    expect(JSON.parse(String(second?.[1]?.body))).toEqual({ draft: null });
   });
 
   it('puts a task into an epic and takes it out with null', async () => {

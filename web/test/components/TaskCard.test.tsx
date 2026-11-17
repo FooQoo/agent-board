@@ -2,7 +2,6 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TaskCard } from '../../src/features/tasks/card/TaskCard';
-import { AnswerBook } from '../../src/features/tasks/answer/model/answerBook';
 import { i18n } from '../../src/shared/i18n';
 import { fixtureTask, makeTask } from '../fixtures';
 
@@ -92,7 +91,6 @@ describe('Task', () => {
   it('shows only the answer button on the pending task and keeps its click from selecting the task', async () => {
     const onSelect = vi.fn();
     const onAnswer = vi.fn();
-    const book = new AnswerBook();
     const task = makeTask({
       id: 41,
       taskStatus: 'todo',
@@ -107,7 +105,6 @@ describe('Task', () => {
         selected={false}
         onSelect={onSelect}
         projectId="project-1"
-        answers={book}
         onAnswer={onAnswer}
       />,
     );
@@ -124,8 +121,7 @@ describe('Task', () => {
     expect(onSelect).toHaveBeenCalledWith(41);
   });
 
-  it('counts the open questions of a card, and offers to continue once an answer is held', () => {
-    const book = new AnswerBook();
+  it('counts the open questions of a card and offers to answer them', () => {
     const task = makeTask({
       id: 43,
       taskStatus: 'todo',
@@ -139,21 +135,16 @@ describe('Task', () => {
         selected={false}
         onSelect={noop}
         projectId="project-1"
-        answers={book}
         onAnswer={noop}
       />
     );
-    const { rerender } = render(card());
+    render(card());
     expect(screen.getByText('Unanswered questions: 2')).toBeTruthy();
     expect(screen.queryByText('Choose a direction')).toBeNull();
     expect(screen.getByRole('button', { name: 'Answer the question' })).toBeTruthy();
-    act(() => book.setText('project-1' as never, 'Q-2', 'Later'));
-    rerender(card());
-    expect(screen.getByRole('button', { name: 'Continue answering' })).toBeTruthy();
   });
 
   it('keeps the waiting reason visible when no decision request is active', () => {
-    const book = new AnswerBook();
     const task = makeTask({
       id: 42,
       taskStatus: 'doing',
@@ -162,15 +153,7 @@ describe('Task', () => {
       pendingRequestId: null,
     });
 
-    render(
-      <TaskCard
-        task={task}
-        selected={false}
-        onSelect={noop}
-        projectId="project-1"
-        answers={book}
-      />,
-    );
+    render(<TaskCard task={task} selected={false} onSelect={noop} projectId="project-1" />);
 
     expect(screen.getByText('Waiting for the request to be restored.')).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: 'Your answer' })).toBeNull();

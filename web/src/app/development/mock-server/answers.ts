@@ -4,7 +4,7 @@ import type { MockContext, MockResponse } from './types.ts';
 import { error, json, taskChangeOf } from './wire.ts';
 
 /**
- * `POST .../qa/answers`: every answer is checked first and all are saved together, or none. The
+ * `POST .../messages/answers`: every answer is checked first and all are saved together, or none. The
  * mock keeps one question per waiting card, named by its request.
  */
 export function answerQuestion(
@@ -23,7 +23,7 @@ export function answerQuestion(
     const id = input.questionId;
     const task = found.tasks.find((t) => t.agentStatus === 'pending' && t.pendingRequestId === id);
     if (!task)
-      return error(404, 'question_not_found', `question ${String(id)} not found.`, 'Refresh.');
+      return error(404, 'message_not_found', `question ${String(id)} not found.`, 'Refresh.');
     const choiceId = typeof input.choiceId === 'string' ? input.choiceId : undefined;
     const text = typeof input.text === 'string' ? input.text.trim() : '';
     if (text.length > 2000)
@@ -40,7 +40,7 @@ export function answerQuestion(
     if (choiceId !== undefined && !choice)
       return error(
         422,
-        'request_choice_unknown',
+        'choice_unknown',
         'the choice is not part of this request.',
         'Choose one of the options of the request.',
       );

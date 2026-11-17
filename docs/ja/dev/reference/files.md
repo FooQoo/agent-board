@@ -17,8 +17,8 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |
 | `taskStatus` | レーン。`todo`・`doing`・`done`。 |
 | `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
-| `agentStatus` | AIの稼働状態。`task.json`には`idle`か`running`を保存します。TodoかDoingのAIタスクが人の判断待ちのとき、読み出すと`pending`になります（[質問と回答](../concepts/history-and-decisions.md#質問と回答)）。保存された`pending`は`idle`として読みます。 |
-| `isDraft` | 既定は`false`。人が準備中のタスク（下書き）。エピックの場合、CLIの`epic edit`は下書きを`epic_is_draft`で拒否する。 |
+| `agentStatus` | AIの稼働状態。`task.json`には`idle`か`running`を保存します。TodoかDoingのAIタスクが人の判断待ちのとき、読み出すと`pending`になります（[メッセージ](../concepts/history-and-decisions.md#メッセージ)）。保存された`pending`は`idle`として読みます。 |
+| `draft` | `null`・`"human"`・`"ai"`のいずれか。`human`は人がブラウザで書いている下書き、`ai`はエージェントが作った提案で、開始できるのは人だけ。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読む。書き込みは`draft`だけを使う。エピックの場合、CLIの`epic edit`は`human`の下書きを`epic_is_draft`で拒否する。 |
 | `questions` | `TASK.md`のfrontmatterにあり、タスクが参照するプロジェクトの質問のIDを`[Q-12, Q-15]`のように並べます。省略・`null`・空はどれも0件で、重複は拒否します。 |
 | `requestAnswers` | 以前のAgent Boardが記録した回答。記録として残し、新しくは追加しません。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
@@ -45,7 +45,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
         docs/<任意のフォルダ>/<名前>.md
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
-        qa/<request-id>/request.json
+        qa/Q-<n>/{QA.md, attachments/<name>}
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
         .internal/batches/<batch-id>.json
@@ -91,7 +91,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   "taskStatus": "todo",
   "agentStatus": "idle",
   "position": 1,
-  "isDraft": false,
+  "draft": null,
   "archivedAt": null,
   "requestAnswers": [],
   "createdAt": "2026-10-10T00:00:00Z",
@@ -118,60 +118,72 @@ history:
 ---
 ```
 
-## 質問
+## メッセージ
 
-プロジェクトの質問は`qa/<request-id>/request.json`に保存します。まとめて出した質問の束ごとに1ファイルで、フォルダ名がリクエストIDです。
+AIから人への質問と、人からAIへの依頼は、どちらも`qa/Q-<n>/QA.md`という1つのファイルに保存します。YAMLのfrontmatterのあとに、本文としてMarkdownのテキストが続きます。依頼に添えた画像は`qa/Q-<n>/attachments/`に置きます。質問と依頼は`project.json`の`nextQuestionId`から採る1つの連番を共有するので、`Q-<n>`はどちらの種類でもプロジェクト内で一意です。フォルダ名がそのままIDです。
 
-```json
-{
-  "formatVersion": 1,
-  "requestId": "3f2a9c0d6b1e4f7a8c5d2e1f0a9b8c7d",
-  "createdAt": "2026-11-14T02:30:00Z",
-  "createdBy": "ai",
-  "withdrawnAt": null,
-  "withdrawReason": null,
-  "questions": [
-    {
-      "id": "Q-12",
-      "kind": "task",
-      "question": "既存の記録は消しますか、残しますか？",
-      "choices": [
-        { "id": "delete", "label": "消して作り直す" },
-        { "id": "keep", "label": "残して移す" }
-      ],
-      "recommendedChoiceId": "keep",
-      "approvingChoiceIds": [],
-      "answer": {
-        "choiceId": "keep",
-        "choiceLabel": "残して移す",
-        "text": null,
-        "actor": "human",
-        "via": "ui",
-        "at": "2026-11-14T02:41:10Z"
-      }
-    }
-  ]
-}
+質問の例です。
+
+```markdown
+---
+from: ai
+to: human
+tasks: [12]
+choices:
+  - { id: delete, label: 削除する }
+  - { id: keep, label: 残す }
+recommended: keep
+reply:
+  choice: keep
+  via: ui
+  at: 2026-11-14T02:41:10Z
+createdAt: 2026-11-14T02:30:00Z
+---
+既存のレコードは削除しますか、残しますか。
 ```
 
-| 項目 | 決まり |
+依頼の例です。
+
+```markdown
+---
+from: human
+to: ai
+acceptedAt: 2026-11-14T03:10:00Z
+acceptedBy: agent-1
+createdAt: 2026-11-14T03:00:00Z
+---
+設定画面にダークテーマを追加してください。
+```
+
+種類は`from`で決まります。`ai`なら質問（`to: human`）、`human`なら依頼（`to: ai`）です。frontmatterの未知のキーは拒否します。
+
+| 項目 | 規則 |
 | --- | --- |
-| `formatVersion` | 常に`1`。ほかの値は`format_unsupported`です。 |
-| `requestId` | 32桁の小文字16進で、フォルダ名と同じです。 |
-| `createdAt`・`createdBy` | 質問した時刻とactor（`ai`か`human`）。 |
-| `withdrawnAt`・`withdrawReason` | リクエスト全体を取り下げた時刻と、任意の理由（1〜2,000文字）。 |
-| `questions` | 1〜20問。質問した順に並びます。 |
-| `questions[].id` | `Q-<正の整数>`。プロジェクト内で一意で、`nextQuestionId`から振ります。 |
-| `questions[].kind` | `task`・`plan`・`start_approval`のどれか。 |
-| `questions[].question` | Markdownで1〜5,000文字。 |
-| `questions[].choices` | 2〜10件。質問内で一意のID（`[A-Za-z0-9_-]`の1〜64文字）と1〜200文字のラベルを持ちます。 |
-| `questions[].recommendedChoiceId` | `null`か、選択肢のどれか。 |
-| `questions[].approvingChoiceIds` | 承認にあたる選択肢。`start_approval`では1件以上、ほかの種類では空です。 |
-| `questions[].answer` | 未回答の間は`null`。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か1〜2,000文字で、選択と文の少なくとも一方があります。`actor`は常に`human`、`via`は`ui`・`chat`・`cli`のどれかです。 |
+| `from`、`to` | 質問は`ai`と`human`、依頼は`human`と`ai`。 |
+| 本文 | テキスト。質問は1〜5,000文字、依頼は1〜20,000文字。 |
+| `createdAt` | メッセージを作った時刻。 |
+| `withdrawnAt` | `null`、または取り下げた時刻。回答や受け付けのあるメッセージは取り下げません。 |
 
-状態は保存しません。質問は、回答がなくリクエストが取り下げられていない間は`open`、回答があれば`answered`、回答の前にリクエストが取り下げられたら`withdrawn`です。記録した回答を書き換えることはありません。質問を参照しているタスク（`referencedBy`）は、このファイルではなくタスクの`questions`から求めます。
+質問の項目です。
 
-壊れた`request.json`や、`formatVersion`が違うものは、どの一覧からも外し、`problems`に`projects/<id>/qa/<request-id>/request.json`として載せます。そのファイルへの書き込みは`file_invalid`で失敗します。
+| 項目 | 規則 |
+| --- | --- |
+| `tasks` | 省略できます。質問の対象としたタスク番号です。`message link`と`message unlink`で、そのタスクの`questions`と揃えて保ちます。 |
+| `choices` | 省略できます。2〜10個。選択肢のIDは質問内で一意（1〜64文字の`[A-Za-z0-9_-]`）、ラベルは1〜200文字です。選択肢がなければ、テキストで答えます。 |
+| `recommended` | 省略できます。選択肢のIDを1つ指定します。 |
+| `reply` | 回答があるまでは`null`。`choice`は質問に選択肢があるときだけ入ります。`text`は1〜2,000文字で、選択肢がなければ必須です。`via`は`ui`・`chat`・`cli`、`at`は記録した時刻です。 |
+
+依頼の項目です。
+
+| 項目 | 規則 |
+| --- | --- |
+| `acceptedAt`、`acceptedBy` | AIが受け付けるまでは`null`で、2つは一緒に書きます。`acceptedBy`は`--by`で渡すエージェントまたはセッションのID（1〜200文字）です。 |
+
+状態は保存しません。`withdrawnAt`があれば取り下げ済み、質問に`reply`がある、または依頼が受け付け済みなら完了、それ以外は未完了です。CLIとAPIでは、質問の状態を`open`・`answered`・`withdrawn`、依頼の状態を`open`・`accepted`・`withdrawn`で返します。両方に共通する絞り込みの語は`open`・`closed`・`withdrawn`です。
+
+回答は人が1回だけ書き、受け付けはAIが1回だけ書きます。取り下げたあとは何も書きません。質問を参照しているタスク（`referencedBy`）は、このファイルではなくタスクの`questions`から求めます。
+
+読めない`QA.md`、上の規則に反するもの、`Q-<n>`以外の名前のフォルダにあるものは、どの一覧からも外し、`problems`に`projects/<id>/qa/Q-<n>/QA.md`として載せます。そのファイルへの書き込みは`file_invalid`で失敗します。読めない質問を参照するタスクは、待ち（Pending）のままです。
 
 プロジェクトは`shared/projects/<project-id>/`を複製してバックアップし、`serve`を止めてフォルダを戻して復元します。エクスポートやインポートのコマンドはありません。[データのガイド](../../guide/operations/data.md)を参照してください。
 
@@ -229,7 +241,7 @@ CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。
 - プロジェクト一覧は`projects`（id・name・createdAt）と`catalogVersion`を返し、タスクは含みません。
 - `ls --all-projects --json`は、`catalogVersion`と、プロジェクトごとのスナップショットを名前順に返します。cursorはそれぞれのプロジェクトのものです。
 
-`problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`はタスクのファイルなら`frontmatter`・`acceptance[<index>].<key>`・`questions`・`history`・`history[<index>].<key>`のいずれか、`request.json`ならその項目、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
+`problems`は形式の不備を報告します。`[{ "file": "projects/<id>/tasks/12/TASK.md", "field": "acceptance[1].text", "reason": "The text must not be empty." }]`の形で、`field`はタスクのファイルなら`frontmatter`・`acceptance[<index>].<key>`・`questions`・`history`・`history[<index>].<key>`のいずれか、`QA.md`ならその項目、`file`は`shared/`からの相対パス、`reason`は英語です。不備が読み書きにどう影響するかは[保存と復旧](../concepts/saving-and-recovery.md#ファイルに不備があるとき)にあります。
 
 ## 初回の案内
 

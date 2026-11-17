@@ -51,7 +51,7 @@ export const commonJa = {
     loadError: 'ボードを読み込めませんでした。',
     retry: '再試行',
     empty: 'タスクはまだありません。',
-    emptyHint: '「タスク追加」から登録できます。',
+    emptyHint: '「AI に依頼」から始められます。',
     loadingBoard: 'ボードを読み込み中…',
     boardLoadError: 'ボードを読み込めませんでした',
     boardLoadErrorHint: 'もう一度お試しください。別のプロジェクトにも切り替えられます。',

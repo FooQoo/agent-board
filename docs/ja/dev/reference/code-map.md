@@ -35,11 +35,12 @@
 | `layout` | 検証済みのIDだけから所有パスを組み立てる。<br>文字列を直接パスにしない。 |
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、完了条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。複数のファイルをまとめて保存するバッチのジャーナル（`batch.rs`）も持つ。 |
-| `qa/` | 質問。`request.json`のモデル、その読み込みと検証、タスクに導く状態と判断待ち（`derive.rs`）。 |
+| `message.rs` | 質問・依頼・承認の共通の形（`Message`、`MessageSource`トレイト、`Question`・`Request`・`Approval`の3つの型）と、Summaryの`messages`の一覧。 |
+| `qa/` | メッセージ。質問と依頼のモデル（`model.rs`）、`QA.md`の読み書き（`codec.rs`）、ファイルが満たす規則（`check.rs`）、メッセージの置き場所と読み方（`store.rs`）、タスクに導く状態（`derive.rs`）、呼び出し側が受け取るビュー（`view.rs`）。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
 | `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
-| `ops/` | タスク・稼働状態・質問（`qa/`: 質問・回答・取り下げ・参照）・人による完了条件のチェック・エピック・画像・自動完了の操作。 |
+| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -54,7 +55,7 @@
 | `monitor_auth/` | 入口のアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認。 |
 | `response`<br>`request` | JSONのエラー本文、`AgboardError`からHTTPステータスへの対応、そのほかの共有の応答と、失敗時にそのエラー本文を返すJSONの本文。 |
-| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、質問の読み出しと回答の保存、人による完了条件1件の設定（ボードのハンドラーは`api/qa.rs`）。 |
+| `store`<br>`qa`<br>`acceptance` | すべてのルーターが使う、ブロッキングのファイルアクセス・索引・URLのIDと、メッセージの読み出し、回答の保存、依頼の送信と取り下げ（`messages.rs`。ボードのハンドラーは`api/messages.rs`）、人による完了条件1件の設定。 |
 | `web_assets` | 埋め込んだボードのスクリプトとスタイルシート、ビルドID、キャッシュできるgzipまたは非圧縮の応答。 |
 | `contracts/` | データ層の通信の型。Summary、DetailのNDJSONの各行、`changed`イベント。`tests/fixtures/data-layer/`の例が形を固定します。 |
 | `launch`<br>`bind`<br>`idle` | サーバー一つの起動と終了（`launch`）。待ち受けと、その失敗の意味、ポートを使っているもの、空きポートへの切り替え（`bind`）。自動のサーバーで「使われている」とみなすものと、使われないときの停止（`idle`）。 |
@@ -82,9 +83,11 @@
 - `src/cli/commands/setup.rs`: `agboard setup`と`agboard update`のオプション、エージェントの選択、確認の質問。
 - `src/agent/hook_version.rs`: Hookによるプラグインの版の確認。
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
-- `src/cli/commands/qa/`と`src/cli/args/qa.rs`: `agboard qa`の各コマンド、そのJSON入力、`qa ask`と`qa wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/qa_wait.rs`です。
-- `web/src/features/tasks/answer/`: 画面での回答。`model/answerBook.ts`は送るまで答えを保持し、`answerStart.ts`は単独とまとめての2種類の回答の流れに名前を付け、`runPlan`がそれぞれの持つ質問を決め、`useAnswerFlow.ts`はPCのダイアログとスマホ画面のシートが共有するステップと確認の流れを担い、`QuestionBand.tsx`は未回答の質問の帯で、PCのボードとスマホ画面で共通の、開閉できる帯です。`web/src/app/model/useQuestionAnswers.ts`は、これらをPCのボードとその保留につなぎます。
-- `web/src/pages/monitor/`: スマホ幅の画面です。`View.tsx`がヘッダー、質問の帯、レーンのタブ、レーンを組み立てます。`components/LaneTabs.tsx`は件数付きのタブ、`components/MonitorLanes.tsx`は指に追従するレーンのカルーセル（`hooks/useLaneCarousel.ts`）、`components/SwipeableCard.tsx`と`hooks/useCardGesture.ts`はカードの長押しで選ぶ動きとスライドして開く動き（`web/src/shared/lib/gesture/useSideSwipe.ts`の上に作っています）、`components/MonitorLaneDialogs.tsx`は移動・アーカイブ・まとめてアーカイブの確認です。`model/lanes.ts`はレーンの並びとスワイプで出るボタンを持ち、`hooks/useLaneOverlay.ts`はこのスマホが保存した内容を次の読み取りまで画面に残します。`components/MonitorLanesScreen.tsx`は同じ部品をStorybook用に組み立てます。`web/src/shared/viewport/stableHeight.ts`はソフトウェアキーボードが開いている間のページの高さを保ちます。
+- `src/cli/commands/message/`と`src/cli/args/message.rs`: `agboard message`の各コマンド、そのJSON入力（`input.rs`）、`message ask`と`message wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/message_wait.rs`です。
+- `web/src/features/tasks/messages/`: メッセージの一覧。`model/messages.ts`はタブ・件数・`canSendAnswer`、`api.ts`はメッセージの読み出しと回答・取り下げの送信、`MessageBand.tsx`は件数を示す帯（PCのボードとスマホ画面で共通）、`MessageCenter.tsx`は帯と一覧をつなぎ、`MessageRows.tsx`は行を描き、`MessagesSurface.tsx`は一覧・質問・依頼をモーダルまたは下からのシートで表示します。`web/src/features/tasks/answer/`は質問と回答の欄（`DecisionQuestion`・`DecisionAnswerFields`）を描き、`web/src/app/model/useMessagesController.ts`は一覧をPCのボードにつなぎます。
+- `web/src/features/messages/ask/`: **AIに依頼**のエディターと、multipartの依頼を組み立てる`sendRequest.ts`。
+- `web/src/features/tasks/plans/`: 承認の計画カードと計画のレビュー。`model/plan.ts`はSummaryの承認メッセージから`Plan`を作り（`plansOfSummary`）、`PlanCard.tsx`は未着手の先頭のカード（1件のタスクは`DraftTaskCard`）を描き、`PlanReview.tsx`は`Surface`で開くレビュー、`PlanReviewContainer.tsx`は新しいエピックのゴールを読み、`api/start.ts`で計画を開始し、`start_blocked_by_questions`を扱います。ボード（`pages/board/ui/Lane.tsx`）とスマホのモニター（`pages/monitor/components/MonitorLanes.tsx`）がカードを描き、どちらもAIの下書きのタスクをレーンから除きます。
+- `web/src/pages/monitor/`: スマホ幅の画面です。`View.tsx`がヘッダー、メッセージの帯、レーンのタブ、レーンを組み立てます。`components/LaneTabs.tsx`は件数付きのタブ、`components/MonitorLanes.tsx`は指に追従するレーンのカルーセル（`hooks/useLaneCarousel.ts`）、`components/SwipeableCard.tsx`と`hooks/useCardGesture.ts`はカードの長押しで選ぶ動きとスライドして開く動き（`web/src/shared/lib/gesture/useSideSwipe.ts`の上に作っています）、`components/MonitorLaneDialogs.tsx`は移動・アーカイブ・まとめてアーカイブの確認です。`model/lanes.ts`はレーンの並びとスワイプで出るボタンを持ち、`hooks/useLaneOverlay.ts`はこのスマホが保存した内容を次の読み取りまで画面に残します。`components/MonitorLanesScreen.tsx`は同じ部品をStorybook用に組み立てます。`web/src/shared/viewport/stableHeight.ts`はソフトウェアキーボードが開いている間のページの高さを保ちます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
 ### プロジェクトのドキュメント

@@ -116,7 +116,11 @@ impl FileStore {
             task_status: Column::Todo,
             agent_status: RunState::Idle,
             position,
-            is_draft: new.is_draft,
+            // A task an agent creates is a proposal until a person starts it.
+            draft: match new.actor {
+                crate::domain::Actor::Ai => Some(crate::domain::Draft::Ai),
+                crate::domain::Actor::Human => new.draft,
+            },
             archived_at: None,
             request_answers: Vec::new(),
             created_at: at,

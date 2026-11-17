@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { AttachmentResolver } from './model';
+import type { AttachmentResolver, RelativeImageResolver } from './model';
 
 /**
  * How a Markdown block is allowed to draw its diagrams. A block of kind `mermaid` waits until it is
@@ -25,6 +25,9 @@ export const ImageSizesContext = createContext<ImageSizes | undefined>(undefined
 
 /** Turns an attachment id of the card into the URL to show. */
 export const ResolverContext = createContext<AttachmentResolver | undefined>(undefined);
+
+/** Turns an image source written relative to the text (`attachments/<name>`) into the URL to show. */
+export const RelativeImageContext = createContext<RelativeImageResolver | undefined>(undefined);
 
 /** A second-level heading is drawn as a chapter title one level down, under a title that is already an H2. */
 export const ChapterHeadingsContext = createContext(false);

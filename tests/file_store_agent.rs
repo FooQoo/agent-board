@@ -81,8 +81,8 @@ impl Fixture {
                     title: title.into(),
                     description: String::new(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 now(),
             )
@@ -125,7 +125,7 @@ fn running_on_a_human_task_in_doing_is_refused() {
                 description: String::new(),
                 assignee: Assignee::Human,
                 actor: Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             now(),
         )
@@ -301,7 +301,13 @@ fn a_draft_task_refuses_agent_moves_and_accepts_user_moves() {
     let fx = fixture();
     let id = fx.ai_task("draft");
     fx.store
-        .set_draft(&fx.project, id, true, false, now())
+        .set_draft(
+            &fx.project,
+            id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            now(),
+        )
         .unwrap();
 
     let err = fx

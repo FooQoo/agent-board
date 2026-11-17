@@ -71,8 +71,8 @@ impl Fixture {
                     title: "Task".into(),
                     description: description.into(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
-                    is_draft: false,
+                    actor: Actor::Human,
+                    draft: None,
                 },
                 Utc.with_ymd_and_hms(2026, 10, 14, 0, 0, 0).unwrap(),
             )
@@ -149,7 +149,7 @@ fn malformed_history_keeps_body_and_acceptance_but_blocks_updates() {
     );
     let before_json = fs::read(fx.task_dir(id).join("task.json")).unwrap();
     assert!(matches!(
-        fx.store.set_draft(&fx.project, id, true, false, Utc::now()),
+        fx.store.set_draft(&fx.project, id, Some(agent_board::domain::Draft::Human), false, Utc::now()),
         Err(AgboardError::FileInvalid { field, .. }) if field == "history"
     ));
     assert_eq!(
@@ -190,7 +190,7 @@ fn state_history_and_questions_survive_reopen() {
     assert_eq!(pending.pending_reason.as_deref(), Some("Continue?"));
     assert_eq!(pending.pending_choices.len(), 2);
     assert_eq!(pending.question_ids, vec!["Q-1".to_string()]);
-    qa::answer(&reopened, &fx.project, "Q-1", None, Some("Proceed"));
+    qa::answer(&reopened, &fx.project, "Q-1", Some("yes"), Some("Proceed"));
     let answered = reopened.task(&fx.project, id).unwrap();
     assert_eq!(answered.agent_status, RunState::Idle);
     let json: serde_json::Value =

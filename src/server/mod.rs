@@ -15,8 +15,9 @@ pub mod guard;
 pub mod idle;
 pub(crate) mod instance;
 mod launch;
+mod messages;
+mod messages_send;
 pub(crate) mod preferences;
-mod qa;
 pub mod monitor_auth {
     pub mod contracts;
     pub mod guard;

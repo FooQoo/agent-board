@@ -4,17 +4,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectLocale } from '../../src/shared/i18n';
 import { MonitorView } from '../../src/pages/monitor/View';
 import type {
-  AnswersWriter,
-  BandQuestion,
-  QuestionDetail,
-} from '../../src/features/tasks/answer/model/qa';
+  AnswerItem,
+  MessageDetail,
+  MessagesApi,
+} from '../../src/features/tasks/messages/model/messages';
+import type { Message } from '../../src/shared/data/api/contracts';
 import type {
   MonitorTask,
   MonitorFreshness,
   MonitorViewProps,
 } from '../../src/pages/monitor/contracts';
 import { PROJECT_A, makeTask } from '../fixtures';
-import { useMonitorInteractions } from '../../src/pages/monitor/hooks/useMonitorInteractions';
 import { renderWithData as render } from './support';
 
 beforeEach(() => selectLocale('en'));
@@ -46,7 +46,7 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
             { id: 'a', label: 'Include both' },
             { id: 'b', label: 'Choose one' },
           ],
-          isDraft: true,
+          draft: 'human',
         }),
       ),
     ],
@@ -79,55 +79,86 @@ function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
   };
 }
 
-const QUESTIONS: BandQuestion[] = [
-  { id: 'Q-1', title: '## Should the draft include both approaches?', referencedBy: [1] },
-  { id: 'Q-4', title: '## Should the implementation use the shared form?', referencedBy: [4] },
+const question = (id: string, title: string, tasks: number[]): Message => ({
+  id,
+  type: 'question',
+  from: 'ai',
+  to: 'human',
+  turn: 'human',
+  title,
+  createdAt: '2026-10-12T00:00:00Z',
+  tasks,
+  epicId: null,
+});
+const request = (id: string, title: string): Message => ({
+  id,
+  type: 'request',
+  from: 'human',
+  to: 'ai',
+  turn: 'ai',
+  title,
+  createdAt: '2026-10-12T01:00:00Z',
+  tasks: [],
+  epicId: null,
+});
+
+const MESSAGES: Message[] = [
+  question('Q-1', 'Should the draft include both approaches?', [1]),
+  question('Q-4', 'Should the implementation use the shared form?', [4]),
+  request('Q-6', 'Add a forgot-password link'),
 ];
 
-async function readQuestion(_projectId: string, id: string): Promise<QuestionDetail> {
-  const found = QUESTIONS.find((question) => question.id === id);
+async function read(_projectId: string, id: string): Promise<MessageDetail> {
+  const found = MESSAGES.find((message) => message.id === id);
   return {
     id,
-    question: found?.title ?? '',
-    choices: [
-      { id: 'yes', label: 'Yes' },
-      { id: 'no', label: 'No' },
-    ],
+    type: found?.type === 'request' ? 'request' : 'question',
+    body: `## ${found?.title ?? ''}`,
+    choices:
+      found?.type === 'question'
+        ? [
+            { id: 'yes', label: 'Yes' },
+            { id: 'no', label: 'No' },
+          ]
+        : [],
     recommendedChoiceId: null,
     status: 'open',
-    referencedBy: found?.referencedBy ?? [],
+    referencedBy: found?.tasks ?? [],
   };
 }
 
-/** The view with the answer controller the page gives it. */
+/** The view with the messages the page gives it. */
 function Connected({
-  write = vi.fn(async () => {}),
+  answer = vi.fn(async () => {}),
+  withdraw = vi.fn(async () => {}),
   view = props(),
-  questions = QUESTIONS,
-  onSent = () => undefined,
+  messages = MESSAGES,
+  onChanged = () => undefined,
+  onAsk,
 }: {
-  write?: AnswersWriter;
+  answer?: MessagesApi['answer'];
+  withdraw?: MessagesApi['withdraw'];
   view?: MonitorViewProps;
-  questions?: BandQuestion[];
-  onSent?: () => void;
+  messages?: Message[];
+  onChanged?: () => void;
+  onAsk?: () => void;
 }) {
-  const { book } = useMonitorInteractions();
-  book.reconcile(PROJECT_A.id, questions);
   return (
     <MonitorView
       {...view}
       projectId={PROJECT_A.id}
-      questions={questions}
-      onAnswersSent={onSent}
-      answerController={{ book, read: readQuestion, write }}
+      messages={messages}
+      onMessagesChanged={onChanged}
+      onAsk={onAsk}
+      messagesApi={{ read, answer, withdraw }}
     />
   );
 }
 
 const openButton = (card: HTMLElement) =>
-  within(card).getByRole('button', { name: /Answer the question|Continue answering/ });
+  within(card).getByRole('button', { name: 'Answer the question' });
 const todoCard = () => screen.getByRole('article', { name: /Todo decision/ });
-const band = () => screen.getByRole('region', { name: 'Unanswered questions' });
+const band = () => screen.getByRole('region', { name: 'Messages' });
 
 describe('remote access lanes and task actions', () => {
   it('counts tasks once by taskStatus and keeps run state inline', () => {
@@ -195,100 +226,102 @@ describe('remote access lanes and task actions', () => {
   });
 });
 
-describe('monitor question band and answer sheet', () => {
-  it('lists the open questions in a band under the counts, closed until its header is pressed', async () => {
+describe('monitor messages band and list', () => {
+  it('counts the questions and the requests waiting to be picked up in the band', () => {
+    render(<Connected />);
+    expect(within(band()).getByText(/AI's questions/).textContent).toContain('2 questions');
+    expect(within(band()).getByText(/Your requests/).textContent).toContain('1');
+    expect(within(band()).getByText(/waiting to be picked up/)).toBeTruthy();
+  });
+
+  it('keeps the band with a count of 0 when nothing is open', () => {
+    render(<Connected messages={[]} />);
+    expect(within(band()).getByText(/AI's questions/).textContent).toContain('0');
+  });
+
+  it('shows "Ask AI" on the phone band only when the screen gives it', async () => {
+    const onAsk = vi.fn();
+    const { unmount } = render(<Connected />);
+    expect(within(band()).queryByRole('button', { name: 'Ask AI' })).toBeNull();
+    unmount();
+    render(<Connected onAsk={onAsk} />);
+    await userEvent.click(within(band()).getByRole('button', { name: 'Ask AI' }));
+    expect(onAsk).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the list as a sheet with the two tabs and never lists a closed message', async () => {
     const user = userEvent.setup();
     render(<Connected />);
-    const toggle = within(band()).getByRole('button', { name: /^Show unanswered questions/ });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(within(band()).queryAllByRole('listitem')).toHaveLength(0);
-    expect(within(band()).getByText('2')).toBeTruthy();
-    expect(within(band()).getByRole('button', { name: 'Answer them' })).toBeTruthy();
-    await user.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(within(band()).getAllByRole('listitem')).toHaveLength(2);
-    expect(within(band()).getByText('#4')).toBeTruthy();
-    expect(within(band()).getByRole('button', { name: 'Answer them' })).toBeTruthy();
+    await user.click(within(band()).getByRole('button', { name: 'Open the list' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Messages' });
+    expect(within(sheet).getAllByRole('tab')).toHaveLength(2);
+    expect(within(sheet).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(sheet).getAllByText('Unanswered')).toHaveLength(2);
+    await user.click(within(sheet).getByRole('tab', { name: /Your requests/ }));
+    expect(
+      within(sheet).getByText('Waiting to be picked up', { selector: '[data-slot=badge]' }),
+    ).toBeTruthy();
   });
 
-  it('keeps the band with a count of 0 and nothing to open when nothing is open', () => {
-    render(<Connected questions={[]} />);
-    expect(within(band()).getByText('0')).toBeTruthy();
-    const toggle = within(band()).getByRole('button', { name: /^Show unanswered questions/ });
-    expect((toggle as HTMLButtonElement).disabled).toBe(true);
-    expect(within(band()).queryByRole('list')).toBeNull();
-  });
-
-  it('opens only the questions of a card in the sheet and sends its answer at once', async () => {
+  it("opens a card's question and sends a choice, then goes back to the list", async () => {
     const user = userEvent.setup();
-    const write = vi.fn(async () => {});
-    const onSent = vi.fn();
-    render(<Connected write={write} onSent={onSent} />);
+    const answer = vi.fn(async (_projectId: string, _answers: AnswerItem[]) => {});
+    const onChanged = vi.fn();
+    render(<Connected answer={answer} onChanged={onChanged} />);
     await user.click(openButton(todoCard()));
-    const sheet = await screen.findByRole('dialog', { name: 'Todo decision' });
-    expect(within(sheet).getByText('1 / 1')).toBeTruthy();
-    const send = within(sheet).getByRole('button', { name: /^Send$/ });
+    const sheet = await screen.findByRole('dialog', { name: 'Messages' });
+    const send = within(sheet).getByRole('button', { name: 'Send answer' });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    // A note alone is not an answer to a question with choices.
+    await user.type(await within(sheet).findByRole('textbox', { name: 'Note' }), 'maybe');
     expect((send as HTMLButtonElement).disabled).toBe(true);
     await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
-    expect(within(sheet).getByText('1 answered, not sent')).toBeTruthy();
+    expect((send as HTMLButtonElement).disabled).toBe(false);
     await user.click(send);
-    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
-    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-1', choiceId: 'yes' }]);
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(answer).toHaveBeenCalledWith(PROJECT_A.id, [
+      { questionId: 'Q-1', choiceId: 'yes', text: 'maybe' },
+    ]);
   });
 
-  it('sends from a card only its own answers, and keeps an answer held for another card', async () => {
+  it('keeps the input and says so after a failed send', async () => {
     const user = userEvent.setup();
-    const write = vi.fn(async () => {});
-    render(<Connected write={write} />);
-    await user.click(within(band()).getByRole('button', { name: 'Answer them' }));
-    let sheet = await screen.findByRole('dialog');
-    await user.click(within(sheet).getByRole('button', { name: 'Next' }));
-    await user.type(await within(sheet).findByRole('textbox', { name: 'Note' }), 'Later');
-    await user.click(within(sheet).getByRole('button', { name: 'Close the answer' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    await user.click(openButton(todoCard()));
-    sheet = await screen.findByRole('dialog', { name: 'Todo decision' });
-    await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
-    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
-    await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
-    expect(write).toHaveBeenCalledWith(PROJECT_A.id, [{ questionId: 'Q-1', choiceId: 'yes' }]);
-    // The sent question leaves the band at once; the one held for the other card stays.
-    await user.click(within(band()).getByRole('button', { name: /^Show unanswered questions/ }));
-    await waitFor(() => expect(within(band()).getAllByRole('listitem')).toHaveLength(1));
-    expect(within(band()).getByText('#4')).toBeTruthy();
-    expect(within(band()).getByRole('button', { name: 'Review and send' })).toBeTruthy();
-  });
-
-  it('keeps the answers when the sheet is closed, and the band and the card offer to go on', async () => {
-    const user = userEvent.setup();
-    render(<Connected />);
-    await user.click(within(band()).getByRole('button', { name: 'Answer them' }));
-    const sheet = await screen.findByRole('dialog');
-    await user.click(await within(sheet).findByRole('radio', { name: 'No' }));
-    await user.click(within(sheet).getByRole('button', { name: 'Close the answer' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(within(band()).getByRole('button', { name: 'Review and send' })).toBeTruthy();
-    await user.click(within(band()).getByRole('button', { name: /^Show unanswered questions/ }));
-    expect(within(band()).getByText('Answered, not sent')).toBeTruthy();
-    expect(openButton(todoCard()).textContent).toBe('Continue answering');
-  });
-
-  it('keeps the answers after a failed send and sends them again', async () => {
-    const user = userEvent.setup();
-    const write = vi
-      .fn<AnswersWriter>()
-      .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValueOnce(undefined);
-    const onSent = vi.fn();
-    render(<Connected write={write} onSent={onSent} />);
+    const answer = vi.fn(async () => Promise.reject(new Error('offline')));
+    render(<Connected answer={answer} />);
     await user.click(openButton(todoCard()));
     const sheet = await screen.findByRole('dialog');
     await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
-    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
+    await user.click(within(sheet).getByRole('button', { name: 'Send answer' }));
     expect(await within(sheet).findByRole('alert')).toBeTruthy();
-    await user.click(within(sheet).getByRole('button', { name: /^Send$/ }));
-    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1));
-    expect(write).toHaveBeenCalledTimes(2);
+    expect(
+      (within(sheet).getByRole('radio', { name: 'Yes' }) as HTMLButtonElement).getAttribute(
+        'aria-checked',
+      ),
+    ).toBe('true');
+  });
+
+  it('closes the list with "Later" and sends nothing', async () => {
+    const user = userEvent.setup();
+    const answer = vi.fn(async () => {});
+    render(<Connected answer={answer} />);
+    await user.click(openButton(todoCard()));
+    const sheet = await screen.findByRole('dialog');
+    await user.click(within(sheet).getByRole('button', { name: 'Later' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(answer).not.toHaveBeenCalled();
+  });
+
+  it('shows an open request and withdraws it while it waits', async () => {
+    const user = userEvent.setup();
+    const withdraw = vi.fn(async () => {});
+    const onChanged = vi.fn();
+    render(<Connected withdraw={withdraw} onChanged={onChanged} />);
+    await user.click(within(band()).getByRole('button', { name: 'Open the list' }));
+    const sheet = await screen.findByRole('dialog');
+    await user.click(within(sheet).getByRole('tab', { name: /Your requests/ }));
+    await user.click(within(sheet).getByRole('button', { name: /Add a forgot-password link/ }));
+    await user.click(await within(sheet).findByRole('button', { name: 'Withdraw' }));
+    await waitFor(() => expect(withdraw).toHaveBeenCalledWith(PROJECT_A.id, 'Q-6'));
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 });

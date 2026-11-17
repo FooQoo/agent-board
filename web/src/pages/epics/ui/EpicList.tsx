@@ -77,7 +77,7 @@ export function EpicList({
             <span className="epic-row__top">
               <span className="epic-row__tags">
                 <EpicBadge epic={epic} className="epic-row__badge" icon={false} />
-                {epic.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+                {epic.draft !== null && <span className="card__draft">{t('draft.label')}</span>}
               </span>
               <span className="epic-row__total">
                 {counts[epic.id] === undefined

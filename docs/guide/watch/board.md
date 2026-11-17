@@ -6,14 +6,14 @@ title: The board
 
 The board is where you watch the work and step in while the agent keeps going. You see what is moving and what is waiting, and you can move a card, check a condition, or rewrite a task without stopping the agent; it follows the change the next time it reads the board. This page covers the daily actions; the ideas behind them are in [The work model](../work-model). When the agent stops to ask you something, you answer in [Decisions](../delegate/decisions).
 
-## Add a task
+## Add work
 
-1. Select a project in the header and choose **Add task**.
-2. Enter a short request and submit it. This creates an AI-owned task; the first non-empty line becomes its title.
+1. Select a project in the header and choose **Ask AI**.
+2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and the band above the lanes lists it as **Waiting to be picked up** until an agent receives it.
 
-To set the title, owner, acceptance conditions, or draft state yourself, choose **Create manually** in the request form and use the full editor. See [Editing and image attachments](./editing#send-a-task-request). The owner cannot be changed after the task is created.
+To create a task yourself, open the small menu beside **Ask AI** and choose **Add a task manually**. The full editor lets you set the title, owner, acceptance conditions, and draft state. See [Editing and image attachments](./editing#ask-ai). The owner cannot be changed after the task is created.
 
-The new task appears at the end of Todo.
+A task you add manually appears at the end of Todo.
 
 ## Read a task {#read-a-task}
 
@@ -56,7 +56,7 @@ The columns mean:
 | Doing | Work in progress. AI-owned tasks also show an agent state. |
 | Done | Completed work. |
 
-AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give from the card's **Answer the question** button or from the **Unanswered questions** band above the lanes (see [Decisions](../delegate/decisions)). Moving a task to another column resets a Running task to Idle; an open question stays open, so a waiting task in Todo or Doing stays Pending. Every change and its reason stay in the history.
+AI-owned tasks in Doing show **Idle**, **Running**, or **Pending**. Todo tasks can also be Pending when an agent asks a question before starting. User-owned and Done tasks are always Idle. Running means the agent is working; Pending means it needs your answer, which you give from the card's **Answer the question** button or from the list of the **Messages** band above the lanes (see [Decisions](../delegate/decisions)). Moving a task to another column resets a Running task to Idle; an open question stays open, so a waiting task in Todo or Doing stays Pending. Every change and its reason stay in the history.
 
 ## Change a task
 
@@ -66,7 +66,7 @@ To edit a task or put it in an epic, choose **Open full screen** in the details 
 
 A draft is a task that agents must leave alone while you write it. Agents cannot change a draft, including its `TASK.md` file.
 
-- To create a draft, choose **Create manually** in the request form and check **Draft** in the full editor.
+- To create a draft, choose **Add a task manually** from the menu beside **Ask AI** and check **Draft** in the full editor.
 - To change an existing task, open its preview. Your first change makes it a draft, and **Save** releases it, so agents can work on the task again. The editor has no Draft checkbox.
 - To drop your changes, choose **Cancel** and then **Discard and close**. The text returns to the saved version, and the history records `Discarded draft changes.`
 - A running task opens read-only and cannot become a draft.
@@ -74,6 +74,25 @@ A draft is a task that agents must leave alone while you write it. Agents cannot
 A draft is marked with a **Draft** chip on its card. If you forget to finalize, the agent cannot move or update the task.
 
 If a draft is left behind, for example because a save failed and you closed the browser, choose **Finalize** in the task's details to release it. The **Finalize** button appears only on a draft.
+
+## Proposed plans {#proposed-plans}
+
+Everything an agent proposes is an AI draft, and an AI draft is not a card of its own. For each plan that waits for you, **Todo** shows one **Proposed plan** card at the top, with a dashed border and a light accent color. The number in the lane header counts these cards together with the ordinary tasks.
+
+- A new epic shows its ID and name, the number of its tasks, and, while a question about it is open, the number of open questions.
+- Tasks added to an epic that is already running show **N tasks added to** the epic.
+- A single AI-drafted task with no epic of its own shows as a task card marked **Draft (AI)** with a **Start** button. The button is disabled while a question about the task is open, and the card says why.
+- A draft you write yourself keeps its own card and its **Draft** chip. See [Drafts](#drafts).
+
+Choose **Review and start** to open the plan review, a dialog on a wide window and a bottom sheet on a phone. The review shows:
+
+- the goal, for a new epic, read from the epic's document;
+- **Tasks that will start (in this order)**, with the owner and the number of acceptance conditions of each task. A single task has no numbers and no order;
+- the unanswered questions that block the plan, each with an **Answer the question** button that opens the question.
+
+![The plan review with the goal, the tasks that will start, and an open question that disables Start with this plan](../../images/guide/plan-review.png){.screenshot}
+
+**Later** closes the review and changes nothing. **Start with this plan** starts the epic and its AI-drafted tasks, or the single task, and the cards move to the lanes as ordinary tasks. While a question about the plan is unanswered, **Start with this plan** is disabled and the review says why. If a question arrives just as you start, the start is refused and the review names it. The original request is not shown in the review. Only a person can start a plan; an agent cannot.
 
 ## Archive
 
@@ -90,7 +109,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 ## Narrow windows and phones {#narrow-windows-and-phones}
 
-When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Unanswered questions** band above the tabs, which starts closed and shows its count in the header. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Messages** band above the tabs, which shows what waits on you and opens the list. Tap a tab or swipe sideways to change lanes. A **Proposed plan** card sits at the top of Todo; its review opens as a bottom sheet (see [Proposed plans](#proposed-plans)). Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
 
 The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Remote access](./remote-access).
 

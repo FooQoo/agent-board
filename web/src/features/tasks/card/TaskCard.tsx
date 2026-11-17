@@ -8,7 +8,6 @@ import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { StatusLabel } from '../status/StatusLabel';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
-import type { AnswerBook } from '../answer/model/answerBook';
 import type { ProjectId } from '../../../shared/api/contracts';
 import { cardSensors } from './cardDrag';
 import './card-answer.css';
@@ -22,8 +21,6 @@ export interface TaskCardProps {
   /** Draws the card's EPIC-ID label. The page that composes the board supplies it; without it no label shows. */
   renderEpic?: (epic: EpicRef) => ReactNode;
   projectId?: ProjectId;
-  /** The answers held on the page; the button says "continue" when one of the card's is held. */
-  answers?: AnswerBook;
   /** Opens the answer dialog at the card's first question; the dialog lives above the board. */
   onAnswer?: (taskId: number) => void;
 }
@@ -139,7 +136,7 @@ export function TaskCardView({
           {/* The guide's sample cards have no number of their own. */}
           {task.id > 0 && <span className="card__id">#{task.id}</span>}
           <AssigneeLabel assignee={task.assignee} />
-          {task.isDraft && <span className="card__draft">{t('draft.label')}</span>}
+          {task.draft !== null && <span className="card__draft">{t('draft.label')}</span>}
           <span className="card__spacer" />
           {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
         </span>
@@ -170,15 +167,12 @@ export function TaskCard({
   onSelect,
   renderEpic,
   projectId,
-  answers,
   onAnswer,
 }: TaskCardProps) {
   const { t } = useTranslation();
   const showsState = stateLabel(task, t) !== null;
   const pending = showsState && task.agentStatus === 'pending';
-  const showInlineAnswer = Boolean(
-    projectId && answers && onAnswer && pending && waitsOnQuestion(task),
-  );
+  const showInlineAnswer = Boolean(projectId && onAnswer && pending && waitsOnQuestion(task));
   const { ref, isDragging } = useSortable({
     id: `card-${task.id}`,
     index,
@@ -196,15 +190,9 @@ export function TaskCard({
       renderEpic={renderEpic}
       showPendingReason
     >
-      {projectId && answers && onAnswer && showInlineAnswer && (
+      {projectId && onAnswer && showInlineAnswer && (
         <div className="card__answer">
-          <DecisionAnswerButton
-            taskId={task.id}
-            continuing={(task.openQuestionIds ?? []).some(
-              (id) => answers.held(projectId, id) !== null,
-            )}
-            onClick={() => onAnswer(task.id)}
-          />
+          <DecisionAnswerButton taskId={task.id} onClick={() => onAnswer(task.id)} />
         </div>
       )}
     </TaskCardView>

@@ -34,7 +34,7 @@ fn add_task(home: &std::path::Path, desc: &str) {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--desc-file",
             file,
         ],

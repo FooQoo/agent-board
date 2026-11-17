@@ -22,7 +22,7 @@ const EPIC: Epic = {
   id: 'FILE-SHARE',
   name: 'File share',
   color: '#7C3AED',
-  isDraft: false,
+  draft: null,
   document: DOCUMENT,
   body: DOCUMENT,
   priority: [],
@@ -71,7 +71,7 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     }),
     enterDraft: vi.fn(async () => {
       calls.push('enterDraft');
-      return { ...EPIC, isDraft: true };
+      return { ...EPIC, draft: 'human' as const };
     }),
     leaveDraft: vi.fn(async () => {
       calls.push('leaveDraft');
@@ -234,7 +234,9 @@ describe('epic dialog layout', () => {
 
   it('preserves a draft epic when saving its name', async () => {
     const { api } = fakeApi();
-    const { dialog, onClosed } = await openEpic(api, { epic: { ...EPIC, isDraft: true } });
+    const { dialog, onClosed } = await openEpic(api, {
+      epic: { ...EPIC, draft: 'human' as const },
+    });
     setName('Renamed draft', dialog);
     await userEvent.click(button(dialog, 'Save'));
     await waitFor(() => expect(onClosed).toHaveBeenCalledTimes(1));
@@ -279,7 +281,7 @@ describe('saving', () => {
       name: 'File share',
       color: '#7C3AED',
       body: text,
-      isDraft: false,
+      draft: null,
     });
   });
 
@@ -303,7 +305,7 @@ describe('saving', () => {
       name: 'Renamed epic',
       color: '#00FF00',
       body: '## Goal\n\nChanged.',
-      isDraft: false,
+      draft: null,
     });
   });
 
@@ -399,7 +401,9 @@ describe('epic details document', () => {
     const broken = '---\npriority: [\n---\n## Goal\n\nKeep.';
     const changed = '---\npriority: [\n---\n## Goal\n\nChanged.';
     const stored = { ...EPIC, document: broken, body: broken, priorityError: true };
-    const { api } = fakeApi({ enterDraft: vi.fn(async () => ({ ...stored, isDraft: true })) });
+    const { api } = fakeApi({
+      enterDraft: vi.fn(async () => ({ ...stored, draft: 'human' as const })),
+    });
     const { dialog, onClosed } = await openEpic(api, { epic: stored });
     setDocument(changed, dialog);
     await userEvent.click(button(dialog, 'Save'));
@@ -408,7 +412,7 @@ describe('epic details document', () => {
       name: 'File share',
       color: '#7C3AED',
       document: changed,
-      isDraft: false,
+      draft: null,
     });
   });
 
@@ -502,7 +506,11 @@ describe('the draft lock', () => {
 
   it('keeps Save disabled and says so when the epic changed before the draft was entered', async () => {
     const { api } = fakeApi({
-      enterDraft: vi.fn(async () => ({ ...EPIC, isDraft: true, name: 'Changed by an agent' })),
+      enterDraft: vi.fn(async () => ({
+        ...EPIC,
+        draft: 'human' as const,
+        name: 'Changed by an agent',
+      })),
     });
     const { dialog } = await openEpic(api);
     setName('Mine', dialog);
@@ -518,7 +526,7 @@ describe('the draft lock', () => {
     const enterDraft = vi
       .fn<EpicApi['enterDraft']>()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValue({ ...EPIC, isDraft: true });
+      .mockResolvedValue({ ...EPIC, draft: 'human' as const });
     const { api } = fakeApi({ enterDraft });
     const { dialog } = await openEpic(api);
     setName('Mine', dialog);
@@ -554,7 +562,9 @@ describe('the draft lock', () => {
 
   it('leaves an epic that was a draft before the dialog opened as a draft when discarding', async () => {
     const { api, calls } = fakeApi();
-    const { dialog, onClosed } = await openEpic(api, { epic: { ...EPIC, isDraft: true } });
+    const { dialog, onClosed } = await openEpic(api, {
+      epic: { ...EPIC, draft: 'human' as const },
+    });
     expect(within(dialog).getByText('Draft')).toBeTruthy();
     setName('Other', dialog);
     await userEvent.click(button(dialog, 'Cancel'));

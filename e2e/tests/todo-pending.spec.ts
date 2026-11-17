@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, projectId, nextTaskId, resetBoard, type TaskJson } from '../helpers/agboard';
 import { waitForSync } from '../helpers/ui';
-import { answerButton, answerDialog, answerNote, send, openAnswer } from '../helpers/answer';
+import { answerButton, fillAnswer, send, openAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // An AI card in Todo can ask a decision before the work starts. It shows as pending in Todo, answers there, and
 // returns to Todo idle. A move keeps the question open; withdrawing it is what ends the wait.
@@ -22,7 +23,7 @@ test.beforeEach(async ({ page }) => {
 
 test('an AI task in Todo asks, shows as pending there, and the answer returns it to Todo idle', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'ai']);
+  agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'human']);
   agboardOk(mainProject, askArgs(String(id), decisionJson('Which plan before we start?')));
   await page.reload();
   await waitForSync(page);
@@ -33,10 +34,11 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
   await expect(lane(page, 'Todo')).not.toContainText('Which plan before we start?');
 
   await task(page, id).click();
-  await expect(await openAnswer(page, id)).toContainText('Which plan before we start?');
-  await answerNote(page).fill('Plan A, then review');
+  const dialog = await openAnswer(page, id);
+  await expect(dialog).toContainText('Which plan before we start?');
+  await fillAnswer(dialog, { choice: 'Plan A', text: 'Plan A, then review' });
   await send(page);
-  await expect(answerDialog(page)).toBeHidden();
+  await closeMessages(page);
   await expect(answerButton(page, id)).toHaveCount(0);
 
   // The card is still in Todo, and idle again.
@@ -46,9 +48,8 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
 
 test('moving a task out of Todo keeps its question pending until the question is withdrawn', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
-  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout) as {
-    requestId: string;
+  agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'human']);
+  const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout.split('\n')[0]) as {
     questions: { id: string }[];
   };
   const question = asked.questions[0].id;
@@ -65,7 +66,7 @@ test('moving a task out of Todo keeps its question pending until the question is
   await expect(answerButton(page, id)).toBeVisible();
 
   // Withdrawing the question ends the wait.
-  agboardOk(mainProject, ['qa', 'withdraw', asked.requestId, '--actor', 'ai', '--reason', 'No longer needed.']);
+  agboardOk(mainProject, ['message', 'withdraw', question, '--actor', 'ai']);
   await page.reload();
   await waitForSync(page);
   expect(show(id)).toMatchObject({ taskStatus: 'doing', agentStatus: 'idle', pendingRequestId: null });

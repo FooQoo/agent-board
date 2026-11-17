@@ -1,7 +1,7 @@
 //! Resolving the target project for a command and dispatching it to its
 //! handler, for the commands that work on a board.
 
-use crate::cli::args::{Cli, Command, EpicCommand, ProjectCommand, QaCommand};
+use crate::cli::args::{Cli, Command, EpicCommand, MessageCommand, ProjectCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -35,17 +35,20 @@ fn access(command: &Command) -> Access {
         | Command::Remote(_) => Access::ReadProject,
         Command::Epic(args) => match args.command {
             EpicCommand::Ls | EpicCommand::Show(_) => Access::ReadProject,
-            EpicCommand::Add(_) | EpicCommand::Edit(_) | EpicCommand::Rm(_) => {
-                Access::ChangeProject
-            }
+            EpicCommand::Add(_)
+            | EpicCommand::Edit(_)
+            | EpicCommand::Rm(_)
+            | EpicCommand::Start(_) => Access::ChangeProject,
         },
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
             ProjectCommand::Create(_) | ProjectCommand::Bind(_) => Access::Catalog,
             ProjectCommand::Rename(_) | ProjectCommand::Rm => Access::ChangeProject,
         },
-        Command::Qa(args) => match args.command {
-            QaCommand::Ls(_) | QaCommand::Show(_) | QaCommand::Wait(_) => Access::ReadProject,
+        Command::Message(args) => match args.command {
+            MessageCommand::Ls(_) | MessageCommand::Show(_) | MessageCommand::Wait(_) => {
+                Access::ReadProject
+            }
             _ => Access::ChangeProject,
         },
         Command::Init(_) => Access::ChangeOrCreateProject,
@@ -54,6 +57,7 @@ fn access(command: &Command) -> Access {
         | Command::Edit(_)
         | Command::Mv(_)
         | Command::State(_)
+        | Command::Start(_)
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) | Command::Open(_) => Access::ReadBoundProject,
@@ -124,6 +128,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),
         Command::State(args) => commands::state::run(ctx, args),
+        Command::Start(args) => commands::start::run(ctx, args),
         Command::History(args) => commands::history::run(ctx, args),
         Command::Rm(args) => commands::rm::run(ctx, args),
         Command::Ls(args) => commands::ls::run(ctx, args),
@@ -134,7 +139,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Open(args) => commands::open::run(ctx, args),
         Command::Remote(_) => commands::remote::run(ctx),
         Command::Hook(_)
-        | Command::Qa(_)
+        | Command::Message(_)
         | Command::Wait(_)
         | Command::Serve(_)
         | Command::Stop(_)

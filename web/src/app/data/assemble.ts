@@ -6,9 +6,15 @@ import type {
   Task,
   TaskSummary,
 } from '../../shared/api/contracts';
-import type { Summary, SummaryEpic, SummaryProject, SummaryTask } from '../../shared/data/api';
+import type {
+  Message,
+  Summary,
+  SummaryEpic,
+  SummaryProject,
+  SummaryTask,
+} from '../../shared/data/api';
 import type { DocumentData } from '../../shared/data/core';
-import type { BandQuestion } from '../../features/tasks/answer/model/qa';
+import { type Plan, plansOfSummary } from '../../features/tasks/plans/model/plan';
 
 /**
  * What the app builds from the data layer. The list shows `TaskSummary` cards made from the
@@ -25,8 +31,10 @@ export interface BoardView {
   epics: Epic[];
   epicTaskCounts: Record<string, EpicTaskCounts>;
   problems: Problem[];
-  /** The open questions of the project, oldest first. */
-  questions: BandQuestion[];
+  /** The open questions, requests and approvals of the project, oldest first. */
+  messages: Message[];
+  /** The approvals waiting for a person, built from the Summary's messages. */
+  plans: Plan[];
 }
 
 const refOf = (epic: SummaryEpic): EpicRef => ({
@@ -54,7 +62,7 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
     epic: epic ? refOf(epic) : null,
     updatedAt: task.updatedAt,
     createdAt: task.createdAt,
-    isDraft: task.isDraft,
+    draft: task.draft,
     acceptance: { done: task.acceptance.done, total: task.acceptance.total },
     acceptanceError: task.acceptanceError,
   };
@@ -65,7 +73,7 @@ export function toTaskSummary(task: SummaryTask, epics: readonly SummaryEpic[]):
 export function toEpic(epic: SummaryEpic): Epic {
   return {
     ...refOf(epic),
-    isDraft: epic.isDraft,
+    draft: epic.draft,
     document: '',
     body: '',
     priority: [...epic.priority],
@@ -86,11 +94,8 @@ export function toBoardView(summary: Summary): BoardView {
     epics: summary.epics.map(toEpic),
     epicTaskCounts: counts,
     problems: summary.problems,
-    questions: (summary.questions ?? []).map(({ id, title, referencedBy }) => ({
-      id,
-      title,
-      referencedBy,
-    })),
+    messages: summary.messages ?? [],
+    plans: plansOfSummary(summary),
   };
 }
 
@@ -128,7 +133,7 @@ export function taskForEditor(card: TaskSummary, document: DocumentData): Task {
     createdAt: card.createdAt ?? card.updatedAt,
     updatedAt: card.updatedAt,
     agentStatusChangedAt: card.agentStatusChangedAt,
-    isDraft: card.isDraft,
+    draft: card.draft,
     history: [],
     attachments: document.attachments ? [...document.attachments] : [],
   };

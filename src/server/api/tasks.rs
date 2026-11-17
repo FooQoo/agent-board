@@ -8,7 +8,7 @@ use axum::response::Response;
 use serde::Deserialize;
 
 use super::epics::whole_text;
-use crate::domain::{Actor, Assignee, ChangeContext, Column, NewTask, RunState};
+use crate::domain::{Actor, Assignee, ChangeContext, Column, Draft, NewTask, RunState};
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::validate::{self};
@@ -30,8 +30,9 @@ pub(super) struct CreateTaskInput {
     #[serde(default)]
     acceptance: Option<Vec<AcceptanceItem>>,
     assignee: Assignee,
+    /// `"human"` creates a person's draft; an AI draft is only made by an agent.
     #[serde(default)]
-    is_draft: bool,
+    draft: Option<Draft>,
     #[serde(rename = "actor", default)]
     _actor: Option<serde_json::Value>,
 }
@@ -84,6 +85,9 @@ pub(super) async fn create_task(
         Ok(description) => description.unwrap_or_default(),
         Err(error) => return agboard_error_response(&error),
     };
+    if let Err(error) = person_draft(input.draft) {
+        return agboard_error_response(&error);
+    }
     match with_request_files(&state, &headers, move |store| {
         store.create_task(
             &project_id,
@@ -92,7 +96,7 @@ pub(super) async fn create_task(
                 description,
                 assignee: input.assignee,
                 actor: Actor::Human,
-                is_draft: input.is_draft,
+                draft: input.draft,
             },
             chrono::Utc::now(),
         )
@@ -252,5 +256,16 @@ pub(super) async fn set_agent_status(
             )
         }
         Err(error) => agboard_error_response(&error),
+    }
+}
+
+/// The draft a person may create something with: none or their own.
+pub(super) fn person_draft(draft: Option<Draft>) -> Result<Option<Draft>, AgboardError> {
+    match draft {
+        Some(Draft::Ai) => Err(AgboardError::InvalidValue {
+            field: "draft".into(),
+            reason: "An AI draft is created by an agent. Use \"human\" or null.".into(),
+        }),
+        other => Ok(other),
     }
 }

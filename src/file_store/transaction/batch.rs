@@ -1,5 +1,5 @@
-//! Durable replacement of several files as one change: a question request and the task pairs
-//! that refer to it.
+//! Durable replacement of several files as one change: messages and the task pairs that
+//! refer to them.
 //!
 //! The journal lives in `.internal/batches/` and records every target with its old and new
 //! bytes (`null` for a file that does not exist before or after). A prepared journal rolls
@@ -15,7 +15,8 @@ use super::journal::{Phase, hash};
 use super::paths::reject_symlinks;
 use crate::error::AgboardError;
 use crate::file_store::io::{random_hex, sync_dir, write_atomic, write_error};
-use crate::file_store::validate::is_hex32;
+use crate::file_store::qa::question_number;
+use crate::file_store::validate::{EpicId, is_hex32};
 
 const DIR: &str = ".internal/batches";
 
@@ -48,7 +49,7 @@ fn hashes(changes: &[FileChange]) -> Vec<(Option<String>, Option<String>)> {
         .collect()
 }
 
-/// Only a request file and the two files of a task may be part of a batch.
+/// Only a message file and the files of a task or an epic may be part of a batch.
 fn validate_target(project: &Path, target: &Path) -> Result<(), AgboardError> {
     let parts: Vec<_> = target.components().collect();
     let ok = match parts.as_slice() {
@@ -59,12 +60,13 @@ fn validate_target(project: &Path, target: &Path) -> Result<(), AgboardError> {
         ] => {
             let (a, b, c) = (a.to_str(), b.to_str(), c.to_str());
             match (a, b, c) {
-                (Some("qa"), Some(id), Some("request.json")) => is_hex32(id),
+                (Some("qa"), Some(id), Some("QA.md")) => question_number(id).is_some(),
                 (Some("tasks"), Some(id), Some("task.json" | "TASK.md")) => {
                     !id.starts_with('0')
                         && id.bytes().all(|b| b.is_ascii_digit())
                         && id.parse::<i64>().is_ok_and(|n| n > 0)
                 }
+                (Some("epics"), Some(id), Some("epic.json")) => id.parse::<EpicId>().is_ok(),
                 _ => false,
             }
         }
@@ -73,7 +75,7 @@ fn validate_target(project: &Path, target: &Path) -> Result<(), AgboardError> {
     if !ok {
         return Err(write_error(
             DIR,
-            "Batch targets must be request or task files.",
+            "Batch targets must be message, task or epic files.",
         ));
     }
     reject_symlinks(project, target)
@@ -238,6 +240,7 @@ mod tests {
     use super::*;
 
     const RID: &str = "0123456789abcdef0123456789abcdef";
+    const QID: &str = "Q-1";
 
     fn change(target: &str, old: Option<&str>, new: Option<&str>) -> FileChange {
         FileChange {
@@ -256,7 +259,7 @@ mod tests {
         save_batch_locked(
             project,
             vec![
-                change(&format!("qa/{RID}/request.json"), None, Some("{}")),
+                change(&format!("qa/{QID}/QA.md"), None, Some("{}")),
                 change("tasks/1/TASK.md", Some("old"), Some("new")),
             ],
         )
@@ -265,7 +268,7 @@ mod tests {
             fs::read_to_string(project.join("tasks/1/TASK.md")).unwrap(),
             "new"
         );
-        assert!(project.join(format!("qa/{RID}/request.json")).is_file());
+        assert!(project.join(format!("qa/{QID}/QA.md")).is_file());
 
         // A stale old value writes nothing.
         let err = save_batch_locked(
@@ -285,10 +288,10 @@ mod tests {
         let project = root.path();
         fs::create_dir_all(project.join("tasks/1")).unwrap();
         fs::write(project.join("tasks/1/TASK.md"), "new").unwrap();
-        fs::create_dir_all(project.join(format!("qa/{RID}"))).unwrap();
-        fs::write(project.join(format!("qa/{RID}/request.json")), "{}").unwrap();
+        fs::create_dir_all(project.join(format!("qa/{QID}"))).unwrap();
+        fs::write(project.join(format!("qa/{QID}/QA.md")), "{}").unwrap();
         let changes = vec![
-            change(&format!("qa/{RID}/request.json"), None, Some("{}")),
+            change(&format!("qa/{QID}/QA.md"), None, Some("{}")),
             change("tasks/1/TASK.md", Some("old"), Some("new")),
         ];
         let journal = BatchJournal {
@@ -304,7 +307,7 @@ mod tests {
             fs::read_to_string(project.join("tasks/1/TASK.md")).unwrap(),
             "old"
         );
-        assert!(!project.join(format!("qa/{RID}")).exists());
+        assert!(!project.join(format!("qa/{QID}")).exists());
     }
 
     #[test]

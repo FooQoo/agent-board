@@ -51,8 +51,8 @@ fn fixture() -> tempfile::TempDir {
                 title: "Second".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             chrono::Utc::now(),
         )
@@ -710,7 +710,7 @@ fn every_board_route_needs_a_session_and_unknown_routes_are_not_found() {
         assert_eq!(t.call("GET", r, &[], "").status, 401, "{r}");
     }
     assert_eq!(
-        t.call("POST", &format!("{base}/qa/answers"), &[], "{}")
+        t.call("POST", &format!("{base}/messages/answers"), &[], "{}")
             .status,
         401
     );
@@ -751,7 +751,7 @@ fn every_board_route_needs_a_session_and_unknown_routes_are_not_found() {
     for (m, p) in [
         ("POST", "/api/projects".to_string()),
         ("DELETE", format!("{base}/summary")),
-        ("PUT", format!("{base}/qa/answers")),
+        ("PUT", format!("{base}/messages/answers")),
         ("PATCH", "/api/events".to_string()),
         ("POST", "/".to_string()),
     ] {
@@ -784,7 +784,7 @@ fn an_answer_needs_the_session_origin_fetch_metadata_csrf_and_json() {
         .as_str()
         .unwrap()
         .to_string();
-    let path = format!("{base}/qa/answers");
+    let path = format!("{base}/messages/answers");
     let body = json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
         .to_string();
     let good = write_headers(&cookie, &csrf);

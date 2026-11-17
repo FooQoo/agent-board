@@ -7,6 +7,7 @@ import type {
   Attachment,
   Choice,
   ColumnName,
+  Draft,
   ProjectId,
   RunState,
 } from '../../api/contracts';
@@ -40,7 +41,7 @@ export interface SummaryTask {
   taskStatus: ColumnName;
   agentStatus: RunState;
   assignee: Assignee;
-  isDraft: boolean;
+  draft: Draft | null;
   position: number;
   epicId: string | null;
   acceptance: AcceptanceCount;
@@ -75,7 +76,7 @@ export interface SummaryEpic {
   name: string;
   /** `#RRGGBB`. */
   color: string;
-  isDraft: boolean;
+  draft: Draft | null;
   /** The IDs of the epic's tasks in the order the epic sets; empty when it sets none. */
   priority: number[];
   /** The stored order cannot be read, so it is ignored. */
@@ -90,19 +91,36 @@ export interface SummaryProblem {
   reason: string;
 }
 
-export type QuestionKind = 'plan' | 'start_approval' | 'task';
-
-/** An open question of the project; the full text is read with `GET .../qa/{questionId}`. */
+/** An open question of the project; the full text is read with `GET .../messages/{questionId}`. */
 export interface SummaryQuestion {
   id: string;
-  requestId: string;
-  kind: QuestionKind;
   /** The first line of the question, up to 200 characters. */
   title: string;
   recommendedChoiceId: string | null;
   /** The unarchived tasks that wait on the question. */
   referencedBy: number[];
   createdAt: string;
+}
+
+export type MessageType = 'question' | 'request' | 'approval';
+export type MessageParty = 'ai' | 'human';
+
+/**
+ * A question, a request or an approval in one shape. `turn` is who has to act (`null`: over; the
+ * server lists open items only). An approval's `id` is the epic's ID, or `#<task id>` for a task
+ * outside an epic; a question's or request's is `Q-<n>`.
+ */
+export interface Message {
+  id: string;
+  type: MessageType;
+  from: MessageParty;
+  to: MessageParty;
+  turn: MessageParty | null;
+  /** The first line of a message, or the name of the epic or task of an approval. */
+  title: string;
+  createdAt: string;
+  tasks: number[];
+  epicId: string | null;
 }
 
 export interface Summary {
@@ -113,6 +131,8 @@ export interface Summary {
   problems: SummaryProblem[];
   /** The open questions, in ID order. */
   questions?: SummaryQuestion[];
+  /** Open questions, requests and approvals, oldest first; a mock may leave it out. */
+  messages?: Message[];
 }
 
 // ---- Detail NDJSON: `.../tasks/{id}/detail`, `.../epics/{epicId}/detail`
@@ -157,8 +177,8 @@ export type DetailEvent =
 
 // ---- SSE `changed`
 
-/** `qa`: the project's questions changed; its ID is the project's and its only facet `summary`. */
-export type ChangeResource = 'task' | 'epic' | 'project' | 'qa';
+/** `messages`: the project's questions or requests changed; its ID is the project's and its only facet `summary`. */
+export type ChangeResource = 'task' | 'epic' | 'project' | 'messages';
 /**
  * `request`: a task's pending decision request was asked, answered, or withdrawn. It always comes
  * with `summary` and is applied even while a panel holds the other updates back.

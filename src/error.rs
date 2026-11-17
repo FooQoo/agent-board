@@ -88,9 +88,26 @@ pub enum AgboardError {
     TaskIsDraft {
         id: i64,
     },
+    /// The task is an AI draft: it waits for a person to start it.
+    TaskIsAiDraft {
+        id: i64,
+    },
     /// The epic is a draft: the CLI cannot change it.
     EpicIsDraft {
         id: String,
+    },
+    /// A finalize was asked of an AI draft; only starting it clears the draft.
+    AiDraftNeedsStart {
+        /// The task or epic, as named to the reader: `task #5`, `epic EPIC-1`.
+        target: String,
+    },
+    /// An agent asked for something only a person may do.
+    HumanOnly {
+        action: String,
+    },
+    /// A person asked for something only an agent may do.
+    AiOnly {
+        action: String,
     },
     /// An agent tried to change a completed task.
     TaskIsDone {
@@ -122,14 +139,30 @@ pub enum AgboardError {
     QuestionWithdrawn {
         ids: Vec<String>,
     },
-    QuestionNotFound {
+    /// A start was refused: these questions about the draft have no reply yet. Nothing was written.
+    StartBlockedByQuestions {
+        ids: Vec<String>,
+    },
+    /// No question or request has this ID.
+    MessageNotFound {
         id: String,
     },
-    RequestNotFound {
+    /// The message has its reply, so it can no longer be withdrawn.
+    MessageClosed {
         id: String,
     },
-    /// The request has every answer, so it can no longer be withdrawn.
-    RequestAnswered {
+    /// The command is for the other kind of message: a question was named where a request
+    /// belongs, or the other way around.
+    MessageTypeMismatch {
+        id: String,
+        expected: String,
+    },
+    /// The request was accepted before; nothing was written.
+    RequestAccepted {
+        id: String,
+    },
+    /// The request was withdrawn, so nobody can accept it.
+    RequestWithdrawn {
         id: String,
     },
     /// A move named the status it started from, and the task is no longer there.
@@ -164,8 +197,8 @@ pub enum AgboardError {
         expected: u32,
     },
     /// The answer names a choice that is not part of the question.
-    RequestChoiceUnknown {
-        request_id: String,
+    ChoiceUnknown {
+        question_id: String,
         choice_id: String,
     },
     DatabaseBusy,

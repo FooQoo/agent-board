@@ -194,7 +194,7 @@ impl Tunnel {
     fn answer(&self, session: &Session, origin: &str, request_id: &str) -> Reply {
         self.call(
             "POST",
-            &format!("{}/qa/answers", self.base()),
+            &format!("{}/messages/answers", self.base()),
             &[
                 ("Cookie", &session.cookie),
                 ("Origin", origin),
@@ -445,7 +445,7 @@ fn every_kind_of_request_needs_the_entrance_and_then_a_session() {
         .take_while(|c| *c != '"' && *c != '\'')
         .collect();
     let base = t.base();
-    let answer = format!("{base}/qa/answers");
+    let answer = format!("{base}/messages/answers");
     let body = json!({"answers": [{"questionId": request_id, "choiceId": "keep", "text": "ok"}]})
         .to_string();
     let kinds: Vec<(&str, String)> = vec![

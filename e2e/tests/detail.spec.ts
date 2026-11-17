@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { resetBoard, mainProject } from '../helpers/agboard';
-import { answerDialog, answerNote, openAnswer } from '../helpers/answer';
+import { answerButton, answerNote, laterButton, openAnswer } from '../helpers/answer';
 
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
@@ -48,14 +48,16 @@ test('the panel shows the run state and the reason for Doing tasks, and an empty
   await expect(panel.locator('.detail__meta .status-label--pending svg')).toHaveCount(1);
   // The request is answered on the card, so the details do not repeat it.
   await expect(panel.getByRole('region', { name: 'The agent is waiting for your answer' })).toHaveCount(0);
-  // The card shows only the button; the answer is entered in its dialog, and Clear drops the input.
+  // The card shows only the button; the answer is entered in its dialog, and Later closes it without sending.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await openAnswer(page);
   await answerNote(page).fill('Typed in place');
-  await answerDialog(page).getByRole('button', { name: 'Clear', exact: true }).click();
+  await laterButton(page).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // Nothing was sent: the question is still open on the card, and the dialog opens with an empty note.
+  await expect(answerButton(page, 12)).toBeVisible();
+  await openAnswer(page);
   await expect(answerNote(page)).toHaveValue('');
-  // Nothing is held, so nothing would be sent.
-  await expect(answerDialog(page).getByText('0 answered', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -171,14 +173,14 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   }
   expect(visited).toEqual([
     'BUTTON agent-board',
-    'BUTTON Add task',
+    'BUTTON Ask AI',
+    'BUTTON More ways to add',
     'BUTTON Docs',
     'BUTTON Epics',
     'BUTTON Archive',
     'BUTTON Settings',
-    // The band of unanswered questions comes before the lanes; it is closed, so its question is not a stop.
-    'BUTTON Show unanswered questions (1)',
-    'BUTTON Answer them',
+    // The Messages band comes before the lanes; its one button opens the list.
+    'BUTTON Open the list',
     'DIV #14',
     'DIV #15',
     'DIV #16',
@@ -208,9 +210,8 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Add task, Docs, Epics, Archive, Settings), the band's toggle and its button, its one
-  // question (in the document even while the band is closed), eight cards, the Pending card's answer button,
-  // Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(6 + 2 + 1 + 8 + 1 + 1 + 4);
+  // Header actions (switcher, Ask AI, More ways to add, Docs, Epics, Archive, Settings), the band's button, eight
+  // cards, the Pending card's answer button, Archive completed tasks, four detail controls.
+  expect(focusable).toHaveLength(7 + 1 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

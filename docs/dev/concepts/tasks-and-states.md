@@ -26,14 +26,14 @@ A task's lane says where the work is; its run state says what the agent is doing
 | human | any | idle only |
 
 - **Running** is self-reported, not liveness monitoring. It is never reset automatically, and agents do not change it just because a session started or paused.
-- **Pending** means the task refers to a project question that still waits for a person's answer, or belongs to a plan whose start is not approved yet; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Questions and answers](./history-and-decisions.md#questions-and-answers)).
+- **Pending** means the task refers to a project question that has no reply yet, or to a message file that cannot be read; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Messages](./history-and-decisions.md#messages)).
 - Invalid combinations are never saved. A draft task is Idle or Pending in any lane.
 
 How operations move a task between states:
 
 - **Create** puts the task in Todo, Idle, at the end of the lane, and records a creation entry. Without a body, the product writes an empty `acceptance` and an empty body; a supplied body must pass frontmatter validation.
 - **Lane move** requires `actor`; `reason` is optional. The task goes to the end of the target lane. A real move resets the stored run state to Idle, appends history, and updates `taskStatusChangedAt`. Moving to the same lane changes nothing.
-- **Run state change** requires `actor` and keeps the lane. `state` accepts Idle and Running; only AI Doing can be Running. An AI change to Running is refused with `questions_unanswered` while the task waits for an answer. Questions are asked with `qa ask`, which also returns a Running task to Idle. Moving the lane or archiving keeps the task's questions and references. Re-reporting the same state is not a change.
+- **Run state change** requires `actor` and keeps the lane. `state` accepts Idle and Running; only AI Doing can be Running. An AI change to Running is refused with `questions_unanswered` while the task waits for an answer. Questions are asked with `message ask`, which also returns a Running task to Idle. Moving the lane or archiving keeps the task's questions and references. Re-reporting the same state is not a change.
 - **Edit** changes only the title, body, and acceptance conditions; the assignee never changes. CLI `--desc`/`--desc-file` take the whole file but keep the history and the `questions` refs of the latest stored `TASK.md`; those two keys in the input are ignored, so a task that refers to an open question stays Pending. `epic edit --document-file` replaces the whole `EPIC.md` text. The web UI sends `body` and `acceptance`, applied to the latest file under the lock.
 - **Epic membership** sets or clears `epicId`; only real changes append history. People can change it on draft and archived tasks.
 - **Delete** removes the task folder. The web UI deletes only archived tasks; the CLI asks for terminal confirmation.
@@ -49,7 +49,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 | `id` | EPIC-ID: 1 to 64 characters matching `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`. Lowercase input is uppercased. Immutable. |
 | `name` | 1 to 100 characters after trimming, one line. |
 | `color` | `#RRGGBB`, uppercased. Random at creation when omitted. |
-| `isDraft` | Marks an epic that a person is editing in the browser. CLI `epic edit` and `--priority` are refused with `epic_is_draft`; member tasks and `epic attachment` are not affected. |
+| `draft` | `null`, `"human"`, or `"ai"`, as for a task. A person's draft epic (`human`) is refused by CLI `epic edit` and `--priority` with `epic_is_draft`; an AI draft epic is edited by agents as usual. Member tasks and `epic attachment` are not affected. |
 | `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 100,000 characters), and the body without frontmatter. |
 | `priority`, `priorityError` | Member task IDs in work order, and whether reading them failed. |
 
@@ -61,16 +61,18 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 
 ## Drafts
 
-A draft is a task a person is still writing.
+A draft is a task or epic that is not put to work yet. `draft` says who still owns it: `null` (a normal task), `"human"` (a person is writing it in the browser), or `"ai"` (an agent proposed it, and only a person can start it). The stored field is described in [Shared files](../reference/files.md). Drafts never expire, and `wait` and automatic Done skip every draft.
 
-- The preview enters the draft at its first real change: `PUT /tasks/{id}/draft` with `isDraft: true` for a task, and `PATCH /epics/{id}` with `isDraft: true` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either.
-- CLI `edit`, `mv`, `state`, and `history add` check `isDraft` under the write lock and fail with `task_is_draft`. CLI `epic edit` and `epic edit --priority` check an epic's `isDraft` the same way and fail with `epic_is_draft`. Reads, `add`, `epic attachment`, and membership changes are not affected. The web `PATCH` on an epic does not refuse a draft. Drafts never expire.
-- Web editing accepts only draft tasks. With `finalize`, the body, title, `isDraft=false`, and a history entry are committed as one pair. Discard sends `discard: true` with `isDraft: false` instead, and the history records `Discarded draft changes.` An epic has no history, so its discard is only `isDraft: false` on `PATCH /epics/{id}`.
+- A task or epic an agent creates (CLI `add` and `epic add`, whoever it is assigned to) is an AI draft. What a person creates is `null`, or `human` when the browser creates it as a draft.
+- The preview enters a person's draft at its first real change: `PUT /tasks/{id}/draft` with `draft: "human"` for a task, and `PATCH /epics/{id}` with `draft: "human"` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either. A person who edits an AI proposal enters `human` the same way and saves with `draft: "ai"`, which returns it to the proposal.
+- A `human` draft: CLI `edit`, `mv`, `state`, and `history add` check `draft` under the write lock and fail with `task_is_draft`; CLI `epic edit` and `epic edit --priority` fail with `epic_is_draft`. An `ai` draft: `edit`, `history add`, and `epic edit` work, while `mv` and `state` fail with `task_is_draft`. Reads, `add`, `epic attachment`, and membership changes are not affected. The web `PATCH` on an epic does not refuse a draft.
+- Web editing accepts only draft tasks. With `finalize`, the body, title, `draft: null`, and a history entry are committed as one pair. Discard sends `discard: true` with `draft: null` instead, and the history records `Discarded draft changes.` An epic has no history, so its discard is only `draft: null` on `PATCH /epics/{id}`. An AI draft is never finalized this way: it fails with `ai_draft_needs_start`.
+- **Start.** Only a person starts. `agboard start <id> --actor human` and `POST /tasks/{id}/start` clear one task's AI draft. `agboard epic start <EPIC-ID> --actor human` and `POST /epics/{id}/start` clear the epic and every non-archived task of it that is an AI draft in one save (a batch that rolls back as a whole). Each cleared task records `A person started the task.`; an epic keeps no history. A person's own (`human`) drafts are not cleared, and a task that is not a draft changes nothing. With `--actor ai` the CLI fails with `human_only`. One function, `ensure_startable` in `src/file_store/ops/start.rs`, is the place for the rules that refuse a start. It refuses while a question without a reply names the task being started (task start), or any AI-draft task the epic start would clear (epic start), with `start_blocked_by_questions` over the CLI and the API; the answer may change the plan, so the person answers first and then starts. A question about a task outside the epic, or one that is answered or withdrawn, does not block.
 - The product cannot stop direct edits of a draft's `TASK.md`; the README and the agent skill tell agents not to.
 
 ## Archive
 
-- Archiving keeps the lane, `isDraft`, `epicId`, and position; resets the stored run state to Idle; keeps the task's question references; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
+- Archiving keeps the lane, `draft`, `epicId`, and position; resets the stored run state to Idle; keeps the task's question references; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
 - Restoring places the task at the end of its original lane.
 - Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images remain readable. The archive list is sorted by `archivedAt`, newest first.
 

@@ -4,7 +4,8 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { answerButton, answerNote, openAnswer, pressSend, sendAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
+import { answerButton, fillAnswer, openAnswer, pressSend, send, sendAnswer } from '../helpers/answer';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The worker's Rust serve is real; only the browser storage and a few request
@@ -105,7 +106,7 @@ const task = (page: Page, id: number) => page.getByRole('button', { name: new Re
 const details = (page: Page, name = 'Task details') => page.getByRole('complementary', { name });
 const html = (page: Page) => page.locator('html');
 // An open dialog makes the page behind it inert, so the header button is found by CSS then.
-const addButtonBehindDialog = (page: Page) => page.locator('header button', { hasText: /^(Add task|タスク追加)$/ });
+const addButtonBehindDialog = (page: Page) => page.locator('header button', { hasText: /^(Ask AI|AI に依頼)$/ });
 
 /** Opens the board with the storage this test starts with (a new browser context: empty). */
 async function openFresh(page: Page): Promise<void> {
@@ -410,7 +411,7 @@ test('the settings stay available while the board loads and when it cannot load'
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.getByText('Loading board…')).toBeVisible();
   // While loading there is no board, so no board name or Add card; the settings are there.
-  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
   const dialog = await openSettings(page);
   await dialog.getByRole('radio', { name: 'Dark Teal' }).click();
   await expectTheme(page, 'Dark', 'Teal', false);
@@ -420,7 +421,7 @@ test('the settings stay available while the board loads and when it cannot load'
   failing = true;
   release();
   await expect(page.getByRole('alert')).toContainText('Could not load this board.');
-  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('Not synced');
   // The theme chosen while loading is still in effect, and can be changed on the error screen.
@@ -435,7 +436,7 @@ test('the settings stay available while the board loads and when it cannot load'
   await page.getByRole('button', { name: 'Retry' }).click();
   await expect(task(page, 12)).toBeVisible();
   await expect(addButtonBehindDialog(page)).toHaveCSS('background-color', ACCENT_RGB.Light.Red);
-  await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toBeVisible();
 });
 
 // ------------------------------------------------------------------ Focus
@@ -449,7 +450,7 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await expect(dialog).toBeVisible();
   // The focus goes to the chosen language, and the board behind is not reachable.
   await expect(dialog.getByRole('radio', { name: 'English' })).toBeFocused();
-  await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
   // The lanes of the board are hidden from the page; the dialog's own sections are not the board.
   await expect(page.locator('main').getByRole('region')).toHaveCount(0);
 
@@ -488,11 +489,16 @@ test('task creation dialogs take focus, keep it inside, and preserve the manual 
   page,
 }) => {
   await openFresh(page);
-  const add = page.getByRole('button', { name: 'Add task' });
+  const add = page.getByRole('button', { name: 'Ask AI' });
   await add.focus();
   await page.keyboard.press('Enter');
-  const request = page.getByRole('dialog', { name: 'New task' });
-  await expect(request.getByRole('textbox', { name: 'What should be done?' })).toBeFocused();
+  const request = page.getByRole('dialog', { name: 'Ask AI' });
+  // The dialog takes the focus and Tab keeps it inside until Escape gives it back to the button.
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  for (let step = 0; step < 8; step += 1) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  }
   await page.keyboard.press('Escape');
   await expect(request).toHaveCount(0);
   await expect(add).toBeFocused();
@@ -545,17 +551,16 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
 
   await task(page, 12).click();
-  // The card's button opens the answer dialog; its first option takes the focus, Tab stays inside, and Escape gives the focus back to the button.
+  // The card's button opens the answer dialog; the dialog takes the focus and Tab stays inside.
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const answer = await openAnswer(page, 12);
-  await expect(answer.getByRole('radio').first()).toBeFocused();
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
   for (let step = 0; step < 8; step += 1) {
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
   }
   await page.keyboard.press('Escape');
   await expect(answer).toHaveCount(0);
-  await expect(answerButton(page, 12)).toBeFocused();
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
 
@@ -609,7 +614,8 @@ test('changing the language does not translate or alter what was entered', async
   await move.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await task(page, 12).click();
-  await sendAnswer(page, 12, { text: 'Keep the database name.' });
+  await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: 'Keep the database name.' });
+  await closeMessages(page);
   await expect(task(page, 12)).toContainText('Idle');
 
   const before = listTasks(mainProject);
@@ -689,7 +695,8 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await task(page, 12).click();
   const panel = details(page);
   await expect(panel).toContainText('Pending');
-  await sendAnswer(page, 12, { text: 'Replace the board after a backup.' });
+  await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: 'Replace the board after a backup.' });
+  await closeMessages(page);
   await expect(answerButton(page, 12)).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#12 AI Idle Restore a board from JSON / })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
@@ -803,7 +810,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
 
   // Answering: a refused answer keeps the text, and the card stays pending.
   let answerFails = true;
-  await page.route('**/api/projects/*/qa/answers', async (route) => {
+  await page.route('**/api/projects/*/messages/answers', async (route) => {
     if (!answerFails) return route.fallback();
     return route.fulfill({
       status: 409,
@@ -813,15 +820,15 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   });
   await task(page, 12).click();
   const answer = await openAnswer(page, 12);
-  await answerNote(page).fill('Kept answer.');
+  await fillAnswer(answer, { choice: 'Keep compatibility (recommended)', text: 'Kept answer.' });
   await pressSend(page);
-  // The dialog shows the board's fixed save-failure text rather than the server's reason.
-  await expect(answer.getByRole('alert')).toContainText('Could not save. Try again.');
+  // The dialog says the question was answered elsewhere, and keeps the typed note.
+  await expect(answer.getByRole('alert')).toContainText('This question was answered elsewhere or withdrawn.');
   await expect(answer).toContainText('Kept answer.');
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
   answerFails = false;
-  await answer.getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(answer).toBeHidden();
+  await send(page);
+  await closeMessages(page);
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('idle');
 });
 

@@ -42,7 +42,7 @@ flowchart LR
 {"instanceId": "inst-5f3a", "seq": 42, "projectId": "…", "changes": [
   {"resource": "task", "id": 302, "facets": ["summary", "history"]},
   {"resource": "epic", "id": "EPIC-1", "facets": ["document"]},
-  {"resource": "qa", "id": "…", "facets": ["summary"]},
+  {"resource": "messages", "id": "…", "facets": ["summary"]},
   {"resource": "project", "id": "…", "facets": ["deleted"]}
 ]}
 ```
@@ -55,7 +55,7 @@ flowchart LR
 | `history` | 履歴。 |
 | `deleted` | リソースがなくなったこと。プロジェクトは`summary`か`deleted`だけを持ちます。 |
 
-プロジェクトの`qa/*/request.json`が変わると、`id`がプロジェクトIDで、facetが`summary`だけの`qa`の変更を送ります。クライアントはSummaryを読み直します。タスクをアーカイブへ移す、またはアーカイブから戻すことは`summary`の変更です。解析できないファイルは、そのリソースの`summary`・`document`・`history`が変わったものとして扱われます。`request`は、読み取れる依頼IDが変わったときだけ加えます。
+プロジェクトの`qa/*/QA.md`が変わると、`id`がプロジェクトIDで、facetが`summary`だけの`messages`の変更を送ります。クライアントはSummaryを読み直します。タスクをアーカイブへ移す、またはアーカイブから戻すことは`summary`の変更です。解析できないファイルは、そのリソースの`summary`・`document`・`history`が変わったものとして扱われます。`request`は、読み取れる依頼IDが変わったときだけ加えます。
 
 `seq`は、1つの`instanceId`の中で`changed`ごとに1ずつ増えます。`instanceId`はサーバーを起動するたびに新しくなるので、`seq`が最初から数え直されたことが分かります。
 
@@ -77,7 +77,7 @@ Summaryを読んでいる途中に届いた`changed`は、その応答にまだ�
 
 ## エージェントの待機とイベント
 
-変更待ち・質問の回答待ち（`qa ask`と`qa wait`）・次タスク待ちは、`src/agent/wait_engine.rs`を共有します。それぞれの呼び出し元が目的別の成立条件と、任意の単調時計に基づく期限を渡します。エンジンは固定したProjectIdを接続前に読み、SSEの`ready`後と各`changed`イベントの後にも確認します。snapshotが呼び出し元の条件を満たさない変更は読み飛ばして待ち続けます。
+変更待ち・質問の回答待ち（`message ask`と`message wait`）・次タスク待ちは、`src/agent/wait_engine.rs`を共有します。それぞれの呼び出し元が目的別の成立条件と、任意の単調時計に基づく期限を渡します。エンジンは固定したProjectIdを接続前に読み、SSEの`ready`後と各`changed`イベントの後にも確認します。snapshotが呼び出し元の条件を満たさない変更は読み飛ばして待ち続けます。
 
 次タスクモードでは、初回snapshotに対象タスクがなかったときだけ、絶対期限を一度設定します。他プロジェクトの変更や接続維持コメントでは延長しません。期限到達時に最後のsnapshotを読み、条件をもう一度評価するため、境界時刻までに届いたタスクを取得できます。最終読取に失敗した場合はエラーになり、対象なしにはなりません。変更待ちの任意timeoutはエラー（`wait_timeout`）のままです。タスク待ちの待機期限は、終了コード0の`idle_timeout`になります。対象条件と出力形式は[エージェント連携](./agents#変更を待つ)を参照してください。
 

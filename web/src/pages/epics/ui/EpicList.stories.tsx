@@ -6,7 +6,7 @@ import { EpicList } from './EpicList';
 
 const epics = [
   makeEpic({ id: 'EPIC-ALPHA', name: 'Alpha delivery' }),
-  makeEpic({ id: 'EPIC-BETA', name: 'Beta delivery', isDraft: true }),
+  makeEpic({ id: 'EPIC-BETA', name: 'Beta delivery', draft: 'human' }),
 ];
 const counts: Record<string, EpicTaskCounts> = {
   'EPIC-ALPHA': { todo: 2, doing: 1, done: 4, archived: 1, total: 8 },

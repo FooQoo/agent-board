@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "features/messages/ask/AskAiDialog.tsx",
+      "exports": [
+        {
+          "name": "AskAiDialog",
+          "stories": [
+            {
+              "id": "messages-askai--dialog",
+              "states": ["modal", "empty", "no epic selector", "no manual creation"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-filled",
+              "states": ["draft text", "attached images"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-required",
+              "states": ["empty text", "required message", "nothing sent"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-submit",
+              "states": ["typed text", "send request"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-insert-image",
+              "states": ["attached images", "insert in description", "image reference in text"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-send-failed",
+              "states": ["send failed", "reason shown", "text kept"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet",
+              "states": ["bottom sheet", "fixed buttons"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-filled",
+              "states": ["bottom sheet", "draft text", "attached images"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-required",
+              "states": ["bottom sheet", "required message"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-japanese",
+              "states": ["bottom sheet", "japanese"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/messages/ask/AskAi.tsx",
+      "exports": [
+        {
+          "name": "AskAi",
+          "stories": [
+            {
+              "id": "messages-askai--connected",
+              "states": ["modal", "connected to the project"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "AskAiSheet",
+          "stories": [
+            {
+              "id": "messages-askai--connected-sheet",
+              "states": ["bottom sheet", "connected to the project"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

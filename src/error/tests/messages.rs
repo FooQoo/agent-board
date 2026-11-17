@@ -37,8 +37,20 @@ fn messages_and_reasons_follow_the_design_table() {
             "Wait for the user to finalize it, then try again.",
         ),
         (
+            "task #5 is a draft and read-only for agents.",
+            "Wait for a person to start it (agboard start), then try again.",
+        ),
+        (
             "epic E is a draft and read-only for the CLI.",
             "Wait for the user to finalize it, then try again.",
+        ),
+        (
+            "task #5 is an AI draft; a person starts it instead.",
+            "Start the task (or its epic) instead of finalizing it.",
+        ),
+        (
+            "start is for a person only.",
+            "Ask the user to do this in the web UI or run it with --actor human.",
         ),
         (
             "task #5 is done and read-only for agents.",
@@ -58,7 +70,7 @@ fn messages_and_reasons_follow_the_design_table() {
         ),
         (
             "task #5 waits for answers to its questions.",
-            "Wait for the answers with \"agboard qa wait\", or see the questions with \"agboard qa ls --task ID\".",
+            "Wait for the answers with \"agboard message wait\", or see the questions with \"agboard message ls --task ID\".",
         ),
         (
             "Q-1 already answered.",
@@ -69,16 +81,29 @@ fn messages_and_reasons_follow_the_design_table() {
             "A withdrawn question takes no answer. Ask a new question if one is still needed.",
         ),
         (
-            "question Q-3 not found.",
-            "Run \"agboard qa ls --status all\" to see the questions of the project.",
+            "cannot start while Q-2 has no answer.",
+            "Answer the questions (the board, or \"agboard message answer\"), then start again.",
         ),
         (
-            "request 0123456789abcdef0123456789abcdef not found.",
-            "Use the request ID that \"agboard qa ask\" printed.",
+            "message Q-3 not found.",
+            "Run \"agboard message ls --status all\" to see the messages of the project.",
         ),
         (
-            "request 0123456789abcdef0123456789abcdef is already answered.",
-            "Every question of the request has an answer; there is nothing to withdraw.",
+            "message Q-3 already has its reply.",
+            "The message already has its reply; there is nothing to withdraw.",
+        ),
+        ("Q-3 is not a request.", "Name a request for this command."),
+        (
+            "request Q-4 was already accepted.",
+            "Another agent accepted this request first. Leave it to that agent.",
+        ),
+        (
+            "request Q-4 was withdrawn.",
+            "The person withdrew this request. Nothing is written to a withdrawn request.",
+        ),
+        (
+            "withdrawing a question is for an agent only.",
+            "An agent does this with --actor ai; a person has no way to do it.",
         ),
         (
             "task #5 is now done.",

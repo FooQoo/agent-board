@@ -185,7 +185,7 @@ describe('which project is shown', () => {
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to board' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: /Archived task/ }));
@@ -475,7 +475,7 @@ describe('states', () => {
     expect(await screen.findByText('Loading board…')).toBeTruthy();
     expect(switcher('knowledge')).toBeTruthy();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.getByText('Loading')).toBeTruthy();
 
     gate.resolve();
@@ -488,7 +488,7 @@ describe('states', () => {
     expect(await screen.findByText('Could not load this board.')).toBeTruthy();
     expect(screen.getByText('Not synced')).toBeTruthy();
     expect(screen.getByText('Try again, or switch to another project.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
 
     await choose('knowledge', 'agent-board');
     await screen.findByRole('region', { name: 'Todo' });
@@ -522,7 +522,7 @@ describe('states', () => {
       (screen.getByRole('button', { name: 'No projects' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
   });
 
@@ -531,7 +531,7 @@ describe('states', () => {
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(screen.getByText(/Choose another project from the menu/)).toBeTruthy();
     expect(switcher('Choose a project')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/summary'))).toBe(false);
 
@@ -582,7 +582,7 @@ describe('states', () => {
   it('shows the empty board of a project with no tasks', async () => {
     renderApp(urlOf(PROJECT_C.id));
     expect(await screen.findByText('No tasks yet.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add task' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ask AI' })).toBeTruthy();
   });
 
   it('uses the Japanese state texts', async () => {
@@ -640,13 +640,13 @@ describe('refreshing on events', () => {
 });
 
 async function openCreateForm() {
-  await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
-  await userEvent.click(screen.getByRole('button', { name: 'Create manually' }));
+  await userEvent.click(screen.getByRole('button', { name: 'More ways to add' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Add a task manually' }));
   return screen.getByRole('dialog');
 }
 
 describe('switching while a form is open', () => {
-  it('disables the switcher and Add task while the add form is open', async () => {
+  it('disables the switcher and Ask AI while the add form is open', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await openCreateForm();
@@ -702,7 +702,7 @@ describe('switching while a form is open', () => {
       title: 'New task',
       description: '---\nacceptance: []\n---\n\n',
       assignee: 'ai',
-      isDraft: false,
+      draft: null,
     });
     expect(app.updates()).toHaveLength(0);
   });
@@ -733,45 +733,28 @@ describe('switching while a form is open', () => {
     await screen.findByText('Eight in knowledge');
   });
 
-  it('sends an answer to the project where the answer dialog was opened, with that task number', async () => {
+  it('sends an answer to the open project with the question of the card', async () => {
     const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
     expect(pendingA).toBeTruthy();
-    backend.boards[PROJECT_B.id] = boardOf(
-      PROJECT_B,
-      [makeTask({ id: pendingA?.id ?? 12, title: 'Same number elsewhere' })],
-      2,
-    );
-    const app = renderApp(urlOf(PROJECT_A.id));
+    renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
     const dialog = await screen.findByRole('dialog');
     await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
-    // Typing in the open dialog holds the project, as the lease does.
-    expect(
-      (screen.getByRole('button', { name: 'agent-board', hidden: true }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+    const choices = within(dialog).queryAllByRole('radio');
+    if (choices[0]) await userEvent.click(choices[0]);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send answer' }));
 
-    app.navigate(urlOf(PROJECT_B.id));
-    await act(async () => {});
-    expect((screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement).value).toBe(
-      'Go ahead',
-    );
-    // Opened from the card, its last question sends the answer, with no review.
-    await userEvent.click(screen.getByRole('button', { name: /^Send$/ }));
-
-    await screen.findByText('Same number elsewhere');
+    await waitFor(() => expect(writes()).toHaveLength(1));
     const posts = writes();
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/qa/answers`);
+    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/messages/answers`);
     expect(JSON.parse(String(posts[0]?.[1]?.body))).toMatchObject({
       answers: [{ questionId: pendingA?.pendingRequestId, text: 'Go ahead' }],
     });
   });
 
-  it('keeps the project while an answer waits to be sent, even with the dialog closed, and lets it go once cleared', async () => {
+  it('closes the list of messages when another project is opened', async () => {
     const pendingA = fixtureBoard.tasks.find((task) => task.agentStatus === 'pending');
-    expect(pendingA).toBeTruthy();
     backend.boards[PROJECT_B.id] = boardOf(
       PROJECT_B,
       [makeTask({ id: pendingA?.id ?? 12, title: 'Same number elsewhere' })],
@@ -780,27 +763,11 @@ describe('switching while a form is open', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
-    const dialog = await screen.findByRole('dialog');
-    await userEvent.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'Go ahead');
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(answerButtonOf(pendingA?.id ?? 0).textContent).toBe('Continue answering');
-    // The answer is held, not sent: the project stays, and the band says so.
-    expect(
-      (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(screen.getByRole('button', { name: 'Review and send' })).toBeTruthy();
+    await screen.findByRole('dialog');
 
     app.navigate(urlOf(PROJECT_B.id));
-    await act(async () => {});
-    expect(screen.queryByText('Same number elsewhere')).toBeNull();
-    await userEvent.click(answerButtonOf(pendingA?.id ?? 0));
-    expect(
-      (await screen.findByRole('textbox', { name: 'Note' })) as HTMLTextAreaElement,
-    ).toHaveProperty('value', 'Go ahead');
-    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
-    await userEvent.keyboard('{Escape}');
     await screen.findByText('Same number elsewhere');
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(writes()).toHaveLength(0);
   });
 
@@ -812,7 +779,7 @@ describe('switching while a form is open', () => {
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect((screen.getByRole('button', { name: 'Add task' }) as HTMLButtonElement).disabled).toBe(
+    expect((screen.getByRole('button', { name: 'Ask AI' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
 

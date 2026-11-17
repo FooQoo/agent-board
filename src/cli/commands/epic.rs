@@ -4,8 +4,11 @@ use std::io::{BufRead, Write};
 
 use serde_json::{Value, json};
 
-use crate::cli::args::{EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs};
+use crate::cli::args::{
+    EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs, EpicStartArgs,
+};
 use crate::cli::{Context, Outcome};
+use crate::domain::{Actor, Draft};
 use crate::error::AgboardError;
 use crate::file_store::model::{EpicUpdate, EpicView, NewEpic};
 use crate::file_store::reader::ProjectSnapshot;
@@ -18,6 +21,7 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> 
         EpicCommand::Ls => ls(ctx),
         EpicCommand::Show(args) => show(ctx, args),
         EpicCommand::Edit(args) => edit(ctx, args),
+        EpicCommand::Start(args) => start(ctx, args),
         EpicCommand::Rm(args) => {
             ctx.interactive |= confirm::is_interactive(ctx.json);
             rm_with_io(
@@ -33,14 +37,15 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> 
 fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
     // Epics keep no history, so the actor is only checked for presence; the
     // command line requires it.
-    let _actor = args.actor.actor();
+    let actor = args.actor.actor();
     let epic = ctx.files.create_epic(
         ctx.project_id()?,
         NewEpic {
             id: args.id.clone(),
             name: args.name.clone(),
             color: args.color.clone(),
-            is_draft: false,
+            // An epic an agent creates is a proposal until a person starts it.
+            draft: (actor == Actor::Ai).then_some(Draft::Ai),
             document: None,
         },
         ctx.clock.now(),
@@ -92,7 +97,7 @@ fn ls(ctx: &mut Context) -> Result<Outcome, AgboardError> {
             epic.id,
             epic.name,
             epic.color,
-            if epic.is_draft { " [draft]" } else { "" },
+            draft_label(epic.draft),
             count
         ));
         listed.push(summary(epic, count));
@@ -114,7 +119,7 @@ fn show(ctx: &mut Context, args: &EpicIdArgs) -> Result<Outcome, AgboardError> {
         epic.id,
         epic.name,
         epic.color,
-        if epic.is_draft { "yes" } else { "no" },
+        draft_name(epic.draft),
         tasks,
         epic.document
     );
@@ -142,7 +147,7 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
             EpicUpdate {
                 name: args.name.clone(),
                 color: args.color.clone(),
-                is_draft: None,
+                draft: None,
                 document,
                 refuse_if_draft: true,
             },
@@ -225,5 +230,40 @@ pub fn rm_with_io(
         changed: true,
         human: format!("Deleted epic {id}.\n"),
         json: json!({"deleted": id.to_string()}),
+    })
+}
+
+fn draft_label(draft: Option<Draft>) -> &'static str {
+    match draft {
+        None => "",
+        Some(Draft::Human) => " [draft]",
+        Some(Draft::Ai) => " [AI draft]",
+    }
+}
+
+fn draft_name(draft: Option<Draft>) -> &'static str {
+    match draft {
+        None => "no",
+        Some(Draft::Human) => "human",
+        Some(Draft::Ai) => "ai",
+    }
+}
+
+fn start(ctx: &mut Context, args: &EpicStartArgs) -> Result<Outcome, AgboardError> {
+    let id = EpicId::normalize(&args.id)?;
+    let project = ctx.project_id()?;
+    let result = ctx
+        .files
+        .start_epic(project, &id, args.actor.actor(), ctx.clock.now())?;
+    let started = &result.value.started;
+    let human = if result.changed {
+        format!("Started epic {} and {} task(s).\n", id, started.len())
+    } else {
+        format!("Epic {id} has nothing to start.\n")
+    };
+    Ok(Outcome {
+        changed: result.changed,
+        human,
+        json: json!({"epic": result.value.epic, "started": started}),
     })
 }

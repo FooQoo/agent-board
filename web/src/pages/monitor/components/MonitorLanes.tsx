@@ -2,6 +2,8 @@ import { ArchiveIcon } from 'lucide-react';
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { PlanCardFor } from '../../../features/tasks/plans/PlanCard';
+import type { Plan } from '../../../features/tasks/plans/model/plan';
 import { IconLabel } from '@/shared/ui/icon-label';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
@@ -27,12 +29,14 @@ export interface MonitorLanesProps {
   onBulkArchive: () => void;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   onOpenAnswer?: (item: MonitorTaskModel) => void;
-  answerController?: MonitorViewProps['answerController'];
   id?: string;
   /** The tab bar: its marker follows the slide between lanes. */
   tabsRef?: RefObject<HTMLElement | null>;
   /** A story's still picture: this card has its left-swipe tiles showing. */
   previewRevealed?: number;
+  /** The plan cards at the top of Todo; they are not swipeable. */
+  plans?: readonly Plan[];
+  onOpenPlan?: (plan: Plan) => void;
 }
 
 const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
@@ -52,10 +56,11 @@ export function MonitorLanes({
   onBulkArchive,
   onOpenDetail,
   onOpenAnswer,
-  answerController,
   id,
   tabsRef,
   previewRevealed,
+  plans = [],
+  onOpenPlan,
 }: MonitorLanesProps) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState<{ id: number; side: RevealSide } | null>(
@@ -90,6 +95,7 @@ export function MonitorLanes({
       <div className="monitor-lanes__track">
         {LANES.map((name) => {
           const items = lanes[name];
+          const laneEmpty = items.length === 0 && (name !== 'todo' || plans.length === 0);
           return (
             <section
               key={name}
@@ -114,7 +120,11 @@ export function MonitorLanes({
                 </div>
               )}
               <div className="monitor-lane__scroll">
-                {items.length === 0 ? (
+                {name === 'todo' &&
+                  plans.map((plan) => (
+                    <PlanCardFor key={plan.id} plan={plan} onReview={() => onOpenPlan?.(plan)} />
+                  ))}
+                {laneEmpty ? (
                   <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
                 ) : (
                   items.map((item) => (
@@ -143,7 +153,6 @@ export function MonitorLanes({
                         section={name}
                         onOpenDetail={onOpenDetail}
                         onOpenAnswer={onOpenAnswer}
-                        answerController={answerController}
                       />
                     </SwipeableCard>
                   ))

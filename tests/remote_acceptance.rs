@@ -21,7 +21,7 @@ fn fixture() -> tempfile::TempDir {
                 description: "---\nacceptance:\n- id: AC-1\n  text: Checked on the phone\n  done: false\n---\nBody.\n".into(),
                 assignee: Assignee::Human,
                 actor: Actor::Human,
-                is_draft: false,
+                draft: None,
             },
             chrono::Utc::now(),
         )

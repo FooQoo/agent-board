@@ -97,7 +97,7 @@ fn a_cursor_names_the_content_version_and_a_different_version_answers_at_once() 
     // After a change the version differs, so the same old cursor is answered at once.
     agboard(home.path())
         .args([
-            "--project", "Demo", "add", "Changed", "--assignee", "ai", "--actor", "ai",
+            "--project", "Demo", "add", "Changed", "--assignee", "ai", "--actor", "human",
             "--desc", "## 作業内容\n\nWork.\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n",
         ])
         .assert()
@@ -154,7 +154,7 @@ fn init_empties_the_named_project_and_keeps_its_id_name_and_task_number() {
             "--assignee",
             "ai",
             "--actor",
-            "ai",
+            "human",
             "--desc",
             body,
         ])

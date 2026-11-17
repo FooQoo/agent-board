@@ -6,8 +6,8 @@ mod enums;
 mod epic;
 mod help;
 mod history;
+mod message;
 mod project;
-mod qa;
 mod task;
 mod validate;
 
@@ -16,8 +16,8 @@ pub use self::attachment::*;
 pub use self::enums::*;
 pub use self::epic::*;
 pub use self::history::*;
+pub use self::message::*;
 pub use self::project::*;
-pub use self::qa::*;
 pub use self::task::*;
 pub use self::validate::*;
 
@@ -61,10 +61,12 @@ pub enum Command {
     Mv(MvArgs),
     /// Report a task's run state: idle or running
     State(StateArgs),
+    /// Start an AI draft task (a person only)
+    Start(StartArgs),
     /// Append a work note to a task history
     History(HistoryArgs),
-    /// Ask the user questions, wait for the answers, and record answers
-    Qa(QaArgs),
+    /// Ask the user questions, wait for the answers, and handle requests from the user
+    Message(MessageArgs),
     /// Delete a task (humans only; asks for confirmation)
     Rm(RmArgs),
     /// List tasks
@@ -116,8 +118,9 @@ impl Command {
             Command::Edit(_) => "edit",
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
+            Command::Start(_) => "start",
             Command::History(_) => "history",
-            Command::Qa(_) => "qa",
+            Command::Message(_) => "message",
             Command::Rm(_) => "rm",
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
@@ -146,7 +149,7 @@ pub const SUBCOMMAND_NAMES: [&str; 24] = [
     "mv",
     "state",
     "history",
-    "qa",
+    "message",
     "rm",
     "ls",
     "show",

@@ -31,7 +31,7 @@ pub enum ChangeResource {
     Project,
     /// The project's questions changed: one was asked, answered, withdrawn, or its references
     /// changed. The ID is the project's; the facet is `summary`.
-    Qa,
+    Messages,
 }
 
 /// A task ID is an integer; an epic ID and a project ID are strings.
@@ -66,7 +66,7 @@ impl Changed {
                 (change.resource, &change.id),
                 (ChangeResource::Task, ChangeId::Task(_))
                     | (
-                        ChangeResource::Epic | ChangeResource::Project | ChangeResource::Qa,
+                        ChangeResource::Epic | ChangeResource::Project | ChangeResource::Messages,
                         ChangeId::Named(_)
                     )
             );
@@ -84,8 +84,8 @@ impl Changed {
                 if change.resource == ChangeResource::Project && !project_facet {
                     return Some("a project change has only summary or deleted".into());
                 }
-                if change.resource == ChangeResource::Qa && *facet != Facet::Summary {
-                    return Some("a qa change has only summary".into());
+                if change.resource == ChangeResource::Messages && *facet != Facet::Summary {
+                    return Some("a messages change has only summary".into());
                 }
                 if *facet == Facet::Request {
                     if change.resource != ChangeResource::Task {

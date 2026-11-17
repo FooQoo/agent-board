@@ -2,28 +2,30 @@
 
 How Agent Board records what happened (history), asks people for decisions (project questions and their answers), and decides when a task is finished (acceptance conditions and automatic Done).
 
-## Questions and answers
+## Messages
 
-Questions belong to the project, not to a task. An agent asks a set of questions with `agboard qa ask`; tasks refer to the questions they wait on.
+Messages belong to the project, not to a task. A message is a question from an agent to a person, or a request from a person to an agent. Tasks refer to the questions they wait on.
 
-- One `qa ask` stores one request at `qa/<request-id>/request.json`. A request holds 1 to 20 questions, answered together. The request ID is 32 lowercase hexadecimal characters; each question gets the next project number, `Q-<n>`, from `nextQuestionId` in `project.json`. Numbers only grow.
-- A question is Markdown of 1 to 5,000 characters with 2 to 10 choices. Each choice has an ID unique within the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. `kind` is `task` (the default), `plan`, or `start_approval`. `recommendedChoiceId` is optional and must name a choice. A `start_approval` question needs at least one `approvingChoiceIds` entry; other kinds have none.
-- `--task <id>`, or `tasks` on a question, adds the question IDs to the task's `questions` frontmatter and appends history with the question and its choices as separate blocks. A Running task returns to Idle in the same save. The tasks must exist, be unarchived, not be drafts, and, for an AI actor, not be Done; otherwise nothing is written.
-- An answer accepts a `choiceId`, a `text` of 1 to 2,000 characters after trimming, or both, but not neither; an unknown choice is `request_choice_unknown`. The answer is stored on the question with the label at the time of selection, `actor` (always `human`), and `via` (`ui` from the board or remote access, `chat` when an agent records an answer given in the chat, `cli` from a terminal). Each unarchived task that refers to the question gets a history entry with the question, the selected label, and the note; Done tasks get it as well.
-- The first recorded answer is final. Answering an answered question fails with `question_answered`, and a question of a withdrawn request fails with `question_withdrawn`. Several answers sent together are all written or none is.
-- `qa withdraw` withdraws a whole request with an optional reason of up to 2,000 characters. Answers already given stay. A request whose questions are all answered can no longer be withdrawn (`request_answered`). Lane moves, archive, and deletion never withdraw questions.
-- `qa link` and `qa unlink` add or remove references in a task's `questions`, with the same protections as editing `TASK.md`, and append history.
-- Question and answer texts are trimmed, with CRLF and lone CR normalized to LF.
+- Each message is one file, `qa/Q-<n>/QA.md`: YAML frontmatter plus a Markdown body. Images attached to a request live in `qa/Q-<n>/attachments/`. Questions and requests share one number sequence, `nextQuestionId` in `project.json`; numbers only grow.
+- A question has `from` and `to`, an optional `tasks` list (the tasks it was asked for), 2 to 10 optional `choices`, an optional `recommended` choice, a `reply`, `withdrawnAt`, and `createdAt`. The body is the question, 1 to 5,000 characters. Each choice has an ID unique within the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. `recommended` must name a choice.
+- A request has `from`, `to`, `acceptedAt`, `acceptedBy`, `withdrawnAt`, and `createdAt`. The body is the request, 1 to 20,000 characters.
+- `agboard message ask` writes one question file per question, up to 20 per call. `--task <id>`, or `tasks` on a question, adds the question ID to the task's `questions` frontmatter and appends history with the question and its choices as separate blocks. A Running task returns to Idle in the same save. The tasks must exist, be unarchived, not be drafts, and, for an AI actor, not be Done; otherwise nothing is written.
+- A reply is `{choice, text, via, at}`. A question with choices needs a `choice`; a question without choices needs a `text` of 1 to 2,000 characters after trimming. An unknown choice is `choice_unknown`. The reply stores the choice ID, `via` (`ui` from the board or remote access, `chat` when an agent records an answer given in the chat, `cli` from a terminal), and the time. Each unarchived task that refers to the question gets a history entry with the question, the selected label, and the note; Done tasks get it as well.
+- A reply is written only by a person, and only once. Answering an answered question fails with `question_answered`. Several answers sent together are all written or none is.
+- An agent accepts a request with `agboard message accept`, which records `acceptedAt` and `acceptedBy` (the agent or session ID passed with `--by`). A request is accepted once; a second accept fails with `request_accepted`.
+- Nothing is written to a withdrawn message: answering fails with `question_withdrawn` and accepting with `request_withdrawn`. Only an agent withdraws a question (`ai_only` for a person), and only a person withdraws a request (`human_only` for an agent). A message that already has its reply or acceptance cannot be withdrawn (`message_closed`). Answers already given stay. Lane moves, archive, and deletion never withdraw messages.
+- `message link` and `message unlink` add or remove references in a task's `questions` and keep the question's own `tasks` in step. They have the same protections as editing `TASK.md`, and they append history.
+- Message texts are trimmed, with CRLF and lone CR normalized to LF.
 
-A question is `open` until it is answered or its request is withdrawn; a request is `answered` when every question is. These states are derived when the file is read, never stored.
+A message has one of three states: `withdrawn` when `withdrawnAt` is set, `closed` when a question has its reply or a request is accepted, and `open` otherwise. The state is derived when the file is read, never stored. The API and the CLI name them `open`, `answered`, or `withdrawn` for a question, and `open`, `accepted`, or `withdrawn` for a request; filters accept `open`, `closed`, `withdrawn`, or `all`.
 
 ### Waiting for a person
 
-A task waits for a person when a question it refers to is open, when a `start_approval` question it refers to was answered with a choice outside `approvingChoiceIds`, when it refers to a `plan` question that is not withdrawn but to no `start_approval` question answered with a choice in `approvingChoiceIds`, or when its references cannot be checked (a broken `request.json`, or broken `questions` frontmatter). The plan rule keeps a planned task waiting after its plan questions are answered and before its start is approved. A withdrawn question does not make a task wait, and neither does a reference that names no question while every request file is readable; that reference is reported in `problems`.
+An AI task waits for a person when it refers to a question without a reply, or to a message file that cannot be read, or when its `questions` frontmatter cannot be read. A withdrawn question does not make a task wait, and neither does a reference that names no message while every message file is readable; that reference is reported in `problems`.
 
 `task.json` stores only `idle` or `running`. When an AI task in Todo or Doing waits, every reader (Summary, snapshot, `show`, progress, and hooks) shows `agentStatus` as `pending`, together with `openQuestionIds` and the `pendingReason` and `pendingChoices` of the open question with the smallest ID. While a task waits, an AI `state <id> running` and an AI move to Done fail with `questions_unanswered`; changes to `idle` and moves by people are allowed. Done, archived, and human tasks show their stored state and keep their references as a record.
 
-Workflow data is never derived from history text. Questions and answers come from `request.json` and references from the `questions` frontmatter, so editing history never changes them.
+Workflow data is never derived from history text. Messages come from their `QA.md` files and references from the `questions` frontmatter, so editing history never changes them.
 
 ## History
 
@@ -32,7 +34,7 @@ History is one timeline of work progress and every task operation. Each entry ha
 - `at`: UTC time in exactly `YYYY-MM-DDTHH:MM:SSZ`.
 - `reason`: 1 to 10,000 characters, not only whitespace.
 
-Extra fields such as an ID, kind, actor, transition, or request ID are rejected.
+Extra fields such as an ID, kind, actor, or transition are rejected.
 
 - Create, lane move, run-state change, question, answer, withdrawal, reference change, draft toggle, epic change, archive, restore, a person checking or unchecking a condition, and automatic Done append history automatically. If a move or a state change omits the reason, the product generates one from the operation and the current state.
 - Agents append work progress with `agboard --project NAME history add ID [--reason TEXT | --reason-file PATH]`. The product assigns the time and refuses AI appends to drafts, archived tasks, and Done tasks. A blank reason is generated from the current lane and run state.

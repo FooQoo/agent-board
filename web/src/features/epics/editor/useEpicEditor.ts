@@ -62,7 +62,7 @@ export function useEpicEditor({
   const [color, setColor] = useState(epic.color.toUpperCase());
   const [whole, setWhole] = useState(epic.priorityError);
   /** The epic was a draft before the dialog entered one (so saving does not finalize it). */
-  const [wasDraft, setWasDraft] = useState(epic.isDraft);
+  const [wasDraft, setWasDraft] = useState(epic.draft !== null);
   /** Changes when the dialog follows a new version: the editors start again from it. */
   const [version, setVersion] = useState(0);
   const [epicDocument, setEpicDocument] = useState(saved.document);
@@ -141,7 +141,7 @@ export function useEpicEditor({
       setOrder(latestOrder);
       setRemoved([]);
       setWhole(latest.priorityError);
-      setWasDraft(latest.isDraft);
+      setWasDraft(latest.draft !== null);
       attachmentState.reset(latest.attachments);
       setVersion((current) => current + 1);
     },
@@ -189,8 +189,8 @@ export function useEpicEditor({
         const text = currentDocument();
         const base = { name: name.trim(), color: color.toUpperCase() };
         const input: EpicSaveInput = whole
-          ? { ...base, document: text, ...(wasDraft ? {} : { isDraft: false as const }) }
-          : { ...base, body: text, ...(wasDraft ? {} : { isDraft: false as const }) };
+          ? { ...base, document: text, ...(wasDraft ? {} : { draft: null }) }
+          : { ...base, body: text, ...(wasDraft ? {} : { draft: null }) };
         await api.save(input);
         somethingSaved.current = true;
         setSaved((current) => ({ ...current, ...base, document: text }));

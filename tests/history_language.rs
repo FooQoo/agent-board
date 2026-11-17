@@ -11,8 +11,8 @@ fn new_task(body: &str) -> NewTask {
         title: "Work".into(),
         description: body.into(),
         assignee: Assignee::Ai,
-        actor: Actor::Ai,
-        is_draft: false,
+        actor: Actor::Human,
+        draft: None,
     }
 }
 
@@ -90,7 +90,13 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
     assert!(last.starts_with("質問に回答しました（Q-1）"), "{last}");
     assert!(last.contains("選択: 進める"), "{last}");
     let draft = store
-        .set_draft(&project, id, true, false, Utc::now())
+        .set_draft(
+            &project,
+            id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            Utc::now(),
+        )
         .unwrap()
         .value;
     assert_eq!(
@@ -98,7 +104,7 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
         "タスクを下書きにしました。"
     );
     let finalized = store
-        .set_draft(&project, id, false, false, Utc::now())
+        .set_draft(&project, id, None, false, Utc::now())
         .unwrap()
         .value;
     assert_eq!(
@@ -106,10 +112,16 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
         "下書きを確定しました。"
     );
     store
-        .set_draft(&project, id, true, false, Utc::now())
+        .set_draft(
+            &project,
+            id,
+            Some(agent_board::domain::Draft::Human),
+            false,
+            Utc::now(),
+        )
         .unwrap();
     let discarded = store
-        .set_draft(&project, id, false, true, Utc::now())
+        .set_draft(&project, id, None, true, Utc::now())
         .unwrap()
         .value;
     assert_eq!(
@@ -125,7 +137,7 @@ fn japanese_body_localizes_generated_operations_and_preserves_authored_reasons()
                 id: "LANG".into(),
                 name: "Language".into(),
                 color: None,
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             Utc::now(),

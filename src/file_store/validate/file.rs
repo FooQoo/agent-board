@@ -92,8 +92,8 @@ pub fn check_task_metadata(task: &TaskFile, folder_id: i64) -> Vec<Defect> {
             "Running needs an AI-owned task in Doing.",
         ));
     }
-    if task.is_draft && task.agent_status != RunState::Idle {
-        out.push(defect("isDraft", "Only idle tasks can be drafts."));
+    if task.draft.is_some() && task.agent_status != RunState::Idle {
+        out.push(defect("draft", "Only idle tasks can be drafts."));
     }
     let mut answer_ids = HashSet::new();
     for (index, answer) in task.request_answers.iter().enumerate() {

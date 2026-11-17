@@ -116,8 +116,8 @@ for (const locale of ['en', 'ja']) {
 for (const width of [1024, 1280, 1920]) {
   test(`${width}px: the same insets, header and footer at every width`, async ({ page }) => {
     await open(page, width);
-    // The band of unanswered questions takes the top inset; the lanes follow it 12px below.
-    const band = await computed(page, '.question-band', ['margin-top', 'margin-right', 'margin-left']);
+    // The Messages band takes the top inset; the lanes follow it 12px below.
+    const band = await computed(page, '.message-band', ['margin-top', 'margin-right', 'margin-left']);
     expect([band['margin-top'], band['margin-right'], band['margin-left']]).toEqual(['24px', '24px', '24px']);
     const lanes = await computed(page, '.board__lanes', ['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'column-gap']);
     expect([lanes['padding-top'], lanes['padding-right'], lanes['padding-bottom'], lanes['padding-left']]).toEqual([

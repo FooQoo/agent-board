@@ -14,7 +14,7 @@ import { boardView, error, json, ndjsonResponse, projectNotFound, wireBoard } fr
 export const SLOW_MS = 60 * 60 * 1000;
 
 const READ_PATH =
-  /^\/api\/projects\/([^/]+)\/(board|summary|archive|qa\/[^/]+|(?:tasks|epics)\/[^/]+\/detail)$/;
+  /^\/api\/projects\/([^/]+)\/(board|summary|archive|messages\/[^/]+|(?:tasks|epics)\/[^/]+\/detail)$/;
 
 /** The board, the Summary, the archive and the Detail streams of a project. */
 export const readRoutes: Routes = (context, request) => {
@@ -38,23 +38,25 @@ export const readRoutes: Routes = (context, request) => {
     });
   }
 
-  if (rest.startsWith('qa/')) {
-    const id = decodeURIComponent(rest.slice(3));
+  if (rest.startsWith('messages/')) {
+    const id = decodeURIComponent(rest.slice('messages/'.length));
     const task = found.tasks.find((item) => questionOf(item)?.id === id);
-    if (!task) return error(404, 'question_not_found', `question ${id} not found.`, 'Refresh.');
+    if (!task) return error(404, 'message_not_found', `question ${id} not found.`, 'Refresh.');
     return json(200, {
       question: {
         id,
-        requestId: id,
-        kind: 'task',
-        question: task.pendingReason ?? '',
+        type: 'question',
+        from: 'ai',
+        to: 'human',
+        body: task.pendingReason ?? '',
+        tasks: [task.id],
         choices: task.pendingChoices,
         recommendedChoiceId: null,
-        approvingChoiceIds: [],
-        answer: null,
+        reply: null,
         status: 'open',
         referencedBy: [task.id],
         createdAt: task.agentStatusChangedAt,
+        withdrawnAt: null,
       },
     });
   }

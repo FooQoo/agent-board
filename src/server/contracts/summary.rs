@@ -18,15 +18,15 @@ pub struct Summary {
     pub problems: Vec<SummaryProblem>,
     /// The open questions of the project, in ID order.
     pub questions: Vec<SummaryQuestion>,
+    /// Open questions, requests and approvals in one shape, oldest first.
+    pub messages: Vec<crate::file_store::message::Message>,
 }
 
-/// An open question: enough to list it; the full text is read with `GET …/qa/{questionId}`.
+/// An open question: enough to list it; the full text is read with `GET …/messages/{id}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct SummaryQuestion {
     pub id: String,
-    pub request_id: String,
-    pub kind: crate::file_store::qa::QuestionKind,
     /// The first line of the question, up to 200 characters.
     pub title: String,
     pub recommended_choice_id: Option<String>,
@@ -51,7 +51,7 @@ pub struct SummaryTask {
     pub task_status: Column,
     pub agent_status: RunState,
     pub assignee: Assignee,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     pub position: i64,
     pub epic_id: Option<String>,
     pub acceptance: AcceptanceCount,
@@ -105,7 +105,7 @@ pub struct SummaryEpic {
     pub name: String,
     /// `#RRGGBB`.
     pub color: String,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     /// The IDs of the epic's tasks in the order the epic sets; empty when it sets none.
     pub priority: Vec<i64>,
     /// The stored order cannot be read, so it is ignored.

@@ -33,8 +33,6 @@ export function questionOf(task: Task): SummaryQuestion | null {
   if (task.agentStatus !== 'pending' || !task.pendingRequestId || task.archivedAt) return null;
   return {
     id: task.pendingRequestId,
-    requestId: task.pendingRequestId,
-    kind: 'task',
     title: (task.pendingReason ?? '').split('\n')[0]?.slice(0, 200) ?? '',
     recommendedChoiceId: null,
     referencedBy: [task.id],
@@ -53,7 +51,7 @@ export function summaryOfBoard(board: Board): Summary {
         taskStatus: task.taskStatus,
         agentStatus: task.agentStatus,
         assignee: task.assignee,
-        isDraft: task.isDraft,
+        draft: task.draft,
         position: task.position,
         epicId: task.epic?.id ?? null,
         acceptance: {
@@ -81,11 +79,30 @@ export function summaryOfBoard(board: Board): Summary {
       const asked = questionOf(task);
       return asked ? [asked] : [];
     }),
+    // Each open question is one message waiting on the person.
+    messages: board.tasks.flatMap((task) => {
+      const asked = questionOf(task);
+      return asked
+        ? [
+            {
+              id: asked.id,
+              type: 'question' as const,
+              from: 'ai' as const,
+              to: 'human' as const,
+              turn: 'human' as const,
+              title: asked.title,
+              createdAt: asked.createdAt,
+              tasks: asked.referencedBy,
+              epicId: task.epic?.id ?? null,
+            },
+          ]
+        : [];
+    }),
     epics: board.epics.map((epic) => ({
       id: epic.id,
       name: epic.name,
       color: epic.color,
-      isDraft: epic.isDraft,
+      draft: epic.draft,
       priority: epic.priority,
       priorityError: epic.priorityError,
       progress: board.epicTaskCounts[epic.id] ?? {

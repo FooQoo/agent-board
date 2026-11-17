@@ -29,7 +29,7 @@ pub struct TaskSummaryFields {
     pub task_status: Column,
     pub agent_status: RunState,
     pub assignee: Assignee,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     pub position: i64,
     pub epic_id: Option<String>,
     pub acceptance_done: u32,
@@ -70,7 +70,7 @@ pub struct EpicSummaryFields {
     pub id: String,
     pub name: String,
     pub color: String,
-    pub is_draft: bool,
+    pub draft: Option<crate::domain::Draft>,
     /// The epic's task order (EPIC.md `priority`) and whether it could not be read.
     pub priority: Vec<i64>,
     pub priority_error: bool,
@@ -101,8 +101,6 @@ pub struct EpicProjection {
 #[serde(rename_all = "camelCase")]
 pub struct QuestionSummary {
     pub id: String,
-    pub request_id: String,
-    pub kind: crate::file_store::qa::QuestionKind,
     /// The first line of the question, up to 200 characters.
     pub title: String,
     pub recommended_choice_id: Option<String>,
@@ -123,6 +121,8 @@ pub struct Projection {
     /// The open questions, in ID order, and a hash of every question's state.
     pub questions: Vec<QuestionSummary>,
     pub qa_hash: String,
+    /// The open questions, requests and approvals in the common shape.
+    pub messages: Vec<super::message::Message>,
     /// Tasks and epics that could not be read at all, with a digest of their raw files.
     broken_tasks: BTreeMap<i64, String>,
     broken_epics: BTreeMap<String, String>,

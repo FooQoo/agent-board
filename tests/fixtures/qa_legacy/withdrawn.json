@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "requestId": "b1c2d3e4f5061728394a5b6c7d8e9f0a",
+  "createdAt": "2026-11-12T10:00:00Z",
+  "createdBy": "ai",
+  "withdrawnAt": "2026-11-12T10:05:00Z",
+  "withdrawReason": "The plan changed.",
+  "questions": [
+    {
+      "id": "Q-5",
+      "kind": "task",
+      "question": "Use the old API or the new one?",
+      "choices": [
+        { "id": "old", "label": "Old" },
+        { "id": "new", "label": "New" }
+      ],
+      "recommendedChoiceId": null,
+      "approvingChoiceIds": [],
+      "answer": null
+    }
+  ]
+}

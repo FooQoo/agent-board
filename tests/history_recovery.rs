@@ -23,8 +23,8 @@ fn public_snapshot_recovers_an_interrupted_pair_before_returning_a_task() {
                 title: "Original".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             at,
         )

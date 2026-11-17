@@ -20,7 +20,7 @@ test('epic details confirm deletion, retain refusals, and remove an unused epic'
 	resetBoard(mainProject);
 	agboardOk(mainProject, ['epic', 'add', 'EMPTYDEL', '--name', 'Empty epic sample', '--actor', 'ai']);
 	agboardOk(mainProject, ['epic', 'add', 'USEDDEL', '--name', 'Occupied epic sample', '--actor', 'ai']);
-	agboardOk(mainProject, ['add', 'Keep the used epic', '--assignee', 'ai', '--actor', 'ai', '--epic', 'USEDDEL']);
+	agboardOk(mainProject, ['add', 'Keep the used epic', '--assignee', 'ai', '--actor', 'human', '--epic', 'USEDDEL']);
 	await page.goto('/');
 	await waitForSync(page);
 	await page.getByRole('button', { name: 'Epics', exact: true }).click();
@@ -46,9 +46,9 @@ test('the header lists the epics with their counts, and selecting one shows its 
 }) => {
 	resetBoard(mainProject);
 	agboardOk(mainProject, ['epic', 'add', 'LISTFLOW', '--name', 'Epic list flow', '--actor', 'ai']);
-	agboardOk(mainProject, ['add', 'Flow todo', '--assignee', 'ai', '--actor', 'ai', '--epic', 'LISTFLOW']);
+	agboardOk(mainProject, ['add', 'Flow todo', '--assignee', 'ai', '--actor', 'human', '--epic', 'LISTFLOW']);
 	const doingId = nextTaskId(mainProject);
-	agboardOk(mainProject, ['add', 'Flow doing', '--assignee', 'ai', '--actor', 'ai', '--epic', 'LISTFLOW']);
+	agboardOk(mainProject, ['add', 'Flow doing', '--assignee', 'ai', '--actor', 'human', '--epic', 'LISTFLOW']);
 	agboardOk(mainProject, ['mv', String(doingId), 'doing', '--actor', 'ai', '--reason', 'Start']);
 
 	await page.goto('/');
@@ -110,7 +110,7 @@ test('an epic with no tasks reads zero in every state', async ({ page }) => {
 test('a task archived from the board is counted as archived in its epic, once', async ({ page }) => {
 	resetBoard(mainProject);
 	agboardOk(mainProject, ['epic', 'add', 'ARCHCOUNT', '--name', 'Archive count', '--actor', 'ai']);
-	agboardOk(mainProject, ['add', 'Counted once', '--assignee', 'ai', '--actor', 'ai', '--epic', 'ARCHCOUNT']);
+	agboardOk(mainProject, ['add', 'Counted once', '--assignee', 'ai', '--actor', 'human', '--epic', 'ARCHCOUNT']);
 
 	await page.goto('/');
 	await waitForSync(page);

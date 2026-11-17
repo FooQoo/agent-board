@@ -16,7 +16,7 @@ import {
 
 // A card's life on the board: create, move, answer, archive, restore and delete.
 
-const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?|qa\/answers)$/;
+const TASK_ROUTE = /^\/api\/projects\/([^/]+)\/(tasks(?:\/.*)?|messages\/(?:answers|requests))$/;
 
 export const lifecycleRoutes: Routes = (context, request) => {
   const match = TASK_ROUTE.exec(request.url.pathname);
@@ -73,12 +73,21 @@ export const lifecycleRoutes: Routes = (context, request) => {
     return archiveDone(context, found, input);
   }
 
-  if (rest === 'qa/answers') {
+  if (rest === 'messages/answers') {
     if (!request.token) return forbidden();
     if (!found) return projectNotFound();
     const input = parseBody(request.body);
     if (!input) return invalidJson();
     return answerQuestion(context, found, input);
+  }
+
+  if (rest === 'messages/requests') {
+    if (!request.token) return forbidden();
+    if (!found) return projectNotFound();
+    // The mock keeps no messages: it only accepts the request, as the server answers it.
+    return json(201, {
+      request: { id: 'Q-1', type: 'request', from: 'human', to: 'ai', status: 'open' },
+    });
   }
 
   const taskMatch = /^tasks\/(\d+)\/move$/.exec(rest);
@@ -89,10 +98,7 @@ export const lifecycleRoutes: Routes = (context, request) => {
   // A form body arrives as the text of its `metadata` field; its images are not read.
   const input = parseBody(request.body);
   if (!input) return invalidJson();
-  if (creates)
-    return input.requestKind === 'simple'
-      ? createTask(context, found, simpleRequest(found, input), request.language)
-      : createTask(context, found, input, request.language);
+  if (creates) return createTask(context, found, input, request.language);
   const id = Number(taskMatch?.[1]);
   const task = found.tasks.find((item) => item.id === id);
   if (!task) return error(404, 'task_not_found', `task #${id} not found.`, `No task has ID ${id}.`);
@@ -133,22 +139,6 @@ function archiveDone(
 
 const TITLE_LIMIT = 100;
 
-/**
- * A simple request as the server reads it: an AI card whose title is the first line of the text
- * that is not blank, cut to the title limit, in the epic the request names.
- */
-function simpleRequest(found: MockBoard, input: Record<string, unknown>): Record<string, unknown> {
-  const description = String(input.description ?? '');
-  const firstLine = description.split('\n').find((line) => line.trim() !== '') ?? '';
-  const epic = found.epics.find((item) => item.id === input.epicId);
-  return {
-    title: [...firstLine.trim()].slice(0, TITLE_LIMIT).join(''),
-    description,
-    assignee: 'ai',
-    epic: epic ? { id: epic.id, name: epic.name, color: epic.color } : null,
-  };
-}
-
 function createTask(
   context: MockContext,
   found: MockBoard,
@@ -183,7 +173,7 @@ function createTask(
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,
-    isDraft: input.isDraft === true,
+    draft: input.draft === 'human' ? 'human' : null,
     archivedAt: null,
     // The page's language, as `agboard serve` writes the history of the cards it creates.
     history: [

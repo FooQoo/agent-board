@@ -15,7 +15,6 @@ const meta: Meta<typeof ActionDialog> = {
     onClose: fn(),
     onSubmit: fn(async () => {}),
     tasks: [task],
-    epics: [epic],
     epicApi: {
       addImages: fn(async () => {}),
       removeImage: fn(async () => {}),

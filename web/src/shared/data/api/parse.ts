@@ -7,6 +7,7 @@ import type {
   Summary,
   SummaryEpic,
   SummaryProblem,
+  Message,
   SummaryQuestion,
   SummaryTask,
 } from './contracts';
@@ -15,8 +16,8 @@ import { bool, exact, fail, int, list, nullableStr, oneOf, str } from './guards'
 const STATUSES = ['todo', 'doing', 'done'] as const;
 const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
-const RESOURCES = ['task', 'epic', 'project', 'qa'] as const;
-const QUESTION_KINDS = ['plan', 'start_approval', 'task'] as const;
+const RESOURCES = ['task', 'epic', 'project', 'messages'] as const;
+const DRAFTS = ['human', 'ai'] as const;
 const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
 const TASK_FIELDS = [
@@ -25,7 +26,7 @@ const TASK_FIELDS = [
   'taskStatus',
   'agentStatus',
   'assignee',
-  'isDraft',
+  'draft',
   'position',
   'epicId',
   'acceptance',
@@ -50,7 +51,7 @@ function parseTask(value: unknown, path: string): SummaryTask {
     taskStatus: oneOf(o.taskStatus, `${path}.taskStatus`, STATUSES),
     agentStatus: oneOf(o.agentStatus, `${path}.agentStatus`, RUN_STATES),
     assignee: oneOf(o.assignee, `${path}.assignee`, ASSIGNEES),
-    isDraft: bool(o.isDraft, `${path}.isDraft`),
+    draft: draft(o.draft, `${path}.draft`),
     position: int(o.position, `${path}.position`, Number.MIN_SAFE_INTEGER),
     epicId: nullableStr(o.epicId, `${path}.epicId`),
     acceptance: {
@@ -87,12 +88,17 @@ function parseTask(value: unknown, path: string): SummaryTask {
   return task;
 }
 
+/** The owner of a draft, or `null` when the card or epic is not a draft. */
+function draft(value: unknown, path: string) {
+  return value === null ? null : oneOf(value, path, DRAFTS);
+}
+
 function parseEpic(value: unknown, path: string): SummaryEpic {
   const o = exact(value, path, [
     'id',
     'name',
     'color',
-    'isDraft',
+    'draft',
     'priority',
     'priorityError',
     'progress',
@@ -104,7 +110,7 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     id: str(o.id, `${path}.id`),
     name: str(o.name, `${path}.name`),
     color: str(o.color, `${path}.color`),
-    isDraft: bool(o.isDraft, `${path}.isDraft`),
+    draft: draft(o.draft, `${path}.draft`),
     priority: list(o.priority, `${path}.priority`, (v, p) => int(v, p, 1)),
     priorityError: bool(o.priorityError, `${path}.priorityError`),
     progress: {
@@ -127,20 +133,38 @@ function parseProblem(value: unknown, path: string): SummaryProblem {
   };
 }
 
-function parseQuestion(value: unknown, path: string): SummaryQuestion {
+const MESSAGE_TYPES = ['question', 'request', 'approval'] as const;
+const PARTIES = ['ai', 'human'] as const;
+
+function parseMessage(value: unknown, path: string): Message {
   const o = exact(value, path, [
     'id',
-    'requestId',
-    'kind',
+    'type',
+    'from',
+    'to',
+    'turn',
     'title',
-    'recommendedChoiceId',
-    'referencedBy',
     'createdAt',
+    'tasks',
+    'epicId',
   ]);
   return {
     id: str(o.id, `${path}.id`),
-    requestId: str(o.requestId, `${path}.requestId`),
-    kind: oneOf(o.kind, `${path}.kind`, QUESTION_KINDS),
+    type: oneOf(o.type, `${path}.type`, MESSAGE_TYPES),
+    from: oneOf(o.from, `${path}.from`, PARTIES),
+    to: oneOf(o.to, `${path}.to`, PARTIES),
+    turn: o.turn === null ? null : oneOf(o.turn, `${path}.turn`, PARTIES),
+    title: str(o.title, `${path}.title`),
+    createdAt: str(o.createdAt, `${path}.createdAt`),
+    tasks: list(o.tasks, `${path}.tasks`, (v, q) => int(v, q, 1)),
+    epicId: nullableStr(o.epicId, `${path}.epicId`),
+  };
+}
+
+function parseQuestion(value: unknown, path: string): SummaryQuestion {
+  const o = exact(value, path, ['id', 'title', 'recommendedChoiceId', 'referencedBy', 'createdAt']);
+  return {
+    id: str(o.id, `${path}.id`),
     title: str(o.title, `${path}.title`),
     recommendedChoiceId: nullableStr(o.recommendedChoiceId, `${path}.recommendedChoiceId`),
     referencedBy: list(o.referencedBy, `${path}.referencedBy`, (v, q) => int(v, q, 1)),
@@ -154,7 +178,7 @@ export function parseSummary(value: unknown): Summary {
     value,
     'summary',
     ['project', 'version', 'tasks', 'epics', 'problems'],
-    ['questions'],
+    ['questions', 'messages'],
   );
   const project = exact(o.project, 'summary.project', ['id', 'name']);
   const summary: Summary = {
@@ -170,6 +194,9 @@ export function parseSummary(value: unknown): Summary {
   if (o.questions !== undefined) {
     summary.questions = list(o.questions, 'summary.questions', parseQuestion);
   }
+  if (o.messages !== undefined) {
+    summary.messages = list(o.messages, 'summary.messages', parseMessage);
+  }
   return summary;
 }
 
@@ -180,8 +207,8 @@ function parseChange(value: unknown, path: string): Change {
   const facets: Facet[] = list(o.facets, `${path}.facets`, (v, p) => oneOf(v, p, FACETS));
   if (facets.length === 0) fail(`${path}.facets`, 'at least one facet');
   if (new Set(facets).size !== facets.length) fail(`${path}.facets`, 'no repeated facet');
-  if (resource === 'qa' && facets.some((f) => f !== 'summary')) {
-    fail(`${path}.facets`, 'only summary for qa');
+  if (resource === 'messages' && facets.some((f) => f !== 'summary')) {
+    fail(`${path}.facets`, 'only summary for messages');
   }
   if (resource === 'project' && facets.some((f) => f !== 'summary' && f !== 'deleted')) {
     fail(`${path}.facets`, 'only summary or deleted for a project');

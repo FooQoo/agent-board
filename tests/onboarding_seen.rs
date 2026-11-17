@@ -49,8 +49,8 @@ fn new_task(store: &FileStore, project: &ProjectId, title: &str) -> i64 {
                 title: title.into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             now(),
         )

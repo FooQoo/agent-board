@@ -16,7 +16,7 @@ use crate::file_store::index;
 use crate::file_store::layout;
 use crate::file_store::lock::WriteLock;
 use crate::file_store::model::{EpicView, Problem, TaskView};
-use crate::file_store::qa::{self, QaIndex, QuestionView};
+use crate::file_store::qa::{self, QaIndex, QuestionView, RequestView};
 use crate::file_store::transaction;
 
 /// One project as the snapshot returns it: the project, its content version and
@@ -33,9 +33,12 @@ pub struct ProjectSnapshot {
     pub tasks: Vec<TaskView>,
     pub problems: Vec<Problem>,
     /// Every question of the project with its state, in ID order. Agents read them with
-    /// `qa ls` and `qa show`, so the snapshot JSON leaves them out.
+    /// `message ls` and `message show`, so the snapshot JSON leaves them out.
     #[serde(skip)]
     pub questions: Vec<QuestionView>,
+    /// Every request of the project with its state, in ID order.
+    #[serde(skip)]
+    pub requests: Vec<RequestView>,
 }
 
 impl ProjectSnapshot {
@@ -71,6 +74,7 @@ pub fn read_snapshot(
     let project_dir = project_dir_checked(shared, project_id)?;
     let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
     transaction::recover_locked(&project_dir)?;
+    crate::file_store::ops::migrate_legacy_locked(shared, project_id, &project_dir)?;
     read_snapshot_locked(shared, project_id)
 }
 
@@ -111,6 +115,7 @@ pub(crate) fn read_snapshot_locked(
         )
     }));
     let questions = qa::question_views(&qa_index, &tasks);
+    let requests = qa::request_views(&qa_index);
     Ok(ProjectSnapshot {
         project,
         next_task_id,
@@ -120,6 +125,7 @@ pub(crate) fn read_snapshot_locked(
         tasks,
         problems,
         questions,
+        requests,
     })
 }
 

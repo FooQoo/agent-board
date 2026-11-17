@@ -56,7 +56,7 @@ agboard --project "My project" history add 1 --reason "Checked the installation 
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
-The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to drafts, archived tasks, or Done tasks.
+The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to a person's drafts, archived tasks, or Done tasks.
 
 ### Finish a task
 
@@ -64,13 +64,13 @@ To finish, record the verification in `TASK.md` and set each verified acceptance
 
 ### Ask a question
 
-Use `qa ask` to ask the user one or more questions. Questions belong to the project; `--task <id>` makes a task refer to them, and the task shows Pending until they are answered. The command prints one event per line (JSON Lines with `--json`) and waits until every question is answered, 600 seconds by default:
+Use `message ask` to ask the user up to 20 questions. Each question is its own message, such as `Q-12`, and belongs to the project; `--task <id>` makes a task refer to them, and the task shows Pending until they are answered. The command prints one event per line (JSON Lines with `--json`) and waits until none is open, 600 seconds by default:
 
 ```sh
-agboard --project "My project" qa ask --actor ai --task 1 --request-json - --json < questions.json
+agboard --project "My project" message ask --actor ai --task 1 --questions-json - --json < questions.json
 ```
 
-It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `qa wait <request-id>`. Waiting needs the server: the command starts it in the background when none is running, before it saves the questions. `--no-wait` registers the questions and returns at once without one. `qa answer`, `qa ls`, `qa show`, `qa withdraw`, `qa link`, and `qa unlink` record answers, read questions, withdraw a request, and change which tasks refer to a question. See [Decisions](../delegate/decisions) for the request format and every command. For epics and the progress table, see [Epics and progress](../watch/epics).
+It ends with `answered` (exit 0), `timeout` (exit 5, the questions stay open), or `withdrawn` (exit 6). Wait again with `message wait Q-12 Q-13`. Waiting needs the server: the command starts it in the background when none is running, before it saves the questions. `--no-wait` registers the questions and returns at once without one. `message answer`, `message ls`, `message show`, `message withdraw`, `message link`, and `message unlink` record an answer, read messages, withdraw a question, and change which tasks refer to a question. `message send` and `message accept` handle requests from a person to the agents. See [Decisions](../delegate/decisions) for the question format and every command. For epics and the progress table, see [Epics and progress](../watch/epics).
 
 ## Edit long text from a file
 
@@ -82,7 +82,7 @@ agboard --project "My project" edit 1 --desc-file task.md
 
 Descriptions allow up to 50,000 characters and epic details (`EPIC.md`) up to 100,000, and the file must follow the [Markdown file format](./file-format). Use `--desc -` to read a description from standard input.
 
-`edit --desc-file` replaces the body and acceptance conditions and keeps the latest history and the question references (`questions`) from `TASK.md`; `history` and `questions` in the input file are ignored, so a task that refers to an open question stays pending. Use `qa link` and `qa unlink` to change the references. Moves, state changes, and other operations from the CLI or the UI append history to `TASK.md`, and `show`, `snapshot`, and the browser read that same history.
+`edit --desc-file` replaces the body and acceptance conditions and keeps the latest history and the question references (`questions`) from `TASK.md`; `history` and `questions` in the input file are ignored, so a task that refers to an open question stays pending. Use `message link` and `message unlink` to change the references. Moves, state changes, and other operations from the CLI or the UI append history to `TASK.md`, and `show`, `snapshot`, and the browser read that same history.
 
 ## Edit epic details
 
@@ -95,6 +95,15 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 ```
 
 `--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
+
+Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until a person starts it:
+
+```sh
+agboard --project "My project" start 12 --actor human
+agboard --project "My project" epic start LAUNCH --actor human
+```
+
+`start` clears the AI draft of one task. `epic start` clears the epic and every AI draft task of it in one step, and leaves tasks that a person is still drafting. Each started task records that a person started it. With `--actor ai` both commands fail with `human_only` (exit code 1).
 
 While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--priority` included. Wait until the person saves or discards it, or ask them to finalize a draft that was left behind. `epic attachment` and changing a task's epic still work.
 

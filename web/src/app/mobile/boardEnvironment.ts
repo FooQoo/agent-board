@@ -1,8 +1,8 @@
 import type { ProjectId } from '../../shared/api/contracts';
 import { csrfHeaders, projectPath, readToken } from '../../shared/api/http';
 import type { MonitorEnvironment } from '../../pages/monitor/MonitorProject';
-import { answerQuestions, setAcceptance } from '../../features/tasks/api/edit';
-import { fetchQuestion } from '../../features/tasks/api/read';
+import { messagesApi } from '../../features/tasks/messages/api';
+import { setAcceptance } from '../../features/tasks/api/edit';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import { phoneSettingsSlot } from './phoneSettingsSlot';
 import { archiveDone, archiveTask, moveTask } from '../../features/tasks/api/lifecycle';
@@ -32,8 +32,7 @@ export function boardEnvironment(): MonitorEnvironment {
     preferences,
     // As on the PC board, the settings can show the guide again.
     settings: phoneSettingsSlot(preferences),
-    readQuestion: fetchQuestion,
-    writeAnswers: answerQuestions,
+    messagesApi,
     writes: { move: moveTask, archive: archiveTask, archiveDone },
   };
 }

@@ -51,7 +51,7 @@ export const commonEn = {
     loadError: 'Could not load the board.',
     retry: 'Retry',
     empty: 'No tasks yet.',
-    emptyHint: 'Add a task to get started.',
+    emptyHint: 'Ask AI to get started.',
     loadingBoard: 'Loading board…',
     boardLoadError: 'Could not load this board.',
     boardLoadErrorHint: 'Try again, or switch to another project.',

@@ -189,13 +189,13 @@ fn state(home: &Path, project: &str, id: &str, run_state: &str, reason: &str) {
             home,
             project,
             &[
-                "qa",
+                "message",
                 "ask",
                 "--actor",
                 "ai",
                 "--task",
                 id,
-                "--request-json",
+                "--questions-json",
                 &common::decision_json(reason),
                 "--no-wait",
             ],
@@ -420,10 +420,10 @@ fn build(home: &Path) {
     let question = task(&apple, 1)["openQuestionIds"][0].as_str().unwrap();
     let (status, body) = server.write(
         &format!(
-            "/api/projects/{}/qa/answers",
+            "/api/projects/{}/messages/answers",
             apple["project"]["id"].as_str().unwrap()
         ),
-        &json!({ "answers": [{ "questionId": question, "text": "Apple: use the MIT license." }] }),
+        &json!({ "answers": [{ "questionId": question, "choiceId": "a", "text": "Apple: use the MIT license." }] }),
     );
     assert_eq!(status, 200, "{body}");
 }
@@ -852,7 +852,7 @@ fn only_a_list_may_ask_for_every_project_and_never_together_with_a_project() {
         vec!["--json", "ls", "--state", "pending"],
         vec!["--json", "snapshot"],
         vec!["--json", "show", "1"],
-        vec!["--json", "add", "x", "--assignee", "ai", "--actor", "ai"],
+        vec!["--json", "add", "x", "--assignee", "ai", "--actor", "human"],
         vec![
             "--json", "mv", "1", "doing", "--actor", "ai", "--reason", "r",
         ],

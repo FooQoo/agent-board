@@ -35,7 +35,7 @@ fn hook_adds_the_progress_table_for_supported_events_without_mutating_data() {
                 "--assignee",
                 "ai",
                 "--actor",
-                "ai",
+                "human",
             ])
             .output()
             .unwrap();
@@ -146,7 +146,7 @@ fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::
                     description: task_body(&description),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
-                    is_draft: false,
+                    draft: None,
                 },
                 now,
             )

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "file": "shared/ui/surface/Surface.tsx",
+  "exports": [
+    {
+      "name": "Surface",
+      "stories": [
+        {
+          "id": "shared-ui-surface--dialog",
+          "states": ["modal", "scrolling body", "close"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-surface--sheet",
+          "states": ["bottom sheet", "fixed footer"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { groupTasks } from '../../../features/tasks/model/board';
 import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
+import { isAiDraft, type Plan } from '../../../features/tasks/plans/model/plan';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
 import { isSortable } from '@dnd-kit/react/sortable';
 import type { ProjectId } from '../../../shared/api/contracts';
-import type { AnswerBook } from '../../../features/tasks/answer/model/answerBook';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
 
@@ -24,11 +24,13 @@ export interface BoardProps {
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
-  answers?: AnswerBook;
   onAnswer?: (taskId: number) => void;
   layoutRef?: (node: HTMLDivElement | null) => void;
   /** The band of unanswered questions above the lanes. */
   band?: ReactNode;
+  /** The approvals waiting for a person: one plan card each at the top of Todo, in place of their AI-draft cards. */
+  plans?: Plan[];
+  onOpenPlan?: (plan: Plan) => void;
 }
 
 export function Board({
@@ -42,10 +44,11 @@ export function Board({
   onArchiveDone,
   onOpenEpic,
   projectId,
-  answers,
   onAnswer,
   layoutRef,
   band,
+  plans = [],
+  onOpenPlan,
 }: BoardProps) {
   if (message !== null) {
     return (
@@ -55,10 +58,12 @@ export function Board({
     );
   }
 
-  const groups = groupTasks(tasks);
+  // An AI draft is shown through its plan card, never as a card of its own.
+  const shown = tasks.filter((task) => !isAiDraft(task));
+  const groups = groupTasks(shown);
   // Reset the drag controller when cards change lanes so its retained source element cannot
   // remain beside the newly rendered card. Edits and same-lane reordering keep the controller.
-  const laneMembership = tasks
+  const laneMembership = shown
     .map((task) => `${task.id}:${task.taskStatus}`)
     .sort()
     .join('|');
@@ -104,12 +109,13 @@ export function Board({
               onArchive={column === 'done' ? onArchiveDone : undefined}
               onOpenEpic={onOpenEpic}
               projectId={projectId}
-              answers={answers}
               onAnswer={onAnswer}
+              plans={column === 'todo' ? plans : undefined}
+              onOpenPlan={onOpenPlan}
             />
           ))}
         </div>
-        {tasks.length === 0 && <BoardMessage kind="empty" />}
+        {shown.length === 0 && plans.length === 0 && <BoardMessage kind="empty" />}
       </main>
     </DragDropProvider>
   );

@@ -173,10 +173,10 @@ fn board_home() -> tempfile::TempDir {
                     description: BODY.into(),
                     assignee,
                     actor: match assignee {
-                        Assignee::Ai => Actor::Ai,
+                        Assignee::Ai => Actor::Human,
                         Assignee::Human => Actor::Human,
                     },
-                    is_draft: false,
+                    draft: None,
                 },
                 t(1),
             )
@@ -575,8 +575,8 @@ fn summary_reflects_changes_made_after_the_server_started() {
                 title: "Late task".into(),
                 description: "".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(10),
         )
@@ -644,28 +644,28 @@ fn protected_api_creates_moves_and_answers_questions_with_full_history() {
         "Need direction",
         qa::choices(&[("a", "Plan A"), ("b", "Plan B")]),
     );
-    let body = r#"{"answers":[{"questionId":"Q-2","text":"Proceed with A"}]}"#;
-    let answered = server.send_json("POST", &server.api("/qa/answers"), body, Some(&token));
+    let body = r#"{"answers":[{"questionId":"Q-2","choiceId":"a","text":"Proceed with A"}]}"#;
+    let answered = server.send_json("POST", &server.api("/messages/answers"), body, Some(&token));
     assert_eq!(answered.status, 200, "{}", answered.body);
     let board: serde_json::Value =
         serde_json::from_str(&server.get(&server.api("/summary")).body).unwrap();
     assert_eq!(board["tasks"][3]["agentStatus"], "idle");
 
     // Reads and withdrawal of project questions.
-    let listed = server.get(&server.api("/qa?status=answered"));
+    let listed = server.get(&server.api("/messages?status=closed"));
     assert_eq!(listed.status, 200, "{}", listed.body);
     let listed: serde_json::Value = serde_json::from_str(&listed.body).unwrap();
     assert!(
-        listed["questions"]
+        listed["messages"]
             .as_array()
             .unwrap()
             .iter()
             .any(|q| q["id"] == "Q-2")
     );
-    let one = server.get(&server.api("/qa/Q-2"));
+    let one = server.get(&server.api("/messages/Q-2"));
     assert_eq!(one.status, 200, "{}", one.body);
     assert!(one.body.contains("Proceed with A"), "{}", one.body);
-    assert_eq!(server.get(&server.api("/qa/Q-99")).status, 404);
+    assert_eq!(server.get(&server.api("/messages/Q-99")).status, 404);
     let open = qa::ask_choices(
         &store,
         &main_id(home.path()),
@@ -673,19 +673,24 @@ fn protected_api_creates_moves_and_answers_questions_with_full_history() {
         "Ship now?",
         qa::choices(&[("a", "Yes"), ("b", "No")]),
     );
-    let path = format!("/qa/requests/{}/withdraw", open.request_id);
-    let withdrawn = server.send_json(
-        "POST",
-        &server.api(&path),
-        r#"{"reason":"Decided elsewhere."}"#,
-        Some(&token),
-    );
-    assert_eq!(withdrawn.status, 200, "{}", withdrawn.body);
-    let again = server.send_json("POST", &server.api(&path), "", Some(&token));
-    assert_eq!(again.status, 200, "{}", again.body);
-    let detail = server.get(&server.api("/tasks/4/detail?sections=history"));
-    assert_eq!(detail.status, 200, "{}", detail.body);
-    assert_eq!(detail_lines::history(&detail.body).len(), 6);
+    // A person withdraws a request, not a question.
+    let path = format!("/messages/{}/withdraw", open.id);
+    let refused = server.send_json("POST", &server.api(&path), "", Some(&token));
+    assert_eq!(refused.status, 403, "{}", refused.body);
+    assert!(refused.body.contains("ai_only"), "{}", refused.body);
+    store
+        .withdraw_message(
+            &main_id(home.path()),
+            &open.id,
+            agent_board::domain::Actor::Ai,
+            chrono::Utc::now(),
+        )
+        .unwrap();
+    let detail = server.get(&server.api(&format!("/messages/{}", open.id)));
+    assert!(detail.body.contains("\"withdrawn\""), "{}", detail.body);
+    // Created, started, asked and answered Q-2, asked and withdrew Q-3.
+    let task = store.task(&main_id(home.path()), 4).unwrap();
+    assert_eq!(task.history.len(), 6, "{:?}", task.history);
     assert!(events.try_wait_for("event: changed", Duration::from_secs(1)));
 }
 
@@ -761,7 +766,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 id: "epic-1".into(),
                 name: "Archived epic".into(),
                 color: Some("#3366cc".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(12),
@@ -774,7 +779,7 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
                 id: "epic-2".into(),
                 name: "Live epic".into(),
                 color: Some("#cc3366".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(13),
@@ -844,8 +849,8 @@ fn add_other_project(home: &Path) -> ProjectId {
                 title: "Other first".into(),
                 description: String::new(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(1),
         )
@@ -1294,8 +1299,8 @@ fn notify_sends_changed_to_every_connected_client() {
                 title: "Notified".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(12),
         )
@@ -1325,7 +1330,7 @@ fn each_notify_sends_one_changed() {
                     description: BODY.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
-                    is_draft: false,
+                    draft: None,
                 },
                 t(12),
             )
@@ -1583,8 +1588,8 @@ fn notify_serve_from_the_cli_side_reaches_connected_browsers() {
                 title: "From the CLI side".into(),
                 description: BODY.into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
-                is_draft: false,
+                actor: Actor::Human,
+                draft: None,
             },
             t(12),
         )
@@ -1836,7 +1841,7 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
                 id: "epic-1".into(),
                 name: "First epic".into(),
                 color: Some("#3366cc".into()),
-                is_draft: false,
+                draft: None,
                 document: None,
             },
             t(12),
@@ -1852,7 +1857,7 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
     assert_eq!(epic["id"], "EPIC-1");
     assert_eq!(epic["name"], "First epic");
     assert_eq!(epic["color"], "#3366CC");
-    assert_eq!(epic["isDraft"], false);
+    assert_eq!(epic["draft"], serde_json::Value::Null);
     assert_eq!(epic["priority"], serde_json::json!([]));
     assert_eq!(epic["priorityError"], false);
     let mut keys: Vec<&str> = epic
@@ -1867,8 +1872,8 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
         [
             "color",
             "detailVersions",
+            "draft",
             "id",
-            "isDraft",
             "name",
             "priority",
             "priorityError",
@@ -2023,7 +2028,7 @@ fn the_summary_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
                     id: id.into(),
                     name: name.into(),
                     color: Some("#3366cc".into()),
-                    is_draft: false,
+                    draft: None,
                     document: None,
                 },
                 t(minute),

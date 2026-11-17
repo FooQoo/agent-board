@@ -6,14 +6,15 @@ import { expect, test, type Locator, type Page } from '../helpers/fixtures';
 import { agboard, agboardOk, mainProject, projectId, resetBoard, taskBody, workspace, type TaskJson, askArgs, decisionJson, questionJson } from '../helpers/agboard';
 import { closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
-import { answerButton, answerNote, answerSend, openAnswer, reachSend, send, sendAnswer } from '../helpers/answer';
+import { answerButton, answerNote, answerSend, openAnswer, send, sendAnswer } from '../helpers/answer';
+import { closeMessages } from '../helpers/answer-flow';
 
 // The task body on the real page: its sections and pictures, the answer to a decision request in three ways, a
 // card that is Done and still takes an edit, and the edit dialog that saves once and rewrites nothing unless asked.
 
 interface ShownTask extends TaskJson {
   description: string;
-  isDraft: boolean;
+  draft: 'human' | 'ai' | null;
   history: { at: string; reason: string }[];
 }
 
@@ -43,7 +44,7 @@ function askWithChoices(id: number, question: string, choices: { id: string; lab
 
 function askText(id: number, question: string): void {
   agboardOk(mainProject, ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Working.']);
-  agboardOk(mainProject, askArgs(String(id), decisionJson(question)));
+  agboardOk(mainProject, askArgs(String(id), questionJson(question, [])));
 }
 
 let work: string;
@@ -125,11 +126,11 @@ test('a decision request is answered with a choice only, with text only, or with
   const answer = await openAnswer(page, 16);
   await expect(answer.getByRole('radiogroup')).toBeVisible();
   await expect(answer).toContainText('Which way?');
-  const held = (count: number) => answer.getByText(`${count} answered`, { exact: true });
-  await expect(held(0)).toBeVisible();
+  await expect(answerSend(page)).toBeDisabled();
   await answer.getByRole('radio', { name: 'Proceed' }).check();
-  await expect(held(1)).toBeVisible();
+  await expect(answerSend(page)).toBeEnabled();
   await send(page);
+  await closeMessages(page);
   await expect(answerButton(page, 16)).toHaveCount(0);
   expect(show(16)).toMatchObject({ agentStatus: 'idle' });
   expectHistoryNote(show(16).history.at(-1), ['Which way?', 'Proceed']);
@@ -138,6 +139,7 @@ test('a decision request is answered with a choice only, with text only, or with
   askText(16, 'What name?');
   await expect(answerButton(page, 16)).toBeVisible({ timeout: 15_000 });
   await sendAnswer(page, 16, { text: 'Keep the old name.' });
+  await closeMessages(page);
   expectHistoryNote(show(16).history.at(-1), ['What name?', 'Keep the old name.']);
   expect(show(16).history.at(-1)).not.toHaveProperty('choiceId');
 
@@ -145,6 +147,7 @@ test('a decision request is answered with a choice only, with text only, or with
   askWithChoices(16, 'Which way now?', choices);
   await expect(answerButton(page, 16)).toBeVisible({ timeout: 15_000 });
   await sendAnswer(page, 16, { choice: 'Stop', text: 'Stop after the backup.' });
+  await closeMessages(page);
   expectHistoryNote(show(16).history.at(-1), ['Which way now?', 'Stop', 'Stop after the backup.']);
 });
 
@@ -152,15 +155,11 @@ test('an answer with nothing chosen and nothing typed cannot be sent', async ({ 
   askWithChoices(15, 'Ready?', [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }]);
   await openBoard(page);
   const dialog = await openAnswer(page, 15);
-  const held = (count: number) => dialog.getByText(`${count} answered`, { exact: true });
-  await expect(held(0)).toBeVisible();
+  await expect(answerSend(page)).toBeDisabled();
   await answerNote(page).fill('   ');
-  await expect(held(0)).toBeVisible();
-  // Nothing is held, so the card's Send stays disabled until an answer is given.
-  await reachSend(page);
+  // A blank note is no answer: Send stays disabled until a choice is made.
   await expect(answerSend(page)).toBeDisabled();
   await dialog.getByRole('radio', { name: 'Yes' }).check();
-  await expect(held(1)).toBeVisible();
   await expect(answerSend(page)).toBeEnabled();
 });
 
@@ -195,7 +194,7 @@ test('a Done task rejects agent edits while a person can still edit and show its
   await page.keyboard.type(' Second line after Done.');
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  expect(show(13)).toMatchObject({ taskStatus: 'done', isDraft: true });
+  expect(show(13)).toMatchObject({ taskStatus: 'done', draft: 'human' });
   expect(show(13).description).toContain('Second line after Done.');
 });
 
@@ -211,7 +210,7 @@ test('the edit dialog writes nothing when it is opened and closed unchanged, and
   await openBoard(page);
   await task(page, 15).click();
   await putDraft(15);
-  await expect.poll(() => show(15).isDraft).toBe(true);
+  await expect.poll(() => show(15).draft).toBe('human');
   expectHistoryNote(show(15).history.at(-1), ['Marked task as draft.']);
   expect(readFileSync(file, 'utf8')).toContain('reason: Marked task as draft.');
   const before = readFileSync(file, 'utf8');

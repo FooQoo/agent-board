@@ -57,7 +57,7 @@ export function makeTask(overrides: Partial<Task> & Pick<Task, 'id'>): Task {
     createdAt: at,
     updatedAt: at,
     agentStatusChangedAt: at,
-    isDraft: false,
+    draft: null,
     history: [{ at: at, reason: 'Created task in Todo.' }],
     attachments: [],
     ...overrides,

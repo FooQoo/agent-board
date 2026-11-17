@@ -9,12 +9,7 @@ import {
   syncPreferences,
   type PreferencesEndpoint,
 } from '../../shared/preferences';
-import type { AnswerBook } from '../../features/tasks/answer/model/answerBook';
-import type {
-  AnswersWriter,
-  BandQuestion,
-  QuestionReader,
-} from '../../features/tasks/answer/model/qa';
+import type { MessagesApi } from '../../features/tasks/messages/model/messages';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type {
   MonitorHeaderProps,
@@ -22,11 +17,13 @@ import type {
   MonitorViewProps,
   MonitorWrites,
 } from './contracts';
+import { PlanReviewContainer } from '../../features/tasks/plans/PlanReviewContainer';
+import { plansOfSummary } from '../../features/tasks/plans/model/plan';
+import { AskAiSheet } from '../../features/messages/ask/AskAi';
 import { MonitorView } from './View';
 import { monitorFreshness } from './model/freshness';
 import { selectMonitorTasks } from './model/select';
 import { monitorTasksOf } from './model/summary';
-import { useAnswerBookState, useMonitorInteractions } from './hooks/useMonitorInteractions';
 
 /** A hook that reloads the page for a newer build (`served`), unless the page is `busy`. The entry supplies it. */
 export type BuildReloadHook = (served: string | null, busy: boolean) => void;
@@ -40,9 +37,8 @@ export interface MonitorEnvironment {
   readResolvers: MonitorReadResolvers;
   /** Where the language and theme are saved; `undefined` keeps them in this browser only. */
   preferences?: PreferencesEndpoint;
-  /** Reads one question of the project for the answer sheet. */
-  readQuestion: QuestionReader;
-  writeAnswers: AnswersWriter;
+  /** Reads, answers and withdraws messages for the list of the band. */
+  messagesApi: MessagesApi;
   /** Moves and archives from the lanes; without them the lanes only read. */
   writes?: MonitorWrites;
   /** The header's settings dialog; without it, the plain one that saves through `preferences`. */
@@ -51,8 +47,6 @@ export interface MonitorEnvironment {
 
 export interface MonitorScreenProps extends MonitorEnvironment {
   projectId: ProjectId;
-  /** The held answers. The app owns it, so they outlive this screen. */
-  book: AnswerBook;
   useBuildReload: BuildReloadHook;
   /** The build the server named; `null` when the app reloads for a new build itself. */
   build: string | null;
@@ -75,8 +69,7 @@ export interface MonitorProjectProps extends MonitorEnvironment {
 }
 
 /**
- * One project on the phone, in the monitor app. It brings its own data layer and book of held
- * answers; the board app draws `MonitorScreen` inside its own.
+ * One project on the phone, in the monitor app. It brings its own data layer; the board app draws `MonitorScreen` inside its own.
  */
 export function MonitorProject(props: MonitorProjectProps) {
   const [build, setBuild] = useState<string | null>(null);
@@ -91,7 +84,6 @@ export function MonitorProject(props: MonitorProjectProps) {
     [preferences],
   );
   const onPreferences = useCallback((event: unknown) => applyPreferenceEvent(event as Event), []);
-  const { book } = useMonitorInteractions();
   return (
     <DataProvider
       adapter={props.adapter}
@@ -99,7 +91,7 @@ export function MonitorProject(props: MonitorProjectProps) {
       onPreferences={onPreferences}
       onConnectionState={setStream}
     >
-      <MonitorScreen {...props} book={book} build={build} stream={stream} />
+      <MonitorScreen {...props} build={build} stream={stream} />
     </DataProvider>
   );
 }
@@ -110,9 +102,7 @@ export function MonitorProject(props: MonitorProjectProps) {
  */
 export function MonitorScreen({
   projectId,
-  book,
-  readQuestion,
-  writeAnswers,
+  messagesApi,
   readResolvers,
   preferences,
   useBuildReload,
@@ -125,18 +115,19 @@ export function MonitorScreen({
   settings,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
-  const answers = useAnswerBookState(book);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  // The phone band's "Ask AI" sheet.
+  const [asking, setAsking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
-  // A drawer, and an answer on its way, keep the list as it is; the data layer applies what
-  // arrived 3 seconds after they are gone. An answer sheet that is only open holds nothing: the
-  // question is replaced or withdrawn in it as it happens. Reloading for a new build waits for the
-  // drawer, a send, and any input left in memory, which a reload would lose.
+  // A drawer keeps the list as it is; the data layer applies what arrived 3 seconds after it is
+  // gone. A list of messages that is only open holds nothing: the message is replaced or closed
+  // in it as it happens. Reloading for a new build waits for either, since a reload would lose an
+  // answer being written.
   usePresentationHold(detailOpen, 'drawer');
-  usePresentationHold(answers.sending, 'answer');
-  useBuildReload(build, answers.sending || detailOpen || answers.held);
+  useBuildReload(build, detailOpen || messagesOpen || asking);
 
   const gone = httpStatusOf(summary.error) === 404;
   useEffect(() => {
@@ -149,23 +140,6 @@ export function MonitorScreen({
   }, [data]);
 
   const tasks = useMemo(() => (data === null ? [] : monitorTasksOf(data)), [data]);
-  const questions = useMemo<BandQuestion[] | null>(
-    () =>
-      data?.questions?.map(({ id, title, referencedBy }) => ({ id, title, referencedBy })) ?? null,
-    [data],
-  );
-  // A held question that leaves the open list is closed; reading it says why.
-  useEffect(() => {
-    if (questions === null) return;
-    for (const id of book.reconcile(projectId, questions))
-      readQuestion(projectId, id).then(
-        (detail) => {
-          if (detail.status !== 'open') book.markClosed(projectId, id, detail.status);
-        },
-        () => {},
-      );
-  }, [book, projectId, questions, readQuestion]);
-
   const freshness = monitorFreshness({
     state: summary.state,
     hasData: data !== null,
@@ -174,6 +148,7 @@ export function MonitorScreen({
     stream,
     lastFetchedAt,
   });
+  const plans = useMemo(() => (data === null ? [] : plansOfSummary(data)), [data]);
   const visible = selectMonitorTasks(tasks);
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -188,16 +163,17 @@ export function MonitorScreen({
       data === null || freshness.state === 'partial'
         ? null
         : {
-            todo: visible.todo.length,
+            todo: visible.todo.length + plans.length,
             doing: visible.doing.length,
             done: visible.done.length,
           },
     ...visible,
-    answerController: { book, read: readQuestion, write: writeAnswers },
     projectId,
-    questions: questions ?? undefined,
+    messages: data?.messages ?? undefined,
+    messagesApi,
     // Answers are shown at once: the Summary is read again without waiting for the hold.
-    onAnswersSent: () => void summary.refresh(),
+    onMessagesChanged: () => void summary.refresh(),
+    onAsk: () => setAsking(true),
     readResolvers,
     preferences,
     settings,
@@ -207,9 +183,33 @@ export function MonitorScreen({
     onRefresh: () => void refresh(),
     refreshing: refreshing || summary.state === 'refreshing',
     onDetailOpenChange: setDetailOpen,
+    onMessagesOpenChange: setMessagesOpen,
     writes,
     projectName: header?.projects?.find((project) => project.id === projectId)?.name ?? '',
     onWritten: () => void summary.refresh(),
+    plans,
+    renderPlanReview: ({ approvalId, onClose, onOpenQuestion }) => (
+      <PlanReviewContainer
+        projectId={projectId}
+        plans={plans}
+        approval={approvalId}
+        kind="sheet"
+        onClose={onClose}
+        onOpenQuestion={onOpenQuestion}
+        onChanged={() => void summary.refresh()}
+      />
+    ),
   };
-  return <MonitorView {...props} />;
+  return (
+    <>
+      <MonitorView {...props} />
+      {asking && (
+        <AskAiSheet
+          projectId={projectId}
+          onClose={() => setAsking(false)}
+          onSent={() => void summary.refresh()}
+        />
+      )}
+    </>
+  );
 }

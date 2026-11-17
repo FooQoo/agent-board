@@ -13,7 +13,12 @@ import { useTranslation } from 'react-i18next';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { imageUrlOf, safeLinkUrl } from './model';
-import { ChapterHeadingsContext, ImageSizesContext, ResolverContext } from './renderScope';
+import {
+  ChapterHeadingsContext,
+  ImageSizesContext,
+  RelativeImageContext,
+  ResolverContext,
+} from './renderScope';
 import { Lightbox } from '../ui/lightbox/Lightbox';
 import { MermaidDiagram } from './MermaidDiagram';
 import './markdown.css';
@@ -53,11 +58,12 @@ function ImagePlaceholder({ alt }: { alt: string }) {
 function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
   const { t } = useTranslation();
   const resolve = useContext(ResolverContext);
+  const resolveRelative = useContext(RelativeImageContext);
   const sizes = useContext(ImageSizesContext);
   const size = src === undefined ? undefined : sizes?.get(src);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [enlarged, setEnlarged] = useState(false);
-  const url = imageUrlOf(src, resolve);
+  const url = imageUrlOf(src, resolve, resolveRelative);
   const text = alt ?? '';
   const name = text !== '' ? text : t('markdown.image');
   if (url === null || failedUrl === url) return <ImagePlaceholder alt={text} />;
