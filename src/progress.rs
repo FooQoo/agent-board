@@ -8,6 +8,8 @@
 //! The caller can ask for two more sections with [`Include`]: the tasks waiting
 //! for a decision (with the question) and the most recently completed tasks.
 //! They are separate fields, so the default table is unchanged.
+//!
+//! Open requests are always listed, so an agent sees what a person asked it.
 
 use std::path::PathBuf;
 
@@ -19,6 +21,7 @@ use crate::file_store::frontmatter::{self, AcceptanceItem};
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
 use crate::file_store::onboarding_model::is_onboarding_sample;
+use crate::file_store::qa::RequestStatus;
 use crate::file_store::reader::ProjectSnapshot;
 
 /// The table as the CLI and the hook give it.
@@ -34,6 +37,10 @@ pub struct Progress {
     pub epics: Vec<ProgressEpic>,
     /// Listed tasks that belong to no epic, in ID order.
     pub unassigned: Vec<ProgressTask>,
+    /// Requests from a person that no agent has accepted or withdrawn, in ID order. Left out
+    /// when there are none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub requests: Vec<ProgressRequest>,
     /// Tasks waiting for a decision, in ID order. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending: Option<Vec<ProgressTask>>,
@@ -41,6 +48,49 @@ pub struct Progress {
     /// Doing work, newest first. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub done: Option<Vec<ProgressTask>>,
+}
+
+/// An open request, shortened: the agent reads the whole text with `message show`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressRequest {
+    pub id: String,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub created_at: DateTime<Utc>,
+    /// The first line of the request, at most `TITLE_LIMIT` characters.
+    pub title: String,
+}
+
+/// The open requests of a snapshot in ID order.
+pub fn open_requests(snapshot: &ProjectSnapshot) -> Vec<ProgressRequest> {
+    snapshot
+        .requests
+        .iter()
+        .filter(|request| request.status == RequestStatus::Open)
+        .map(|request| ProgressRequest {
+            id: request.id.clone(),
+            created_at: request.created_at,
+            title: request_title(&request.body),
+        })
+        .collect()
+}
+
+/// Longest request title in the table, in characters.
+const TITLE_LIMIT: usize = 80;
+
+/// The first non-empty line without heading marks, cut to `TITLE_LIMIT` characters with an
+/// ellipsis when it was longer.
+fn request_title(body: &str) -> String {
+    let line = body
+        .lines()
+        .map(|line| line.trim().trim_start_matches('#').trim())
+        .find(|line| !line.is_empty())
+        .unwrap_or_default();
+    if line.chars().count() <= TITLE_LIMIT {
+        return line.to_string();
+    }
+    let cut: String = line.chars().take(TITLE_LIMIT).collect();
+    format!("{cut}…")
 }
 
 /// Extra sections of the table. The default adds nothing.
@@ -166,6 +216,7 @@ pub fn build_with(
             .into_iter()
             .map(|task| task_of(task, &project_dir))
             .collect(),
+        requests: open_requests(snapshot),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks
