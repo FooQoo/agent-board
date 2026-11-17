@@ -4,12 +4,12 @@ import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 import {
   WriteError,
   createNewTask,
-  createSimpleTaskMultipart,
   editTask,
   editTaskMultipart,
   moveTask,
   reorderTask,
 } from './api';
+import { sendMessageRequest } from '../features/messages/ask/sendRequest';
 import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
@@ -39,6 +39,7 @@ export function useAppActions(model: AppControllerModel) {
     },
     onBack: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'board' }),
     onAdd: () => model.openDialog({ kind: 'request' }),
+    onAddManually: () => model.openDialog({ kind: 'create' }),
     onArchive: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' }),
     onDocs: () => {
       if (isProjectId(activeId)) model.setDocsProjectId(activeId);
@@ -143,13 +144,12 @@ export function useAppActions(model: AppControllerModel) {
       const operation = session.operation;
       if (!dialog || !operation) return;
       const projectId = operation.projectId;
-      if (dialog.kind === 'request' && data.requestKind === 'simple') {
-        await createSimpleTaskMultipart(projectId, {
-          description: data.description ?? '',
-          epicId: data.epicId ?? null,
+      if (dialog.kind === 'request') {
+        await sendMessageRequest(projectId, {
+          text: data.requestText ?? '',
           attachments: data.attachments ?? [],
         });
-      } else if (dialog.kind === 'create' || dialog.kind === 'request') {
+      } else if (dialog.kind === 'create') {
         await createNewTask(projectId, {
           title: data.title ?? '',
           description: data.description ?? '',

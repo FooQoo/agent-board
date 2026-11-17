@@ -60,16 +60,17 @@ describe('demo fetch', () => {
     expect(boardOf(server).tasks.some((task) => task.title === 'From a Request')).toBe(true);
   });
 
-  it('sends the metadata of a form, as the simple request does', async () => {
+  it('sends the metadata of a form with a card and its images', async () => {
     const { fetcher, server, events } = demoFetch();
     const epic = boardOf(server).epics[0];
     const form = new FormData();
     form.set(
       'metadata',
       JSON.stringify({
-        requestKind: 'simple',
-        description: '\n  Restore the demo board\nWith more detail.',
-        epicId: epic?.id,
+        title: 'Restore the demo board',
+        description: 'With more detail.',
+        assignee: 'ai',
+        epic: epic ? { id: epic.id, name: epic.name, color: epic.color } : null,
       }),
     );
     form.set('images', new Blob(['x'], { type: 'image/png' }), 'a.png');

@@ -172,6 +172,15 @@ ol {
   gap: 6px;
 }
 
+.header__add-more {
+  flex: none;
+}
+
+.header__add-more svg {
+  width: 16px;
+  height: 16px;
+}
+
 .header__docs,
 .header__epics,
 .header__archive {

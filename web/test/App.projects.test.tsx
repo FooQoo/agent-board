@@ -185,7 +185,7 @@ describe('which project is shown', () => {
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(screen.getByRole('separator', { name: 'Resize task details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to board' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: /Archived task/ }));
@@ -475,7 +475,7 @@ describe('states', () => {
     expect(await screen.findByText('Loading board…')).toBeTruthy();
     expect(switcher('knowledge')).toBeTruthy();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.getByText('Loading')).toBeTruthy();
 
     gate.resolve();
@@ -488,7 +488,7 @@ describe('states', () => {
     expect(await screen.findByText('Could not load this board.')).toBeTruthy();
     expect(screen.getByText('Not synced')).toBeTruthy();
     expect(screen.getByText('Try again, or switch to another project.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
 
     await choose('knowledge', 'agent-board');
     await screen.findByRole('region', { name: 'Todo' });
@@ -522,7 +522,7 @@ describe('states', () => {
       (screen.getByRole('button', { name: 'No projects' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
   });
 
@@ -531,7 +531,7 @@ describe('states', () => {
     expect(await screen.findByText('Project not found')).toBeTruthy();
     expect(screen.getByText(/Choose another project from the menu/)).toBeTruthy();
     expect(switcher('Choose a project')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(app.updates()).toHaveLength(0);
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/summary'))).toBe(false);
 
@@ -582,7 +582,7 @@ describe('states', () => {
   it('shows the empty board of a project with no tasks', async () => {
     renderApp(urlOf(PROJECT_C.id));
     expect(await screen.findByText('No tasks yet.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add task' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ask AI' })).toBeTruthy();
   });
 
   it('uses the Japanese state texts', async () => {
@@ -640,13 +640,13 @@ describe('refreshing on events', () => {
 });
 
 async function openCreateForm() {
-  await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
-  await userEvent.click(screen.getByRole('button', { name: 'Create manually' }));
+  await userEvent.click(screen.getByRole('button', { name: 'More ways to add' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Add a task manually' }));
   return screen.getByRole('dialog');
 }
 
 describe('switching while a form is open', () => {
-  it('disables the switcher and Add task while the add form is open', async () => {
+  it('disables the switcher and Ask AI while the add form is open', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await openCreateForm();
@@ -779,7 +779,7 @@ describe('switching while a form is open', () => {
     expect(
       (screen.getByRole('button', { name: 'agent-board' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect((screen.getByRole('button', { name: 'Add task' }) as HTMLButtonElement).disabled).toBe(
+    expect((screen.getByRole('button', { name: 'Ask AI' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
 

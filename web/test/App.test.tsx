@@ -65,7 +65,7 @@ describe('App', () => {
     expect(screen.getByText('Connecting…')).toBeTruthy();
     expect(screen.queryByRole('complementary', { name: 'Task details' })).toBeNull();
     expect(screen.queryByRole('separator')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'agent-board' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
@@ -268,7 +268,7 @@ describe('App', () => {
     setCurrent({ ...current(), tasks: [] });
     show();
     expect(await screen.findByText('No tasks yet.')).toBeTruthy();
-    expect(screen.getByText('Add a task to get started.')).toBeTruthy();
+    expect(screen.getByText('Ask AI to get started.')).toBeTruthy();
     for (const lane of ['Todo', 'Doing', 'Done'])
       expect(screen.getByRole('region', { name: lane })).toBeTruthy();
     // The band of messages keeps its place above the lanes, with nothing in it.
@@ -284,7 +284,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Retry' }).getAttribute('data-slot')).toBe('button');
     expect(screen.getByRole('complementary', { name: 'Task details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'agent-board' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
 
     backend.boards[PROJECT_A.id] = structuredClone(fixtureBoard);

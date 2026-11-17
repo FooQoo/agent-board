@@ -1,0 +1,48 @@
+/* The Ask AI dialog and sheet: one Markdown field with images, no epic and no manual creation. */
+
+.ask-ai__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ask-ai__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+/* The rich editor box of the task dialogs, with a height that fits a request. */
+.ask-ai__box.editor__box {
+  flex: none;
+  height: clamp(200px, 34vh, 320px);
+  padding: 12px 16px;
+  overflow-y: auto;
+  cursor: text;
+}
+
+.ask-ai__box .rich-markdown .ProseMirror {
+  min-height: 100%;
+}
+
+.ask-ai--sheet .ask-ai__box.editor__box {
+  height: clamp(180px, 34vh, 280px);
+}
+
+.ask-ai__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.ask-ai__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ask-ai__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--r-danger);
+}

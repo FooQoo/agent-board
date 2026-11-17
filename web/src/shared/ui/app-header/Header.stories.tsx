@@ -39,6 +39,7 @@ interface HeaderDemoProps {
   viewMode?: ViewMode;
   withSettings?: boolean;
   onAdd?: () => void;
+  onAddManually?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
   onDocs?: () => void;
@@ -83,6 +84,7 @@ const meta = {
     canAdd: true,
     viewMode: 'board',
     onAdd: fn(),
+    onAddManually: fn(),
     onArchive: fn(),
     onEpics: fn(),
     onDocs: fn(),
@@ -99,7 +101,7 @@ export const Board: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Agent Board' })).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'alpha' })).toBeEnabled();
-    await expect(canvas.getByRole('button', { name: /add task/i })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /ask ai/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /docs/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /epics/i })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /archive/i })).toBeEnabled();
@@ -112,7 +114,7 @@ export const BoardNotReady: Story = {
   args: { canAdd: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole('button', { name: /add task/i })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /ask ai/i })).toBeNull();
     await expect(canvas.queryByRole('button', { name: /archive/i })).toBeNull();
     await expect(canvas.queryByRole('button', { name: /docs/i })).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
@@ -125,7 +127,7 @@ export const SwitchDisabled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'alpha' })).toBeDisabled();
-    await expect(canvas.getByRole('button', { name: /add task/i })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: /ask ai/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /docs/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /epics/i })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: /archive/i })).toBeDisabled();
@@ -137,7 +139,7 @@ export const ArchiveView: Story = {
   args: { viewMode: 'archive' },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole('button', { name: /add task/i })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /ask ai/i })).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: 'Back to board' }));
     await expect(args.onBack).toHaveBeenCalledTimes(1);
   },
@@ -179,7 +181,7 @@ export const JapaneseBoard: Story = {
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: /タスク追加/ })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: /AI に依頼/ })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /ドキュメント/ })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: '設定' })).toBeEnabled();
   },
@@ -189,7 +191,7 @@ export const JapaneseBoard: Story = {
 export const ActionCallbacks: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /add task/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /ask ai/i }));
     await expect(args.onAdd).toHaveBeenCalledTimes(1);
     await userEvent.click(canvas.getByRole('button', { name: /docs/i }));
     await expect(args.onDocs).toHaveBeenCalledTimes(1);
@@ -197,6 +199,18 @@ export const ActionCallbacks: Story = {
     await expect(args.onEpics).toHaveBeenCalledTimes(1);
     await userEvent.click(canvas.getByRole('button', { name: /archive/i }));
     await expect(args.onArchive).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** A small menu beside "Ask AI" keeps the manual task form reachable. */
+export const ManualTaskMenu: Story = {
+  play: async ({ args, canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'More ways to add' }));
+    await userEvent.click(
+      await within(document.body).findByRole('menuitem', { name: 'Add a task manually' }),
+    );
+    await expect(args.onAddManually).toHaveBeenCalledTimes(1);
+    await expect(args.onAdd).not.toHaveBeenCalled();
   },
 };
 

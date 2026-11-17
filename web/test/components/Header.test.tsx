@@ -66,7 +66,7 @@ describe('settings entry in the header', () => {
     expect(container.querySelector('img[src="/logo.png"]')).toBeNull();
   });
 
-  it('shows the project switcher after a slash and the Add task button', () => {
+  it('shows the project switcher after a slash and the Ask AI button', () => {
     const { container } = render(
       <AppHeader
         projects={[{ ...PROJECT_A, name: 'my-board' }]}
@@ -76,9 +76,7 @@ describe('settings entry in the header', () => {
     );
     expect(screen.getByRole('button', { name: 'my-board' })).toBeTruthy();
     expect(container.querySelector('.header__slash')?.getAttribute('aria-hidden')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Add task' }).getAttribute('data-slot')).toBe(
-      'button',
-    );
+    expect(screen.getByRole('button', { name: 'Ask AI' }).getAttribute('data-slot')).toBe('button');
   });
 
   it('shows the project name as text and an arrow back in the epic view', () => {
@@ -99,7 +97,7 @@ describe('settings entry in the header', () => {
     const { container } = render(<AppHeader />);
     expect(container.querySelector('.header__slash')).toBeNull();
     expect(container.querySelector('.header__board')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('data-slot')).toBe(
       'button',
     );
@@ -108,7 +106,7 @@ describe('settings entry in the header', () => {
   it('keeps the Settings button while the board name is unknown (loading or error)', () => {
     render(<AppHeader />);
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Add task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
   });
 
   it('opens the settings dialog, which holds the language choice', async () => {
@@ -179,7 +177,7 @@ describe('settings entry in the header', () => {
   it('still calls onAdd from the add button', async () => {
     const onAdd = vi.fn();
     render(<AppHeader projects={PROJECTS} activeProjectId={PROJECT_A.id} canAdd onAdd={onAdd} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ask AI' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 });
