@@ -31,7 +31,7 @@ function run(home: string, args: string[]): string {
 
 function task(home: string, project: string, title: string, description: string): number {
   const value = JSON.parse(
-    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'ai', '--json']),
+    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'human', '--json']),
   ) as { task: { id: number } };
   return value.task.id;
 }

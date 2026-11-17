@@ -60,9 +60,9 @@ function buildHome(label: string): Fixture {
   }
   // Cards 1-3 in ALPHA, 4-5 in BETA, 6 without an epic.
   for (const [index, epic] of [['1', 'ALPHA'], ['2', 'ALPHA'], ['3', 'ALPHA'], ['4', 'BETA'], ['5', 'BETA']]) {
-    agboardOk(PROJECT, ['add', `Card ${index}`, '--assignee', 'ai', '--actor', 'ai', '--epic', epic], home);
+    agboardOk(PROJECT, ['add', `Card ${index}`, '--assignee', 'ai', '--actor', 'human', '--epic', epic], home);
   }
-  agboardOk(PROJECT, ['add', 'Card 6', '--assignee', 'ai', '--actor', 'ai'], home);
+  agboardOk(PROJECT, ['add', 'Card 6', '--assignee', 'ai', '--actor', 'human'], home);
 
   // The image of ALPHA: the file in assets/ and its entry in epic.json.
   mkdirSync(path.join(epics, 'ALPHA', 'assets'), { recursive: true });

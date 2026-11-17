@@ -74,7 +74,7 @@ export function seed(home, text) {
   for (let i = 0; i < text.titles.length; i++) {
     const done = i === 5 || i === 7;
     const owner = i === 0 || i === 7 ? 'human' : 'ai';
-    run('add', text.titles[i], '--assignee', owner, '--actor', 'ai',
+    run('add', text.titles[i], '--assignee', owner, '--actor', 'human',
       '--epic', [0, 1, 7].includes(i) ? 'DESIGN' : 'LAUNCH',
       '--desc', markdown(text.body, text.checks, done ? 3 : i === 1 ? 2 : 1));
   }

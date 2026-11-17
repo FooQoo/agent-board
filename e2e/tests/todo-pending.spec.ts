@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
 
 test('an AI task in Todo asks, shows as pending there, and the answer returns it to Todo idle', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'ai']);
+  agboardOk(mainProject, ['add', 'Ask before starting', '--assignee', 'ai', '--actor', 'human']);
   agboardOk(mainProject, askArgs(String(id), decisionJson('Which plan before we start?')));
   await page.reload();
   await waitForSync(page);
@@ -46,7 +46,7 @@ test('an AI task in Todo asks, shows as pending there, and the answer returns it
 
 test('moving a task out of Todo keeps its question pending until the question is withdrawn', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'ai']);
+  agboardOk(mainProject, ['add', 'Move while asking', '--assignee', 'ai', '--actor', 'human']);
   const asked = JSON.parse(agboardOk(mainProject, ['--json', ...askArgs(String(id), decisionJson('Still wanted?'))]).stdout.split('\n')[0]) as {
     questions: { id: string }[];
   };

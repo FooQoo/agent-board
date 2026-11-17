@@ -28,7 +28,7 @@ test('default pending waits for a browser answer', async ({ page }) => {
   let waiter: ChildProcess | undefined;
   try {
     agboardCatalogOk(['project', 'create', project], home);
-    agboardOk(project, ['add', 'Ask and wait', '--assignee', 'ai', '--actor', 'ai'], home);
+    agboardOk(project, ['add', 'Ask and wait', '--assignee', 'ai', '--actor', 'human'], home);
     serve = await startServe(home);
 
     // The request has no wait setting at all: the child must wait for the answer on its own.

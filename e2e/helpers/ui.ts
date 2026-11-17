@@ -75,11 +75,10 @@ export async function closeForUpdates(close: () => Promise<void>, check: () => P
   await expect(check).toPass({ timeout: 15_000 });
 }
 
-/** Open the established full task editor from the Add task button's simple-request entry point. */
+/** Open the full task editor from the header's secondary menu item, "Add a task manually". */
 export async function openManualCreateDialog(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: /^(Add task|タスク追加)$/ }).click();
-  const request = page.getByRole('dialog', { name: /^(New task|新しいタスク)$/ });
-  await request.getByRole('button', { name: /^(Create manually|手動で作成)$/ }).click();
+  await page.getByRole('button', { name: /^(More ways to add|ほかの追加方法)$/ }).click();
+  await page.getByRole('menuitem', { name: /^(Add a task manually|タスクを手動で追加)$/ }).click();
   const dialog = page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ });
   await dialog.waitFor({ state: 'visible' });
   return dialog;

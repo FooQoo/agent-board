@@ -73,8 +73,8 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
 
     const projectArgs = (args: string[]) => ['--project', project, ...args];
     agboardOk(project, ['epic', 'add', 'RELEASE', '--name', 'Release work', '--actor', 'human'], home);
-    agboardOk(project, ['add', 'Publish release', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Private task body for progress omission check.'], home);
-    agboardOk(project, ['add', 'Prepare release notes', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'ai', '--desc', 'Another private task body.'], home);
+    agboardOk(project, ['add', 'Publish release', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'human', '--desc', 'Private task body for progress omission check.'], home);
+    agboardOk(project, ['add', 'Prepare release notes', '--epic', 'RELEASE', '--assignee', 'ai', '--actor', 'human', '--desc', 'Another private task body.'], home);
     const tasks = JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).tasks as Array<{ id: number; title: string }>;
     const publish = tasks.find((task) => task.title === 'Publish release')!.id;
     const notes = tasks.find((task) => task.title === 'Prepare release notes')!.id;

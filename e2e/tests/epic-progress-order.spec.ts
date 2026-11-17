@@ -49,9 +49,9 @@ function progressOrder(): number[] {
 test.beforeEach(() => {
   resetBoard(mainProject);
   agboardOk(mainProject, ['epic', 'add', 'ORDER', '--name', 'Ordered epic', '--color', '#7C3AED', '--actor', 'human']);
-  agboardOk(mainProject, ['add', 'First step', '--assignee', 'ai', '--actor', 'ai', '--epic', 'ORDER']);
-  agboardOk(mainProject, ['add', 'Second step', '--assignee', 'ai', '--actor', 'ai', '--epic', 'ORDER']);
-  agboardOk(mainProject, ['add', 'Third step', '--assignee', 'ai', '--actor', 'ai', '--epic', 'ORDER']);
+  agboardOk(mainProject, ['add', 'First step', '--assignee', 'ai', '--actor', 'human', '--epic', 'ORDER']);
+  agboardOk(mainProject, ['add', 'Second step', '--assignee', 'ai', '--actor', 'human', '--epic', 'ORDER']);
+  agboardOk(mainProject, ['add', 'Third step', '--assignee', 'ai', '--actor', 'human', '--epic', 'ORDER']);
 });
 
 test('a task moved in the progress table by keyboard is saved with the epic and read back by the CLI', async ({ page }) => {

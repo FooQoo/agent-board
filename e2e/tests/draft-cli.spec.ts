@@ -196,7 +196,7 @@ test('a body of exactly 50,000 characters is accepted for add, edit, and --desc 
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Exact limit', '--desc-file', exactFile]);
   expect([...show(id).body].length).toBe(50_000);
-  const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'ai'], {
+  const stdin = spawnSync(agboardBinary(), ['--project', mainProject, 'add', 'From stdin', '--desc', '-', '--assignee', 'ai', '--actor', 'human'], {
     env: { ...process.env, AGBOARD_HOME: mainHome(), TZ: 'UTC' },
     input: exact,
     encoding: 'utf8',

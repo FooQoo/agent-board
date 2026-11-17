@@ -28,7 +28,7 @@ export async function putDraft(
       'Sec-Fetch-Site': 'same-origin',
       'X-Agboard-Token': await pageToken(origin),
     },
-    body: JSON.stringify({ isDraft, ...(options.discard ? { discard: true } : {}) }),
+    body: JSON.stringify({ draft: isDraft ? 'human' : null, ...(options.discard ? { discard: true } : {}) }),
   });
   if (!response.ok) throw new Error(`PUT draft answered ${response.status}: ${await response.text()}`);
 }

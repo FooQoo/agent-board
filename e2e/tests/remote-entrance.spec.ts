@@ -189,7 +189,7 @@ test('the phone band lists the open questions; an answer held there is sent from
   await expect(band.getByRole('listitem')).toHaveCount(0);
   const before = Number(await bandCount(page).textContent());
 
-  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
   const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
   expect(asked.code, asked.stderr).toBe(0);
@@ -220,7 +220,7 @@ test('the phone band lists the open questions; an answer held there is sent from
 
 test('an image attached to the task shows in the sheet from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start review'], home);
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -245,7 +245,7 @@ test('an image attached to the task shows in the sheet from the attachment route
 
 test('an image in a history reason shows in the History tab from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'ai']).task.id;
+  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'human']).task.id;
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
     'base64',

@@ -322,7 +322,7 @@ function taskFilesFor(item: FixtureTask, question?: string): { task: Record<stri
     // Waiting is derived from the open question the card refers to; only idle and running are stored.
     agentStatus: item.agentStatus === 'pending' ? 'idle' : item.agentStatus,
     position: item.position,
-    isDraft: false,
+    draft: null,
     archivedAt: null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -458,7 +458,9 @@ export function resetAlphaBeta(home: string, serveUrl?: string): void {
 function withTestDefaults(args: string[]): string[] {
   const result = [...args];
   const command = result[0];
-  if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai', '--actor', 'ai');
+  // A card the tests add is the person's own, so it is not an AI draft and can move at once.
+  if (command === 'add' && !result.includes('--assignee')) result.push('--assignee', 'ai');
+  if (command === 'add' && !result.includes('--actor')) result.push('--actor', 'human');
   if ((command === 'mv' || command === 'state') && !result.includes('--actor')) {
     result.push('--actor', 'human');
   }
