@@ -4,7 +4,7 @@ import { sendMessageRequest } from './sendRequest';
 
 export interface AskAiProps {
   projectId: ProjectId;
-  /** The dialog is done: sent, or cancelled. */
+  /** The dialog is done: sent, or closed. */
   onClose: () => void;
   /** The request was saved. The Summary refreshes through the live update. */
   onSent?: () => void;
@@ -28,7 +28,6 @@ export function AskAi({
       onSubmit={async (input) => {
         await sendMessageRequest(projectId, input);
         onSent?.();
-        onClose();
       }}
     />
   );

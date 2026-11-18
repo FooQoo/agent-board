@@ -46,13 +46,13 @@ A running task opens read-only, with a **Running** chip and the reason **Read-on
 
 Choose **Ask AI** in the board header to open the request form. On a phone, the **Ask AI** button in the messages band opens the same form as a bottom sheet. Write what you want done, attach images if they help, and choose **Send request**.
 
-The input box grows with your text and scrolls inside once it is long. The sheet on a phone has a single **Send request** button across its foot; to leave without sending, close the sheet with the close button at its top right.
+The form is laid out like a chat input. The only text on top is the title, with a close button at its right. Below it, a plain text field fills the form, and a toolbar sits at the bottom: **Image** on the left, and **Send request** with an up arrow on the right. **Send request** is disabled until you have typed text or attached an image. Attached images appear above the toolbar as small thumbnails, each with a small × to remove it. To leave without sending, use the close button at the top right. On a phone, the same form is a bottom sheet, and its toolbar stays above the on-screen keyboard while you type.
 
-![The Ask AI dialog with the rich editor, an attached image, and the Send request button](../../images/guide/ask-ai.png){.screenshot}
+![The Ask AI dialog with a request, an attached image above the toolbar, and the Image and Send request buttons](../../images/guide/ask-ai.png){.screenshot}
 
 The request is a message to the agents, not a task. It is not linked to any task or epic, so the form has no epic picker. When an agent receives it, the agent decides how to turn it into a plan, and the plan appears in Todo for you to review and start. Until then, the band above the lanes lists the request as **Waiting to be picked up**. You can withdraw a request before an agent receives it.
 
-The text field is the same rich Markdown editor the task editor uses. The text is required, up to 20,000 characters. Images use the same PNG, JPEG, WebP, and GIF limits as task attachments. Choose **Add image attachment**, paste an image into the text, or drop one onto the form. **Insert in description** on an attached image places it at the cursor. If sending fails, the form keeps your text and images so you can try again.
+The text field is plain text, without headings or lists to format. The text is required, up to 20,000 characters, so an image alone enables **Send request** but the form then asks for text. Images use the same PNG, JPEG, WebP, and GIF limits as task attachments. Choose **Image**, paste an image into the text, or drop one onto the form; the images are sent with the request. If sending fails, the form keeps your text and images so you can try again.
 
 To create a task yourself instead, open the small menu beside **Ask AI** and choose **Add a task manually**. The full task editor lets you set the title, description, assignee, draft state, conditions, and images yourself. The usual task editor and its save behavior remain available.
 

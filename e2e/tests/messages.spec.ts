@@ -3,7 +3,7 @@ import path from 'node:path';
 import { askArgs, agboardOk, decisionJson, mainHome, mainProject, resetBoard, listTasks } from '../helpers/agboard';
 import { expect, test } from '../helpers/fixtures';
 import { answerDialog, listRow, messageBand, messageList, openMessageList, sendAnswer } from '../helpers/answer';
-import { pasteMarkdown, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The messages of the board: a request sent with Ask AI, a plan the AI proposed as drafts and a person starts,
 // and the images that travel with a request.
@@ -38,13 +38,9 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
   await page.getByRole('button', { name: 'Ask AI', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ask AI' });
   const editor = dialog.getByRole('textbox', { name: 'What would you like done?' });
-  await pasteMarkdown(editor, 'Add a reset link to the login page.');
-  await expect(editor).toContainText('Add a reset link to the login page.');
-  // The editor hands its text to the form a moment after the paste, so a click that comes first is refused.
-  await expect(async () => {
-    await dialog.getByRole('button', { name: 'Send request' }).click({ timeout: 1_000 });
-    await expect(dialog).toBeHidden({ timeout: 2_000 });
-  }).toPass({ timeout: 10_000 });
+  await editor.fill('Add a reset link to the login page.');
+  await dialog.getByRole('button', { name: 'Send request' }).click();
+  await expect(dialog).toBeHidden();
 
   // The band counts it as the person's own request, waiting for an AI; it is a message, not a task.
   await expect(mine).toContainText('1');

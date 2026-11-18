@@ -1,5 +1,5 @@
 import { XIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '../dialog';
 import { Drawer } from '../drawer';
 import '../../styles/modal.css';
@@ -30,6 +30,8 @@ export function Surface({
   className?: string;
   children: ReactNode;
 }) {
+  // Where the focus was when the dialog opened (the button that opened it).
+  const [opener] = useState(() => document.activeElement);
   if (kind === 'sheet') {
     return (
       <Drawer
@@ -59,6 +61,13 @@ export function Surface({
           event.preventDefault();
           if (event.currentTarget instanceof HTMLElement)
             event.currentTarget.focus({ preventScroll: true });
+        }}
+        onCloseAutoFocus={(event) => {
+          // The dialog has no trigger of its own: focus goes back to the button that opened it.
+          event.preventDefault();
+          if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) {
+            opener.focus();
+          }
         }}
       >
         <div className="modal__header">

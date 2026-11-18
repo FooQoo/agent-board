@@ -10,52 +10,78 @@
           "stories": [
             {
               "id": "messages-askai--dialog",
-              "states": ["modal", "empty", "no epic selector", "no manual creation"],
+              "states": [
+                "modal",
+                "empty",
+                "send disabled",
+                "no epic selector",
+                "no manual creation"
+              ],
               "interaction": true
             },
             {
-              "id": "messages-askai--dialog-filled",
-              "states": ["draft text", "attached images"],
+              "id": "messages-askai--dialog-typed",
+              "states": ["modal", "typed text", "send enabled"],
               "interaction": true
             },
             {
-              "id": "messages-askai--dialog-required",
-              "states": ["empty text", "required message", "nothing sent"],
+              "id": "messages-askai--dialog-with-images",
+              "states": ["modal", "typed text", "attached images"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-image-only",
+              "states": ["modal", "image only", "required message", "nothing sent"],
               "interaction": true
             },
             {
               "id": "messages-askai--dialog-submit",
-              "states": ["typed text", "send request"],
-              "interaction": true
-            },
-            {
-              "id": "messages-askai--dialog-insert-image",
-              "states": ["attached images", "insert in description", "image reference in text"],
+              "states": ["modal", "typed text", "send request"],
               "interaction": true
             },
             {
               "id": "messages-askai--dialog-send-failed",
-              "states": ["send failed", "reason shown", "text kept"],
+              "states": ["modal", "send failed", "reason shown", "text kept", "images kept"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-dark",
+              "states": ["modal", "dark theme", "attached images"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-japanese",
+              "states": ["modal", "japanese"],
               "interaction": true
             },
             {
               "id": "messages-askai--sheet",
-              "states": ["bottom sheet", "fixed buttons"],
+              "states": ["bottom sheet", "empty", "toolbar visible", "no zoom font size"],
               "interaction": true
             },
             {
-              "id": "messages-askai--sheet-filled",
-              "states": ["bottom sheet", "draft text", "attached images"],
+              "id": "messages-askai--sheet-with-images",
+              "states": ["bottom sheet", "typed text", "attached images"],
               "interaction": true
             },
             {
               "id": "messages-askai--sheet-required",
-              "states": ["bottom sheet", "required message"],
+              "states": ["bottom sheet", "image only", "required message"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-send-failed",
+              "states": ["bottom sheet", "send failed", "reason shown", "text kept"],
               "interaction": true
             },
             {
               "id": "messages-askai--sheet-japanese",
               "states": ["bottom sheet", "japanese"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-dark",
+              "states": ["bottom sheet", "dark theme"],
               "interaction": true
             }
           ]

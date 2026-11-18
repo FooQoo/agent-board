@@ -1,32 +1,30 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/shared/ui/button';
-import {
-  RichMarkdownEditor,
-  type RichMarkdownEditorHandle,
-} from '../../../shared/rich-editor/RichMarkdownEditor';
-import { DialogFrame } from '../../../shared/ui/dialog-frame/DialogFrame';
-import { AttachmentPanel } from '../../../shared/ui/editor/AttachmentPanel';
+import { isTouchScreen } from '../../../shared/lib/viewport/isTouchScreen';
+import { Surface } from '../../../shared/ui/surface/Surface';
+import { Textarea } from '../../../shared/ui/textarea';
+import { attachmentNoticeText } from '../../../shared/ui/editor/AttachmentPanel';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
-import { Surface } from '../../../shared/ui/surface/Surface';
-import '../../../shared/styles/rich-table.css';
-import '../../../shared/styles/rich-body.css';
-import '../../../shared/styles/editor.css';
-import '../../../shared/styles/modal.css';
+import { watchKeyboardInset } from '../../../shared/viewport/keyboardInset';
+import { AskAiToolbar } from './AskAiToolbar';
 import './ask-ai.css';
 import { REQUEST_LIMIT } from './sendRequest';
 
-/** What the dialog hands over: the Markdown text and the images the person added. */
+/** What the dialog hands over: the request text and the images the person added. */
 export interface AskAiInput {
   text: string;
   attachments: EditorAttachment[];
 }
 
+/** The demo build keeps nothing it could save pictures to. */
+const PICTURES_ALLOWED = import.meta.env.MODE !== 'demo';
+
 /**
- * The "Ask AI" dialog: one Markdown text in the rich editor the task dialogs use, and images. It has
- * no epic selector and no manual creation, because a request is linked to neither tasks nor epics.
- * It is a modal on the board and a bottom sheet on a phone.
+ * The "Ask AI" composer, laid out like a chat input: only the title on top, a plain text field that
+ * fills the height, and a toolbar at the bottom with "Image" and "Send request" and the attached
+ * thumbnails just above it. It has no epic selector and no manual creation, because a request is
+ * linked to neither tasks nor epics. It is a modal on the board and a bottom sheet on a phone.
  */
 export function AskAiDialog({
   kind = 'dialog',
@@ -38,44 +36,40 @@ export function AskAiDialog({
   /** A modal on the board, a bottom sheet on a phone. */
   kind?: 'dialog' | 'sheet';
   onClose: () => void;
-  /** Sends the request. A rejection keeps the dialog open and shows its message. */
+  /** Sends the request; the dialog closes when it resolves. A rejection keeps it open and shows its message. */
   onSubmit: (input: AskAiInput) => Promise<void>;
   /** Reports that a send started (`true`) or failed and the input was kept (`false`). */
   onSavingChange?: (saving: boolean) => void;
   initialText?: string;
 }) {
   const { t } = useTranslation();
-  const editor = useRef<RichMarkdownEditorHandle>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState(initialText);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const images = useAttachmentState({ resolveStoredUrl: () => '' });
-  const insertImage = (attachment: EditorAttachment) => {
-    const alt = attachment.name.replace(/[\\[\]!*_`]/g, '\\$&');
-    editor.current?.insert(`\n\n![${alt}](attachment:${attachment.id})\n\n`);
-  };
   const addImages = (files: File[]) => {
-    // The demo build keeps nothing it could save pictures to.
-    if (import.meta.env.MODE === 'demo') return;
+    if (!PICTURES_ALLOWED) return;
     const pictures = files.filter((file) => file.type.startsWith('image/'));
     if (pictures.length > 0) images.addFiles(pictures);
   };
+  // A phone keyboard covers the bottom of the page without resizing it; the sheet follows the
+  // visual viewport so its toolbar stays in view.
+  useEffect(() => (kind === 'sheet' ? watchKeyboardInset() : undefined), [kind]);
+  // On a screen with a keyboard the text field is ready to type in; a touch screen would raise its
+  // keyboard over the dialog.
+  useEffect(() => {
+    if (isTouchScreen()) return;
+    const frame = requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const validate = (): string | null => {
     if (text.trim() === '') return t('askAi.required');
     if ([...text.trim()].length > REQUEST_LIMIT) return t('askAi.tooLong', { max: REQUEST_LIMIT });
     return null;
   };
-  const send = async () => {
-    try {
-      await onSubmit({ text: text.trim(), attachments: images.attachments });
-    } catch (cause) {
-      // Keep the server's reason visible so a refused request can be fixed; a network failure
-      // gets the localized message.
-      const message = cause instanceof Error ? cause.message : '';
-      throw new Error(message || t('askAi.sendFailed'));
-    }
-  };
-  const submitSheet = async () => {
+  const submit = async () => {
+    if (saving) return;
     const invalid = validate();
     if (invalid !== null) {
       setError(invalid);
@@ -85,116 +79,69 @@ export function AskAiDialog({
     setSaving(true);
     onSavingChange?.(true);
     try {
-      await send();
+      await onSubmit({ text: text.trim(), attachments: images.attachments });
+      onClose();
     } catch (cause) {
+      // Keep the server's reason visible so a refused request can be fixed; a network failure gets
+      // the localized message. The text and the images stay.
       onSavingChange?.(false);
-      setError(cause instanceof Error ? cause.message : t('askAi.sendFailed'));
+      setError(cause instanceof Error && cause.message ? cause.message : t('askAi.sendFailed'));
     } finally {
       setSaving(false);
     }
   };
-  const fields = (
-    <div
-      role="region"
-      aria-label={t('askAi.title')}
-      className="ask-ai__field"
-      onPasteCapture={(event) => {
-        const files = Array.from(event.clipboardData.files);
-        if (!files.some((file) => file.type.startsWith('image/'))) return;
-        event.preventDefault();
-        event.stopPropagation();
-        addImages(files);
+  const notice = images.error ? attachmentNoticeText(images.error, t) : '';
+  return (
+    <Surface
+      kind={kind}
+      title={t('askAi.title')}
+      closeLabel={t('dialog.close')}
+      onClose={() => {
+        if (!saving) onClose();
       }}
-      onDragOver={(event) => {
-        if (event.dataTransfer.types.includes('Files')) event.preventDefault();
-      }}
-      onDrop={(event) => {
-        if (event.dataTransfer.files.length === 0) return;
-        event.preventDefault();
-        addImages(Array.from(event.dataTransfer.files));
-      }}
-    >
-      <span className="ask-ai__label">{t('askAi.prompt')}</span>
-      <div
-        className="editor__box ask-ai__box"
-        onPointerDown={(event) => {
-          const target = event.target;
-          if (target instanceof Element && target.closest('.ProseMirror, button, a')) return;
-          editor.current?.focus();
-        }}
-      >
-        <RichMarkdownEditor
-          ref={editor}
-          value={text}
-          onChange={setText}
-          aria-label={t('askAi.prompt')}
-          placeholder={t('askAi.placeholder')}
-          resolveAttachment={(id) => images.attachments.find((item) => item.id === id)?.url ?? null}
-        />
-      </div>
-      {/* The demo build keeps nothing it could save pictures to. */}
-      {import.meta.env.MODE === 'demo' ? null : (
-        <AttachmentPanel
-          attachments={images.attachments}
+      className={`ask-ai ask-ai--${kind}`}
+      footer={
+        <AskAiToolbar
+          images={images.attachments}
+          error={error || notice}
+          saving={saving}
+          canSend={text.trim() !== '' || images.attachments.length > 0}
+          canAddImages={PICTURES_ALLOWED}
           onFiles={addImages}
           onRemove={images.remove}
-          onInsert={insertImage}
-          notice={images.error}
-          disabled={saving}
-          className="request-dialog__attachments ask-ai__images"
-          optionalHeader
-          layout="tray"
+          onSend={() => void submit()}
         />
-      )}
-    </div>
-  );
-  if (kind === 'sheet') {
-    return (
-      <Surface
-        kind="sheet"
-        title={t('askAi.title')}
-        closeLabel={t('dialog.close')}
-        onClose={onClose}
-        footer={
-          <>
-            {error && (
-              <p className="ask-ai__error" role="alert">
-                {error}
-              </p>
-            )}
-            {/* The close button in the header cancels; the footer keeps the one thing to do. */}
-            <Button
-              type="button"
-              className="ask-ai__submit"
-              disabled={saving}
-              onClick={() => void submitSheet()}
-            >
-              {t('askAi.submit')}
-            </Button>
-          </>
-        }
-      >
-        <div className="ask-ai ask-ai--sheet">
-          {fields}
-          <p className="ask-ai__note">{t('askAi.note')}</p>
-        </div>
-      </Surface>
-    );
-  }
-  return (
-    <DialogFrame
-      title={t('askAi.title')}
-      submitLabel={t('askAi.submit')}
-      onClose={onClose}
-      dirty={text.trim() !== '' || images.attachments.length > 0}
-      onSavingChange={onSavingChange}
-      validate={validate}
-      save={send}
-      footerNote={<p className="ask-ai__note">{t('askAi.note')}</p>}
-      scrollBody
-      className="request-dialog ask-ai"
+      }
     >
-      {fields}
-    </DialogFrame>
+      <div
+        role="region"
+        aria-label={t('askAi.title')}
+        className="ask-ai__body"
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes('Files')) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (event.dataTransfer.files.length === 0) return;
+          event.preventDefault();
+          addImages(Array.from(event.dataTransfer.files));
+        }}
+      >
+        <Textarea
+          ref={field}
+          className="ask-ai__input"
+          aria-label={t('askAi.prompt')}
+          placeholder={t('askAi.prompt')}
+          value={text}
+          readOnly={saving}
+          onChange={(event) => setText(event.target.value)}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData.files);
+            if (!files.some((file) => file.type.startsWith('image/'))) return;
+            event.preventDefault();
+            addImages(files);
+          }}
+        />
+      </div>
+    </Surface>
   );
 }

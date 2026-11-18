@@ -62,14 +62,12 @@ describe('the stored name of a request image', () => {
 });
 
 describe('the request body', () => {
-  it('rewrites image references to the stored names and sends one images part each', () => {
-    const form = buildRequestForm(
-      'See ![a](attachment:aaa) and ![b](attachment:bbb) ![c](attachment:zzz)',
-      [local('aaa', 'image.png'), local('bbb', 'image.png')],
-    );
-    expect(form.get('text')).toBe(
-      'See ![a](attachments/image.png) and ![b](attachments/image-2.png) ![c](attachment:zzz)',
-    );
+  it('sends the text and one images part each, under names that stay unique', () => {
+    const form = buildRequestForm('See the screens', [
+      local('aaa', 'image.png'),
+      local('bbb', 'image.png'),
+    ]);
+    expect(form.get('text')).toBe('See the screens');
     const files = form.getAll('images') as File[];
     expect(files.map((file) => file.name)).toEqual(['image.png', 'image-2.png']);
   });
@@ -94,15 +92,42 @@ describe('the request body', () => {
 });
 
 describe('the Ask AI dialog', () => {
-  it('requires the text and then hands it over trimmed', async () => {
+  it('waits for text or an image, and requires text to send', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<AskAiDialog onClose={vi.fn()} onSubmit={onSubmit} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    const send = screen.getByRole('button', { name: 'Send request' });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    await user.type(screen.getByRole('textbox', { name: 'What would you like done?' }), '  ');
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    const picker = document.querySelector<HTMLInputElement>('input[type="file"]');
+    await user.upload(
+      picker as HTMLInputElement,
+      new File(['abc'], 'a.png', { type: 'image/png' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Send request' }));
     expect(await screen.findByText('Enter your request.')).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.queryByText(/epic/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /manually/i })).toBeNull();
+  });
+
+  it('hands the text over trimmed with the attached images', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<AskAiDialog onClose={vi.fn()} onSubmit={onSubmit} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox'), '  Check this  ');
+    const picker = document.querySelector<HTMLInputElement>('input[type="file"]');
+    await user.upload(
+      picker as HTMLInputElement,
+      new File(['abc'], 'a.png', { type: 'image/png' }),
+    );
+    await screen.findByRole('button', { name: 'Remove a.png' });
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    const input = onSubmit.mock.calls[0]?.[0] as { text: string; attachments: { name: string }[] };
+    expect(input.text).toBe('Check this');
+    expect(input.attachments.map((item) => item.name)).toEqual(['a.png']);
   });
 
   it('keeps the sheet open and shows the reason when sending fails', async () => {
@@ -121,6 +146,7 @@ describe('the Ask AI dialog', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Request failed (503)');
     expect(onClose).not.toHaveBeenCalled();
     expect(onSavingChange.mock.calls).toEqual([[true], [false]]);
+    expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('Do this');
   });
 });
 
