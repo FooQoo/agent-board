@@ -42,6 +42,7 @@ export function Surface({
         closeLabel={closeLabel}
         className={`surface-sheet ${className}`.trim()}
         initialFocusSelector=".surface__body"
+        fitKeyboard
       >
         <div className="surface__body" tabIndex={-1}>
           {children}

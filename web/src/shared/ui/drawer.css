@@ -1,0 +1,27 @@
+/*
+ * The `fitKeyboard` variant of the bottom sheet (Drawer). The keyboard variables are kept on the root
+ * by watchKeyboardInset (shared/viewport/keyboardInset.ts), which the app starts once: `--keyboard-inset`
+ * is how much of the page the on-screen keyboard covers, `--visual-top` is where the visible area
+ * starts, and `data-visual-keyboard` marks the root while the keyboard is open.
+ */
+
+/* Closed, the sheet rests at its own height, 56px (or the status bar) below the top of the screen. */
+.mobile-drawer.mobile-drawer--fit-keyboard[data-slot="drawer-popup"] {
+  height: min(calc(var(--stable-vh, 100svh) - max(56px, env(safe-area-inset-top) + 8px)), 720px);
+}
+
+/* With the keyboard open the sheet is fixed by both edges to the visual viewport instead: its top just
+   under the status bar, where the visible area starts, and its bottom on the keyboard, so it covers the
+   page header and the body gets all the height that is left. */
+:root[data-visual-keyboard] .mobile-drawer.mobile-drawer--fit-keyboard[data-slot="drawer-popup"] {
+  top: calc(var(--visual-top, 0px) + max(8px, env(safe-area-inset-top) + 8px));
+  bottom: var(--keyboard-inset, 0px);
+  height: auto;
+  max-height: none;
+  /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
+     the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
+     Safari draws its floating address pill and form bar, so the board never shows through there. */
+  box-shadow:
+    0 -8px 32px rgb(0 0 0 / 14%),
+    0 var(--keyboard-inset, 0px) 0 0 var(--r-surface);
+}

@@ -5,6 +5,7 @@ import '../../shared/i18n';
 import { App } from '../App';
 import { readMockInitial } from '../development/mock';
 import { initializeTheme } from '../../shared/theme';
+import { watchKeyboardInset } from '../../shared/viewport/keyboardInset';
 import { watchStableHeight } from '../../shared/viewport/stableHeight';
 import { syncPreferences } from '../../shared/preferences';
 import { csrfHeaders, readToken } from '../../shared/api/http';
@@ -16,6 +17,7 @@ import '../../shared/styles/theme.css';
 
 initializeTheme();
 watchStableHeight();
+watchKeyboardInset();
 // The sample-data mode and the demo have no server to keep the language and theme: they stay in
 // the browser. Otherwise the browser copy painted the first screen, and the board's saved value
 // replaces it when it differs.

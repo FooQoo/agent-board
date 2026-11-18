@@ -29,7 +29,7 @@ Select a count to open the list on its tab: **AI's questions** opens the tab of 
 
 Open messages are listed. A question you have answered stays in the list, marked **Answered, waiting for an AI**, until an agent takes your answer in. Then it leaves the list, as do a request an agent accepted and a message that was withdrawn.
 
-Select a question or a request to open it in place of the list. An answered question that waits for an AI opens with the question and **Your answer** read-only, and the note "It leaves the list once an AI takes your answer in." **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button.
+Select a question or a request to open it in place of the list. An answered question that waits for an AI opens with the question and **Your answer** read-only, and the note "It leaves the list once an AI takes your answer in." **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button. On a phone, **Back to list** is the left button of the footer, in place of **Later**; see [Answer on your phone](#answer-on-your-phone).
 
 ![The messages list with the AI's questions tab, showing questions](../../images/guide/messages-list.png){.screenshot}
 
@@ -68,7 +68,7 @@ A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiti
 
 On remote access, the same **Messages** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band shows the same counts. **Questions & requests** opens the list as a sheet that slides up from the bottom, and **Ask AI** sits beside it when your phone can send a request.
 
-The sheet works like the modal. The tabs and rows are the same, and you can also swipe the list sideways to switch between **AI's questions** and **Your requests**; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, and the sheet scrolls while **Later** and **Send answer** stay at the bottom, in reach of your thumb. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
+The sheet works like the modal. The tabs and rows are the same, and you can also swipe the list sideways to switch between **AI's questions** and **Your requests**; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, with the question, your answer, the options, and the note all starting at the same edge. The sheet scrolls while the buttons stay at the bottom, in reach of your thumb. When you opened the question from the list, the left button is **Back to list**, which returns to the list without sending anything; when you opened it from a task's card, it is **Later**, which closes the sheet. **Send answer** is on the right in both cases. While you type, the sheet grows to fill the screen from under the status bar down to the keyboard, with the buttons just above the keyboard and the question scrolling above them. It looks the same with the keyboard closed. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
 
 ![Answer sheet on the phone with the question, choices, note, and the buttons at the bottom](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 

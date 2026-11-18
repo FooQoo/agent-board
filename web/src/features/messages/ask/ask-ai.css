@@ -93,34 +93,3 @@
   font-size: 12px;
   color: var(--r-danger);
 }
-
-/* The phone sheet's chrome is tighter than the shared drawer's, with the keyboard open or closed. */
-.mobile-drawer.ask-ai--sheet .mobile-drawer__handle {
-  height: 28px;
-}
-
-.mobile-drawer.ask-ai--sheet .mobile-drawer__header {
-  align-items: center;
-  padding: 0 8px 4px 16px;
-}
-
-.mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
-  height: min(calc(var(--stable-vh, 100svh) - max(56px, env(safe-area-inset-top) + 8px)), 720px);
-}
-
-/* Closed, the sheet rests at its own height. With the keyboard open (see keyboardInset.ts) it is
-   fixed by both edges to the visual viewport instead: its top just under the status bar, where the
-   visible area starts, and its bottom on the keyboard, so it covers the page header and the field
-   gets all the height that is left. The chrome is the same in both states. */
-:root[data-visual-keyboard] .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
-  top: calc(var(--visual-top, 0px) + max(8px, env(safe-area-inset-top) + 8px));
-  bottom: var(--keyboard-inset, 0px);
-  height: auto;
-  max-height: none;
-  /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
-     the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
-     Safari draws its floating address pill and form bar, so the board never shows through there. */
-  box-shadow:
-    0 -8px 32px rgb(0 0 0 / 14%),
-    0 var(--keyboard-inset, 0px) 0 0 var(--r-surface);
-}
