@@ -283,13 +283,18 @@ export const ArchiveConfirm: Story = {
   },
 };
 
-/** 完了 has まとめてアーカイブ in its header, the same meaning as the PC Done lane header. */
+/** 完了 has まとめてアーカイブ below its cards, so the cards stay put whether or not it shows. */
 export const DoneLane: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
     const button = within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' });
     await expect(button).toBeEnabled();
     await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    // Below the last card, so the cards keep their place.
+    const cards = canvasElement.querySelectorAll('[data-lane="done"] [data-swipe-card]');
+    await expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      (cards[cards.length - 1] as Element).getBoundingClientRect().bottom,
+    );
   },
 };
 
@@ -311,6 +316,12 @@ export const EmptyDoneLane: Story = {
       within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' }),
     ).toBeDisabled();
     await expect(within(canvasElement).getByText('完了した作業はありません。')).toBeVisible();
+    const empty = within(canvasElement).getByText('完了した作業はありません。');
+    await expect(
+      within(canvasElement)
+        .getByRole('button', { name: 'まとめてアーカイブ' })
+        .getBoundingClientRect().top,
+    ).toBeGreaterThanOrEqual(empty.getBoundingClientRect().bottom);
   },
 };
 

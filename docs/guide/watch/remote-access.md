@@ -38,7 +38,7 @@ Swipe the task back, or tap anywhere outside it, to close the buttons without a 
 
 ### Archive all done tasks
 
-The Done lane has an **Archive all** button above its list. It opens **Archive completed tasks**, which lists every task that would be archived; choose **Archive** with the count to confirm. The button is disabled while the lane is empty.
+The Done lane has an **Archive all** button below its cards. It opens **Archive completed tasks**, which lists every task that would be archived; choose **Archive** with the count to confirm. The button is disabled while the lane is empty.
 
 ### Read a task
 

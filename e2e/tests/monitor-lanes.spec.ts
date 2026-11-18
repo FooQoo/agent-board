@@ -366,6 +366,10 @@ test('the done lane archives all its cards at once, and the button is disabled w
   await tab(page, 'Done 3').tap();
   const bulk = page.getByRole('button', { name: 'Archive all' });
   await expect(bulk).toBeEnabled();
+  // The button ends the list, so the cards keep their place whether or not it shows.
+  const lastCard = await box(swipeCard(page, 'Bulk done one'));
+  const bulkBox = await box(bulk);
+  expect(bulkBox.y).toBeGreaterThanOrEqual(lastCard.y + lastCard.height);
   await bulk.tap();
 
   const dialog = page.getByRole('dialog', { name: 'Archive completed tasks' });
