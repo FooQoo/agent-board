@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useDrawerDrag } from './use-drawer-drag';
 import { isTouchScreen } from '../lib/viewport/isTouchScreen';
+import './drawer.css';
 
 /**
  * A bottom sheet on the shared Radix Dialog: modal, closed by Escape, the backdrop or the close
@@ -20,6 +21,7 @@ export function Drawer({
   dismissLabel,
   initialFocusSelector,
   className,
+  fitKeyboard = false,
   children,
 }: {
   open: boolean;
@@ -35,6 +37,8 @@ export function Drawer({
   initialFocusSelector?: string;
   /** Extra class on the sheet, for a sheet that sets its own height. */
   className?: string;
+  /** Sizes the sheet to the visible area while the on-screen keyboard is open (see drawer.css). */
+  fitKeyboard?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -60,7 +64,9 @@ export function Drawer({
         />
         <DialogPrimitive.Content
           ref={popup}
-          className={className === undefined ? 'mobile-drawer' : `mobile-drawer ${className}`}
+          className={['mobile-drawer', fitKeyboard && 'mobile-drawer--fit-keyboard', className]
+            .filter(Boolean)
+            .join(' ')}
           data-slot="drawer-popup"
           data-swipe-direction="down"
           aria-describedby={undefined}

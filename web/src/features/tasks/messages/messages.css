@@ -22,13 +22,13 @@
   }
 }
 
-.message-surface--answering .modal__header {
+.modal.surface-modal.message-surface--answering .modal__header {
   flex: none;
   padding: 18px 28px 14px;
   border-bottom: 1px solid var(--r-border);
 }
 
-.message-surface--answering .surface__body {
+.modal.surface-modal.message-surface--answering .surface__body {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
@@ -36,12 +36,67 @@
   overflow: hidden;
 }
 
-.message-surface--answering .surface__footer {
+.modal.surface-modal.message-surface--answering .surface__footer {
   flex-direction: row;
   justify-content: flex-end;
   padding: 14px 28px;
   border-top: 1px solid var(--r-border);
   background: var(--r-surface);
+}
+
+/* ---- An open question on a phone: the Ask AI sheet's build ----
+   The sheet body is the only scroller and the only horizontal padding (16px), so the question, the
+   answer heading, the options, and the note all start at the same edge. The footer is the buttons. */
+
+.surface-sheet.message-surface .decision-panel {
+  display: block;
+  overflow: visible;
+  background: transparent;
+}
+
+.surface-sheet.message-surface .decision-panel__question {
+  padding: 8px 0 12px;
+}
+
+.surface-sheet.message-surface .decision-panel__answer {
+  padding: 12px 0 4px;
+  background: transparent;
+}
+
+.surface-sheet.message-surface .decision-answer__choices {
+  gap: 8px;
+}
+
+/* A 16px field, so iOS does not zoom in; the border stays as it is when the field has the focus. */
+.surface-sheet.message-surface .decision-answer__note.decision-answer__note {
+  height: 120px;
+  min-height: 120px;
+  font-size: 16px;
+}
+
+.surface-sheet.message-surface .decision-answer__note.decision-answer__note:focus-visible {
+  border-color: var(--r-border);
+  outline: none;
+  box-shadow: none;
+}
+
+.surface-sheet.message-surface .message-bar > button {
+  flex: 1 1 0;
+}
+
+/* The question's Markdown at the sheet's size; wide tables and code scroll inside themselves. */
+.surface-sheet.message-surface .decision-question .md {
+  --md-leading: 1.6;
+  --md-gap: 10px;
+}
+
+.surface-sheet.message-surface .decision-question .md--wide h2 {
+  font-size: 15px;
+}
+
+/* The browser's own indent of a quote would push it off the sheet's edge. */
+.surface-sheet.message-surface .decision-question .md blockquote {
+  margin: 0;
 }
 
 /* ---- The list ---- */

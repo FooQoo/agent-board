@@ -114,6 +114,26 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--phone-question-from-list",
+              "states": [
+                "bottom sheet",
+                "back to list in the footer",
+                "no in-body back button",
+                "dark"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-question-markdown",
+              "states": [
+                "bottom sheet",
+                "markdown question",
+                "table and code scroll inside",
+                "dark"
+              ],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-swipe-empty",
               "states": ["bottom sheet", "both tabs empty", "swipe anywhere in the sheet"],
               "interaction": true

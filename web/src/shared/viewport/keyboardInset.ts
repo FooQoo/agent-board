@@ -13,7 +13,7 @@ export function keyboardInset(
 
 /**
  * Keeps `--keyboard-inset`, `--visual-vh` and `--visual-top` on the root up to date from the visual
- * viewport, for as long as the caller is mounted, and marks the root with `data-visual-keyboard`
+ * viewport, for as long as it runs (the app starts it once), and marks the root with `data-visual-keyboard`
  * while the keyboard covers the page. A sheet that must stay above the keyboard reads them in CSS:
  * `--visual-top` is where the visible area starts in the layout viewport, which iOS Safari moves
  * when it scrolls the page to a focused field.

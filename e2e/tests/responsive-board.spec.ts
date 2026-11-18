@@ -92,6 +92,7 @@ test('the band is always there: with no message it shows counts of 0 and the lis
   }
   if ((await phoneTabs(page).count()) === 0) await page.setViewportSize(PHONE);
   await expect(phoneTabs(page)).toBeVisible();
+  await expect(band(page)).toBeVisible();
   const tabsBox = await phoneTabs(page).boundingBox();
   const bandBox = await band(page).boundingBox();
   if (!bandBox || !tabsBox) throw new Error('the band or the lane tabs have no box');

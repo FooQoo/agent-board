@@ -197,12 +197,12 @@ test('the phone band counts the open questions; a question picked in its list is
   expect(asked.code, asked.stderr).toBe(0);
   await expect.poll(countOf).toBe(before + 1);
 
-  // The list's row opens the sheet at its question; Later closes it with the question still open.
+  // The list's row opens the sheet at its question; Back to list returns to the list with the question still open.
   const list = await openMessageList(page);
   await list.getByRole('button', { name: /Which plan for the band\?/ }).click();
   const sheet = answerDialog(page);
   await sheet.getByRole('radio', { name: 'Plan B' }).click();
-  await sheet.getByRole('button', { name: 'Later' }).click();
+  await sheet.getByRole('button', { name: 'Back to list' }).click();
   await closeMessages(page);
   expect(json(['show', String(id)]).task.agentStatus).toBe('pending');
 

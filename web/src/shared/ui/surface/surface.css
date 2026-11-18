@@ -21,8 +21,15 @@
   gap: 8px;
 }
 
-.mobile-drawer.surface-sheet[data-slot="drawer-popup"] {
-  height: calc(var(--stable-vh, 100svh) - 56px);
+/* The phone sheet's chrome is tight; the sheet's size and its fit to the keyboard are the shared
+   drawer's `fitKeyboard` variant (drawer.css). */
+.mobile-drawer.surface-sheet .mobile-drawer__handle {
+  height: 28px;
+}
+
+.mobile-drawer.surface-sheet .mobile-drawer__header {
+  align-items: center;
+  padding: 0 8px 4px 16px;
 }
 
 .surface-sheet .surface__body {

@@ -188,7 +188,11 @@ export function MessagesSurface({
         ? t('messages.detail.withdrawFailed')
         : t(`messages.detail.${failure}`);
 
-  const back = fromList ? <BackButton onBack={() => show(null)} /> : null;
+  // On the PC a message opened from the list offers the way back at the top of its body; a phone
+  // sheet puts it in the footer instead (below), so the body starts with the message itself.
+  const goBack = () => show(null);
+  const phoneBack = kind === 'sheet' && fromList && opened !== null;
+  const back = fromList && kind === 'dialog' ? <BackButton onBack={goBack} /> : null;
   const blocks = opened && opened.tasks.length > 0 && (
     <p className="message-detail__blocks">
       {t('messages.detail.blocks', { tasks: opened.tasks.map((id) => `#${id}`).join(' ') })}
@@ -304,14 +308,22 @@ export function MessagesSurface({
         answering ? 'message-surface message-surface--answering decision-dialog' : 'message-surface'
       }
       footer={
-        answering && (
+        (answering || phoneBack) && (
           <div className="message-bar">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t('messages.detail.later')}
-            </Button>
-            <Button type="button" disabled={!sendable} onClick={() => void send()}>
-              {busy ? t('messages.detail.sending') : t('messages.detail.send')}
-            </Button>
+            {phoneBack ? (
+              <Button type="button" variant="outline" disabled={busy} onClick={goBack}>
+                {t('messages.detail.back')}
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={onClose}>
+                {t('messages.detail.later')}
+              </Button>
+            )}
+            {answering && (
+              <Button type="button" disabled={!sendable} onClick={() => void send()}>
+                {busy ? t('messages.detail.sending') : t('messages.detail.send')}
+              </Button>
+            )}
           </div>
         )
       }

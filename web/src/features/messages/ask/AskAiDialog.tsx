@@ -7,7 +7,6 @@ import { DiscardConfirm } from '../../../shared/ui/editor/DiscardConfirm';
 import { attachmentNoticeText } from '../../../shared/ui/editor/AttachmentPanel';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
-import { watchKeyboardInset } from '../../../shared/viewport/keyboardInset';
 import { AskAiToolbar } from './AskAiToolbar';
 import './ask-ai.css';
 import { REQUEST_LIMIT } from './sendRequest';
@@ -55,9 +54,6 @@ export function AskAiDialog({
     const pictures = files.filter((file) => file.type.startsWith('image/'));
     if (pictures.length > 0) images.addFiles(pictures);
   };
-  // A phone keyboard covers the bottom of the page without resizing it; the sheet follows the
-  // visual viewport so its toolbar stays in view.
-  useEffect(() => (kind === 'sheet' ? watchKeyboardInset() : undefined), [kind]);
   // On a screen with a keyboard the text field is ready to type in; a touch screen would raise its
   // keyboard over the dialog.
   useEffect(() => {

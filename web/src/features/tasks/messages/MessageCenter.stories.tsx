@@ -380,3 +380,79 @@ export const PhoneRequestEnDark: Story = {
     ).toBeInTheDocument();
   },
 };
+
+/** The phone: a question opened from the list has "一覧へ戻る" in the footer in place of "あとでやる". */
+export const PhoneQuestionFromList: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' } },
+  parameters: phone,
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const row = (await within(sheet).findAllByText('未回答'))[0]?.closest('button');
+    if (!row) throw new Error('The question row is not a button.');
+    await userEvent.click(row);
+    await within(sheet).findByRole('button', { name: '回答を送る' });
+    await expect(within(sheet).queryByRole('button', { name: 'あとでやる' })).toBeNull();
+    const footer = sheet.querySelector('.surface__footer');
+    if (!(footer instanceof HTMLElement)) throw new Error('The sheet has no footer.');
+    const back = within(footer).getByRole('button', { name: '一覧へ戻る' });
+    // The in-body button is gone: the only "一覧へ戻る" is the footer's.
+    await expect(within(sheet).getAllByRole('button', { name: '一覧へ戻る' })).toHaveLength(1);
+    await userEvent.click(back);
+    await expect(await within(sheet).findAllByText('未回答')).toHaveLength(2);
+  },
+};
+
+const markdownBody = `## 認証方式の選び方
+
+**パスワード認証**を残すか、\`passkey\` に切り替えるかを決めてください。詳しくは [設計メモ](#design) を参照。
+
+- 既存ユーザーの扱い
+  - 初回ログイン時に変換する
+  - 再設定をお願いする
+- 外部アカウント
+
+1. 方式を決める
+2. 移行日を決める
+
+| 方式 | 利点 | 注意点 |
+| --- | --- | --- |
+| メールとパスワード | 既存のユーザーがそのまま使える | パスワードの再設定の問い合わせが増えるかもしれません |
+| 外部アカウント | 入力の手間が少ない | 提供元の障害の影響を受けます |
+
+\`\`\`css
+.login-button:focus-visible { outline: 2px solid var(--r-accent); outline-offset: 2px; border-radius: 8px; }
+\`\`\`
+
+> 切り替えの間も、いまのログインは使えます。
+`;
+
+/** The phone, dark: a question written in Markdown; the table and the code scroll inside themselves. */
+export const PhoneQuestionMarkdown: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'fromAi', openId: 'Q-13' },
+    read: async (_projectId, id) => ({
+      id,
+      type: 'question',
+      body: markdownBody,
+      choices: [
+        { id: 'mail', label: 'メールとパスワードだけ' },
+        { id: 'sso', label: '外部アカウントも足す' },
+      ],
+      recommendedChoiceId: null,
+      status: 'open',
+      referencedBy: [14],
+    }),
+  },
+  parameters: phone,
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(sheet).findByRole('heading', { name: '認証方式の選び方' });
+    const body = sheet.querySelector('.surface__body');
+    if (!(body instanceof HTMLElement)) throw new Error('The sheet has no body.');
+    // The sheet never scrolls sideways; wide blocks scroll inside themselves.
+    await expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth + 1);
+  },
+};
