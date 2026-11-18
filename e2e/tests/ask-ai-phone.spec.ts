@@ -69,10 +69,12 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   await expect(sheet.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({ ratio: 1 });
   const title = sheet.locator('.mobile-drawer__title');
   await expect(title).toBeInViewport({ ratio: 1 });
-  expect(opened.y).toBeGreaterThanOrEqual(44 - tolerance);
+  // The sheet fills the visible area: its top is right under the status bar, its bottom on the keyboard.
+  expect(opened.y).toBeLessThanOrEqual(24 + tolerance);
+  expect(opened.y + opened.height).toBeGreaterThanOrEqual(844 - 336 - tolerance);
   expect(opened.height).toBeLessThan(closed.height - tolerance);
   const fieldBox = await field.boundingBox();
-  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(150 - tolerance);
+  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(250 - tolerance);
   // Under the sheet, down to the keyboard, the sheet's own color is painted: the strip is one flat
   // color (the board's cards would make two strips differ), and the sheet carries the extension.
   expect(await sheet.evaluate((el) => getComputedStyle(el).boxShadow)).toContain('336px');
