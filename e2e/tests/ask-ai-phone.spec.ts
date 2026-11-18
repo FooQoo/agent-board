@@ -56,3 +56,27 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
   await expect.poll(async () => Math.round((await sheet.boundingBox())?.y ?? 0)).toBe(Math.round(closed.y));
 });
+
+test('closing the sheet with text asks first, and an empty sheet closes at once', async ({ page }) => {
+  await page.goto('/');
+  const open = async () => {
+    await page.getByRole('region', { name: 'Messages' }).getByRole('button', { name: 'Ask AI' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Ask AI' });
+    await expect(sheet).toBeVisible();
+    return sheet;
+  };
+  let sheet = await open();
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+
+  sheet = await open();
+  await requestField(sheet).fill('Keep this on the phone');
+  const question = page.getByRole('dialog', { name: 'Discard changes?' });
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(question).toBeVisible();
+  await question.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(requestField(sheet)).toHaveValue('Keep this on the phone');
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await question.getByRole('button', { name: 'Discard and close' }).click();
+  await expect(sheet).toHaveCount(0);
+});

@@ -137,3 +137,39 @@ test('a refused send keeps the API reason, the text and the images', async ({ pa
   await expect(requestField(dialog)).toHaveValue('Keep my request');
   await expect(dialog.getByRole('button', { name: 'Remove kept.png' })).toBeVisible();
 });
+
+test('closing with text or an image asks first, and an empty form closes at once', async ({ page }) => {
+  let dialog = await openAskAi(page);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  dialog = await openAskAi(page);
+  await fillRequest(dialog, 'Do not lose this');
+  const question = page.getByRole('dialog', { name: 'Discard changes?' });
+  for (const close of [
+    () => dialog.getByRole('button', { name: 'Close' }).click(),
+    () => page.keyboard.press('Escape'),
+  ]) {
+    await close();
+    await expect(question).toBeVisible();
+    await question.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(question).toHaveCount(0);
+    await expect(requestField(dialog)).toHaveValue('Do not lose this');
+  }
+  await page.keyboard.press('Escape');
+  await question.getByRole('button', { name: 'Discard and close' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // An image alone also counts as something to lose.
+  dialog = await openAskAi(page);
+  await dialog.locator('input[type=file]').setInputFiles(image('only.png'));
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(question).toBeVisible();
+  await question.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(dialog.getByRole('button', { name: 'Remove only.png' })).toBeVisible();
+
+  // A successful send closes without asking.
+  await fillRequest(dialog, 'Send it');
+  await sendRequest(dialog);
+  await expect(question).toHaveCount(0);
+});

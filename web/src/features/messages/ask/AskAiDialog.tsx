@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { isTouchScreen } from '../../../shared/lib/viewport/isTouchScreen';
 import { Surface } from '../../../shared/ui/surface/Surface';
 import { Textarea } from '../../../shared/ui/textarea';
+import { DiscardConfirm } from '../../../shared/ui/editor/DiscardConfirm';
 import { attachmentNoticeText } from '../../../shared/ui/editor/AttachmentPanel';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
@@ -47,6 +48,7 @@ export function AskAiDialog({
   const [text, setText] = useState(initialText);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const images = useAttachmentState({ resolveStoredUrl: () => '' });
   const addImages = (files: File[]) => {
     if (!PICTURES_ALLOWED) return;
@@ -90,58 +92,74 @@ export function AskAiDialog({
       setSaving(false);
     }
   };
+  const dirty = text.trim() !== '' || images.attachments.length > 0;
+  // Closing with something entered asks first; an empty composer closes at once.
+  const requestClose = () => {
+    if (saving) return;
+    if (dirty) setConfirmDiscard(true);
+    else onClose();
+  };
   const notice = images.error ? attachmentNoticeText(images.error, t) : '';
   return (
-    <Surface
-      kind={kind}
-      title={t('askAi.title')}
-      closeLabel={t('dialog.close')}
-      onClose={() => {
-        if (!saving) onClose();
-      }}
-      className={`ask-ai ask-ai--${kind}`}
-      footer={
-        <AskAiToolbar
-          images={images.attachments}
-          error={error || notice}
-          saving={saving}
-          canSend={text.trim() !== '' || images.attachments.length > 0}
-          canAddImages={PICTURES_ALLOWED}
-          onFiles={addImages}
-          onRemove={images.remove}
-          onSend={() => void submit()}
-        />
-      }
-    >
-      <div
-        role="region"
-        aria-label={t('askAi.title')}
-        className="ask-ai__body"
-        onDragOver={(event) => {
-          if (event.dataTransfer.types.includes('Files')) event.preventDefault();
-        }}
-        onDrop={(event) => {
-          if (event.dataTransfer.files.length === 0) return;
-          event.preventDefault();
-          addImages(Array.from(event.dataTransfer.files));
-        }}
+    <>
+      <Surface
+        kind={kind}
+        title={t('askAi.title')}
+        closeLabel={t('dialog.close')}
+        onClose={requestClose}
+        className={`ask-ai ask-ai--${kind}`}
+        footer={
+          <AskAiToolbar
+            images={images.attachments}
+            error={error || notice}
+            saving={saving}
+            canSend={dirty}
+            canAddImages={PICTURES_ALLOWED}
+            onFiles={addImages}
+            onRemove={images.remove}
+            onSend={() => void submit()}
+          />
+        }
       >
-        <Textarea
-          ref={field}
-          className="ask-ai__input"
-          aria-label={t('askAi.prompt')}
-          placeholder={t('askAi.prompt')}
-          value={text}
-          readOnly={saving}
-          onChange={(event) => setText(event.target.value)}
-          onPaste={(event) => {
-            const files = Array.from(event.clipboardData.files);
-            if (!files.some((file) => file.type.startsWith('image/'))) return;
-            event.preventDefault();
-            addImages(files);
+        <div
+          role="region"
+          aria-label={t('askAi.title')}
+          className="ask-ai__body"
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes('Files')) event.preventDefault();
           }}
-        />
-      </div>
-    </Surface>
+          onDrop={(event) => {
+            if (event.dataTransfer.files.length === 0) return;
+            event.preventDefault();
+            addImages(Array.from(event.dataTransfer.files));
+          }}
+        >
+          <Textarea
+            ref={field}
+            className="ask-ai__input"
+            aria-label={t('askAi.prompt')}
+            placeholder={t('askAi.prompt')}
+            value={text}
+            readOnly={saving}
+            onChange={(event) => setText(event.target.value)}
+            onPaste={(event) => {
+              const files = Array.from(event.clipboardData.files);
+              if (!files.some((file) => file.type.startsWith('image/'))) return;
+              event.preventDefault();
+              addImages(files);
+            }}
+          />
+        </div>
+      </Surface>
+      <DiscardConfirm
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        onKeep={() => setConfirmDiscard(false)}
+        onDiscard={() => {
+          setConfirmDiscard(false);
+          onClose();
+        }}
+      />
+    </>
   );
 }

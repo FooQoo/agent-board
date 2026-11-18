@@ -211,6 +211,69 @@ export const SheetDark: Story = {
   },
 };
 
+const closeButton = () => page().findByRole('button', { name: 'Close' });
+
+/** Closing with text asks first; "Keep editing" leaves the input as it was. */
+export const DialogCloseAsks: Story = {
+  args: { initialText: DRAFT },
+  play: async ({ args }) => {
+    await userEvent.click(await closeButton());
+    await page().findByText('Discard changes?');
+    await waitFor(() => expect(page().getByText('Discard changes?')).toBeVisible());
+    await userEvent.click(page().getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(page().queryByText('Discard changes?')).toBeNull());
+    await expect(page().getByRole('textbox', { name: 'What would you like done?' })).toHaveValue(
+      DRAFT,
+    );
+    await expect(args.onClose).not.toHaveBeenCalled();
+  },
+};
+
+/** Confirming the question discards the input and closes. */
+export const DialogCloseDiscards: Story = {
+  args: { initialText: DRAFT },
+  play: async ({ args }) => {
+    await userEvent.click(await closeButton());
+    await userEvent.click(await page().findByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
+  },
+};
+
+/** An empty composer closes at once. */
+export const DialogCloseEmpty: Story = {
+  play: async ({ args }) => {
+    await userEvent.click(await closeButton());
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
+    await expect(page().queryByText('Discard changes?')).toBeNull();
+  },
+};
+
+/** The sheet asks before closing too; "Keep editing" keeps the text. */
+export const SheetCloseAsks: Story = {
+  ...PHONE,
+  args: { kind: 'sheet', initialText: DRAFT },
+  play: async ({ args }) => {
+    await userEvent.click(await closeButton());
+    await page().findByText('Discard changes?');
+    await waitFor(() => expect(page().getByText('Discard changes?')).toBeVisible());
+    await userEvent.click(page().getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() => expect(page().queryByText('Discard changes?')).toBeNull());
+    await expect(page().getByRole('textbox')).toHaveValue(DRAFT);
+    await expect(args.onClose).not.toHaveBeenCalled();
+  },
+};
+
+/** Confirming in the sheet discards and closes. */
+export const SheetCloseDiscards: Story = {
+  ...PHONE,
+  args: { kind: 'sheet', initialText: DRAFT },
+  play: async ({ args }) => {
+    await userEvent.click(await closeButton());
+    await userEvent.click(await page().findByRole('button', { name: 'Discard and close' }));
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
+  },
+};
+
 /** The connected dialog the board opens; it sends its own request when it is submitted. */
 export const Connected: StoryObj<typeof AskAi> = {
   render: (args) => <AskAi {...args} projectId={PROJECT} onClose={fn()} />,

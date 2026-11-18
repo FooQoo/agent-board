@@ -83,6 +83,31 @@
               "id": "messages-askai--sheet-dark",
               "states": ["bottom sheet", "dark theme"],
               "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-close-asks",
+              "states": ["modal", "discard confirm", "keep editing", "text kept"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-close-discards",
+              "states": ["modal", "discard confirm", "discarded"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-close-empty",
+              "states": ["modal", "empty", "closes at once"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-close-asks",
+              "states": ["bottom sheet", "discard confirm", "keep editing", "text kept"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-close-discards",
+              "states": ["bottom sheet", "discard confirm", "discarded"],
+              "interaction": true
             }
           ]
         }
