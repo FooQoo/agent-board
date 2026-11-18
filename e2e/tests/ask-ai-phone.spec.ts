@@ -60,7 +60,8 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
-  await expect.poll(async () => Math.round((await sheet.boundingBox())?.y ?? 0)).toBe(Math.round(closed.y));
+  // Back where it was, give or take the subpixel rounding of the visual viewport.
+  await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(2);
 });
 
 test('closing the sheet with text asks first, and an empty sheet closes at once', async ({ page }) => {
