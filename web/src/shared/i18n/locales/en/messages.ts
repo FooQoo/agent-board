@@ -5,7 +5,7 @@ export const messagesEn = {
       fromAi: "AI's questions",
       fromYou: 'Your requests',
       unpicked: 'waiting to be picked up',
-      open: 'Open the list',
+      open: 'Check questions and requests',
       ask: 'Ask AI',
     },
     list: {

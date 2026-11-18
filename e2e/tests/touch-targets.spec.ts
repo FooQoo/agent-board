@@ -52,7 +52,7 @@ test('the header, the band, the detail panel and the dialogs have finger-sized c
   await expectFingerSized(header.locator('.project-switcher'), 'project switcher');
   expect((await header.boundingBox())?.height).toBe(56);
 
-  await expectFingerSized(openListButton(page), 'Open the list');
+  await expectFingerSized(openListButton(page), 'Check questions and requests');
 
   await openCard(page, 16);
   await expectFingerSized(page.locator('.detail__close'), 'detail close');

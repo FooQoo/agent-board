@@ -118,7 +118,7 @@ for (const [name, size] of [
   ['desktop', DESKTOP],
   ['phone', PHONE],
 ] as const) {
-  test(`the band shows the counts at ${name} width, and Open the list opens and closes the list`, async ({ page }) => {
+  test(`the band shows the counts at ${name} width, and Check questions and requests opens and closes the list`, async ({ page }) => {
     await page.setViewportSize(size);
     await expect(band(page)).toBeVisible();
     // The fixture's open question and the proposed plan's question are counted.

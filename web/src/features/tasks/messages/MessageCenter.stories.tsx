@@ -84,7 +84,7 @@ const phone = { storyFrame: 'monitor', layout: 'fullscreen', ...modalDocsParamet
 /** The list opens from the band; "AI の質問" shows the two questions, newest first. */
 export const ListFromAi: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: '一覧を開く' }));
+    await userEvent.click(within(canvasElement).getByRole('button', { name: '質問・依頼を確認' }));
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
     await expect(within(list).getAllByText('未回答')).toHaveLength(2);
@@ -230,7 +230,7 @@ export const QuestionOpenJaDark: Story = {
   globals: { locale: 'ja', mode: 'dark' },
 };
 
-/** The phone: the band with "AI に依頼" and "一覧を開く". */
+/** The phone: the band with "AI に依頼" and "質問・依頼を確認". */
 export const PhoneBand: Story = {
   args: { variant: 'phone', onAsk: fn() },
   parameters: phone,

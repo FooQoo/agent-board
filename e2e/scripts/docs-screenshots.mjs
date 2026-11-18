@@ -21,7 +21,7 @@ const extra = {
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     preview: 'Open full screen (task)', close: 'Close', settings: 'Settings',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
-    messages: 'Messages', later: 'Later',
+    messages: 'Messages', later: 'Later', discard: 'Discard and close',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
     docs: 'Docs', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: Product\nstatus: draft\nreview: 2026-11-02\n---\n# Launch plan\n\nShip the new website in three steps, and keep the old pages reachable until the new ones are reviewed.\n\n## Steps\n\n```mermaid\nflowchart LR\n  Draft --> Review --> Publish\n```\n\n| Step | Owner | State |\n| --- | --- | --- |\n| Draft the pages | Design | Done |\n| Review the copy | Product | Doing |\n| Publish | Engineering | Todo |\n\n## Risks\n\n- The pricing page needs legal review.\n- Old links must redirect to the new pages.\n',
@@ -38,7 +38,7 @@ const extra = {
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
-    messages: 'メッセージ', later: 'あとでやる',
+    messages: 'メッセージ', later: 'あとでやる', discard: '破棄して閉じる',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
     docs: 'ドキュメント', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: プロダクト\nstatus: draft\nreview: 2026-11-02\n---\n# 公開計画\n\n新しいWebサイトを三段階で公開する。新しいページの確認が終わるまで、古いページにもたどり着けるようにしておく。\n\n## 手順\n\n```mermaid\nflowchart LR\n  下書き --> 確認 --> 公開\n```\n\n| 手順 | 担当 | 状態 |\n| --- | --- | --- |\n| ページの下書き | デザイン | 完了 |\n| 文章の確認 | プロダクト | 作業中 |\n| 公開 | エンジニアリング | 未着手 |\n\n## リスク\n\n- 料金ページには法務の確認が必要。\n- 古いリンクは新しいページへ転送する。\n',
@@ -120,6 +120,8 @@ try {
       await field0.blur();
       await shot('ask-ai', request, page);
       await request.getByRole('button', { name: more.close, exact: true }).click();
+      // The request has text, so closing asks before it discards the draft.
+      await page.getByRole('button', { name: more.discard, exact: true }).click();
       await expect(request).toHaveCount(0);
 
       // question: the answer dialog, opened from the Pending card's answer button.

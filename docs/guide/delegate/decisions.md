@@ -15,11 +15,11 @@ Every open message of the project is counted in the **Messages** band above the 
 - **AI's questions** is the number of questions that wait on you.
 - **Your requests** is the number of requests you sent that no agent has picked up yet, marked **waiting to be picked up**.
 
-Select a count to open the list on its tab: **AI's questions** opens the tab of questions, and **Your requests** opens the tab of requests. With nothing open, the counts are 0. Select **Open the list** to read the messages, starting on **AI's questions**.
+Select a count to open the list on its tab: **AI's questions** opens the tab of questions, and **Your requests** opens the tab of requests. With nothing open, the counts are 0. Select **Check questions and requests** to read the messages, starting on **AI's questions**.
 
 ## The list of messages
 
-**Open the list** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. Each row shows the kind (question or request), the direction, the ID, the time, and the first line, with its state on the right:
+**Check questions and requests** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. Each row shows the kind (question or request), the direction, the ID, the time, and the first line, with its state on the right:
 
 | State | Meaning |
 | --- | --- |
@@ -66,7 +66,7 @@ A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiti
 
 ## Answer on your phone
 
-On remote access, the same **Messages** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band shows the same counts. **Open the list** opens the list as a sheet that slides up from the bottom, and **Ask AI** sits beside it when your phone can send a request.
+On remote access, the same **Messages** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band shows the same counts. **Check questions and requests** opens the list as a sheet that slides up from the bottom, and **Ask AI** sits beside it when your phone can send a request.
 
 The sheet works like the modal. The tabs and rows are the same, and you can also swipe the list sideways to switch between **AI's questions** and **Your requests**; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, and the sheet scrolls while **Later** and **Send answer** stay at the bottom, in reach of your thumb. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
 

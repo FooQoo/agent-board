@@ -46,7 +46,7 @@ export const Counts: Story = {
     await expect(within(band).getByText(/あなたの依頼/)).toHaveTextContent('1');
     await expect(within(band).getByText(/受け取り待ち/)).toBeVisible();
     await expect(within(band).queryByRole('button', { name: 'AI に依頼' })).toBeNull();
-    await userEvent.click(within(band).getByRole('button', { name: '一覧を開く' }));
+    await userEvent.click(within(band).getByRole('button', { name: '質問・依頼を確認' }));
     await expect(args.onOpen).toHaveBeenCalledTimes(1);
     await expect(args.onOpen).toHaveBeenLastCalledWith();
   },
@@ -74,7 +74,7 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
     await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('0');
-    await expect(within(band).getByRole('button', { name: '一覧を開く' })).toBeVisible();
+    await expect(within(band).getByRole('button', { name: '質問・依頼を確認' })).toBeVisible();
   },
 };
 
@@ -98,7 +98,7 @@ export const CountsEnDark: Story = {
   },
 };
 
-/** The phone band shows "Ask AI" beside "Open the list" when the screen gives it. */
+/** The phone band shows "Ask AI" beside "Check questions and requests" when the screen gives it. */
 export const PhoneWithAsk: Story = {
   args: { variant: 'phone', onAsk: fn() },
   parameters: phone,
@@ -107,7 +107,7 @@ export const PhoneWithAsk: Story = {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
     await userEvent.click(within(band).getByRole('button', { name: 'AI に依頼' }));
     await expect(args.onAsk).toHaveBeenCalledTimes(1);
-    await expect(within(band).getByRole('button', { name: '一覧を開く' })).toBeVisible();
+    await expect(within(band).getByRole('button', { name: '質問・依頼を確認' })).toBeVisible();
   },
 };
 
