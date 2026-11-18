@@ -76,6 +76,21 @@
   font-size: 12px;
 }
 
+.message-band__chip {
+  cursor: pointer;
+  outline: none;
+}
+
+.message-band__chip:hover {
+  filter: brightness(0.96);
+}
+
+.message-band__chip:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--r-surface),
+    0 0 0 4px var(--r-text2);
+}
+
 .message-band__chip strong {
   font-weight: 700;
 }

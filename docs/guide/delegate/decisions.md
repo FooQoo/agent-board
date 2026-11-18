@@ -15,7 +15,7 @@ Every open message of the project is counted in the **Messages** band above the 
 - **AI's questions** is the number of questions that wait on you.
 - **Your requests** is the number of requests you sent that no agent has picked up yet, marked **waiting to be picked up**.
 
-With nothing open, the counts are 0. Select **Open the list** to read the messages.
+Select a count to open the list on its tab: **AI's questions** opens the tab of questions, and **Your requests** opens the tab of requests. With nothing open, the counts are 0. Select **Open the list** to read the messages, starting on **AI's questions**.
 
 ## The list of messages
 

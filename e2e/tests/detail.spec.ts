@@ -161,7 +161,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 16; step++) {
+  for (let step = 0; step < 18; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
@@ -179,7 +179,9 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     'BUTTON Epics',
     'BUTTON Archive',
     'BUTTON Settings',
-    // The Messages band comes before the lanes; its one button opens the list.
+    // The Messages band comes before the lanes; each count and the list button open the list.
+    "BUTTON AI's questions 1",
+    'BUTTON Your requests 0',
     'BUTTON Open the list',
     'DIV #14',
     'DIV #15',
@@ -210,8 +212,8 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Ask AI, More ways to add, Docs, Epics, Archive, Settings), the band's button, eight
+  // Header actions (switcher, Ask AI, More ways to add, Docs, Epics, Archive, Settings), the band's two counts and its button, eight
   // cards, the Pending card's answer button, Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(7 + 1 + 8 + 1 + 1 + 4);
+  expect(focusable).toHaveLength(7 + 3 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

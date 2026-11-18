@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { askArgs, agboardOk, decisionJson, mainHome, mainProject, resetBoard, listTasks } from '../helpers/agboard';
 import { expect, test } from '../helpers/fixtures';
-import { answerDialog, listRow, messageBand, openMessageList, sendAnswer } from '../helpers/answer';
+import { answerDialog, listRow, messageBand, messageList, openMessageList, sendAnswer } from '../helpers/answer';
 import { pasteMarkdown, readBoardAfterReset, waitForSync } from '../helpers/ui';
 
 // The messages of the board: a request sent with Ask AI, a plan the AI proposed as drafts and a person starts,
@@ -64,6 +64,19 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
   await expect(answerDialog(page).getByRole('tab', { name: /^Your requests/ })).toBeVisible();
   await expect(listRow(page, /^Request You → AI/)).toHaveCount(0);
   expect(messages('request')[0].status).toBe('withdrawn');
+});
+
+test('a count in the band opens the list on its own tab', async ({ page }) => {
+  agboardOk(mainProject, ['message', 'send', '--actor', 'human', '--text', 'Add a reset link to the login page.']);
+  await readBoardAfterReset(page);
+
+  await messageBand(page).getByRole('button', { name: /^Your requests/ }).click();
+  await expect(messageList(page).getByRole('tab', { name: /^Your requests/ })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(messageList(page)).toBeHidden();
+
+  await messageBand(page).getByRole('button', { name: /^AI's questions/ }).click();
+  await expect(messageList(page).getByRole('tab', { name: /^AI's questions/ })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('the pictures sent with a request show in its detail from the message attachment route', async ({ page }) => {
