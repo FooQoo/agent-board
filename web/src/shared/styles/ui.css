@@ -223,9 +223,19 @@
   top: calc(var(--stable-vh, 100svh) / 2);
 }
 
-/* While the keyboard is open (see stableHeight.ts), the same dialogs sit at the top instead, so the
-   field being typed in stays above the keyboard. */
-:root[data-keyboard] :where([data-slot="dialog-content"].top-\[50\%\]) {
-  top: calc(env(safe-area-inset-top) + 16px);
+/* While the software keyboard is open, the same dialogs fit the visible area instead: the top is
+   where the visible area starts (--visual-top, see keyboardInset.ts) plus a small gap, and the height
+   is limited to the visible height less the gaps, so the header and the footer buttons stay above the
+   keyboard while the body scrolls. `data-visual-keyboard` is a keyboard that covers the page (iOS
+   Safari); `data-keyboard` is a browser that shrinks the viewport instead (see stableHeight.ts).
+   One rule for both, and the dialog's own fixed heights only act as its upper limit. */
+:root:is([data-visual-keyboard], [data-keyboard]) [data-slot="dialog-content"].top-\[50\%\] {
+  top: calc(var(--visual-top, 0px) + max(12px, env(safe-area-inset-top)));
   translate: -50% 0;
+  max-height: calc(var(--visual-vh, 100svh) - max(12px, env(safe-area-inset-top)) - 12px);
+}
+
+/* The body gives up its minimum height there, so it can shrink and scroll. */
+:root:is([data-visual-keyboard], [data-keyboard]) .surface-modal .surface__body {
+  min-height: 0;
 }
