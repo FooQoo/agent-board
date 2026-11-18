@@ -10,14 +10,14 @@ landing:
     done: コピーしました
   hero:
     title: "頼むだけで、\n計画から完了まで\nAIが進めてくれる。"
-    lead: Agent Boardは、AIエージェントのための仕事のハーネスです。依頼を完了条件つきの計画に直し、質問への回答がそろったら自分で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
+    lead: Agent Boardは、AIエージェントが計画し報告し、あなたが答える共有の作業場です。依頼を完了条件つきの計画に直し、質問への回答がそろったら自分で始め、止まってあなたに聞くのは必要なときだけ。見守るのも答えるのも、PCでもスマホでもチャットでもできます。
     install: brew install fooqoo/tap/agboard
     primary: { text: はじめる, link: /ja/guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: デモ動画。エージェントがタスクに着手して質問し、タスクの回答欄から返答すると作業を再開して、完了まで進む
   problem:
-    eyebrow: なぜ仕事のハーネスか
+    eyebrow: なぜ共有の作業場か
     title: いまは、任せても目が離せない。
     lead: 計画を自分で書き、ログに埋もれた質問を拾い、本当に終わったかを確かめる。計画・質問・条件をひとつの場所にまとめれば、仕事を頼んだら、エージェントが呼ぶまで離れていられます。
     terminal:

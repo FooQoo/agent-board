@@ -20,9 +20,9 @@ You can hand a big piece of work to an AI agent, but it rarely runs to the end o
 
 Agent Board is built to cut that watching down. It does not run the agent. It gives the agent a structure to work inside, so that you can ask for the work, answer when you are asked, and stay away the rest of the time.
 
-## Agent Board: a work harness
+## Agent Board: a shared workspace
 
-An agent such as Claude Code or Codex already has what it needs to act: tools, context, and a loop. What it lacks is a shared model of the work itself. Agent Board is that layer, a **work harness** that sits on top of your agent. Like a harness on a horse or a climber, it does not supply the power; it gives that power a direction and the points where it must stop. It keeps four things in one place:
+An agent such as Claude Code or Codex already has what it needs to act: tools, context, and a loop. What it lacks is a shared model of the work itself. Agent Board is that layer: a **shared workspace** where your agent plans and reports, and you answer. It does not run the agent. It keeps four things in one place:
 
 - **A plan.** Epics group the work and set its order, and tasks are the pieces that can be reviewed on their own. The agent reads the order to know what to do next.
 - **Acceptance conditions.** Each task says up front what has to be true for it to be finished, and the agent checks them before it calls the task done.

@@ -8,7 +8,7 @@
 
 **Delegate big work. Stop babysitting it.**
 
-Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts it once your questions are answered, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
+Agent Board is a shared workspace where your AI agent plans and reports, and you answer. It turns your request into a plan with acceptance conditions, starts it once your questions are answered, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
 
 ```sh
 brew install fooqoo/tap/agboard
@@ -28,7 +28,7 @@ brew install fooqoo/tap/agboard
 
 You can hand big work to an AI agent, but it rarely finishes unless someone keeps watching: turning the request into a plan, noticing when it is stuck, catching a question buried in the log, explaining the work again in the next session, and checking at the end that it is really done.
 
-Agent Board is a **work harness** that sits on top of your agent, such as Claude Code or Codex. It does not run the agent. It holds the work in one place that both of you read and write: a plan (epics and tasks in order), acceptance conditions that say when each task is done, questions the agent must stop for, and a history of what happened and why. It all lives in plain files on your machine, with no account or hosted service.
+Agent Board is a **shared workspace** that sits alongside your agent, such as Claude Code or Codex: the agent plans and reports there, and you answer. It does not run the agent. It holds the work in one place that both of you read and write: a plan (epics and tasks in order), acceptance conditions that say when each task is done, questions the agent must stop for, and a history of what happened and why. It all lives in plain files on your machine, with no account or hosted service.
 
 ```mermaid
 flowchart LR
