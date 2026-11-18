@@ -86,9 +86,13 @@ function seed(home, text) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
   run('epic', 'add', text.epic, '--name', text.epicName, '--color', '#008FCC', '--actor', 'ai');
   const o = text.others;
-  const add = (title, assignee, completed, epic = true) =>
-    run('add', title, '--assignee', assignee, '--actor', assignee, ...(epic ? ['--epic', text.epic] : []),
+  // A task an AI adds is a draft; starting it makes it a real AI task.
+  const add = (title, assignee, completed, epic = true) => {
+    const added = run('add', title, '--assignee', assignee, '--actor', assignee, ...(epic ? ['--epic', text.epic] : []),
       '--desc', markdown(text, completed));
+    if (assignee === 'ai') run('start', String(added.task.id), '--actor', 'ai');
+    return added;
+  };
   add(o.doneHuman, 'human', 3);
   add(o.todoHuman, 'human', 0);
   add(text.hero, 'ai', 0);
@@ -243,12 +247,19 @@ async function record(browser, locale, tmp) {
     await choice.click();
     await page.waitForTimeout(1100);
     // Opened from the card, its only question sends the answer at once. The name comes from the
-    // app's translations, so the Japanese run finds 送る.
-    const send = dialog.getByRole('button', { name: locale === 'ja' ? '送る' : 'Send', exact: true });
+    // app's translations, so the Japanese run finds 回答を送る.
+    const send = dialog.getByRole('button', { name: locale === 'ja' ? '回答を送る' : 'Send answer', exact: true });
     await expect(send).toBeEnabled();
     await moveTo(page, send);
     await page.waitForTimeout(400);
     await send.click();
+    // Other questions are still open, so the dialog returns to the message list; the viewer closes it.
+    await expect(dialog.getByRole('tablist')).toBeVisible();
+    await page.waitForTimeout(1200);
+    const close = dialog.getByRole('button', { name: locale === 'ja' ? '閉じる' : 'Close', exact: true });
+    await moveTo(page, close);
+    await page.waitForTimeout(300);
+    await close.click();
     await expect(dialog).toBeHidden();
     await expect(answerButton).toHaveCount(0);
     await page.mouse.move(size.width - 40, size.height - 120, { steps: 20 });
