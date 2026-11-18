@@ -92,9 +92,15 @@ jobs:
       - run: pnpm --dir web typecheck:storybook
       # The Storybook tests run every Story in a headless Chromium.
       - name: Install Chromium for the Storybook tests
-        # A stuck browser download fails within minutes instead of holding the job.
-        timeout-minutes: 10
-        run: pnpm --dir web exec playwright install --with-deps chromium
+        # A browser download sometimes stalls on one runner. Each attempt gets four
+        # minutes and is retried, so a stall costs minutes rather than the job.
+        timeout-minutes: 15
+        run: |
+          for attempt in 1 2 3; do
+            timeout 240 pnpm --dir web exec playwright install --with-deps chromium && exit 0
+            echo "::warning::Playwright browser install attempt $attempt failed or stalled; retrying"
+          done
+          exit 1
       - run: pnpm --dir web test:storybook
       - run: pnpm --dir web build-storybook
 
@@ -182,12 +188,17 @@ jobs:
           rustup default "${RUST_VERSION}"
       - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
       - name: Install dependencies and browsers
-        # A stuck browser download fails within minutes instead of holding the job.
-        timeout-minutes: 10
+        # A browser download sometimes stalls on one runner. Each attempt gets four
+        # minutes and is retried, so a stall costs minutes rather than the job.
+        timeout-minutes: 15
         run: |
           pnpm --dir web install --frozen-lockfile
           pnpm --dir e2e install --frozen-lockfile
-          pnpm --dir e2e exec playwright install --with-deps chromium webkit
+          for attempt in 1 2 3; do
+            timeout 240 pnpm --dir e2e exec playwright install --with-deps chromium webkit && exit 0
+            echo "::warning::Playwright browser install attempt $attempt failed or stalled; retrying"
+          done
+          exit 1
       # The global setup builds the web UI and the CLI, then each worker starts
       # its own `agboard serve` on port 0 with its own temporary data area.
       - run: pnpm --dir e2e test --shard=${{ matrix.shard }}/4
