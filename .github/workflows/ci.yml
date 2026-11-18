@@ -3,7 +3,7 @@ name: CI
 # Runs the checks in docs/dev/getting-started/pull-request.md#verification on
 # every pull request and every push to main. The commands match that page, so
 # a change that passes locally passes here, and the other way round. The E2E
-# suite takes about 15 minutes, so it runs on main and on manual runs only.
+# suite runs in three shards, so it adds about 8 minutes to a pull request.
 #
 # Every job runs on macOS 15, the platform Agent Board supports. The Storybook
 # tests measure rendered sizes, which follow the system fonts, so they need it too.
@@ -151,7 +151,6 @@ jobs:
 
   e2e:
     name: E2E (Playwright ${{ matrix.shard }}/3)
-    if: github.event_name != 'pull_request'
     runs-on: macos-15
     timeout-minutes: 60
     # The suite is split across three runners. Each shard builds the app and runs a third of the tests.

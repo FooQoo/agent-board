@@ -8,7 +8,7 @@
 //! when they are back to that version. A project that cannot be read keeps its
 //! last good view next to the error.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -72,9 +72,6 @@ pub struct ProjectIndex {
     catalog_version: String,
     /// The changes found by the reloads since the last [`ProjectIndex::take_changes`].
     pending: Vec<ChangeSet>,
-    /// Projects whose last read saw the files change while it read them. Their view may
-    /// mix two states, so an unchanged version does not let the next reload skip them.
-    unsettled: BTreeSet<ProjectId>,
 }
 
 impl ProjectIndex {
@@ -110,7 +107,6 @@ impl ProjectIndex {
             .cloned()
             .collect();
         for id in gone {
-            self.unsettled.remove(&id);
             self.entries.remove(&id);
             self.pending.push(project_change(&id, Facet::Deleted));
         }
@@ -127,7 +123,10 @@ impl ProjectIndex {
         self.refresh_catalog()
     }
 
-    /// Recompute one project's entry. An unchanged version keeps the entry as it is.
+    /// Recompute one project's entry from the files. A reload always reads them: the version only
+    /// names the content, so it cannot tell a read that mixed two states from a clean one when the
+    /// files are back at the version by the time it is checked. Reading again costs little, and a
+    /// read that finds nothing new announces nothing.
     fn reload_one(&mut self, shared: &Path, id: &ProjectId) {
         self.reload_one_with(shared, id, reader::read_snapshot);
     }
@@ -141,7 +140,6 @@ impl ProjectIndex {
     ) {
         let dir = layout::project_dir(shared, id);
         if !dir.is_dir() {
-            self.unsettled.remove(id);
             if self.entries.remove(id).is_some() {
                 self.pending.push(project_change(id, Facet::Deleted));
             }
@@ -152,26 +150,12 @@ impl ProjectIndex {
         let old_projection = previous.and_then(|entry| entry.projection().cloned());
         let was_invalid = matches!(previous, Some(ProjectEntry::Invalid { .. }));
         let previous_version = previous.map(|entry| entry.version().to_string());
-        let settled_before = !self.unsettled.contains(id);
         // Snapshot takes index→project lock order and recovers any pending pair
         // before computing the version. Hashing first could mistake an
         // interrupted journal for an unchanged project and skip recovery.
         let (entry, changes) = match read(shared, id) {
             Ok(snapshot) => {
                 let version = snapshot.version.clone();
-                if settled_before && previous_version.as_deref() == Some(version.as_str()) {
-                    return;
-                }
-                // The version is taken before the files are read. When the files no longer have
-                // it, they changed during the read: someone else's edit (the lock only holds off
-                // agboard's own saves) can leave a view of half the files under the old version.
-                // Their events reload the project again; that reload must read even if the files
-                // are back to this version, as when a folder is deleted and written again.
-                if project_version(&dir) == version {
-                    self.unsettled.remove(id);
-                } else {
-                    self.unsettled.insert(id.clone());
-                }
                 let projection = Arc::new(projection::project(shared, &snapshot));
                 let changes = ready_changes(old_projection.as_deref(), &projection, was_invalid);
                 (
@@ -184,7 +168,6 @@ impl ProjectIndex {
                 )
             }
             Err(error) => {
-                self.unsettled.remove(id);
                 let version = project_version(&dir);
                 let unchanged =
                     was_invalid && previous_version.as_deref() == Some(version.as_str());
@@ -243,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn a_read_that_saw_the_files_change_is_read_again_when_they_return_to_its_version() {
+    fn a_read_that_saw_the_files_change_is_replaced_when_they_are_back_before_the_read_returns() {
         let root = tempfile::tempdir().unwrap();
         let shared = root.path().join("shared");
         let store = FileStore::open(&shared);
@@ -263,7 +246,8 @@ mod tests {
         store.create_task(&id, new_task("Second"), now).unwrap();
 
         // The next read takes the version of both tasks. An editor then deletes the tasks folder
-        // before the read gets to it, and writes the same files back once the read is over.
+        // before the read gets to it, and writes the same files back before the read returns, so
+        // that the files hash to the version again and nothing shows that the read was torn.
         let tasks = layout::tasks_dir(&layout::project_dir(&shared, &id));
         let kept = root.path().join("kept-tasks");
         index.reload_one_with(&shared, &id, |shared, id| {
@@ -271,14 +255,13 @@ mod tests {
             std::fs::rename(&tasks, &kept).unwrap();
             let mut torn = reader::read_snapshot(shared, id)?;
             torn.version = version;
+            std::fs::rename(&kept, &tasks).unwrap();
             Ok(torn)
         });
         assert!(task_titles(&index, &id).is_empty());
-        std::fs::rename(&kept, &tasks).unwrap();
 
-        // The files are back at the version of the torn read, and the reload still reads them.
+        // The files are back at the version of the torn read, and the next reload still reads them.
         index.reload_project(&shared, &id);
         assert_eq!(task_titles(&index, &id), ["First", "Second"]);
-        assert!(index.unsettled.is_empty());
     }
 }
