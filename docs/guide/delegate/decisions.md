@@ -13,7 +13,7 @@ A question belongs to the project, and a task refers to it. An AI-owned task tha
 Every open message of the project is counted in the **Messages** band above the lanes. The band is always there. It shows two counts:
 
 - **AI's questions** is the number of questions that wait on you.
-- **Your requests** is the number of requests you sent that no agent has picked up yet, marked **waiting to be picked up**.
+- **Your requests** is the number of requests you sent that no agent has picked up yet.
 
 Select a count to open the list on its tab: **AI's questions** opens the tab of questions, and **Your requests** opens the tab of requests. With nothing open, the counts are 0. Select **Check questions and requests** to read the messages, starting on **AI's questions**.
 

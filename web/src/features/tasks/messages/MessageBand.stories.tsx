@@ -38,13 +38,13 @@ type Story = StoryObj<typeof meta>;
 
 const phone = { storyFrame: 'monitor', layout: 'fullscreen' } as const;
 
-/** Two questions wait on you, and one request is not picked up yet. */
+/** Two questions wait on you, and one request is not picked up yet; the band shows only names and counts. */
 export const Counts: Story = {
   play: async ({ args, canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
     await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('2');
     await expect(within(band).getByText(/あなたの依頼/)).toHaveTextContent('1');
-    await expect(within(band).getByText(/受け取り待ち/)).toBeVisible();
+    await expect(within(band).queryByText(/受け取り待ち/)).toBeNull();
     await expect(within(band).queryByRole('button', { name: 'AI に依頼' })).toBeNull();
     await userEvent.click(within(band).getByRole('button', { name: '質問・依頼を確認' }));
     await expect(args.onOpen).toHaveBeenCalledTimes(1);
@@ -85,7 +85,7 @@ export const RequestsOnly: Story = {
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'Messages' });
     await expect(within(band).getByText(/AI's questions/)).toHaveTextContent('0');
-    await expect(within(band).getByText(/waiting to be picked up/)).toBeVisible();
+    await expect(within(band).getByText(/Your requests/)).toHaveTextContent('1');
   },
 };
 

@@ -95,10 +95,6 @@
   font-weight: 700;
 }
 
-.message-band__sub {
-  font-weight: 400;
-}
-
 .message-band__actions {
   display: flex;
   gap: 8px;

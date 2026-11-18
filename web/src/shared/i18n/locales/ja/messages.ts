@@ -4,7 +4,6 @@ export const messagesJa = {
     band: {
       fromAi: 'AI の質問',
       fromYou: 'あなたの依頼',
-      unpicked: '受け取り待ち',
       open: '質問・依頼を確認',
       ask: 'AI に依頼',
     },

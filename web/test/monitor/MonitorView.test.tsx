@@ -227,11 +227,10 @@ describe('remote access lanes and task actions', () => {
 });
 
 describe('monitor messages band and list', () => {
-  it('counts the questions and the requests waiting to be picked up in the band', () => {
+  it('counts the questions and the requests in the band', () => {
     render(<Connected />);
     expect(within(band()).getByText(/AI's questions/).textContent).toContain('2');
     expect(within(band()).getByText(/Your requests/).textContent).toContain('1');
-    expect(within(band()).getByText(/waiting to be picked up/)).toBeTruthy();
   });
 
   it('keeps the band with a count of 0 when nothing is open', () => {

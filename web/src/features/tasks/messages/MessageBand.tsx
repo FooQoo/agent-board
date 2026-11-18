@@ -55,9 +55,6 @@ export function MessageBand({ messages, variant, onOpen, onAsk }: MessageBandPro
             <Badge asChild variant="outline" className="message-band__chip">
               <button type="button" onClick={() => onOpen('fromYou')}>
                 {t('messages.band.fromYou')} <strong>{count.fromYou}</strong>
-                {count.fromYou > 0 && (
-                  <span className="message-band__sub">（{t('messages.band.unpicked')}）</span>
-                )}
               </button>
             </Badge>
           </li>

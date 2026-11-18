@@ -4,7 +4,6 @@ export const messagesEn = {
     band: {
       fromAi: "AI's questions",
       fromYou: 'Your requests',
-      unpicked: 'waiting to be picked up',
       open: 'Check questions and requests',
       ask: 'Ask AI',
     },
