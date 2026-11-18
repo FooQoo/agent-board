@@ -75,6 +75,8 @@ The progress table is what agents read to choose their next task. It groups Todo
 
 Each entry lists the task ID, title, owner, column, agent state, acceptance counts, and the path of its `TASK.md`. Epic entries include the path of `EPIC.md` (`documentPath` in JSON). Bodies, history, and images are not included: the agent reads only the files it needs for the work it chose. Hooks give agents this same table.
 
+The table also has a `nextTasks` list (`Next tasks` in the text output) of up to three recommended tasks: AI-owned Doing tasks that are idle come first (`why: resume`, stalled work to pick up again), then AI-owned Todo tasks that are idle (`why: next_in_epic`), each in the table's order. Drafts, Pending and Running tasks, and your own tasks are never listed. Dependencies between tasks are written in the epic details and are not evaluated, so agents read the `EPIC.md` before they start one.
+
 By default the table leaves out tasks waiting for a decision and finished tasks. Add them when you need the whole picture:
 
 ```sh

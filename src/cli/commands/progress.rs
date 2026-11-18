@@ -32,6 +32,17 @@ pub fn run(ctx: &Context, args: &ProgressArgs) -> Result<Outcome, AgboardError> 
 /// The table for a person: one block per epic, then the unassigned tasks.
 pub fn render(table: &Progress) -> String {
     let mut out = String::new();
+    if !table.next_tasks.is_empty() {
+        out.push_str("Next tasks\n");
+        for task in &table.next_tasks {
+            let why = match task.why {
+                progress::NextReason::Resume => "resume",
+                progress::NextReason::NextInEpic => "next_in_epic",
+            };
+            let _ = writeln!(out, "  #{} {} [{why}]", task.id, task.title);
+        }
+        out.push('\n');
+    }
     for epic in &table.epics {
         let _ = writeln!(out, "{} {}", epic.id, epic.name);
         for task in &epic.tasks {
