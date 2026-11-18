@@ -17,9 +17,11 @@ on:
 permissions:
   contents: read
 
+# A newer commit on the same branch or pull request cancels the run in progress, so only
+# the latest commit is checked.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 env:
   RUST_VERSION: "1.96.0"
