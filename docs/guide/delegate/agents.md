@@ -44,7 +44,7 @@ Writing the files does not mean the agent has loaded them. Start a new Claude Co
 
 After `brew upgrade fooqoo/tap/agboard`, the plugin updates itself. When a new agent session starts, the Hook compares the plugin the agent runs with the one your `agboard` ships. If they differ, it reinstalls the plugin from the tag of your `agboard` version in the background, and the agent tells you so; the new plugin applies from the next session. Nothing is asked, and no Codex hook is trusted by it. This is the same reinstall that `agboard update` does, so you can also run it yourself, which is needed in these cases:
 
-- **Codex.** Codex runs a plugin's hooks only after they are trusted, and the trust is tied to the plugin's content, so the hooks of the updated plugin are not trusted yet. Run `agboard update` once after an upgrade; it asks the same question as `setup`.
+- **Codex, when the hook definition changed.** Codex runs a plugin's hooks only after they are trusted, and the trust is tied to the hook definition. It rarely changes; when it did, the agent tells you, and you run `agboard update` once (it asks the same question as `setup`).
 - **The automatic update could not finish.** The agent then tells you that it did not complete (for example, no network to GitHub). The update is not tried again for six hours; run `agboard update` to try now.
 - **The plugin is broken or was changed by hand.** `agboard update` always reinstalls it.
 

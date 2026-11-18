@@ -144,7 +144,8 @@ The background run does what `agboard update` does for that agent, with these di
 
 - **Lock.** It takes `<data>/plugin-update/<agent>.lock` (created exclusively; a lock older than 15 minutes is stale and replaced). Concurrent sessions see a live lock and do nothing, so the plugin is reinstalled once.
 - **Record.** It writes `<data>/plugin-update/<agent>.json` (`hash`, `ok`, `at`, `version`) first with `ok: false` and again when it ends. For the same hash, a failed or unfinished attempt is not repeated for 6 hours, and the hook says instead that the automatic update did not complete and the user should run `agboard update`; a finished attempt that still leaves a different plugin (a build from a checkout) is not repeated for 24 hours and says nothing.
-- **Trust.** It never trusts Codex hooks. Codex ties trust to the plugin's content, so after the update the user runs `agboard update` once; the notice for Codex says so.
+- **Trust.** It never trusts Codex hooks. Codex keys trust on the hook definition, which is stable across releases, so the Codex notice asks for `agboard update` only when the installed `hooks/codex.json` differs from the shipped one (for example the one-time move from hooks with `--plugin-version`).
+- **Installed copies only.** The hook acts only when the plugin root lies inside a `plugins/cache` folder, which is where the agents keep marketplace installs; a checkout or `--plugin-dir` copy is left alone.
 - **Tag check.** With the default source it first asks `git ls-remote` whether the tag `v<version>` exists, and stops when it certainly does not (a development build ahead of the last release), so it never removes a marketplace it cannot add again. Without `git`, or when the remote cannot be reached, it goes on.
 - **Silence.** It prints nothing and the hook never waits for it.
 

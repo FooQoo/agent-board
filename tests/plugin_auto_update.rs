@@ -53,7 +53,9 @@ fn fixture(agent: &str, edited: bool) -> Fixture {
     fs::create_dir_all(&marketplace).unwrap();
     let fakes = FakeAgents::new(tmp.path(), &[agent]);
     fakes.preinstall(agent, "0.0.1", "elsewhere");
-    let plugin_root = tmp.path().join("plugin-root");
+    let plugin_root = tmp
+        .path()
+        .join("home/.agent/plugins/cache/agent-board/agent-board/0.0.1");
     copy_dir(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/agent-board"),
         &plugin_root,
@@ -185,16 +187,44 @@ fn a_plugin_that_differs_is_reinstalled_in_the_background_from_the_next_session(
 }
 
 #[test]
-fn the_update_never_trusts_codex_hooks_and_tells_the_user_to_run_update() {
+fn codex_is_told_to_trust_hooks_only_when_the_hook_definition_changed() {
+    // Same hook definition, other files: nothing to trust, and no trust is given.
     let fx = fixture("codex", true);
     let out = fx.hook("codex", "SessionStart", &[]);
     let notice = Fixture::notice(&out).expect("a notice at session start");
-    assert!(notice.contains("`agboard update`"), "{notice}");
+    assert!(notice.contains("next session"), "{notice}");
+    assert!(!notice.contains("agboard update"), "{notice}");
     fx.wait_finished("codex");
     let log = fx.fakes.log("codex");
     assert!(log.iter().any(|l| l.starts_with("plugin add")), "{log:?}");
     assert!(!log.contains(&"app-server".to_string()), "{log:?}");
     assert!(fx.fakes.trust_writes().is_empty());
+
+    // An older hook definition (with --plugin-version): trust is needed again.
+    let fx = fixture("codex", false);
+    let hooks = fx.plugin_root.join("hooks/codex.json");
+    let old = fs::read_to_string(&hooks)
+        .unwrap()
+        .replace("--agent codex", "--agent codex --plugin-version 0.0.1");
+    fs::write(&hooks, old).unwrap();
+    let out = fx.hook("codex", "SessionStart", &[]);
+    let notice = Fixture::notice(&out).expect("a notice at session start");
+    assert!(notice.contains("`agboard update`"), "{notice}");
+    fx.wait_finished("codex");
+    assert!(fx.fakes.trust_writes().is_empty());
+}
+
+#[test]
+fn a_plugin_that_was_not_installed_from_a_marketplace_is_left_alone() {
+    let fx = fixture("claude", true);
+    let checkout = fx._tmp.path().join("checkout/plugins/agent-board");
+    copy_dir(&fx.plugin_root, &checkout);
+    let mut fx = fx;
+    fx.plugin_root = checkout;
+    let out = fx.hook("claude", "SessionStart", &[]);
+    assert_eq!(Fixture::notice(&out), None);
+    Fixture::settle();
+    assert_eq!(fx.fakes.log("claude"), Vec::<String>::new());
 }
 
 #[test]

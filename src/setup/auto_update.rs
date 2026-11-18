@@ -60,6 +60,29 @@ pub fn installed_matches(root: &Path) -> bool {
     crate::plugin_hash::hash_files(root, PLUGIN_FILES).as_deref() == Some(PLUGIN_HASH)
 }
 
+/// Whether `root` is a copy an agent installed from a marketplace (inside a
+/// `plugins/cache` folder of the agent), not a checkout or a `--plugin-dir`.
+/// The layout is the one Claude Code and Codex use for installed plugins.
+pub fn installed_from_marketplace(root: &Path) -> bool {
+    let parts: Vec<_> = root.components().map(|c| c.as_os_str()).collect();
+    parts
+        .windows(2)
+        .any(|w| w[0] == "plugins" && w[1] == "cache")
+}
+
+/// The Codex hook definition this agboard ships.
+const SHIPPED_CODEX_HOOKS: &str = include_str!("../../plugins/agent-board/hooks/codex.json");
+
+/// Whether the Codex hook definition in `root` differs from the shipped one.
+/// Codex keys its trust on the definition, so only then must the user trust
+/// the hooks again.
+fn codex_hooks_changed(root: &Path) -> bool {
+    std::fs::read_to_string(root.join("hooks/codex.json"))
+        .ok()
+        .as_deref()
+        != Some(SHIPPED_CODEX_HOOKS)
+}
+
 /// What the hook should tell the agent at session start, after starting an
 /// update when one is due. Reads a few small files and starts at most one
 /// detached process; it never waits for it.
@@ -68,7 +91,7 @@ pub fn session_start_notice(agent: Agent, data_dir: &Path) -> Option<String> {
         return None;
     }
     let root = plugin_root(agent)?;
-    if !root.is_dir() || installed_matches(&root) {
+    if !root.is_dir() || !installed_from_marketplace(&root) || installed_matches(&root) {
         return None;
     }
     let files = Files::new(data_dir, agent);
@@ -89,7 +112,7 @@ pub fn session_start_notice(agent: Agent, data_dir: &Path) -> Option<String> {
             Some(failed_notice())
         };
     }
-    start(agent)
+    start(agent, &root)
 }
 
 fn retry_wait(ok: bool) -> Duration {
@@ -100,18 +123,19 @@ fn retry_wait(ok: bool) -> Duration {
     }
 }
 
-fn start(agent: Agent) -> Option<String> {
+fn start(agent: Agent, root: &Path) -> Option<String> {
+    let hooks_changed = agent == Agent::Codex && codex_hooks_changed(root);
     spawn_background(agent).ok()?;
-    Some(started_notice(agent))
+    Some(started_notice(agent, hooks_changed))
 }
 
-fn started_notice(agent: Agent) -> String {
+fn started_notice(agent: Agent, hooks_changed: bool) -> String {
     let version = super::VERSION;
     let mut text = format!(
         "AGBOARD_NOTICE\nThe Agent Board plugin differs from the one this agboard (version {version}) ships. agboard started updating it to version {version} in the background; the update applies from the next session, and nothing needs to be done now."
     );
-    if agent == Agent::Codex {
-        text.push_str(" Codex runs a plugin's hooks only after they are trusted, and agboard never trusts them by itself: once the update has finished, tell the user to run `agboard update` in a terminal, then start a new session.");
+    if agent == Agent::Codex && hooks_changed {
+        text.push_str(" The hook definition changed, and Codex runs a plugin's hooks only after they are trusted. agboard never trusts them by itself: once the update has finished, tell the user to run `agboard update` in a terminal, then start a new session.");
     }
     text
 }
