@@ -43,7 +43,7 @@ impl SetupEnv {
 
     /// Codex's folder: `$CODEX_HOME`, or `~/.codex`. An empty `CODEX_HOME`
     /// counts as unset.
-    fn codex_dir(&self) -> Result<PathBuf, AgboardError> {
+    pub(crate) fn codex_dir(&self) -> Result<PathBuf, AgboardError> {
         match non_empty(&self.codex_home) {
             Some(dir) => absolute(PathBuf::from(dir)),
             None => absolute(self.home_dir("CODEX_HOME")?.join(".codex")),

@@ -30,7 +30,7 @@ case "$*" in
       ip=''
       if [ -f "$S/$A.path" ]; then ip=',"installPath":"'$(/bin/cat "$S/$A.path")'"'; fi
       if [ "$A" = codex ]; then
-        printf '{"installed":[{"pluginId":"agent-board@agent-board","version":"%s"%s,"enabled":true}],"available":[]}\n' "$v" "$ip"
+        printf '{"installed":[{"pluginId":"agent-board@agent-board","name":"agent-board","marketplaceName":"agent-board","version":"%s","installed":true,"enabled":true,"source":{"source":"local","path":"/nonexistent/marketplaces/agent-board/plugins/agent-board"}}],"available":[]}\n' "$v"
       else
         printf '[{"id":"agent-board@agent-board","version":"%s"%s,"scope":"user","enabled":true}]\n' "$v" "$ip"
       fi

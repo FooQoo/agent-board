@@ -129,7 +129,7 @@ fn plan_agent(
         ));
         return Ok(planned);
     };
-    let current = match plugin::installed(agent, &program) {
+    let current = match plugin::installed(agent, &program, env.codex_dir().ok().as_deref()) {
         Ok(installed) => {
             let current = installed
                 .as_ref()

@@ -437,11 +437,22 @@ fn a_confirmed_tag_lets_the_update_run() {
     );
 }
 
+/// What the reinstall leaves for Codex: a copy of the plugin in its cache,
+/// `<codex home>/plugins/cache/<marketplace>/<plugin>/<version>`. Codex's
+/// plugin listing names no install folder.
+fn install_into_codex_cache(fx: &Fixture) {
+    let cache = fx
+        .home
+        .join(".codex/plugins/cache/agent-board/agent-board")
+        .join(VERSION);
+    copy_dir(&fx.plugin_root, &cache);
+}
+
 #[test]
 fn codex_hooks_are_trusted_only_when_the_installed_definition_is_identical() {
     // Identical definition in the installed folder: trusted after the reinstall.
     let fx = fixture("codex", true);
-    fx.fakes.install_path("codex", &fx.plugin_root);
+    install_into_codex_cache(&fx);
     fx.hook("codex", "SessionStart", &[]);
     fx.wait_finished("codex");
     assert!(
@@ -457,7 +468,7 @@ fn codex_hooks_are_trusted_only_when_the_installed_definition_is_identical() {
         .unwrap()
         .replace("--agent codex", "--agent codex --plugin-version 0.0.1");
     fs::write(&hooks, old).unwrap();
-    fx.fakes.install_path("codex", &fx.plugin_root);
+    install_into_codex_cache(&fx);
     fx.hook("codex", "SessionStart", &[]);
     fx.wait_finished("codex");
     assert!(fx.fakes.trust_writes().is_empty());

@@ -87,8 +87,8 @@ fn codex_hooks_changed(root: &Path) -> bool {
 /// Whether the Codex hook definition of the plugin Codex now has installed
 /// (found through `plugin list --json`) is byte-identical to the embedded
 /// one. An unknown install folder counts as different.
-fn installed_codex_hooks_identical(program: &Path) -> bool {
-    super::plugin::installed(Agent::Codex, program)
+fn installed_codex_hooks_identical(program: &Path, codex_dir: Option<&Path>) -> bool {
+    super::plugin::installed(Agent::Codex, program, codex_dir)
         .ok()
         .flatten()
         .and_then(|plugin| plugin.path)
@@ -263,7 +263,7 @@ pub fn run_background(env: &SetupEnv, agent: Agent) -> Option<SetupReport> {
     if ok
         && agent == Agent::Codex
         && let (Some(program), Some(cwd)) = (program, cwd)
-        && installed_codex_hooks_identical(&program)
+        && installed_codex_hooks_identical(&program, env.codex_dir().ok().as_deref())
     {
         ok = super::trust::trust_codex_hooks(&program, &cwd).is_ok();
     }
