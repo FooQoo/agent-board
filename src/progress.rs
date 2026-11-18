@@ -9,6 +9,8 @@
 //! tasks, in separate fields, so the default table is unchanged.
 
 mod answers;
+mod count;
+mod next;
 mod requests;
 mod text;
 
@@ -18,7 +20,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::domain::{Assignee, ChangeCursor, Column, ProjectMeta, RunState};
-use crate::file_store::frontmatter::{self, AcceptanceItem};
+use crate::file_store::frontmatter;
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
 use crate::file_store::onboarding_model::is_onboarding_sample;
@@ -37,6 +39,8 @@ pub struct Progress {
     pub epics: Vec<ProgressEpic>,
     /// Listed tasks that belong to no epic, in ID order.
     pub unassigned: Vec<ProgressTask>,
+    /// Up to [`MAX_NEXT_TASKS`] ready AI tasks: Doing to resume, then Todo. Always present.
+    pub next_tasks: Vec<NextTask>,
     /// Requests no agent accepted and nobody withdrew, in ID order; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub requests: Vec<ProgressRequest>,
@@ -55,21 +59,16 @@ pub struct Progress {
 /// Extra sections of the table. The default adds nothing.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Include {
-    /// Add the tasks waiting for a decision, each with its question.
+    /// Add the tasks waiting for a decision, with their questions.
     pub pending: bool,
     /// Add this many of the most recently completed tasks of epics that still
     /// have Todo or Doing work; 0 adds none.
     pub done: usize,
 }
 
-/// Conditions met out of conditions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub struct Count {
-    pub done: usize,
-    pub total: usize,
-}
-
 pub use answers::{ProgressAnswer, unaccepted_answers};
+pub use count::Count;
+pub use next::{MAX_NEXT_TASKS, NextReason, NextTask};
 pub use requests::{ProgressRequest, open_requests};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -171,6 +170,7 @@ pub fn build_with(
         version: snapshot.version.clone(),
         cursor: snapshot.cursor.clone(),
         epics: groups,
+        next_tasks: next::next_tasks(&listed, &project_dir),
         unassigned: unassigned
             .into_iter()
             .map(|task| task_of(task, &project_dir))
@@ -273,13 +273,6 @@ fn rank(priority: &[i64], id: i64) -> usize {
         .unwrap_or(usize::MAX)
 }
 
-fn count(items: &[AcceptanceItem]) -> Count {
-    Count {
-        done: items.iter().filter(|item| item.done).count(),
-        total: items.len(),
-    }
-}
-
 fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
     ProgressTask {
         id: task.id,
@@ -289,7 +282,7 @@ fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
         agent_status: task.agent_status,
         draft: task.draft,
         task_path: layout::task_md(&layout::task_dir(project_dir, task.id)),
-        acceptance: count(&task.acceptance),
+        acceptance: count::count(&task.acceptance),
         acceptance_error: task.acceptance_error,
         question: if is_waiting(task) {
             task.pending_reason.as_deref().map(text::short_question)

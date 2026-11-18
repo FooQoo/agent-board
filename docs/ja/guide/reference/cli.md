@@ -70,7 +70,7 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 agboard --project "My project" message ask --actor ai --task 1 --questions-json - --json < questions.json
 ```
 
-`answered`（終了コード0）、`timeout`（終了コード5。質問は未回答のまま残る）、`withdrawn`（終了コード6）のいずれかで終わります。待ち直すには`message wait Q-12 Q-13`を使います。待機にはサーバーが必要です。動いていなければ、質問を保存する前にコマンドが裏で起動します。`--no-wait`を付けると、質問を登録してすぐに戻り、サーバーも要りません。回答の記録、メッセージの確認、質問の取り下げ、タスクからの参照の変更には、それぞれ`message answer`、`message ls`と`message show`、`message withdraw`、`message link`と`message unlink`を使います。人からエージェントへの依頼には`message send`と`message accept`を使います。質問の形式と各コマンドは[判断依頼](../delegate/decisions)を参照してください。エピックと進行表は[エピックと進行表](../watch/epics)を参照してください。
+`answered`（終了コード0）、`timeout`（終了コード5。質問は未回答のまま残る）、`withdrawn`（終了コード6）のいずれかで終わります。待ち直すには`message wait Q-12 Q-13`を使います。待機にはサーバーが必要です。動いていなければ、質問を保存する前にコマンドが裏で起動します。`--no-wait`を付けると、質問を登録してすぐに戻り、サーバーも要りません。回答の記録、メッセージの確認、質問の取り下げ、タスクからの参照の変更には、それぞれ`message answer`、`message ls`と`message show`、`message withdraw`、`message link`と`message unlink`を使います。人からエージェントへの依頼には`message send`と`message accept`を使います。質問の形式と各コマンドは[判断依頼](../delegate/decisions)を参照してください。`progress`は、おすすめのタスクを最大3件`nextTasks`として返します（[エピックと進行表](../watch/epics#進行表を読む)を参照）。エピックと進行表は[エピックと進行表](../watch/epics)を参照してください。
 
 ## ファイルを使って本文を編集する
 
