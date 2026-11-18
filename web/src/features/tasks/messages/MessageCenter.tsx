@@ -36,7 +36,7 @@ export function MessageCenter({
       <MessageBand
         messages={messages}
         variant={variant}
-        onOpen={() => panel.open()}
+        onOpen={(tab) => panel.open({ tab })}
         onAsk={onAsk}
       />
       {panel.target !== null && (

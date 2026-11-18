@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Message } from '@/shared/data/api/contracts';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
-import { countMessages } from './model/messages';
+import { countMessages, type MessageTab } from './model/messages';
 import './message-band.css';
 
 export interface MessageBandProps {
@@ -11,8 +11,8 @@ export interface MessageBandProps {
   messages: readonly Message[];
   /** `board`: the PC band above the lanes. `phone`: the monitor's band under its header. */
   variant: 'board' | 'phone';
-  /** Opens the list. */
-  onOpen: () => void;
+  /** Opens the list, on the tab of the count that was pressed, or on "AI's questions" without one. */
+  onOpen: (tab?: MessageTab) => void;
   /**
    * "Ask AI". The board header carries that button on the PC, so only the phone band shows one,
    * and only when it is given.
@@ -45,16 +45,20 @@ export function MessageBand({ messages, variant, onOpen, onAsk }: MessageBandPro
         </h2>
         <ul className="message-band__chips">
           <li>
-            <Badge variant={idle ? 'muted' : 'pending'} className="message-band__chip">
-              {t('messages.band.fromAi')} <strong>{count.fromAi}</strong>
+            <Badge asChild variant={idle ? 'muted' : 'pending'} className="message-band__chip">
+              <button type="button" onClick={() => onOpen('fromAi')}>
+                {t('messages.band.fromAi')} <strong>{count.fromAi}</strong>
+              </button>
             </Badge>
           </li>
           <li>
-            <Badge variant="outline" className="message-band__chip">
-              {t('messages.band.fromYou')} <strong>{count.fromYou}</strong>
-              {count.fromYou > 0 && (
-                <span className="message-band__sub">（{t('messages.band.unpicked')}）</span>
-              )}
+            <Badge asChild variant="outline" className="message-band__chip">
+              <button type="button" onClick={() => onOpen('fromYou')}>
+                {t('messages.band.fromYou')} <strong>{count.fromYou}</strong>
+                {count.fromYou > 0 && (
+                  <span className="message-band__sub">（{t('messages.band.unpicked')}）</span>
+                )}
+              </button>
             </Badge>
           </li>
         </ul>
@@ -65,7 +69,12 @@ export function MessageBand({ messages, variant, onOpen, onAsk }: MessageBandPro
               {t('messages.band.ask')}
             </Button>
           )}
-          <Button type="button" size="s" variant={withAsk ? 'outline' : 'default'} onClick={onOpen}>
+          <Button
+            type="button"
+            size="s"
+            variant={withAsk ? 'outline' : 'default'}
+            onClick={() => onOpen()}
+          >
             {t('messages.band.open')}
             <ChevronRightIcon aria-hidden="true" />
           </Button>

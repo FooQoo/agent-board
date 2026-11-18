@@ -48,6 +48,23 @@ export const Counts: Story = {
     await expect(within(band).queryByRole('button', { name: 'AI に依頼' })).toBeNull();
     await userEvent.click(within(band).getByRole('button', { name: '一覧を開く' }));
     await expect(args.onOpen).toHaveBeenCalledTimes(1);
+    await expect(args.onOpen).toHaveBeenLastCalledWith();
+  },
+};
+
+/** Pressing a count opens the list on that tab. */
+export const CountsOpenTabs: Story = {
+  play: async ({ args, canvasElement }) => {
+    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
+    await userEvent.click(within(band).getByRole('button', { name: /AI の質問/ }));
+    await expect(args.onOpen).toHaveBeenLastCalledWith('fromAi');
+    await userEvent.click(within(band).getByRole('button', { name: /あなたの依頼/ }));
+    await expect(args.onOpen).toHaveBeenLastCalledWith('fromYou');
+    within(band)
+      .getByRole('button', { name: /あなたの依頼/ })
+      .focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(args.onOpen).toHaveBeenCalledTimes(3);
   },
 };
 
