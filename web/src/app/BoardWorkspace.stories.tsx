@@ -354,7 +354,7 @@ function makeMessageModel(empty = false): AppControllerModel {
   } as unknown as AppControllerModel;
 }
 
-/** The band above the lanes counts what waits on you; "一覧を開く" opens the list. */
+/** The band above the lanes counts what waits on you; "質問・依頼を確認" opens the list. */
 export const MessageBandOpen: Story = {
   args: { model: makeMessageModel() },
   globals: { locale: 'ja' },
@@ -362,7 +362,7 @@ export const MessageBandOpen: Story = {
     const canvas = within(canvasElement);
     const band = within(canvas.getByRole('region', { name: 'メッセージ' }));
     await expect(canvas.getByText('未回答の質問 1 件')).toBeInTheDocument();
-    await userEvent.click(band.getByRole('button', { name: '一覧を開く' }));
+    await userEvent.click(band.getByRole('button', { name: '質問・依頼を確認' }));
     const list = await within(document.body).findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
   },

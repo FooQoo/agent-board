@@ -31,7 +31,7 @@ flowchart LR
 4. After a save that changed something, the CLI reads `serve.json` and sends `POST http://127.0.0.1:<port>/api/notify` over a plain TCP connection with a 300 ms budget, ignoring failure. Agents that edit files directly need not notify.
 5. After a reload, the server compares the parsed data with the data before it. A save that changes nothing a Summary or Detail shows sends no event. A change set gets the next `seq` of this server run, and every open stream receives SSE `changed` with the changed resources and facets.
 
-   A reload does not read a project whose files still hash to the content version of its last read. When the files changed while that read was in progress, the read may mix the states before and after the change, so the next reload reads the project even if its files are back at that version, as when a folder is deleted and written again.
+   A reload always reads the project's files again, even when they hash to the content version of the last read. The version cannot tell a read that mixed two states from a clean one: when a folder is deleted and written again while the read runs, the files can be back at the same version before the read finishes. A read that finds nothing new sends no event.
 6. There is no periodic polling anywhere.
 
 ## Facets and change events

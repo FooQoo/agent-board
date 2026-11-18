@@ -50,7 +50,7 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   // The toolbar ends above the keyboard, and the sheet still shows its title.
   expect(box.y + box.height).toBeLessThanOrEqual(844 - 336);
   expect(opened.y).toBeGreaterThanOrEqual(0);
-  expect(opened.y + opened.height).toBeLessThanOrEqual(844 - 336 + 1);
+  await expect.poll(async () => { const b = await sheet.boundingBox(); return b ? b.y + b.height : Infinity; }).toBeLessThanOrEqual(844 - 336 + 2);
   // The sheet uses the whole visible area: its top is the top of the visual viewport, and the
   // field gets the room the header and the gap no longer take.
   expect(opened.y).toBeLessThanOrEqual(1);

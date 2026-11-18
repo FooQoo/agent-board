@@ -10,7 +10,7 @@
           "stories": [
             {
               "id": "task-messages-messageband--counts",
-              "states": ["questions counted", "unpicked requests counted", "open the list"],
+              "states": ["questions counted", "requests counted", "open the list"],
               "interaction": true
             },
             {
@@ -111,6 +111,11 @@
             {
               "id": "task-messages-messagecenter--phone-swipe-tabs",
               "states": ["bottom sheet", "swipe switches tabs", "tab and row taps"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-swipe-empty",
+              "states": ["bottom sheet", "both tabs empty", "swipe anywhere in the sheet"],
               "interaction": true
             },
             {

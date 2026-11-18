@@ -50,7 +50,7 @@ The form is laid out like a chat input. The only text on top is the title, with 
 
 ![The Ask AI dialog with a request, an attached image above the toolbar, and the Image and Send request buttons](../../images/guide/ask-ai.png){.screenshot}
 
-The request is a message to the agents, not a task. It is not linked to any task or epic, so the form has no epic picker. When an agent receives it, the agent decides how to turn it into a plan, and the plan appears in Todo for you to review and start. Until then, the band above the lanes lists the request as **Waiting to be picked up**. You can withdraw a request before an agent receives it.
+The request is a message to the agents, not a task. It is not linked to any task or epic, so the form has no epic picker. When an agent receives it, the agent decides how to turn it into a plan, and the plan appears in Todo for you to review and start. Until then, the request counts under **Your requests** in the band above the lanes, and the list shows it as **Waiting to be picked up**. You can withdraw a request before an agent receives it.
 
 The text field is plain text, without headings or lists to format. The text is required, up to 20,000 characters, so an image alone enables **Send request** but the form then asks for text. Images use the same PNG, JPEG, WebP, and GIF limits as task attachments. Choose **Image**, paste an image into the text, or drop one onto the form; the images are sent with the request. If sending fails, the form keeps your text and images so you can try again.
 

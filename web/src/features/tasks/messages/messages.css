@@ -50,6 +50,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Fills the scrolling body of the sheet, so the swipe area below the tabs is as tall as the sheet. */
+  min-height: 100%;
 }
 
 .message-tabs {
@@ -112,12 +114,15 @@
 }
 
 .message-list__viewport {
+  /* Takes the height left under the tabs: an empty tab is swipeable all the way down. */
+  flex: 1 1 auto;
   overflow: hidden;
   touch-action: pan-y pinch-zoom;
 }
 
 .message-list__track {
   display: flex;
+  height: 100%;
 }
 
 .message-list__page {

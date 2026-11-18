@@ -25,18 +25,32 @@ interface HarnessProps {
   onAsk?: () => void;
   /** Adds a question the person answered that no agent took in yet. */
   withAnswered?: boolean;
+  /** Lists no message at all. */
+  empty?: boolean;
 }
 
 /** The band and the list it opens, over the sample messages. */
-function Harness({ variant, initial, answer, withdraw, read, onAsk, withAnswered }: HarnessProps) {
+function Harness({
+  variant,
+  initial,
+  answer,
+  withdraw,
+  read,
+  onAsk,
+  withAnswered,
+  empty,
+}: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
   const messages = useMemo(
-    () => [
-      ...sampleMessages(i18n.language),
-      ...(withAnswered ? [answeredSample(i18n.language)] : []),
-    ],
-    [i18n.language, withAnswered],
+    () =>
+      empty
+        ? []
+        : [
+            ...sampleMessages(i18n.language),
+            ...(withAnswered ? [answeredSample(i18n.language)] : []),
+          ],
+    [i18n.language, withAnswered, empty],
   );
   const api = useMemo(
     () => sampleMessagesApi(i18n.language, { answer, withdraw, ...(read ? { read } : {}) }),
@@ -84,7 +98,7 @@ const phone = { storyFrame: 'monitor', layout: 'fullscreen', ...modalDocsParamet
 /** The list opens from the band; "AI の質問" shows the two questions, newest first. */
 export const ListFromAi: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: '一覧を開く' }));
+    await userEvent.click(within(canvasElement).getByRole('button', { name: '質問・依頼を確認' }));
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
     await expect(within(list).getAllByText('未回答')).toHaveLength(2);
@@ -230,7 +244,7 @@ export const QuestionOpenJaDark: Story = {
   globals: { locale: 'ja', mode: 'dark' },
 };
 
-/** The phone: the band with "AI に依頼" and "一覧を開く". */
+/** The phone: the band with "AI に依頼" and "質問・依頼を確認". */
 export const PhoneBand: Story = {
   args: { variant: 'phone', onAsk: fn() },
   parameters: phone,
@@ -311,6 +325,29 @@ export const PhoneSwipeTabs: Story = {
     if (!row) throw new Error('The request row is not a button.');
     await userEvent.click(row);
     await within(sheet).findByRole('button', { name: '一覧へ戻る' });
+  },
+};
+
+/** The phone: with both tabs empty, a swipe low in the sheet, far below the message, still works. */
+export const PhoneSwipeEmpty: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, empty: true },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const [fromAi, fromYou] = within(sheet).getAllByRole('tab');
+    if (!fromAi || !fromYou) throw new Error('The list has no two tabs.');
+    const viewport = sheet.querySelector('.message-list__viewport');
+    const body = sheet.querySelector('.surface__body');
+    if (!viewport || !body) throw new Error('The list has no swipe viewport.');
+    const rect = viewport.getBoundingClientRect();
+    // The swipe area reaches the bottom of the sheet body, not just the one-line message.
+    await expect(rect.bottom).toBeGreaterThanOrEqual(body.getBoundingClientRect().bottom - 16);
+    const y = rect.bottom - 40;
+    drag(viewport, rect.right - 20, rect.left + 20, y);
+    await waitFor(() => expect(fromYou).toHaveAttribute('aria-selected', 'true'));
+    drag(viewport, rect.left + 20, rect.right - 20, y);
+    await waitFor(() => expect(fromAi).toHaveAttribute('aria-selected', 'true'));
   },
 };
 

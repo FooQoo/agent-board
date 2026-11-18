@@ -33,7 +33,6 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
   const band = messageBand(page);
   const mine = band.getByRole('listitem').filter({ hasText: /^Your requests/ });
   await expect(mine).toContainText('0');
-  await expect(mine).not.toContainText('waiting to be picked up');
 
   await page.getByRole('button', { name: 'Ask AI', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ask AI' });
@@ -44,7 +43,6 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
 
   // The band counts it as the person's own request, waiting for an AI; it is a message, not a task.
   await expect(mine).toContainText('1');
-  await expect(mine).toContainText('waiting to be picked up');
   const [request] = messages('request');
   expect(request).toMatchObject({ body: expect.stringContaining('Add a reset link to the login page.'), status: 'open' });
   expect(listTasks(mainProject).some((task) => task.title.includes('reset link'))).toBe(false);
