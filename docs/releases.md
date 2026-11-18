@@ -17,6 +17,8 @@ A release that removes approval requests: the agent starts its own AI drafts onc
 - **The message band is simpler.** Its button is now **Questions & requests**, and each entry shows only its name and count; the "waiting to be picked up" note is gone from the band. On a phone, pressing a count opens the list on that tab.
 - **Phone: swipe between message tabs.** Swipe sideways anywhere in the message list, even when a tab is empty, to switch its tabs.
 - **Phone: the running icon spins.** The Running icon on cards in the phone lanes rotates, as on the desktop board; it stays still when the system asks for reduced motion.
+- **Phone: answering a question works like Ask AI.** The answer opens in a sheet that fills the screen above the keyboard, with the buttons in a footer. Opened from the message list, its secondary button is **Back to list**; opened from a card, it is **Later**. Markdown in the question, including tables and code blocks, fits the sheet and scrolls inside it.
+- **Tablets: dialogs stay above the keyboard.** When the on-screen keyboard opens, a centered dialog moves into the visible area and shrinks to fit, so its buttons stay reachable.
 - **Every Markdown editor looks the same.** Markdown editors share the Ask AI frame and padding.
 - **The documentation calls Agent Board a shared workspace** instead of a work harness.
 
