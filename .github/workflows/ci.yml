@@ -38,8 +38,6 @@ jobs:
   rust:
     name: Rust (fmt, clippy, nextest)
     runs-on: ubuntu-latest
-    # A hung download or test otherwise holds the job for GitHub's default of six hours.
-    timeout-minutes: 30
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,8 +72,6 @@ jobs:
   web:
     name: Web (typecheck, lint, unit, Storybook)
     runs-on: ubuntu-latest
-    # A hung download or test otherwise holds the job for GitHub's default of six hours.
-    timeout-minutes: 30
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,6 +92,7 @@ jobs:
       - run: pnpm --dir web typecheck:storybook
       # The Storybook tests run every Story in a headless Chromium.
       - name: Install Chromium for the Storybook tests
+        # A stuck browser download fails within minutes instead of holding the job.
         timeout-minutes: 10
         run: pnpm --dir web exec playwright install --with-deps chromium
       - run: pnpm --dir web test:storybook
@@ -108,8 +105,6 @@ jobs:
   coverage:
     name: Coverage (Rust, Web)
     runs-on: ubuntu-latest
-    # A hung download or test otherwise holds the job for GitHub's default of six hours.
-    timeout-minutes: 30
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -163,8 +158,6 @@ jobs:
   e2e:
     name: E2E (Playwright ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    # A hung download or test otherwise holds the job for GitHub's default of six hours.
-    timeout-minutes: 30
     timeout-minutes: 60
     # The suite is split across three runners. Each shard builds the app and runs a third of the tests.
     strategy:
@@ -189,6 +182,7 @@ jobs:
           rustup default "${RUST_VERSION}"
       - uses: Swatinem/rust-cache@bc2d2e71bd35c5549942babaa51a89c586b981d1 # v2.8.1
       - name: Install dependencies and browsers
+        # A stuck browser download fails within minutes instead of holding the job.
         timeout-minutes: 10
         run: |
           pnpm --dir web install --frozen-lockfile
