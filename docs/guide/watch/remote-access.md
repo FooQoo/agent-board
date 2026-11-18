@@ -14,7 +14,7 @@ This feature is in public preview. Its behavior and specifications may change. S
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
-The **Messages** band sits above the lane tabs. It shows how many questions wait on you and how many of your requests no agent has picked up. **Check questions and requests** slides up a sheet with the open messages in two tabs; pick a question to answer it there, with **Later** and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)).
+The **Messages** band sits above the lane tabs. It shows how many questions wait on you and how many of your requests no agent has picked up. **Questions & requests** slides up a sheet with the open messages in two tabs; pick a question to answer it there, with **Later** and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)).
 
 AI drafts show as ordinary cards in the Todo lane with a **Draft** badge, and the Todo tab counts them. The agent starts them itself once its questions are answered (see [Drafts](./board#drafts)).
 

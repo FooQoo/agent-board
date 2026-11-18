@@ -9,7 +9,7 @@ export const messageBand = (page: Page): Locator => page.getByRole('region', { n
 
 /** The band's button that opens the list of messages. */
 export const openListButton = (page: Page): Locator =>
-  messageBand(page).getByRole('button', { name: /^(Check questions and requests|質問・依頼を確認)$/ });
+  messageBand(page).getByRole('button', { name: /^(Questions & requests|質問・依頼を確認)$/ });
 
 /** The messages dialog: the list, a question or a request, or the plan review (a sheet on a phone). */
 export const answerDialog = (page: Page): Locator => page.getByRole('dialog');

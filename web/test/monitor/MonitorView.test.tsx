@@ -251,7 +251,7 @@ describe('monitor messages band and list', () => {
   it('opens the list as a sheet with the two tabs and never lists a closed message', async () => {
     const user = userEvent.setup();
     render(<Connected />);
-    await user.click(within(band()).getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(within(band()).getByRole('button', { name: 'Questions & requests' }));
     const sheet = await screen.findByRole('dialog', { name: 'Messages' });
     expect(within(sheet).getAllByRole('tab')).toHaveLength(2);
     expect(within(sheet).getAllByRole('listitem')).toHaveLength(2);
@@ -315,7 +315,7 @@ describe('monitor messages band and list', () => {
     const withdraw = vi.fn(async () => {});
     const onChanged = vi.fn();
     render(<Connected withdraw={withdraw} onChanged={onChanged} />);
-    await user.click(within(band()).getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(within(band()).getByRole('button', { name: 'Questions & requests' }));
     const sheet = await screen.findByRole('dialog');
     await user.click(within(sheet).getByRole('tab', { name: /Your requests/ }));
     await user.click(within(sheet).getByRole('button', { name: /Add a forgot-password link/ }));

@@ -115,7 +115,7 @@ describe('MessageCenter', () => {
   it('lists the open messages in two tabs with their states', async () => {
     const user = userEvent.setup();
     render(<Harness routes={api()} />);
-    await user.click(screen.getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
     const list = await screen.findByRole('dialog', { name: 'Messages' });
     expect(within(list).getAllByRole('tab')).toHaveLength(2);
     expect(within(list).getAllByText('Unanswered')).toHaveLength(2);
@@ -128,7 +128,7 @@ describe('MessageCenter', () => {
     const routes = api();
     const onChanged = vi.fn();
     render(<Harness routes={routes} onChanged={onChanged} />);
-    await user.click(screen.getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
     await user.click(await screen.findByRole('button', { name: /Title of Q-12/ }));
     const dialog = screen.getByRole('dialog');
     const send = await within(dialog).findByRole('button', { name: 'Send answer' });
@@ -151,7 +151,7 @@ describe('MessageCenter', () => {
       }),
     });
     render(<Harness routes={routes} />);
-    await user.click(screen.getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
     await user.click(await screen.findByRole('button', { name: /Title of Q-13/ }));
     await user.click(await screen.findByRole('radio', { name: 'Drop' }));
     await user.click(screen.getByRole('button', { name: 'Send answer' }));
@@ -162,7 +162,7 @@ describe('MessageCenter', () => {
     const user = userEvent.setup();
     const routes = api();
     render(<Harness routes={routes} />);
-    await user.click(screen.getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
     await user.click(await screen.findByRole('tab', { name: /Your requests/ }));
     await user.click(screen.getByRole('button', { name: /Title of Q-14/ }));
     await user.click(await screen.findByRole('button', { name: 'Withdraw' }));
@@ -190,7 +190,7 @@ describe('MessageCenter', () => {
     render(<Phone />);
     await user.click(screen.getByRole('button', { name: 'Ask AI' }));
     expect(onAsk).toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Check questions and requests' }));
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
     expect((await screen.findByRole('dialog', { name: 'Messages' })).className).toContain(
       'surface-sheet',
     );
