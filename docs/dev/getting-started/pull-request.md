@@ -51,6 +51,8 @@ The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workfl
 - The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on macOS 15, split into three shards that run side by side. The job takes about 8 minutes and runs on every pull request, on pushes to `main`, and on manual runs.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 
+A newer commit on the same branch or pull request cancels the run in progress. When a pull request is merged or closed, the [Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml) workflow cancels its remaining CI runs, so they do not hold the macOS runners that the run on `main` needs.
+
 [CodeRabbit](https://www.coderabbit.ai/) also reviews pull requests to `main` and comments on them in English. Draft pull requests and pull requests to other branches are not reviewed automatically; mark a draft ready for review when you want its review. The settings are in `.coderabbit.yaml`.
 
 CodeRabbit reports only problems that must be fixed before merging, mainly bugs, and does not suggest optional improvements. It also checks that a change in behavior updates the documentation in the same pull request, and that a changed test is explained as an intended change of the specification or as a fix to the test. Lock files and other generated files are left out of the review. Treat its comments as suggestions: fix what is right, and reply with the reason when you do not.
