@@ -40,28 +40,52 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   expect(await field.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16);
   const send = sheet.getByRole('button', { name: 'Send request' });
   await expect(send).toBeInViewport({ ratio: 1 });
+  // Measure only once the sheet has stopped moving (its slide-in, or the visual viewport settling).
+  const settle = () =>
+    expect(async () => {
+      const first = await sheet.boundingBox();
+      await page.waitForTimeout(100);
+      expect(await sheet.boundingBox()).toEqual(first);
+    }).toPass();
+  // Positions and sizes are compared with 2px of room for subpixel rounding.
+  const tolerance = 2;
+  await settle();
   const closed = await sheet.boundingBox();
 
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(336));
   await expect.poll(async () => (await send.boundingBox())?.y ?? 0).toBeLessThan(844 - 336);
+  await settle();
   const box = await send.boundingBox();
   const opened = await sheet.boundingBox();
   if (!box || !opened || !closed) throw new Error('The sheet did not render.');
+  if (process.env.AB_SHOTS) await page.screenshot({ path: `${process.env.AB_SHOTS}/keyboard-open.png` });
   // The toolbar ends above the keyboard, and the sheet still shows its title.
-  expect(box.y + box.height).toBeLessThanOrEqual(844 - 336);
-  expect(opened.y).toBeGreaterThanOrEqual(0);
-  await expect.poll(async () => { const b = await sheet.boundingBox(); return b ? b.y + b.height : Infinity; }).toBeLessThanOrEqual(844 - 336 + 2);
-  // The sheet uses the whole visible area: its top is the top of the visual viewport, and the
-  // field gets the room the header and the gap no longer take.
-  expect(opened.y).toBeLessThanOrEqual(1);
-  expect(opened.height).toBeGreaterThanOrEqual(844 - 336 - 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(844 - 336 + tolerance);
+  expect(opened.y).toBeGreaterThanOrEqual(-tolerance);
+  expect(opened.y + opened.height).toBeLessThanOrEqual(844 - 336 + tolerance);
+  // The sheet keeps the chrome it has without the keyboard: the same height of header, the drag
+  // handle, and the toolbar, and only the field shrinks.
+  await expect(sheet.locator('.mobile-drawer__handle')).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({ ratio: 1 });
+  const title = sheet.locator('.mobile-drawer__title');
+  await expect(title).toBeInViewport({ ratio: 1 });
+  expect(opened.y).toBeGreaterThanOrEqual(44 - tolerance);
+  expect(opened.height).toBeLessThan(closed.height - tolerance);
   const fieldBox = await field.boundingBox();
-  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(200);
+  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(150 - tolerance);
+  // Under the sheet, down to the keyboard, the sheet's own color is painted: the strip is one flat
+  // color (the board's cards would make two strips differ), and the sheet carries the extension.
+  expect(await sheet.evaluate((el) => getComputedStyle(el).boxShadow)).toContain('336px');
+  const sheetBottom = opened.y + opened.height;
+  const strip = (y: number) => page.screenshot({ clip: { x: 8, y, width: 374, height: 12 } });
+  const near = await strip(sheetBottom + 40);
+  const far = await strip(sheetBottom + 40 + 150);
+  expect(near.equals(far)).toBe(true);
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
   // Back where it was, give or take the subpixel rounding of the visual viewport.
-  await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(2);
+  await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(tolerance);
 });
 
 test('closing the sheet with text asks first, and an empty sheet closes at once', async ({ page }) => {
