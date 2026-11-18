@@ -47,8 +47,9 @@ Run `pnpm --dir web format` to apply the web formatter. To measure coverage loca
 The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml) runs the same checks on every pull request and every push to `main`:
 
 - The Rust job runs `cargo fmt`, `cargo clippy`, and `cargo nextest run` on Linux (`ubuntu-latest`).
-- The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build.
-- The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on Linux, split into four shards that run side by side. The job takes about 8 minutes and runs on every pull request, on pushes to `main`, and on manual runs.
+- The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build. It runs in the official Playwright container image, which already holds Chromium and its system libraries, so the job installs no browser.
+- The E2E build job builds the web UI and the CLI once, plus the `monitor_phone_serve` test binary the phone specs use, and uploads them as an artifact. The E2E job then runs the Playwright app suite (`pnpm --dir e2e test`) on Linux, split into four shards that run side by side in the Playwright container image. Each shard downloads the artifact and sets `AGBOARD_E2E_PREBUILT=1`, so the global setup skips the build and uses the binaries named by `AGBOARD_E2E_BINARY` and `AGBOARD_E2E_PHONE_BACKEND`; the image has no Rust toolchain. The jobs run on every pull request, on pushes to `main`, and on manual runs.
+- The image tag (`mcr.microsoft.com/playwright:v<version>-noble`, pinned by digest) must match the Playwright version in `web/package.json` and `e2e/package.json`. When you update Playwright, update the tag in both container jobs of `ci.yml` in the same change.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 
 On a pull request, a newer commit cancels the run in progress. On `main`, a run is never cancelled; a newer push waits for it, so every merge gets a finished run. When a pull request is merged or closed, the [Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml) workflow cancels its remaining CI and Release build runs, so they do not hold the runners that the run on `main` needs.
@@ -76,7 +77,7 @@ The app suite runs its spec files on several Playwright workers at once:
 
 - Each worker has its own temporary data area and its own `agboard serve` on port 0. The suite uses no fixed port, so two checkouts can run it at the same time.
 - The number of workers defaults to half the CPUs. Set `AGBOARD_E2E_WORKERS`, or pass `--workers`, to change it. The tests in one file run in order on one worker, because they share that worker's board.
-- `AGBOARD_E2E_BINARY` selects a different `agboard` binary. The worker fixture sets `AGBOARD_E2E_HOME` and `AGBOARD_E2E_MAIN_URL` itself; do not set them.
+- `AGBOARD_E2E_BINARY` selects a different `agboard` binary. With `AGBOARD_E2E_PREBUILT=1` (used by CI) the global setup builds nothing and requires `AGBOARD_E2E_BINARY` and `AGBOARD_E2E_PHONE_BACKEND` to name existing files. The worker fixture sets `AGBOARD_E2E_HOME` and `AGBOARD_E2E_MAIN_URL` itself; do not set them.
 - Results and traces go to `agent-board-e2e-results-<checkout>` in the system's temporary directory, one folder for each checkout.
 
 When you write an app spec:
