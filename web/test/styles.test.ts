@@ -91,8 +91,8 @@ describe('app.css', () => {
     );
   });
 
-  it('spins the loader on the board task only', () => {
-    expect(css).toMatch(/\.card \.spinner\s*\{[^}]*animation:\s*spin/);
+  it('spins the loader on the board task and the phone lane card only', () => {
+    expect(css).toMatch(/\.card \.spinner,\s*\.monitor-card \.spinner\s*\{[^}]*animation:\s*spin/);
     expect(css).not.toMatch(/(^|\n)\.spinner\s*\{[^}]*animation:\s*spin/);
   });
 });
