@@ -33,6 +33,12 @@
   box-shadow: none;
 }
 
+/* The field is the whole body of the composer, so the caret is enough to show where typing goes; a
+   focus frame around it would only box in the body. */
+.ask-ai .ask-ai__input:focus-visible {
+  outline: none;
+}
+
 .ask-ai__thumbs {
   display: flex;
   gap: 8px;
