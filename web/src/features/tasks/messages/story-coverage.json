@@ -114,6 +114,11 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--phone-swipe-empty",
+              "states": ["bottom sheet", "both tabs empty", "swipe anywhere in the sheet"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-question",
               "states": ["bottom sheet", "stacked question and answer", "fixed buttons"],
               "interaction": true
