@@ -12,8 +12,11 @@ export function keyboardInset(
 }
 
 /**
- * Keeps `--keyboard-inset` and `--visual-vh` on the root up to date from the visual viewport, for as
- * long as the caller is mounted. A sheet that must stay above the keyboard reads them in CSS.
+ * Keeps `--keyboard-inset`, `--visual-vh` and `--visual-top` on the root up to date from the visual
+ * viewport, for as long as the caller is mounted, and marks the root with `data-visual-keyboard`
+ * while the keyboard covers the page. A sheet that must stay above the keyboard reads them in CSS:
+ * `--visual-top` is where the visible area starts in the layout viewport, which iOS Safari moves
+ * when it scrolls the page to a focused field.
  */
 export function watchKeyboardInset(target: Window = window): () => void {
   const viewport = target.visualViewport;
@@ -22,14 +25,21 @@ export function watchKeyboardInset(target: Window = window): () => void {
   const update = () => {
     root.style.setProperty('--keyboard-inset', `${keyboardInset(root.clientHeight, viewport)}px`);
     root.style.setProperty('--visual-vh', `${Math.round(viewport.height)}px`);
+    root.style.setProperty('--visual-top', `${Math.round(viewport.offsetTop)}px`);
+    root.toggleAttribute('data-visual-keyboard', keyboardInset(root.clientHeight, viewport) > 0);
   };
   update();
   viewport.addEventListener('resize', update);
   viewport.addEventListener('scroll', update);
+  // iOS scrolls the page itself when a field gets the focus; follow that as well.
+  target.addEventListener('scroll', update);
   return () => {
     viewport.removeEventListener('resize', update);
     viewport.removeEventListener('scroll', update);
+    target.removeEventListener('scroll', update);
     root.style.removeProperty('--keyboard-inset');
     root.style.removeProperty('--visual-vh');
+    root.style.removeProperty('--visual-top');
+    root.removeAttribute('data-visual-keyboard');
   };
 }

@@ -33,6 +33,12 @@
   box-shadow: none;
 }
 
+/* The field is the whole body of the composer, so the caret is enough to show where typing goes; a
+   focus frame around it would only box in the body. */
+.ask-ai .ask-ai__input:focus-visible {
+  outline: none;
+}
+
 .ask-ai__thumbs {
   display: flex;
   gap: 8px;
@@ -88,17 +94,29 @@
   color: var(--r-danger);
 }
 
-/* The sheet follows the visual viewport (see keyboardInset.ts): it is lifted by the height of the
-   keyboard and shortened to what is left above it, so the toolbar is never behind the keyboard. Its
-   chrome is the same with the keyboard open or closed; only the field gives up height. The top gap
-   clears the status bar. */
+/* The phone sheet's chrome is tighter than the shared drawer's, with the keyboard open or closed. */
+.mobile-drawer.ask-ai--sheet .mobile-drawer__handle {
+  height: 28px;
+}
+
+.mobile-drawer.ask-ai--sheet .mobile-drawer__header {
+  align-items: center;
+  padding: 0 8px 4px 16px;
+}
+
 .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
+  height: min(calc(var(--stable-vh, 100svh) - max(56px, env(safe-area-inset-top) + 8px)), 720px);
+}
+
+/* Closed, the sheet rests at its own height. With the keyboard open (see keyboardInset.ts) it is
+   fixed by both edges to the visual viewport instead: its top just under the status bar, where the
+   visible area starts, and its bottom on the keyboard, so it covers the page header and the field
+   gets all the height that is left. The chrome is the same in both states. */
+:root[data-visual-keyboard] .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
+  top: calc(var(--visual-top, 0px) + max(8px, env(safe-area-inset-top) + 8px));
   bottom: var(--keyboard-inset, 0px);
-  height: min(
-    calc(var(--visual-vh, var(--stable-vh, 100svh)) - max(56px, env(safe-area-inset-top) + 8px)),
-    720px
-  );
-  max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
+  height: auto;
+  max-height: none;
   /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
      the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
      Safari draws its floating address pill and form bar, so the board never shows through there. */
