@@ -51,6 +51,12 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   expect(box.y + box.height).toBeLessThanOrEqual(844 - 336);
   expect(opened.y).toBeGreaterThanOrEqual(0);
   expect(opened.y + opened.height).toBeLessThanOrEqual(844 - 336 + 1);
+  // The sheet uses the whole visible area: its top is the top of the visual viewport, and the
+  // field gets the room the header and the gap no longer take.
+  expect(opened.y).toBeLessThanOrEqual(1);
+  expect(opened.height).toBeGreaterThanOrEqual(844 - 336 - 1);
+  const fieldBox = await field.boundingBox();
+  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(200);
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
