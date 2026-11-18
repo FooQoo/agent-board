@@ -89,46 +89,20 @@
 }
 
 /* The sheet follows the visual viewport (see keyboardInset.ts): it is lifted by the height of the
-   keyboard and shortened to what is left above it, so the toolbar is never behind the keyboard. */
+   keyboard and shortened to what is left above it, so the toolbar is never behind the keyboard. Its
+   chrome is the same with the keyboard open or closed; only the field gives up height. The top gap
+   clears the status bar. */
 .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
   bottom: var(--keyboard-inset, 0px);
-  height: min(calc(var(--visual-vh, var(--stable-vh, 100svh)) - 56px), 720px);
+  height: min(
+    calc(var(--visual-vh, var(--stable-vh, 100svh)) - max(56px, env(safe-area-inset-top) + 8px)),
+    720px
+  );
   max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
-}
-
-/* While the keyboard is open the sheet takes the whole visible area above it: no gap at the top, a
-   one-line header without the drag handle or the empty identity line, and a tighter toolbar. The
-   sheet's bottom is the visual viewport's bottom, so its top is the viewport's top (offsetTop). */
-:root[data-keyboard-open] .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
-  height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
-  max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
-  border-radius: 12px 12px 0 0;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__handle,
-:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__identity {
-  display: none;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__header {
-  align-items: center;
-  padding: 2px 4px 2px 16px;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__close {
-  width: 40px;
-  height: 40px;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .surface__body {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .surface__footer {
-  padding: 6px 16px;
-}
-
-:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__content {
-  padding-bottom: 0;
+  /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
+     the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
+     Safari draws its floating address pill and form bar, so the board never shows through there. */
+  box-shadow:
+    0 -8px 32px rgb(0 0 0 / 14%),
+    0 var(--keyboard-inset, 0px) 0 0 var(--r-surface);
 }

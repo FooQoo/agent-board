@@ -11,25 +11,16 @@ export function keyboardInset(
   return Math.max(0, Math.round(layoutHeight - visual.height - visual.offsetTop));
 }
 
-/** An inset above this is the on-screen keyboard; a smaller one is a toolbar or an accessory bar. */
-export const KEYBOARD_OPEN_THRESHOLD = 80;
-
-export function keyboardOpen(inset: number): boolean {
-  return inset > KEYBOARD_OPEN_THRESHOLD;
-}
-
 /**
- * Keeps `--keyboard-inset` and `--visual-vh` on the root up to date from the visual viewport, and
- * `data-keyboard-open` while the keyboard is open, for as long as the caller is mounted. A sheet that must stay above the keyboard reads them in CSS.
+ * Keeps `--keyboard-inset` and `--visual-vh` on the root up to date from the visual viewport, for as
+ * long as the caller is mounted. A sheet that must stay above the keyboard reads them in CSS.
  */
 export function watchKeyboardInset(target: Window = window): () => void {
   const viewport = target.visualViewport;
   if (!viewport) return () => {};
   const root = target.document.documentElement;
   const update = () => {
-    const inset = keyboardInset(root.clientHeight, viewport);
-    root.style.setProperty('--keyboard-inset', `${inset}px`);
-    root.toggleAttribute('data-keyboard-open', keyboardOpen(inset));
+    root.style.setProperty('--keyboard-inset', `${keyboardInset(root.clientHeight, viewport)}px`);
     root.style.setProperty('--visual-vh', `${Math.round(viewport.height)}px`);
   };
   update();
@@ -38,7 +29,6 @@ export function watchKeyboardInset(target: Window = window): () => void {
   return () => {
     viewport.removeEventListener('resize', update);
     viewport.removeEventListener('scroll', update);
-    root.removeAttribute('data-keyboard-open');
     root.style.removeProperty('--keyboard-inset');
     root.style.removeProperty('--visual-vh');
   };
