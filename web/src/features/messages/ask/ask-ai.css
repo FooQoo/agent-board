@@ -1,54 +1,85 @@
-/* The Ask AI dialog and sheet: one Markdown field with images, no epic and no manual creation. */
+/* The Ask AI composer: the input fills the body, the thumbnails and the toolbar fill the footer. */
 
-.ask-ai__field {
+.ask-ai .surface__body {
   display: flex;
   flex-direction: column;
+}
+
+.surface-modal.ask-ai .surface__body {
+  /* What is left of a short window after the header, the footer with thumbnails, and the padding. */
+  height: min(480px, calc(var(--stable-vh, 100svh) - 270px));
+  min-height: 96px;
+}
+
+.ask-ai__body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* A borderless plain field of at least 16px, so iOS does not zoom in when it gets the focus. */
+.ask-ai .ask-ai__input {
+  flex: 1 1 0;
+  field-sizing: fixed;
+  width: 100%;
+  min-height: 0;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 16px;
+  resize: none;
+  box-shadow: none;
+}
+
+.ask-ai__thumbs {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 8px 0 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.ask-ai__thumb {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 56px;
+}
+
+.ask-ai__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.ask-ai__thumb-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  border-radius: 50%;
+  background: var(--r-surface);
+}
+
+.ask-ai__thumb-remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ask-ai__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.ask-ai__label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--r-text);
-}
-
-/* The input box takes the shared editor frame; here it is as tall as its text between a floor and a
-   ceiling, so a short request leaves no empty block and a long one scrolls inside the box. */
-.ask-ai__box.editor__box {
-  flex: none;
-  height: auto;
-  min-height: 140px;
-  max-height: min(44vh, 360px);
-  overflow-y: auto;
-  cursor: text;
-}
-
-.ask-ai__box .rich-markdown .ProseMirror {
-  min-height: 112px;
-}
-
-.ask-ai--sheet .ask-ai__box.editor__box {
-  max-height: 38vh;
-}
-
-/* The images sit under the box on the same left edge, in the dialog and in the sheet alike. */
-.ask-ai .ask-ai__images.request-dialog__attachments {
-  flex: none;
-  gap: 10px;
-  margin-top: 8px;
-  padding: 0;
-  overflow: visible;
-}
-
-.ask-ai__note {
-  margin: 0;
-  line-height: 18px;
-  font-size: 12px;
-  color: var(--r-muted);
-}
-
-.ask-ai__submit {
-  width: 100%;
+.ask-ai__picker {
+  display: none;
 }
 
 .ask-ai__error {
@@ -57,8 +88,10 @@
   color: var(--r-danger);
 }
 
-.ask-ai--sheet {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+/* The sheet follows the visual viewport (see keyboardInset.ts): it is lifted by the height of the
+   keyboard and shortened to what is left above it, so the toolbar is never behind the keyboard. */
+.mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
+  bottom: var(--keyboard-inset, 0px);
+  height: min(calc(var(--visual-vh, var(--stable-vh, 100svh)) - 56px), 720px);
+  max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
 }

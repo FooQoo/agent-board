@@ -24,7 +24,7 @@ test('a request sent through Ask AI with an image is returned by task wait as a 
     mimeType: 'image/png',
     buffer: png,
   });
-  await expect(dialog.getByRole('button', { name: 'Preview request.png' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Remove request.png' })).toBeVisible();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await dialog.screenshot({ path: testInfo.outputPath('task-listen-request-attached.png') });
   await page.screenshot({ path: testInfo.outputPath('task-listen-request-attached-viewport.png') });

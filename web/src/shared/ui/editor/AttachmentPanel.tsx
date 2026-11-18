@@ -3,7 +3,6 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Button } from '@/shared/ui/button';
-import { Label } from '@/shared/ui/label';
 import { Lightbox } from '../lightbox/Lightbox';
 import type { EditorAttachment } from './attachmentTypes';
 import { formatAttachmentSize } from './attachmentTypes';
@@ -22,12 +21,9 @@ export interface AttachmentPanelProps {
   disabled?: boolean;
   className?: string;
   showHeader?: boolean;
-  /** Use the compact optional-attachment heading from the task request design. */
-  optionalHeader?: boolean;
-  layout?: 'sidebar' | 'tray';
 }
 
-function noticeText(notice: AttachmentNotice, t: TFunction): string {
+export function attachmentNoticeText(notice: AttachmentNotice, t: TFunction): string {
   switch (notice.kind) {
     case 'format':
       return t('editor.attachmentFormat', { name: notice.name });
@@ -52,8 +48,6 @@ export function AttachmentPanel({
   disabled = false,
   className = '',
   showHeader = true,
-  optionalHeader = false,
-  layout = 'sidebar',
 }: AttachmentPanelProps) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
@@ -79,12 +73,11 @@ export function AttachmentPanel({
     }
   };
 
-  const tray = layout === 'tray';
   const addButton = (
     <Button
       type="button"
       variant="outline"
-      className={tray ? 'editor-attachments__add-tile' : 'editor-attachments__add'}
+      className="editor-attachments__add"
       aria-label={t('editor.addAttachment')}
       disabled={disabled}
       onClick={() => input.current?.click()}
@@ -120,19 +113,11 @@ export function AttachmentPanel({
     >
       {showHeader && (
         <div className="editor-attachments__header">
-          {optionalHeader ? (
-            <Label asChild>
-              <span>{t('editor.attachmentsOptional')}</span>
-            </Label>
-          ) : (
-            <span className="editor-attachments__title">
-              <PaperclipIcon aria-hidden="true" />
-              {t('editor.attachments')}
-            </span>
-          )}
-          {!optionalHeader && (
-            <span className="editor-attachments__count">{attachments.length}</span>
-          )}
+          <span className="editor-attachments__title">
+            <PaperclipIcon aria-hidden="true" />
+            {t('editor.attachments')}
+          </span>
+          <span className="editor-attachments__count">{attachments.length}</span>
           {onClose && (
             <Button
               type="button"
@@ -148,11 +133,11 @@ export function AttachmentPanel({
           )}
         </div>
       )}
-      {!tray && addButton}
+      {addButton}
       {notice && (
         <div className="editor-attachments__notice" role="alert">
           <strong>{t('editor.attachmentRefusedTitle')}</strong>
-          <p className="editor-attachments__notice-text">{noticeText(notice, t)}</p>
+          <p className="editor-attachments__notice-text">{attachmentNoticeText(notice, t)}</p>
         </div>
       )}
       <input
@@ -182,28 +167,16 @@ export function AttachmentPanel({
         }}
         onDrop={onDrop}
       >
-        {tray ? (
-          <div className="editor-attachments__tray">
-            {addButton}
-            {imageList}
-          </div>
-        ) : attachments.length > 0 ? (
-          imageList
-        ) : null}
-        {/* The sidebar hint opens the picker; the tray has its own square picker. */}
-        {tray ? (
-          <p className="editor-attachments__hint">{t('editor.attachmentsDropHint')}</p>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            className="editor-attachments__drop"
-            disabled={disabled}
-            onClick={() => input.current?.click()}
-          >
-            {t('editor.attachmentsDropHint')}
-          </Button>
-        )}
+        {attachments.length > 0 ? imageList : null}
+        <Button
+          type="button"
+          variant="ghost"
+          className="editor-attachments__drop"
+          disabled={disabled}
+          onClick={() => input.current?.click()}
+        >
+          {t('editor.attachmentsDropHint')}
+        </Button>
       </div>
       {zoom !== null && (
         <Lightbox

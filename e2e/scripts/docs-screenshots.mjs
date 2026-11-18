@@ -19,11 +19,10 @@ const extra = {
     editorChecks: ['The steps are complete', 'A teammate followed the guide', 'The guide is published'],
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
-    preview: 'Open full screen (task)', close: 'Close', settings: 'Settings', cancel: 'Cancel',
+    preview: 'Open full screen (task)', close: 'Close', settings: 'Settings',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
     messages: 'Messages', later: 'Later',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
-    discard: 'Discard and close',
     docs: 'Docs', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: Product\nstatus: draft\nreview: 2026-11-02\n---\n# Launch plan\n\nShip the new website in three steps, and keep the old pages reachable until the new ones are reviewed.\n\n## Steps\n\n```mermaid\nflowchart LR\n  Draft --> Review --> Publish\n```\n\n| Step | Owner | State |\n| --- | --- | --- |\n| Draft the pages | Design | Done |\n| Review the copy | Product | Doing |\n| Publish | Engineering | Todo |\n\n## Risks\n\n- The pricing page needs legal review.\n- Old links must redirect to the new pages.\n',
       'strategy/goals.md': '# Goals\n\n- Halve the time to find the pricing page.\n',
@@ -37,11 +36,10 @@ const extra = {
     editorChecks: ['手順がそろっている', 'メンバーがガイドどおりに進められた', 'ガイドを公開している'],
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
-    preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定', cancel: 'キャンセル',
+    preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
     messages: 'メッセージ', later: 'あとでやる',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
-    discard: '破棄して閉じる',
     docs: 'ドキュメント', docsFile: 'launch-plan.md', docsFiles: {
       'strategy/launch-plan.md': '---\nowner: プロダクト\nstatus: draft\nreview: 2026-11-02\n---\n# 公開計画\n\n新しいWebサイトを三段階で公開する。新しいページの確認が終わるまで、古いページにもたどり着けるようにしておく。\n\n## 手順\n\n```mermaid\nflowchart LR\n  下書き --> 確認 --> 公開\n```\n\n| 手順 | 担当 | 状態 |\n| --- | --- | --- |\n| ページの下書き | デザイン | 完了 |\n| 文章の確認 | プロダクト | 作業中 |\n| 公開 | エンジニアリング | 未着手 |\n\n## リスク\n\n- 料金ページには法務の確認が必要。\n- 古いリンクは新しいページへ転送する。\n',
       'strategy/goals.md': '# 目標\n\n- 料金ページにたどり着くまでの時間を半分にする。\n',
@@ -112,23 +110,16 @@ try {
       // ask-ai: the request dialog with an image attached.
       await page.getByRole('button', { name: more.askAi, exact: true }).click();
       const request = page.getByRole('dialog', { name: more.askAi });
-      const editor0 = request.getByRole('textbox', { name: more.promptLabel });
-      await editor0.click();
-      await editor0.evaluate((element, value) => {
-        const data = new DataTransfer();
-        data.setData('text/plain', value);
-        element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
-      }, more.requestText);
-      await expect(editor0).toContainText(more.requestText);
+      const field0 = request.getByRole('textbox', { name: more.promptLabel });
+      await field0.fill(more.requestText);
       await request.locator('input[type="file"]').setInputFiles(path.join(repo, 'docs/public/logo.png'));
       await expect(request.getByRole('button', {
-        name: locale === 'ja' ? 'logo.pngをプレビュー' : 'Preview logo.png',
+        name: locale === 'ja' ? 'logo.pngを削除' : 'Remove logo.png',
       })).toBeVisible();
-      await expect(request.getByRole('region', { name: more.attachLabel })).toBeVisible();
+      await expect(request.getByRole('list', { name: more.attachLabel })).toBeVisible();
+      await field0.blur();
       await shot('ask-ai', request, page);
-      await request.getByRole('button', { name: more.cancel, exact: true }).click();
-      await page.getByRole('dialog', { name: locale === 'ja' ? '変更を破棄しますか?' : 'Discard changes?' })
-        .getByRole('button', { name: more.discard, exact: true }).click();
+      await request.getByRole('button', { name: more.close, exact: true }).click();
       await expect(request).toHaveCount(0);
 
       // question: the answer dialog, opened from the Pending card's answer button.

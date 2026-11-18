@@ -38,29 +38,17 @@ export function storedImageName(
   }
 }
 
-/**
- * The multipart body of a request: the Markdown `text` and one `images` part per picture. Pictures
- * the text places with `attachment:<id>` are rewritten to `attachments/<stored name>`, the form the
- * server stores them under, so the sent text and the stored files agree.
- */
+/** The multipart body of a request: the `text` and one `images` part per picture. */
 export function buildRequestForm(text: string, attachments: readonly EditorAttachment[]): FormData {
   const form = new FormData();
   const taken = new Set<string>();
-  const names = new Map<string, string>();
-  const files: { name: string; file: File }[] = [];
+  form.append('text', text);
   for (const attachment of attachments) {
     if (attachment.source !== 'local' || !attachment.file) continue;
     const name = storedImageName(attachment, taken);
     taken.add(name.toLowerCase());
-    names.set(attachment.id, name);
-    files.push({ name, file: attachment.file });
+    form.append('images', attachment.file, name);
   }
-  const body = text.replace(/\]\(attachment:([0-9A-Za-z-]+)\)/g, (whole, id: string) => {
-    const name = names.get(id);
-    return name === undefined ? whole : `](attachments/${name})`;
-  });
-  form.append('text', body);
-  for (const { name, file } of files) form.append('images', file, name);
   return form;
 }
 
