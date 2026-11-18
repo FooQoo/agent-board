@@ -9,7 +9,8 @@
 //! The background run takes a lock in the data area, so concurrent sessions
 //! reinstall once, and records its attempt, so a failing update is not
 //! retried on every session. It reinstalls the plugin like `agboard update`
-//! but never trusts Codex hooks: that stays a decision of the user.
+//! and trusts the Codex hooks only when the installed hook definition is
+//! byte-identical to the one this agboard embeds.
 
 use std::io;
 use std::os::unix::process::CommandExt;
@@ -83,6 +84,19 @@ fn codex_hooks_changed(root: &Path) -> bool {
         != Some(SHIPPED_CODEX_HOOKS)
 }
 
+/// Whether the Codex hook definition of the plugin Codex now has installed
+/// (found through `plugin list --json`) is byte-identical to the embedded
+/// one. An unknown install folder counts as different.
+fn installed_codex_hooks_identical(program: &Path) -> bool {
+    super::plugin::installed(Agent::Codex, program)
+        .ok()
+        .flatten()
+        .and_then(|plugin| plugin.path)
+        .and_then(|path| std::fs::read_to_string(path.join("hooks/codex.json")).ok())
+        .as_deref()
+        == Some(SHIPPED_CODEX_HOOKS)
+}
+
 /// What the hook should tell the agent at session start, after starting an
 /// update when one is due. Reads a few small files and starts at most one
 /// detached process; it never waits for it.
@@ -135,7 +149,7 @@ fn started_notice(agent: Agent, hooks_changed: bool) -> String {
         "AGBOARD_NOTICE\nThe Agent Board plugin differs from the one this agboard (version {version}) ships. agboard started updating it to version {version} in the background; the update applies from the next session, and nothing needs to be done now."
     );
     if agent == Agent::Codex && hooks_changed {
-        text.push_str(" The hook definition changed, and Codex runs a plugin's hooks only after they are trusted. agboard never trusts them by itself: once the update has finished, tell the user to run `agboard update` in a terminal, then start a new session.");
+        text.push_str(" The hook definition changed, and Codex runs a plugin's hooks only after they are trusted. agboard marks them trusted itself when the installed definition is identical to its own, and never otherwise. If the hooks do not run in the next session, tell the user to run `agboard update` in a terminal, then start a new session.");
     }
     text
 }
@@ -236,11 +250,24 @@ pub fn run_background(env: &SetupEnv, agent: Agent) -> Option<SetupReport> {
         return None;
     }
     let mut prepared = super::prepare(env, &options).ok()?;
+    // Trust is decided below, never by the plan.
     for plan in &mut prepared.agents {
         plan.trust = false;
     }
+    let program = prepared.agents.iter().find_map(|plan| plan.program.clone());
+    let cwd = Some(prepared.data_dir.clone())
+        .filter(|dir| dir.is_dir())
+        .or_else(|| prepared.work_dir.clone());
     let report = super::execute(prepared).ok()?;
-    files.record(report.agents.iter().all(|a| a.status != Status::Failed));
+    let mut ok = report.agents.iter().all(|a| a.status != Status::Failed);
+    if ok
+        && agent == Agent::Codex
+        && let (Some(program), Some(cwd)) = (program, cwd)
+        && installed_codex_hooks_identical(&program)
+    {
+        ok = super::trust::trust_codex_hooks(&program, &cwd).is_ok();
+    }
+    files.record(ok);
     Some(report)
 }
 

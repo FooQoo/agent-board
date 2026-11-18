@@ -52,7 +52,7 @@ Codex runs a plugin's hook only after you trust it, and the trust is tied to the
 
 ## Update the plugin
 
-After `brew upgrade fooqoo/tap/agboard`, the plugin updates itself: when a session starts, the Hook compares the plugin's files with the ones this `agboard` ships, and when they differ it reinstalls the plugin from the tag of the `agboard` version in the background. The new plugin applies from the next session. This never trusts Codex hooks, so for Codex run `agboard update` yourself (or `agboard update --yes`, which answers the question in advance); it also reinstalls and repairs the plugin in either agent. Set `AGBOARD_NO_PLUGIN_AUTO_UPDATE=1` to turn the automatic update off.
+After `brew upgrade fooqoo/tap/agboard`, the plugin updates itself: when a session starts, the Hook compares the plugin's files with the ones this `agboard` ships, and when they differ it reinstalls the plugin from the tag of the `agboard` version in the background. The new plugin applies from the next session. For Codex it also trusts the Agent Board hooks, but only when the installed hook definition is byte-identical to the one `agboard` ships (your consent in `agboard setup` covers Agent Board's own hook); a different definition is never trusted, and then you run `agboard update` yourself (or `agboard update --yes`, which answers the question in advance). `agboard update` also reinstalls and repairs the plugin in either agent. Set `AGBOARD_NO_PLUGIN_AUTO_UPDATE=1` to turn the automatic update off.
 
 ## Rules for agents on the shared files
 

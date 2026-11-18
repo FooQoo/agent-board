@@ -204,6 +204,7 @@ fn codex_is_told_to_trust_hooks_only_when_the_hook_definition_changed() {
     fx.wait_finished("codex");
     let log = fx.fakes.log("codex");
     assert!(log.iter().any(|l| l.starts_with("plugin add")), "{log:?}");
+    // The install folder is unknown to the fake listing: no trust.
     assert!(!log.contains(&"app-server".to_string()), "{log:?}");
     assert!(fx.fakes.trust_writes().is_empty());
 
@@ -434,4 +435,31 @@ fn a_confirmed_tag_lets_the_update_run() {
             .iter()
             .any(|l| l.starts_with("plugin install"))
     );
+}
+
+#[test]
+fn codex_hooks_are_trusted_only_when_the_installed_definition_is_identical() {
+    // Identical definition in the installed folder: trusted after the reinstall.
+    let fx = fixture("codex", true);
+    fx.fakes.install_path("codex", &fx.plugin_root);
+    fx.hook("codex", "SessionStart", &[]);
+    fx.wait_finished("codex");
+    assert!(
+        !fx.fakes.trust_writes().is_empty(),
+        "{:?}",
+        fx.fakes.log("codex")
+    );
+
+    // A different definition: never trusted.
+    let fx = fixture("codex", false);
+    let hooks = fx.plugin_root.join("hooks/codex.json");
+    let old = fs::read_to_string(&hooks)
+        .unwrap()
+        .replace("--agent codex", "--agent codex --plugin-version 0.0.1");
+    fs::write(&hooks, old).unwrap();
+    fx.fakes.install_path("codex", &fx.plugin_root);
+    fx.hook("codex", "SessionStart", &[]);
+    fx.wait_finished("codex");
+    assert!(fx.fakes.trust_writes().is_empty());
+    assert!(!fx.fakes.log("codex").contains(&"app-server".to_string()));
 }
