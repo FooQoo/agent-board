@@ -130,7 +130,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 
 ## バイナリから出すSkill
 
-`agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、各トピックを出力するコマンドを示します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
+`agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、状況に応じたトピックをいつ実行するかを示します。Claude Codeは`!`コマンドの出力を約30,000文字までしか取り込まず（超えるとプレビューに切り詰めます）、単体テストが本文と各トピックを28,000文字以下に保ちます。増えたときは、状況に応じた節をトピックへ移します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
 
 プラグインの`SKILL.md`は、`name`、`description`、`compatibility`を残し、`allowed-tools: Bash(agboard *)`を加え、本文は`` !`agboard skills` ``の1行です。Claude Codeは、Skillを呼び出すときにこの行をコマンドの出力に置き換えます。`allowed-tools`の規則により、このコマンドと、そのあとのエージェントの`agboard`コマンドは確認なしで実行できます。置き換えが働くのは単純なコマンドだけで、`$(...)`や複合コマンドは置き換わりません。コマンドの埋め込みがないエージェント（Codex）は、その次の文を読み、自分で`agboard skills`を実行します。`remote` Skillは、これまでどおりプラグイン内の静的なファイルです。プロジェクトの`.claude/skills/agent-board`はプラグインのSkillフォルダへのシンボリックリンクなので、このリポジトリ自身のClaude Codeのセッションも、同じ入口と`PATH`の`agboard`を使います。
 
@@ -146,7 +146,7 @@ SessionStartで、Hookは進行表を出したあと、エージェントが設�
 - **記録。** `<data>/plugin-update/<agent>.json`（`hash`、`ok`、`at`、`version`）を、始めに`ok: false`で、終わりにもう一度書きます。同じハッシュについて、失敗または未完了の試行は6時間繰り返しません。そのあいだHookは、自動更新が完了しなかったので`agboard update`を実行するよう伝えます。終わったのにまだ違うプラグインが残る場合（チェックアウトからのビルド）は、24時間繰り返さず、何も言いません。
 - **信頼。** Codexのhookは信頼しません。Codexは信頼をhookの定義に結び付けており、定義はリリースをまたいで変わらないので、Codex向けの通知が`agboard update`を求めるのは、導入済みの`hooks/codex.json`が同梱のものと違うとき（たとえば`--plugin-version`付きのhookからの一度きりの移行）だけです。
 - **導入済みの写しだけ。** Hookが動くのは、プラグインのルートが`plugins/cache`フォルダの中にあるときだけです。エージェントはマーケットプレイスから入れたものをそこに置きます。チェックアウトや`--plugin-dir`の写しには何もしません。
-- **タグの確認。** 既定の取得元では、まず`git ls-remote`でタグ`v<version>`があるかを尋ね、ないと分かったとき（最後のリリースより進んだ開発ビルド）は止めます。追加し直せないマーケットプレイスを消さないためです。`git`がない、またはリモートに届かないときは続けます。
+- **タグの確認。** 既定の取得元では、エージェントのコマンドより前に`git ls-remote --exit-code --tags <repo> refs/tags/v<version>`を実行し（制限時間15秒）、終了コード0のときだけ続けます。タグがない（終了コード2。最後のリリースより進んだ開発ビルド）、ネットワークエラー、タイムアウト、`git`がない、のいずれでも止めて失敗として記録します。追加し直せないマーケットプレイスを消さないためです。次にいつ試すかは、再試行の間隔が決めます。
 - **無言。** 何も出力せず、Hookは終わりを待ちません。
 
 `AGBOARD_PLUGIN_MARKETPLACE`は、`agboard update`と同じく取得元を置き換えます。テストはこれと`tests/support/fake_agents.rs`の偽のエージェントを使います。利用者から見た動きは、[プラグインを更新する](../../guide/delegate/agents.md#update-the-plugin)を参照してください。

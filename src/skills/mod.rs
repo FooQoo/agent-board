@@ -16,6 +16,13 @@ pub const AGENT_BOARD: &str = include_str!("agent-board.md");
 pub const TOPICS: &[(&str, &str)] = &[
     ("file-format", include_str!("topics/file-format.md")),
     ("listening", include_str!("topics/listening.md")),
+    ("planning", include_str!("topics/planning.md")),
+    (
+        "fixed-epic-bodies",
+        include_str!("topics/fixed-epic-bodies.md"),
+    ),
+    ("drafts", include_str!("topics/drafts.md")),
+    ("phone", include_str!("topics/phone.md")),
     ("task-template", include_str!("topics/task-template.md")),
     ("epic-template", include_str!("topics/epic-template.md")),
     (
@@ -90,12 +97,32 @@ mod tests {
         }
     }
 
+    /// Claude Code inlines the output of a `!` command only up to about
+    /// 30,000 characters; a longer output is cut to a short preview and the
+    /// rest goes to a file the model may never read. Keep a margin.
+    const INLINE_LIMIT: usize = 28_000;
+
     #[test]
-    fn the_main_text_names_every_topic() {
-        for (name, _) in TOPICS {
+    fn every_text_stays_under_the_claude_code_injection_limit() {
+        let all = std::iter::once(("the main text", AGENT_BOARD))
+            .chain(TOPICS.iter().map(|(name, text)| (*name, *text)));
+        for (name, text) in all {
+            let chars = text.chars().count();
             assert!(
-                AGENT_BOARD.contains(&format!("agboard skills {name}")),
-                "the main text omits {name}"
+                chars <= INLINE_LIMIT,
+                "{name} has {chars} characters. Claude Code inlines a `!` command's output only up to about 30,000 characters, so keep each text at {INLINE_LIMIT} or fewer: move situational sections into a topic."
+            );
+        }
+    }
+
+    #[test]
+    fn every_topic_is_named_by_the_main_text_or_another_topic() {
+        for (name, _) in TOPICS {
+            let command = format!("agboard skills {name}");
+            assert!(
+                AGENT_BOARD.contains(&command)
+                    || TOPICS.iter().any(|(_, text)| text.contains(&command)),
+                "nothing points at the topic {name}"
             );
         }
     }

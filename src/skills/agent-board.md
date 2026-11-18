@@ -50,7 +50,7 @@ After context compaction, read a fresh progress table before any board-dependent
 
 ### Explicit listen mode
 
-The normal work loop selects a task and finishes that turn. Start the serial listener loop only when the user explicitly asks to listen for tasks. In that mode, follow the listener procedure in `agboard skills listening`: establish one project and a positive idle timeout with the user, use `wait --until task --idle-timeout <seconds> --json`, process one task at a time in this same session, and start the next wait after resolving the current task. The wait command is not a background agent or a task claim. Do not treat a wait result as approval to implement; a `requests` result is a request to accept and plan, not work to start; read the current epic details and task first. The full idle interval with no eligible task exits normally; connection, project, data, and argument failures remain errors.
+Start the serial listener loop only when the user explicitly asks you to listen for tasks. Then run `agboard skills listening` and follow it. Never start it as part of the ordinary work loop; a `wait --until task` result is not approval to implement.
 
 ## 3. Find and edit the shared files
 
@@ -76,26 +76,7 @@ A task's completion conditions live in its frontmatter (`acceptance`), and the b
 
 ### Fixed bodies for BUG and ENHANCEMENT
 
-The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets, even if their display names change. They are exceptions to epic planning and closure below. Initialize an empty body once from the body in `agboard skills bug-epic-template` or `agboard skills enhancement-epic-template`, using the board's language with the same meaning and structure. After initialization, treat the body as read-only unless the user explicitly requests changing its fixed content. Do not replace a non-empty body silently; an explicitly requested replacement must preserve useful existing records in the relevant task bodies.
-
-For these two epics, keep per-task plans, decisions, verification, and results in each `TASK.md` and its history. Do not append task lists or progress to `EPIC.md`, and do not close the epic or add an overall completion summary when its current tasks finish. This rule applies to ordinary work, listening, and resumption. Task order remains configurable through priority frontmatter; preserve it and all other metadata when initializing or explicitly replacing the body. Names, colors, and task membership are unaffected. Other epics keep the normal planning workflow.
-
-1. Create an epic for a body of work, then write its `EPIC.md` from the template in `agboard skills epic-template`:
-
-   ```sh
-   agboard --project "<name>" epic add <EPIC-ID> --name "<formal name>" --actor ai
-   agboard --project "<name>" epic edit <EPIC-ID> --document-file <path>
-   ```
-
-2. Create one task per task, assigned to `ai` or `human`, in the epic, with its task plan from the template in `agboard skills task-template` as the body:
-
-   ```sh
-   agboard --project "<name>" add "<title>" --assignee ai --actor ai --epic <EPIC-ID> --desc-file <path>
-   ```
-
-3. Record the task tasks and their order in the epic's approach section, except for the fixed classification bodies of `BUG` and `ENHANCEMENT` above.
-
-Check the progress table and use `show` when needed to find existing tasks before creating work; do not create duplicates. The owner (`assignee`) is fixed at creation. Create `human` tasks for work the user must do, and read them to understand the shared plan. A task belongs to at most one epic (`edit --epic` / `edit --clear-epic`).
+The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets with fixed bodies, exempt from epic planning and closure. Before you write to either one, run `agboard skills fixed-epic-bodies`.
 
 ### Accept a request
 
@@ -135,25 +116,7 @@ Until you accept, the answer stays in `answers` and the person sees it as waitin
 
 ### Plan a request: AI drafts, questions, then start them yourself
 
-When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, put a plan on the board as AI drafts and let the person see and correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
-
-1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
-2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Everything you create this way is an AI draft (`draft: ai`), the user's tasks too. The board shows the epic's drafts as one proposed plan.
-3. **Ask what you cannot settle.** Ask in one `message ask` call (section 7), with choices and a recommendation where you can, and wait for the answers. List the draft tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A draft that refers to a question without an answer cannot be started: `start` and `epic start` fail with `start_blocked_by_questions`. A question can have no choices and be answered in words.
-4. **Revise.** You may `edit` a draft and `history add` to it. Write the answers into the epic and the tasks, and record what changed. If the answers leave something open, ask again the same way.
-5. **Start the drafts.** When every question is answered and the plan is written up, start them yourself:
-
-   ```sh
-   agboard --project "<name>" start <ID> --actor ai
-   agboard --project "<name>" epic start <EPIC-ID> --actor ai
-   ```
-
-   `mv` and `state` on a draft are refused with `task_is_draft` until then. A person may also start drafts. Tasks a person is still drafting (`draft: human`) stay drafts. Work on other tasks while questions are open.
-6. **Proceed.** After the start, the tasks are ordinary tasks. Work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
-
-After the start, the board cannot stop you from rewriting a started task's contents. Keep to the plan you started: if the work needs a different scope, ask (section 7) instead of changing the tasks silently.
-
-A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task. A task you add to an epic that is already running is a draft too: start it with `start <ID> --actor ai`.
+When a request needs more than one task, run `agboard skills planning` before you register anything. It covers the plan of AI drafts, the questions that change it, and starting the drafts yourself.
 
 ## 5. Lanes and run states
 
@@ -260,7 +223,7 @@ If the board is unavailable, report the connection problem and leave dependent w
 
 ### Open the board on the phone
 
-When the user wants to open the board on their phone, run `agboard --project "<name>" remote --json` with the project from the progress table, and give them the `url` and the `passcode`. `--project` is required; the `url` opens that project; the passcode is the 4-digit code the phone asks for. The command starts nothing: if it fails with `remote_unavailable`, the ngrok connection is not ready, so tell the user why and that they can connect it from the board's **Settings** (or with `agboard serve --monitor ngrok`), and do not invent an address or passcode. The passcode is printed only to you on the user's PC; tell the user that anyone who reads the conversation with it can open the board while the connection is up.
+When the user wants to open the board on the phone, run `agboard skills phone`.
 
 ## 8. Wait and resume
 
@@ -284,10 +247,7 @@ For an explicitly requested serial listener, use the listener procedure in `agbo
 
 ## 9. Drafts and archived tasks
 
-- A task with `"draft": "human"` is being written by the user. `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other tasks and wait for the user to finalize it.
-- Tasks and epics you create start as AI drafts (`"draft": "ai"`), also tasks for the user. You can `edit` them and run `history add`; `mv` and `state` fail with `task_is_draft`. Start them with `start` or `epic start` (`--actor ai`) once their questions are answered; an open question on a draft refuses the start with `start_blocked_by_questions`. A person may start them too.
-- An epic with `"draft": "human"` is being edited by the user. `epic edit`, including `--priority`, fails with `epic_is_draft`. `epic attachment` and moving tasks into or out of the epic still work. Do not edit its `EPIC.md`.
-- Archived tasks are not in the normal snapshot. Writes to them fail with `task_archived`.
+Before you touch a draft or an archived task, run `agboard skills drafts`. Never edit the `TASK.md` of a draft.
 
 ## 10. Boundaries
 

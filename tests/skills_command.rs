@@ -43,8 +43,10 @@ fn skills_prints_the_skill_body_without_frontmatter_and_writes_nothing() {
         "listening",
         "task-template",
         "epic-template",
-        "bug-epic-template",
-        "enhancement-epic-template",
+        "planning",
+        "fixed-epic-bodies",
+        "drafts",
+        "phone",
     ] {
         assert!(
             out.contains(&format!("agboard skills {topic}")),
@@ -58,6 +60,10 @@ fn every_topic_prints_its_text() {
     for (topic, heading) in [
         ("file-format", "# TASK.md and EPIC.md format"),
         ("listening", "# Listen for tasks in one session"),
+        ("planning", "# Plan a request"),
+        ("fixed-epic-bodies", "# Fixed bodies for BUG"),
+        ("drafts", "# Drafts and archived tasks"),
+        ("phone", "# Open the board on the phone"),
         ("task-template", "# New task template"),
         ("epic-template", "# New epic template"),
         ("bug-epic-template", "# Fixed body of the BUG epic"),

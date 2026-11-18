@@ -26,6 +26,9 @@ struct Fixture {
     fakes: FakeAgents,
     /// The folder of the plugin the agent runs.
     plugin_root: PathBuf,
+    /// Whether the hook points the update at a local marketplace (no tag, so
+    /// no tag check) instead of the release tag on GitHub.
+    use_override: bool,
 }
 
 fn copy_dir(from: &Path, to: &Path) {
@@ -72,6 +75,7 @@ fn fixture(agent: &str, edited: bool) -> Fixture {
         marketplace,
         fakes,
         plugin_root,
+        use_override: true,
     }
 }
 
@@ -84,15 +88,18 @@ impl Fixture {
         } else {
             "CLAUDE_PLUGIN_ROOT"
         };
-        let mut child = Command::new(env!("CARGO_BIN_EXE_agboard"))
-            .env_clear()
+        let mut command = Command::new(env!("CARGO_BIN_EXE_agboard"));
+        command.env_clear();
+        if self.use_override {
+            command.env("AGBOARD_PLUGIN_MARKETPLACE", &self.marketplace);
+        }
+        let mut child = command
             .env("HOME", &self.home)
             .env("PATH", &self.fakes.bin)
             .env("TZ", "UTC")
             .env("AGBOARD_HOME", &self.data)
             .env("AGBOARD_AUTOSTART", "0")
             .env("AGBOARD_OPEN_BROWSER", "0")
-            .env("AGBOARD_PLUGIN_MARKETPLACE", &self.marketplace)
             .env(root_var, &self.plugin_root)
             .envs(env.iter().copied())
             .current_dir(&self.home)
@@ -363,4 +370,68 @@ fn a_failing_reinstall_is_recorded_and_not_repeated_at_once() {
     assert!(Fixture::notice(&next).unwrap().contains("did not complete"));
     Fixture::settle();
     assert_eq!(fx.fakes.log("claude").len(), runs);
+}
+
+/// A fake `git` that logs its arguments and exits with the code in
+/// `git.exit` (default 2, "no such tag").
+fn fake_git(fx: &Fixture, exit_code: i32) {
+    let script = format!(
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{state}/git.log'\nexit {exit_code}\n",
+        state = fx.fakes.state.display()
+    );
+    let path = fx.fakes.bin.join("git");
+    fs::write(&path, script).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+fn git_log(fx: &Fixture) -> Vec<String> {
+    fs::read_to_string(fx.fakes.state.join("git.log"))
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn the_tag_is_checked_before_any_agent_command_and_a_missing_tag_stops_the_update() {
+    for exit_code in [2, 128] {
+        // 2: the tag is absent. 128: the remote could not be reached.
+        let mut fx = fixture("claude", true);
+        fx.use_override = false;
+        fake_git(&fx, exit_code);
+        fx.hook("claude", "SessionStart", &[]);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while fx.lock_file("claude").exists() || !fx.state_file("claude").exists() {
+            assert!(Instant::now() < deadline, "the update never ended");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(
+            git_log(&fx),
+            [format!(
+                "ls-remote --exit-code --tags https://github.com/FooQoo/agent-board.git refs/tags/v{VERSION}"
+            )]
+        );
+        // Not even `plugin list` ran, and nothing was removed.
+        assert_eq!(fx.fakes.log("claude"), Vec::<String>::new());
+        let state: Value =
+            serde_json::from_str(&fs::read_to_string(fx.state_file("claude")).unwrap()).unwrap();
+        assert_eq!(state["ok"], false);
+    }
+}
+
+#[test]
+fn a_confirmed_tag_lets_the_update_run() {
+    let mut fx = fixture("claude", true);
+    fx.use_override = false;
+    fake_git(&fx, 0);
+    fx.hook("claude", "SessionStart", &[]);
+    fx.wait_finished("claude");
+    assert_eq!(git_log(&fx).len(), 1);
+    assert!(
+        fx.fakes
+            .log("claude")
+            .iter()
+            .any(|l| l.starts_with("plugin install"))
+    );
 }

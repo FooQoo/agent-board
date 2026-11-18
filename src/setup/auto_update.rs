@@ -167,12 +167,16 @@ fn spawn_background(agent: Agent) -> io::Result<()> {
     command.spawn().map(|_| ())
 }
 
-/// Whether the release tag of this version exists on the remote, as far as
-/// `git` can tell. A dev build whose tag was never pushed would otherwise
-/// remove the marketplace and fail to add it again. Without `git`, or when
-/// the remote cannot be reached, the answer is yes: the install reports its
-/// own failure then.
-pub fn release_tag_exists(
+/// How long the tag check may take.
+const TAG_CHECK_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Whether the release tag of this version is confirmed to exist on the
+/// remote: `git ls-remote --exit-code --tags <repo> refs/tags/<tag>` exits 0
+/// only when the tag is there (2 when absent, 128 on a network error). Without
+/// `git`, on a failure, or after [`TAG_CHECK_TIMEOUT`] the answer is no: a
+/// marketplace that cannot be added again must never be removed. A source
+/// without a tag (the marketplace override) needs no check.
+pub fn release_tag_confirmed(
     source: &super::plugin::Source,
     path_var: Option<&std::ffi::OsStr>,
 ) -> bool {
@@ -180,18 +184,33 @@ pub fn release_tag_exists(
         return true;
     };
     let Some(git) = super::agent_cli::find_on_path("git", path_var) else {
-        return true;
+        return false;
     };
-    let status = Command::new(git)
+    let child = Command::new(git)
         .args(["ls-remote", "--exit-code", "--tags", &source.location])
         .arg(format!("refs/tags/{reference}"))
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status();
-    // `--exit-code` exits 2 when no ref matches.
-    !matches!(status, Ok(status) if status.code() == Some(2))
+        .spawn();
+    let Ok(mut child) = child else {
+        return false;
+    };
+    let deadline = std::time::Instant::now() + TAG_CHECK_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    }
 }
 
 /// The body of `agboard update --agent <agent> --yes --background`: the
@@ -211,14 +230,12 @@ pub fn run_background(env: &SetupEnv, agent: Agent) -> Option<SetupReport> {
         agents: vec![agent],
         dry_run: false,
     };
-    let mut prepared = super::prepare(env, &options).ok()?;
-    let tag_missing = prepared
-        .agents
-        .iter()
-        .any(|plan| plan.active() && !release_tag_exists(&plan.source, env.path_var.as_deref()));
-    if tag_missing {
+    // First of all, before any agent command: the tag must exist.
+    let source = super::plugin::Source::for_version(super::VERSION, env.marketplace_override());
+    if !release_tag_confirmed(&source, env.path_var.as_deref()) {
         return None;
     }
+    let mut prepared = super::prepare(env, &options).ok()?;
     for plan in &mut prepared.agents {
         plan.trust = false;
     }

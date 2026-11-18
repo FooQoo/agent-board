@@ -267,7 +267,7 @@ Neither command waits on a pipe. Without a terminal, or with `--json`, `setup` n
 
 ## Skill text {#skill-text}
 
-`agboard skills` prints the instructions of the `agent-board` skill, and `agboard skills <topic>` prints one reference or template: `file-format`, `listening`, `task-template`, `epic-template`, `bug-epic-template`, or `enhancement-epic-template`. The plugin's `SKILL.md` runs `agboard skills`, so the agent always gets the instructions of the `agboard` you have installed. The command prints Markdown, writes nothing, starts no server, and always exits `0`; a name that is no topic prints the list of topics.
+`agboard skills` prints the instructions of the `agent-board` skill, and `agboard skills <topic>` prints one reference or template: `file-format`, `listening`, `planning`, `fixed-epic-bodies`, `drafts`, `phone`, `task-template`, `epic-template`, `bug-epic-template`, or `enhancement-epic-template`. The plugin's `SKILL.md` runs `agboard skills`, so the agent always gets the instructions of the `agboard` you have installed. The command prints Markdown, writes nothing, starts no server, and always exits `0`; a name that is no topic prints the list of topics.
 
 ## Output and confirmation
 

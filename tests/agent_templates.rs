@@ -11,6 +11,15 @@ fn topic(name: &str) -> &'static str {
         .1
 }
 
+/// The main text and every topic: the whole Skill.
+fn full_skill() -> String {
+    let mut text = agent_board::skills::AGENT_BOARD.to_string();
+    for (_, topic) in agent_board::skills::TOPICS {
+        text.push_str(topic);
+    }
+    text
+}
+
 fn claude() -> Value {
     serde_json::from_str(include_str!("../plugins/agent-board/hooks/claude.json")).unwrap()
 }
@@ -134,7 +143,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
 
 #[test]
 fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
-    let skill = agent_board::skills::AGENT_BOARD;
+    let skill = &full_skill();
     // A request is accepted first, then becomes a plan of AI drafts on the board before any question.
     assert!(
         skill.contains("### Accept a request") && skill.contains("message accept"),
@@ -173,7 +182,7 @@ fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
 
 #[test]
 fn the_skill_asks_on_the_board_and_in_the_chat() {
-    let skill = agent_board::skills::AGENT_BOARD;
+    let skill = &full_skill();
     assert!(
         skill.contains("Every question goes on the board with `message ask`, never only in chat"),
         "every question must go to the board"
