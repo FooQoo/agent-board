@@ -112,7 +112,7 @@ done
 if [ -n "$key" ]; then
   printf '%s' "$key" > "$FAKE_STATE/key_path"
   cp "$key" "$FAKE_STATE/key_seen" 2>/dev/null || true
-  { stat -f %Lp "$key" 2>/dev/null || stat -c %a "$key"; } > "$FAKE_STATE/key_mode"
+  { stat -c %a "$key" 2>/dev/null || stat -f %Lp "$key"; } > "$FAKE_STATE/key_mode"
 fi
 case "$2" in
   submit|info) printf '%s\n' "${FAKE_NOTARY_JSON:-}"; exit "${FAKE_NOTARY_EXIT:-0}" ;;
@@ -142,7 +142,7 @@ case "$1" in
       [ "$passin" = "fixture-cert-pw-not-real" ] || { echo "wrong password" >&2; exit 1; }
       printf '%s' "$out" > "$FAKE_STATE/pem_path"
       printf 'PEM-FIXTURE' > "$out"
-      { stat -f %Lp "$out" 2>/dev/null || stat -c %a "$out"; } > "$FAKE_STATE/pem_mode"
+      { stat -c %a "$out" 2>/dev/null || stat -f %Lp "$out"; } > "$FAKE_STATE/pem_mode"
     else
       printf '%s' "$passout" > "$FAKE_STATE/passout"
       [ -n "$passout" ] || exit 1
