@@ -609,8 +609,9 @@ ol {
   color: var(--r-muted);
 }
 
-/* The loader turns on the board card only; elsewhere it stays still. */
-.card .spinner {
+/* The loader turns on the board card and the phone lane card only; elsewhere it stays still. */
+.card .spinner,
+.monitor-card .spinner {
   animation: spin 1s linear infinite;
 }
 
@@ -621,7 +622,8 @@ ol {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card .spinner {
+  .card .spinner,
+  .monitor-card .spinner {
     animation: none;
   }
 }

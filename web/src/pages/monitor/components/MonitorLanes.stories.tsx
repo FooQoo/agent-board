@@ -248,6 +248,13 @@ export const DoingLane: Story = {
     await expect(
       cardOf(canvasElement, 12).querySelector('[data-agent-status="running"]'),
     ).not.toBeNull();
+    // The running loader turns on the lane card (unless the reader asks for reduced motion).
+    const spinner = cardOf(canvasElement, 12).querySelector('.status-label--running .spinner');
+    await expect(spinner).not.toBeNull();
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    await expect(getComputedStyle(spinner as Element).animationName).toBe(
+      reduced ? 'none' : 'spin',
+    );
   },
 };
 
