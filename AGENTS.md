@@ -31,6 +31,7 @@ Always:
 - Run the verification commands in [Verification](docs/dev/getting-started/pull-request.md#verification) before you finish.
 - Point `AGBOARD_HOME` at a temporary directory in tests and never use port 7420.
 - Never commit machine-specific absolute paths.
+- Talk with the user in the language the user writes in. This covers chat replies and questions to the user, not what goes into the repository: keep code, comments, commit messages, and the English documentation in English as [Conventions](docs/dev/getting-started/pull-request.md#conventions) says.
 
 ## Branches
 
