@@ -12,33 +12,19 @@
   color: var(--r-text);
 }
 
-/* The input box: an outlined field in the input border colour, as tall as its text between a floor and
-   a ceiling, so a short request leaves no empty block and a long one scrolls inside the box. */
+/* The input box takes the shared editor frame; here it is as tall as its text between a floor and a
+   ceiling, so a short request leaves no empty block and a long one scrolls inside the box. */
 .ask-ai__box.editor__box {
   flex: none;
   height: auto;
   min-height: 140px;
   max-height: min(44vh, 360px);
-  padding: 12px 14px;
   overflow-y: auto;
-  border: 1px solid var(--r-input);
-  border-radius: 8px;
-  background: transparent;
   cursor: text;
-}
-
-.ask-ai__box.editor__box:focus-within {
-  border-color: var(--r-accent);
 }
 
 .ask-ai__box .rich-markdown .ProseMirror {
   min-height: 112px;
-}
-
-/* The first block sits on the top padding; a cursor widget may come before it. */
-.ask-ai__box .ProseMirror > :first-child,
-.ask-ai__box .ProseMirror > .ProseMirror-widget:first-child + * {
-  margin-top: 0;
 }
 
 .ask-ai--sheet .ask-ai__box.editor__box {

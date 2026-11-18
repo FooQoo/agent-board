@@ -87,7 +87,8 @@ test('creation and task editing use the same single conditions panel and compact
   await expect(dialog.locator('.editor__counter')).toHaveText('17 / 50,000');
   const label = await dialog.locator('.editor__label-row').boundingBox();
   const text = await editor.locator('p').first().boundingBox();
-  expect(text!.y - label!.y - label!.height).toBeLessThanOrEqual(16);
+  // The label, then the box's frame and its 12px top padding, then the first line.
+  expect(text!.y - label!.y - label!.height).toBeLessThanOrEqual(29);
   await expect(editor.locator('p').first()).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('card-create.png') });
 });
