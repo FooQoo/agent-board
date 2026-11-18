@@ -47,8 +47,9 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 [CIのワークフロー](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml)は、プルリクエストと`main`へのpushのたびに、同じ確認を実行します。
 
 - Rustのジョブは、Linux（`ubuntu-latest`）で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
-- Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。
-- E2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは4つのシャードに分けて並行して実行し、1つのシャードに8分ほどかかるため、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
+- Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。Chromiumとそのシステムライブラリがあらかじめ入っている公式Playwrightコンテナイメージの中で動くため、ブラウザのインストールはしません。
+- E2Eビルドのジョブは、WebのUIとCLI、およびスマホ向けのスペックが使うテスト用バイナリ`monitor_phone_serve`を一度だけビルドし、成果物としてアップロードします。続くE2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは5つのシャードに分け、Playwrightのコンテナイメージの中で並行して実行します。各シャードは成果物をダウンロードして`AGBOARD_E2E_PREBUILT=1`を設定するため、グローバルセットアップはビルドを省き、`AGBOARD_E2E_BINARY`と`AGBOARD_E2E_PHONE_BACKEND`が指すバイナリを使います（イメージにRustのツールチェーンはありません）。どちらのジョブも、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
+- イメージのタグ（`mcr.microsoft.com/playwright:v<バージョン>-noble`、ダイジェストで固定）は、`web/package.json`と`e2e/package.json`のPlaywrightのバージョンと一致させます。Playwrightを更新するときは、同じ変更で`ci.yml`の2つのコンテナのジョブのタグも更新します。
 - カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
 
 プルリクエストに新しいコミットが届くと、実行中のCIは取り消されます。`main`のCIは取り消されず、新しいpushは前の実行が終わるのを待ちます。そのため、マージのたびに最後まで走ったCIが残ります。プルリクエストがマージまたはクローズされると、[Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml)のワークフローがそのプルリクエストの残りのCIとRelease buildを取り消します。これで、`main`のCIが必要とするmacOSのランナーを占有し続けることはありません。
@@ -78,7 +79,7 @@ Playwrightのテストは`e2e/`にあります。初回は`pnpm --dir e2e instal
 
 - ワーカーごとに、一時的なデータ領域と、ポート0で起動した`agboard serve`を1つずつ持ちます。固定のポートは使わないため、2つのチェックアウトで同時に実行できます。
 - ワーカー数の既定値はCPU数の半分です。変えるときは`AGBOARD_E2E_WORKERS`を設定するか、`--workers`を指定します。1つのファイルのテストは同じワーカーのボードを共有するため、1つのワーカーで順に実行されます。
-- 別の`agboard`バイナリを使うときは`AGBOARD_E2E_BINARY`を指定します。`AGBOARD_E2E_HOME`と`AGBOARD_E2E_MAIN_URL`はワーカーのフィクスチャが設定するので、自分では設定しません。
+- 別の`agboard`バイナリを使うときは`AGBOARD_E2E_BINARY`を指定します。`AGBOARD_E2E_PREBUILT=1`（CIで使います）を設定すると、グローバルセットアップはビルドをせず、`AGBOARD_E2E_BINARY`と`AGBOARD_E2E_PHONE_BACKEND`が既存のファイルを指していることを求めます。`AGBOARD_E2E_HOME`と`AGBOARD_E2E_MAIN_URL`はワーカーのフィクスチャが設定するので、自分では設定しません。
 - 結果とトレースは、システムの一時ディレクトリにある`agent-board-e2e-results-<チェックアウト>`に、チェックアウトごとに保存されます。
 
 アプリのテストを書くときは、次の点を守ります。
