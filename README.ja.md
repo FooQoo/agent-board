@@ -105,14 +105,13 @@ agboard serve
 
 ## 更新する
 
-更新は2段階です。先にコマンドを更新し、続けてAgent Boardプラグインを同じ版にそろえます。
+コマンドを更新します。Agent Boardプラグインはそれに追従します。
 
 ```sh
 brew upgrade fooqoo/tap/agboard
-agboard update
 ```
 
-`agboard update`は、変更内容を表示して、実行する前に確認します。`agboard update --yes`は、その質問にあらかじめ答えます。プラグインとコマンドの版が違うときは、新しいエージェントのセッションが`agboard update`の実行を促します。更新したら、`agboard serve`を再起動してください。
+プラグインは自分で更新されます。新しいエージェントのセッションが始まるとき、プラグインが`agboard`の同梱のものと違えば、バックグラウンドで入れ直し、次のセッションから有効になります。Codexは新しいhookを信頼するため、また自動更新が終わらなかったときは、自分で`agboard update`を実行してください。変更内容を表示して、実行する前に確認します。`agboard update --yes`は、その質問にあらかじめ答えます。更新したら、`agboard serve`を再起動してください。
 
 ## 機能の提供段階
 

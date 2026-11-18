@@ -42,7 +42,13 @@ Writing the files does not mean the agent has loaded them. Start a new Claude Co
 
 ### Update the plugin {#update-the-plugin}
 
-After `brew upgrade fooqoo/tap/agboard`, bring the plugin to the new version:
+After `brew upgrade fooqoo/tap/agboard`, the plugin updates itself. When a new agent session starts, the Hook compares the plugin the agent runs with the one your `agboard` ships. If they differ, it reinstalls the plugin from the tag of your `agboard` version in the background, and the agent tells you so; the new plugin applies from the next session. Nothing is asked. For Codex, the update also marks the Agent Board hooks as trusted, but only when the hook definition it installed is exactly the one your `agboard` ships; your consent in `agboard setup` covers trusting Agent Board's own hook. A changed or unknown definition is never trusted. This is the same reinstall that `agboard update` does, so you can also run it yourself, which is needed in these cases:
+
+- **Codex, when the hook definition is not the one `agboard` ships.** Codex runs a plugin's hooks only after they are trusted, and the trust is tied to the hook definition. The definition rarely changes, and the automatic update trusts only the definition `agboard` ships. If the installed one differs, nothing is trusted and the agent tells you: run `agboard update` once (it asks the same question as `setup`).
+- **The automatic update could not finish.** The agent then tells you that it did not complete (for example, no network to GitHub). The update is not tried again for six hours; run `agboard update` to try now.
+- **The plugin is broken or was changed by hand.** `agboard update` always reinstalls it.
+
+To turn the automatic update off, set `AGBOARD_NO_PLUGIN_AUTO_UPDATE=1` in the environment of the agent.
 
 ```sh
 agboard update
@@ -51,11 +57,10 @@ agboard update --yes
 
 `update` handles every agent that has the plugin; `--agent` limits it to one. It moves the marketplace to the tag of the new version, installs the new plugin, and trusts the new Codex hooks again. It shows the plan and asks the same way `setup` does; `--yes` answers in advance and `--dry-run` shows the plan only. It changes no settings file. An agent without the plugin is skipped with a note to run `agboard setup`.
 
-You do not have to remember this. When the plugin and the command differ, a new agent session tells the agent to ask you to run `agboard update`.
 
 ### What the hook does
 
-- **Folder resolution.** The hook command is fixed, `agboard hook --agent claude --plugin-version <version>`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A folder with no binding at all is not an error: the hook prints nothing and exits normally, so the Hook does not disturb work in other folders. A broken binding, a bound project that was deleted, or an unreadable `cwd` returns `AGBOARD_ERROR`; the hook never guesses another project.
+- **Folder resolution.** The hook command is fixed, `agboard hook --agent claude`, with no project name or session ID. It reads `cwd` from its input and uses the nearest registered ancestor folder; an explicit `--project NAME` overrides the binding. A folder with no binding at all is not an error: the hook prints nothing and exits normally, so the Hook does not disturb work in other folders. A broken binding, a bound project that was deleted, or an unreadable `cwd` returns `AGBOARD_ERROR`; the hook never guesses another project.
 - **Progress table.** The hook supplies the same concise table as `agboard progress`. Done, archived, and Pending tasks are left out unless you add `--include-pending` or `--include-done COUNT` to the hook command (see [Epics and progress](../watch/epics)). If the table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes.
 
 ### What agents may edit
@@ -162,7 +167,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 
 The timeout is required and must be from 1 to 86,400 seconds; there is no default. A task already in Todo is returned immediately, so tasks created before listening are included. An AI task already in Doing is also eligible when its `agentStatus` is `idle`. Before starting or resuming the listener, inspect AI tasks by `agentStatus`: if any task is `running` or `pending`, resolve that work first. A Doing lane by itself does not block the listener. Each successful call returns one task. Finish or pause that task, then call `wait` again in the same session to take the next one. The selector follows the same order as the progress table: epics sorted by ID, each epic's saved task priority and then task ID, followed by ungrouped tasks by ID. It selects only AI-owned Todo/Doing tasks with `agentStatus: idle` that are non-draft and non-archived. It does not claim or edit the task; read its epic's `EPIC.md` when it has one, its body, attachments, and current state before deciding whether its work is approved and ready to start. Keep ordinary manual task creation available; it creates the same kind of task the listener can later pick up.
 
-Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
+Use the listener procedure of the agent-board skill (printed by `agboard skills listening`) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
 
 `idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](../reference/cli#wait-for-changes-or-a-task) for the output and error codes.
 

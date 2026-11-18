@@ -61,6 +61,7 @@ impl Cli {
                 | Command::Setup(_)
                 | Command::Update(_)
                 | Command::Hook(_)
+                | Command::Skills(_)
                 | Command::Progress(_)
                 | Command::Open(_),
                 None,

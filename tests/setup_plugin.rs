@@ -384,3 +384,64 @@ fn setup_needs_no_project_and_writes_inside_the_given_homes_only() {
     assert!(!fx.home.join(".claude").exists());
     assert!(!fx.home.join(".codex/rules").exists());
 }
+
+/// A copy of the plugin folder, with `extra` appended to its `README.md`
+/// when given, standing in for the folder an agent installed.
+fn plugin_copy(into: &Path, extra: Option<&str>) -> PathBuf {
+    fn copy(from: &Path, to: &Path) {
+        fs::create_dir_all(to).unwrap();
+        for entry in fs::read_dir(from).unwrap() {
+            let entry = entry.unwrap();
+            let target = to.join(entry.file_name());
+            if entry.file_type().unwrap().is_dir() {
+                copy(&entry.path(), &target);
+            } else {
+                fs::copy(entry.path(), target).unwrap();
+            }
+        }
+    }
+    let root = into.join("installed-plugin");
+    copy(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("plugins/agent-board"),
+        &root,
+    );
+    if let Some(extra) = extra {
+        let readme = root.join("README.md");
+        let text = fs::read_to_string(&readme).unwrap();
+        fs::write(readme, format!("{text}{extra}")).unwrap();
+    }
+    root
+}
+
+#[test]
+fn setup_skips_a_plugin_whose_files_match_and_reinstalls_one_whose_files_differ() {
+    let marketplace = format!("{REPOSITORY}#v{VERSION} --json");
+    let fx = fixture(&["claude"]);
+    // Same version, same files: nothing to install.
+    fx.fakes.preinstall("claude", VERSION, &marketplace);
+    fx.fakes
+        .install_path("claude", &plugin_copy(fx._tmp.path(), None));
+    let (code, json) = fx.json(&[], &["setup", "--agent", "claude", "--yes"]);
+    assert_eq!(code, 0, "{json}");
+    assert_eq!(fx.fakes.log("claude"), ["plugin list --json"]);
+    assert_eq!(
+        fx.agent(&json, "claude")["plugin"]["action"],
+        format!("version {VERSION} is installed")
+    );
+
+    // Same version, other files: the plugin is installed again.
+    let fx = fixture(&["claude"]);
+    fx.fakes.preinstall("claude", VERSION, &marketplace);
+    fx.fakes
+        .install_path("claude", &plugin_copy(fx._tmp.path(), Some("\nedited\n")));
+    let (code, json) = fx.json(&[], &["setup", "--agent", "claude", "--yes"]);
+    assert_eq!(code, 0, "{json}");
+    assert!(
+        fx.fakes
+            .log("claude")
+            .iter()
+            .any(|line| line.starts_with("plugin install")),
+        "{:?}",
+        fx.fakes.log("claude")
+    );
+}

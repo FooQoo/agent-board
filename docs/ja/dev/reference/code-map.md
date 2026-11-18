@@ -74,14 +74,15 @@
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
-- `plugins/agent-board/`: Agent Boardプラグインです。マニフェスト、`skills/agent-board/`と`skills/remote/`のエージェントのスキル、`hooks/`の各エージェントのHookを置きます。
+- `plugins/agent-board/`: Agent Boardプラグインです。マニフェスト、`skills/agent-board/`の`agent-board`スキルの薄い入口、`skills/remote/`の`remote`スキル、`hooks/`の各エージェントのHookを置きます。
 - `.agents/plugins/marketplace.json`と`.claude-plugin/marketplace.json`: CodexとClaude Codeのマーケットプレイスのカタログです。
 
 ### プラグインのsetupとupdate
 
 - `src/setup/`: `mod.rs`（エージェントとオプション）、`prepare.rs`（読み取りだけの計画）、`execute.rs`（計画の実行）、`report.rs`（テキストとJSONの結果、終了コード）。`plan.rs`・`codex.rs`・`claude.rs`が設定の変更を求め、`apply.rs`と`apply/files.rs`がバックアップを取りながら書き込みます。`env.rs`はパスを解決し、`agent_cli.rs`はエージェントのコマンドを実行し、`plugin.rs`はマーケットプレイスからプラグインを導入し、`trust.rs`は`codex app-server`を通してCodexのhookを信頼します。
 - `src/cli/commands/setup.rs`: `agboard setup`と`agboard update`のオプション、エージェントの選択、確認の質問。
-- `src/agent/hook_version.rs`: Hookによるプラグインの版の確認。
+- `src/skills/`: `agboard skills`が出力する`agent-board`スキルの本文（`agent-board.md`、`topics/`）。
+- `src/plugin_hash.rs`、`src/setup/auto_update.rs`、`src/setup/auto_update/`: プラグインの内容のハッシュ（`build.rs`が計算）と、Hookの自動更新、そのロックと記録。`tests/plugin_auto_update.rs`と`tests/skills_command.rs`がテストします。
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
 - `src/cli/commands/message/`と`src/cli/args/message.rs`: `agboard message`の各コマンド、そのJSON入力（`input.rs`）、`message ask`と`message wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/message_wait.rs`です。
 - `web/src/features/tasks/messages/`: メッセージの一覧。`model/messages.ts`はタブ・件数・`canSendAnswer`、`api.ts`はメッセージの読み出しと回答・取り下げの送信、`MessageBand.tsx`は件数を示す帯（PCのボードとスマホ画面で共通）、`MessageCenter.tsx`は帯と一覧をつなぎ、`MessageRows.tsx`は行を描き、`MessagesSurface.tsx`は一覧・質問・依頼をモーダルまたは下からのシートで表示します。`web/src/features/tasks/answer/`は質問と回答の欄（`DecisionQuestion`・`DecisionAnswerFields`）を描き、`web/src/app/model/useMessagesController.ts`は一覧をPCのボードにつなぎます。

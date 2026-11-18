@@ -79,7 +79,7 @@ fn write_plugin(root: &Path, version: &str) {
         fs::write(
             plugin.join(format!("hooks/{agent}.json")),
             format!(
-                r#"{{"hooks":{{"SessionStart":[{{"hooks":[{{"type":"command","command":"agboard hook --agent {agent} --plugin-version {version}"}}]}}]}}}}"#
+                r#"{{"hooks":{{"SessionStart":[{{"hooks":[{{"type":"command","command":"agboard hook --agent {agent}"}}]}}]}}}}"#
             ),
         )
         .unwrap();
@@ -201,7 +201,7 @@ fn check_version_rejects_a_plugin_of_another_version() {
     write_plugin(root, "1.2.3");
     fs::write(
         root.join("plugins/agent-board/hooks/codex.json"),
-        r#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"agboard hook --agent codex"}]}]}}"#,
+        r#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"agboard hook --agent codex --plugin-version 1.2.3"}]}]}}"#,
     )
     .unwrap();
     let out = python(

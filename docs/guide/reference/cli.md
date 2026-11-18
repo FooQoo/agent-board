@@ -252,7 +252,9 @@ agboard update --yes
 | Command | What it does | Exit codes |
 | --- | --- | --- |
 | `agboard setup` | Creates the data folder, asks which agents to set up, shows the plan, and after you answer `y` installs the plugin, lets the agents use the shared folder, and trusts the Agent Board hooks in Codex. Needs no project. | `0` success, nothing to change, or a cancel. `1` an agent failed, or no agent could be set up. `2` bad command line, or missing options without a terminal. |
-| `agboard update` | Moves the plugin of every agent that has it to this version and trusts the new Codex hooks. Shows the plan and asks first. | `0` success, nothing to update, or a cancel. `1` an agent failed. `2` bad command line, or missing options without a terminal. |
+| `agboard update` | Moves the plugin of every agent that has it to this version and trusts the new Codex hooks. Shows the plan and asks first. Needed after an upgrade only when the automatic update cannot do it (Codex hook trust) or to repair the plugin; see [Update the plugin](../delegate/agents#update-the-plugin). | `0` success, nothing to update, or a cancel. `1` an agent failed. `2` bad command line, or missing options without a terminal. |
+
+`setup` installs the plugin again only when it is missing or its files differ from the ones your `agboard` ships; `update` always reinstalls it.
 
 Both commands take these options:
 
@@ -262,6 +264,10 @@ Both commands take these options:
 - `--json` prints machine-readable output.
 
 Neither command waits on a pipe. Without a terminal, or with `--json`, `setup` needs `--agent`, and both need `--yes` or `--dry-run`; otherwise they exit with `2`. An agent whose command is not on `PATH` is skipped with the reason. Failure reasons go to the error output. See [Data and backups](../operations/data#set-up-the-shared-folder) for the settings files they change and how they back them up.
+
+## Skill text {#skill-text}
+
+`agboard skills` prints the instructions of the `agent-board` skill, and `agboard skills <topic>` prints one reference or template: `file-format`, `listening`, `planning`, `fixed-epic-bodies`, `drafts`, `phone`, `task-template`, `epic-template`, `bug-epic-template`, or `enhancement-epic-template`. The plugin's `SKILL.md` runs `agboard skills`, so the agent always gets the instructions of the `agboard` you have installed. The command prints Markdown, writes nothing, starts no server, and always exits `0`; a name that is no topic prints the list of topics.
 
 ## Output and confirmation
 

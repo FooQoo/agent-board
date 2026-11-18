@@ -129,13 +129,19 @@ fn plan_agent(
         ));
         return Ok(planned);
     };
-    match plugin::installed_version(agent, &program) {
-        Ok(installed) => planned.installed = installed,
+    let current = match plugin::installed(agent, &program, env.codex_dir().ok().as_deref()) {
+        Ok(installed) => {
+            let current = installed
+                .as_ref()
+                .is_some_and(plugin::Installed::is_current);
+            planned.installed = installed.map(|plugin| plugin.version);
+            current
+        }
         Err(reason) => {
             planned.failed = Some(reason);
             return Ok(planned);
         }
-    }
+    };
     match mode {
         Mode::Update if planned.installed.is_none() => {
             planned.skipped = Some(format!(
@@ -146,7 +152,7 @@ fn plan_agent(
         }
         Mode::Update => planned.install = true,
         Mode::Setup => {
-            planned.install = forced || planned.installed.as_deref() != Some(VERSION);
+            planned.install = forced || !current;
             plan_files(env, agent, root, &mut planned)?;
         }
     }

@@ -6,7 +6,7 @@
 
 | 部分 | 場所 | 役割 |
 | --- | --- | --- |
-| スキル`agent-board` | `plugins/agent-board/skills/agent-board/SKILL.md` | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
+| スキル`agent-board` | `src/skills/agent-board.md`と`src/skills/topics/`。`agboard skills`が出力する。プラグインの`SKILL.md`はそのコマンドを実行するだけ | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
 | スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
 | Hook |（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
@@ -17,7 +17,7 @@
 
 エージェントは、開始・意味のある進捗・判断・検証・中断・再開のときに、項目ごとの承認なしで進捗を追加し、操作時に自動で記録された履歴は重複して追加しません。本文には計画と簡潔な検証結果を記録します。見た目の確認が有用な場合は画像を添付できます。
 
-スキルでは、`BUG`と`ENHANCEMENT`を継続的な分類用エピックとし、本文を固定する例外を設けます。正本の本文はスキル内の`assets/BUG-EPIC.md`と`assets/ENHANCEMENT-EPIC.md`です。ボードの言語で一度だけ初期設定し、その後の通常の作業とリッスンでは、計画と結果を各タスクだけに記録します。空でない本文の置き換えにはユーザーの明示的な依頼を必要とし、有用な旧本文は関連するタスクの本文に残します。優先順のfrontmatterは引き続き変更できます。サーバー側の編集禁止機能ではありません。
+スキルでは、`BUG`と`ENHANCEMENT`を継続的な分類用エピックとし、本文を固定する例外を設けます。正本の本文は、`agboard skills`のトピック`bug-epic-template`と`enhancement-epic-template`です。ボードの言語で一度だけ初期設定し、その後の通常の作業とリッスンでは、計画と結果を各タスクだけに記録します。空でない本文の置き換えにはユーザーの明示的な依頼を必要とし、有用な旧本文は関連するタスクの本文に残します。優先順のfrontmatterは引き続き変更できます。サーバー側の編集禁止機能ではありません。
 
 ## 進行表とHook
 
@@ -27,8 +27,8 @@
 
 Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登録済みの祖先からプロジェクトを識別します。セッションIDは使わず、登録がないときに全プロジェクトを選ぶことも、最も近い登録が壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。登録がまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
 
-- **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude --plugin-version <version>`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
-- **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex --plugin-version <version>`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。
+- **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
+- **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。
 - **上限。** 一覧は256 KiB、一回の実行は10秒が上限です。Codexの`additionalContextLimit`は0にし、Hookが自分の上限を守ります。超えたら`context_too_large`を報告し、切り詰めて成功として報告することはありません。一覧を作れない、または入力を読めないときは、Hookがそれを伝え、元のツールの結果を保ちます。
 - **入力。** Hookは、大きさにかかわらず入力を最後まで読み、使うのは`hook_event_name`と`cwd`だけです。エージェントはPostToolUseのたびにツールの結果をまるごと送るので、画像を読んだあとや長いコマンドの出力のあとは入力が大きくなります。ツールの入力と結果は読み飛ばし、残したり渡したりしません。
 - **安全性。** コマンドは固定で、タスクのテキストや`tool_input`から何も組み立てません。Hookがエージェントのツールを呼ぶことも、自分自身を起動することも、ボードのファイルを変えることもありません。進行表を加えるとき、サーバーが動いていなければ、待たずに裏で起動します。`agboard stop`で止めた後と`AGBOARD_AUTOSTART=0`のときは起動しません（[サーバーと画面](./server-and-ui.md#コマンドがサーバーを起動する手順)を参照）。エージェントがファイルを編集するだけでも、自動Doneが働くようにするためです。こうして起動したサーバーは、そのプロジェクトのボードをブラウザーで一度だけ開きます（[ボードを開く](./server-and-ui.md#opening-the-board)を参照）。パスはローカルのCLIとHookの出力にだけ現れ、リモート向けのJSONには出しません。
@@ -73,7 +73,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 人からの依頼がエージェントに届く場所は三つあります。進行表の`requests`配列、Hookが出す同じ進行表、そして`wait --until task`の`requests`結果です。依頼は、エージェントが`message accept`で引き受けるか、人が取り下げるまで未処理です。依頼が新しく届く、受理される、取り下げられると、プロジェクトの`messages`リソースが変わるので、待ち受け中のエージェントは新しいタスクと同じ`changed`イベントで起きます。waitはタスクより先に未処理の依頼を返し、どれかが受理されるまで同じ依頼を返し続けます。受理は明示の操作なので、waitが返しただけで依頼が引き受けられることはありません。未処理の依頼があってもタスクはPendingになりません。Pendingになるのは、未回答の質問か、読めないメッセージファイルがあるときだけです。
 
-一つのセッションで続けて作業する手順として、タスク情報の補完、計画の確認、回答待ち、直列処理、中断後の復帰を[agent-boardスキルのリッスン手順](https://github.com/FooQoo/agent-board/blob/main/plugins/agent-board/skills/agent-board/references/listening.md)に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
+一つのセッションで続けて作業する手順として、タスク情報の補完、計画の確認、回答待ち、直列処理、中断後の復帰をリッスン手順（`agboard skills listening`、元は`src/skills/topics/listening.md`）に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
 ## 自動Done
 
@@ -97,18 +97,18 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 ## プラグイン
 
-SkillとHookは、このリポジトリのマーケットプレイスから、1つのプラグイン`agent-board`として配布します。どちらのエージェントも自分のプラグインのコマンドで導入するので、agboardはファイルの写しを埋め込みません。
+SkillとHookは、このリポジトリのマーケットプレイスから、1つのプラグイン`agent-board`として配布します。どちらのエージェントも自分のプラグインのコマンドで導入するので、agboardはHookやマニフェストのファイルの写しを埋め込みません。例外はSkillの本文で、バイナリが埋め込みます（[バイナリから出すSkill](#バイナリから出すskill)）。プラグインのSkillは、`agboard`に本文を尋ねる入口だけです。
 
 | パス | 内容 |
 | --- | --- |
 | `.agents/plugins/marketplace.json` | Codexのマーケットプレイスのカタログ。名前は`agent-board`。 |
 | `.claude-plugin/marketplace.json` | Claude Codeのマーケットプレイスのカタログ。名前は`agent-board`。 |
 | `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | プラグインのマニフェスト。 |
-| `plugins/agent-board/skills/agent-board/` | Skill。`SKILL.md`、`references/`、`assets/`。 |
+| `plugins/agent-board/skills/agent-board/` | Skillの薄い入口。`SKILL.md`のみ。 |
 | `plugins/agent-board/skills/remote/` | `remote` Skill。`SKILL.md`のみ。 |
 | `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | 各エージェントのHook。 |
 
-両方のマニフェストのプラグインの版と、両方のHookのコマンドの`--plugin-version`は、クレートの版と同じです。`tests/plugin_layout.rs`と`scripts/release/check-version.py`がこれを確かめるので、リリースのタグには、常にバイナリと同じ版のプラグインが入っています。
+両方のマニフェストのプラグインの版はクレートの版と同じで、Hookのコマンドは版を持たず、`agboard hook --agent <agent>`そのものです。`tests/plugin_layout.rs`と`scripts/release/check-version.py`がこれを確かめるので、リリースのタグには、常にバイナリと同じ版のプラグインが入っています。
 
 ## Hookのスキップとエラー
 
@@ -126,11 +126,30 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 | `cwd`が存在しない、または読めない | `hook_cwd_unavailable`。スキップにはしません。 |
 | 明示した`--project` | 指定したプロジェクトを優先します。見つからなければ`project_not_found`。 |
 
-一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、ネットワークの利用も設定の書き込みもしません。サーバーの起動だけが、Hookが起こす変化です。出す通知は、セッション開始時の[プラグインの版の確認](#プラグインの版の確認)だけです。
+一覧256 KiB、10秒の制限、イベントの許可リスト、固定コマンドは変わりません。Hookは、ネットワークの利用も設定の書き込みもしません。Hookが起こす変化は、サーバーの起動と、プラグインが違うときにバックグラウンドで始める[プラグインの自動更新](#プラグインの自動更新)です。出す通知は、その更新がセッション開始時に出すものだけです。古いプラグインは、いまもHookを`--plugin-version <version>`付きで実行します。このオプションは受け付けて無視します。
 
-## プラグインの版の確認
+## バイナリから出すSkill
 
-Hookのコマンドは、`--plugin-version`でプラグインの版を示します。`src/agent/hook_version.rs`は、これを実行中の`agboard`の版と比べます。違うときは、SessionStartの出力に`AGBOARD_NOTICE`を加え、`agboard update`を実行して新しいセッションを始めるよう利用者に伝えることをエージェントに求めます。ほかのイベントには通知を付けないので、通知はセッションごとに一度だけ出ます。この確認では何も読み書きせず、通常のコマンドが更新通知を出すこともありません。
+`agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、状況に応じたトピックをいつ実行するかを示します。Claude Codeは`!`コマンドの出力を約30,000文字までしか取り込まず（超えるとプレビューに切り詰めます）、単体テストが本文と各トピックを28,000文字以下に保ちます。増えたときは、状況に応じた節をトピックへ移します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
+
+プラグインの`SKILL.md`は、`name`、`description`、`compatibility`を残し、`allowed-tools: Bash(agboard *)`を加え、本文は`` !`agboard skills` ``の1行です。Claude Codeは、Skillを呼び出すときにこの行をコマンドの出力に置き換えます。`allowed-tools`の規則により、このコマンドと、そのあとのエージェントの`agboard`コマンドは確認なしで実行できます。置き換えが働くのは単純なコマンドだけで、`$(...)`や複合コマンドは置き換わりません。コマンドの埋め込みがないエージェント（Codex）は、その次の文を読み、自分で`agboard skills`を実行します。`remote` Skillは、これまでどおりプラグイン内の静的なファイルです。プロジェクトの`.claude/skills/agent-board`はプラグインのSkillフォルダへのシンボリックリンクなので、このリポジトリ自身のClaude Codeのセッションも、同じ入口と`PATH`の`agboard`を使います。
+
+## プラグインの自動更新
+
+どちらのエージェントも、プラグインは、導入したタグのマーケットプレイスの写しとして持ちます。そのため新しい`agboard`にしても、古いプラグインはそのまま残ります。ビルドスクリプト（`build.rs`）は`plugins/agent-board/`のすべてのファイル（`.DS_Store`を除く）をハッシュし、ファイルの一覧とハッシュを埋め込みます（`src/plugin_hash.rs`、`src/setup/auto_update.rs`）。ハッシュは、各ファイルの相対パスと内容に対するFNV-1aです。マニフェストにはクレートの版が入っているので、リリースごとにハッシュが変わります。
+
+SessionStartで、Hookは進行表を出したあと、エージェントが設定するルートの環境変数から導入済みのプラグインを見つけます（Claude Codeは`CLAUDE_PLUGIN_ROOT`、Codexは`PLUGIN_ROOT`で、なければ`CLAUDE_PLUGIN_ROOT`）。そこにある同じ相対パスのファイルをハッシュして比べます（エージェントが加えたファイルは無視し、足りないファイルは違いとみなします）。一致する、環境変数がない・空、ほかのHookイベント、`AGBOARD_NO_PLUGIN_AUTO_UPDATE`が`0`以外に設定されている、のいずれでも何もしません。違うときは`agboard update --agent <agent> --yes --background`を、切り離したプロセス（`setsid`、入出力なし）として始めるので、Hookは制限時間内に戻ります。そして`AGBOARD_NOTICE`を加えます。プラグインを`agboard`の版へ更新中で、次のセッションから有効になる、という内容です。フォルダが未登録のときは、この通知が出力のすべてになります。
+
+バックグラウンドの実行は、そのエージェントについて`agboard update`と同じことをします。違いは次のとおりです。
+
+- **ロック。** `<data>/plugin-update/<agent>.lock`を排他的に作ります（15分より古いロックは古いものとして置き換えます）。同時に開いたセッションは、有効なロックを見て何もしないので、プラグインの入れ直しは一度だけです。
+- **記録。** `<data>/plugin-update/<agent>.json`（`hash`、`ok`、`at`、`version`）を、始めに`ok: false`で、終わりにもう一度書きます。同じハッシュについて、失敗または未完了の試行は6時間繰り返しません。そのあいだHookは、自動更新が完了しなかったので`agboard update`を実行するよう伝えます。終わったのにまだ違うプラグインが残る場合（チェックアウトからのビルド）は、24時間繰り返さず、何も言いません。
+- **信頼。** Codexは信頼をhookの定義に結び付けており、定義はリリースをまたいで変わりません。入れ直しのあと、バックグラウンドの実行は`plugin list --json`でCodexがプラグインを入れたフォルダを調べ、導入済みの`hooks/codex.json`がこのバイナリに埋め込んだ定義とバイト単位で同一のときだけ、`agboard update --yes`と同じやり方（`trust.rs`）でAgent Boardのhookを信頼済みにします。導入先のフォルダが分からない、定義が違う（たとえば`--plugin-version`付きのhookからの一度きりの移行）、信頼に失敗した、のいずれでも何も信頼せず、試行を失敗として記録します。`agboard setup`で得た同意は、Agent Board自身のhookを信頼することを含みます。変わった定義や未知の定義は信頼せず、利用者が代わりに`agboard update`を実行します。通知がこれを伝えるのは、定義が変わったときだけです。
+- **導入済みの写しだけ。** Hookが動くのは、プラグインのルートが`plugins/cache`フォルダの中にあるときだけです。エージェントはマーケットプレイスから入れたものをそこに置きます。チェックアウトや`--plugin-dir`の写しには何もしません。
+- **タグの確認。** 既定の取得元では、エージェントのコマンドより前に`git ls-remote --exit-code --tags <repo> refs/tags/v<version>`を実行し（制限時間15秒）、終了コード0のときだけ続けます。タグがない（終了コード2。最後のリリースより進んだ開発ビルド）、ネットワークエラー、タイムアウト、`git`がない、のいずれでも止めて失敗として記録します。追加し直せないマーケットプレイスを消さないためです。次にいつ試すかは、再試行の間隔が決めます。
+- **無言。** 何も出力せず、Hookは終わりを待ちません。
+
+`AGBOARD_PLUGIN_MARKETPLACE`は、`agboard update`と同じく取得元を置き換えます。テストはこれと`tests/support/fake_agents.rs`の偽のエージェントを使います。利用者から見た動きは、[プラグインを更新する](../../guide/delegate/agents.md#update-the-plugin)を参照してください。
 
 ## setupとupdate
 
@@ -138,7 +157,7 @@ Hookのコマンドは、`--plugin-version`でプラグインの版を示しま�
 
 実行は2つの段階に分かれます。
 
-1. **準備（読み取りのみ）。** `prepare.rs`が、各エージェントのコマンドを`PATH`から探し、導入済みのプラグインの版を`plugin list --json`で読み、`setup`のときは設定ファイルを読んで変更を計画します。コマンドがないエージェントは、理由を付けて飛ばします。`update`は、プラグインがないエージェントを飛ばします。使えない設定ファイルがあれば、何も書く前に実行全体を止めます。dry runはこの段階で終わるので、同じ検証を使います。
+1. **準備（読み取りのみ）。** `prepare.rs`が、各エージェントのコマンドを`PATH`から探し、導入済みのプラグインを`plugin list --json`で読み（版と、一覧が導入先のフォルダを示すときは、そのファイルが同梱のプラグインと同じハッシュになるか）、`setup`のときは設定ファイルを読んで変更を計画します。コマンドがないエージェントは、理由を付けて飛ばします。`update`は、プラグインがないエージェントを飛ばします。使えない設定ファイルがあれば、何も書く前に実行全体を止めます。dry runはこの段階で終わるので、同じ検証を使います。`setup`は、プラグインがない、またはファイルが同梱のものと違うときに導入を計画し、そうでなければ飛ばします（フォルダが分からないときは版で判断します）。`update`は常に入れ直します。
 2. **実行。** 利用者が同意したら、`execute.rs`が共有フォルダを作り、設定ファイルをすべて書くか、1つも書きません。続いて各エージェントのプラグインのコマンドを実行し、Codexではhookを信頼します。この段階での失敗は、そのエージェントだけを止めます。書き終えたファイルはそれだけで正しく、コマンドを実行し直せるので、そのまま残します。
 
 各部分の役割は次のとおりです。

@@ -4,7 +4,7 @@
 //! A marketplace added at another tag is removed and added again, which is how
 //! both agents move a marketplace to a new tag.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
@@ -51,9 +51,39 @@ impl Source {
     }
 }
 
-/// The installed version of the plugin, from `plugin list --json`. `None`
-/// when it is not installed.
-pub fn installed_version(agent: Agent, program: &Path) -> Result<Option<String>, String> {
+/// The plugin as `plugin list --json` reports it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Installed {
+    pub version: String,
+    /// The folder the agent installed it into, when the listing names one
+    /// (`installPath`, or `path`). Without it only the version is known.
+    pub path: Option<PathBuf>,
+}
+
+impl Installed {
+    /// Whether the installed plugin is the one this agboard ships: the same
+    /// files when the folder is known, else the same version.
+    pub fn is_current(&self) -> bool {
+        match &self.path {
+            Some(path) => super::auto_update::installed_matches(path),
+            None => self.version == super::VERSION,
+        }
+    }
+}
+
+/// The installed plugin, from `plugin list --json`. `None` when it is not
+/// installed.
+///
+/// `codex_dir` is Codex's folder (`CODEX_HOME`). Codex's listing names no
+/// install folder, so the installed copy is looked for in its plugin cache,
+/// `<codex_dir>/plugins/cache/<marketplace>/<name>/<version>`, when that
+/// folder exists. The listing's `source.path` is the marketplace checkout,
+/// not the installed copy, and is never used.
+pub fn installed(
+    agent: Agent,
+    program: &Path,
+    codex_dir: Option<&Path>,
+) -> Result<Option<Installed>, String> {
     let output = call(program, &["plugin", "list", "--json"], None)?;
     let value: Value = serde_json::from_str(&output.stdout).map_err(|error| {
         format!(
@@ -73,10 +103,26 @@ pub fn installed_version(agent: Agent, program: &Path) -> Result<Option<String>,
                 .find(|item| item.get(id_key).and_then(Value::as_str) == Some(PLUGIN_ID))
         })
         .map(|item| {
-            item.get("version")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string()
+            let text = |key: &str| item.get(key).and_then(Value::as_str);
+            let version = text("version").unwrap_or("unknown").to_string();
+            let listed = ["installPath", "path"]
+                .iter()
+                .find_map(|key| text(key))
+                .filter(|path| !path.is_empty())
+                .map(PathBuf::from);
+            let cached = || {
+                let dir = codex_dir?
+                    .join("plugins/cache")
+                    .join(text("marketplaceName").unwrap_or(MARKETPLACE))
+                    .join(text("name").unwrap_or("agent-board"))
+                    .join(&version);
+                dir.is_dir().then_some(dir)
+            };
+            let path = match agent {
+                Agent::Claude => listed,
+                Agent::Codex => listed.or_else(cached),
+            };
+            Installed { version, path }
         });
     Ok(entry)
 }

@@ -70,19 +70,16 @@ Most commands name the project explicitly with `--project NAME`. The examples in
 
 ## Update
 
-Update the command with Homebrew, then bring the Agent Board plugin to the same version:
+Update the command with Homebrew:
 
 ```sh
 brew upgrade fooqoo/tap/agboard
 agboard --version
-agboard update
 ```
 
-`brew upgrade` replaces the command and the web UI inside it. It does not change the plugin in your agents. `agboard update` does that, for every agent that has the plugin. It shows what will change and asks for confirmation; `agboard update --yes` answers the question in advance. See [Update the plugin](./delegate/agents#update-the-plugin).
+`brew upgrade` replaces the command and the web UI inside it. The Agent Board plugin in your agents updates itself: the next time an agent session starts, the Hook notices that the plugin differs and reinstalls it in the background, and the new plugin applies from the following session. The agent's instructions for Agent Board come from the command itself, so they are the new ones at once. Run `agboard update` yourself only when the automatic update cannot do it, such as the hook trust of Codex, or to repair the plugin. See [Update the plugin](./delegate/agents#update-the-plugin).
 
 Stop and restart `agboard serve` after an upgrade to use the new command and UI. Open boards and monitors reload themselves once the server is back, after you finish any edit or answer in progress.
-
-If you forget, a new agent session tells you: when the plugin and the command differ, the agent asks you to run `agboard update`.
 
 Hooks and the agent Skill run `agboard` from your `PATH`, so they use the installed version. A development build (`cargo build`, `cargo run`, or `target/debug/agboard`) is a separate executable.
 

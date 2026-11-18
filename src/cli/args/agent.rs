@@ -22,6 +22,17 @@ pub struct ProgressArgs {
     pub include_done: usize,
 }
 
+/// `skills` prints the Agent Board Skill, or one of its topics.
+#[derive(Args, Debug)]
+#[command(
+    after_help = "Prints the instructions of the agent-board Skill as Markdown. The plugin's SKILL.md runs this command, so the instructions always match this agboard.\nNothing is read or written, and no server is started.\n\nExamples:\n  agboard skills\n  agboard skills file-format"
+)]
+pub struct SkillsArgs {
+    /// A part of the Skill to print instead of the main text; an unknown topic lists the topics
+    #[arg(value_name = "TOPIC")]
+    pub topic: Option<String>,
+}
+
 #[derive(Args, Debug)]
 #[command(
     after_help = "Examples:\n  agboard hook --agent claude\n  agboard hook --agent codex\n  agboard --project demo hook --agent claude"
@@ -31,7 +42,7 @@ pub struct HookArgs {
     pub agent: AgentArg,
     #[command(flatten)]
     pub progress: ProgressArgs,
-    /// Version of the plugin that runs the Hook; set by the plugin's Hook command
+    /// Accepted and ignored, so the Hook command of an older plugin still works
     #[arg(long, value_name = "VERSION", hide = true)]
     pub plugin_version: Option<String>,
 }
@@ -102,6 +113,10 @@ pub struct UpdateArgs {
     /// Show the planned update; change nothing
     #[arg(long)]
     pub dry_run: bool,
+    /// Started by the hook: reinstall in the background without asking and
+    /// without trusting Codex hooks. Not for people.
+    #[arg(long, hide = true, requires = "agent", conflicts_with = "dry_run")]
+    pub background: bool,
 }
 
 #[derive(Args, Debug)]

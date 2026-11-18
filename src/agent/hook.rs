@@ -61,6 +61,8 @@ pub struct HookRun {
     pub output: Option<String>,
     /// A progress table was produced: the agent is working on this board.
     pub board: Option<ProjectId>,
+    /// The hook event the input named, when it was an allowed one.
+    pub event: Option<String>,
 }
 
 /// [`run_with`], also saying whether a progress table was produced, so the
@@ -73,8 +75,15 @@ pub fn run_reporting(
     include: Include,
 ) -> HookRun {
     let mut board = None;
-    let output = hook_output(agent, input, shared, project, include, &mut board);
-    HookRun { output, board }
+    let mut event = None;
+    let output = hook_output(
+        agent, input, shared, project, include, &mut board, &mut event,
+    );
+    HookRun {
+        output,
+        board,
+        event,
+    }
 }
 
 /// The fields of the hook input the hook uses. Every other field, the tool
@@ -94,6 +103,7 @@ fn hook_output(
     project: Option<&str>,
     include: Include,
     board: &mut Option<ProjectId>,
+    seen_event: &mut Option<String>,
 ) -> Option<String> {
     // The input is read to the end whatever its size: it comes from the local
     // agent, and after a large tool result (an image, a long command output)
@@ -131,6 +141,7 @@ fn hook_output(
     if !allowed {
         return None;
     }
+    *seen_event = Some(event.to_string());
     let context = match progress_context(shared, project, input.cwd.as_ref(), include) {
         Ok(Some((context, project))) => {
             *board = Some(project);
@@ -141,6 +152,29 @@ fn hook_output(
         Err(failure) => error_context(&failure),
     };
     Some(output(event, &context))
+}
+
+/// Adds a SessionStart `notice` to the hook's `output`. With no output (an
+/// unbound folder) the notice is the whole output.
+pub fn with_session_notice(output: Option<String>, notice: Option<String>) -> Option<String> {
+    let Some(notice) = notice else {
+        return output;
+    };
+    let Some(output) = output else {
+        return Some(self::output("SessionStart", &notice));
+    };
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&output) else {
+        return Some(output);
+    };
+    let Some(specific) = value.get_mut("hookSpecificOutput") else {
+        return Some(output);
+    };
+    let context = specific
+        .get("additionalContext")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    specific["additionalContext"] = serde_json::Value::String(format!("{context}\n\n{notice}"));
+    Some(value.to_string())
 }
 
 /// The folder the hook runs for: a non-empty absolute `cwd` from the input, or
@@ -233,7 +267,8 @@ fn error_context(failure: &Failure) -> String {
     )
 }
 
-fn output(event: &str, context: &str) -> String {
+/// The hook's JSON for `event` with `context` as the agent's added context.
+pub(crate) fn output(event: &str, context: &str) -> String {
     serde_json::json!({"hookSpecificOutput":{"hookEventName":event,"additionalContext":context}})
         .to_string()
 }

@@ -1,3 +1,8 @@
+# New epic template
+
+Start the `EPIC.md` of a new epic from this template.
+
+```markdown
 ## Goal
 
 (Why this work exists and the outcome it should produce.)
@@ -21,3 +26,6 @@
 ## Decisions
 
 (Decisions that changed this epic, with the date and the task where each was made.)
+```
+
+The epics `BUG` and `ENHANCEMENT` use a fixed body instead: see `agboard skills bug-epic-template` and `agboard skills enhancement-epic-template`.

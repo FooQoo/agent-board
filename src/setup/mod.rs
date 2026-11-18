@@ -12,6 +12,7 @@
 
 pub(crate) mod agent_cli;
 pub(crate) mod apply;
+pub mod auto_update;
 pub(crate) mod claude;
 pub(crate) mod codex;
 pub(crate) mod env;

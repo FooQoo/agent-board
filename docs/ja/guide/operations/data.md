@@ -24,6 +24,7 @@ Agent Boardのデータは、すべて手元のマシンの一つのフォルダ
   serve.log              裏で起動したサーバーの出力
   autostart.lock         コマンドがサーバーを二つ起動しないためのロック
   autostart.paused       agboard stopが残す目印。Hookはサーバーを起動しない
+  plugin-update/         プラグインの自動更新のロックと記録（エージェントごと）
   .internal/
     preferences.json     言語とカラーテーマ（アプリが書き込む）
   shared/

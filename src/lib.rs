@@ -9,6 +9,8 @@ pub mod file_store;
 pub mod interact;
 pub mod lifecycle;
 pub mod paths;
+pub mod plugin_hash;
 pub mod progress;
 pub mod server;
 pub mod setup;
+pub mod skills;

@@ -53,7 +53,7 @@ Write the notes of every release in the same shape, so that the documentation si
 - Write the GitHub Release body in English, and keep its review copy in `releases/vX.Y.Z.md`.
 - Start with one sentence that says what the release is, then use these four headings in this order, each exactly once: `## Changes`, `## Fixes`, `## Breaking changes`, and `## Required update steps`.
 - Keep a heading even when it has nothing to report, and write `None.` under it. A missing or repeated heading stops the documentation site build.
-- Describe each change from the user's side, not as implementation history. Under `## Required update steps`, give the upgrade command and say whether `agboard update` is needed.
+- Describe each change from the user's side, not as implementation history. Under `## Required update steps`, give the upgrade command and say whether `agboard update` is needed. The plugin updates itself at the next agent session, so it is needed only when that cannot do the job: Codex hook trust, or a release that changes the hook commands in a way an agent must trust again.
 - Add the version to `docs/releases.md` and `docs/ja/releases.md` with `###` headings: Changes, Fixes, Breaking changes, Required update steps, and in Japanese 変更点, 不具合修正, 互換性に影響する変更, 必要な更新操作. Write `ありません。` under an empty Japanese heading.
 - Before you publish, check the body with `node scripts/release/docs-release.mjs --releases-json <file>`.
 
