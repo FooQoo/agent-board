@@ -1,6 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -376,7 +376,15 @@ export function seedProject(project: string, file: string, home: string = mainHo
   }
   const projectFile = path.join(folder, 'project.json');
   const current = JSON.parse(readFileSync(projectFile, 'utf8')) as Record<string, unknown>;
+  const writtenBefore = statSync(projectFile).mtimeMs;
   writeJson(projectFile, { ...current, nextTaskId: fixture.board.nextTaskId, nextQuestionId });
+  // A serve that polls compares modification times in whole seconds and then contents. Seeding the same
+  // fixture again right after the previous seed rewrites every file to what it was, so the poll would find
+  // nothing to report. A reload the previous seed had queued can still run while the tasks folder is
+  // empty, and the serve would then keep the empty board. Giving project.json a later second makes the
+  // poll report this write, and the reload that follows it reads the finished fixture.
+  const later = new Date(Math.max(Date.now(), writtenBefore + 1000));
+  utimesSync(projectFile, later, later);
 }
 
 /** Create `project` if it does not exist yet. */
