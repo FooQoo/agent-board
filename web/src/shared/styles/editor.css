@@ -520,16 +520,24 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--r-border);
+  padding: 12px 14px;
+  border: 1px solid var(--r-input);
   border-radius: 8px;
+  background: transparent;
 }
 
 .editor__box[data-over="true"] {
   border-color: var(--r-danger);
 }
 
-.editor__box:has(.ProseMirror-focused):not([data-over="true"]) {
+.editor__box:focus-within:not([data-over="true"]) {
   border-color: var(--r-accent);
+}
+
+/* The first block sits on the top padding; a cursor widget may come before it. */
+.editor__box .ProseMirror > :first-child,
+.editor__box .ProseMirror > .ProseMirror-widget:first-child + * {
+  margin-top: 0;
 }
 
 .editor__hint {
