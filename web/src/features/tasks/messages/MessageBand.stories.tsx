@@ -98,7 +98,7 @@ export const CountsEnDark: Story = {
   },
 };
 
-/** The phone band shows "Ask AI" beside "Check questions and requests" when the screen gives it. */
+/** The phone band shows "Ask AI" beside "Questions & requests" when the screen gives it. */
 export const PhoneWithAsk: Story = {
   args: { variant: 'phone', onAsk: fn() },
   parameters: phone,

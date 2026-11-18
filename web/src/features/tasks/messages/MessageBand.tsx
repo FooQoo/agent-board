@@ -73,7 +73,7 @@ export function MessageBand({ messages, variant, onOpen, onAsk }: MessageBandPro
             onClick={() => onOpen()}
           >
             {t('messages.band.open')}
-            <ChevronRightIcon aria-hidden="true" />
+            <ChevronRightIcon className="message-band__chevron" aria-hidden="true" />
           </Button>
         </div>
       </header>
