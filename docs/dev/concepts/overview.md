@@ -2,15 +2,15 @@
 
 Start here. This page gives you the mental model: what Agent Board is for, what runs, where the data lives, and how one change travels from an agent to the browser. The other concept pages go deeper into each part.
 
-## Two layers of harness
+## The agent's runtime and the shared workspace
 
-An AI agent such as Claude Code or Codex runs inside its own **harness**: the tools it can call, the context it holds, and the loop that drives it. That harness decides how the agent works inside one session. It does not decide what the work is, when it is finished, or when to ask a person, and it does not outlive the session.
+An AI agent such as Claude Code or Codex runs inside its own runtime: the tools it can call, the context it holds, and the loop that drives it. That runtime decides how the agent works inside one session. It does not decide what the work is, when it is finished, or when to ask a person, and it does not outlive the session.
 
-Agent Board is a **work harness** on top of it. It keeps the plan, the acceptance conditions that say when a task is finished, the questions that stop the agent until a person answers, and the history that lets the next session continue. These live in files, outside any one agent, so a different agent or a new session can pick the work up where the last one stopped.
+Agent Board is a **shared workspace** on top of it, where the agent plans and reports and a person answers. It keeps the plan, the acceptance conditions that say when a task is finished, the questions that stop the agent until a person answers, and the history that lets the next session continue. These live in files, outside any one agent, so a different agent or a new session can pick the work up where the last one stopped.
 
 ```mermaid
 flowchart LR
-    Agent["Agent harness<br/>tools, context, loop"] --> Work["Agent Board<br/>plan, conditions,<br/>questions, history"]
+    Agent["Agent runtime<br/>tools, context, loop"] --> Work["Agent Board<br/>plan, conditions,<br/>questions, history"]
     Work --> Monitors["Monitors<br/>board, phone, chat, CLI"]
     Person["Person"] --> Monitors
 ```

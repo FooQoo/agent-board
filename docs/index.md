@@ -10,14 +10,14 @@ landing:
     done: Copied
   hero:
     title: "Delegate big work.\nStop babysitting it."
-    lead: Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts it once your questions are answered, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
+    lead: Agent Board is a shared workspace where your AI agent plans and reports, and you answer. It turns your request into a plan with acceptance conditions, starts it once your questions are answered, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
     install: brew install fooqoo/tap/agboard
     primary: { text: Get started, link: /guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
     videoLabel: "Demo: the agent starts a task and asks a question, you answer on the task, and the agent resumes until the task is done"
   problem:
-    eyebrow: Why a work harness
+    eyebrow: Why a shared workspace
     title: Today, handing off means watching over it.
     lead: You write the plan, catch questions buried in the log, and check whether it is really done. Put the plan, the questions, and the conditions in one place, and you can ask for the work and step away until the agent needs you.
     terminal:
