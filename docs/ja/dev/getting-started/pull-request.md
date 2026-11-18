@@ -48,7 +48,7 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 
 - Rustのジョブは、Linux（`ubuntu-latest`）で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
 - Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。Chromiumとそのシステムライブラリがあらかじめ入っている公式Playwrightコンテナイメージの中で動くため、ブラウザのインストールはしません。
-- E2Eビルドのジョブは、WebのUIとCLI、およびスマホ向けのスペックが使うテスト用バイナリ`monitor_phone_serve`を一度だけビルドし、成果物としてアップロードします。続くE2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは4つのシャードに分け、Playwrightのコンテナイメージの中で並行して実行します。各シャードは成果物をダウンロードして`AGBOARD_E2E_PREBUILT=1`を設定するため、グローバルセットアップはビルドを省き、`AGBOARD_E2E_BINARY`と`AGBOARD_E2E_PHONE_BACKEND`が指すバイナリを使います（イメージにRustのツールチェーンはありません）。どちらのジョブも、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
+- E2Eビルドのジョブは、WebのUIとCLI、およびスマホ向けのスペックが使うテスト用バイナリ`monitor_phone_serve`を一度だけビルドし、成果物としてアップロードします。続くE2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは5つのシャードに分け、Playwrightのコンテナイメージの中で並行して実行します。各シャードは成果物をダウンロードして`AGBOARD_E2E_PREBUILT=1`を設定するため、グローバルセットアップはビルドを省き、`AGBOARD_E2E_BINARY`と`AGBOARD_E2E_PHONE_BACKEND`が指すバイナリを使います（イメージにRustのツールチェーンはありません）。どちらのジョブも、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
 - イメージのタグ（`mcr.microsoft.com/playwright:v<バージョン>-noble`、ダイジェストで固定）は、`web/package.json`と`e2e/package.json`のPlaywrightのバージョンと一致させます。Playwrightを更新するときは、同じ変更で`ci.yml`の2つのコンテナのジョブのタグも更新します。
 - カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
 
