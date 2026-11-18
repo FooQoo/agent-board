@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { MermaidDiagramView } from './MermaidDiagram';
+import { MermaidDiagram, MermaidDiagramView } from './MermaidDiagram';
 
 const meta = {
   title: 'Shared/Markdown/MermaidDiagram',
@@ -50,5 +50,29 @@ export const Drawn: Story = {
     const dialog = await page.findByRole('dialog', { name: 'Enlarge diagram' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(page.queryByRole('dialog', { name: 'Enlarge diagram' })).toBeNull();
+  },
+};
+
+/** A diagram drawn by the real renderer, with labels that have descenders in English and Japanese. */
+export const Rendered: Story = {
+  args: { state: { status: 'loading' } },
+  render: () => (
+    <MermaidDiagram
+      source={
+        'flowchart LR\n  A[Typography gjpqy] --> B[見切れ確認 ログ]\n  B --> C{Query? gjpqy}\n  C -->|yes| D[Jumping pygmy]'
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('button', { name: 'Enlarge diagram' });
+    const svg = canvasElement.querySelector<SVGSVGElement>('.md-mermaid__svg svg');
+    if (svg === null) throw new Error('The diagram was not drawn');
+    const frame = svg.getBoundingClientRect();
+    for (const text of Array.from(svg.querySelectorAll<SVGTextElement>('text'))) {
+      const bounds = text.getBoundingClientRect();
+      // The label's ink must sit inside the drawing, not be cut at its edge.
+      expect(bounds.top).toBeGreaterThanOrEqual(frame.top);
+      expect(bounds.bottom).toBeLessThanOrEqual(frame.bottom);
+    }
   },
 };

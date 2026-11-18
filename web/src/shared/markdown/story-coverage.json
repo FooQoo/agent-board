@@ -112,6 +112,11 @@
               "id": "shared-markdown-mermaiddiagram--drawn",
               "states": ["drawn", "enlarged", "closed"],
               "interaction": true
+            },
+            {
+              "id": "shared-markdown-mermaiddiagram--rendered",
+              "states": ["real render", "labels inside the drawing"],
+              "interaction": true
             }
           ]
         },
