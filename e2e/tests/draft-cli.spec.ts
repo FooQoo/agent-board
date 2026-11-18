@@ -128,7 +128,7 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(show(13)).toMatchObject({ title: 'Changed by an agent', taskStatus: 'done' });
 });
 
-test('an AI draft takes edits and history from the AI but not mv or state, and only a person starts it', async () => {
+test('an AI draft takes edits and history from the AI but not mv or state, and the AI starts it itself', async () => {
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Proposed by the AI', '--assignee', 'ai', '--actor', 'ai']);
   expect(show(id)).toMatchObject({ draft: 'ai', taskStatus: 'todo' });
@@ -151,12 +151,8 @@ test('an AI draft takes edits and history from the AI but not mv or state, and o
   }
   expect(board()).toBe(before);
 
-  // Only a person starts it.
-  const byAi = agboard(mainProject, ['start', String(id), '--actor', 'ai', '--json']);
-  expect(byAi.code).toBe(1);
-  expect(JSON.parse(byAi.stderr || byAi.stdout).error.code).toBe('human_only');
-  expect(show(id).draft).toBe('ai');
-  agboardOk(mainProject, ['start', String(id), '--actor', 'human']);
+  // The AI starts its own draft once it is ready.
+  agboardOk(mainProject, ['start', String(id), '--actor', 'ai']);
   expect(show(id).draft).toBeNull();
   agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.']);
   expect(show(id).taskStatus).toBe('doing');
