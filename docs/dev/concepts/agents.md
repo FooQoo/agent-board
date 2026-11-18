@@ -7,6 +7,7 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | Piece | Lives in | Job |
 | --- | --- | --- |
 | Skill `agent-board` | `plugins/agent-board/skills/agent-board/SKILL.md` | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
+| Skill `remote` | `plugins/agent-board/skills/remote/SKILL.md` | Hands the user the phone address and passcode from `agboard remote --json`; starts nothing. |
 | Hook | `agboard hook` (`src/agent/hook.rs`) | Fetching and formatting: after tool calls, attach the current progress table to the agent's context. |
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
 | `wait` | `src/agent/wait.rs`, `src/agent/task_wait.rs` | Block until the project changes or the next task is ready. |
@@ -104,6 +105,7 @@ The Skill and the Hook are distributed as one plugin, `agent-board`, from a mark
 | `.claude-plugin/marketplace.json` | The Claude Code marketplace catalog, named `agent-board`. |
 | `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | The plugin manifests. |
 | `plugins/agent-board/skills/agent-board/` | The Skill: `SKILL.md`, `references/`, and `assets/`. |
+| `plugins/agent-board/skills/remote/` | The `remote` Skill: `SKILL.md` only. |
 | `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | The Hook of each agent. |
 
 The plugin versions in both manifests and the `--plugin-version` in both Hook commands equal the crate version. `tests/plugin_layout.rs` and `scripts/release/check-version.py` check this, so a release tag always holds a plugin of the same version as the binary.

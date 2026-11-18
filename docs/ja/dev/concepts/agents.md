@@ -7,7 +7,8 @@
 | 部分 | 場所 | 役割 |
 | --- | --- | --- |
 | スキル`agent-board` | `plugins/agent-board/skills/agent-board/SKILL.md` | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
-| Hook | `agboard hook`（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
+| スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
+| Hook |（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
 | `wait` | `src/agent/wait.rs`、`src/agent/task_wait.rs` | プロジェクトが変わるか、次のタスクが用意できるまで待つ。 |
 | `message ask`、`message wait` | `src/cli/commands/message/`、`src/agent/message_wait.rs` | ユーザーに質問し、開いている質問がなくなるまで待つ。 |
@@ -104,6 +105,7 @@ SkillとHookは、このリポジトリのマーケットプレイスから、1�
 | `.claude-plugin/marketplace.json` | Claude Codeのマーケットプレイスのカタログ。名前は`agent-board`。 |
 | `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | プラグインのマニフェスト。 |
 | `plugins/agent-board/skills/agent-board/` | Skill。`SKILL.md`、`references/`、`assets/`。 |
+| `plugins/agent-board/skills/remote/` | `remote` Skill。`SKILL.md`のみ。 |
 | `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | 各エージェントのHook。 |
 
 両方のマニフェストのプラグインの版と、両方のHookのコマンドの`--plugin-version`は、クレートの版と同じです。`tests/plugin_layout.rs`と`scripts/release/check-version.py`がこれを確かめるので、リリースのタグには、常にバイナリと同じ版のプラグインが入っています。
