@@ -78,6 +78,11 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--answered-waiting-pickup",
+              "states": ["answered, waiting for an AI", "not counted", "answer read only"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--question-needs-choice",
               "states": ["choice required", "note alone not sendable", "send", "dark"],
               "interaction": true
