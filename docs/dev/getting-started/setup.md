@@ -139,7 +139,25 @@ A single command-line binary cannot carry a stapled ticket, so macOS checks the 
 
 ### Publish to Homebrew
 
-After the Release is published: `scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb` renders the Formula from the published files and refuses a missing CPU, a wrong version, or a hash mismatch. The Formula selects the archive by CPU in `on_macos`, requires macOS 15 (`depends_on macos: :sequoia`), declares MIT, installs `agboard` into `bin` and the two license files into `pkgshare`, and has a `test do` block that checks `--version` and uses a temporary `AGBOARD_HOME`. `scripts/release/test-formula.sh` replays the install and test locally, and the Tap procedure is in its README. Nothing pushes to the `FooQoo/homebrew-tap` repository automatically; a person reviews the generated Formula and commits it.
+After the Release is published, `.github/workflows/homebrew-tap.yml` publishes the Formula by itself. `scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb` renders the Formula from the published files and refuses a missing CPU, a wrong version, or a hash mismatch. The Formula selects the archive by CPU in `on_macos`, requires macOS 15 (`depends_on macos: :sequoia`), declares MIT, installs `agboard` into `bin` and the two license files into `pkgshare`, and has a `test do` block that checks `--version` and uses a temporary `AGBOARD_HOME`.
+
+The workflow runs when a Release is published, and skips drafts and prereleases. It does these steps in order:
+
+1. Downloads the two archives and `SHA256SUMS` of the tag with `gh release download`.
+2. Renders the Formula, then runs `scripts/release/test-formula.sh` and `ruby -c` on macOS 15.
+3. Clones `FooQoo/homebrew-tap` over SSH, copies `Formula/agboard.rb`, and, only when the file changed, commits `agboard X.Y.Z` as `github-actions[bot]` and pushes it directly to the default branch.
+
+The job runs in the `homebrew-tap` Environment, which accepts only `v*` tags and holds the secret `HOMEBREW_TAP_DEPLOY_KEY`. The secret is a read-write deploy key of the tap repository; it is written to a temporary file with mode 0600 for the push and removed at the end of the job. SSH accepts only the pinned GitHub host key. The job has `contents: read` only, and no secret appears on a command line. `release.yml` does not take part.
+
+To run it again for a tag, for example after a failed push, start it on that tag; a run on a branch is skipped, and the Environment would refuse it anyway:
+
+```sh
+gh workflow run homebrew-tap.yml --ref vX.Y.Z
+```
+
+Running it again for a tag that is already in the tap pushes nothing.
+
+To rotate the key, generate a new pair with `ssh-keygen -t ed25519 -N "" -C homebrew-tap-deploy -f <file>`, add the public key to the tap repository as a deploy key with write access, replace the `HOMEBREW_TAP_DEPLOY_KEY` secret of the `homebrew-tap` Environment with the private key, run the workflow once for the latest tag to confirm, and then delete the old deploy key and the local key files. `scripts/release/test-formula.sh` replays the install and test locally.
 
 ## Install from source
 
