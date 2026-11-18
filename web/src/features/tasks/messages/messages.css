@@ -83,6 +83,48 @@
   box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
 }
 
+/* On a phone the selected tab's pill follows the swipe instead of jumping. */
+.message-tabs[data-swipe] {
+  position: relative;
+}
+
+.message-tabs[data-swipe]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 10px) / 2);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
+  transform: translateX(calc(var(--tab-progress, 0) * (100% + 4px)));
+  pointer-events: none;
+}
+
+.message-tabs[data-swipe] .message-tabs__tab {
+  position: relative;
+}
+
+.message-tabs[data-swipe] .message-tabs__tab[aria-selected="true"] {
+  background: transparent;
+  box-shadow: none;
+}
+
+.message-list__viewport {
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+
+.message-list__track {
+  display: flex;
+}
+
+.message-list__page {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
 .message-tabs__tab:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--r-accent);
