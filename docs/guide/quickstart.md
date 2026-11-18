@@ -153,7 +153,7 @@ agboard --project "Quickstart" project rm
 ## What you learned
 
 - You ask, and the agent proposes a plan; you do not write it.
-- You answer the questions, then start the plan once.
+- You answer the questions, then the agent starts the plan itself; you do not approve the start.
 - Tasks move through **Todo → Doing → Done**, and agents report **Idle**, **Running**, or **Pending**.
 - Every change is recorded in the task's history with a reason.
 - An agent asks you a question with **Pending**, and you answer on the task.
