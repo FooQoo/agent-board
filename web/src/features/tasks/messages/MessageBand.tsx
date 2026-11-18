@@ -21,7 +21,7 @@ export interface MessageBandProps {
 }
 
 /**
- * The band above the lanes: how many questions and approvals wait on you, and how many of your
+ * The band above the lanes: how many questions wait on you, and how many of your
  * requests no agent has picked up. It is never left out; with nothing to do it says so with a
  * count of 0.
  */
@@ -47,16 +47,6 @@ export function MessageBand({ messages, variant, onOpen, onAsk }: MessageBandPro
           <li>
             <Badge variant={idle ? 'muted' : 'pending'} className="message-band__chip">
               {t('messages.band.fromAi')} <strong>{count.fromAi}</strong>
-              {!idle && (
-                <span className="message-band__sub">
-                  （
-                  {t('messages.band.breakdown', {
-                    questions: t('messages.band.questionCount', { count: count.questions }),
-                    approvals: t('messages.band.approvalCount', { count: count.approvals }),
-                  })}
-                  ）
-                </span>
-              )}
             </Badge>
           </li>
           <li>

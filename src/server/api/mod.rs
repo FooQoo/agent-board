@@ -14,7 +14,6 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
-mod start;
 mod summary;
 mod task_acceptance;
 mod task_attachments;
@@ -49,7 +48,6 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
-use start::*;
 use summary::summary;
 use task_acceptance::*;
 use task_attachments::*;
@@ -200,14 +198,6 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route(
             "/api/projects/{project_id}/tasks/{id}/draft",
             put(set_draft),
-        )
-        .route(
-            "/api/projects/{project_id}/tasks/{id}/start",
-            post(start_task),
-        )
-        .route(
-            "/api/projects/{project_id}/epics/{epic_id}/start",
-            post(start_epic),
         )
         .route(
             "/api/projects/{project_id}/tasks/{id}/acceptance/{condition}",

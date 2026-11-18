@@ -21,7 +21,7 @@ const extra = {
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     preview: 'Open full screen (task)', close: 'Close', settings: 'Settings', cancel: 'Cancel',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
-    messages: 'Messages', later: 'Later', startPlan: 'Start with this plan',
+    messages: 'Messages', later: 'Later',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
     discard: 'Discard and close',
     docs: 'Docs', docsFile: 'launch-plan.md', docsFiles: {
@@ -39,7 +39,7 @@ const extra = {
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定', cancel: 'キャンセル',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
-    messages: 'メッセージ', later: 'あとでやる', startPlan: 'この計画で始める',
+    messages: 'メッセージ', later: 'あとでやる',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
     discard: '破棄して閉じる',
     docs: 'ドキュメント', docsFile: 'launch-plan.md', docsFiles: {
@@ -142,19 +142,10 @@ try {
       await answerDialog.getByRole('button', { name: more.later, exact: true }).click();
       await expect(answerDialog).toHaveCount(0);
 
-      // messages-list: the band's list with a question, an approval and a request.
+      // messages-list: the band's list with a question and a request.
       await page.getByRole('region', { name: more.messages }).getByRole('button').last().click();
       await expect(answerDialog.getByRole('tablist')).toBeVisible();
       await shot('messages-list', answerDialog, page);
-
-      // plan-review: the approval row opens the review of the proposed plan, which cannot start while its question is open.
-      await answerDialog.getByRole('list').getByRole('button').filter({ hasText: /SUPPORT/ }).click();
-      const review = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: more.startPlan, exact: true }) });
-      await expect(review).toBeVisible();
-      await expect(review.getByRole('button', { name: more.startPlan, exact: true })).toBeDisabled();
-      await shot('plan-review', review, page);
-      await review.getByRole('button', { name: more.later, exact: true }).click();
-      await expect(review).toHaveCount(0);
 
       // card-detail: the Conditions tab of the selected card.
       await task(3).click();
@@ -227,7 +218,7 @@ try {
 
 
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 11 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 10 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);

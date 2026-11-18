@@ -312,7 +312,7 @@ export const BoardErrorWholeScreen: Story = {
 };
 export const Disconnected: Story = { args: { model: makeStateModel('disconnected') } };
 
-/** The board of the approved mock: two questions and an approval wait, and one request is not picked up. */
+/** The board of the approved mock: two questions wait, and one request is not picked up. */
 function makeMessageModel(empty = false): AppControllerModel {
   const base = makeModel();
   const messages = empty ? [] : sampleMessages('ja');
@@ -361,7 +361,6 @@ export const MessageBandOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const band = within(canvas.getByRole('region', { name: 'メッセージ' }));
-    await expect(band.getByText(/質問 2・承認 1/)).toBeVisible();
     await expect(canvas.getByText('未回答の質問 1 件')).toBeInTheDocument();
     await userEvent.click(band.getByRole('button', { name: '一覧を開く' }));
     const list = await within(document.body).findByRole('dialog', { name: 'メッセージ' });

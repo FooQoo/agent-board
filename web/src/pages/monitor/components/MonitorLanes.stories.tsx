@@ -13,7 +13,6 @@ import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask } from '../contracts';
 import type { LaneItems } from './MonitorLanes';
 import type { LanePending } from './MonitorLaneDialogs';
-import { addedPlan, newEpicPlan, singlePlan } from '../../../features/tasks/plans/planSamples';
 import { HOLD_MS } from '@/shared/lib/gesture/sideSwipe';
 import { MonitorLanesScreen, type MonitorLanesScreenProps } from './MonitorLanesScreen';
 
@@ -95,10 +94,7 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
   return { lanes, setLanes, messages, messagesApi, projectId: SAMPLE_PROJECT };
 }
 
-type ScreenArgs = Pick<
-  MonitorLanesScreenProps,
-  'initialLane' | 'previewRevealed' | 'plans' | 'onOpenPlan'
-> & {
+type ScreenArgs = Pick<MonitorLanesScreenProps, 'initialLane' | 'previewRevealed'> & {
   /** Opens a confirmation: `archive` and `move` use the card named by `pendingTask`. */
   pending?: 'archive' | 'move' | 'bulk';
   pendingTask?: number;
@@ -227,18 +223,6 @@ export const TodoLane: Story = {
     await expect(tab(canvasElement, '未着手')).toHaveAttribute('aria-selected', 'true');
     await expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'false');
     await expect(tab(canvasElement, '完了')).toHaveTextContent('4');
-  },
-};
-
-/** Todo starts with one plan card for each approval, and the tab counts them. */
-export const PlanCardsInTodo: Story = {
-  args: {
-    initialLane: 'todo',
-    plans: [newEpicPlan('ja'), addedPlan('ja'), singlePlan('ja', true)],
-  },
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getAllByText('提案中の計画')).toHaveLength(2);
-    await expect(tab(canvasElement, '未着手')).toHaveTextContent('7');
   },
 };
 

@@ -1,6 +1,6 @@
 ---
 name: agent-board
-description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, accept the user's requests, turn a request into a plan of AI drafts that the user starts once, report AI progress, ask the user questions (with or without choices) on the board and in the chat, wait for their answers, and automatically record work progress in task history.
+description: Use Agent Board to plan and track work in the project bound to the current folder. Read the progress table first, inspect only needed epic details and tasks, accept the user's requests, turn a request into a plan of AI drafts that you start yourself once the questions are answered, report AI progress, ask the user questions (with or without choices) on the board and in the chat, wait for their answers, and automatically record work progress in task history.
 compatibility: Requires the agboard CLI on PATH and a local Agent Board data area. Commands that wait for user answers start the local agboard server when it is not running.
 ---
 
@@ -139,20 +139,27 @@ agboard --project "<name>" message accept <Q-id> --actor ai
 
 Until you accept, the answer stays in `answers` and the person sees it as waiting for an AI. `message ask` and `message wait` already accept the answers they return, and so does an answer you record from the chat, so accept only what you saw through `answers`. `question_open` means the question has no answer yet; `answer_accepted` means it was already taken in.
 
-### Plan a request: AI drafts, questions, then the person starts them
+### Plan a request: AI drafts, questions, then start them yourself
 
-When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, put a plan on the board as AI drafts and let the person correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
+When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, put a plan on the board as AI drafts and let the person see and correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
 2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Everything you create this way is an AI draft (`draft: ai`), the user's tasks too. The board shows the epic's drafts as one proposed plan.
-3. **Ask what you cannot settle.** Ask in one `message ask` call (section 7). List the draft tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A draft that refers to a question without an answer cannot be started: `agboard start` and `agboard epic start` fail with `start_blocked_by_questions`. A question can have choices and a recommendation, or none and be answered in words.
-4. **Revise.** You may `edit` a draft and `history add` to it. Change the epic and the tasks as the answers say, and record what changed. If the answers leave something open, ask again the same way.
-5. **Wait for the start.** A person starts the plan from the board ("Start with this plan") or with `agboard epic start <EPIC-ID> --actor human` / `agboard start <id> --actor human`. `mv` and `state` on a draft are refused with `task_is_draft`, and starting yourself is refused with `human_only`. Do not try. Work on other tasks while you wait.
+3. **Ask what you cannot settle.** Ask in one `message ask` call (section 7), with choices and a recommendation where you can, and wait for the answers. List the draft tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A draft that refers to a question without an answer cannot be started: `start` and `epic start` fail with `start_blocked_by_questions`. A question can have no choices and be answered in words.
+4. **Revise.** You may `edit` a draft and `history add` to it. Write the answers into the epic and the tasks, and record what changed. If the answers leave something open, ask again the same way.
+5. **Start the drafts.** When every question is answered and the plan is written up, start them yourself:
+
+   ```sh
+   agboard --project "<name>" start <ID> --actor ai
+   agboard --project "<name>" epic start <EPIC-ID> --actor ai
+   ```
+
+   `mv` and `state` on a draft are refused with `task_is_draft` until then. A person may also start drafts. Tasks a person is still drafting (`draft: human`) stay drafts. Work on other tasks while questions are open.
 6. **Proceed.** After the start, the tasks are ordinary tasks. Work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
 
-After the start, the board cannot stop you from rewriting a started task's contents. Keep to the plan the person started: if the work needs a different scope, ask (section 7) instead of changing the tasks silently.
+After the start, the board cannot stop you from rewriting a started task's contents. Keep to the plan you started: if the work needs a different scope, ask (section 7) instead of changing the tasks silently.
 
-A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task. When you add a task to an epic that is already running, it is a draft too, and the epic shows an approval for it.
+A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task. A task you add to an epic that is already running is a draft too: start it with `start <ID> --actor ai`.
 
 ## 5. Lanes and run states
 
@@ -194,11 +201,13 @@ Lane and run-state operations already append their own history. Do not add a sec
 
 3. **Work and record.** Use `history add` for meaningful work progress that does not change the lane or run state. Keep the current task plan and concise verification results, including the commit or version verified, in the body. Attach images with `attachment add <id> --file <path> --actor ai` when visual proof is useful. To show one in a history reason, write the path that command prints as a Markdown image (see [references/file-format.md](references/file-format.md)), and pass a reason with several lines through `--reason-file`.
 4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Before saving the last completed condition, record the verification in history and keep its concise result in the body (see [references/file-format.md](references/file-format.md)). Leave unverified conditions `done: false`. Once all conditions are verified, save the TASK; a running `agboard serve` completes an eligible AI task automatically. Do not manually move a task to Done during the normal work loop. If the task does not disappear from progress, inspect its state and report the mismatch rather than forcing Done.
-5. **Ask when blocked.** Use section 7. Continue other independent work while the question is open.
+5. **Ask when blocked.** Use section 7. Do not wait idle: continue other independent work while the question is open.
 6. **Finish or interrupt.** Automatic completion removes the task from progress. Done tasks are read-only for agents: do not edit their task files, append history or attachments, or change their lane or run state. A user can reopen them when needed. If work stops before completion, record why through the corresponding state or lane operation, or `history add` if the state remains accurate. When work resumes, record the resumed work the same way.
 7. **Close the epic.** When all of an epic's task tasks are done, verify the epic's reference conditions written in the EPIC.md body and record the outcome there. Skip this step for `BUG` and `ENHANCEMENT`: their bodies stay fixed and the classification epics stay open. The app does not manage epic acceptance frontmatter or epic history.
 
 Keep history reasons concise and useful. Use Markdown in a reason when it makes the evidence easier to read. Record concise verification results in the TASK body; use image attachments for visual proof. Do not store full test logs on the board.
+
+Work in parallel and do not wait when you can avoid it. While a question is open or something else is pending, continue the other tasks that do not depend on it. When your agent can spawn subagents, use one subagent per independent task; give each its task ID and plan. The main agent keeps the board updates (lane, run state, history, acceptance) itself, so every change goes through one writer.
 
 ## 7. Ask the user
 
@@ -280,7 +289,7 @@ For an explicitly requested serial listener, use [`references/listening.md`](ref
 ## 9. Drafts and archived tasks
 
 - A task with `"draft": "human"` is being written by the user. `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Do not retry and do not edit its `TASK.md`. Work on other tasks and wait for the user to finalize it.
-- Tasks and epics you create start as AI drafts (`"draft": "ai"`), also tasks for the user. You can `edit` them and run `history add`; `mv` and `state` fail with `task_is_draft`. Only a person starts them (`start`, `epic start`, or the web UI); running those commands yourself fails with `human_only`.
+- Tasks and epics you create start as AI drafts (`"draft": "ai"`), also tasks for the user. You can `edit` them and run `history add`; `mv` and `state` fail with `task_is_draft`. Start them with `start` or `epic start` (`--actor ai`) once their questions are answered; an open question on a draft refuses the start with `start_blocked_by_questions`. A person may start them too.
 - An epic with `"draft": "human"` is being edited by the user. `epic edit`, including `--priority`, fails with `epic_is_draft`. `epic attachment` and moving tasks into or out of the epic still work. Do not edit its `EPIC.md`.
 - Archived tasks are not in the normal snapshot. Writes to them fail with `task_archived`.
 

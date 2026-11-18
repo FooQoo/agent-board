@@ -12,8 +12,7 @@ import { MonitorLanes, type LaneItems, type MonitorLanesProps } from './MonitorL
 import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
-export interface MonitorLanesScreenProps
-  extends Pick<MonitorLanesProps, 'previewRevealed' | 'plans' | 'onOpenPlan'> {
+export interface MonitorLanesScreenProps extends Pick<MonitorLanesProps, 'previewRevealed'> {
   lanes: LaneItems;
   projectName: string;
   /** The lane the screen opens on. After that the tabs and the swipes own it. */
@@ -28,7 +27,6 @@ export interface MonitorLanesScreenProps
   /** The list opens at the target the screen starts with (a story's still picture of it). */
   initialPanel?: Parameters<ReturnType<typeof useMessagesPanel>['open']>[0];
   onAsk?: MonitorViewProps['onAsk'];
-  onOpenApproval?: MonitorViewProps['onOpenApproval'];
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   /** The writes. The screen asks for them only after the person confirmed. */
   onMove: (
@@ -56,14 +54,11 @@ export function MonitorLanesScreen({
   messagesApi,
   initialPanel,
   onAsk,
-  onOpenApproval,
   onOpenDetail,
   onMove,
   onArchive,
   onBulkArchive,
   previewRevealed,
-  plans = [],
-  onOpenPlan,
 }: MonitorLanesScreenProps) {
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -88,7 +83,6 @@ export function MonitorLanesScreen({
           api={messagesApi}
           onChanged={() => {}}
           onAsk={onAsk}
-          onOpenApproval={onOpenApproval}
         />
       )}
       <LaneTabs
@@ -96,7 +90,7 @@ export function MonitorLanesScreen({
         lane={lane}
         controlsId={lanesId}
         counts={{
-          todo: lanes.todo.length + plans.length,
+          todo: lanes.todo.length,
           doing: lanes.doing.length,
           done: lanes.done.length,
         }}
@@ -122,8 +116,6 @@ export function MonitorLanesScreen({
             : undefined
         }
         previewRevealed={previewRevealed}
-        plans={plans}
-        onOpenPlan={onOpenPlan}
       />
       <MonitorLaneDialogs
         pending={pending}

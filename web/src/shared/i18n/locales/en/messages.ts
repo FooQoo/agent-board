@@ -4,11 +4,6 @@ export const messagesEn = {
     band: {
       fromAi: "AI's questions",
       fromYou: 'Your requests',
-      breakdown: '{{questions}}, {{approvals}}',
-      questionCount_one: '{{count}} question',
-      questionCount_other: '{{count}} questions',
-      approvalCount_one: '{{count}} approval',
-      approvalCount_other: '{{count}} approvals',
       unpicked: 'waiting to be picked up',
       open: 'Open the list',
       ask: 'Ask AI',
@@ -22,10 +17,9 @@ export const messagesEn = {
       toYou: 'AI → You',
       toAi: 'You → AI',
     },
-    type: { question: 'Question', request: 'Request', approval: 'Approval' },
+    type: { question: 'Question', request: 'Request' },
     state: {
       unanswered: 'Unanswered',
-      awaitingApproval: 'Awaiting approval',
       answerWaitingPickup: 'Answered, waiting for an AI',
       waitingPickup: 'Waiting to be picked up',
     },

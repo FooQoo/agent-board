@@ -234,9 +234,9 @@ test('the band and the list show the open questions, and each is answered on its
   const band = messageBand(page);
   // The fresh board already has one waiting card, #12.
   await expect(band.getByRole('listitem').first()).toContainText("AI's questions");
-  await expect(band.getByRole('listitem').first()).toContainText('1 question, 0 approvals');
+  await expect(band.getByRole('listitem').first()).toHaveText(/^AI's questions 1$/);
   ask('Which way for #13?');
-  await expect(band.getByRole('listitem').first()).toContainText('2 questions, 0 approvals');
+  await expect(band.getByRole('listitem').first()).toHaveText(/^AI's questions 2$/);
 
   const list = await openMessageList(page);
   await expect(list.getByRole('tab', { name: /^AI's questions 2$/ })).toBeVisible();

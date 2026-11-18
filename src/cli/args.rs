@@ -61,7 +61,7 @@ pub enum Command {
     Mv(MvArgs),
     /// Report a task's run state: idle or running
     State(StateArgs),
-    /// Start an AI draft task (a person only)
+    /// Start an AI draft task
     Start(StartArgs),
     /// Append a work note to a task history
     History(HistoryArgs),

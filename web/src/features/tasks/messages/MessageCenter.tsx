@@ -17,8 +17,6 @@ export interface MessageCenterProps {
   onChanged: () => void;
   /** The phone band's "Ask AI" button; the band shows no such button without it. */
   onAsk?: () => void;
-  /** An approval row of the list was chosen: the plan review opens. */
-  onOpenApproval?: (message: Message) => void;
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
 
@@ -31,7 +29,6 @@ export function MessageCenter({
   api,
   onChanged,
   onAsk,
-  onOpenApproval,
   resolveAttachment,
 }: MessageCenterProps) {
   return (
@@ -51,13 +48,6 @@ export function MessageCenter({
           api={api}
           onChanged={onChanged}
           onClose={panel.close}
-          onOpenApproval={
-            onOpenApproval &&
-            ((message) => {
-              panel.close();
-              onOpenApproval(message);
-            })
-          }
           resolveAttachment={resolveAttachment}
         />
       )}

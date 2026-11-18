@@ -29,7 +29,6 @@ const message = (over: Partial<Message> & Pick<Message, 'id' | 'type'>): Message
 const MESSAGES: Message[] = [
   message({ id: 'Q-12', type: 'question', tasks: [21, 22] }),
   message({ id: 'Q-13', type: 'question', tasks: [14] }),
-  message({ id: 'LOGIN-1', type: 'approval', title: 'Login' }),
   message({ id: 'Q-14', type: 'request', from: 'human', to: 'ai', turn: 'ai' }),
 ];
 
@@ -61,13 +60,11 @@ function Harness({
   routes,
   variant = 'board',
   messages = MESSAGES,
-  onOpenApproval,
   onChanged = () => undefined,
 }: {
   routes: MessagesApi;
   variant?: 'board' | 'phone';
   messages?: Message[];
-  onOpenApproval?: (message: Message) => void;
   onChanged?: () => void;
 }) {
   const panel = useMessagesPanel();
@@ -79,7 +76,6 @@ function Harness({
       panel={panel}
       api={routes}
       onChanged={onChanged}
-      onOpenApproval={onOpenApproval}
     />
   );
 }
@@ -87,8 +83,8 @@ function Harness({
 beforeEach(() => selectLocale('en'));
 
 describe('messages model', () => {
-  it('counts questions and approvals waiting on you, and your unpicked requests', () => {
-    expect(countMessages(MESSAGES)).toEqual({ fromAi: 3, questions: 2, approvals: 1, fromYou: 1 });
+  it('counts questions waiting on you, and your unpicked requests', () => {
+    expect(countMessages(MESSAGES)).toEqual({ fromAi: 2, fromYou: 1 });
   });
 
   it('finds the first open question that a card waits on', () => {
@@ -123,19 +119,8 @@ describe('MessageCenter', () => {
     const list = await screen.findByRole('dialog', { name: 'Messages' });
     expect(within(list).getAllByRole('tab')).toHaveLength(2);
     expect(within(list).getAllByText('Unanswered')).toHaveLength(2);
-    expect(within(list).getByText('Awaiting approval')).toBeTruthy();
     await user.click(within(list).getByRole('tab', { name: /Your requests/ }));
     expect(within(list).getByText('Waiting to be picked up')).toBeTruthy();
-  });
-
-  it('hands an approval row to the plan review and closes the list', async () => {
-    const user = userEvent.setup();
-    const onOpenApproval = vi.fn();
-    render(<Harness routes={api()} onOpenApproval={onOpenApproval} />);
-    await user.click(screen.getByRole('button', { name: 'Open the list' }));
-    await user.click(await screen.findByRole('button', { name: /Login/ }));
-    expect(onOpenApproval).toHaveBeenCalledWith(MESSAGES[2]);
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('sends one answer with its choice and note, and returns to the list', async () => {

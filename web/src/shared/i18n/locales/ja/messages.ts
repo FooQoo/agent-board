@@ -4,11 +4,6 @@ export const messagesJa = {
     band: {
       fromAi: 'AI の質問',
       fromYou: 'あなたの依頼',
-      breakdown: '{{questions}}・{{approvals}}',
-      questionCount_one: '質問 {{count}}',
-      questionCount_other: '質問 {{count}}',
-      approvalCount_one: '承認 {{count}}',
-      approvalCount_other: '承認 {{count}}',
       unpicked: '受け取り待ち',
       open: '一覧を開く',
       ask: 'AI に依頼',
@@ -22,10 +17,9 @@ export const messagesJa = {
       toYou: 'AI → あなた',
       toAi: 'あなた → AI',
     },
-    type: { question: '質問', request: '依頼', approval: '承認' },
+    type: { question: '質問', request: '依頼' },
     state: {
       unanswered: '未回答',
-      awaitingApproval: '承認待ち',
       answerWaitingPickup: '回答済み・AI の受け取り待ち',
       waitingPickup: '受け取り待ち',
     },

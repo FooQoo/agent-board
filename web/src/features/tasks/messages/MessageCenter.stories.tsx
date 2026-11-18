@@ -23,22 +23,12 @@ interface HarnessProps {
   /** Replaces the sample's read, to give a message another body. */
   read?: MessagesApi['read'];
   onAsk?: () => void;
-  onOpenApproval: () => void;
   /** Adds a question the person answered that no agent took in yet. */
   withAnswered?: boolean;
 }
 
 /** The band and the list it opens, over the sample messages. */
-function Harness({
-  variant,
-  initial,
-  answer,
-  withdraw,
-  read,
-  onAsk,
-  onOpenApproval,
-  withAnswered,
-}: HarnessProps) {
+function Harness({ variant, initial, answer, withdraw, read, onAsk, withAnswered }: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
   const messages = useMemo(
@@ -67,7 +57,6 @@ function Harness({
         api={api}
         onChanged={() => {}}
         onAsk={onAsk}
-        onOpenApproval={onOpenApproval}
         resolveAttachment={resolveSampleAttachment}
       />
     </div>
@@ -81,7 +70,6 @@ const meta = {
     variant: 'board',
     answer: fn(async () => undefined),
     withdraw: fn(async () => undefined),
-    onOpenApproval: fn(),
   },
   parameters: { layout: 'fullscreen', ...modalDocsParameters },
   globals: { locale: 'ja' },
@@ -93,14 +81,13 @@ type Story = StoryObj<typeof meta>;
 const page = () => within(document.body);
 const phone = { storyFrame: 'monitor', layout: 'fullscreen', ...modalDocsParameters } as const;
 
-/** The list opens from the band; "AI の質問" shows the two questions and the approval, newest first. */
+/** The list opens from the band; "AI の質問" shows the two questions, newest first. */
 export const ListFromAi: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: '一覧を開く' }));
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
     await expect(within(list).getAllByText('未回答')).toHaveLength(2);
-    await expect(within(list).getByText('承認待ち')).toBeInTheDocument();
     await expect(within(list).queryByText('受け取り待ち')).toBeNull();
   },
 };
@@ -118,17 +105,6 @@ export const ListFromYou: Story = {
     await userEvent.click(row);
     await userEvent.click(await within(list).findByRole('button', { name: '一覧へ戻る' }));
     await expect(await within(list).findByText('受け取り待ち')).toBeInTheDocument();
-  },
-};
-
-/** An approval row hands over to the plan review. */
-export const ApprovalRow: Story = {
-  args: { initial: { tab: 'fromAi' } },
-  globals: { locale: 'en' },
-  play: async ({ args }) => {
-    const list = await page().findByRole('dialog', { name: 'Messages' });
-    await userEvent.click(within(list).getByRole('button', { name: /LOGIN-1/ }));
-    await expect(args.onOpenApproval).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -168,7 +144,7 @@ export const AnsweredWaitingPickup: Story = {
     const state = within(list).getByText('回答済み・AI の受け取り待ち');
     // The band counts only what waits for the person.
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ', hidden: true });
-    await expect(band.querySelector('strong')).toHaveTextContent('3');
+    await expect(band.querySelector('strong')).toHaveTextContent('2');
     const row = state.closest('button');
     if (!row) throw new Error('The answered row is not a button.');
     await userEvent.click(row);

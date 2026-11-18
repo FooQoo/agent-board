@@ -204,7 +204,7 @@ describe('which project is shown', () => {
       title: 'Restore a pending task',
       taskStatus: 'doing',
       agentStatus: 'pending',
-      pendingReason: 'Waiting for approval',
+      pendingReason: 'Waiting for an answer',
       pendingRequestId: 'request-710',
       description: 'Preserved description',
       archivedAt: '2026-10-09T01:00:00Z',
@@ -252,7 +252,7 @@ describe('which project is shown', () => {
       restoredButton,
     );
     await userEvent.click(restoredButton);
-    expect(screen.queryByText('Waiting for approval')).toBeNull();
+    expect(screen.queryByText('Waiting for an answer')).toBeNull();
     expect(within(screen.getByRole('complementary')).getByText('Idle')).toBeTruthy();
     expect(writes()[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks/${archived.id}/restore`);
   });

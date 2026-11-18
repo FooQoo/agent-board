@@ -19,7 +19,6 @@ export const questionsEn = {
     },
     card: {
       waiting: 'Unanswered questions: {{count}}',
-      waitingStart: 'Waiting for the start to be approved',
     },
   },
 } as const;

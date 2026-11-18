@@ -105,8 +105,8 @@ export function seed(home, text) {
 }
 
 /**
- * A plan the AI proposed and a request the person sent, so the board shows its Messages band, a Proposed plan
- * card in Todo, and an approval, next to the sample question. Call it after `seed`.
+ * An epic with draft tasks the AI added, a question about them and a request the person sent, so the board shows
+ * its Messages band and the draft cards in Todo next to the sample question. Call it after `seed`.
  */
 export function seedProposal(home, text) {
   const run = (...args) => cli(home, ['--project', project, ...args]);

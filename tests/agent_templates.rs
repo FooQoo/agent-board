@@ -131,7 +131,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
 }
 
 #[test]
-fn the_skill_plans_first_and_starts_after_one_approval() {
+fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
     let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
     // A request is accepted first, then becomes a plan of AI drafts on the board before any question.
     assert!(
@@ -146,21 +146,19 @@ fn the_skill_plans_first_and_starts_after_one_approval() {
         skill.contains("Do not ask before registering it"),
         "the Skill must not ask before registering the plan"
     );
-    // Questions that change the plan come after the plan is placed; the person then starts the AI drafts.
+    // Questions that change the plan come after the plan is placed; the agent then starts its drafts.
     assert!(
         skill.contains("**Ask what you cannot settle.**")
-            && skill.contains("**Wait for the start.**")
+            && skill.contains("**Start the drafts.**")
             && skill.find("**Ask what you cannot settle.**")
-                < skill.find("**Wait for the start.**"),
+                < skill.find("**Start the drafts.**"),
         "the Skill must ask before the start"
     );
     assert!(skill.contains("start_blocked_by_questions"));
-    assert!(!skill.contains("plan questions"));
-    // The plan's tasks are AI drafts that a person starts.
-    for needed in ["agboard epic start", "agboard start"] {
+    // The plan's tasks are AI drafts that the agent starts itself.
+    for needed in ["epic start <EPIC-ID> --actor ai", "start <ID> --actor ai"] {
         assert!(skill.contains(needed), "the Skill omits {needed}");
     }
-    assert!(!skill.contains("start_approval") && !skill.contains("approvingChoiceIds"));
     // After the start, only four cases call the user.
     for case in [
         "**Intent**",
@@ -170,9 +168,6 @@ fn the_skill_plans_first_and_starts_after_one_approval() {
     ] {
         assert!(skill.contains(case), "the Skill omits the case {case}");
     }
-    // The old flow that registered only after a yes in the chat is gone.
-    assert!(!skill.contains("register them only after a yes"));
-    assert!(!skill.contains("Do not ask in chat"));
 }
 
 #[test]

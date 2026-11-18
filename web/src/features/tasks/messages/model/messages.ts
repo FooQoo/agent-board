@@ -11,24 +11,20 @@ export function tabOf(message: Message): MessageTab | null {
 }
 
 export interface MessageCount {
-  /** Questions and approvals waiting for you. An answer the AI has not taken in is not counted. */
+  /** Questions waiting for you. An answer the AI has not taken in is not counted. */
   fromAi: number;
-  questions: number;
-  approvals: number;
   /** Your requests that no agent has picked up yet. */
   fromYou: number;
 }
 
 /** What the band says: how many messages wait on you, and how many of yours wait to be picked up. */
 export function countMessages(messages: readonly Message[]): MessageCount {
-  const count: MessageCount = { fromAi: 0, questions: 0, approvals: 0, fromYou: 0 };
+  const count: MessageCount = { fromAi: 0, fromYou: 0 };
   for (const message of messages) {
     const tab = tabOf(message);
     if (tab === 'fromAi') {
       if (message.turn !== 'human') continue;
       count.fromAi += 1;
-      if (message.type === 'approval') count.approvals += 1;
-      else count.questions += 1;
     } else if (tab === 'fromYou') count.fromYou += 1;
   }
   return count;

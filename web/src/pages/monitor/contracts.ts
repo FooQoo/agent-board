@@ -1,6 +1,5 @@
 import type { ColumnName, Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
-import type { Plan } from '../../features/tasks/plans/model/plan';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { HeaderProps, HeaderSettings } from '../../shared/ui/app-header/Header';
 import type { MessagesApi } from '../../features/tasks/messages/model/messages';
@@ -92,8 +91,6 @@ export interface MonitorViewProps {
   onMessagesChanged?(): void;
   /** The phone band's "Ask AI" button; the band shows none without it. */
   onAsk?(): void;
-  /** An approval row of the list was chosen: the plan review opens. */
-  onOpenApproval?(message: Message): void;
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
@@ -109,15 +106,4 @@ export interface MonitorViewProps {
   projectName?: string;
   /** A move or an archive was saved: the screen reads the project again without waiting. */
   onWritten?(): void;
-  /** The approvals waiting for a person: one plan card each at the top of Todo, counted in the lane. */
-  plans?: readonly Plan[];
-  /**
-   * The plan review of an approval, drawn as a sheet; the screen that owns the data gives it. The
-   * view only says which approval is open and what a question's button does.
-   */
-  renderPlanReview?(review: {
-    approvalId: string;
-    onClose(): void;
-    onOpenQuestion(questionId: string): void;
-  }): React.ReactNode;
 }

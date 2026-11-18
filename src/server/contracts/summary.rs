@@ -18,7 +18,7 @@ pub struct Summary {
     pub problems: Vec<SummaryProblem>,
     /// The open questions of the project, in ID order.
     pub questions: Vec<SummaryQuestion>,
-    /// Open questions, requests and approvals in one shape, oldest first.
+    /// Open questions and requests in one shape, oldest first.
     pub messages: Vec<crate::file_store::message::Message>,
 }
 
