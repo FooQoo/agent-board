@@ -46,3 +46,11 @@ predicates = "3.1.4"
 tempfile = "3.27.0"
 tokio = { version = "1.53.1", features = ["test-util"] }
 ureq = "3.4.2"
+
+# Keep development builds small: line tables still give file and line numbers in
+# backtraces and panics, without the full debug info that fills target/debug.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

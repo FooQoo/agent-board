@@ -29,6 +29,8 @@ cargo build
 
 The binary is `target/debug/agboard`. If `cargo build` stops with `Run "pnpm --dir web build" first.`, the UI build is missing.
 
+Development builds keep only line tables as debug info (`[profile.dev]` in `Cargo.toml`), so panics and backtraces still name files and lines while `target/` stays smaller. `target/` still grows with every dependency or branch change, and each worktree has its own; remove it with `cargo clean` when disk space runs low.
+
 ## Development
 
 Common workflows use `just`:
