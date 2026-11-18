@@ -31,7 +31,8 @@ Always:
 - Run the verification commands in [Verification](docs/dev/getting-started/pull-request.md#verification) before you finish.
 - Point `AGBOARD_HOME` at a temporary directory in tests and never use port 7420.
 - Never commit machine-specific absolute paths.
-- Talk with the user in the language the user writes in. This covers chat replies and questions to the user, not what goes into the repository: keep code, comments, commit messages, and the English documentation in English as [Conventions](docs/dev/getting-started/pull-request.md#conventions) says.
+- Talk with the user in the language the user writes in, in chat replies and in questions to the user.
+- Write everything you put in the repository in English, apart from translations: code, comments, commit messages, pull request titles and bodies, documentation, and release notes. Translations, such as the Japanese pages under `docs/ja/`, `README.ja.md`, and localized UI resources, use their target language (see [Conventions](docs/dev/getting-started/pull-request.md#conventions)).
 
 ## Branches
 
