@@ -29,6 +29,8 @@ cargo build
 
 実行ファイルは`target/debug/agboard`です。`cargo build`が`Run "pnpm --dir web build" first.`で止まったら、Web画面がまだビルドされていません。
 
+開発用ビルドはデバッグ情報を行番号の表だけに絞っています（`Cargo.toml`の`[profile.dev]`）。panicやバックトレースにはファイル名と行番号が出たまま、`target/`が小さく済みます。それでも依存やブランチを切り替えるたびに`target/`は増え、worktreeごとに別に作られます。ディスクの空きが減ったら`cargo clean`で消してください。
+
 ## 開発
 
 よく使う手順は`just`で実行できます。
