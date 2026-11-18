@@ -22,6 +22,8 @@ pub struct Request {
     pub agent: Option<SetupAgentArg>,
     pub yes: bool,
     pub dry_run: bool,
+    /// Started by the hook; see `setup::auto_update`.
+    pub background: bool,
     pub json: bool,
 }
 
@@ -32,6 +34,17 @@ pub enum Finished {
 }
 
 pub fn run(request: &Request) -> Result<Finished, AgboardError> {
+    if request.background {
+        let agent = match request.agent {
+            Some(SetupAgentArg::Codex) => Agent::Codex,
+            _ => Agent::Claude,
+        };
+        let env = SetupEnv::from_process();
+        return Ok(match setup::auto_update::run_background(&env, agent) {
+            Some(report) => Finished::Report(report),
+            None => Finished::Cancelled,
+        });
+    }
     let terminal = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
     let interactive = terminal && !request.json;
     let command = request.mode.command();

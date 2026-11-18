@@ -27,10 +27,12 @@ case "$*" in
   "plugin list --json")
     if [ -f "$S/$A.installed" ]; then
       v=$(/bin/cat "$S/$A.installed")
+      ip=''
+      if [ -f "$S/$A.path" ]; then ip=',"installPath":"'$(/bin/cat "$S/$A.path")'"'; fi
       if [ "$A" = codex ]; then
-        printf '{"installed":[{"pluginId":"agent-board@agent-board","version":"%s","enabled":true}],"available":[]}\n' "$v"
+        printf '{"installed":[{"pluginId":"agent-board@agent-board","version":"%s"%s,"enabled":true}],"available":[]}\n' "$v" "$ip"
       else
-        printf '[{"id":"agent-board@agent-board","version":"%s","scope":"user","enabled":true}]\n' "$v"
+        printf '[{"id":"agent-board@agent-board","version":"%s"%s,"scope":"user","enabled":true}]\n' "$v" "$ip"
       fi
     elif [ "$A" = codex ]; then
       echo '{"installed":[],"available":[]}'
@@ -124,6 +126,15 @@ impl FakeAgents {
     pub fn preinstall(&self, agent: &str, version: &str, source: &str) {
         fs::write(self.state.join(format!("{agent}.installed")), version).unwrap();
         fs::write(self.state.join(format!("{agent}.market")), source).unwrap();
+    }
+
+    /// Makes `plugin list --json` name the folder the plugin is installed in.
+    pub fn install_path(&self, agent: &str, path: &Path) {
+        fs::write(
+            self.state.join(format!("{agent}.path")),
+            path.to_str().unwrap(),
+        )
+        .unwrap();
     }
 
     pub fn installed(&self, agent: &str) -> Option<String> {

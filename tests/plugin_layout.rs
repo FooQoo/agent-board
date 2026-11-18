@@ -1,7 +1,8 @@
 //! The repository is the plugin marketplace of Codex and Claude Code: both
 //! catalogs name one shared plugin folder, every version in them is the crate
-//! version (setup installs the plugin from the tag `v<version>`), and the Skill
-//! refers only to files it ships.
+//! version (setup installs the plugin from the tag `v<version>`), the Hook
+//! commands carry no version, and the Skill is a thin entry that runs
+//! `agboard skills`.
 
 use std::path::{Path, PathBuf};
 
@@ -58,7 +59,7 @@ fn every_plugin_version_is_the_crate_version() {
             "{path}: set the version to {VERSION} when the crate version changes"
         );
     }
-    let expected = |agent: &str| format!("agboard hook --agent {agent} --plugin-version {VERSION}");
+    let expected = |agent: &str| format!("agboard hook --agent {agent}");
     for (path, agent) in [
         ("plugins/agent-board/hooks/claude.json", "claude"),
         ("plugins/agent-board/hooks/codex.json", "codex"),
@@ -80,25 +81,34 @@ fn every_plugin_version_is_the_crate_version() {
 }
 
 #[test]
-fn every_reference_in_the_skill_is_shipped_with_it() {
+fn the_skill_is_a_thin_entry_that_runs_agboard_skills() {
     let skill_dir = repo("plugins/agent-board/skills/agent-board");
     let skill = std::fs::read_to_string(skill_dir.join("SKILL.md")).unwrap();
-    for folder in ["references/", "assets/"] {
-        for (at, _) in skill.match_indices(folder) {
-            let name: String = skill[at..]
-                .chars()
-                .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '.' | '-' | '_'))
-                .collect();
-            let name = name.trim_end_matches('.');
-            if name == folder {
-                continue;
-            }
-            assert!(
-                skill_dir.join(name).is_file(),
-                "SKILL.md refers to {name}, which the plugin does not ship"
-            );
-        }
+    let (frontmatter, body) = skill
+        .strip_prefix("---\n")
+        .and_then(|rest| rest.split_once("\n---\n"))
+        .expect("SKILL.md has frontmatter");
+    for key in ["name: agent-board\n", "description: ", "compatibility: "] {
+        assert!(frontmatter.contains(key), "the frontmatter omits {key}");
     }
+    assert!(frontmatter.contains("\nallowed-tools: Bash(agboard *)"));
+    // The one line Claude Code replaces with the command's output.
+    assert!(body.lines().any(|line| line == "!`agboard skills`"));
+    assert!(body.contains("run `agboard skills` and follow its output"));
+    assert!(
+        body.len() < 400,
+        "the entry holds instructions; they belong in the binary"
+    );
+    // The instructions and their references are served by the binary.
+    let entries: Vec<_> = std::fs::read_dir(&skill_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert_eq!(
+        entries,
+        ["SKILL.md"],
+        "the plugin ships no references or assets"
+    );
 }
 
 #[test]

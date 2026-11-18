@@ -3,6 +3,14 @@
 
 use serde_json::Value;
 
+fn topic(name: &str) -> &'static str {
+    agent_board::skills::TOPICS
+        .iter()
+        .find(|(topic, _)| *topic == name)
+        .unwrap()
+        .1
+}
+
 fn claude() -> Value {
     serde_json::from_str(include_str!("../plugins/agent-board/hooks/claude.json")).unwrap()
 }
@@ -45,11 +53,11 @@ fn templates_cover_the_documented_events() {
 fn every_template_command_uses_cwd_resolution_and_is_fixed() {
     for (agent, template) in [("claude", claude()), ("codex", codex())] {
         for (event, hook) in handlers(&template) {
-            let expected = format!(
-                "agboard hook --agent {agent} --plugin-version {}",
-                env!("CARGO_PKG_VERSION")
+            assert_eq!(
+                command(&hook),
+                format!("agboard hook --agent {agent}"),
+                "{agent} {event}"
             );
-            assert_eq!(command(&hook), expected, "{agent} {event}");
             assert_eq!(hook["type"], "command");
             assert_eq!(hook["timeout"], 10, "{agent} {event}");
             if agent == "codex" {
@@ -99,14 +107,8 @@ fn templates_hold_no_personal_or_machine_specific_paths() {
 #[test]
 fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
     for (name, text) in [
-        (
-            "SKILL.md",
-            include_str!("../plugins/agent-board/skills/agent-board/SKILL.md"),
-        ),
-        (
-            "listening.md",
-            include_str!("../plugins/agent-board/skills/agent-board/references/listening.md"),
-        ),
+        ("the Skill", agent_board::skills::AGENT_BOARD),
+        ("listening", topic("listening")),
     ] {
         assert!(
             text.contains("folder_unbound"),
@@ -115,7 +117,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
         assert!(text.contains("agboard setup"), "{name} omits setup");
         assert!(!text.contains("agboard connect"), "{name} names connect");
     }
-    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
+    let skill = agent_board::skills::AGENT_BOARD;
     assert!(
         skill.contains("never run it"),
         "the Skill must not run setup itself"
@@ -132,7 +134,7 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
 
 #[test]
 fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
-    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
+    let skill = agent_board::skills::AGENT_BOARD;
     // A request is accepted first, then becomes a plan of AI drafts on the board before any question.
     assert!(
         skill.contains("### Accept a request") && skill.contains("message accept"),
@@ -171,7 +173,7 @@ fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
 
 #[test]
 fn the_skill_asks_on_the_board_and_in_the_chat() {
-    let skill = include_str!("../plugins/agent-board/skills/agent-board/SKILL.md");
+    let skill = agent_board::skills::AGENT_BOARD;
     assert!(
         skill.contains("Every question goes on the board with `message ask`, never only in chat"),
         "every question must go to the board"

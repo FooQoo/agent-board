@@ -28,6 +28,7 @@ Commands:
   snapshot Fetch the complete board and history
   progress Show active work in epic priority order
   hook    Add the current progress table to an agent hook
+  skills  Print the instructions of the agent-board Skill
   wait    Wait for a board change or the next task
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser (-d runs it in the background)

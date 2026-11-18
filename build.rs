@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 
 #[path = "src/server/dist.rs"]
 mod dist;
+#[path = "src/plugin_hash.rs"]
+mod plugin_hash;
 
 fn main() {
     let manifest_dir = PathBuf::from(
@@ -24,6 +26,8 @@ fn main() {
     if !missing.is_empty() {
         fail(&dist::error_message(&missing));
     }
+
+    write_plugin_table(&manifest_dir, &out_dir);
 
     let mut blobs = Blobs::default();
     let app = Page::read(&dist_dir, "assets", "app", &mut blobs);
@@ -41,6 +45,27 @@ fn main() {
     for folder in ["", "/assets", "/sandbox"] {
         println!("cargo:rerun-if-changed=web/dist{folder}");
     }
+}
+
+/// `plugin_files.rs`: the files of the plugin folder and their content hash,
+/// which the hook compares with the installed plugin.
+fn write_plugin_table(manifest_dir: &Path, out_dir: &Path) {
+    let root = manifest_dir.join("plugins/agent-board");
+    let files = plugin_hash::list_files(&root)
+        .unwrap_or_else(|| fail("plugins/agent-board cannot be read"));
+    let hash = plugin_hash::hash_files(&root, &files)
+        .unwrap_or_else(|| fail("a file of plugins/agent-board cannot be read"));
+    let mut source = String::new();
+    writeln!(source, "pub const PLUGIN_HASH: &str = {hash:?};").unwrap();
+    writeln!(source, "pub const PLUGIN_FILES: &[&str] = &[").unwrap();
+    for file in &files {
+        writeln!(source, "    {file:?},").unwrap();
+    }
+    writeln!(source, "];").unwrap();
+    std::fs::write(out_dir.join("plugin_files.rs"), source)
+        .expect("the build script can write to OUT_DIR");
+    // A folder is watched recursively: a changed, added, or removed file reruns.
+    println!("cargo:rerun-if-changed=plugins/agent-board");
 }
 
 fn fail(message: &str) -> ! {

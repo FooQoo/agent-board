@@ -59,6 +59,9 @@ fn write(root: &Path, rel: &str, bytes: &[u8]) {
 fn fake_build(extra: &[(&str, &[u8])]) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path();
+    // The build script also hashes the plugin folder.
+    std::fs::create_dir_all(root.join("plugins/agent-board")).unwrap();
+    std::fs::write(root.join("plugins/agent-board/plugin.json"), "{}").unwrap();
     write(
         root,
         "index.html",

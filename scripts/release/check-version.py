@@ -7,9 +7,10 @@ With --assets, DIR must also hold exactly the two per-CPU archives of that
 version (aarch64 and x86_64) and nothing else, so a missing CPU, a stray file,
 or an archive of another version fails the check.
 
-The Agent Board plugin's manifests, its Claude Code catalog entry, and the
---plugin-version of its Hook commands must name the same version, because
-setup installs the plugin from the tag of that version.
+The Agent Board plugin's manifests and its Claude Code catalog entry must name
+the same version, because setup installs the plugin from the tag of that
+version. Its Hook commands carry no version: they must be exactly
+"agboard hook --agent <agent>".
 
 The tag must be exactly "v" followed by a plain MAJOR.MINOR.PATCH version.
 Prints the version on success; exits 1 with a reason on any mismatch.
@@ -47,7 +48,10 @@ PLUGIN_FILES = (
     ("plugins/agent-board/.claude-plugin/plugin.json", lambda d: [d["version"]]),
     (".claude-plugin/marketplace.json", lambda d: [p["version"] for p in d["plugins"]]),
 )
-HOOK_FILES = ("plugins/agent-board/hooks/claude.json", "plugins/agent-board/hooks/codex.json")
+HOOK_FILES = (
+    ("plugins/agent-board/hooks/claude.json", "claude"),
+    ("plugins/agent-board/hooks/codex.json", "codex"),
+)
 
 
 def check_plugin(root, version):
@@ -55,13 +59,13 @@ def check_plugin(root, version):
         found = versions(json.loads((root / path).read_text(encoding="utf-8")))
         if found != [version]:
             fail(f"{path} says {found} but Cargo.toml says {version}")
-    for path in HOOK_FILES:
+    for path, agent in HOOK_FILES:
         data = json.loads((root / path).read_text(encoding="utf-8"))
         for group in data["hooks"].values():
             for entry in group:
                 for hook in entry["hooks"]:
-                    if not hook["command"].endswith(f" --plugin-version {version}"):
-                        fail(f"{path} runs {hook['command']!r}, not --plugin-version {version}")
+                    if hook["command"] != f"agboard hook --agent {agent}":
+                        fail(f"{path} runs {hook['command']!r}, not 'agboard hook --agent {agent}'")
 
 
 def check_assets(directory, version):

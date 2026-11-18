@@ -81,6 +81,8 @@ pub enum Command {
     Snapshot(SnapshotArgs),
     /// Add the current progress table to an agent hook
     Hook(HookArgs),
+    /// Print the instructions of the agent-board Skill
+    Skills(SkillsArgs),
     /// Wait for a board change or the next task
     Wait(WaitArgs),
     /// Show the board in your browser
@@ -128,6 +130,7 @@ impl Command {
             Command::Epic(_) => "epic",
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
+            Command::Skills(_) => "skills",
             Command::Wait(_) => "wait",
             Command::Serve(_) => "serve",
             Command::Open(_) => "open",
@@ -141,7 +144,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 24] = [
+pub const SUBCOMMAND_NAMES: [&str; 25] = [
     "project",
     "init",
     "add",
@@ -166,6 +169,7 @@ pub const SUBCOMMAND_NAMES: [&str; 24] = [
     "progress",
     "setup",
     "update",
+    "skills",
 ];
 
 /// What parsing the command line produced.

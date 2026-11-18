@@ -28,6 +28,10 @@ pub fn execute_without_data_dir(
             write_text(stdout, &text);
             0
         }
+        Ok(Parsed::Run(cli)) if matches!(cli.command, Command::Skills(_)) => {
+            write_text(stdout, &skills_text(&cli.command));
+            0
+        }
         Ok(Parsed::Run(_)) => {
             let text = if json_requested {
                 errors::json(error)
@@ -49,6 +53,14 @@ pub fn execute_without_data_dir(
     }
 }
 
+/// The Markdown `agboard skills` prints.
+fn skills_text(command: &Command) -> String {
+    match command {
+        Command::Skills(args) => crate::skills::render(args.topic.as_deref()),
+        _ => String::new(),
+    }
+}
+
 /// Runs `args` (the first item is the program name) and returns the process
 /// exit code.
 pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
@@ -65,6 +77,11 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     if let Err(error) = cli.validate() {
         return fail(env, &error, cli.json);
     }
+    // `skills` prints embedded text: no data directory, no store, no writes.
+    if matches!(cli.command, Command::Skills(_)) {
+        write_text(env.stdout, &skills_text(&cli.command));
+        return 0;
+    }
     // `setup` and `update` need no project and no store: they resolve the
     // data directory themselves and run before any board files are opened.
     let request = match &cli.command {
@@ -73,6 +90,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             agent: args.agent,
             yes: args.yes,
             dry_run: args.dry_run,
+            background: false,
             json: cli.json,
         }),
         Command::Update(args) => Some(commands::setup::Request {
@@ -80,6 +98,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
             agent: args.agent,
             yes: args.yes,
             dry_run: args.dry_run,
+            background: args.background,
             json: cli.json,
         }),
         _ => None,
@@ -115,12 +134,21 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 done: args.progress.include_done,
             },
         );
-        if let Some(output) = run.output {
-            let output = crate::agent::hook_version::with_notice(
-                output,
-                args.plugin_version.as_deref(),
-                env!("CARGO_PKG_VERSION"),
-            );
+        // At session start only: when the installed plugin is not the one this
+        // agboard ships, start its update in the background and say so.
+        let notice = (run.event.as_deref() == Some("SessionStart"))
+            .then(|| {
+                let agent = match args.agent {
+                    args::AgentArg::Claude => crate::setup::Agent::Claude,
+                    args::AgentArg::Codex => crate::setup::Agent::Codex,
+                };
+                crate::setup::auto_update::session_start_notice(
+                    agent,
+                    &data_dir_of(&env.shared_dir),
+                )
+            })
+            .flatten();
+        if let Some(output) = crate::agent::hook::with_session_notice(run.output, notice) {
             write_text(env.stdout, &output);
         }
         // An agent is working on a board: keep its server running, so that

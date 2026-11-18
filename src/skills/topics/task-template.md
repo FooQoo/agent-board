@@ -1,3 +1,8 @@
+# New task template
+
+Start the `TASK.md` of a new task from this template. The frontmatter is input: Agent Board generates the first history entry.
+
+```markdown
 ---
 acceptance:
   - id: AC-1
@@ -10,3 +15,4 @@ history: []
 ---
 
 (Write the task plan in free Markdown. There are no required headings. Add concise verified acceptance results and artifact references here. Automatically record progress and all operation history only in the history frontmatter; do not add an execution-history section to this body.)
+```

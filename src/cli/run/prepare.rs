@@ -66,6 +66,7 @@ fn access(command: &Command) -> Access {
         | Command::Setup(_)
         | Command::Update(_)
         | Command::Hook(_)
+        | Command::Skills(_)
         | Command::Wait(_) => Access::Catalog,
     }
 }
@@ -139,6 +140,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Open(args) => commands::open::run(ctx, args),
         Command::Remote(_) => commands::remote::run(ctx),
         Command::Hook(_)
+        | Command::Skills(_)
         | Command::Message(_)
         | Command::Wait(_)
         | Command::Serve(_)

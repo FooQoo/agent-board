@@ -39,6 +39,9 @@ fn run_build_script(manifest_dir: &Path) -> std::process::Output {
 
 fn fake_manifest(files: &[&str]) -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
+    // The build script also hashes the plugin folder.
+    std::fs::create_dir_all(dir.path().join("plugins/agent-board")).unwrap();
+    std::fs::write(dir.path().join("plugins/agent-board/plugin.json"), "{}").unwrap();
     for rel in files {
         let path = dir.path().join("web/dist").join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();

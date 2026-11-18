@@ -4,7 +4,7 @@
 
 The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
 
-Start from [assets/TASK.md](../assets/TASK.md) or [assets/EPIC.md](../assets/EPIC.md).
+Templates for a new task and a new epic: `agboard skills task-template` and `agboard skills epic-template`.
 
 ## The frontmatter
 

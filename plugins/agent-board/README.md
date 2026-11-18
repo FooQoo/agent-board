@@ -8,11 +8,11 @@ agboard setup
 
 For browser operations, CLI examples, and shared-file editing, see the [usage guide](https://fooqoo.github.io/agent-board/guide/), in particular [CLI reference](https://fooqoo.github.io/agent-board/guide/reference/cli) and [Editing and image attachments](https://fooqoo.github.io/agent-board/guide/watch/editing).
 
-Agent Board hooks read the same read-only progress table as `agboard progress --json` after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill describes how to choose work from that table, read only the needed plan and task files, record work, and verify acceptance conditions.
+Agent Board hooks read the same read-only progress table as `agboard progress --json` after tools run and pass it to the agent as `additionalContext`. The `agent-board` skill (its text is printed by `agboard skills agent-board`) describes how to choose work from that table, read only the needed plan and task files, record work, and verify acceptance conditions.
 
 ## Resolve the project from the working folder
 
-The Hook runs a fixed command such as `agboard hook --agent claude --plugin-version <version>`; it contains no project name, session ID, shell variables, or substitutions. The version is the plugin's own; when it is not the version of the installed `agboard`, a new session tells the agent to ask you to run `agboard update`. The hook reads `cwd` from its JSON input and resolves the nearest registered ancestor folder. If `cwd` is absent, it uses the hook process's current folder. An explicit `--project NAME` overrides folder bindings. A folder with no binding at all produces no output and exit code 0, so a Global Hook does not disturb other folders. A malformed binding, a deleted bound project, or an unreadable `cwd` produces `AGBOARD_ERROR`; the hook never guesses another project.
+The Hook runs a fixed command such as `agboard hook --agent claude`; it contains no project name, session ID, shell variables, or substitutions. The hook reads `cwd` from its JSON input and resolves the nearest registered ancestor folder. If `cwd` is absent, it uses the hook process's current folder. An explicit `--project NAME` overrides folder bindings. A folder with no binding at all produces no output and exit code 0, so a Global Hook does not disturb other folders. A malformed binding, a deleted bound project, or an unreadable `cwd` produces `AGBOARD_ERROR`; the hook never guesses another project.
 
 The `AGBOARD_PROGRESS` payload contains project metadata, versions, paths to each epic `EPIC.md` and task `TASK.md`, and each eligible task's ID, title, owner, status, and acceptance count. It excludes Done, archived, and Pending tasks, and omits bodies, history, and image data. Human-owned and draft tasks remain visible, each with its `draft` owner (`null`, `human`, or `ai`); do not take work assigned to a person or a draft. When a person has sent a request, a `requests` array lists it; accept it with `agboard message accept` and plan it. Read only the plan and task files needed for the selected work. If the complete progress table exceeds 256 KiB or cannot be read, the agent gets `AGBOARD_ERROR` and must not make board-dependent changes. The hook never truncates the table and never blocks or changes the original tool result.
 
@@ -34,7 +34,7 @@ claude plugin marketplace add https://github.com/FooQoo/agent-board.git#vX.Y.Z
 claude plugin install agent-board@agent-board
 ```
 
-The plugin is installed for your user, so it works in every folder. In a folder with no project, the Hook prints nothing and exits normally. Hooks and the Skill run `agboard` from `PATH`, so they use the installed version.
+The plugin is installed for your user, so it works in every folder. In a folder with no project, the Hook prints nothing and exits normally. Hooks and the Skill run `agboard` from `PATH`, so they use the installed version. The Skill's instructions are embedded in `agboard`, so they always match it.
 
 | Path | What it is |
 | --- | --- |
@@ -42,7 +42,7 @@ The plugin is installed for your user, so it works in every folder. In a folder 
 | `.claude-plugin/marketplace.json` | The Claude Code marketplace catalog, at the repository root |
 | `plugins/agent-board/.codex-plugin/plugin.json` | The Codex plugin manifest |
 | `plugins/agent-board/.claude-plugin/plugin.json` | The Claude Code plugin manifest |
-| `plugins/agent-board/skills/agent-board/` | The Skill, shared by both agents |
+| `plugins/agent-board/skills/agent-board/SKILL.md` | A thin entry for the Skill, shared by both agents; the instructions themselves come from `agboard skills agent-board` |
 | `plugins/agent-board/skills/remote/` | The Skill that gives the phone address and passcode, shared by both agents |
 | `plugins/agent-board/hooks/codex.json`, `hooks/claude.json` | The Hook of each agent |
 
@@ -52,7 +52,7 @@ Codex runs a plugin's hook only after you trust it, and the trust is tied to the
 
 ## Update the plugin
 
-After `brew upgrade fooqoo/tap/agboard`, run `agboard update` (or `agboard update --yes`, which answers the question in advance). It moves the marketplace of each agent to the new tag, installs the plugin of the new version, and trusts the new Codex hooks again. Start a new agent session afterwards.
+After `brew upgrade fooqoo/tap/agboard`, the plugin updates itself: when a session starts, the Hook compares the plugin's files with the ones this `agboard` ships, and when they differ it reinstalls the plugin from the tag of the `agboard` version in the background. The new plugin applies from the next session. This never trusts Codex hooks, so for Codex run `agboard update` yourself (or `agboard update --yes`, which answers the question in advance); it also reinstalls and repairs the plugin in either agent. Set `AGBOARD_NO_PLUGIN_AUTO_UPDATE=1` to turn the automatic update off.
 
 ## Rules for agents on the shared files
 
