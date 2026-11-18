@@ -119,8 +119,18 @@ async fn saving_the_same_content_again_sends_no_changed_event() {
     assert!(fx.changed_within(Duration::from_secs(3)).await);
     fx.drain();
 
-    // Same bytes again: the version is a content hash, so nothing changed.
+    // Same bytes again: the version is a content hash, so nothing changed. The task's updated
+    // time is the file's modification time in whole seconds, so a second save that lands in the
+    // next second is a real change. Put the first save's modification time back to test only the
+    // content, which is what this test is about.
+    let saved_at = fs::metadata(fx.task_md()).unwrap().modified().unwrap();
     fs::write(fx.task_md(), &text).unwrap();
+    fs::File::options()
+        .write(true)
+        .open(fx.task_md())
+        .unwrap()
+        .set_modified(saved_at)
+        .unwrap();
     assert!(
         !fx.changed_within(Duration::from_millis(1200)).await,
         "a save of identical content must not announce a change"
