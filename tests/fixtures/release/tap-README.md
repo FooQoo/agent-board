@@ -12,18 +12,23 @@ later and installs the prebuilt, signed binary from the Release of the same tag.
 
 ## What this repository receives
 
-Only two files change, in one commit on a branch of this repository:
+Only two files change:
 
 - `Formula/agboard.rb`, rendered by `scripts/release/render-formula.py` in
   FooQoo/agent-board.
 - This README, when the install or upgrade wording changes.
 
 Nothing else is copied from FooQoo/agent-board: no archives, no scripts, no
-tokens. Nothing pushes to this repository automatically.
+tokens.
 
-## Update procedure (maintainer, after the Release is public)
+`Formula/agboard.rb` is pushed to the default branch by the `homebrew-tap`
+workflow of FooQoo/agent-board when a Release is published, using a deploy key
+of this repository. Re-run it with
+`gh workflow run homebrew-tap.yml --repo FooQoo/agent-board --ref vX.Y.Z`.
 
-Update the Formula only when all of these hold. If any fails, leave the Tap as it is.
+## Update procedure (manual fallback)
+
+The workflow normally does this. Update the Formula by hand only when all of these hold. If any fails, leave the Tap as it is.
 
 1. The Release `vX.Y.Z` is published, not a draft, and holds exactly the two
    archives (`aarch64-apple-darwin`, `x86_64-apple-darwin`) and `SHA256SUMS`.
@@ -60,5 +65,5 @@ Update the Formula only when all of these hold. If any fails, leave the Tap as i
    `THIRD_PARTY_NOTICES.txt` are non-empty and equal the archive's files.
    If anything differs, find the cause and fix it before publishing. Do not
    grant blanket Keychain access or disable Gatekeeper to get past it.
-6. Open the commit on a branch and merge it by review. The Formula never
+6. Commit it to this repository. The Formula never
    contains a SHA that was not computed from the published archives.

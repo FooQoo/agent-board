@@ -139,7 +139,25 @@ Storyで使う架空の画像は`web/.storybook/static/`にあります。Storyb
 
 ### Homebrewへの公開
 
-Releaseを公開したあとに、`scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb`で、公開したファイルからFormulaを作ります。CPUの欠け、版の違い、ハッシュの不一致は拒否されます。Formulaは、`on_macos`でCPUごとにアーカイブを選び、macOS 15を要求し（`depends_on macos: :sequoia`）、MITを宣言し、`agboard`を`bin`へ、2つのライセンスファイルを`pkgshare`へインストールします。`test do`では、`--version`を確認し、一時的な`AGBOARD_HOME`を使います。`scripts/release/test-formula.sh`がインストールとテストをローカルで再現します。Tapの手順は、そのREADMEにあります。`FooQoo/homebrew-tap`へ自動でpushすることはありません。人が、作られたFormulaを確認してコミットします。
+Releaseを公開すると、`.github/workflows/homebrew-tap.yml`がFormulaを自動で公開します。`scripts/release/render-formula.py --tag vX.Y.Z --sums SHA256SUMS --assets <dir> --out Formula/agboard.rb`は、公開したファイルからFormulaを作り、CPUの欠け、版の違い、ハッシュの不一致を拒否します。Formulaは、`on_macos`でCPUごとにアーカイブを選び、macOS 15を要求し（`depends_on macos: :sequoia`）、MITを宣言し、`agboard`を`bin`へ、2つのライセンスファイルを`pkgshare`へインストールします。`test do`では、`--version`を確認し、一時的な`AGBOARD_HOME`を使います。
+
+ワークフローはReleaseの公開時に動き、下書きとプレリリースは対象外です。次の順に進めます。
+
+1. `gh release download`で、そのタグの2つのアーカイブと`SHA256SUMS`を取得します。
+2. macOS 15でFormulaを作り、`scripts/release/test-formula.sh`と`ruby -c`で確認します。
+3. SSHで`FooQoo/homebrew-tap`をcloneし、`Formula/agboard.rb`をコピーします。ファイルが変わったときだけ、`github-actions[bot]`として`agboard X.Y.Z`をコミットし、既定ブランチへ直接pushします。
+
+ジョブは`homebrew-tap` Environmentで動きます。このEnvironmentは`v*`タグだけを受け付け、シークレット`HOMEBREW_TAP_DEPLOY_KEY`を持ちます。これはtapリポジトリの読み書きできるデプロイキーで、pushのあいだだけ権限0600の一時ファイルに書き、ジョブの最後に削除します。SSHは固定したGitHubのホスト鍵だけを受け入れます。権限は`contents: read`だけで、コマンドラインにシークレットは現れません。`release.yml`は関与しません。
+
+pushに失敗したときなど、あるタグでもう一度動かすには、そのタグを指定して起動します。ブランチでの実行はスキップされ、Environmentも拒否します。
+
+```sh
+gh workflow run homebrew-tap.yml --ref vX.Y.Z
+```
+
+すでにtapにあるタグで動かしても、pushされるものはありません。
+
+鍵を入れ替えるには、`ssh-keygen -t ed25519 -N "" -C homebrew-tap-deploy -f <file>`で新しい鍵を作り、公開鍵を書き込み権限つきのデプロイキーとしてtapリポジトリへ追加します。次に、`homebrew-tap` Environmentのシークレット`HOMEBREW_TAP_DEPLOY_KEY`を秘密鍵で置き換え、最新のタグでワークフローを一度動かして確認し、古いデプロイキーとローカルの鍵ファイルを削除します。`scripts/release/test-formula.sh`はインストールとテストをローカルで再現します。
 
 ## ソースからインストール
 

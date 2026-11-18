@@ -15,7 +15,8 @@ name: Release build
 #    ever passed on a command line. Every action is pinned to a commit SHA. The very same bytes are then packed into the tar.gz.
 #    A single Mach-O cannot be stapled, so there is no stapler step.
 #    `release-gate` passes only when BOTH CPUs succeeded, and only then does
-#    `release-draft` create a DRAFT Release. A missing certificate, a rejected
+#    `release-draft` create a DRAFT Release (publishing it later triggers
+#    homebrew-tap.yml, which updates the Homebrew tap). A missing certificate, a rejected
 #    or timed-out notarization, or one failing CPU stops the run; an unsigned
 #    archive is never a fallback for a formal release.
 #

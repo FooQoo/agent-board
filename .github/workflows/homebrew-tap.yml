@@ -1,0 +1,91 @@
+name: Publish to Homebrew tap
+
+# Runs when a GitHub Release is published (never for a draft or a prerelease).
+# It renders Formula/agboard.rb from the PUBLISHED assets, checks it, and pushes
+# it straight to the default branch of FooQoo/homebrew-tap.
+#
+# The Environment `homebrew-tap` only accepts `v*` tags, and holds the only copy
+# of the secret HOMEBREW_TAP_DEPLOY_KEY (a read-write deploy key of the tap).
+# Both triggers run on the tag ref, so the Environment policy applies to both.
+# To run it again for a tag, for example after a failed push:
+#   gh workflow run homebrew-tap.yml --ref vX.Y.Z
+# release.yml (candidate and formal paths) is not involved.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-tap
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # A manual run must be started on a tag ref; the tag is the ref name.
+    if: >-
+      github.ref_type == 'tag' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (!github.event.release.prerelease && !github.event.release.draft))
+    runs-on: macos-15
+    environment: homebrew-tap
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      TAP_REPO: FooQoo/homebrew-tap
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the tag and that the Release is public
+        run: |
+          case "${TAG}" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "not a release tag: ${TAG}" >&2; exit 1 ;;
+          esac
+          python3 -I scripts/release/check-version.py --tag "${TAG}" >/dev/null
+          state=$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft,isPrerelease --jq '"\(.isDraft) \(.isPrerelease)"')
+          [ "${state}" = "false false" ] || { echo "Release ${TAG} is a draft or a prerelease (${state})" >&2; exit 1; }
+      - name: Download the published assets
+        run: |
+          mkdir -p "${RUNNER_TEMP}/assets"
+          gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/assets" \
+            --pattern 'agboard-*.tar.gz' --pattern SHA256SUMS
+      - name: Render the Formula
+        run: |
+          mkdir -p "${RUNNER_TEMP}/formula"
+          python3 -I scripts/release/render-formula.py --tag "${TAG}" \
+            --sums "${RUNNER_TEMP}/assets/SHA256SUMS" --assets "${RUNNER_TEMP}/assets" \
+            --out "${RUNNER_TEMP}/formula/agboard.rb"
+      - name: Check the generator and the Formula
+        run: |
+          bash scripts/release/test-formula.sh
+          /usr/bin/ruby -c "${RUNNER_TEMP}/formula/agboard.rb"
+      - name: Push the Formula to the tap
+        env:
+          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          umask 077
+          key="${RUNNER_TEMP}/tap_deploy_key"
+          printf '%s\n' "${HOMEBREW_TAP_DEPLOY_KEY}" > "${key}"
+          # GitHub's published ed25519 host key (gh api meta .ssh_keys).
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "${RUNNER_TEMP}/tap_known_hosts"
+          export GIT_SSH_COMMAND="ssh -i ${key} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${RUNNER_TEMP}/tap_known_hosts"
+          git clone --depth 1 "git@github.com:${TAP_REPO}.git" "${RUNNER_TEMP}/tap"
+          cd "${RUNNER_TEMP}/tap"
+          mkdir -p Formula
+          cp "${RUNNER_TEMP}/formula/agboard.rb" Formula/agboard.rb
+          git add Formula/agboard.rb
+          if git diff --cached --quiet; then
+            echo "The tap already has the Formula for ${TAG}; nothing to push."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "agboard ${TAG#v}"
+          git push origin HEAD
+      - name: Remove the deploy key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/tap_deploy_key" "${RUNNER_TEMP}/tap_known_hosts"
