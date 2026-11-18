@@ -72,7 +72,7 @@ title: トラブルシューティング
 | `sandbox_mode`や権限プロファイルについての手作業の手順 | Codexの権限設定では、データフォルダに書き込めません。setupはその設定を変えません。 | Codexの`config.toml`で`sandbox_mode = "workspace-write"`を自分で設定するか、権限プロファイルにデータフォルダを追加してから、もう一度`agboard setup`を実行してください。 |
 | `Codex lists no hooks of the Agent Board plugin`や`still does not trust the hook` | Codexでプラグインが有効になっていないか、Codexが信頼の設定を受け付けませんでした。 | `codex plugin list`でプラグインを確認し、Codexの`/hooks`でHookを確認してください。 |
 | エージェントがHookを実行しない | エージェントを再起動していないか、Claude CodeのHookを確認していません。 | 新しいセッションを始める（Claude Code）かCodexを再起動してから、`/hooks`でHookを確認してください。 |
-| 新しいセッションで、プラグインの版が違うと言われる | `agboard`を更新しましたが、プラグインは更新していません。 | `agboard update`を実行してから、新しいセッションを始めてください。 |
+| 新しいセッションで、プラグインを更新中、または自動更新が完了しなかったと言われる | `agboard`を更新したあと、Hookが違うプラグインを見つけました。更新はバックグラウンドで動きます。終わらなかった、またはCodexのhookの信頼が必要です。 | 新しいセッションを始めると更新が有効になります。完了しなかったとき、またはCodexを使うときは、`agboard update`を実行してから、新しいセッションを始めてください。 |
 
 両コマンドの終了コードは、[CLIリファレンス](../reference/cli#setup-and-update)にあります。
 

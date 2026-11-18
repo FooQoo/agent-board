@@ -72,7 +72,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | A manual step about `sandbox_mode` or a permission profile | Codex's permission settings do not let the data folder be written, and setup never changes them. | Set `sandbox_mode = "workspace-write"` in Codex's `config.toml` yourself, or add the data folder to your permission profile, then run `agboard setup` again. |
 | `Codex lists no hooks of the Agent Board plugin` or `still does not trust the hook` | The plugin is not enabled in Codex, or Codex refused the trust. | Check the plugin with `codex plugin list`, then review the hooks with `/hooks` in Codex. |
 | The agent does not run the Hook | The agent was not restarted, or the Claude Code Hook is not reviewed. | Start a new session (Claude Code) or restart Codex, then review the Hook with `/hooks`. |
-| A new session says the plugin is of another version | `agboard` was upgraded, but the plugin was not. | Run `agboard update`, then start a new session. |
+| A new session says the plugin is being updated, or that the automatic update did not complete | `agboard` was upgraded and the Hook found a different plugin. The update runs in the background; it did not finish, or Codex needs its hooks trusted. | Start a new session to use the update. If it did not complete or you use Codex, run `agboard update`, then start a new session. |
 
 Exit codes of both commands are in the [CLI reference](../reference/cli#setup-and-update).
 

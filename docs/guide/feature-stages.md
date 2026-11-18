@@ -44,7 +44,7 @@ Features that are GA show no notice.
 | Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./reference/cli#projects) |
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
 | Language and themes | PC, remote access | English and Japanese, and 24 themes. | [Settings](./watch/board#settings) |
-| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Hook and the Skill must match the installed `agboard`; run `agboard update` after upgrading it. You start the agent yourself. | [Working with agents](./delegate/agents) |
+| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Skill comes from the installed `agboard`, and the plugin updates itself when a session starts; for Codex, run `agboard update` once after upgrading it to trust the new hooks. You start the agent yourself. | [Working with agents](./delegate/agents) |
 | `setup` and `update` | macOS, with Claude Code or Codex found on your `PATH` and a network connection to GitHub | On a terminal both commands ask first; `--yes` agrees in advance. They depend on the plugin commands of Claude Code and Codex. | [Working with agents](./delegate/agents#set-up-your-agents), [CLI reference](./reference/cli#setup-and-update) |
 | First-run welcome | PC and phone browsers | It is offered once for a data area, and you can show it again from Settings. It runs in the browser and never changes your board. | [The first-run guide](./watch/board#the-first-run-guide) |
 

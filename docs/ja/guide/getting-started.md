@@ -70,19 +70,16 @@ agboard serve
 
 ## 更新する
 
-Homebrewでコマンドを更新し、続けてAgent Boardプラグインを同じ版にそろえます。
+Homebrewでコマンドを更新します。
 
 ```sh
 brew upgrade fooqoo/tap/agboard
 agboard --version
-agboard update
 ```
 
-`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントのプラグインは変わりません。それを更新するのが`agboard update`で、プラグインがあるすべてのエージェントが対象です。変更内容を表示して確認を求めます。`agboard update --yes`は、その質問にあらかじめ答えます。詳しくは[プラグインを更新する](./delegate/agents#update-the-plugin)を参照してください。
+`brew upgrade`が置き換えるのは、コマンドとその中のWeb画面です。エージェントのAgent Boardプラグインは、自分で更新されます。次にエージェントのセッションが始まるとき、Hookがプラグインの違いに気づき、バックグラウンドで入れ直します。新しいプラグインは、その次のセッションから有効になります。Agent Boardについてのエージェントへの指示はコマンド自身が出すので、すぐに新しいものになります。`agboard update`を自分で実行するのは、Codexのhookの信頼など自動更新ではできないとき、またはプラグインを直したいときだけです。詳しくは[プラグインを更新する](./delegate/agents#update-the-plugin)を参照してください。
 
 更新したら、新しいコマンドと画面を使うために、`agboard serve`を止めて起動し直します。開いているボードやモニターは、サーバーが戻ると自動で再読み込みします。編集中や回答の入力中は、それが終わるまで待ちます。
-
-忘れても、新しいエージェントのセッションが知らせます。プラグインとコマンドの版が違うと、エージェントが`agboard update`の実行を促します。
 
 Hookとエージェントのスキルは、`PATH`の`agboard`を実行するので、インストールした版を使います。開発中のビルド（`cargo build`、`cargo run`、`target/debug/agboard`）は別の実行ファイルです。
 

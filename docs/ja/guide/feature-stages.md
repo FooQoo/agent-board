@@ -44,7 +44,7 @@ GAの機能には、この表示はありません。
 | プロジェクトと作業フォルダ | CLI、パソコンのブラウザ | フォルダがどのプロジェクトに属するかは、最も近い登録済みのフォルダで決まります。 | [CLIリファレンス](./reference/cli#projects) |
 | データの保存と復旧 | macOS | `formatVersion`が1のファイルだけに対応します。 | [データとバックアップ](./operations/data) |
 | 表示言語とテーマ | パソコン、リモートアクセス | 日本語と英語、24のテーマです。 | [設定](./watch/board#settings) |
-| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | HookとSkillは、インストールした`agboard`の版に合わせます。本体を更新したら`agboard update`を実行します。エージェントの起動は人が行います。 | [エージェントとの連携](./delegate/agents) |
+| エージェント向けのCLI・JSON出力・Hook・`wait` | Claude Code、Codex | Skillはインストールした`agboard`が出力し、プラグインはセッションの開始時に自分で更新されます。Codexは、本体を更新したあとに一度`agboard update`を実行して新しいhookを信頼します。エージェントの起動は人が行います。 | [エージェントとの連携](./delegate/agents) |
 | `setup`と`update` | macOS。`PATH`上にClaude CodeかCodexがあり、GitHubへ接続できる環境 | ターミナルでは、どちらのコマンドも先に確認します。`--yes`はあらかじめ同意します。Claude CodeとCodexのプラグインコマンドに依存します。 | [エージェントとの連携](./delegate/agents#set-up-your-agents)、[CLIリファレンス](./reference/cli#setup-and-update) |
 | 初回の案内 | パソコンとスマホのブラウザ | データ領域ごとに1回提示し、設定からもう一度表示できます。ブラウザの中で動き、ボードを変えることはありません。 | [初回の案内](./watch/board#the-first-run-guide) |
 

@@ -105,14 +105,13 @@ To check progress and answer questions from your phone, open **Settings** → **
 
 ## Update
 
-Updating takes two steps. First update the command, then move the Agent Board plugin to the same version:
+Update the command. The Agent Board plugin follows it:
 
 ```sh
 brew upgrade fooqoo/tap/agboard
-agboard update
 ```
 
-`agboard update` shows what will change and asks before it runs; `agboard update --yes` answers the question in advance. When the plugin and the command differ, a new agent session tells you to run `agboard update`. Restart `agboard serve` after an upgrade.
+The plugin updates itself: when a new agent session starts and the plugin differs from the one your `agboard` ships, it is reinstalled in the background and applies from the next session. Run `agboard update` yourself for Codex (it trusts the new hooks) or when the automatic update could not finish. It shows what will change and asks before it runs; `agboard update --yes` answers the question in advance. Restart `agboard serve` after an upgrade.
 
 ## Feature stages
 

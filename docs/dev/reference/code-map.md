@@ -74,14 +74,15 @@ The main files and directories outside `src/` are:
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
-- `plugins/agent-board/`: the Agent Board plugin: the manifests, the agent skills in `skills/agent-board/` and `skills/remote/`, and the Hook of each agent in `hooks/`.
+- `plugins/agent-board/`: the Agent Board plugin: the manifests, the thin entry of the `agent-board` skill in `skills/agent-board/`, the `remote` skill in `skills/remote/`, and the Hook of each agent in `hooks/`.
 - `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json`: the marketplace catalogs of Codex and Claude Code.
 
 ### Plugin setup and update
 
 - `src/setup/`: `mod.rs` (the agents and options), `prepare.rs` (the read-only plan), `execute.rs` (carrying it out), and `report.rs` (the text and JSON result and the exit code). `plan.rs`, `codex.rs`, and `claude.rs` compute the settings changes, and `apply.rs` with `apply/files.rs` writes them with backups. `env.rs` resolves the paths, `agent_cli.rs` runs the agents' commands, `plugin.rs` installs the plugin from the marketplace, and `trust.rs` trusts the Codex hooks through `codex app-server`.
 - `src/cli/commands/setup.rs`: `agboard setup` and `agboard update`: the options, the agent choice, and the confirmation question.
-- `src/agent/hook_version.rs`: the plugin version check of the Hook.
+- `src/skills/`: the text of the `agent-board` skill (`agent-board.md`, `topics/`) that `agboard skills` prints.
+- `src/plugin_hash.rs`, `src/setup/auto_update.rs`, and `src/setup/auto_update/`: the content hash of the plugin (computed by `build.rs`), and the hook's automatic update with its lock and record. `tests/plugin_auto_update.rs` and `tests/skills_command.rs` test them.
 - `tests/setup.rs` and `tests/setup_plugin.rs`: setup and update against fake agent commands (`tests/support/fake_agents.rs`). `tests/plugin_layout.rs` checks the marketplace and plugin files and their versions.
 - `src/cli/commands/message/` and `src/cli/args/message.rs`: the `agboard message` commands, their JSON input (`input.rs`), and the JSON Lines events of `message ask` and `message wait` (`stream.rs`). The wait itself is `src/agent/message_wait.rs`, built on the shared wait engine.
 - `web/src/features/tasks/messages/`: the list of messages. `model/messages.ts` holds the tabs, the counts, and `canSendAnswer`, `api.ts` reads a message and sends answers and withdrawals, `MessageBand.tsx` is the band with the counts (shared by the PC board and the phone screen), `MessageCenter.tsx` joins the band and the list, `MessageRows.tsx` draws the rows, and `MessagesSurface.tsx` is the list, the question, and the request in a modal or a bottom sheet. `web/src/features/tasks/answer/` draws the question and the answer fields (`DecisionQuestion`, `DecisionAnswerFields`), and `web/src/app/model/useMessagesController.ts` wires the list to the PC board.

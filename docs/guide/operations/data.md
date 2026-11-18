@@ -24,6 +24,7 @@ Set `AGBOARD_HOME` to use another data folder. An empty value counts as unset. T
   serve.log              output of a server started in the background
   autostart.lock         keeps commands from starting two servers
   autostart.paused       left by agboard stop; the hook does not start a server
+  plugin-update/         lock and record of the automatic plugin update, per agent
   .internal/
     preferences.json     language and color theme (written by the app)
   shared/
