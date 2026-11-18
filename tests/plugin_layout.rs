@@ -127,3 +127,21 @@ fn the_plugin_holds_no_links_or_machine_specific_paths() {
         }
     }
 }
+
+#[test]
+fn the_remote_skill_hands_out_the_address_without_starting_anything() {
+    let path = repo("plugins/agent-board/skills/remote/SKILL.md");
+    let skill = std::fs::read_to_string(path).unwrap();
+    assert!(skill.starts_with("---\nname: remote\n"));
+    for needed in [
+        "agboard progress --json",
+        "agboard --project \"<name>\" remote --json",
+        "`ready`",
+        "anyone who can read this chat",
+        "remote_unavailable",
+        "Never ask for, print, or store the ngrok token",
+        "Never start `agboard serve`",
+    ] {
+        assert!(skill.contains(needed), "the remote Skill omits {needed}");
+    }
+}

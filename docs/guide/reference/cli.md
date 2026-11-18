@@ -225,6 +225,8 @@ Project: My project
 
 `--project` is required, and the address opens that project. Without it, `remote` prints nothing and exits with code 2 as `invalid_argument`. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`; `entrance` is the address without a project.
 
+The plugin ships the skill `remote` (`/agent-board:remote` in Claude Code) for this: ask your agent for the remote access URL or the phone link, and it runs `agboard remote --json` for the project of the folder and replies with the address and passcode. It never starts the server or ngrok.
+
 `remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
 
 The server gives the passcode only to the local address of your PC, so it is printed to the person running the command and never travels through ngrok. If an agent pastes it into a chat, everyone who can read that chat can open the board for as long as the connection is up. Stop the connection when you are done; see the [remote access guide](../watch/remote-access).

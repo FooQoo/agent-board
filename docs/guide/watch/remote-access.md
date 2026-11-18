@@ -93,7 +93,7 @@ While it connects, the dialog shows **Connecting to ngrok…** in place of the t
 
 The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
 
-To give someone the address and passcode while the connection is up, run `agboard --project "<name>" remote`; it prints both on this PC only. See [Give the phone address and passcode](../reference/cli#give-the-phone-address-and-passcode). Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
+To give someone the address and passcode while the connection is up, run `agboard --project "<name>" remote`; it prints both on this PC only. See [Give the phone address and passcode](../reference/cli#give-the-phone-address-and-passcode). You can also ask your agent for the remote access URL; the plugin's `remote` skill (`/agent-board:remote` in Claude Code) runs the same command and replies with both, and it never starts the connection. Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
 
 If ngrok cannot be reached, the dialog says so and gives the reason. Check the token and the internet connection, then choose **Save and connect** again. The board on the PC keeps working.
 

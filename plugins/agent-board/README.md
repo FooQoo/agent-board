@@ -1,6 +1,6 @@
 # The Agent Board plugin
 
-This folder is the Agent Board plugin for Claude Code and Codex. It holds the `agent-board` Skill and the Hook. Install it with:
+This folder is the Agent Board plugin for Claude Code and Codex. It holds the `agent-board` Skill, the `remote` Skill (the phone address and passcode, `/agent-board:remote` in Claude Code), and the Hook. Install it with:
 
 ```sh
 agboard setup
@@ -43,6 +43,7 @@ The plugin is installed for your user, so it works in every folder. In a folder 
 | `plugins/agent-board/.codex-plugin/plugin.json` | The Codex plugin manifest |
 | `plugins/agent-board/.claude-plugin/plugin.json` | The Claude Code plugin manifest |
 | `plugins/agent-board/skills/agent-board/` | The Skill, shared by both agents |
+| `plugins/agent-board/skills/remote/` | The Skill that gives the phone address and passcode, shared by both agents |
 | `plugins/agent-board/hooks/codex.json`, `hooks/claude.json` | The Hook of each agent |
 
 ## Trust hooks

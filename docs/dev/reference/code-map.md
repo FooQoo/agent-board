@@ -74,7 +74,7 @@ The main files and directories outside `src/` are:
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
-- `plugins/agent-board/`: the Agent Board plugin: the manifests, the agent skill in `skills/agent-board/`, and the Hook of each agent in `hooks/`.
+- `plugins/agent-board/`: the Agent Board plugin: the manifests, the agent skills in `skills/agent-board/` and `skills/remote/`, and the Hook of each agent in `hooks/`.
 - `.agents/plugins/marketplace.json` and `.claude-plugin/marketplace.json`: the marketplace catalogs of Codex and Claude Code.
 
 ### Plugin setup and update
