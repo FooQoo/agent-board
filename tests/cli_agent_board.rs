@@ -382,7 +382,9 @@ fn a_draft_refuses_edit_mv_and_state_and_changes_and_announces_nothing() {
 fn descriptions_up_to_the_limit_pass_through_every_input() {
     let home = tempdir().unwrap();
     assert!(invoke(home.path(), &["init"]).get_output().status.success());
-    let text = body_of(50000, 'あ');
+    // One argv string is capped at 128 KiB on Linux (MAX_ARG_STRLEN), so the arguments use ASCII fill.
+    // The multi-byte fill goes through the file and stdin, which have no such cap.
+    let text = body_of(50000, 'a');
     let added = json_of(invoke(
         home.path(),
         &[
@@ -454,7 +456,7 @@ fn descriptions_up_to_the_limit_pass_through_every_input() {
     );
     let over = invoke(
         home.path(),
-        &["edit", "1", "--desc", &body_of(50001, 'え'), "--json"],
+        &["edit", "1", "--desc", &body_of(50001, 'e'), "--json"],
     )
     .failure();
     let value: Value = serde_json::from_slice(&over.get_output().stderr).unwrap();
