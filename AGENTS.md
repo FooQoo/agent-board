@@ -32,6 +32,17 @@ Always:
 - Point `AGBOARD_HOME` at a temporary directory in tests and never use port 7420.
 - Never commit machine-specific absolute paths.
 
+## Branches
+
+Follow GitHub flow. `main` is always releasable, and every change reaches it through a pull request.
+
+- Start each change on its own branch cut from the latest `main`. Name it by kind and topic, such as `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `test/<topic>`, or `ci/<topic>`.
+- Never push commits directly to `main`, including small fixes to tests, CI, or documentation.
+- Push the branch and open a pull request to `main`. Merge it after its CI passes. A job that was cancelled, or that failed for a known flaky reason unrelated to the change, can be re-run; do not merge over a real failure.
+- Merge with a merge commit. Do not rewrite the history of `main` or force-push to it.
+- After the merge, watch the CI run on `main` until it passes, and fix any failure on a new branch.
+- Delete the branch, and any worktree made for it, once it is merged.
+
 ## Release notes
 
 Write the notes of every release in the same shape, so that the documentation site can read them. See [Check published release notes](docs/dev/docs-and-images.md#check-published-release-notes) for how the site reads them.
