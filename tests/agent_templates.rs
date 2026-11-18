@@ -150,8 +150,7 @@ fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
     assert!(
         skill.contains("**Ask what you cannot settle.**")
             && skill.contains("**Start the drafts.**")
-            && skill.find("**Ask what you cannot settle.**")
-                < skill.find("**Start the drafts.**"),
+            && skill.find("**Ask what you cannot settle.**") < skill.find("**Start the drafts.**"),
         "the Skill must ask before the start"
     );
     assert!(skill.contains("start_blocked_by_questions"));

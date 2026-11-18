@@ -35,7 +35,7 @@
 | `layout` | 検証済みのIDだけから所有パスを組み立てる。<br>文字列を直接パスにしない。 |
 | `frontmatter`<br>`history`<br>`validate` | 本文とfrontmatterの分割、完了条件と履歴の解析、未知のキーを保ったファイルの検証。 |
 | `transaction` | `task.json`と`TASK.md`の組を、永続ジャーナルで保存・復旧する。複数のファイルをまとめて保存するバッチのジャーナル（`batch.rs`）も持つ。 |
-| `message.rs` | 質問・依頼・承認の共通の形（`Message`、`MessageSource`トレイト、`Question`・`Request`・`Approval`の3つの型）と、Summaryの`messages`の一覧。 |
+| `message.rs` | 質問と依頼の共通の形（`Message`、`MessageSource`トレイト、`Question`・`Request`の2つの型）と、Summaryの`messages`の一覧。 |
 | `qa/` | メッセージ。質問と依頼のモデル（`model.rs`）、`QA.md`の読み書き（`codec.rs`）、ファイルが満たす規則（`check.rs`）、メッセージの置き場所と読み方（`store.rs`）、タスクに導く状態（`derive.rs`）、呼び出し側が受け取るビュー（`view.rs`）。 |
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
@@ -86,7 +86,7 @@
 - `src/cli/commands/message/`と`src/cli/args/message.rs`: `agboard message`の各コマンド、そのJSON入力（`input.rs`）、`message ask`と`message wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/message_wait.rs`です。
 - `web/src/features/tasks/messages/`: メッセージの一覧。`model/messages.ts`はタブ・件数・`canSendAnswer`、`api.ts`はメッセージの読み出しと回答・取り下げの送信、`MessageBand.tsx`は件数を示す帯（PCのボードとスマホ画面で共通）、`MessageCenter.tsx`は帯と一覧をつなぎ、`MessageRows.tsx`は行を描き、`MessagesSurface.tsx`は一覧・質問・依頼をモーダルまたは下からのシートで表示します。`web/src/features/tasks/answer/`は質問と回答の欄（`DecisionQuestion`・`DecisionAnswerFields`）を描き、`web/src/app/model/useMessagesController.ts`は一覧をPCのボードにつなぎます。
 - `web/src/features/messages/ask/`: **AIに依頼**のエディターと、multipartの依頼を組み立てる`sendRequest.ts`。
-- `web/src/features/tasks/plans/`: 承認の計画カードと計画のレビュー。`model/plan.ts`はSummaryの承認メッセージから`Plan`を作り（`plansOfSummary`）、`PlanCard.tsx`は未着手の先頭のカード（1件のタスクは`DraftTaskCard`）を描き、`PlanReview.tsx`は`Surface`で開くレビュー、`PlanReviewContainer.tsx`は新しいエピックのゴールを読み、`api/start.ts`で計画を開始し、`start_blocked_by_questions`を扱います。ボード（`pages/board/ui/Lane.tsx`）とスマホのモニター（`pages/monitor/components/MonitorLanes.tsx`）がカードを描き、どちらもAIの下書きのタスクをレーンから除きます。
+- ボード（`pages/board/ui/Lane.tsx`）とスマホのモニター（`pages/monitor/components/MonitorLanes.tsx`）は、AIの下書きのタスクを下書きのバッジ付きの通常のカードとして描きます。WebのUIに、計画のカード・計画のレビュー・開始のルートはありません。
 - `web/src/pages/monitor/`: スマホ幅の画面です。`View.tsx`がヘッダー、メッセージの帯、レーンのタブ、レーンを組み立てます。`components/LaneTabs.tsx`は件数付きのタブ、`components/MonitorLanes.tsx`は指に追従するレーンのカルーセル（`hooks/useLaneCarousel.ts`）、`components/SwipeableCard.tsx`と`hooks/useCardGesture.ts`はカードの長押しで選ぶ動きとスライドして開く動き（`web/src/shared/lib/gesture/useSideSwipe.ts`の上に作っています）、`components/MonitorLaneDialogs.tsx`は移動・アーカイブ・まとめてアーカイブの確認です。`model/lanes.ts`はレーンの並びとスワイプで出るボタンを持ち、`hooks/useLaneOverlay.ts`はこのスマホが保存した内容を次の読み取りまで画面に残します。`components/MonitorLanesScreen.tsx`は同じ部品をStorybook用に組み立てます。`web/src/shared/viewport/stableHeight.ts`はソフトウェアキーボードが開いている間のページの高さを保ちます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 

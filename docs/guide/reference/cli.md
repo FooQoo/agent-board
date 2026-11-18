@@ -96,14 +96,14 @@ agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
 
 `--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
 
-Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until a person starts it:
+Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until the draft is started:
 
 ```sh
-agboard --project "My project" start 12 --actor human
-agboard --project "My project" epic start LAUNCH --actor human
+agboard --project "My project" start 12 --actor ai
+agboard --project "My project" epic start LAUNCH --actor ai
 ```
 
-`start` clears the AI draft of one task. `epic start` clears the epic and every AI draft task of it in one step, and leaves tasks that a person is still drafting. Each started task records that a person started it. With `--actor ai` both commands fail with `human_only` (exit code 1).
+`start` clears the AI draft of one task. `epic start` clears the epic and every AI draft task of it in one step, and leaves tasks that a person is still drafting. The agent that wrote the plan starts it once its questions are answered and the plan is written up, and a person can run the same commands with `--actor human`. An open question on the task, or on a task of the epic, refuses the start with `start_blocked_by_questions` (exit code 1). Each started task records who started it: "The agent wrote the plan up and started the task." or "A person started the task."
 
 While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--priority` included. Wait until the person saves or discards it, or ask them to finalize a draft that was left behind. `epic attachment` and changing a task's epic still work.
 

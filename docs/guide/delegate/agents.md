@@ -4,7 +4,7 @@ title: Working with agents
 
 # Working with agents
 
-This is how you hand work to an agent. You ask in the chat; the agent turns the request into a proposed plan on the board, you start it, and it works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
+This is how you hand work to an agent. You ask in the chat; the agent turns the request into a plan of AI drafts on the board, asks what it cannot settle, starts the plan once you have answered, and works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
 
 ## Set up your agents {#set-up-your-agents}
 
@@ -101,11 +101,11 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it puts a proposed plan on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until a person starts it (see [Drafts and errors](#drafts-and-errors)). You can open the cards and read the plan first.
+When you ask an agent for work that is more than one task, it puts a plan of AI drafts on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until the draft is started (see [Drafts and errors](#drafts-and-errors)). The tasks show as ordinary Todo cards with a **Draft** badge, and you can open them and read the plan while the agent asks about it.
 
 1. **Questions about the plan.** The agent asks what it cannot settle itself, as ordinary questions with choices and a recommendation. A task that refers to an open question shows **Pending** until you answer.
 2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
-3. **Start.** When the plan reads right, you start it. On the board, the plan is one **Proposed plan** card at the top of Todo, and **Review and start** opens the review with the goal, the tasks in order, and any open questions (see [Proposed plans](../watch/board#proposed-plans)). **Start with this plan** is disabled while a question about the plan is unanswered. From the command line, run `agboard epic start <EPIC-ID> --actor human` for the epic and all its drafts, or `agboard start <id> --actor human` for one task. No agent starts the tasks before that.
+3. **Start.** Once your questions are answered and the agent has written the plan up, it starts the plan itself with `agboard epic start <EPIC-ID> --actor ai` for the epic and all its drafts, or `agboard start <id> --actor ai` for one task. You do not approve the start, and a person can run the same commands with `--actor human`. An open question on one of the tasks refuses the start (`start_blocked_by_questions`), so the agent waits for the answer first. The history records "The agent wrote the plan up and started the task."
 4. **Work.** After the start, the agent works through the tasks in the epic's order without asking each time.
 
 After the start, the agent calls you only when:
@@ -170,7 +170,7 @@ Use the [listener procedure in the agent-board skill](https://github.com/FooQoo/
 
 A draft a person is writing (`draft: "human"`) is read-only for agents: `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
 
-Every task and epic an agent creates is an AI draft (`draft: "ai"`), also when it is for the user. An agent can still edit it and add history, but `mv` and `state` fail with `task_is_draft` until a person starts it: `agboard start <id> --actor human` for one task, or `agboard epic start <EPIC-ID> --actor human` for an epic and all its AI drafts. An agent that runs `start` gets `human_only`.
+Every task and epic an agent creates is an AI draft (`draft: "ai"`), also when it is for the user. An agent can still edit it and add history, but `mv` and `state` fail with `task_is_draft` until the draft is started: `agboard start <id> --actor ai` for one task, or `agboard epic start <EPIC-ID> --actor ai` for an epic and all its AI drafts. The agent starts its own drafts after its questions are answered and the plan is written up. While a question about the draft is open, the start fails with `start_blocked_by_questions`. A person can run the same commands with `--actor human`.
 
 On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or an interrupted wait does not answer or expire a question. For causes and fixes, see [Troubleshooting](../operations/troubleshooting).
 

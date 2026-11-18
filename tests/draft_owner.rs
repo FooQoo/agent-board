@@ -283,7 +283,10 @@ fn the_agent_starts_its_own_draft_after_its_questions_are_answered() {
     ));
     assert_eq!(f.draft_of(id), Some(Draft::Ai));
     qa::answer(&f.store, &f.project, &question.id, None, Some("Plan A."));
-    let started = f.store.start_task(&f.project, id, Actor::Ai, now()).unwrap();
+    let started = f
+        .store
+        .start_task(&f.project, id, Actor::Ai, now())
+        .unwrap();
     assert!(started.changed);
     assert_eq!(f.draft_of(id), None);
     let history = f.store.task(&f.project, id).unwrap().history;
@@ -295,7 +298,10 @@ fn the_agent_starts_its_own_draft_after_its_questions_are_answered() {
             .contains("wrote the plan up and started"),
         "{history:?}"
     );
-    let epic_started = f.store.start_epic(&f.project, &epic, Actor::Ai, now()).unwrap();
+    let epic_started = f
+        .store
+        .start_epic(&f.project, &epic, Actor::Ai, now())
+        .unwrap();
     assert!(epic_started.changed);
     assert_eq!(f.store.epic(&f.project, &epic).unwrap().draft, None);
 
@@ -539,7 +545,7 @@ fn moving_a_draft_says_who_it_waits_for() {
     let err = reason(ai);
     assert_eq!(err.code(), "task_is_draft");
     assert!(
-        err.reason().contains("person to start it"),
+        err.reason().contains("once its questions are answered"),
         "{}",
         err.reason()
     );

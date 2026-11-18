@@ -18,7 +18,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `taskStatus` | レーン。`todo`・`doing`・`done`。 |
 | `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
 | `agentStatus` | AIの稼働状態。`task.json`には`idle`か`running`を保存します。TodoかDoingのAIタスクが人の判断待ちのとき、読み出すと`pending`になります（[メッセージ](../concepts/history-and-decisions.md#メッセージ)）。保存された`pending`は`idle`として読みます。 |
-| `draft` | `null`・`"human"`・`"ai"`のいずれか。`human`は人がブラウザで書いている下書き、`ai`はエージェントが作った提案で、開始できるのは人だけ。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読む。書き込みは`draft`だけを使う。エピックの場合、CLIの`epic edit`は`human`の下書きを`epic_is_draft`で拒否する。 |
+| `draft` | `null`・`"human"`・`"ai"`のいずれか。`human`は人がブラウザで書いている下書き、`ai`はエージェントが作った提案で、エージェントが、質問への回答がそろってから開始する（人も開始できる）。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読む。書き込みは`draft`だけを使う。エピックの場合、CLIの`epic edit`は`human`の下書きを`epic_is_draft`で拒否する。 |
 | `questions` | `TASK.md`のfrontmatterにあり、タスクが参照するプロジェクトの質問のIDを`[Q-12, Q-15]`のように並べます。省略・`null`・空はどれも0件で、重複は拒否します。 |
 | `requestAnswers` | 以前のAgent Boardが記録した回答。記録として残し、新しくは追加しません。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |

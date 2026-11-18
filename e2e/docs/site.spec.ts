@@ -99,7 +99,7 @@ for (const lang of langs) {
     await expect(start).toHaveAttribute('href', en ? '/agent-board/guide/getting-started' : '/agent-board/ja/guide/getting-started');
     await expect(hero.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', repoUrl);
 
-    // The loop has five steps across four lanes, and the request and the approval are the user's.
+    // The loop has five steps across four lanes, and the request and the answers are the user's.
     await expect(landing.locator('.lp-loop__lane')).toHaveCount(4);
     await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
     await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(2);

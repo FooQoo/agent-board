@@ -146,6 +146,8 @@ try {
       await page.getByRole('region', { name: more.messages }).getByRole('button').last().click();
       await expect(answerDialog.getByRole('tablist')).toBeVisible();
       await shot('messages-list', answerDialog, page);
+      await page.keyboard.press('Escape');
+      await expect(answerDialog).toHaveCount(0);
 
       // card-detail: the Conditions tab of the selected card.
       await task(3).click();

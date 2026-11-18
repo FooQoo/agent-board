@@ -4,7 +4,7 @@ title: Quickstart
 
 # Quickstart
 
-In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a proposed plan on the board, you answer its questions and start it once, and you watch it work until the tasks reach Done.
+In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a plan on the board, you answer its questions, the agent starts the plan, and you watch it work until the tasks reach Done.
 
 You need a running installation and an agent. If you have not installed `agboard` and set up your agent, start with [Install and start](./getting-started) and [Working with agents](./delegate/agents#set-up-your-agents).
 
@@ -28,7 +28,7 @@ In the agent's chat, ask for a piece of work that is more than one step, in your
 
 > Add a dark mode to the settings page, and update the docs.
 
-You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a **proposed plan** at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until you start it. On the board the plan is one dashed **Proposed plan** card at the top of Todo, and the AI-drafted tasks are not cards of their own. Select **Review and start** to read the plan while the agent asks about it.
+You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a plan at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until it is started. On the board the tasks are ordinary cards in Todo with a **Draft** badge. Open them to read the plan while the agent asks about it.
 
 ## 3. Answer the questions
 
@@ -36,9 +36,9 @@ The agent asks what it cannot settle itself, with choices and a recommendation. 
 
 The agent changes the plan as your answers say, and may ask a little more. If it has no questions, it skips this step.
 
-## 4. Start the plan
+## 4. The agent starts the plan
 
-When the plan reads right, select **Review and start** on the **Proposed plan** card, then **Start with this plan**. The button stays disabled while a question about the plan is unanswered. You can also start it from the command line with `agboard epic start <EPIC-ID> --actor human`. Either way, the epic and all its AI drafts start together, and no task starts before then. If you want something changed, send the agent a request with **Ask AI** or tell it in the chat.
+Once your questions are answered and the agent has written the plan up, it starts the plan itself with `agboard epic start <EPIC-ID> --actor ai`. The epic and all its AI drafts start together, and the history records that the agent wrote the plan up and started the task. An open question on one of the tasks refuses the start, so the agent waits for your answer first. No task starts before then, and you do not approve the start. If you want something changed, send the agent a request with **Ask AI** or tell it in the chat. You can also start the plan yourself with `agboard epic start <EPIC-ID> --actor human`.
 
 ## 5. Watch it run
 

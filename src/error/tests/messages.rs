@@ -38,7 +38,7 @@ fn messages_and_reasons_follow_the_design_table() {
         ),
         (
             "task #5 is a draft and read-only for agents.",
-            "Wait for a person to start it (agboard start), then try again.",
+            "Start it once its questions are answered (agboard start), then try again.",
         ),
         (
             "epic E is a draft and read-only for the CLI.",

@@ -46,7 +46,7 @@ impl AgboardError {
                 "Wait for the user to finalize it, then try again.".into()
             }
             AgboardError::TaskIsAiDraft { .. } => {
-                "Wait for a person to start it (agboard start), then try again.".into()
+                "Start it once its questions are answered (agboard start), then try again.".into()
             }
             AgboardError::EpicIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()

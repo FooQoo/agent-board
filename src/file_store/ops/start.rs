@@ -109,7 +109,8 @@ impl FileStore {
         ensure_startable(shared, project, None, &[id])?;
         let language = self.history_language(project, &task)?;
         task.draft = None;
-        task.history.push(start_event(&task, actor, stamp(now), language)?);
+        task.history
+            .push(start_event(&task, actor, stamp(now), language)?);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
             value: reader::read_task_locked(shared, project, id)?,
