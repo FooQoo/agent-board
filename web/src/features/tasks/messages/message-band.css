@@ -131,6 +131,23 @@
   padding-inline: 8px;
 }
 
+/* The two counts share the rest of the row, so both languages end at the same right edge; the labels differ, so the extra width goes into the chips' inner space. */
+.message-band[data-variant="phone"] .message-band__chips {
+  flex: 1 1 0;
+  flex-wrap: nowrap;
+}
+
+.message-band[data-variant="phone"] .message-band__chips > li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.message-band[data-variant="phone"] .message-band__chip {
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 /* On phones narrower than 400px the chevron gives way, so neither label is cut or wrapped. */
 @media (max-width: 399px) {
   .message-band[data-variant="phone"] .message-band__chevron {
