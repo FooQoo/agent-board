@@ -38,12 +38,11 @@ type Story = StoryObj<typeof meta>;
 
 const phone = { storyFrame: 'monitor', layout: 'fullscreen' } as const;
 
-/** Two questions and an approval wait on you, and one request is not picked up yet. */
+/** Two questions wait on you, and one request is not picked up yet. */
 export const Counts: Story = {
   play: async ({ args, canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
-    await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('3');
-    await expect(within(band).getByText(/質問 2・承認 1/)).toBeVisible();
+    await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('2');
     await expect(within(band).getByText(/あなたの依頼/)).toHaveTextContent('1');
     await expect(within(band).getByText(/受け取り待ち/)).toBeVisible();
     await expect(within(band).queryByRole('button', { name: 'AI に依頼' })).toBeNull();
@@ -78,7 +77,7 @@ export const CountsEnDark: Story = {
   globals: { locale: 'en', mode: 'dark' },
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'Messages' });
-    await expect(within(band).getByText(/2 questions, 1 approval/)).toBeVisible();
+    await expect(within(band).getByText(/AI's questions/)).toHaveTextContent('2');
   },
 };
 

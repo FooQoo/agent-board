@@ -108,7 +108,7 @@ test('the band is always there: with no message it shows counts of 0 and the lis
 
   // A question that arrives is counted at once, and nothing opens by itself.
   agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
-  await expect(chip(page, /^AI's questions/)).toHaveText(/^AI's questions 1\s*[（(]1 question, 0 approvals[）)]$/);
+  await expect(chip(page, /^AI's questions/)).toHaveText(/^AI's questions 1$/);
   await expect(messageList(page)).toHaveCount(0);
   await page.setViewportSize(DESKTOP);
   await waitForSync(page);

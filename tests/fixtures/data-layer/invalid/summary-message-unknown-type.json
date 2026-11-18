@@ -136,7 +136,7 @@
     },
     {
       "id": "EPIC-1",
-      "type": "approval",
+      "type": "request",
       "from": "ai",
       "to": "human",
       "turn": "human",

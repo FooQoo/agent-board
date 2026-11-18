@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeEpic, makeTask } from '../../../../.storybook/support/fixtures';
-import { addedPlan, newEpicPlan, singlePlan } from '../../../features/tasks/plans/planSamples';
 import { Board } from './Board';
 
 const meta = {
@@ -49,33 +48,19 @@ export const Failed: Story = {
   },
 };
 
-/**
- * AI-draft tasks are not cards of their own: Todo shows one plan card per approval at the top, and
- * its number counts them with the ordinary cards.
- */
-export const PlanCardsInTodo: Story = {
+/** AI drafts are cards like any other: they sit in Todo with the draft badge, and count in the lane. */
+export const DraftsInTodo: Story = {
   args: {
     tasks: [
       ...(meta.args.tasks ?? []),
-      makeTask({ id: 24, title: 'Hidden AI draft', taskStatus: 'todo', draft: 'ai' }),
-      makeTask({ id: 25, title: 'Person draft stays', taskStatus: 'todo', draft: 'human' }),
+      makeTask({ id: 24, title: 'AI draft task', taskStatus: 'todo', draft: 'ai' }),
+      makeTask({ id: 25, title: 'Person draft task', taskStatus: 'todo', draft: 'human' }),
     ],
-    plans: [newEpicPlan('en'), addedPlan('en'), singlePlan('en', true)],
-    onOpenPlan: fn(),
   },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const todo = within(canvasElement).getByRole('region', { name: 'Todo' });
-    await expect(within(todo).queryByText('Hidden AI draft')).not.toBeInTheDocument();
-    await expect(within(todo).getByText(/Person draft stays/)).toBeVisible();
-    await expect(todo.querySelector('.lane-header__count')).toHaveTextContent('5');
-    const buttons = within(todo).getAllByRole('button', { name: /Review and start/ });
-    await userEvent.click(buttons[0] as HTMLElement);
-    await expect(args.onOpenPlan).toHaveBeenCalledWith(expect.objectContaining({ id: 'LOGIN-1' }));
+    await expect(within(todo).getByText(/AI draft task/)).toBeVisible();
+    await expect(within(todo).getByText(/Person draft task/)).toBeVisible();
+    await expect(todo.querySelector('.lane-header__count')).toHaveTextContent('3');
   },
-};
-
-/** The same board in Japanese and dark. */
-export const PlanCardsJaDark: Story = {
-  args: { plans: [newEpicPlan('ja'), singlePlan('ja')] },
-  globals: { locale: 'ja', mode: 'dark' },
 };

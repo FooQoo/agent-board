@@ -1,8 +1,11 @@
-//! Who owns a draft: `draft` is none, `human` or `ai`. An agent creates AI drafts, an agent can
-//! still edit them, and only a person starts them (one task, or an epic with its AI drafts).
+//! Who owns a draft: `draft` is none, `human` or `ai`. An agent creates AI drafts, edits them,
+//! and starts them once their questions are answered (one task, or an epic with its AI drafts).
 //! Every test uses a temporary data area; servers listen on port 0.
 
 mod common;
+
+#[path = "support/qa.rs"]
+mod qa;
 
 use std::fs;
 use std::path::Path;
@@ -268,23 +271,39 @@ fn a_person_starts_one_task_and_the_history_says_so() {
 }
 
 #[test]
-fn only_a_person_can_start_and_an_agent_is_refused_without_a_change() {
+fn the_agent_starts_its_own_draft_after_its_questions_are_answered() {
     let f = fx();
     let id = f.task(Actor::Ai, Assignee::Ai, None);
     let epic = f.epic("E1", Some(Draft::Ai));
+    // An open question about the plan holds the start back.
+    let question = qa::ask(&f.store, &f.project, &[id], "Which plan?", &[]);
     assert!(matches!(
         f.store.start_task(&f.project, id, Actor::Ai, now()),
-        Err(AgboardError::HumanOnly { .. })
-    ));
-    assert!(matches!(
-        f.store.start_epic(&f.project, &epic, Actor::Ai, now()),
-        Err(AgboardError::HumanOnly { .. })
+        Err(AgboardError::StartBlockedByQuestions { .. })
     ));
     assert_eq!(f.draft_of(id), Some(Draft::Ai));
-    assert_eq!(
-        f.store.epic(&f.project, &epic).unwrap().draft,
-        Some(Draft::Ai)
+    qa::answer(&f.store, &f.project, &question.id, None, Some("Plan A."));
+    let started = f
+        .store
+        .start_task(&f.project, id, Actor::Ai, now())
+        .unwrap();
+    assert!(started.changed);
+    assert_eq!(f.draft_of(id), None);
+    let history = f.store.task(&f.project, id).unwrap().history;
+    assert!(
+        history
+            .last()
+            .unwrap()
+            .reason
+            .contains("wrote the plan up and started"),
+        "{history:?}"
     );
+    let epic_started = f
+        .store
+        .start_epic(&f.project, &epic, Actor::Ai, now())
+        .unwrap();
+    assert!(epic_started.changed);
+    assert_eq!(f.store.epic(&f.project, &epic).unwrap().draft, None);
 
     // A person's own draft is finalized, not started.
     let mine = f.task(Actor::Human, Assignee::Ai, Some(Draft::Human));
@@ -392,7 +411,7 @@ fn an_epic_edit_cannot_clear_an_ai_draft_but_a_person_draft_epic_still_refuses_t
 }
 
 #[test]
-fn the_cli_start_commands_need_a_person() {
+fn the_cli_starts_an_ai_draft_epic_and_task() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let run = |args: &[&str]| {
@@ -416,27 +435,8 @@ fn the_cli_start_commands_need_a_person() {
     ]);
     run(&["add", "B", "--assignee", "ai", "--actor", "ai", "--json"]);
 
-    let (code, name) = json_error(
-        home.path(),
-        &["--project", "Demo", "start", "3", "--actor", "ai", "--json"],
-    );
-    assert_eq!((code, name.as_str()), (1, "human_only"));
-    let (code, name) = json_error(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "epic",
-            "start",
-            "PLAN",
-            "--actor",
-            "ai",
-            "--json",
-        ],
-    );
-    assert_eq!((code, name.as_str()), (1, "human_only"));
-
-    let started = run(&["epic", "start", "plan", "--actor", "human", "--json"]);
+    // The agent that wrote the plan starts it; a person can too.
+    let started = run(&["epic", "start", "plan", "--actor", "ai", "--json"]);
     assert_eq!(started["epic"]["draft"], Value::Null);
     assert_eq!(started["started"], json!([2]));
     let task = run(&["start", "3", "--actor", "human", "--json"]);
@@ -457,7 +457,7 @@ fn the_cli_start_commands_need_a_person() {
 }
 
 #[test]
-fn the_api_starts_tasks_and_epics_and_keeps_an_ai_draft_after_a_persons_edit() {
+fn a_persons_edit_through_the_api_keeps_an_ai_draft() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     for args in [
@@ -519,31 +519,6 @@ fn the_api_starts_tasks_and_epics_and_keeps_an_ai_draft_after_a_persons_edit() {
     assert_eq!(reply.status, 409, "{}", reply.body);
     assert_eq!(reply.code(), "ai_draft_needs_start");
 
-    // Start one task, then the epic.
-    let reply = server.write("POST", &format!("{}/start", task(4)), None);
-    assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["task"]["draft"], Value::Null);
-    let reply = server.write(
-        "POST",
-        &format!("/api/projects/{pid}/epics/PLAN/start"),
-        None,
-    );
-    assert_eq!(reply.status, 200, "{}", reply.body);
-    assert_eq!(reply.json()["epic"]["draft"], Value::Null);
-    assert_eq!(reply.json()["started"], json!([2]));
-    let summary = server.get(&format!("/api/projects/{pid}/summary"));
-    let tasks = summary.json()["tasks"].as_array().unwrap().clone();
-    let draft = |id: i64| tasks.iter().find(|t| t["id"] == id).unwrap()["draft"].clone();
-    assert_eq!(draft(2), Value::Null);
-    assert_eq!(draft(3), "ai");
-    assert_eq!(draft(4), Value::Null);
-
-    let reply = server.write(
-        "POST",
-        &format!("/api/projects/{pid}/epics/NOPE/start"),
-        None,
-    );
-    assert_eq!(reply.status, 404, "{}", reply.body);
     server.stop();
 }
 
@@ -570,7 +545,7 @@ fn moving_a_draft_says_who_it_waits_for() {
     let err = reason(ai);
     assert_eq!(err.code(), "task_is_draft");
     assert!(
-        err.reason().contains("person to start it"),
+        err.reason().contains("once its questions are answered"),
         "{}",
         err.reason()
     );

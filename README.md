@@ -8,7 +8,7 @@
 
 **Delegate big work. Stop babysitting it.**
 
-Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts with one start from you, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
+Agent Board is a work harness for your AI agent. It turns your request into a plan with acceptance conditions, starts it once your questions are answered, and stops for you only when it must. Watch and answer from your PC, your phone, or the chat.
 
 ```sh
 brew install fooqoo/tap/agboard
@@ -41,8 +41,8 @@ To see it for yourself, [try the demo](https://fooqoo.github.io/agent-board/demo
 ## How delegation works
 
 1. **Request.** Tell your agent what you want, in plain words.
-2. **Proposed plan.** The agent puts an epic and its tasks on the board as one proposed plan, each task with acceptance conditions, and asks the questions it cannot settle itself.
-3. **One start.** You answer, review the plan, and start it once with **Start with this plan**. Nothing starts before that.
+2. **Plan.** The agent puts an epic and its tasks on the board as AI drafts, each task with acceptance conditions, and asks the questions it cannot settle itself.
+3. **Answers, then the start.** You answer. Once the questions are answered and the plan is written up, the agent starts it itself. A task does not start while a question linked to it is open.
 4. **Work in order.** The agent works through the tasks and stops for you only when your intent is unclear, your preference decides it, an action cannot be undone, or the work grows beyond what you asked.
 5. **Done on its own.** When the agent has verified every acceptance condition of a task and nothing is waiting on you, the task moves to Done by itself.
 

@@ -88,7 +88,7 @@ pub enum AgboardError {
     TaskIsDraft {
         id: i64,
     },
-    /// The task is an AI draft: it waits for a person to start it.
+    /// The task is an AI draft: it waits for `agboard start`.
     TaskIsAiDraft {
         id: i64,
     },

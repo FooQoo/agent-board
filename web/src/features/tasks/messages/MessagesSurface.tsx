@@ -34,8 +34,6 @@ export interface MessagesSurfaceProps {
   /** An answer or a withdrawal was saved; the screen reads the project again at once. */
   onChanged: () => void;
   onClose: () => void;
-  /** An approval row was chosen: its review opens elsewhere. */
-  onOpenApproval?: (message: Message) => void;
   /** Turns an `attachment:<id>` image of a message into its URL; null when there is no such file. */
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
@@ -91,7 +89,6 @@ export function MessagesSurface({
   api,
   onChanged,
   onClose,
-  onOpenApproval,
   resolveAttachment: resolveFor,
 }: MessagesSurfaceProps) {
   const { t } = useTranslation();
@@ -209,7 +206,6 @@ export function MessagesSurface({
           setFromList(true);
           show(message.id);
         }}
-        onOpenApproval={onOpenApproval}
       />
     );
   } else if (detail === null) {

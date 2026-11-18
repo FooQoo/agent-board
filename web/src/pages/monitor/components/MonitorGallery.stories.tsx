@@ -244,7 +244,6 @@ export const MessageBand: Story = {
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
-    await expect(within(band).getByText(/質問 2・承認 1/)).toBeVisible();
     await expect(within(band).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
     await expect(within(band).getByRole('button', { name: '一覧を開く' })).toBeVisible();
   },

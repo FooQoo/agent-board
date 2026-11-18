@@ -55,8 +55,6 @@ export function MonitorView(props: MonitorViewProps) {
             : attachments(projectId as ProjectId, message.tasks[0], id)
       : undefined;
   const { todo, doing, done, freshness, guideLink } = props;
-  const plans = props.plans ?? [];
-  const [reviewId, setReviewId] = useState<string | null>(null);
   // A guide step is about the cards of one lane: that lane comes on screen.
   const guideLane = usePhoneGuideLane(guideLink);
   useEffect(() => {
@@ -101,10 +99,6 @@ export function MonitorView(props: MonitorViewProps) {
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
           onAsk={props.onAsk}
-          onOpenApproval={(message) => {
-            props.onOpenApproval?.(message);
-            setReviewId(message.id);
-          }}
           resolveAttachment={resolveAttachment}
         />
       )}
@@ -113,7 +107,7 @@ export function MonitorView(props: MonitorViewProps) {
         lane={lane}
         controlsId={lanesId}
         counts={{
-          todo: ordered.todo.length + plans.length,
+          todo: ordered.todo.length,
           doing: ordered.doing.length,
           done: ordered.done.length,
         }}
@@ -141,18 +135,7 @@ export function MonitorView(props: MonitorViewProps) {
                 })
             : undefined
         }
-        plans={plans}
-        onOpenPlan={(plan) => setReviewId(plan.id)}
       />
-      {reviewId !== null &&
-        props.renderPlanReview?.({
-          approvalId: reviewId,
-          onClose: () => setReviewId(null),
-          onOpenQuestion: (questionId) => {
-            setReviewId(null);
-            panel.open({ tab: 'fromAi', openId: questionId });
-          },
-        })}
       {writes && (
         <MonitorLaneDialogs
           pending={pending}

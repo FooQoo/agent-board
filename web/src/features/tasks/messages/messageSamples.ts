@@ -93,7 +93,7 @@ If you keep it, each account is converted at its next login. If you drop it, eve
 
 const textOf = (language: string) => (language.startsWith('ja') ? ja : en);
 
-/** The open messages the mock's board shows: two questions, an approval and a request nobody picked up. */
+/** The open messages the mock's board shows: two questions and a request nobody picked up. */
 export function sampleMessages(language: string): Message[] {
   const s = textOf(language);
   return [
@@ -117,17 +117,6 @@ export function sampleMessages(language: string): Message[] {
       title: s.q12,
       createdAt: '2026-11-17T08:40:00.000Z',
       tasks: [21, 22],
-      epicId: 'LOGIN-1',
-    },
-    {
-      id: 'LOGIN-1',
-      type: 'approval',
-      from: 'ai',
-      to: 'human',
-      turn: 'human',
-      title: `LOGIN-1 ${s.epic}`,
-      createdAt: '2026-11-17T08:45:00.000Z',
-      tasks: [21, 22, 23, 24, 25],
       epicId: 'LOGIN-1',
     },
     {

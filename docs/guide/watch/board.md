@@ -75,24 +75,11 @@ A draft is marked with a **Draft** chip on its card. If you forget to finalize, 
 
 If a draft is left behind, for example because a save failed and you closed the browser, choose **Finalize** in the task's details to release it. The **Finalize** button appears only on a draft.
 
-## Proposed plans {#proposed-plans}
+### AI drafts {#ai-drafts}
 
-Everything an agent proposes is an AI draft, and an AI draft is not a card of its own. For each plan that waits for you, **Todo** shows one **Proposed plan** card at the top, with a dashed border and a light accent color. The number in the lane header counts these cards together with the ordinary tasks.
+Everything an agent creates is an AI draft. It is an ordinary task or epic card in Todo, with a **Draft** badge, and the lane header counts it like any other task. You can open it, read the plan, and answer the questions about it. While it is a draft, the agent cannot move it or change its state.
 
-- A new epic shows its ID and name, the number of its tasks, and, while a question about it is open, the number of open questions.
-- Tasks added to an epic that is already running show **N tasks added to** the epic.
-- A single AI-drafted task with no epic of its own shows as a task card marked **Draft (AI)** with a **Start** button. The button is disabled while a question about the task is open, and the card says why.
-- A draft you write yourself keeps its own card and its **Draft** chip. See [Drafts](#drafts).
-
-Choose **Review and start** to open the plan review, a dialog on a wide window and a bottom sheet on a phone. The review shows:
-
-- the goal, for a new epic, read from the epic's document;
-- **Tasks that will start (in this order)**, with the owner and the number of acceptance conditions of each task. A single task has no numbers and no order;
-- the unanswered questions that block the plan, each with an **Answer the question** button that opens the question.
-
-![The plan review with the goal, the tasks that will start, and an open question that disables Start with this plan](../../images/guide/plan-review.png){.screenshot}
-
-**Later** closes the review and changes nothing. **Start with this plan** starts the epic and its AI-drafted tasks, or the single task, and the cards move to the lanes as ordinary tasks. While a question about the plan is unanswered, **Start with this plan** is disabled and the review says why. If a question arrives just as you start, the start is refused and the review names it. The original request is not shown in the review. Only a person can start a plan; an agent cannot.
+There is no button to start an AI draft and nothing to approve. Once its questions are answered and the plan is written up, the agent starts the draft itself, the badge goes away, and the task is an ordinary task. A question about the task that is still open keeps it a draft. A person can also start it from the command line with `agboard start <id> --actor human`, or an epic with `agboard epic start <EPIC-ID> --actor human`. If you want something changed first, send the agent a request with **Ask AI**. A draft you write yourself is different: only you finalize it (see above).
 
 ## Archive
 
@@ -109,7 +96,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 ## Narrow windows and phones {#narrow-windows-and-phones}
 
-When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Messages** band above the tabs, which shows what waits on you and opens the list. Tap a tab or swipe sideways to change lanes. A **Proposed plan** card sits at the top of Todo; its review opens as a bottom sheet (see [Proposed plans](#proposed-plans)). Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and the **Messages** band above the tabs, which shows what waits on you and opens the list. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, and use **Archive all** in the Done lane to archive every completed task. The project switcher and the settings button stay in the header. Adding and editing tasks are for a wider window.
 
 The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Remote access](./remote-access).
 

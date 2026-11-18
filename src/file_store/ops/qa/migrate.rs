@@ -179,8 +179,8 @@ pub(in crate::file_store) fn migrate_legacy_locked(
                 at,
                 reason: language
                     .text(
-                        "A start approval that was waiting for an answer became an AI draft; a person starts it.",
-                        "回答待ちだった開始の承認は AI のドラフトになりました。人が開始します。",
+                        "A start approval that was waiting for an answer became an AI draft; it is started once its questions are answered.",
+                        "回答待ちだった開始の承認は AI のドラフトになりました。質問に回答したあとで開始します。",
                     )
                     .to_owned(),
             });

@@ -1,4 +1,4 @@
-import { ClipboardCheckIcon, CircleHelpIcon, SendIcon } from 'lucide-react';
+import { CircleHelpIcon, SendIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '@/shared/data/api/contracts';
 import { Badge } from '@/shared/ui/badge';
@@ -8,23 +8,16 @@ import { countMessages, type MessageTab, tabOf } from './model/messages';
 const TYPE_ICONS = {
   question: CircleHelpIcon,
   request: SendIcon,
-  approval: ClipboardCheckIcon,
 } as const;
 
 /**
- * The state of a listed message: unanswered, awaiting approval, waiting to be picked up, or (a
+ * The state of a listed message: unanswered, waiting to be picked up, or (a
  * question) answered and waiting for an AI to take the answer in.
  */
 function StateBadge({ message }: { message: Message }) {
   const { t } = useTranslation();
   if (message.turn === 'human')
-    return (
-      <Badge variant="pending">
-        {message.type === 'approval'
-          ? t('messages.state.awaitingApproval')
-          : t('messages.state.unanswered')}
-      </Badge>
-    );
+    return <Badge variant="pending">{t('messages.state.unanswered')}</Badge>;
   return (
     <Badge variant="muted">
       {message.type === 'question'
@@ -35,14 +28,7 @@ function StateBadge({ message }: { message: Message }) {
 }
 
 /** One row: the kind, the direction, its state and the first line. */
-function MessageRow({
-  message,
-  onOpen,
-}: {
-  message: Message;
-  /** Without it the row cannot be opened (an approval whose review is not wired). */
-  onOpen?: () => void;
-}) {
+function MessageRow({ message, onOpen }: { message: Message; onOpen: () => void }) {
   const { t } = useTranslation();
   const Icon = TYPE_ICONS[message.type];
   return (
@@ -80,15 +66,12 @@ export function MessageList({
   tab,
   onTabChange,
   onOpen,
-  onOpenApproval,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
   onTabChange: (tab: MessageTab) => void;
   /** A question or a request was chosen. */
   onOpen: (message: Message) => void;
-  /** An approval was chosen: its review opens elsewhere. */
-  onOpenApproval?: (message: Message) => void;
 }) {
   const { t } = useTranslation();
   const tabs: { id: MessageTab; label: string }[] = [
@@ -123,15 +106,7 @@ export function MessageList({
       ) : (
         <ul className="message-list__rows">
           {rows.map((message) => (
-            <MessageRow
-              key={message.id}
-              message={message}
-              onOpen={
-                message.type === 'approval'
-                  ? onOpenApproval && (() => onOpenApproval(message))
-                  : () => onOpen(message)
-              }
-            />
+            <MessageRow key={message.id} message={message} onOpen={() => onOpen(message)} />
           ))}
         </ul>
       )}

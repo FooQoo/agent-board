@@ -160,7 +160,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 - 答えはページに保持しません。`MessagesSurface`の**回答を送る**は、質問1件を`{answers:[{questionId, choiceId?, text?}]}`として`POST .../messages/answers`で送り、一覧に戻って、画面がすぐにプロジェクトを読み直します。再読み込みをまたいで残るものはありません。選択肢のある質問は選択が必須で、テキストは補足です（`web/src/features/tasks/messages/model/messages.ts`の`canSendAnswer`）。
 - 409（`question_answered`・`question_withdrawn`・`message_closed`）では何も保存されず、画面は、その質問がほかの場所で回答されたか取り下げられたと伝えます。行を開いている間にメッセージが一覧から消えたときは、一覧に戻します。送信に失敗したときは、選択とテキストを残して再試行できるようにします。再送時に重複かどうかは判定しません。最初の回答が確定するので、成功の後の再送は`question_answered`で失敗します。
 - 人の依頼は**AIに依頼**のエディター（`web/src/features/messages/ask/`）で書きます。PCではモーダル、スマホ画面ではシートで、タスクと同じMarkdownのリッチエディターです。`sendRequest.ts`は、Markdownの`text`と、画像1枚につき1つの`images`パートを持つmultipartの本文を一つ作ります。このとき`attachment:<id>`の画像を`attachments/<保存名>`に書き換え、`POST .../messages/requests`（20,000文字まで）へ送ります。エージェントがまだ受け付けていない依頼は、一覧の行から取り下げられます。
-- 承認の行は計画のレビュー（`web/src/features/tasks/plans/`）を開きます。`PlanReviewContainer`が、ゴール・始まるタスク・未回答の質問を表示し、**この計画で始める**が開始のルートを呼びます（エピックなら`POST .../epics/{id}/start`、エピックのないタスクなら`POST .../tasks/{id}/start`）。`start_blocked_by_questions`で断られると、その質問を示し、レビューが質問ごとのボタンを出します。レビューは計画を変えません。変えるときは、人が下書きを直すか、依頼を送ります。
+- WebのUIには、計画のレビューも開始のルートもありません。AIの下書きは、下書きのバッジが付いた未着手の通常のカードで、エージェントが、その質問に回答がそろったあとにCLIで自分で開始します（[下書き](./tasks-and-states.md#下書き)を参照）。計画を変えたいときは、人が下書きを編集するか、依頼を送ります。
 - `web/src/features/tasks/answer/`の`DecisionQuestion`と`DecisionAnswerFields`が、一覧に出す質問と回答の欄を描きます。答えの送信中も、移動などのほかの操作はできます。
 
 **下書きと編集**

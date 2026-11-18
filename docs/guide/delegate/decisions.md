@@ -12,27 +12,26 @@ A question belongs to the project, and a task refers to it. An AI-owned task tha
 
 Every open message of the project is counted in the **Messages** band above the lanes. The band is always there. It shows two counts:
 
-- **AI's questions** is the number of questions and approvals that wait on you, with the split in brackets, such as **(2 questions, 1 approval)**.
+- **AI's questions** is the number of questions that wait on you.
 - **Your requests** is the number of requests you sent that no agent has picked up yet, marked **waiting to be picked up**.
 
 With nothing open, the counts are 0. Select **Open the list** to read the messages.
 
 ## The list of messages
 
-**Open the list** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. Each row shows the kind (question, request, or approval), the direction, the ID, the time, and the first line, with its state on the right:
+**Open the list** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. Each row shows the kind (question or request), the direction, the ID, the time, and the first line, with its state on the right:
 
 | State | Meaning |
 | --- | --- |
 | **Unanswered** | A question that waits on your answer. |
 | **Answered, waiting for an AI** | A question you answered that no agent has taken in yet. It is not counted as waiting on you. |
-| **Awaiting approval** | A plan that waits on your approval. Selecting it opens the review of the plan. |
 | **Waiting to be picked up** | A request you sent that no agent has accepted yet. |
 
 Open messages are listed. A question you have answered stays in the list, marked **Answered, waiting for an AI**, until an agent takes your answer in. Then it leaves the list, as do a request an agent accepted and a message that was withdrawn.
 
 Select a question or a request to open it in place of the list. An answered question that waits for an AI opens with the question and **Your answer** read-only, and the note "It leaves the list once an AI takes your answer in." **Back to list** returns to the list. A question opened straight from its card has no list behind it, so it does not show this button.
 
-![The messages list with the AI's questions tab, showing a question and an approval row](../../images/guide/messages-list.png){.screenshot}
+![The messages list with the AI's questions tab, showing questions](../../images/guide/messages-list.png){.screenshot}
 
 ## Answer in the browser
 
@@ -60,10 +59,6 @@ A question can be answered somewhere else, for example in the chat, while you ar
 ### If sending fails
 
 The dialog keeps your choice and note and shows **It could not be sent. Try again.** Select **Send answer** again.
-
-## Review a plan
-
-An **Awaiting approval** row is a plan the agent proposed. Selecting it opens the same plan review as **Review and start** on the **Proposed plan** card at the top of Todo. The review shows the goal, the tasks that will start, and the open questions about the plan, each with an **Answer the question** button that opens that question. **Later** closes the review and changes nothing. **Start with this plan** starts the plan, and it is disabled while a question about the plan is unanswered. The review and what starting does are described in [Proposed plans](../watch/board#proposed-plans).
 
 ## Your requests
 

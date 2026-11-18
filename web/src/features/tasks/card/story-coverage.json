@@ -49,11 +49,6 @@
               "interaction": true
             },
             {
-              "id": "task-card-taskcard--pending-start-approval",
-              "states": ["pending", "waiting for start approval", "no answer button"],
-              "interaction": true
-            },
-            {
               "id": "task-card-taskcard--pending-with-answer",
               "states": [
                 "decision request",

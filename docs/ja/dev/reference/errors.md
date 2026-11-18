@@ -12,9 +12,9 @@
 | `task_archived` | アーカイブ済みのタスクへの書き込み。 | 1 | 409 |
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
 | `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
-| `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。`reason`は、人の下書きでは「ユーザーが確定するのを待つ」、AIの下書きでは「人が開始するのを待つ」と伝えます。 | 1 | 409 |
+| `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。`reason`は、人の下書きでは「ユーザーが確定するのを待つ」、AIの下書きでは`agboard start`を案内します。 | 1 | 409 |
 | `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
-| `human_only` | エージェントが`start`または`epic start`を実行した、または依頼を取り下げようとした。これらを行えるのは人だけ。 | 1 | 403 |
+| `human_only` | エージェントが依頼を取り下げようとした。これを行えるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |
 | `task_is_done` | DoneのタスクへのAIの変更。 | 1 | 409 |
 | `acceptance_unmet` | 条件が未達成、またはfrontmatterが不正なタスクを、AIがDoneへ移そうとした。 | 2 | なし |
@@ -29,7 +29,7 @@
 | --- | --- | --- | --- |
 | `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | 1 | 409 |
 | `question_answered` | 回答が、すでに回答済みの質問を指している。何も保存せず、記録済みの質問を出力に含める。 | 1 | 409 |
-| `start_blocked_by_questions` | 人が、返事のない質問が付いたタスク（エピックの開始では、そのエピックのAIの下書きのタスク）を開始しようとした。何も保存せず、メッセージに質問のIDを示す。 | 1 | 409 |
+| `start_blocked_by_questions` | `start`または`epic start`を、返事のない質問が付いたタスク（エピックの開始では、そのエピックのAIの下書きのタスク）を開始しようとした。何も保存せず、メッセージに質問のIDを示す。 | 1 | 409 |
 | `question_withdrawn` | 回答が、取り下げられた質問を指している。何も保存しない。 | 1 | 409 |
 | `message_not_found` | 質問または依頼のIDがプロジェクトにない。 | 3 | 404 |
 | `message_closed` | 取り下げようとしたものが、すでに回答のある質問、または受け付け済みの依頼である。 | 1 | 409 |

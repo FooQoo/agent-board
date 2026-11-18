@@ -133,7 +133,7 @@ function parseProblem(value: unknown, path: string): SummaryProblem {
   };
 }
 
-const MESSAGE_TYPES = ['question', 'request', 'approval'] as const;
+const MESSAGE_TYPES = ['question', 'request'] as const;
 const PARTIES = ['ai', 'human'] as const;
 
 function parseMessage(value: unknown, path: string): Message {

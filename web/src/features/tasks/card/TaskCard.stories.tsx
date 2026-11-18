@@ -131,16 +131,6 @@ const answerCard = (): Story['args'] => ({
     </div>
   ),
 });
-/** A planned task whose plan question was answered but whose start is not approved yet. */
-export const PendingStartApproval: Story = {
-  args: { task: makeTask({ id: 45, agentStatus: 'pending', openQuestionIds: [] }) },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('Waiting for the start to be approved')).toBeInTheDocument();
-    await expect(canvas.queryByText(/Unanswered questions/)).toBeNull();
-    await expect(canvas.queryByRole('button', { name: 'Answer the question' })).toBeNull();
-  },
-};
 export const PendingWithAnswer: Story = {
   args: answerCard(),
   play: async ({ canvasElement }) => {

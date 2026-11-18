@@ -88,7 +88,7 @@ export const guideScreenshots: Record<string, GuideFile> = {
   'board-dark': 'watch/board',
   question: 'delegate/decisions',
   editor: 'watch/editing',
-  'task-request': 'watch/editing',
+  'ask-ai': 'watch/editing',
   docs: 'watch/docs',
 };
 

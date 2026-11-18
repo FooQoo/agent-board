@@ -219,7 +219,7 @@ impl FileStore {
 }
 
 /// The refusal of a move or state change on a draft: a person's own draft waits for its
-/// owner to finalize it, an AI draft waits for a person to start it.
+/// owner to finalize it, an AI draft waits for `agboard start`.
 fn draft_refusal(id: i64, draft: crate::domain::Draft) -> AgboardError {
     match draft {
         crate::domain::Draft::Human => AgboardError::TaskIsDraft { id },

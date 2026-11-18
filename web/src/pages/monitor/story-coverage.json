@@ -19,16 +19,6 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor--approval-opens-plan-review",
-              "states": ["approval row", "plan review sheet"],
-              "interaction": true
-            },
-            {
-              "id": "pages-monitor--review-question-opens-question",
-              "states": ["review question button", "question in the list"],
-              "interaction": true
-            },
-            {
               "id": "pages-monitor--band-ask-ai",
               "states": ["phone band", "Ask AI button"],
               "interaction": true

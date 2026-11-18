@@ -87,7 +87,7 @@
               "id": "app-board-workspace--message-band-open",
               "states": [
                 "message band above the lanes",
-                "counts questions and approvals",
+                "counts questions",
                 "opens the list",
                 "cards with unanswered questions"
               ],

@@ -1,4 +1,6 @@
-//! A person starts an AI draft: one task, or an epic with all its AI drafts.
+//! Starting an AI draft: one task, or an epic with all its AI drafts. The agent that wrote the
+//! plan starts it once the questions about it are answered and it has written the plan up;
+//! a person can start it too.
 
 use std::path::Path;
 
@@ -52,25 +54,23 @@ fn ensure_startable(
     Err(AgboardError::StartBlockedByQuestions { ids: open })
 }
 
-fn ensure_person(actor: Actor) -> Result<(), AgboardError> {
-    if actor == Actor::Human {
-        Ok(())
-    } else {
-        Err(AgboardError::HumanOnly {
-            action: "start".into(),
-        })
-    }
-}
-
 fn start_event(
     task: &TaskFile,
+    actor: Actor,
     at: DateTime<Utc>,
     language: HistoryLanguage,
 ) -> Result<HistoryRecord, AgboardError> {
+    let reason = match actor {
+        Actor::Human => language.text("A person started the task.", "人がタスクを開始しました。"),
+        Actor::Ai => language.text(
+            "The agent wrote the plan up and started the task.",
+            "AI が計画を清書し、タスクを開始しました。",
+        ),
+    };
     transition_event(Transition {
         language,
         kind: HistoryKind::Draft,
-        reason: Some(language.text("A person started the task.", "人がタスクを開始しました。")),
+        reason: Some(reason),
         from_task: Some(task.task_status),
         to_task: task.task_status,
         from_agent: Some(task.agent_status),
@@ -80,8 +80,8 @@ fn start_event(
 }
 
 impl FileStore {
-    /// Start one task: its AI draft is cleared and the history records that a
-    /// person started it. Only a person may start. A task that is not a draft
+    /// Start one task: its AI draft is cleared and the history records who started
+    /// it. An open question on the task refuses the start. A task that is not a draft
     /// changes nothing; a person's own draft is finalized, not started.
     pub fn start_task(
         &self,
@@ -90,7 +90,6 @@ impl FileStore {
         actor: Actor,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        ensure_person(actor)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -110,7 +109,8 @@ impl FileStore {
         ensure_startable(shared, project, None, &[id])?;
         let language = self.history_language(project, &task)?;
         task.draft = None;
-        task.history.push(start_event(&task, stamp(now), language)?);
+        task.history
+            .push(start_event(&task, actor, stamp(now), language)?);
         save_task(shared, &project_dir, &task)?;
         Ok(Changed {
             value: reader::read_task_locked(shared, project, id)?,
@@ -120,7 +120,8 @@ impl FileStore {
 
     /// Start an epic: the epic and every task of it that is an AI draft leave the
     /// draft in one save, and each such task records that a person started it.
-    /// A person's own draft tasks stay drafts. Only a person may start. Nothing
+    /// A person's own draft tasks stay drafts. An open question on any of them refuses
+    /// the start. Nothing
     /// to start changes nothing.
     pub fn start_epic(
         &self,
@@ -129,7 +130,6 @@ impl FileStore {
         actor: Actor,
         now: DateTime<Utc>,
     ) -> Result<Changed<EpicStarted>, AgboardError> {
-        ensure_person(actor)?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let (epic_dir, mut epic) = read_epic_file(shared, project, id)?;
@@ -163,7 +163,7 @@ impl FileStore {
         for task in &mut tasks {
             let language = self.history_language(project, task)?;
             task.draft = None;
-            task.history.push(start_event(task, at, language)?);
+            task.history.push(start_event(task, actor, at, language)?);
             changes.extend(task_pair_changes(shared, &project_dir, task, None)?);
         }
         if epic.draft.is_some() {

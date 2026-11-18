@@ -29,19 +29,13 @@
               "interaction": true
             },
             {
-              "id": "pages-board-board--plan-cards-in-todo",
+              "id": "pages-board-board--drafts-in-todo",
               "states": [
-                "plan cards at the top of Todo",
-                "AI drafts hidden",
-                "lane count includes plans",
-                "person draft kept"
+                "AI draft card in Todo",
+                "person draft card in Todo",
+                "lane count includes drafts"
               ],
               "interaction": true
-            },
-            {
-              "id": "pages-board-board--plan-cards-ja-dark",
-              "states": ["japanese", "dark"],
-              "interaction": false
             }
           ]
         }

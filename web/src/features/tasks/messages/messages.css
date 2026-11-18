@@ -150,11 +150,6 @@
   color: var(--r-accent);
 }
 
-.message-row[data-type="approval"] .message-row__icon {
-  background: var(--r-pend-bg);
-  color: var(--r-pend-tx);
-}
-
 .message-row__icon svg {
   width: 18px;
   height: 18px;

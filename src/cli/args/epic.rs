@@ -30,18 +30,18 @@ pub enum EpicCommand {
     Edit(EpicEditArgs),
     /// Delete an epic (humans only; asks for confirmation)
     Rm(EpicIdArgs),
-    /// Start an AI draft epic and all its AI draft tasks (a person only)
+    /// Start an AI draft epic and all its AI draft tasks
     Start(EpicStartArgs),
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Only a person may start. With --actor ai the command fails with human_only (exit code 1). Tasks that a person is drafting stay drafts.\n\nExamples:\n  agboard --project demo epic start FILE-SHARE --actor human"
+    after_help = "The agent that wrote the plan starts it once every question about its tasks is answered and the plan is written up; a person can start it too. An open question on one of its tasks refuses the start (start_blocked_by_questions). Tasks that a person is drafting stay drafts.\n\nExamples:\n  agboard --project demo epic start FILE-SHARE --actor ai"
 )]
 pub struct EpicStartArgs {
     /// The epic's EPIC-ID
     pub id: String,
-    /// Who is making this change; only human can start
+    /// Who is making this change
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
 }

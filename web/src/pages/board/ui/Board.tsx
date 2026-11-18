@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { groupTasks } from '../../../features/tasks/model/board';
 import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
-import { isAiDraft, type Plan } from '../../../features/tasks/plans/model/plan';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
@@ -28,9 +27,6 @@ export interface BoardProps {
   layoutRef?: (node: HTMLDivElement | null) => void;
   /** The band of unanswered questions above the lanes. */
   band?: ReactNode;
-  /** The approvals waiting for a person: one plan card each at the top of Todo, in place of their AI-draft cards. */
-  plans?: Plan[];
-  onOpenPlan?: (plan: Plan) => void;
 }
 
 export function Board({
@@ -47,8 +43,6 @@ export function Board({
   onAnswer,
   layoutRef,
   band,
-  plans = [],
-  onOpenPlan,
 }: BoardProps) {
   if (message !== null) {
     return (
@@ -58,12 +52,10 @@ export function Board({
     );
   }
 
-  // An AI draft is shown through its plan card, never as a card of its own.
-  const shown = tasks.filter((task) => !isAiDraft(task));
-  const groups = groupTasks(shown);
+  const groups = groupTasks(tasks);
   // Reset the drag controller when cards change lanes so its retained source element cannot
   // remain beside the newly rendered card. Edits and same-lane reordering keep the controller.
-  const laneMembership = shown
+  const laneMembership = tasks
     .map((task) => `${task.id}:${task.taskStatus}`)
     .sort()
     .join('|');
@@ -110,12 +102,10 @@ export function Board({
               onOpenEpic={onOpenEpic}
               projectId={projectId}
               onAnswer={onAnswer}
-              plans={column === 'todo' ? plans : undefined}
-              onOpenPlan={onOpenPlan}
             />
           ))}
         </div>
-        {shown.length === 0 && plans.length === 0 && <BoardMessage kind="empty" />}
+        {tasks.length === 0 && <BoardMessage kind="empty" />}
       </main>
     </DragDropProvider>
   );

@@ -13,7 +13,7 @@ use agent_board::file_store::validate::EpicId;
 use agent_board::file_store::{AnswerItem, AskInput, AskQuestion, FileStore, SendRequestInput};
 use chrono::{DateTime, TimeZone, Utc};
 use common::{Running, agboard, demo_project, json_error, json_ok};
-use serde_json::{Value, json};
+use serde_json::json;
 
 fn at(minute: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 11, 17, 9, minute, 0).unwrap()
@@ -191,75 +191,6 @@ fn a_request_is_the_agents_turn_until_it_is_accepted_or_withdrawn() {
 }
 
 #[test]
-fn approvals_come_from_ai_drafts_one_per_epic_and_one_per_task_outside_an_epic() {
-    let f = fx();
-    // An AI epic with two AI tasks and a person's draft task (not part of the approval).
-    f.epic("PLAN", "Plan the work", Some(Draft::Ai), 1);
-    let a = f.task("A", Actor::Ai, Some("PLAN"), 2);
-    let b = f.task("B", Actor::Ai, Some("PLAN"), 3);
-    f.store
-        .create_task(
-            &f.project,
-            NewTask {
-                title: "Mine".into(),
-                description: String::new(),
-                assignee: Assignee::Human,
-                actor: Actor::Human,
-                draft: Some(Draft::Human),
-            },
-            at(4),
-        )
-        .unwrap();
-    // A running epic gets AI tasks: one approval for the epic, id = epic id.
-    f.epic("LIVE", "Running epic", None, 5);
-    let c = f.task("C", Actor::Ai, Some("LIVE"), 6);
-    let d = f.task("D", Actor::Ai, Some("LIVE"), 7);
-    // A task with no epic is its own approval.
-    let e = f.task("Lonely", Actor::Ai, None, 8);
-    // A person's task is not an approval.
-    f.task("Human work", Actor::Human, None, 9);
-
-    let list = f.list();
-    let ids: Vec<_> = list.iter().map(|x| x["id"].as_str().unwrap()).collect();
-    assert_eq!(ids, ["PLAN", "LIVE", &format!("#{e}")]);
-    assert_eq!(
-        list[0],
-        json!({
-            "id": "PLAN", "type": "approval", "from": "ai", "to": "human", "turn": "human",
-            "title": "Plan the work", "createdAt": "2026-11-17T09:01:00Z",
-            "tasks": [a, b], "epicId": "PLAN",
-        })
-    );
-    assert_eq!(list[1]["tasks"], json!([c, d]));
-    assert_eq!(list[1]["title"], "Running epic");
-    assert_eq!(list[1]["createdAt"], "2026-11-17T09:06:00Z");
-    assert_eq!(list[2]["title"], "Lonely");
-    assert_eq!(list[2]["tasks"], json!([e]));
-    assert_eq!(list[2]["epicId"], Value::Null);
-
-    // Starting the epic removes its approval; the task keeps its own.
-    f.store
-        .start_epic(
-            &f.project,
-            &EpicId::normalize("PLAN").unwrap(),
-            Actor::Human,
-            at(10),
-        )
-        .unwrap();
-    f.store
-        .start_epic(
-            &f.project,
-            &EpicId::normalize("LIVE").unwrap(),
-            Actor::Human,
-            at(11),
-        )
-        .unwrap();
-    let list = f.list();
-    assert_eq!(list.len(), 1);
-    assert_eq!(list[0]["id"], format!("#{e}"));
-}
-
-#[test]
 fn a_task_start_is_refused_while_a_question_about_it_has_no_answer() {
     let f = fx();
     let task = f.task("Plan", Actor::Ai, None, 1);
@@ -375,21 +306,16 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
         .unwrap()
         .to_string();
     let server = Running::start(home.path());
-    let reply = server.write("POST", &format!("/api/projects/{pid}/tasks/2/start"), None);
-    assert_eq!(reply.status, 409, "{}", reply.body);
-    assert_eq!(reply.code(), "start_blocked_by_questions");
-
     let summary = server.get(&format!("/api/projects/{pid}/summary")).json();
     let list = summary["messages"].as_array().unwrap();
     let kinds: Vec<_> = list
         .iter()
         .map(|x| (x["type"].as_str().unwrap(), x["id"].as_str().unwrap()))
         .collect();
-    assert!(kinds.contains(&("question", "Q-1")), "{kinds:?}");
-    assert!(kinds.contains(&("approval", "#2")), "{kinds:?}");
-    assert!(kinds.contains(&("approval", "#3")), "{kinds:?}");
+    assert_eq!(kinds, [("question", "Q-1")]);
+    server.stop();
 
-    // Answer it, and the start goes through over the API.
+    // Answer it, and the agent starts the task.
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -408,7 +334,9 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
         ],
     );
     assert_eq!(code, 0, "{err}");
-    let reply = server.write("POST", &format!("/api/projects/{pid}/tasks/2/start"), None);
-    assert_eq!(reply.status, 200, "{}", reply.body);
-    server.stop();
+    let started = json_ok(
+        home.path(),
+        &["--project", "Demo", "start", "2", "--actor", "ai", "--json"],
+    );
+    assert_eq!(started["task"]["draft"], serde_json::Value::Null);
 }

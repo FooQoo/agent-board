@@ -58,7 +58,7 @@ const poster = computed(() => withBase(`/videos/demo${ja.value ? '.ja' : ''}.jpg
 const href = (link: string) => (link.startsWith('/') ? withBase(link) : link)
 const lines = (text: string) => text.split('\n')
 const laneTone = ['todo', 'doing', 'done']
-// The loop has four lanes: request and plan, approval, work, and done.
+// The loop has four lanes: request and plan, answers, work, and done.
 const loopTone = ['todo', 'todo', 'doing', 'done']
 const featureTone: Record<string, string> = { board: 'doing', epic: 'todo', mobile: 'pending', docs: 'done' }
 

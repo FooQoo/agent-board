@@ -26,7 +26,7 @@ Find what you see, read the cause, and do what the last column says. The command
 | --- | --- | --- |
 | `task_is_draft` | The task is a draft; agents may not change a person's draft, or move or run any draft. | Finalize the draft in the browser, or start an AI draft with `agboard start`. The agent can work on other tasks meanwhile. |
 | `ai_draft_needs_start` | A finalize was asked of an AI draft. | Start it instead: `agboard start <id>` or `agboard epic start <EPIC-ID>`. |
-| `human_only` | An agent ran `start` or `epic start`. | A person runs it with `--actor human`. |
+| `human_only` | An agent tried to withdraw a request. | A person withdraws a request. |
 | `epic_is_draft` | The epic is a draft; agents may not change its details or task order. | Wait for the person to save or discard the epic's draft, or ask them to finalize it. Attachments and task membership still work. |
 | `task_is_done` | The task is Done; agents may not change it. | Reopen the task in the browser if more work is needed. |
 | `acceptance_unmet` | The agent tried to move a task to Done while a condition is unmet. | Have the agent verify the conditions and mark them done; the task then finishes by itself. |

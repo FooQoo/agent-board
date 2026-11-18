@@ -107,12 +107,12 @@ pub struct StateArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Only a person may start. With --actor ai the command fails with human_only (exit code 1). A task that is not an AI draft changes nothing.\n\nExamples:\n  agboard --project demo start 12 --actor human"
+    after_help = "The agent that wrote the plan starts it once every question about the task is answered and the plan is written up; a person can start it too. An open question on the task refuses the start (start_blocked_by_questions). A task that is not an AI draft changes nothing.\n\nExamples:\n  agboard --project demo start 12 --actor ai"
 )]
 pub struct StartArgs {
-    /// ID of the task whose AI draft a person starts
+    /// ID of the AI draft task to start
     pub id: i64,
-    /// Who is making this change; only human can start
+    /// Who is making this change
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
 }

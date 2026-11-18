@@ -10,11 +10,7 @@
           "stories": [
             {
               "id": "task-messages-messageband--counts",
-              "states": [
-                "questions and approvals counted",
-                "unpicked requests counted",
-                "open the list"
-              ],
+              "states": ["questions counted", "unpicked requests counted", "open the list"],
               "interaction": true
             },
             {
@@ -54,22 +50,12 @@
           "stories": [
             {
               "id": "task-messages-messagecenter--list-from-ai",
-              "states": [
-                "list as a modal",
-                "tab: AI's questions",
-                "unanswered",
-                "awaiting approval"
-              ],
+              "states": ["list as a modal", "tab: AI's questions", "unanswered"],
               "interaction": true
             },
             {
               "id": "task-messages-messagecenter--list-from-you",
               "states": ["tab: your requests", "waiting to be picked up"],
-              "interaction": true
-            },
-            {
-              "id": "task-messages-messagecenter--approval-row",
-              "states": ["approval row", "hand over to the review"],
               "interaction": true
             },
             {

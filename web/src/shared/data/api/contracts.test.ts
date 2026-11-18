@@ -81,7 +81,7 @@ describe('summary', () => {
     const summary = parseSummary(original);
     expect(summary.messages?.map((e) => [e.id, e.type, e.turn])).toEqual([
       ['Q-1', 'question', 'human'],
-      ['EPIC-1', 'approval', 'human'],
+      ['Q-2', 'request', 'ai'],
     ]);
     expect(summary.messages?.[1]).toMatchObject({ epicId: 'EPIC-1', tasks: [302] });
     const { messages: _omitted, ...without } = original;
