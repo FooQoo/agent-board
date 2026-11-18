@@ -182,7 +182,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
     // The Messages band comes before the lanes; each count and the list button open the list.
     "BUTTON AI's questions 1",
     'BUTTON Your requests 0',
-    'BUTTON Open the list',
+    'BUTTON Check questions and requests',
     'DIV #14',
     'DIV #15',
     'DIV #16',

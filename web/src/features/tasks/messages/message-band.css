@@ -95,10 +95,6 @@
   font-weight: 700;
 }
 
-.message-band__sub {
-  font-weight: 400;
-}
-
 .message-band__actions {
   display: flex;
   gap: 8px;
@@ -122,7 +118,8 @@
 
 .message-band[data-variant="phone"] .message-band__actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* "Ask AI" keeps its own width; the longer "Check questions and requests" takes the rest. */
+  grid-template-columns: auto minmax(0, 1fr);
   width: 100%;
   margin-left: 0;
 }

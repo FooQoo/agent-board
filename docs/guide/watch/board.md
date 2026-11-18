@@ -9,7 +9,7 @@ The board is where you watch the work and step in while the agent keeps going. Y
 ## Add work
 
 1. Select a project in the header and choose **Ask AI**.
-2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and the band above the lanes lists it as **Waiting to be picked up** until an agent receives it.
+2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and it counts under **Your requests** in the band above the lanes, where the list shows it as **Waiting to be picked up**, until an agent receives it.
 
 To create a task yourself, open the small menu beside **Ask AI** and choose **Add a task manually**. The full editor lets you set the title, owner, acceptance conditions, and draft state. See [Editing and image attachments](./editing#ask-ai). The owner cannot be changed after the task is created.
 

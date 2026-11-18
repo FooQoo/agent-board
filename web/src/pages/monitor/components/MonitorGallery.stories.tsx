@@ -238,14 +238,14 @@ export const Answer: Story = {
   play: answerPlay('質問に回答する'),
 };
 
-/** The band of messages under the counts, with "AI に依頼" and "一覧を開く". */
+/** The band of messages under the counts, with "AI に依頼" and "質問・依頼を確認". */
 export const MessageBand: Story = {
   args: { variant: 'band' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
     const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
     await expect(within(band).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
-    await expect(within(band).getByRole('button', { name: '一覧を開く' })).toBeVisible();
+    await expect(within(band).getByRole('button', { name: '質問・依頼を確認' })).toBeVisible();
   },
 };
 
