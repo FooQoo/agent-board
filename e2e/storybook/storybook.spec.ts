@@ -75,11 +75,10 @@ test('loads representative list, decision, mobile drawer and dialog stories', as
   await openStory(page, 'pages-board-board--three-lanes');
   await expect(page.getByRole('button', { name: /Draft the plan/ })).toBeVisible();
 
-  await openStory(page, 'task-answer-decisionrequestformview--failed-with-input-kept');
+  await openStory(page, 'editor-editorbody--saving-error-and-retry');
   await expect(page.getByRole('alert')).toContainText('Could not save. Try again.');
-  await expect(page.getByRole('textbox', { name: 'Your answer' })).toHaveValue(
-    'Please keep this note.',
-  );
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeEnabled();
+  await expect(page.getByText('The draft remains available for another attempt.')).toBeVisible();
 
   await openStory(page, 'pages-monitor-components-monitordetaildrawer--four-tabs');
   await expect(page.getByRole('dialog', { name: 'Mobile drawer example' })).toBeVisible();
@@ -140,7 +139,7 @@ test('serves the generated Storybook index and static assets from the isolated p
   };
   for (const id of [
     'app-board-workspace--board',
-    'task-answer-decisionrequestformview--failed-with-input-kept',
+    'editor-editorbody--saving-error-and-retry',
     'epic-editor-epicdialog--details-save-retry',
   ]) {
     expect(index.entries[id]?.type).toBe('story');
