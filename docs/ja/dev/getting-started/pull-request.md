@@ -51,7 +51,7 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 - E2Eのジョブは、macOS 15でPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは3つのシャードに分けて並行して実行し、1つのシャードに8分ほどかかるため、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
 - カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
 
-同じブランチやプルリクエストに新しいコミットが届くと、実行中のCIは取り消されます。プルリクエストがマージまたはクローズされると、[Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml)のワークフローがそのプルリクエストの残りのCIを取り消します。これで、`main`のCIが必要とするmacOSのランナーを占有し続けることはありません。
+プルリクエストに新しいコミットが届くと、実行中のCIは取り消されます。`main`のCIは取り消されず、新しいpushは前の実行が終わるのを待ちます。そのため、マージのたびに最後まで走ったCIが残ります。プルリクエストがマージまたはクローズされると、[Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml)のワークフローがそのプルリクエストの残りのCIとRelease buildを取り消します。これで、`main`のCIが必要とするmacOSのランナーを占有し続けることはありません。
 
 `main`へのプルリクエストには、[CodeRabbit](https://www.coderabbit.ai/)も英語でレビューのコメントを付けます。ドラフトのプルリクエストと、`main`以外のブランチへのプルリクエストは自動ではレビューされません。ドラフトのレビューが欲しいときは、レビュー可能な状態に切り替えてください。設定は`.coderabbit.yaml`にあります。
 

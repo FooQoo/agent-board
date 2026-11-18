@@ -1,8 +1,8 @@
 name: Cancel CI of a closed pull request
 
-# A pull request that is merged or closed no longer needs its checks. Its CI run would
-# otherwise keep the macOS runners busy, and the run for the merge on main would wait for
-# them. This job runs on Linux, so it never waits for a macOS runner itself.
+# A pull request that is merged or closed no longer needs its checks. Its CI and Release
+# build runs would otherwise keep the macOS runners busy, and the run for the merge on main
+# would wait for them. This job runs on Linux, so it never waits for a macOS runner itself.
 
 on:
   pull_request:
@@ -22,9 +22,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          for status in queued in_progress waiting pending; do
-            gh run list --workflow CI --event pull_request --branch "$BRANCH" --status "$status" \
-              --json databaseId --jq '.[].databaseId'
+          for workflow in "CI" "Release build"; do
+            for status in queued in_progress waiting pending; do
+              gh run list --workflow "$workflow" --event pull_request --branch "$BRANCH" --status "$status" \
+                --json databaseId --jq '.[].databaseId'
+            done
           done | sort -u | while read -r id; do
             echo "Cancelling run $id"
             gh run cancel "$id" || true
