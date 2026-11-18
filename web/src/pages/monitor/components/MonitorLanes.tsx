@@ -98,20 +98,6 @@ export function MonitorLanes({
               data-lane={name}
               inert={name !== lane}
             >
-              {name === 'done' && (
-                // The tab above already names the lane and its count; the bar holds only the action.
-                <div className="monitor-lane__bar">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="l"
-                    disabled={items.length === 0}
-                    onClick={onBulkArchive}
-                  >
-                    <IconLabel icon={ArchiveIcon}>{t('monitor.lanes.bulkArchive')}</IconLabel>
-                  </Button>
-                </div>
-              )}
               <div className="monitor-lane__scroll">
                 {laneEmpty ? (
                   <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
@@ -145,6 +131,20 @@ export function MonitorLanes({
                       />
                     </SwipeableCard>
                   ))
+                )}
+                {name === 'done' && (
+                  // Below the cards, so they stay where they are whether or not the button shows.
+                  <div className="monitor-lane__bar">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="l"
+                      disabled={items.length === 0}
+                      onClick={onBulkArchive}
+                    >
+                      <IconLabel icon={ArchiveIcon}>{t('monitor.lanes.bulkArchive')}</IconLabel>
+                    </Button>
+                  </div>
                 )}
               </div>
             </section>
