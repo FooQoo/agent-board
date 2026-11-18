@@ -251,6 +251,69 @@ export const PhoneList: Story = {
   },
 };
 
+/**
+ * A mouse press that Embla reads as a swipe: events one frame apart, stamped by hand so the speed
+ * is the same on every machine.
+ */
+let clock = 0;
+function drag(target: Element, from: number, to: number, y: number) {
+  const steps = [from, from + (to - from) / 2, to];
+  steps.forEach((x, index) => {
+    const type = index === 0 ? 'mousedown' : 'mousemove';
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      buttons: 1,
+      clientX: x,
+      clientY: y,
+    });
+    clock += 16;
+    Object.defineProperty(event, 'timeStamp', { value: clock });
+    target.dispatchEvent(event);
+  });
+  const up = new MouseEvent('mouseup', {
+    bubbles: true,
+    cancelable: true,
+    clientX: to,
+    clientY: y,
+  });
+  clock += 16;
+  Object.defineProperty(up, 'timeStamp', { value: clock });
+  target.dispatchEvent(up);
+}
+
+/** The phone: a sideways swipe on the list switches the tabs; a tap on a row still opens it. */
+export const PhoneSwipeTabs: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' } },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const [fromAi, fromYou] = within(sheet).getAllByRole('tab');
+    if (!fromAi || !fromYou) throw new Error('The list has no two tabs.');
+    await expect(fromAi).toHaveAttribute('aria-selected', 'true');
+    const viewport = sheet.querySelector('.message-list__viewport');
+    if (!viewport) throw new Error('The list has no swipe viewport.');
+    const rect = viewport.getBoundingClientRect();
+    const y = rect.top + 40;
+    // A left swipe moves to "あなたの依頼".
+    drag(viewport, rect.right - 20, rect.left + 20, y);
+    await waitFor(() => expect(fromYou).toHaveAttribute('aria-selected', 'true'));
+    await expect(await within(sheet).findByText('受け取り待ち')).toBeVisible();
+    // A right swipe moves back to "AI の質問".
+    drag(viewport, rect.left + 20, rect.right - 20, y);
+    await waitFor(() => expect(fromAi).toHaveAttribute('aria-selected', 'true'));
+    // A tap on the other tab still switches, and a tap on a row still opens it.
+    await userEvent.click(fromYou);
+    await waitFor(() => expect(fromYou).toHaveAttribute('aria-selected', 'true'));
+    const row = (await within(sheet).findByText('受け取り待ち')).closest('button');
+    if (!row) throw new Error('The request row is not a button.');
+    await userEvent.click(row);
+    await within(sheet).findByRole('button', { name: '一覧へ戻る' });
+  },
+};
+
 /** The phone: an open question stacks the answer under it, with the buttons pinned. */
 export const PhoneQuestion: Story = {
   args: { variant: 'phone', initial: { tab: 'fromAi', openId: 'Q-12' } },

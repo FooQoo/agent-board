@@ -68,7 +68,7 @@ A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiti
 
 On remote access, the same **Messages** band is above the lane tabs, and a Pending task shows the same **Answer the question** button. The band shows the same counts. **Open the list** opens the list as a sheet that slides up from the bottom, and **Ask AI** sits beside it when your phone can send a request.
 
-The sheet works like the modal. The tabs and rows are the same. An open question stacks the answer under the question, and the sheet scrolls while **Later** and **Send answer** stay at the bottom, in reach of your thumb. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
+The sheet works like the modal. The tabs and rows are the same, and you can also swipe the list sideways to switch between **AI's questions** and **Your requests**; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, and the sheet scrolls while **Later** and **Send answer** stay at the bottom, in reach of your thumb. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
 
 ![Answer sheet on the phone with the question, choices, note, and the buttons at the bottom](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 

@@ -104,6 +104,11 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--phone-swipe-tabs",
+              "states": ["bottom sheet", "swipe switches tabs", "tab and row taps"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-question",
               "states": ["bottom sheet", "stacked question and answer", "fixed buttons"],
               "interaction": true
@@ -133,7 +138,7 @@
         {
           "name": "MessageList",
           "stories": [],
-          "exclusion": "MessageList is the two tabs and the rows inside MessagesSurface; its states are the MessageCenter list Stories."
+          "exclusion": "MessageList is the two tabs and the rows inside MessagesSurface; its states, including the phone swipe between the tabs, are the MessageCenter list Stories."
         }
       ]
     }
