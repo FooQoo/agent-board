@@ -118,8 +118,8 @@
 
 .message-band[data-variant="phone"] .message-band__actions {
   display: grid;
-  /* "Ask AI" keeps its own width; the longer "Check questions and requests" takes the rest. */
-  grid-template-columns: auto minmax(0, 1fr);
+  /* "Ask AI" and "Questions & requests" share the row in equal columns. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
   margin-left: 0;
 }
@@ -127,6 +127,15 @@
 .message-band[data-variant="phone"] .message-band__actions > * {
   min-width: 0;
   justify-content: center;
+  /* Two equal columns leave 157px per button on a 360px phone; the English label needs 133px of text. */
+  padding-inline: 8px;
+}
+
+/* On phones narrower than 400px the chevron gives way, so neither label is cut or wrapped. */
+@media (max-width: 399px) {
+  .message-band[data-variant="phone"] .message-band__chevron {
+    display: none;
+  }
 }
 
 /* Touch screens: the header is finger-sized. */
