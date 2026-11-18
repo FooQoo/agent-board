@@ -48,7 +48,7 @@ The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workfl
 
 - The Rust job runs `cargo fmt`, `cargo clippy`, and `cargo nextest run` on Linux (`ubuntu-latest`).
 - The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build.
-- The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on Linux, split into three shards that run side by side. The job takes about 8 minutes and runs on every pull request, on pushes to `main`, and on manual runs.
+- The E2E job runs the Playwright app suite (`pnpm --dir e2e test`) on Linux, split into four shards that run side by side. The job takes about 8 minutes and runs on every pull request, on pushes to `main`, and on manual runs.
 - The coverage job measures the Rust tests with `cargo llvm-cov nextest` and the web unit tests with `pnpm --dir web test:coverage`, then sends both reports to [Codecov](https://codecov.io/gh/FooQoo/agent-board). It reports the numbers and does not fail the run for a low coverage.
 
 On a pull request, a newer commit cancels the run in progress. On `main`, a run is never cancelled; a newer push waits for it, so every merge gets a finished run. When a pull request is merged or closed, the [Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml) workflow cancels its remaining CI and Release build runs, so they do not hold the runners that the run on `main` needs.

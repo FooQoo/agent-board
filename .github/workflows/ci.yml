@@ -3,7 +3,7 @@ name: CI
 # Runs the checks in docs/dev/getting-started/pull-request.md#verification on
 # every pull request and every push to main. The commands match that page, so
 # a change that passes locally passes here, and the other way round. The E2E
-# suite runs in three shards, so it adds about 8 minutes to a pull request.
+# suite runs in four shards, so it adds about 8 minutes to a pull request.
 #
 # Every job runs on Linux (ubuntu-latest). GitHub's Apple Silicon runners are often short
 # of capacity, and the jobs here do not need macOS: releases are built and signed on macOS
@@ -156,14 +156,14 @@ jobs:
           fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   e2e:
-    name: E2E (Playwright ${{ matrix.shard }}/3)
+    name: E2E (Playwright ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # The suite is split across three runners. Each shard builds the app and runs a third of the tests.
+    # The suite is split across four runners. Each shard builds the app and runs a quarter of the tests.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -190,7 +190,7 @@ jobs:
           pnpm --dir e2e exec playwright install --with-deps chromium webkit
       # The global setup builds the web UI and the CLI, then each worker starts
       # its own `agboard serve` on port 0 with its own temporary data area.
-      - run: pnpm --dir e2e test --shard=${{ matrix.shard }}/3
+      - run: pnpm --dir e2e test --shard=${{ matrix.shard }}/4
       - name: Find the results folder
         if: failure()
         id: results

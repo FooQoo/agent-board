@@ -48,7 +48,7 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 
 - Rustのジョブは、Linux（`ubuntu-latest`）で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
 - Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。
-- E2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは3つのシャードに分けて並行して実行し、1つのシャードに8分ほどかかるため、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
+- E2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは4つのシャードに分けて並行して実行し、1つのシャードに8分ほどかかるため、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
 - カバレッジのジョブは、Rustのテストを`cargo llvm-cov nextest`で、Webの単体テストを`pnpm --dir web test:coverage`で計測し、両方の結果を[Codecov](https://codecov.io/gh/FooQoo/agent-board)に送ります。数値を報告するだけで、カバレッジが低くても実行は失敗しません。
 
 プルリクエストに新しいコミットが届くと、実行中のCIは取り消されます。`main`のCIは取り消されず、新しいpushは前の実行が終わるのを待ちます。そのため、マージのたびに最後まで走ったCIが残ります。プルリクエストがマージまたはクローズされると、[Cancel CI of a closed pull request](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/cancel-closed-pr.yml)のワークフローがそのプルリクエストの残りのCIとRelease buildを取り消します。これで、`main`のCIが必要とするmacOSのランナーを占有し続けることはありません。
