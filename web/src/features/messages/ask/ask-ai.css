@@ -12,37 +12,67 @@
   color: var(--r-text);
 }
 
-/* The rich editor box of the task dialogs, with a height that fits a request. */
+/* The input box: an outlined field in the input border colour, as tall as its text between a floor and
+   a ceiling, so a short request leaves no empty block and a long one scrolls inside the box. */
 .ask-ai__box.editor__box {
   flex: none;
-  height: clamp(200px, 34vh, 320px);
-  padding: 12px 16px;
+  height: auto;
+  min-height: 140px;
+  max-height: min(44vh, 360px);
+  padding: 12px 14px;
   overflow-y: auto;
+  border: 1px solid var(--r-input);
+  border-radius: 8px;
+  background: transparent;
   cursor: text;
 }
 
+.ask-ai__box.editor__box:focus-within {
+  border-color: var(--r-accent);
+}
+
 .ask-ai__box .rich-markdown .ProseMirror {
-  min-height: 100%;
+  min-height: 112px;
+}
+
+/* The first block sits on the top padding; a cursor widget may come before it. */
+.ask-ai__box .ProseMirror > :first-child,
+.ask-ai__box .ProseMirror > .ProseMirror-widget:first-child + * {
+  margin-top: 0;
 }
 
 .ask-ai--sheet .ask-ai__box.editor__box {
-  height: clamp(180px, 34vh, 280px);
+  max-height: 38vh;
+}
+
+/* The images sit under the box on the same left edge, in the dialog and in the sheet alike. */
+.ask-ai .ask-ai__images.request-dialog__attachments {
+  flex: none;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 0;
+  overflow: visible;
 }
 
 .ask-ai__note {
   margin: 0;
+  line-height: 18px;
   font-size: 12px;
   color: var(--r-muted);
 }
 
-.ask-ai__buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+.ask-ai__submit {
+  width: 100%;
 }
 
 .ask-ai__error {
   margin: 0;
   font-size: 12px;
   color: var(--r-danger);
+}
+
+.ask-ai--sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

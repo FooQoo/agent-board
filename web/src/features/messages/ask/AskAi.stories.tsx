@@ -120,14 +120,29 @@ export const DialogSendFailed: Story = {
   },
 };
 
-/** The bottom sheet for a phone. */
+/** The bottom sheet for a phone: one full-width send button, the close button cancels, and the
+ * label, the input box, and the images share one left edge. */
 export const Sheet: Story = {
   args: { kind: 'sheet' },
   parameters: { storyFrame: 'monitor' },
   globals: { width: 'phone-375' },
   play: async () => {
-    await expect(await page().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
-    await expect(page().getByRole('button', { name: 'Send request' })).toBeVisible();
+    const sheet = await page().findByRole('dialog', { name: 'Ask AI' });
+    const send = page().getByRole('button', { name: 'Send request' });
+    await expect(send).toBeVisible();
+    await expect(page().queryByRole('button', { name: /^Cancel$/ })).toBeNull();
+    const left = (selector: string) => {
+      const element = sheet.querySelector(selector);
+      if (element === null) throw new Error(`${selector} is missing`);
+      return Math.round(element.getBoundingClientRect().left);
+    };
+    const edge = left('.ask-ai__label');
+    await expect(left('.ask-ai__box')).toBe(edge);
+    await expect(left('.editor-attachments__header')).toBe(edge);
+    await expect(left('.ask-ai__note')).toBe(edge);
+    await expect(Math.round(send.getBoundingClientRect().width)).toBe(
+      Math.round(sheet.querySelector('.ask-ai__box')?.getBoundingClientRect().width ?? 0),
+    );
   },
 };
 
@@ -142,7 +157,7 @@ export const SheetFilled: Story = {
   },
 };
 
-/** An empty request in the sheet shows the message beside the buttons. */
+/** An empty request in the sheet shows the message above the send button. */
 export const SheetRequired: Story = {
   args: { kind: 'sheet' },
   parameters: { storyFrame: 'monitor' },

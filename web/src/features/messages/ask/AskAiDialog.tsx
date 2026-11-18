@@ -162,19 +162,22 @@ export function AskAiDialog({
                 {error}
               </p>
             )}
-            <p className="ask-ai__note">{t('askAi.note')}</p>
-            <div className="ask-ai__buttons">
-              <Button type="button" variant="outline" onClick={onClose}>
-                {t('dialog.cancel')}
-              </Button>
-              <Button type="button" disabled={saving} onClick={() => void submitSheet()}>
-                {t('askAi.submit')}
-              </Button>
-            </div>
+            {/* The close button in the header cancels; the footer keeps the one thing to do. */}
+            <Button
+              type="button"
+              className="ask-ai__submit"
+              disabled={saving}
+              onClick={() => void submitSheet()}
+            >
+              {t('askAi.submit')}
+            </Button>
           </>
         }
       >
-        <div className="ask-ai ask-ai--sheet">{fields}</div>
+        <div className="ask-ai ask-ai--sheet">
+          {fields}
+          <p className="ask-ai__note">{t('askAi.note')}</p>
+        </div>
       </Surface>
     );
   }
