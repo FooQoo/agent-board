@@ -51,10 +51,17 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   expect(box.y + box.height).toBeLessThanOrEqual(844 - 336);
   expect(opened.y).toBeGreaterThanOrEqual(0);
   await expect.poll(async () => { const b = await sheet.boundingBox(); return b ? b.y + b.height : Infinity; }).toBeLessThanOrEqual(844 - 336 + 2);
+  // The sheet uses the whole visible area: its top is the top of the visual viewport, and the
+  // field gets the room the header and the gap no longer take.
+  expect(opened.y).toBeLessThanOrEqual(1);
+  expect(opened.height).toBeGreaterThanOrEqual(844 - 336 - 1);
+  const fieldBox = await field.boundingBox();
+  expect(fieldBox?.height ?? 0).toBeGreaterThanOrEqual(200);
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
-  await expect.poll(async () => Math.round((await sheet.boundingBox())?.y ?? 0)).toBe(Math.round(closed.y));
+  // Back where it was, give or take the subpixel rounding of the visual viewport.
+  await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(2);
 });
 
 test('closing the sheet with text asks first, and an empty sheet closes at once', async ({ page }) => {

@@ -95,3 +95,40 @@
   height: min(calc(var(--visual-vh, var(--stable-vh, 100svh)) - 56px), 720px);
   max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
 }
+
+/* While the keyboard is open the sheet takes the whole visible area above it: no gap at the top, a
+   one-line header without the drag handle or the empty identity line, and a tighter toolbar. The
+   sheet's bottom is the visual viewport's bottom, so its top is the viewport's top (offsetTop). */
+:root[data-keyboard-open] .mobile-drawer.ask-ai--sheet[data-slot="drawer-popup"] {
+  height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
+  max-height: calc(var(--visual-vh, var(--stable-vh, 100svh)) - env(safe-area-inset-top));
+  border-radius: 12px 12px 0 0;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__handle,
+:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__identity {
+  display: none;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__header {
+  align-items: center;
+  padding: 2px 4px 2px 16px;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__close {
+  width: 40px;
+  height: 40px;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .surface__body {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .surface__footer {
+  padding: 6px 16px;
+}
+
+:root[data-keyboard-open] .ask-ai--sheet .mobile-drawer__content {
+  padding-bottom: 0;
+}
