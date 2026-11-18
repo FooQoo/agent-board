@@ -83,7 +83,7 @@ These checks prove that a request came from the page in a browser. They do not s
 ## Drafts and Done tasks
 
 - CLI `edit`, `mv`, `state`, and `history add` refuse a person's draft tasks (`draft: human`), so a cooperative agent does not overwrite a task a person is writing. A task an agent proposed (`draft: ai`) accepts `edit` and `history add`, but not `mv` or `state`.
-- A plan is started by the agent that wrote it or by a person; there is no approval step, and the web server has no start route. A start is refused while a question about the plan has no reply (`start_blocked_by_questions`), so the agent cannot start past a question that is still open. The `--actor` value is a declaration, not authentication; see [What is not prevented](#what-is-not-prevented).
+- A plan is started by the agent that wrote it or by a person; there is no approval step, and the web server has no start route. A start is refused while a question linked to the plan's tasks has no reply (`start_blocked_by_questions`), so the agent cannot start past a question that is still open. The `--actor` value is a declaration, not authentication; see [What is not prevented](#what-is-not-prevented).
 - AI changes to Done tasks (edit, state, epic, history, and images) are refused.
 - Writes to archived tasks (edit, draft change, move, state, answer, and attachments) are refused under the write lock; images stay readable.
 - The draft toggle and edit APIs accept only requests that pass the browser write guard.

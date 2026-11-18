@@ -37,7 +37,7 @@ You do not write the plan. You ask, and the agent does the planning on the board
 
 1. **Request.** Tell the agent what you want in the chat, in your own words.
 2. **Plan.** The agent puts a plan on the board right away: an epic, and tasks in work order, each with acceptance conditions. They show as ordinary Todo cards with a **Draft** badge. The agent also asks the questions it cannot settle itself.
-3. **Answers, then the start.** You answer the questions. Once they are answered and the plan is written up, the agent starts the plan itself. You do not approve the start, and nothing starts while a question is open.
+3. **Answers, then the start.** You answer the questions. Once they are answered and the plan is written up, the agent starts the plan itself. You do not approve the start, and a task does not start while a question linked to it is open.
 4. **Work in order.** The agent works through the tasks, records what it does, and decides everything else itself.
 5. **Stop only when it must.** After the start, the agent calls you in four cases: your intent is unclear, your preference decides it, an action cannot be undone, or the work grows beyond what you asked.
 6. **Done on its own.** When the agent has verified every acceptance condition of a task and nothing is waiting on you, the task moves to Done by itself.

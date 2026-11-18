@@ -102,9 +102,10 @@ The command prints the new task's ID; this page assumes **#2**. The task appears
 
 ### 4. Play the agent: start working
 
-An agent starts a task by moving it to Doing and reporting that it is running:
+An agent starts its draft, moves it to Doing, and reports that it is running:
 
 ```sh
+agboard --project "Quickstart" start 2 --actor ai
 agboard --project "Quickstart" mv 2 doing --actor ai --reason "Start checking the install steps"
 agboard --project "Quickstart" state 2 running --actor ai --reason "Following the install page"
 agboard --project "Quickstart" history add 2 --reason "Built the web UI and installed agboard without errors"

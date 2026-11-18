@@ -102,9 +102,10 @@ agboard --project "Quickstart" add "Check the install steps" --assignee ai --act
 
 ### 4. エージェント役: 作業を始める
 
-エージェントは、タスクを進行中に移し、稼働中だと報告して作業を始めます。
+エージェントは、自分の下書きを開始し、進行中に移して、稼働中だと報告して作業を始めます。
 
 ```sh
+agboard --project "Quickstart" start 2 --actor ai
 agboard --project "Quickstart" mv 2 doing --actor ai --reason "Start checking the install steps"
 agboard --project "Quickstart" state 2 running --actor ai --reason "Following the install page"
 agboard --project "Quickstart" history add 2 --reason "Built the web UI and installed agboard without errors"
