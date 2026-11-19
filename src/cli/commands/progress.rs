@@ -13,7 +13,7 @@ use crate::progress::{self, Include, Progress, ProgressTask};
 
 pub fn run(ctx: &Context, args: &ProgressArgs) -> Result<Outcome, AgboardError> {
     let snapshot = ctx.files.board(ctx.project_id()?)?;
-    let table = progress::build_with(
+    let mut table = progress::build_with(
         &snapshot,
         ctx.files.shared_dir(),
         ctx.clock.now(),
@@ -22,6 +22,7 @@ pub fn run(ctx: &Context, args: &ProgressArgs) -> Result<Outcome, AgboardError> 
             done: args.include_done,
         },
     );
+    table.locale = crate::server::preferences::saved_locale(ctx.files.shared_dir());
     Ok(Outcome {
         changed: false,
         human: render(&table),
