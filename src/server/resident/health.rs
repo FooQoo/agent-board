@@ -18,11 +18,13 @@ pub enum HealthState {
     Failed,
 }
 
-/// The health of the session of one tool, as the sessions response lists it.
+/// The health of the board-launched session (there is at most one), as the sessions response
+/// carries it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Health {
-    pub tool: Tool,
+    /// The tool of the session the board keeps, `None` when there is none.
+    pub tool: Option<Tool>,
     pub state: HealthState,
     pub project_id: Option<ProjectId>,
     pub model: Option<String>,
@@ -40,49 +42,41 @@ pub struct Health {
     pub auto_start: Option<AutoStart>,
 }
 
-const TOOLS: [Tool; 2] = [Tool::ClaudeCode, Tool::Codex];
-
 impl Launcher {
-    /// The health of every launchable tool, in the order `claude-code`, `codex`.
-    pub fn health(&self) -> Vec<Health> {
+    /// The health of the one session slot. `tool` is `None` while nothing is launched.
+    pub fn health(&self) -> Health {
+        let auto_start = self.autostart.get();
         let plans = self.plans();
-        TOOLS
-            .iter()
-            .map(|tool| {
-                let auto_start = self.autostart.get(*tool);
-                let Some(plan) = plans.get(tool) else {
-                    return Health {
-                        tool: *tool,
-                        state: HealthState::Stopped,
-                        project_id: None,
-                        model: None,
-                        reason: None,
-                        waiting: false,
-                        restart_count: 0,
-                        last_exit_at: None,
-                        next_restart_at: None,
-                        auto_start,
-                    };
-                };
-                let (state, next_restart_at) = match plan.state {
-                    PlanState::Running => (HealthState::Running, None),
-                    PlanState::Restarting { due_at, .. } => (HealthState::Restarting, Some(due_at)),
-                    PlanState::Failed => (HealthState::Failed, None),
-                };
-                Health {
-                    tool: *tool,
-                    state,
-                    project_id: Some(plan.project.clone()),
-                    model: plan.model.clone(),
-                    reason: plan.reason.clone(),
-                    waiting: matches!(plan.state, PlanState::Running)
-                        && self.registry.has_board(*tool),
-                    restart_count: plan.restarts,
-                    last_exit_at: plan.last_exit_at,
-                    next_restart_at,
-                    auto_start,
-                }
-            })
-            .collect()
+        let Some((tool, plan)) = plans.iter().next() else {
+            return Health {
+                tool: None,
+                state: HealthState::Stopped,
+                project_id: None,
+                model: None,
+                reason: None,
+                waiting: false,
+                restart_count: 0,
+                last_exit_at: None,
+                next_restart_at: None,
+                auto_start,
+            };
+        };
+        let (state, next_restart_at) = match plan.state {
+            PlanState::Running => (HealthState::Running, None),
+            PlanState::Restarting { due_at, .. } => (HealthState::Restarting, Some(due_at)),
+            PlanState::Failed => (HealthState::Failed, None),
+        };
+        Health {
+            tool: Some(*tool),
+            state,
+            project_id: Some(plan.project.clone()),
+            model: plan.model.clone(),
+            reason: plan.reason.clone(),
+            waiting: matches!(plan.state, PlanState::Running) && self.registry.has_board(*tool),
+            restart_count: plan.restarts,
+            last_exit_at: plan.last_exit_at,
+            next_restart_at,
+            auto_start,
+        }
     }
 }

@@ -63,14 +63,15 @@ impl Launcher {
         });
         let launcher = self.clone();
         std::thread::spawn(move || {
-            for (tool, choice) in launcher.autostart.all() {
+            if let Some(choice) = launcher.autostart.get() {
+                let tool = choice.tool;
                 let project = choice.project_id.clone();
                 let (name, folder) = match resolve(&project) {
                     Ok(found) => found,
                     Err(error) => {
                         let none = std::path::Path::new("");
                         launcher.start_failed(tool, &project, &choice, "", none, &error);
-                        continue;
+                        return;
                     }
                 };
                 if let Err(error) =

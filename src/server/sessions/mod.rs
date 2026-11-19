@@ -136,20 +136,16 @@ impl SessionRegistry {
         SessionList { sessions, counts }
     }
 
-    /// Whether the board may launch one more session of `tool`. External sessions are never
-    /// limited; board-launched ones are limited to one per tool, over every project. A
-    /// board-launched session in grace still counts, so a launcher does not start a second one
-    /// while the first is between two waits.
-    pub fn check_board_launch(&self, tool: Tool) -> Result<(), LaunchRefused> {
+    /// Whether the board may launch a session. Board-launched sessions are limited to one in
+    /// total, whichever tool; the error names the tool that holds the slot. External sessions
+    /// are never limited. A board-launched session in grace still counts, so a launcher does not
+    /// start a second one while the first is between two waits.
+    pub fn check_board_launch(&self) -> Result<(), LaunchRefused> {
         let mut entries = self.lock();
         self.prune(&mut entries, Instant::now());
-        let taken = entries
-            .values()
-            .any(|entry| entry.origin == Origin::Board && entry.tool == tool);
-        if taken {
-            Err(LaunchRefused { tool })
-        } else {
-            Ok(())
+        match entries.values().find(|entry| entry.origin == Origin::Board) {
+            Some(entry) => Err(LaunchRefused { tool: entry.tool }),
+            None => Ok(()),
         }
     }
 

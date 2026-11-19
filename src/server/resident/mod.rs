@@ -2,8 +2,8 @@
 //!
 //! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
 //! approval instead of prompts, and keeps its child process. The session then waits on the board like any other and
-//! registers with origin `board`. At most one session per tool is launched by the board, over all
-//! projects. [`cli`] is the only place that knows the CLIs' names and flags.
+//! registers with origin `board`. The board keeps at most one such session in total, whichever
+//! tool and project. [`cli`] is the only place that knows the CLIs' names and flags.
 //!
 //! A child lives in its own process group, so stopping it also stops the commands it started (for
 //! example its `agboard wait`). A thread reaps each child when it exits, whoever ends it, and
@@ -195,20 +195,22 @@ impl Launcher {
         }
     }
 
-    /// Stop the session of `tool`: SIGTERM to its process group, SIGKILL after the grace time.
+    /// Stop the board-launched session (there is at most one): SIGTERM to its process group,
+    /// SIGKILL after the grace time.
     /// Returns whether a session was running. When it returns, a new launch is possible.
-    /// A stop clears what the supervisor keeps for the tool, so the session is not restarted and
+    /// A stop clears what the supervisor keeps, so the session is not restarted and
     /// a restart that was waiting or a failure that was shown is cleared too.
-    pub fn stop(&self, tool: Tool) -> Result<bool, AgboardError> {
-        self.plans().remove(&tool);
-        let target = self
+    pub fn stop(&self) -> Result<bool, AgboardError> {
+        self.plans().clear();
+        let targets: Vec<(u32, Arc<Exit>)> = self
             .lock()
-            .get(&tool)
-            .map(|live| (live.pid, live.exit.clone()));
-        let Some((pid, exit)) = target else {
+            .values()
+            .map(|live| (live.pid, live.exit.clone()))
+            .collect();
+        if targets.is_empty() {
             return Ok(false);
-        };
-        terminate(&[(pid, exit)], self.stop_grace);
+        }
+        terminate(&targets, self.stop_grace);
         Ok(true)
     }
 

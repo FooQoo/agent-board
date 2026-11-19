@@ -205,7 +205,7 @@ fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
     );
     assert!(record.contains("--skip-git-repo-check"));
     assert!(!record.contains(" -m "), "{record}");
-    fx.launcher.stop(Tool::Codex).unwrap();
+    fx.launcher.stop().unwrap();
     fx.launch(Tool::Codex, Some("gpt-a")).unwrap();
     wait_until("the second codex record", || {
         fx.record("codex").contains(" -m gpt-a ")
@@ -214,14 +214,20 @@ fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
 }
 
 #[test]
-fn a_second_launch_of_a_tool_is_refused_with_a_reason_but_another_tool_is_not() {
+fn a_second_launch_is_refused_with_a_reason_whichever_the_tool() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture();
     fx.launch(Tool::ClaudeCode, None).unwrap();
-    let refused = fx.launch(Tool::ClaudeCode, None).unwrap_err();
-    assert_eq!(refused.code(), "session_launch_refused");
-    assert!(refused.reason().contains("already running"));
-    fx.launch(Tool::Codex, None).unwrap();
+    for tool in [Tool::ClaudeCode, Tool::Codex] {
+        let refused = fx.launch(tool, None).unwrap_err();
+        assert_eq!(refused.code(), "session_launch_refused", "{tool:?}");
+        assert!(
+            refused.reason().contains("claude-code"),
+            "{}",
+            refused.reason()
+        );
+        assert!(refused.reason().contains("already running"));
+    }
     fx.launcher.shutdown();
     assert!(fx.launcher.status().is_empty());
 }
@@ -238,6 +244,10 @@ fn a_board_session_the_registry_counts_refuses_a_launch() {
     });
     let refused = fx.launch(Tool::Codex, None).unwrap_err();
     assert_eq!(refused.code(), "session_launch_refused");
+    // The other tool is refused too: the board keeps one session in total.
+    let other = fx.launch(Tool::ClaudeCode, None).unwrap_err();
+    assert_eq!(other.code(), "session_launch_refused");
+    assert!(other.reason().contains("codex"), "{}", other.reason());
     // An external session of the same tool does not count.
     fx.registry.remove_board(Tool::Codex);
     let _external = fx.registry.register(Attributes {

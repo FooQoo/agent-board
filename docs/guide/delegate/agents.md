@@ -175,7 +175,7 @@ To keep a session on the board without typing the command, invoke the plugin's `
 
 ## Sessions the board starts {#sessions-the-board-starts}
 
-Instead of starting an agent yourself, the board can start a headless Claude Code or Codex session in a project's folder. The session sits on the board and waits for work, like one you started and left listening. The board starts at most one session per tool, and the session needs the `claude` or `codex` command on the `PATH` of the server and a login in that tool.
+Instead of starting an agent yourself, the board can start a headless Claude Code or Codex session in a project's folder. The session sits on the board and waits for work, like one you started and left listening. The board keeps at most one such session in total, whichever tool or project, and the session needs the `claude` or `codex` command on the `PATH` of the server and a login in that tool.
 
 > **Warning: nobody watches a session the board starts, and its approvals are automatic.** Claude Code runs in auto mode: a reviewer checks each action, and anything that would ask you is refused instead. Codex runs in its workspace-write sandbox with automatic review, and the board's data folder is added as writable so the agent can use `agboard`. Neither stops to ask you. Automatic review can approve actions you would not, and a mistaken instruction, for example one in a task or a web page the agent reads, can still do harm. Start sessions only in projects you trust, and stop one from the board when you are done. When the board server stops, it stops the sessions it started.
 

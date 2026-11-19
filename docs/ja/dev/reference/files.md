@@ -238,24 +238,22 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 
 ## セッションの自動起動
 
-サーバーの起動時にボードが起動するセッションは、`<データ領域>/.internal/resident-autostart.json`に保存します。このファイルはアプリのもので、ローカルの入口の`PUT /api/projects/{projectId}/sessions/autostart`だけが書き込み、手で書くことはありません。`shared/`には置かないので、プロジェクトのバックアップには含まれません。置き換えは原子的で、所有者だけの権限（OSにあれば`0600`）です。
+サーバーの起動時にボードが起動するセッションは、`<データ領域>/.internal/resident-autostart.json`に保存します。ボードが起動するセッションは全体で1つなので、選択は最大1つです。このファイルはアプリのもので、ローカルの入口の`PUT /api/projects/{projectId}/sessions/autostart`だけが書き込み、手で書くことはありません。`shared/`には置きません。置き換えは原子的で、所有者だけの権限（OSにあれば`0600`）です。
 
 ```json
 {
-  "formatVersion": 1,
-  "tools": {
-    "claude-code": { "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" },
-    "codex": { "projectId": "0123456789abcdef0123456789abcdef", "model": null }
-  }
+  "formatVersion": 2,
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
 }
 ```
 
 | 項目 | 規則 |
 | --- | --- |
-| `formatVersion` | 常に`1`です。ほかの値、未知の項目、壊れたファイルは、起動するものがないものとして読みます。 |
-| `tools` | `claude-code`と`codex`をキーにしたオブジェクトです。ないツールは、サーバーと一緒には起動しません。 |
-| `tools.<tool>.projectId` | セッションを、その結び付いたフォルダで起動するプロジェクトです。 |
-| `tools.<tool>.model` | モデル名、またはツールの既定のモデルを使う`null`です。 |
+| `formatVersion` | 常に`2`です。ほかの値（ツールごとだった以前の形式`1`を含む）、未知の項目、壊れたファイルは、起動するものがないものとして読みます。 |
+| `autoStart` | 選択です。ないときは`null`です。 |
+| `autoStart.tool` | `claude-code`か`codex`です。 |
+| `autoStart.projectId` | セッションを、その結び付いたフォルダで起動するプロジェクトです。 |
+| `autoStart.model` | モデル名、またはツールの既定のモデルを使う`null`です。 |
 
 このファイルに秘密の値は含みません。プロジェクトがなくなった、または結び付いたフォルダがないときも、ファイルからは消しません。起動は理由付きの`failed`として表示され、選択は切るまで残ります。
 

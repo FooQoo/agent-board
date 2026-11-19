@@ -24,7 +24,7 @@ struct Listed {
     list: SessionList,
     launched: Vec<Launched>,
     /// The health of the session of each tool.
-    health: Vec<Health>,
+    health: Health,
 }
 
 pub(super) async fn list_sessions(
@@ -119,19 +119,22 @@ pub(super) async fn launch_session(
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct StopBody {
-    tool: Tool,
+    /// Ignored: the board launches one session in total, so a stop names no tool.
+    #[serde(default)]
+    #[allow(dead_code)]
+    tool: Option<Tool>,
 }
 
 pub(super) async fn stop_session(
     State(state): State<Arc<AppState>>,
     Path(raw_project): Path<String>,
-    ApiJson(body): ApiJson<StopBody>,
+    ApiJson(_body): ApiJson<StopBody>,
 ) -> Response {
     if let Err(error) = parse_project_id(&raw_project) {
         return agboard_error_response(&error);
     }
     let launcher = state.resident.clone();
-    match blocking(move || launcher.stop(body.tool)).await {
+    match blocking(move || launcher.stop()).await {
         Ok(stopped) => json_response(StatusCode::OK, &serde_json::json!({ "stopped": stopped })),
         Err(error) => agboard_error_response(&error),
     }
@@ -148,7 +151,9 @@ async fn project_folder(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct AutoStartBody {
-    tool: Tool,
+    /// Required when `enabled` is true.
+    #[serde(default)]
+    tool: Option<Tool>,
     enabled: bool,
     #[serde(default)]
     model: Option<String>,
@@ -166,12 +171,17 @@ pub(super) async fn set_autostart(
         Err(error) => return agboard_error_response(&error),
     };
     let result = async {
-        let tool = crate::server::resident::cli::launchable(body.tool)?;
         let model = body
             .model
             .as_deref()
             .filter(|model| !model.is_empty() && *model != "default");
         let choice = if body.enabled {
+            let tool = crate::server::resident::cli::launchable(body.tool.ok_or_else(|| {
+                AgboardError::InvalidValue {
+                    field: "tool".to_string(),
+                    reason: "tool is required to turn auto-start on.".to_string(),
+                }
+            })?)?;
             if let Some(model) =
                 model.filter(|model| !crate::server::resident::cli::valid_model(model))
             {
@@ -182,6 +192,7 @@ pub(super) async fn set_autostart(
             }
             project_folder(&state, project_id.clone()).await?;
             Some(AutoStart {
+                tool,
                 project_id,
                 model: model.map(str::to_string),
             })
@@ -190,7 +201,7 @@ pub(super) async fn set_autostart(
         };
         let launcher = state.resident.clone();
         let saved = choice.clone();
-        blocking(move || launcher.autostart().set(tool, saved)).await?;
+        blocking(move || launcher.autostart().set(saved)).await?;
         Ok(choice)
     }
     .await;

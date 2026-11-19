@@ -13,13 +13,13 @@ fn stop_ends_the_process_drops_the_registry_entry_and_allows_a_relaunch() {
         tool: Tool::ClaudeCode,
         origin: Origin::Board,
     });
-    assert!(fx.registry.check_board_launch(Tool::ClaudeCode).is_err());
+    assert!(fx.registry.check_board_launch().is_err());
 
-    assert!(fx.launcher.stop(Tool::ClaudeCode).unwrap());
+    assert!(fx.launcher.stop().unwrap());
     assert!(!alive(launched.pid));
     assert!(fx.launcher.status().is_empty());
-    assert!(fx.registry.check_board_launch(Tool::ClaudeCode).is_ok());
-    assert!(!fx.launcher.stop(Tool::ClaudeCode).unwrap());
+    assert!(fx.registry.check_board_launch().is_ok());
+    assert!(!fx.launcher.stop().unwrap());
 
     std::fs::remove_file(fx.dir.path().join("claude.record")).unwrap();
     fx.launch(Tool::ClaudeCode, None).unwrap();
@@ -42,7 +42,7 @@ fn a_child_that_exits_by_itself_is_reaped_and_forgotten() {
     });
     wait_until("the exit to be noticed", || fx.launcher.status().is_empty());
     wait_until("the registry entry to go", || {
-        fx.registry.check_board_launch(Tool::ClaudeCode).is_ok()
+        fx.registry.check_board_launch().is_ok()
     });
 }
 
@@ -102,16 +102,13 @@ fn a_model_that_is_not_offered_or_not_a_name_is_refused() {
 }
 
 #[test]
-fn shutdown_stops_every_child() {
+fn shutdown_stops_the_child() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture();
     let a = fx.launch(Tool::ClaudeCode, None).unwrap();
-    let b = fx.launch(Tool::Codex, None).unwrap();
     fx.record("claude");
-    fx.record("codex");
     fx.launcher.shutdown();
     assert!(!alive(a.pid));
-    assert!(!alive(b.pid));
     assert!(fx.launcher.status().is_empty());
 }
 

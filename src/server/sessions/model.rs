@@ -129,7 +129,7 @@ pub struct OriginCounts {
     pub external: usize,
 }
 
-/// A board launch of `tool` is refused because one board-launched session of it already counts.
+/// A board launch is refused because a board-launched session, of `tool`, already counts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LaunchRefused {
     pub tool: Tool,

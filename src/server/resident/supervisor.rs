@@ -144,6 +144,14 @@ pub(super) fn retryable(error: &AgboardError) -> bool {
 }
 
 impl Launcher {
+    /// The tool whose restart is waiting, if any: it holds the single session slot.
+    pub(super) fn restarting_tool(&self) -> Option<Tool> {
+        self.plans()
+            .iter()
+            .find(|(_, plan)| matches!(plan.state, PlanState::Restarting { .. }))
+            .map(|(tool, _)| *tool)
+    }
+
     pub(super) fn restart_pending(&self, tool: Tool) -> bool {
         matches!(
             self.plans().get(&tool).map(|plan| &plan.state),
@@ -171,6 +179,8 @@ impl Launcher {
                 plan.restarts += 1;
             }
             _ => {
+                // A person's launch replaces whatever was kept, such as a shown failure.
+                plans.clear();
                 plans.insert(
                     tool,
                     Plan::new(
@@ -218,6 +228,8 @@ impl Launcher {
     ) {
         let mut plan = Plan::new(project, name, folder, choice.model.as_deref(), "");
         plan.fail(&self.timing, error.reason(), retryable(error));
-        self.plans().insert(tool, plan);
+        let mut plans = self.plans();
+        plans.clear();
+        plans.insert(tool, plan);
     }
 }

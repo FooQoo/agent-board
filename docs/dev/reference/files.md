@@ -238,24 +238,22 @@ A save changes only the fields it sends; the others keep their saved values. The
 
 ## Session auto-start
 
-The sessions the board launches when the server starts are saved in `<data-root>/.internal/resident-autostart.json`. The file belongs to the application: it is written only by `PUT /api/projects/{projectId}/sessions/autostart` on the local listener, never by hand. It is not in `shared/`. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+The session the board launches when the server starts is saved in `<data-root>/.internal/resident-autostart.json`. The board launches one session in total, so there is at most one choice. The file belongs to the application: it is written only by `PUT /api/projects/{projectId}/sessions/autostart` on the local listener, never by hand. It is not in `shared/`. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
 
 ```json
 {
-  "formatVersion": 1,
-  "tools": {
-    "claude-code": { "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" },
-    "codex": { "projectId": "0123456789abcdef0123456789abcdef", "model": null }
-  }
+  "formatVersion": 2,
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
 }
 ```
 
 | Field | Rule |
 | --- | --- |
-| `formatVersion` | Always `1`. Any other value, an unknown field, or a malformed file reads as nothing to start. |
-| `tools` | An object keyed by `claude-code` and `codex`. A tool that is absent is not started with the server. |
-| `tools.<tool>.projectId` | The project whose bound folder the session starts in. |
-| `tools.<tool>.model` | A model name, or `null` for the tool's own default. |
+| `formatVersion` | Always `2`. Any other value (including the earlier per-tool format `1`), an unknown field, or a malformed file reads as nothing to start. |
+| `autoStart` | The choice, or `null` for none. |
+| `autoStart.tool` | `claude-code` or `codex`. |
+| `autoStart.projectId` | The project whose bound folder the session starts in. |
+| `autoStart.model` | A model name, or `null` for the tool's own default. |
 
 The file holds no secret. A project that no longer exists, or has no bound folder, is not removed from the file: the start shows as `failed` with the reason, and the choice stays until it is turned off.
 

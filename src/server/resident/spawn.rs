@@ -57,16 +57,26 @@ impl Launcher {
             return Err(refused_stopped());
         }
         let refused = |reason: String| AgboardError::SessionLaunchRefused { reason };
-        if live.contains_key(&tool) {
+        // One board-launched session in total: any live child, or a restart that is waiting,
+        // holds the slot (a restart of the same tool is the supervisor itself).
+        if let Some(running) = live.keys().next() {
             return Err(refused(format!(
                 "A {} session launched by the board is already running. Stop it first.",
-                tool.as_str()
+                running.as_str()
             )));
         }
-        if self.registry.check_board_launch(tool).is_err() {
+        if kind == Spawn::User
+            && let Some(waiting) = self.restarting_tool()
+        {
+            return Err(refused(format!(
+                "A {} session launched by the board is restarting. Stop it first.",
+                waiting.as_str()
+            )));
+        }
+        if let Err(held) = self.registry.check_board_launch() {
             return Err(refused(format!(
                 "A {} session launched by the board is already attached. Stop it first, or wait for it to leave.",
-                tool.as_str()
+                held.tool.as_str()
             )));
         }
         let program = self.executables.check(tool)?;
