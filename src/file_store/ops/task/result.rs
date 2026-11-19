@@ -1,12 +1,12 @@
 //! Recording the results delivered to the requester.
 //!
-//! A result is a short summary, optionally with an image and a link, stored in
+//! A result is a short summary, optionally with images and a link, stored in
 //! the task's `task.json` as one entry of `results`. Recording one is a work
 //! note: it changes neither the lane nor the run state, and the agent goes on.
 //!
 //! The entry's `key` makes a retry safe. The key is given with `--key` or, by
-//! default, derived from the content (kind, summary, link, and the image's
-//! bytes), so a retry of the same delivery finds the entry that exists and
+//! default, derived from the content (kind, summary, link, and the images'
+//! bytes in order), so a retry of the same delivery finds the entry that exists and
 //! changes nothing. A save that fails writes no entry and leaves no image file.
 
 use std::fs;
@@ -30,6 +30,8 @@ pub const MAX_RESULTS: usize = 100;
 pub const MAX_RESULT_TEXT_CHARS: usize = 2_000;
 /// The longest explicit key, in characters.
 pub const MAX_RESULT_KEY_CHARS: usize = 64;
+/// The most images one result holds.
+pub const MAX_RESULT_IMAGES: usize = 20;
 
 /// What the agent delivers.
 #[derive(Debug, Clone)]
@@ -37,8 +39,8 @@ pub struct ResultInput {
     pub kind: ResultKind,
     pub summary: String,
     pub link: Option<String>,
-    /// The image to attach, with a new attachment ID.
-    pub image: Option<AttachmentInput>,
+    /// The images to attach in order, each with a new attachment ID.
+    pub images: Vec<AttachmentInput>,
     /// An explicit key for retries; `None` derives it from the content.
     pub key: Option<String>,
 }
@@ -47,8 +49,8 @@ pub struct ResultInput {
 #[derive(Debug, Clone)]
 pub struct RecordedResult {
     pub result: TaskResult,
-    /// The image of the result, when it has one.
-    pub attachment: Option<Attachment>,
+    /// The images of the result in order; empty when it has none.
+    pub attachments: Vec<Attachment>,
     /// `false` when the key already existed and nothing was written.
     pub created: bool,
     pub task: TaskView,
@@ -103,7 +105,7 @@ fn content_key(
     kind: ResultKind,
     summary: &str,
     link: Option<&str>,
-    image: Option<&AttachmentInput>,
+    images: &[AttachmentInput],
 ) -> String {
     let mut hash = Sha256::new();
     hash.update(kind.as_str().as_bytes());
@@ -111,8 +113,8 @@ fn content_key(
         hash.update([0]);
         hash.update(part.unwrap_or("").as_bytes());
     }
-    hash.update([0]);
-    if let Some(image) = image {
+    for image in images {
+        hash.update([0]);
         hash.update(Sha256::digest(&image.bytes));
     }
     hash.finalize()[..16]
@@ -145,9 +147,15 @@ impl FileStore {
     ) -> Result<RecordedResult, AgboardError> {
         let summary = clean_text("summary", &input.summary)?;
         let link = input.link.as_deref().map(clean_link).transpose()?;
+        if input.images.len() > MAX_RESULT_IMAGES {
+            return Err(invalid(
+                "file",
+                &format!("A result holds at most {MAX_RESULT_IMAGES} images."),
+            ));
+        }
         let key = match input.key.as_deref() {
             Some(key) => clean_key(key)?,
-            None => content_key(input.kind, &summary, link.as_deref(), input.image.as_ref()),
+            None => content_key(input.kind, &summary, link.as_deref(), &input.images),
         };
 
         let shared = self.shared_dir();
@@ -155,20 +163,25 @@ impl FileStore {
         let mut task = reader::read_task_strict(shared, project, id)?;
 
         if let Some(existing) = task.results.iter().find(|r| r.key == key) {
-            let same_image = match (&existing.attachment_id, &input.image) {
-                (None, None) => true,
-                (Some(attachment_id), Some(image)) => task
-                    .attachments
+            let stored = existing.image_ids();
+            let same_image = stored.len() == input.images.len()
+                && stored
                     .iter()
-                    .find(|a| &a.id == attachment_id)
-                    .and_then(|a| {
-                        let ext = layout::asset_extension(&a.media_type)?;
-                        let path = layout::task_asset_path(&project_dir, id, &a.id, ext).ok()?;
-                        fs::read(path).ok()
-                    })
-                    .is_some_and(|stored| Sha256::digest(&stored) == Sha256::digest(&image.bytes)),
-                _ => false,
-            };
+                    .zip(&input.images)
+                    .all(|(attachment_id, image)| {
+                        task.attachments
+                            .iter()
+                            .find(|a| a.id == *attachment_id)
+                            .and_then(|a| {
+                                let ext = layout::asset_extension(&a.media_type)?;
+                                let path =
+                                    layout::task_asset_path(&project_dir, id, &a.id, ext).ok()?;
+                                fs::read(path).ok()
+                            })
+                            .is_some_and(|bytes| {
+                                Sha256::digest(&bytes) == Sha256::digest(&image.bytes)
+                            })
+                    });
             if existing.kind != input.kind
                 || existing.summary != summary
                 || existing.link != link
@@ -176,14 +189,15 @@ impl FileStore {
             {
                 return Err(invalid("key", "This key was used for a different result."));
             }
-            let attachment = existing
-                .attachment_id
-                .as_ref()
-                .and_then(|a| task.attachments.iter().find(|x| &x.id == a))
-                .cloned();
+            let attachments = existing
+                .image_ids()
+                .iter()
+                .filter_map(|a| task.attachments.iter().find(|x| x.id == *a))
+                .cloned()
+                .collect();
             return Ok(RecordedResult {
                 result: existing.clone(),
-                attachment,
+                attachments,
                 created: false,
                 task: view(shared, project, id)?,
             });
@@ -205,15 +219,23 @@ impl FileStore {
 
         let at = stamp(now);
         let language = self.history_language(project, &task)?;
-        let mut written = None;
-        let mut attachment = None;
-        if let Some(image) = &input.image {
-            let owner = super::super::super::model::AttachmentOwner::Task(id);
-            let (metadata, path) =
-                write_image(shared, &project_dir, &owner, &task.attachments, image, at)?;
-            task.attachments.push(metadata.clone());
-            attachment = Some(metadata);
-            written = Some(path);
+        let mut written = Vec::new();
+        let mut attachments = Vec::new();
+        let owner = super::super::super::model::AttachmentOwner::Task(id);
+        for image in &input.images {
+            match write_image(shared, &project_dir, &owner, &task.attachments, image, at) {
+                Ok((metadata, path)) => {
+                    task.attachments.push(metadata.clone());
+                    attachments.push(metadata);
+                    written.push(path);
+                }
+                Err(error) => {
+                    for path in written {
+                        let _ = fs::remove_file(path);
+                    }
+                    return Err(error);
+                }
+            }
         }
 
         let version = task.results.iter().map(|r| r.version).max().unwrap_or(0) + 1;
@@ -222,10 +244,12 @@ impl FileStore {
             key,
             kind: input.kind,
             summary,
-            attachment_id: attachment.as_ref().map(|a| a.id.clone()),
+            attachment_id: None,
+            attachment_ids: Vec::new(),
             link,
             at,
-        };
+        }
+        .with_images(attachments.iter().map(|a| a.id.clone()).collect());
         let note = excerpt(&result.summary);
         let (english_kind, japanese_kind) = match result.kind {
             ResultKind::Progress => ("progress", "途中"),
@@ -241,14 +265,14 @@ impl FileStore {
         task.history.push(HistoryRecord { at, reason });
         task.updated_at = at;
         if let Err(error) = save_task(shared, &project_dir, &task) {
-            if let Some(path) = written {
+            for path in written {
                 let _ = fs::remove_file(path);
             }
             return Err(error);
         }
         Ok(RecordedResult {
             result,
-            attachment,
+            attachments,
             created: true,
             task: view(shared, project, id)?,
         })

@@ -229,7 +229,7 @@ fn progress(summary: &str) -> ResultInput {
         kind: ResultKind::Progress,
         summary: summary.into(),
         link: None,
-        image: None,
+        images: Vec::new(),
         key: None,
     }
 }

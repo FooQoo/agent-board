@@ -61,11 +61,12 @@ The command assigns the timestamp and applies AI write permissions; it needs no 
 
 ### Deliver a result {#deliver-a-result}
 
-Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`), optionally with an image (`--file`) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
+Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`), optionally with images (`--file`, repeated for several images, up to 20 in the order given) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
 
 ```sh
 agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
 agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai
+agboard --project "My project" result add 1 --summary "All screens of the mock" --file 01.png --file 02.png --file 03.png --actor ai
 agboard --project "My project" result add 1 --summary "Finished and checked" --final --actor ai
 agboard --project "My project" result ls 1
 ```
