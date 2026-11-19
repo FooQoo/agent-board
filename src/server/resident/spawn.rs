@@ -1,9 +1,9 @@
 //! Starting one child process of a launched session.
 
 use std::path::Path;
-use std::process::{Command, Stdio};
 use std::sync::Arc;
 
+use super::driver::{AgentDriver, DriverEvent, PermissionRequest, StartSpec, decide_permission};
 use super::process::{Exit, new_launch_id, open_log};
 use super::{Launched, Launcher, Live, cli};
 use crate::clock::{Clock, SystemClock};
@@ -22,16 +22,6 @@ pub(super) enum Spawn {
 fn refused_stopped() -> AgboardError {
     AgboardError::SessionLaunchRefused {
         reason: "The session was stopped before it could be restarted.".to_string(),
-    }
-}
-
-fn exit_reason(tool: Tool, status: std::io::Result<std::process::ExitStatus>) -> String {
-    match status {
-        Ok(status) => format!("The {} session exited ({status}).", tool.as_str()),
-        Err(e) => format!(
-            "The {} session could not be waited for: {e}.",
-            tool.as_str()
-        ),
     }
 }
 
@@ -93,51 +83,32 @@ impl Launcher {
         let log_path = self.log_path(tool);
         let log = open_log(&log_path)
             .map_err(|e| failed(format!("Cannot write {}: {e}.", log_path.display())))?;
-        let log_err = log
-            .try_clone()
-            .map_err(|e| failed(format!("Cannot write {}: {e}.", log_path.display())))?;
         let launch_id = new_launch_id()?;
-        let mut command = Command::new(&program);
-        command
-            .args(cli::launch_args(
-                tool,
-                folder,
-                &self.data_dir,
-                model,
-                &cli::prompt(project_name),
-            ))
-            .current_dir(folder)
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(log))
-            .stderr(Stdio::from(log_err));
-        for (name, _) in std::env::vars_os() {
-            if name.to_str().is_some_and(cli::scrubbed) {
-                command.env_remove(&name);
-            }
-        }
-        command
-            .env("AGBOARD_RESIDENT_ID", &launch_id)
-            .env("AGBOARD_SESSION_TOOL", tool.as_str())
-            .env("AGBOARD_SESSION_ORIGIN", "board");
-        #[cfg(unix)]
-        std::os::unix::process::CommandExt::process_group(&mut command, 0);
-        let mut child = command.spawn().map_err(|e| {
-            failed(format!(
-                "{} could not be started: {e}.",
-                program
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            ))
+        let driver: Arc<dyn AgentDriver> = Arc::from((self.factory)(tool, &program));
+        driver.start(StartSpec {
+            cwd: folder.to_path_buf(),
+            model: model.map(str::to_string),
+            prompt: cli::prompt(project_name),
+            writable_dirs: vec![self.data_dir.clone()],
+            env: vec![
+                ("AGBOARD_RESIDENT_ID".to_string(), launch_id.clone()),
+                (
+                    "AGBOARD_SESSION_TOOL".to_string(),
+                    tool.as_str().to_string(),
+                ),
+                ("AGBOARD_SESSION_ORIGIN".to_string(), "board".to_string()),
+            ],
+            log,
         })?;
         let launched = Live {
             launch_id: launch_id.clone(),
-            pid: child.id(),
+            pid: driver.pid().unwrap_or(0),
             project: project.clone(),
             model: model.map(str::to_string),
             started_at: SystemClock.now(),
             started: std::time::Instant::now(),
             exit: Exit::new(),
+            driver: driver.clone(),
         };
         let view = Launched {
             tool,
@@ -153,11 +124,41 @@ impl Launcher {
 
         let launcher = self.clone();
         std::thread::spawn(move || {
-            let status = child.wait();
+            let reason = pump(tool, driver.as_ref());
             launcher.forget(tool, &launch_id);
-            launcher.on_exit(tool, &launch_id, &exit_reason(tool, status));
+            launcher.on_exit(tool, &launch_id, &reason);
             exit.finish();
         });
         Ok(view)
     }
+}
+
+/// Read the events of a session until it exits, and answer what it asks. This is the one channel
+/// through which a driver reaches the launcher. Returns why the session ended.
+fn pump(tool: Tool, driver: &dyn AgentDriver) -> String {
+    loop {
+        match driver.next_event() {
+            DriverEvent::Exited { code, signal } => return exit_reason(tool, code, signal),
+            DriverEvent::PermissionRequest { id, kind, summary } => {
+                let answer = decide_permission(&PermissionRequest { kind, summary });
+                // A request that cannot be answered ends with the session; nothing to do here.
+                let _ = driver.answer_permission(&id, answer);
+            }
+            DriverEvent::Started { .. }
+            | DriverEvent::Activity { .. }
+            | DriverEvent::TurnEnded(_)
+            | DriverEvent::Unknown => {}
+        }
+    }
+}
+
+fn exit_reason(tool: Tool, code: Option<i32>, signal: Option<i32>) -> String {
+    let how = match (code, signal) {
+        (Some(code), _) => format!("exit status: {code}"),
+        (None, Some(9)) => "signal: 9 (SIGKILL)".to_string(),
+        (None, Some(15)) => "signal: 15 (SIGTERM)".to_string(),
+        (None, Some(signal)) => format!("signal: {signal}"),
+        (None, None) => "unknown status".to_string(),
+    };
+    format!("The {} session exited ({how}).", tool.as_str())
 }

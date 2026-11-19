@@ -17,7 +17,11 @@ const FAKE: &str = r#"#!/bin/sh
 case "$1" in
   auth) echo '{"loggedIn":true}'; exit 0 ;;
 esac
-exec sleep 60
+# Two-way stream-json: the first user message arrives on stdin, then the session idles until
+# its input closes.
+IFS= read -r first
+echo '{"type":"system","subtype":"init","session_id":"api-fake","claude_code_version":"9.9.9"}'
+cat > /dev/null
 "#;
 
 static BIN: OnceLock<TempDir> = OnceLock::new();

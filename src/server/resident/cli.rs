@@ -230,46 +230,50 @@ pub fn valid_model(model: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'/' | b'-'))
 }
 
-/// The arguments of an unattended launch with automatic approval: Claude Code in auto mode with
-/// its prompts off (a refused action comes back as a denied tool result), and Codex in its
-/// workspace-write sandbox with automatic review, plus the data area as writable. `model` of `None`
-/// leaves the choice to the tool.
-pub fn launch_args(
-    tool: Tool,
+fn text(values: &[&str]) -> Vec<OsString> {
+    values.iter().map(OsString::from).collect()
+}
+
+/// The arguments of an unattended Claude Code session over two-way stream-json: auto mode with
+/// its prompts off (a refused action comes back as a denied tool result). The first instruction
+/// is sent on standard input, not as an argument. `model` of `None` leaves the choice to the tool.
+pub fn claude_args(model: Option<&str>) -> Vec<OsString> {
+    let mut args = text(&[
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+    ]);
+    if let Some(model) = model {
+        args.extend(text(&["--model", model]));
+    }
+    args.extend(text(&[
+        "--permission-mode",
+        "auto",
+        "--permission-prompts",
+        "none",
+    ]));
+    args
+}
+
+/// The arguments of an unattended one-way `codex exec` launch: the workspace-write sandbox with
+/// automatic review, plus the data area as writable.
+pub fn codex_args(
     folder: &Path,
     data_dir: &Path,
     model: Option<&str>,
     prompt: &str,
 ) -> Vec<OsString> {
-    let text = |values: &[&str]| values.iter().map(OsString::from).collect::<Vec<_>>();
-    let mut args = Vec::new();
-    match tool {
-        Tool::Codex => {
-            args.extend(text(&["exec", "--json", "-C"]));
-            args.push(folder.as_os_str().to_os_string());
-            if let Some(model) = model {
-                args.extend(text(&["-m", model]));
-            }
-            args.extend(text(&["--approve-for-me", "--add-dir"]));
-            args.push(data_dir.as_os_str().to_os_string());
-            args.extend(text(&["--skip-git-repo-check", prompt]));
-        }
-        _ => {
-            args.extend(text(&["-p", prompt]));
-            if let Some(model) = model {
-                args.extend(text(&["--model", model]));
-            }
-            args.extend(text(&[
-                "--permission-mode",
-                "auto",
-                "--permission-prompts",
-                "none",
-                "--output-format",
-                "stream-json",
-                "--verbose",
-            ]));
-        }
+    let mut args = text(&["exec", "--json", "-C"]);
+    args.push(folder.as_os_str().to_os_string());
+    if let Some(model) = model {
+        args.extend(text(&["-m", model]));
     }
+    args.extend(text(&["--approve-for-me", "--add-dir"]));
+    args.push(data_dir.as_os_str().to_os_string());
+    args.extend(text(&["--skip-git-repo-check", prompt]));
     args
 }
 

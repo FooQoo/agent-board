@@ -144,3 +144,50 @@ fn a_cli_that_does_not_answer_in_time_cannot_block_a_request() {
     assert!(started.elapsed() < Duration::from_secs(10));
     assert!(quick.status().is_empty());
 }
+
+#[test]
+fn a_second_launch_is_refused_with_a_reason_whichever_the_tool() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture();
+    fx.launch(Tool::ClaudeCode, None).unwrap();
+    for tool in [Tool::ClaudeCode, Tool::Codex] {
+        let refused = fx.launch(tool, None).unwrap_err();
+        assert_eq!(refused.code(), "session_launch_refused", "{tool:?}");
+        assert!(
+            refused.reason().contains("claude-code"),
+            "{}",
+            refused.reason()
+        );
+        assert!(refused.reason().contains("already running"));
+    }
+    fx.launcher.shutdown();
+    assert!(fx.launcher.status().is_empty());
+}
+
+#[test]
+fn a_board_session_the_registry_counts_refuses_a_launch() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture();
+    let _hold = fx.registry.register(Attributes {
+        project: project(),
+        key: "resident:abc".into(),
+        tool: Tool::Codex,
+        origin: Origin::Board,
+    });
+    let refused = fx.launch(Tool::Codex, None).unwrap_err();
+    assert_eq!(refused.code(), "session_launch_refused");
+    // The other tool is refused too: the board keeps one session in total.
+    let other = fx.launch(Tool::ClaudeCode, None).unwrap_err();
+    assert_eq!(other.code(), "session_launch_refused");
+    assert!(other.reason().contains("codex"), "{}", other.reason());
+    // An external session of the same tool does not count.
+    fx.registry.remove_board(Tool::Codex);
+    let _external = fx.registry.register(Attributes {
+        project: project(),
+        key: "codex:def".into(),
+        tool: Tool::Codex,
+        origin: Origin::External,
+    });
+    fx.launch(Tool::Codex, None).unwrap();
+    fx.launcher.shutdown();
+}

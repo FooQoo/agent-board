@@ -45,6 +45,9 @@ case "$1" in
 esac
 export AGBOARD_HOME='{home}' AGBOARD_AUTOSTART=0 AGBOARD_OPEN_BROWSER=0 AGBOARD_WATCH=poll TZ=UTC
 echo $$ >> '{log}/starts'
+IFS= read -r first
+echo "$first" >> '{log}/prompts'
+echo '{{"type":"system","subtype":"init","session_id":"e2e-fake","claude_code_version":"9.9.9"}}'
 echo "$AGBOARD_SESSION_ORIGIN $AGBOARD_SESSION_TOOL" >> '{log}/env'
 while :; do
   out=$('{bin}' --project Demo wait --until task --idle-timeout 2 --json 2>>'{log}/err')
@@ -110,6 +113,17 @@ fn a_launched_session_accepts_a_request_waits_again_is_restarted_and_stops() {
     assert_eq!(attached["sessions"][0]["tool"], "claude-code");
     assert_eq!(attached["health"]["state"], "running");
     assert_eq!(lines(&log.path().join("env")), ["board claude-code"]);
+    // The first instruction arrived as the first stream-json user message on standard input.
+    let prompts = lines(&log.path().join("prompts"));
+    assert_eq!(prompts.len(), 1);
+    let first: Value = serde_json::from_str(&prompts[0]).unwrap();
+    assert_eq!(first["type"], "user");
+    assert!(
+        first["message"]["content"]
+            .as_str()
+            .unwrap()
+            .contains("agboard skills resident")
+    );
 
     // A request made on the board is accepted by the session with no human action.
     let (code, out, err) = agboard(
