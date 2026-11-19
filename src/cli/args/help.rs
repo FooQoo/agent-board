@@ -25,6 +25,7 @@ Commands:
   show    Show a task and its history
   epic    Create, list, show, edit, or delete epics and their documents
   attachment Add, list, or read image attachments
+  result     Record results for the requester, or list them
   snapshot Fetch the complete board and history
   progress Show active work in epic priority order
   hook    Add the current progress table to an agent hook
