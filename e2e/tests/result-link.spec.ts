@@ -96,3 +96,33 @@ test('closing the drawer takes the link out of the address, and a damaged link o
   await expect(page).toHaveTitle('Alpha - Agent Board');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+// A script-focused container shows no frame. WebKit matches :focus-visible for a focus() call that no key or tap
+// came before, which is how a notification opens the drawer, so the sheet itself must not draw the global ring.
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`opening a result link draws no frame on the focused drawer or the result (${colorScheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.goto(linkTo(alpha, 1, 2));
+    const drawer = page.getByRole('dialog');
+    const target = drawer.locator('[data-result-version="2"]');
+    await expect(target).toHaveAttribute('data-focused', 'true');
+    await expect(target.locator('img')).toBeVisible();
+    // Let the sheet finish sliding in and the scroll to the result settle.
+    await page.waitForTimeout(600);
+
+    if (process.env.DRAWER_SHOTS) await page.screenshot({ path: path.join(process.env.DRAWER_SHOTS, `${test.info().project.name}-${colorScheme}.png`) });
+    const outlines = await page.evaluate(() => {
+      // The computed width reads 3px (the initial value) when the style is none, so the style decides.
+      const width = (el: Element | null) => (el && getComputedStyle(el).outlineStyle !== 'none' ? getComputedStyle(el).outlineWidth : '0px');
+      const active = document.activeElement;
+      return {
+        focusInsideSheet: !!active?.closest('[data-slot="drawer-popup"]'),
+        active: width(active),
+        sheet: width(document.querySelector('[data-slot="drawer-popup"]')),
+        result: width(document.querySelector('[data-result-version="2"]')),
+      };
+    });
+    expect(outlines.focusInsideSheet).toBe(true);
+    expect(outlines).toMatchObject({ active: '0px', sheet: '0px', result: '0px' });
+  });
+}
