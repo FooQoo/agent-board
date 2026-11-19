@@ -160,9 +160,44 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | --- | --- |
 | `GET /api/projects/{projectId}/sessions/models?tool=` | `tool`は`claude-code`か`codex`です（ほかの値は422 `invalid_value`）。`{"models": [{"id", "label"}], "reason": null}`を返します。一覧を読めないときは`{"models": [], "reason": "<理由>"}`で、モデルを指定しない起動ではツールの既定のモデルを使います。コマンドがないときは409 `agent_cli_missing`です。 |
 | `POST /api/projects/{projectId}/sessions/launch` | `{"tool": "claude-code" \| "codex", "model"?: string}`。`model`がない、空、または`"default"`のときは、ツールに任せます。プロジェクトの結び付いたフォルダでセッションを起動し、`{"launched": {"tool", "projectId", "model", "startedAt"}}`を返します。示していないモデルやモデル名でない値は422 `invalid_value`、存在しないプロジェクトは404 `project_not_found`、存在する結び付いたフォルダがないプロジェクトは409 `project_has_no_folder`、CLIがない・ログインしていないときは409 `agent_cli_missing`・`agent_cli_logged_out`、そのツールのセッションがすでに起動済みか、ボード起動として張り付いているときは理由付きの409 `session_launch_refused`、プロセスを起動できなかったときは500 `session_launch_failed`です。 |
+| `PUT /api/projects/{projectId}/sessions/autostart` | `{"tool": "claude-code" \| "codex", "enabled": boolean, "model"?: string}`。そのツールのセッションを、サーバーと一緒に、このプロジェクトとこのモデルで起動するかどうかを保存します（`model`がない、空、または`"default"`のときは、ツールに任せます）。起動はせず、動いているセッションも止めません。`{"autoStart": {"projectId", "model"}}`を返し、`enabled`が`false`のときは`{"autoStart": null}`です。フラグに読めるモデルは422 `invalid_value`、存在しないプロジェクトは404 `project_not_found`、存在する結び付いたフォルダがないときは409 `project_has_no_folder`です。保存するファイルは[共有ファイル](./files.md#セッションの自動起動)にあります。 |
 | `POST /api/projects/{projectId}/sessions/stop` | `{"tool": "claude-code" \| "codex"}`。そのツールの起動済みセッションを止めます。上限がプロジェクトではなくツールごとなので、止める対象はツールで指定します。呼び出しが返った時点で`{"stopped": true}`を返し、動いていなかったときは`{"stopped": false}`です。セッションは数えられなくなるので、すぐに新しく起動できます。 |
 
 `GET /api/projects/{projectId}/sessions`は、そのプロジェクトで起動処理がプロセスを持っているセッションを、`launched`として`[{"tool", "projectId", "model", "startedAt"}]`の形でも返します。プロセスIDは含みません。起動したセッションが`sessions`に（`origin: "board"`で）現れるのは、そのセッション自身の待機が張り付いてからです。
+
+#### セッションの健全性
+
+`GET /api/projects/{projectId}/sessions`は、`health`も返します。`claude-code`と`codex`の順に、1つずつです。健全性はプロジェクトではなくツールに属するので、`projectId`でどのプロジェクトのセッションかを示します。パスやプロセスIDは含みません。
+
+```json
+"health": [
+  {
+    "tool": "claude-code",
+    "state": "restarting",
+    "projectId": "0123456789abcdef0123456789abcdef",
+    "model": "sonnet",
+    "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
+    "restartCount": 2,
+    "lastExitAt": "2026-11-19T03:00:00Z",
+    "nextRestartAt": "2026-11-19T03:00:04Z",
+    "autoStart": { "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
+  },
+  { "tool": "codex", "state": "stopped", "projectId": null, "model": null, "reason": null,
+    "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null }
+]
+```
+
+| 項目 | 意味 |
+| --- | --- |
+| `state` | `running`はボードがセッションを動かし続けていて、子プロセスがある状態です。`restarting`は子プロセスが終了し、`nextRestartAt`に再起動が待っている状態です。`failed`はボードが諦めた、またはセッションを起動できなかった状態で、`reason`に理由があります。`stopped`は何も動かし続けていない状態です。 |
+| `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
+| `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
+| `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
+| `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |
+| `nextRestartAt` | 待っている再起動が始まる時刻です。`restarting`以外は`null`です。 |
+| `autoStart` | そのツールの保存済みの自動起動の選択`{"projectId", "model"}`、または`null`です。 |
+
+既定の値は[張り付くセッションの起動](../concepts/agents.md#張り付くセッションの起動)にあります。`failed`や`restarting`のときに人が起動すると、受け付けて最初からやり直し、停止するとそのツールは`stopped`に戻ります。
 
 ### リモート接続
 

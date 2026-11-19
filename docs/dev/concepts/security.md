@@ -173,6 +173,7 @@ The board can start a headless Claude Code or Codex session in a project's bound
 - The launcher scrubs the agents' own session variables from the child and sets `AGBOARD_RESIDENT_ID`, `AGBOARD_SESSION_TOOL`, and `AGBOARD_SESSION_ORIGIN` so the child is told apart from a session you started yourself. This is identification, not a restriction.
 - Only the local page can start or stop a session. The routes are not served through the ngrok entrance, so a phone that is allowed in cannot launch one. Each launch needs the page's write guard like any other write.
 - The board launches at most one session per tool, and stops every session it launched when the server stops.
+- A tool with auto-start enabled is launched every time the server starts, without a click, and is started again after it dies. Enabling it is a write on the local page only; leave it off for a project you do not trust.
 
 ## What is not prevented
 
