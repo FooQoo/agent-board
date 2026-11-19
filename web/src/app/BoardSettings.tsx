@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
+import { ConnectedResidentEntryRow } from '../features/resident-sessions/ui/ResidentEntryRow';
+import { requestResidentDialog } from '../features/resident-sessions/events';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
+import { residentAvailable } from './residentSlot';
+import { usesRemoteSession } from './remote/session';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
@@ -18,7 +22,7 @@ const boardPreferences: PreferencesEndpoint | undefined =
 const phoneConnection = import.meta.env.MODE !== 'demo';
 
 /**
- * The settings dialog of the PC board and the remote connection dialog its entry row opens.
+ * The settings dialog of the PC board, the remote connection dialog and the resident-session dialog its entry rows open.
  * The two dialogs are siblings: the settings dialog closes before the connection dialog opens,
  * so only one of them is ever on the screen.
  */
@@ -46,6 +50,15 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 onOpen={() => {
                   onOpenChange(false);
                   setConnectionOpen(true);
+                }}
+              />
+            ) : null}
+            {residentAvailable(projectId) && !usesRemoteSession() ? (
+              <ConnectedResidentEntryRow
+                projectId={projectId}
+                onOpen={() => {
+                  onOpenChange(false);
+                  requestResidentDialog();
                 }}
               />
             ) : null}

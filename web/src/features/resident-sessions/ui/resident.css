@@ -1,0 +1,373 @@
+/*
+ * The resident-session dialog and the footer indicator. The dialog sits in the shared Surface (a
+ * modal on the PC, a bottom sheet on a phone); colors come from the shared semantic tokens.
+ */
+
+.resident-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.resident-intro,
+.resident-note,
+.resident-external__hint {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ---- Summary ---- */
+
+.resident-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 12px;
+  background: var(--r-surface);
+}
+
+.resident-summary__main {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resident-summary__origins {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 12px;
+}
+
+/* ---- Tool card ---- */
+
+.resident-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--r-border);
+  border-radius: 12px;
+  background: var(--r-surface);
+}
+
+.resident-card[data-state="failed"] {
+  border-color: var(--r-danger);
+}
+
+.resident-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.resident-card__name {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.resident-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--r-muted);
+}
+
+.resident-state[data-state="working"] .resident-dot,
+.resident-state[data-state="waiting"] .resident-dot {
+  background: var(--r-done);
+}
+
+.resident-state[data-state="failed"] .resident-dot {
+  background: var(--r-danger);
+}
+
+.resident-state[data-state="restarting"] .resident-dot {
+  background: var(--r-pend-tx);
+}
+
+.resident-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.resident-facts__row {
+  display: flex;
+  gap: 10px;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.resident-facts dt {
+  flex: none;
+  color: var(--r-muted);
+}
+
+.resident-facts dd {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.resident-facts__row--failed {
+  color: var(--r-danger);
+}
+
+.resident-facts__sub {
+  color: var(--r-text2);
+  font-size: 12px;
+}
+
+.resident-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+}
+
+.resident-problem__title,
+.resident-problem__next {
+  margin: 0;
+  color: var(--r-pend-tx);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.resident-problem__title {
+  font-weight: 600;
+}
+
+/* ---- Secondary controls: tool, model, auto-start, Start/Stop ---- */
+
+.resident-label {
+  color: var(--r-text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.resident-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--r-border);
+}
+
+.resident-controls__tool,
+.resident-controls__model {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.resident-controls__wide {
+  grid-column: 1 / -1;
+}
+
+.resident-controls__auto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.resident-controls__autolabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.resident-controls__action {
+  justify-self: end;
+}
+
+.resident-model.resident-model {
+  width: 100%;
+  justify-content: space-between;
+  font-weight: 400;
+}
+
+.resident-model__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resident-hint {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.resident-error {
+  margin: 0;
+  color: var(--r-danger);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .resident-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resident-controls__action {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+/* ---- Notice and external ---- */
+
+.resident-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 10px;
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.resident-notice > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.resident-notice a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resident-notice a:focus-visible,
+.resident-external > summary:focus-visible,
+.resident-footer:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.resident-external {
+  border: 1px solid var(--r-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--r-surface);
+}
+
+.resident-external > summary {
+  cursor: pointer;
+  color: var(--r-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.resident-external[open] > summary {
+  margin-bottom: 8px;
+}
+
+.resident-external__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resident-external__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--r-text2);
+  font-size: 13px;
+}
+
+/* ---- Footer slot: the one indicator between the count and the sync state ---- */
+
+.status-bar:has(.resident-footer) {
+  min-height: 36px;
+}
+
+.resident-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline: auto;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--r-text2);
+  font: inherit;
+}
+
+button.resident-footer {
+  cursor: pointer;
+}
+
+.resident-footer__dot {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--r-muted);
+  border-radius: 50%;
+}
+
+.resident-footer[data-state="working"] .resident-footer__dot,
+.resident-footer[data-state="waiting"] .resident-footer__dot {
+  border-color: var(--r-done);
+  background: var(--r-done);
+}
+
+.resident-footer[data-state="restarting"] .resident-footer__dot {
+  border-color: var(--r-pend-tx);
+  background: var(--r-pend-tx);
+}
+
+.resident-footer[data-state="failed"] {
+  color: var(--r-danger);
+}
+
+.resident-footer[data-state="failed"] .resident-footer__dot {
+  border-color: var(--r-danger);
+  background: var(--r-danger);
+}
+
+/* ---- The dialog's frame: the shared Surface, a little narrower than its default ---- */
+
+.modal.surface-modal.resident-surface {
+  width: 640px;
+  max-width: calc(100vw - 32px);
+}
+
+.resident-surface .surface__body {
+  min-height: 0;
+}

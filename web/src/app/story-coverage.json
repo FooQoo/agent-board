@@ -141,6 +141,16 @@
           ]
         }
       ]
+    },
+    {
+      "file": "app/residentSlot.tsx",
+      "exports": [
+        {
+          "name": "ResidentDialogHost",
+          "stories": [],
+          "exclusion": "Only picks whether ResidentHost exists for the project and the entrance; it draws nothing of its own."
+        }
+      ]
     }
   ]
 }

@@ -65,7 +65,7 @@ function AppScreen({ initial }: AppProps) {
         </>
       ) : (
         <Suspense fallback={null}>
-          <boardWorkspace.Component model={model} actions={actions.workspace} />
+          <boardWorkspace.Component model={model} actions={actions.workspace} residentSessions />
         </Suspense>
       )}
       {/* One guide above the width switch: a change of width keeps the screen it is on. */}
