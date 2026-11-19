@@ -108,6 +108,19 @@ test('the phone lists the projects and switches between them as the PC does', as
   await bare.dispose();
 });
 
+test('a tablet-wide page through the entrance shows the PC board without the remote connection settings', async ({ page }) => {
+  // An iPad is wide enough for the PC layout; the connection is started and stopped on the computer.
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await entrance.open(page, phoneUrl());
+  await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(settings).toBeVisible();
+  await expect(settings.getByRole('button', { name: 'Try it' })).toBeVisible();
+  await expect(settings.getByText('Remote connection', { exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+});
+
 test('the old monitor addresses are not found, with or without a session, and nothing redirects', async ({ page }) => {
   await entrance.open(page, phoneUrl());
   await expect(page.getByRole('article', { name: /Alpha pending review/ })).toBeVisible();

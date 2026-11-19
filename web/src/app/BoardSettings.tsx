@@ -7,6 +7,7 @@ import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
 import { ResidentSettingsRow } from './residentSlot';
+import { usesRemoteSession } from './remote/session';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
@@ -15,8 +16,12 @@ const boardPreferences: PreferencesEndpoint | undefined =
   import.meta.env.MODE === 'mock' || import.meta.env.MODE === 'demo'
     ? undefined
     : { url: '/api/preferences', token: readToken, headers: csrfHeaders };
-/** A phone connects to an `agboard serve` on this computer; the demo on a static site has none. */
-const phoneConnection = import.meta.env.MODE !== 'demo';
+/**
+ * A phone connects to an `agboard serve` on this computer; the demo on a static site has none. A
+ * page that itself came through the ngrok entrance does not show the connection either: it is
+ * started and stopped on the computer, and its address and passcode stay off the remote screen.
+ */
+const phoneConnection = () => import.meta.env.MODE !== 'demo' && !usesRemoteSession();
 
 /**
  * The settings dialog of the PC board, the remote connection dialog and the resident-session dialog its entry rows open.
@@ -27,6 +32,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
   const [connectionOpen, setConnectionOpen] = useState(false);
   // The project the board shows, from the same `project` query the board reads.
   const [projectId] = useQueryState('project', parseAsString);
+  const withConnection = phoneConnection();
   return (
     <>
       <SettingsDialog
@@ -42,7 +48,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 requestTutorial();
               }}
             />
-            {phoneConnection ? (
+            {withConnection ? (
               <ConnectionEntryRow
                 onOpen={() => {
                   onOpenChange(false);
@@ -54,7 +60,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
           </div>
         }
       />
-      {phoneConnection ? (
+      {withConnection ? (
         <ConnectionSettings
           open={connectionOpen}
           onOpenChange={setConnectionOpen}
