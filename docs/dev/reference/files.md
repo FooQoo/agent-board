@@ -57,6 +57,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
+  .internal/remote-devices.json
   .internal/preferences.json
   .internal/resident-autostart.json
 ```
@@ -213,6 +214,31 @@ The ngrok remote connection keeps its non-secret settings in `<data-root>/.inter
 | `domain` | Optional. The ngrok domain the endpoint is requested on, a bare lower-case host name, so the public address is the same at every start. Left out when none is saved. A saved value that is not a bare host name is ignored when read. `AGBOARD_NGROK_DOMAIN`, when set, is used instead of it and is never written to the file. |
 
 The file never holds the ngrok token, the phone passcode, a session, or a CSRF token. A token the user chooses to save lives in the PC's secure storage (the OS credential store) instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
+
+
+## Registered devices
+
+The phones and browsers that entered the passcode keep their registration in `<data-root>/.internal/remote-devices.json`. Like the settings file it belongs to the application: it is written only by the entrance and the PC dialog, replaced atomically with owner-only permissions, and not part of the shared area. It stays across a pause, a restart, and an update.
+
+```json
+{
+  "formatVersion": 1,
+  "devices": [
+    {
+      "id": "dev_0123456789abcdef",
+      "tokenHash": "<SHA-256 of the device token, hex>",
+      "label": "iPhone / Safari",
+      "origin": "https://example.ngrok-free.dev",
+      "createdAt": "2026-11-19T09:00:00Z",
+      "lastSeenAt": "2026-11-20T08:30:00Z"
+    }
+  ]
+}
+```
+
+- `tokenHash` is the only trace of the device token; the token itself is in the phone's cookie and nowhere else. `origin` is the public address the device was registered for; a cookie presented at another address does not match.
+- `label` is a short name from the browser's `User-Agent`, only to tell devices apart. `lastSeenAt` is updated when the device comes back without a session.
+- A file that cannot be read, or has another `formatVersion`, is treated as an empty list: no device is accepted until it is registered again, and the next change writes a new file. At most 32 devices are kept.
 
 ## Display preferences
 
