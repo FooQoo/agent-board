@@ -136,6 +136,15 @@ These are returned by the `/api/preferences` route (see [Web API](./web-api.md#d
 | `preferences_unavailable` | The preferences file could not be written. The saved value is unchanged. | n/a | 500 |
 
 
+## Phone notification settings
+
+These are returned by the `/api/notification-settings` route (see [Web API](./web-api.md#phone-notification-settings)). They are not CLI errors, so they have no exit code. A settings file that cannot be read is not an error: the defaults are used.
+
+| Code | When | Exit | HTTP |
+| --- | --- | --- | --- |
+| `invalid_notification_settings` | The body is empty, has an unknown or missing field, or names a periodic interval that is not offered. Nothing is saved. | n/a | 422 |
+| `notification_settings_unavailable` | The settings file could not be written. The saved value is unchanged. | n/a | 500 |
+
 ## Exit codes
 
 | Exit | Meaning |

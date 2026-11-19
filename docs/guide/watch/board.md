@@ -130,6 +130,12 @@ Open **Settings** to choose the language (English or Japanese) and one of 24 the
 
 The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and remote access, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
 
+**Phone notifications** chooses which notifications the board may send to your phone, and the same section is in the phone layout. The choices are saved on this PC, like the language and theme, and apply once notifications are delivered to your phone; changing them sends nothing by itself.
+
+- **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
+- With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
+- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours.
+
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
 Below the themes, three rows open other features. Each has an icon, a title, one line of description, and a button:
