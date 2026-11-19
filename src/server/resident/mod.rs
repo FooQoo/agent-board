@@ -18,6 +18,7 @@ pub mod driver;
 mod health;
 mod process;
 mod push;
+mod serial;
 mod spawn;
 mod supervisor;
 mod watch;
@@ -175,22 +176,6 @@ impl Launcher {
         self.plans.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    fn gate(&self) -> MutexGuard<'_, ()> {
-        self.gate.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    /// The current epoch; see the field.
-    fn epoch(&self) -> u64 {
-        self.epoch.load(Ordering::SeqCst)
-    }
-
-    /// Forget every plan and end the epoch, so nothing prepared under it is admitted any more.
-    fn reset_plans(&self) {
-        let mut plans = self.plans();
-        plans.clear();
-        self.epoch.fetch_add(1, Ordering::SeqCst);
-    }
-
     fn is_closing(&self) -> bool {
         self.closing.load(Ordering::SeqCst)
     }
@@ -242,28 +227,6 @@ impl Launcher {
         model: Option<&str>,
     ) -> Result<Launched, AgboardError> {
         self.spawn_child(project, project_name, folder, tool, model, Spawn::User)
-    }
-
-    /// The start of the saved auto-start: a launch that is admitted only while `epoch` (read with
-    /// [`Launcher::epoch`] before the project was resolved) is still current, so a stop or another
-    /// launch in the meantime cancels it.
-    pub(super) fn launch_auto(
-        self: &Arc<Self>,
-        epoch: u64,
-        project: &ProjectId,
-        project_name: &str,
-        folder: &Path,
-        tool: Tool,
-        model: Option<&str>,
-    ) -> Result<Launched, AgboardError> {
-        self.spawn_child(
-            project,
-            project_name,
-            folder,
-            tool,
-            model,
-            Spawn::Auto(epoch),
-        )
     }
 
     /// Take the launch `launch_id` out of the live set and the registry, when it is still there.
