@@ -170,15 +170,16 @@ export const AnsweredWaitingPickup: Story = {
   },
 };
 
-/** A question with choices needs a choice; a note alone cannot be sent. */
-export const QuestionNeedsChoice: Story = {
+/** A question with choices takes a choice, a note, or both; with neither, Send stays disabled. */
+export const QuestionNeedsChoiceOrNote: Story = {
   args: { initial: { tab: 'fromAi', openId: 'Q-13' } },
   globals: { locale: 'en', mode: 'dark' },
   play: async ({ args }) => {
     const dialog = await page().findByRole('dialog', { name: 'Messages' });
     const send = await within(dialog).findByRole('button', { name: 'Send answer' });
-    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Not sure');
     await expect(send).toBeDisabled();
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Not sure');
+    await expect(send).toBeEnabled();
     await userEvent.click(within(dialog).getByRole('radio', { name: 'Email and password only' }));
     await expect(send).toBeEnabled();
     await userEvent.click(send);

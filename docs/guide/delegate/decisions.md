@@ -38,11 +38,11 @@ Select a question or a request to open it in place of the list. An answered ques
 Select a question in the list, or select **Answer the question** on its card to open the list at that task's first open question. The question opens in a wide modal with two columns:
 
 - On the left, the question, drawn like a task body. When tasks wait on it, a note above it says so, such as **#21 #22 stay blocked until you reply**.
-- On the right, your answer: choose one of the offered options and, if you like, add a note.
+- On the right, your answer: choose one of the offered options, write a note, or do both.
 
 **Later** and **Send answer** stay at the bottom, so they are in reach however long the question is. **Send answer** sends your answer at once and returns to the list. **Later** closes the list and keeps nothing. You can also close it with the close button, Escape, or a click outside. Closing never asks for confirmation.
 
-A question with choices needs a choice: a note alone cannot be sent, and **Send answer** stays disabled until you choose one. The note then adds to your choice. A question without choices needs a note. The note takes up to 2,000 characters. Answers are sent one question at a time: there is no review step, and no answer is held on the page.
+A question with choices needs a choice, a note, or both: **Send answer** stays disabled until you do one of them, so you can answer with only a note when none of the options fits. A note added to a choice supplements it. A question without choices needs a note. The note takes up to 2,000 characters. Answers are sent one question at a time: there is no review step, and no answer is held on the page.
 
 On a window narrower than 900 px, the question and the answer stack in one column.
 
@@ -122,7 +122,7 @@ cat question.json | agboard --project "My project" message ask --actor ai --task
 - `recommendedChoiceId` is optional and names the option the agent recommends.
 - `tasks` in a question, such as `"tasks": [421, 422]`, links that question only to those tasks.
 
-The answer note takes up to 2,000 characters. It is required when the question has no choices.
+The answer note takes up to 2,000 characters. It is required when the question has no choices, and it can stand in for the choice when the question has choices.
 
 The task must be AI-owned and in Todo or Doing. While it waits, it cannot be set to Running. Moving the task to another column or archiving it does not withdraw its questions.
 
@@ -170,7 +170,7 @@ A person can also answer from the CLI with the question ID, one question per com
 agboard --project "My project" message answer Q-12 --actor human --via cli --choice preview --text "Get feedback before the public launch"
 ```
 
-A question with choices needs `--choice`; a question without choices needs a note. Give a note with `--text` or `--text-file`. When the user answers in the chat, the agent records the user's words with `--via chat`. The first recorded answer is final: answering an answered question fails with `question_answered` and prints the recorded answer.
+A question with choices needs `--choice`, a note, or both (a note alone is an answer with no choice); a question without choices needs a note. Give a note with `--text` or `--text-file`. When the user answers in the chat, the agent records the user's words with `--via chat`. The first recorded answer is final: answering an answered question fails with `question_answered` and prints the recorded answer.
 
 After reading the answers and history, the agent resumes:
 

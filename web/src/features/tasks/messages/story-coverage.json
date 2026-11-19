@@ -74,8 +74,8 @@
               "interaction": true
             },
             {
-              "id": "task-messages-messagecenter--question-needs-choice",
-              "states": ["choice required", "note alone not sendable", "send", "dark"],
+              "id": "task-messages-messagecenter--question-needs-choice-or-note",
+              "states": ["nothing to send", "note alone sendable", "send", "dark"],
               "interaction": true
             },
             {

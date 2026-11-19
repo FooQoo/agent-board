@@ -52,9 +52,8 @@ export function plainTitle(title: string): string {
 export const MAX_ANSWER_TEXT = 2000;
 
 /**
- * Whether an answer can be sent. The server refuses a question with choices that gets text only
- * (422), so a choice is required there and the note is optional; a question without choices needs
- * the note.
+ * Whether an answer can be sent: a choice, a note, or both. A question without choices needs the
+ * note, because there is nothing to choose.
  */
 export function canSendAnswer(
   choices: readonly Choice[],
@@ -62,7 +61,8 @@ export function canSendAnswer(
   text: string,
 ): boolean {
   if ([...text].length > MAX_ANSWER_TEXT) return false;
-  return choices.length > 0 ? choiceId !== null : text.trim() !== '';
+  const hasNote = text.trim() !== '';
+  return choices.length > 0 ? choiceId !== null || hasNote : hasNote;
 }
 
 export type MessageStatus = 'open' | 'answered' | 'accepted' | 'withdrawn';

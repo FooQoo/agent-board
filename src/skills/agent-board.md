@@ -103,7 +103,7 @@ Accept a request before you plan it, and plan only requests you have accepted. D
 
 A person's answer to your question reaches you in the same places as a request, when you did not wait for it with `message ask` or `message wait`:
 
-- `answers` in the progress table (and in the hook output): `[{"id":"Q-12","title":"...","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"..."}]`. The field is absent when every answer was taken in.
+- `answers` in the progress table (and in the hook output): `[{"id":"Q-12","title":"...","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"..."}]`. `choiceId` and `choiceLabel` are `null` when the user answered with only a note, so read `text` then. The field is absent when every answer was taken in.
 - `wait --until task` returns `{"kind":"answers", ...}` before requests and tasks while an answer waits.
 
 Read it with `agboard --project "<name>" message show <Q-id> --json`, act on it, and then take it in:
@@ -214,7 +214,7 @@ cat <path> | agboard --project "<name>" message ask --actor ai --task <id> --que
 - **A chat answer.** Record it with the user's own words, then continue:
 
 ```sh
-agboard --project "<name>" message answer <Q-id> --actor human --via chat --choice <id> [--text "<their words>"]
+agboard --project "<name>" message answer <Q-id> --actor human --via chat [--choice <id>] [--text "<their words>"]
 ```
 
 The waiting command then ends with `answered` on its own; do not record the answer twice. If the board already has an answer, `message answer` fails with `question_answered` and prints it: the first answer stands. Continue with it, tell the user which answer was recorded, and if they want the other one, ask a new question rather than overwriting. Do not treat a dismissed or ignored chat question as a refusal. Never answer a question yourself, and use `--actor human` only for the user's own words. When nobody is in the conversation, such as while listening or during a long unattended run, ask and wait on the board only.

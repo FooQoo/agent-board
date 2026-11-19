@@ -271,9 +271,9 @@ describe('monitor messages band and list', () => {
     const sheet = await screen.findByRole('dialog', { name: 'Messages' });
     const send = within(sheet).getByRole('button', { name: 'Send answer' });
     expect((send as HTMLButtonElement).disabled).toBe(true);
-    // A note alone is not an answer to a question with choices.
+    // A note alone is an answer too; here it is sent together with a choice.
     await user.type(await within(sheet).findByRole('textbox', { name: 'Note' }), 'maybe');
-    expect((send as HTMLButtonElement).disabled).toBe(true);
+    expect((send as HTMLButtonElement).disabled).toBe(false);
     await user.click(await within(sheet).findByRole('radio', { name: 'Yes' }));
     expect((send as HTMLButtonElement).disabled).toBe(false);
     await user.click(send);

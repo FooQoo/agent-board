@@ -118,23 +118,6 @@ fn an_answer_is_one_question_at_a_time_and_the_first_one_stands() {
     demo_project(home.path());
     ask(home.path());
 
-    let (code, error) = json_error(
-        home.path(),
-        &[
-            "--project",
-            "Demo",
-            "message",
-            "answer",
-            "Q-1",
-            "--actor",
-            "human",
-            "--via",
-            "cli",
-            "--text",
-            "words only",
-        ],
-    );
-    assert_eq!((code, error.as_str()), (2, "invalid_value"));
     let answered = msg_json(
         home.path(),
         &[
@@ -172,6 +155,78 @@ fn an_answer_is_one_question_at_a_time_and_the_first_one_stands() {
     assert_eq!(last["ids"], json!(["Q-1", "Q-2"]));
     assert_eq!(last["answers"][0]["choiceId"], "keep");
     assert_eq!(last["answers"][1]["text"], "Nothing.");
+}
+
+#[test]
+fn a_question_with_choices_can_be_answered_with_only_a_note() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    ask(home.path());
+    // Neither a choice nor a note: refused.
+    let (code, error) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "answer",
+            "Q-1",
+            "--actor",
+            "human",
+            "--via",
+            "cli",
+        ],
+    );
+    assert_eq!((code, error.as_str()), (2, "invalid_value"));
+    // A note alone is an answer.
+    let answered = msg_json(
+        home.path(),
+        &[
+            "answer",
+            "Q-1",
+            "--actor",
+            "human",
+            "--via",
+            "cli",
+            "--text",
+            "Neither; ask legal.",
+        ],
+    );
+    let reply = &answered["questions"][0]["reply"];
+    assert_eq!(reply["choiceId"], Value::Null);
+    assert_eq!(reply["choiceLabel"], Value::Null);
+    assert_eq!(reply["text"], "Neither; ask legal.");
+    let shown = msg_json(home.path(), &["show", "Q-1"]);
+    assert_eq!(shown["question"]["reply"]["text"], "Neither; ask legal.");
+    assert_eq!(shown["question"]["reply"]["choiceId"], Value::Null);
+    let (code, plain, _) = msg(home.path(), &["show", "Q-1"]);
+    assert_eq!(code, 0);
+    assert!(plain.contains("Neither; ask legal."), "{plain}");
+    // An unknown choice is still refused, even with a note.
+    let (_, error) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "answer",
+            "Q-2",
+            "--actor",
+            "human",
+            "--via",
+            "cli",
+            "--choice",
+            "nope",
+            "--text",
+            "x",
+        ],
+    );
+    assert_eq!(error, "choice_unknown");
+    // A wait returns the note-only answer.
+    let (_, out, _) = msg(home.path(), &["wait", "Q-1", "--json"]);
+    let last: Value = serde_json::from_str(out.lines().last().unwrap()).unwrap();
+    assert_eq!(last["answers"][0]["choiceId"], Value::Null);
+    assert_eq!(last["answers"][0]["text"], "Neither; ask legal.");
 }
 
 #[test]
