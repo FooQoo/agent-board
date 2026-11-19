@@ -277,3 +277,5 @@ async fn a_device_without_a_valid_key_gets_a_refusal_not_a_crash() {
     assert!(rig.sent().is_empty());
     assert_eq!(rig.dispatcher.ledger.entries()[0].state, State::Dropped);
 }
+
+mod replaced;

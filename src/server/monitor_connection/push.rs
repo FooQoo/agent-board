@@ -24,11 +24,14 @@ use serde::{Deserialize, Serialize};
 use super::config::write_private_atomic;
 use super::devices::SaveFailed;
 
+mod check;
+pub(crate) use check::endpoint_ok;
+use check::key_ok;
+
 const SUBSCRIPTIONS_FILE: &str = "push-subscriptions.json";
 const KEY_FILE: &str = "vapid-key.json";
 const INTERNAL_DIR: &str = ".internal";
 const FORMAT_VERSION: u32 = 1;
-const MAX_ENDPOINT: usize = 2048;
 
 /// One device's subscription, as the browser's `PushSubscription` gives it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -91,31 +94,6 @@ fn vapid_of(pkcs8: Vec<u8>) -> Option<Vapid> {
     .ok()?;
     let public = B64.encode(pair.public_key().as_ref());
     Some(Vapid { pkcs8, public })
-}
-
-/// Whether an endpoint is a public HTTPS push service address: no credentials, no IP address and
-/// no single-label host, so the sender is never pointed at the PC's own network.
-fn endpoint_ok(endpoint: &str) -> bool {
-    if endpoint.len() > MAX_ENDPOINT {
-        return false;
-    }
-    let Ok(url) = url::Url::parse(endpoint) else {
-        return false;
-    };
-    let host_ok =
-        matches!(url.host(), Some(url::Host::Domain(d)) if d.contains('.') && d != "localhost");
-    url.scheme() == "https"
-        && host_ok
-        && url.username().is_empty()
-        && url.password().is_none()
-        && url.fragment().is_none()
-}
-
-fn key_ok(text: &str, len: usize, first: Option<u8>) -> bool {
-    text.len() <= 128
-        && B64
-            .decode(text)
-            .is_ok_and(|b| b.len() == len && first.is_none_or(|f| b[0] == f))
 }
 
 impl PushStore {
@@ -260,15 +238,27 @@ impl PushStore {
 
     /// Forget a device's subscription. `Ok(false)` when it had none.
     pub fn unsubscribe(&self, device_id: &str) -> Result<bool, SaveFailed> {
+        self.remove(device_id, None)
+    }
+
+    /// Forget a device's subscription only while it still has this endpoint, so a replacement
+    /// made meanwhile is kept. `Ok(false)` when nothing matched.
+    pub fn unsubscribe_endpoint(
+        &self,
+        device_id: &str,
+        endpoint: &str,
+    ) -> Result<bool, SaveFailed> {
+        self.remove(device_id, Some(endpoint))
+    }
+
+    fn remove(&self, device_id: &str, endpoint: Option<&str>) -> Result<bool, SaveFailed> {
         let mut list = self.lock();
-        if !list.iter().any(|s| s.device_id == device_id) {
+        let hit =
+            |s: &Subscription| s.device_id == device_id && endpoint.is_none_or(|e| s.endpoint == e);
+        if !list.iter().any(hit) {
             return Ok(false);
         }
-        let next: Vec<Subscription> = list
-            .iter()
-            .filter(|s| s.device_id != device_id)
-            .cloned()
-            .collect();
+        let next: Vec<Subscription> = list.iter().filter(|s| !hit(s)).cloned().collect();
         self.save(&next)?;
         *list = next;
         Ok(true)

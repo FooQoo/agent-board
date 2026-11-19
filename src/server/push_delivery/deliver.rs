@@ -183,9 +183,14 @@ impl Dispatcher {
                 }
             }
             Outcome::Gone => {
-                // The phone forgot the subscription: it is no longer a target.
-                let _ = ctx.store.unsubscribe(&sub.device_id);
-                self.ledger.forget_device(&sub.device_id);
+                // The phone forgot the subscription: it is no longer a target. A replacement
+                // subscribed while this request was in flight has another endpoint and stays.
+                let removed = ctx
+                    .store
+                    .unsubscribe_endpoint(&sub.device_id, &sub.endpoint);
+                if removed == Ok(true) {
+                    self.ledger.forget_device(&sub.device_id);
+                }
             }
             Outcome::Retry if tries < MAX_ATTEMPTS => {
                 let wait = BACKOFF_SECONDS[(tries as usize - 1).min(BACKOFF_SECONDS.len() - 1)];

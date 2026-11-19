@@ -97,7 +97,7 @@ Edgeがアプリのために行うことはありません。エンドポイン�
 - **購読。** タップのあと（許可のダイアログにはユーザー操作が必要）、ページは許可を求め、公開鍵で`PushManager.subscribe`を呼び、結果を`PUT /api/remote/push/subscription`に送ります。PCは端末idごとに1件を`<データ領域>/.internal/push-subscriptions.json`に保存し、古いものは置き換えます。PCが受け付けなかった場合、ページはブラウザ側の購読も取り消します。登録済みの端末を持たないsession（登録を保存できず、合言葉だけで開いたもの）は購読できません。このルートは409 `device_required`を返し、ページはスマホをもう一度登録するよう案内します。
 - **検証。** endpointは名前付きホストの`https`アドレスで、IPアドレス・ドット無しのホスト・認証情報は不可、2048文字までです。`p256dh`は`0x04`で始まる65バイト、`auth`は16バイトで、どちらもパディング無しのbase64urlです。本文は4 KiBまでです。
 - **購読の終わり。** スマホ側でオフにできます（`DELETE /api/remote/push/subscription`）。PCで端末の登録を解除すると、その購読も一緒に削除します。`MonitorConnections::push_subscriptions`も、一覧を返す前に端末がなくなった購読（端末の一覧が満杯で押し出されたものなど）を破棄します。ファイルはディスクにあるので、PCの再起動や一時停止のあとも購読は残ります。
-- **送信側向け。** `MonitorConnections::push_subscriptions()`が送信先（`device_id`・`endpoint`・`p256dh`・`auth`・`created_at`）を返し、`push_store().vapid_signer()`がVAPIDヘッダーに署名する`ring`のECDSA P-256鍵ペアを返します。`public_origin()`は、接続がreadyの間だけ公開アドレスを返し、それ以外は`None`です（その間は何も送りません）。プッシュサービスがendpointに404か410を返したら、スマホが購読を取り消したということなので、送信側は`push_store().unsubscribe(device_id)`で削除します。
+- **送信側向け。** `MonitorConnections::push_subscriptions()`が送信先（`device_id`・`endpoint`・`p256dh`・`auth`・`created_at`）を返し、`push_store().vapid_signer()`がVAPIDヘッダーに署名する`ring`のECDSA P-256鍵ペアを返します。`public_origin()`は、接続がreadyの間だけ公開アドレスを返し、それ以外は`None`です（その間は何も送りません）。プッシュサービスがendpointに404か410を返したら、スマホが購読を取り消したということなので、送信側は`push_store().unsubscribe_endpoint(device_id, endpoint)`で削除します。送信中にスマホが購読を作り直していた場合、その新しい購読は残ります。
 
 利用者向けの手順は[リモートアクセス](../../guide/watch/remote-access.md#iphoneで通知を受け取る)にあります。
 

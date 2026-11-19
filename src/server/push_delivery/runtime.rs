@@ -44,8 +44,15 @@ fn baseline(state: &AppState) -> Known {
         .collect()
 }
 
-/// What delivery works with right now, or `None` when no device is subscribed.
-fn context(state: &AppState) -> Option<Context> {
+/// Whether the remote entrance is up right now.
+fn entrance_up(state: &AppState) -> bool {
+    state.monitor.public_origin().is_some()
+}
+
+/// What delivery works with right now, or `None` when no device is subscribed. A change seen
+/// while the entrance was down (`up_at_change` is false) gets no address even when the entrance
+/// has come back since, so it is skipped rather than sent late.
+fn context(state: &AppState, up_at_change: bool) -> Option<Context> {
     let subscriptions = state.monitor.push_subscriptions();
     if subscriptions.is_empty() {
         return None;
@@ -53,7 +60,7 @@ fn context(state: &AppState) -> Option<Context> {
     Some(Context {
         store: state.monitor.push_store().clone(),
         subscriptions,
-        origin: state.monitor.public_origin(),
+        origin: state.monitor.public_origin().filter(|_| up_at_change),
         settings: state.notification_settings.load(),
         lang: Lang::from_locale(&state.preferences.load().locale),
     })
@@ -63,7 +70,7 @@ fn context(state: &AppState) -> Option<Context> {
 /// server (or when the change feed closes).
 pub(crate) fn start(state: &Arc<AppState>, data_dir: &Path, transport: Arc<dyn PushTransport>) {
     let now: NowFn = Arc::new(chrono::Utc::now);
-    let dispatcher = Dispatcher::new(Ledger::open(data_dir), transport, now);
+    let dispatcher = Arc::new(Dispatcher::new(Ledger::open(data_dir), transport, now));
     let known = baseline(state);
     let changes = state.changed.subscribe();
     let weak = Arc::downgrade(state);
@@ -74,7 +81,7 @@ async fn follow(
     weak: Weak<AppState>,
     mut changes: tokio::sync::broadcast::Receiver<Arc<crate::server::change_feed::ChangeEvent>>,
     mut known: Known,
-    dispatcher: Dispatcher,
+    dispatcher: Arc<Dispatcher>,
 ) {
     let mut schedule = Schedule::new((dispatcher.now)(), dispatcher.ledger.periodic_at());
     let mut retry = tokio::time::interval(RETRY_EVERY);
@@ -94,13 +101,16 @@ async fn follow(
             },
             _ = retry.tick() => {
                 let Some(state) = weak.upgrade() else { return };
-                if let Some(ctx) = context(&state) {
+                if let Some(ctx) = context(&state, true) {
                     dispatcher.retry_due(&ctx).await;
                     dispatcher.deliver_periodic(&ctx, &mut schedule, &known).await;
                 }
                 continue;
             }
         }
+        // Taken when the change is seen, before the settle wait and before any earlier delivery
+        // can hold this loop: a change made while the entrance was down is never sent.
+        let up_at_change = weak.upgrade().is_some_and(|s| entrance_up(&s));
         tokio::time::sleep(SETTLE).await;
         loop {
             match changes.try_recv() {
@@ -128,8 +138,10 @@ async fn follow(
         if events.is_empty() {
             continue;
         }
-        if let Some(ctx) = context(&state) {
-            dispatcher.deliver(&ctx, events).await;
+        if let Some(ctx) = context(&state, up_at_change) {
+            // Sent on its own task, so a slow push service never delays seeing the next change.
+            let dispatcher = dispatcher.clone();
+            tokio::spawn(async move { dispatcher.deliver(&ctx, events).await });
         }
     }
 }
