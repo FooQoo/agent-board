@@ -53,6 +53,7 @@ In a session a person started, the skill waits the same way in every agent: it k
 
 - `changed`, `ready`, and keep-alive comments are distinguished. Renames return the same project's snapshot; deletion returns `project_not_found` and never moves to a re-created project.
 - The connection limit is 3 seconds, and the wait itself is unlimited by default. With an optional `--timeout`, it checks the version once more at the end and returns `wait_timeout` if nothing changed. A disconnect during the wait returns `board_unavailable`; the wait does not start a server again then. There are no automatic short retries and no periodic polling.
+- A change wait does not trust one read of a file that differs from its cursor: an editor saving in place truncates the file before it writes it, so a read can land in the middle. The wait reads again after 250 ms, never past its deadline, and returns only if the change is still there. A save that restores the same content wakes nothing; a real change is returned about 250 ms later.
 - Disconnects, timeouts, and Ctrl+C never change tasks or history, never count as "no change", and never restart a finished agent.
 - Because CLI notifications are best effort, a missed one is caught on the next connection, a real `changed`, or the final read at a timeout.
 
