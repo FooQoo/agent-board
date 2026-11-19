@@ -1,10 +1,10 @@
 //! The text and the link of one notification.
 //!
-//! A message is short on purpose: a title that says what happened, and a body with the card's
-//! number and title and, where there is one, the summary, the question, or the history entry.
-//! The wording follows the board's language setting. The link is built on the public address
-//! while the entrance is up; what is kept for a retry is only the path, so a retry after the
-//! address changed still opens the board.
+//! A message is short on purpose: the card's title as the title, and one line under it. That line
+//! is the first sentence of the summary, the question, or the history entry, cut short, or, when
+//! the event has no text of its own, what happened to the card. The wording follows the board's
+//! language setting. The link is built on the public address while the entrance is up; what is
+//! kept for a retry is only the path, so a retry after the address changed still opens the board.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +14,8 @@ use crate::server::monitor_connection::contracts::PublicOrigin;
 use crate::server::notification_settings::StateChange;
 
 const TITLE_CHARS: usize = 60;
-const DETAIL_CHARS: usize = 140;
+/// The summary, question, or history entry is cut short: the board has the whole text.
+const DETAIL_CHARS: usize = 40;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Lang {
@@ -71,7 +72,7 @@ pub(super) fn shorten(text: &str, max: usize) -> String {
     cut
 }
 
-fn title(kind: Kind, lang: Lang) -> &'static str {
+fn what_happened(kind: Kind, lang: Lang) -> &'static str {
     match (kind, lang) {
         (Kind::Question, Lang::En) => "Your decision is needed",
         (Kind::Question, Lang::Ja) => "判断をお願いします",
@@ -90,6 +91,24 @@ fn title(kind: Kind, lang: Lang) -> &'static str {
     }
 }
 
+/// `text` up to the end of its first sentence or line, the end mark included.
+fn first_sentence(text: &str) -> &str {
+    let text = text.trim();
+    let mut chars = text.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        let end = i + c.len_utf8();
+        match c {
+            '\n' => return text[..i].trim_end(),
+            '。' | '！' | '？' => return &text[..end],
+            '.' | '!' | '?' if chars.peek().is_none_or(|(_, n)| n.is_whitespace()) => {
+                return &text[..end];
+            }
+            _ => {}
+        }
+    }
+    text
+}
+
 /// The path and query of `link` on `origin`, so a message can be rebuilt on another address.
 fn path_of(origin: &PublicOrigin, link: &str) -> Option<String> {
     link.strip_prefix(origin.origin()).map(str::to_string)
@@ -100,16 +119,20 @@ fn path_of(origin: &PublicOrigin, link: &str) -> Option<String> {
 pub(super) fn payload_of(event: &Event, lang: Lang, origin: &PublicOrigin) -> Option<Payload> {
     let link = match (event.kind, event.version) {
         (Kind::Result(_), Some(version)) => origin.result_link(&event.project, event.task, version),
+        (Kind::Question, _) if event.question_id.is_some() => {
+            origin.question_link(&event.project, event.task, event.question_id.as_deref()?)
+        }
+        (Kind::History, _) => origin.history_link(&event.project, event.task),
         _ => origin.task_link(&event.project, event.task),
     }?;
-    let mut body = format!("#{} {}", event.task, shorten(&event.title, TITLE_CHARS));
-    let detail = shorten(&event.detail, DETAIL_CHARS);
-    if !detail.is_empty() {
-        body.push('\n');
-        body.push_str(&detail);
-    }
+    let detail = shorten(first_sentence(&event.detail), DETAIL_CHARS);
+    let body = if detail.is_empty() {
+        what_happened(event.kind, lang).to_string()
+    } else {
+        detail
+    };
     Some(Payload {
-        title: title(event.kind, lang).to_string(),
+        title: shorten(&event.title, TITLE_CHARS),
         body,
         path: path_of(origin, &link)?,
         tag: event.key.clone(),
