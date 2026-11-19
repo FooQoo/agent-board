@@ -107,11 +107,14 @@ pub fn run_with_timeout(
         }
     };
     // A command it started can keep a pipe open after it exited, so the output is collected
-    // within what is left of the limit too.
-    let left = limit.saturating_sub(started.elapsed());
-    let (Some(stdout), Some(stderr)) = (stdout.collect(left), stderr.collect(left)) else {
+    // within what is left of the same limit too. The wording keeps "did not finish", which
+    // callers read as a timeout rather than as the command's own answer.
+    let left = || limit.saturating_sub(started.elapsed());
+    let stdout = stdout.collect(left());
+    let stderr = stdout.as_ref().and_then(|_| stderr.collect(left()));
+    let (Some(stdout), Some(stderr)) = (stdout, stderr) else {
         return Err(format!(
-            "{shown} left a process behind that kept its output open past {} seconds",
+            "{shown} did not finish within {} seconds: a process it started kept its output open",
             limit.as_secs().max(1)
         ));
     };
@@ -186,6 +189,7 @@ mod tests {
         let program = script(dir.path(), "sleep 20 &\nexit 0");
         let started = Instant::now();
         let error = run_with_timeout(&program, &[], None, Duration::from_secs(1)).unwrap_err();
+        assert!(error.contains("did not finish"), "{error}");
         assert!(error.contains("kept its output open"), "{error}");
         assert!(started.elapsed() < Duration::from_secs(10));
     }
