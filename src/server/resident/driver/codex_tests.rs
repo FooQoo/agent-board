@@ -242,6 +242,7 @@ fn items_become_activity_and_noise_and_unknown_messages_are_told_apart() {
     );
     for noise in [
         r#"{"method":"hook/started","params":{}}"#,
+        r#"{"method":"remoteControl/status/changed","params":{}}"#,
         r#"{"method":"mcpServer/startupStatus/updated","params":{}}"#,
         r#"{"method":"thread/tokenUsage/updated","params":{}}"#,
         r#"{"method":"item/agentMessage/delta","params":{}}"#,

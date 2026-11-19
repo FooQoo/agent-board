@@ -206,6 +206,7 @@ impl Session {
 fn is_noise(method: &str) -> bool {
     [
         "hook/",
+        "remoteControl/",
         "mcpServer/",
         "account/",
         "item/",
