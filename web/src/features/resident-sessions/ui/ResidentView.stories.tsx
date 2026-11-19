@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
+import { FEATURE_STAGES_URL } from '@/shared/ui/preview-feature/feature-stage';
 import { scenarios } from './scenarios';
 import { ResidentView } from './ResidentView';
 
@@ -25,6 +26,15 @@ export const Working: Story = {
     await expect(page().getByText('Working on a task')).toBeInTheDocument();
     await expect(page().getByRole('button', { name: 'Stop' })).toBeEnabled();
     await expect(page().getByRole('checkbox')).toBeChecked();
+    // The dialog is in public preview: the badge beside the title and the notice, linking to the stages page.
+    // The dialog fades in, so the badge is hidden for the first frames.
+    await waitFor(() =>
+      expect(page().getByText('Public preview', { selector: '[data-slot="badge"]' })).toBeVisible(),
+    );
+    await expect(page().getByRole('link', { name: 'documentation' })).toHaveAttribute(
+      'href',
+      `${FEATURE_STAGES_URL.en}#resident-sessions`,
+    );
     // The notice is one line with a link to the user guide.
     await expect(page().getByRole('link', { name: 'Learn more' })).toHaveAttribute(
       'href',
@@ -160,6 +170,16 @@ export const Japanese: Story = {
   globals: { locale: 'ja' },
   play: async () => {
     await expect(await page().findByText('タスク作業中')).toBeInTheDocument();
+    // The dialog fades in, so the badge is hidden for the first frames.
+    await waitFor(() =>
+      expect(
+        page().getByText('パブリックプレビュー', { selector: '[data-slot="badge"]' }),
+      ).toBeVisible(),
+    );
+    await expect(page().getByRole('link', { name: 'ドキュメント' })).toHaveAttribute(
+      'href',
+      `${FEATURE_STAGES_URL.ja}#resident-sessions`,
+    );
   },
 };
 
@@ -175,5 +195,9 @@ export const Sheet: Story = {
   globals: { viewport: { value: 'mobile1' } },
   play: async () => {
     await expect(await page().findByRole('dialog', { name: 'Resident session' })).toBeVisible();
+    // The dialog fades in, so the badge is hidden for the first frames.
+    await waitFor(() =>
+      expect(page().getByText('Public preview', { selector: '[data-slot="badge"]' })).toBeVisible(),
+    );
   },
 };

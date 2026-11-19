@@ -41,7 +41,10 @@ fn the_documented_stages_match_the_confirmed_classification() {
         .filter_map(|line| line.split_once("anchor: '"))
         .map(|(_, rest)| rest.split('\'').next().unwrap().to_string())
         .collect();
-    assert_eq!(in_product, ["docs", "remote-access", "listen"]);
+    assert_eq!(
+        in_product,
+        ["docs", "resident-sessions", "questions-and-requests"]
+    );
     let mut expected = in_product.clone();
     expected.sort();
 
@@ -63,16 +66,17 @@ fn the_documented_stages_match_the_confirmed_classification() {
         let mut anchors = preview_anchors(&page, preview);
         anchors.sort();
         assert_eq!(anchors, expected, "{path}: the preview sections");
-        // Twelve GA features, and none of the preview ones among them.
+        // Thirteen GA features, and none of the preview ones among them.
         let rows = ga_rows(&page, ga);
-        assert_eq!(rows.len(), 12, "{path}: {rows:#?}");
+        assert_eq!(rows.len(), 13, "{path}: {rows:#?}");
         for row in &rows {
             for name in [
                 "Docs",
                 "ドキュメント",
-                "listen",
-                "Remote access",
-                "リモートアクセス",
+                "Resident",
+                "常駐セッション",
+                "Questions and requests",
+                "質問と依頼",
             ] {
                 let cell = row.split('|').nth(1).unwrap();
                 assert!(!cell.contains(name), "{path}: {name} is listed as GA");

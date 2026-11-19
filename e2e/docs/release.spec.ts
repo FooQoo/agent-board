@@ -199,7 +199,7 @@ test('the English and Japanese release notes list the same versions in the same 
 test('the feature stages page keeps the anchors the product links to', async ({ page }) => {
   for (const lang of langs) {
     await page.goto(`${lang === 'ja' ? 'ja/' : ''}guide/feature-stages`);
-    for (const id of ['docs', 'remote-access', 'listen']) {
+    for (const id of ['docs', 'resident-sessions', 'questions-and-requests']) {
       await expect(page.locator(`.vp-doc h3[id="${id}"]`), `${lang} #${id}`).toHaveCount(1);
     }
   }

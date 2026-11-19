@@ -81,7 +81,6 @@ landing:
         title: Check from anywhere
         text: Away from your desk, open the board on your phone or tablet, watch the work, and answer the agent.
         link: { text: Remote access, link: /guide/watch/remote-access }
-        preview: /guide/feature-stages#remote-access
         tabletAlt: "The same board opened on a tablet: the Todo, Doing, and Done lanes side by side, with a waiting task and its Answer the question button"
         alts:
           - The remote access card list, with a waiting task and its Answer the question button
@@ -131,7 +130,7 @@ landing:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
       - { title: Set up your agent and a project, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: Open the board, commands: [agboard serve] }
-    note: "Version 1.0.0 includes features in public preview, such as Docs and remote access. See "
+    note: "Some features, such as Docs and resident sessions, are in public preview. See "
     noteLinks:
       - { text: Feature stages, link: /guide/feature-stages }
     noteJoin: " and "

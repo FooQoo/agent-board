@@ -19,6 +19,9 @@ A release that lets the board keep an agent on the job: start a Claude Code or C
 - **Answer with only a note.** A question with choices can also be answered with a note alone, when none of the options fits. **Send answer** is enabled once you choose an option or write a note; a note-only answer has no choice in the history and in what agents receive.
 - **A recommended task body.** The template from `agboard skills task-template` suggests the headings Background, What to do, Approach, and Verification results, written in the board's language. They are recommended, not required, and existing tasks stay valid.
 - **Agents work in parallel worktrees.** The Skill tells an agent to start every task whose dependencies allow it without waiting to be told, and to give each task that changes a Git repository its own branch in its own worktree.
+- **Remote access is generally available.** The **Public preview** badge and notice are gone from the **Remote connection** dialog and from the Remote access guide. [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages) lists its supported range and limits among the generally available features.
+- **Resident sessions are a public preview feature.** The **Resident session** dialog shows a **Public preview** badge and notice with a link to Feature stages. The session runs unattended with automatic approval and depends on the `claude` stream-json interface and on `codex app-server`, which Codex marks as experimental, so it may change when those CLIs update.
+- **"Task listening" is now "Questions and requests".** It stays in public preview. A session you open yourself keeps itself on the board with `agboard wait --until task` or `/agent-board:wait`, and receives your requests, the answers to its questions, and tasks. Two sessions can still pick the same task; only requests and answers are protected, because the first `message accept` wins.
 
 ### Fixes
 
