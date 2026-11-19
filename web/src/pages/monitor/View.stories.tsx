@@ -105,7 +105,7 @@ export const DrawerTabs: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Mobile drawer example' }));
     const dialog = within(await within(document.body).findByRole('dialog'));
     const tabs = dialog.getAllByRole('tab');
-    await expect(tabs).toHaveLength(4);
+    await expect(tabs).toHaveLength(5);
     await expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(dialog.getByRole('tab', { name: /History/ }));
     await expect(await dialog.findByText('Created task in Todo.')).toBeInTheDocument();

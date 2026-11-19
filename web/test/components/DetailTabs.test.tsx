@@ -33,6 +33,7 @@ describe('tabs', () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       'Description',
       'Conditions',
+      'Results',
       'History',
       'Epic',
     ]);
