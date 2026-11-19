@@ -13,7 +13,7 @@ flowchart LR
     LL["Local listener (127.0.0.1)"] --> Shared
 ```
 
-- The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with no domain and no Traffic Policy, and forwards it to the entrance. ngrok chooses the public address. The free ngrok plan rejects Traffic Policy actions, so none is sent.
+- The ngrok Rust SDK is linked into `agboard`. There is no external `ngrok` program and no sidecar. The supervisor in `src/server/monitor_connection/` opens one HTTP endpoint, with no Traffic Policy, and forwards it to the entrance. With no domain set, ngrok chooses the public address, and it differs at every start (the SDK does not hand out the account's static dev domain by itself; a free account that asks for a domain it does not own is refused). When `AGBOARD_NGROK_DOMAIN` is set to a domain the ngrok account owns, such as its free static dev domain, the endpoint is requested on that domain, so the address is the same at every start and after a server restart. The value is read once at startup, must be a bare host name (no scheme, path, port, or wildcard; anything else is ignored), and is not saved to the settings file. If ngrok refuses the domain, the start fails with `endpoint_failed` and the reason is written to the server log. The free ngrok plan rejects Traffic Policy actions, so none is sent.
 - The entrance is a dedicated loopback listener that the connection starts and stops. It runs in the same `serve` process as the local listener and shares the lifecycle guard, the FileStore index and reader, the watcher, and the `changed` broadcast. `serve.json` keeps only the local port, so the CLI, hook, and `wait` are unaffected.
 - The [project docs](../reference/web-api.md#project-docs) routes are served through the entrance with the rest of the board's API, behind the session. Only `docs/open`, which starts a program on the PC, is not.
 - The local listener and the entrance are separate surfaces. The local listener keeps its own Host, Origin, and token checks. The entrance serves the board router without those local guards, because its own checks (Host, session, Origin, CSRF) run first, and its page holds no token. The connection settings API, `POST /api/notify`, and `docs/open` exist only on the local listener.
@@ -47,6 +47,8 @@ The connection is one supervisor, `MonitorConnections`, owned by the server stat
 | ngrok token | Only in memory, unless the user saves it. A saved token lives in the PC's secure storage, the OS credential store (service `agent-board`, account `ngrok-authtoken`). |
 | Phone passcode and its count of wrong guesses, application sessions, CSRF tokens | Only in memory, for one start. |
 | Language and color theme | `<data root>/.internal/preferences.json`, written by a save from the PC or from a phone. See [Shared files](../reference/files.md#display-preferences). |
+
+`AGBOARD_NGROK_DOMAIN` is not a secret and does not change the checks below: `Host` must still equal the address ngrok returns, which is the requested domain. Stopping the connection closes the tunnel, so the fixed address answers nothing from ngrok again until the next start.
 
 `NGROK_AUTHTOKEN` and the secure storage are read lazily, so a run that never needs a token never touches the secure storage.
 

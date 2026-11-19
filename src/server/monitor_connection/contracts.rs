@@ -170,6 +170,7 @@ mod tests {
         let result = open_endpoint(
             "test-token",
             Url::parse("http://127.0.0.1:1").unwrap(),
+            None,
             Some(&addr),
         )
         .await;

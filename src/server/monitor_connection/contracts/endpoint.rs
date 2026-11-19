@@ -27,13 +27,16 @@ pub struct OpenEndpoint {
 /// Connect a session and open an HTTP endpoint that forwards to `backend`.
 ///
 /// Runs on the caller's Tokio runtime and starts no child process. No Traffic
-/// Policy is set and no domain is asked for: ngrok chooses the public address,
-/// so a plan without Traffic Policy or a reserved domain can run it. The Host
+/// Policy is set. Without a `domain` ngrok chooses the public address, which differs at
+/// every start (the SDK does not hand out the account's static dev domain by itself).
+/// With a `domain` the endpoint is requested on that domain, so the address is the same
+/// every time; ngrok refuses a domain the account does not own. The Host
 /// header is not rewritten, so the backend sees the public authority.
 /// `server_addr` overrides the ngrok server address (used only by tests).
 pub async fn open_endpoint(
     authtoken: &str,
     backend: Url,
+    domain: Option<&str>,
     server_addr: Option<&str>,
 ) -> Result<OpenEndpoint, EndpointError> {
     let mut builder = ngrok::Session::builder();
@@ -49,6 +52,9 @@ pub async fn open_endpoint(
         .map_err(|e| EndpointError::Connect(e.to_string()))?;
     let mut endpoint = session.http_endpoint();
     endpoint.host_header_rewrite(false);
+    if let Some(domain) = domain {
+        endpoint.domain(domain);
+    }
     let forwarder = endpoint
         .listen_and_forward(backend)
         .await

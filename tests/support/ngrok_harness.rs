@@ -241,6 +241,7 @@ impl Server {
         let monitor = MonitorOptions {
             env: MonitorEnv {
                 token: opts.env_token.then(|| Secret::new(TOKEN)),
+                domain: None,
             },
             explicit: opts.explicit,
             connector: opts.mock.clone(),

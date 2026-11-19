@@ -40,6 +40,8 @@ pub struct MonitorConnections {
     /// The server's state, given once it exists; the monitor routes read it.
     pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
+    /// The ngrok domain the endpoint is requested on, from the environment.
+    pub(super) domain: Option<String>,
     /// Woken when a keychain read finishes, for those waiting on it.
     pub(super) probed: tokio::sync::Notify,
 }
@@ -70,6 +72,7 @@ impl MonitorConnections {
             connector,
             vault,
             app: std::sync::OnceLock::new(),
+            domain: env.domain.clone(),
             inner: Mutex::new(Inner {
                 config,
                 status,

@@ -39,6 +39,24 @@ impl fmt::Debug for Secret {
 pub struct MonitorEnv {
     /// `NGROK_AUTHTOKEN`.
     pub token: Option<Secret>,
+    /// `AGBOARD_NGROK_DOMAIN`: the ngrok domain to open the endpoint on, so the public
+    /// address is the same at every start. Anything that is not a bare host name is ignored.
+    pub domain: Option<String>,
+}
+
+/// A bare, lower-case host name, or `None` for anything else: a scheme, a path, a port,
+/// a wildcard, or spaces are not accepted, so a mistyped value never reaches ngrok.
+pub fn parse_domain(raw: &str) -> Option<String> {
+    let domain = raw.trim().to_ascii_lowercase();
+    let label_ok = |l: &str| {
+        !l.is_empty()
+            && l.len() <= 63
+            && !l.starts_with('-')
+            && !l.ends_with('-')
+            && l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    };
+    (domain.len() <= 253 && domain.contains('.') && domain.split('.').all(label_ok))
+        .then_some(domain)
 }
 
 impl MonitorEnv {
@@ -46,6 +64,7 @@ impl MonitorEnv {
         let get = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
         Self {
             token: get("NGROK_AUTHTOKEN").map(Secret::new),
+            domain: get("AGBOARD_NGROK_DOMAIN").and_then(|v| parse_domain(&v)),
         }
     }
 }
@@ -75,10 +94,11 @@ impl FailureCode {
     }
 }
 
-/// What the connector needs. `token` is a secret. There is no Traffic Policy and no
-/// domain to send: ngrok chooses the public address.
+/// What the connector needs. `token` is a secret. There is no Traffic Policy. Without a
+/// `domain` ngrok chooses the public address, and it differs at every start.
 pub struct OpenRequest {
     pub token: Secret,
+    pub domain: Option<String>,
     pub backend: Url,
 }
 
@@ -106,19 +126,24 @@ pub struct SdkConnector;
 impl Connector for SdkConnector {
     fn open(&self, request: OpenRequest) -> OpenFuture {
         Box::pin(async move {
-            let endpoint = open_endpoint(request.token.expose(), request.backend, None)
-                .await
-                .map_err(|e| {
-                    // Diagnostic only: the reason ngrok gave. The error text never holds the token.
-                    eprintln!("agboard: ngrok did not open the tunnel: {e}");
-                    OpenFailure {
-                        code: match e {
-                            EndpointError::Connect(_) => FailureCode::ConnectFailed,
-                            EndpointError::Listen(_) => FailureCode::EndpointFailed,
-                            EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
-                        },
-                    }
-                })?;
+            let endpoint = open_endpoint(
+                request.token.expose(),
+                request.backend,
+                request.domain.as_deref(),
+                None,
+            )
+            .await
+            .map_err(|e| {
+                // Diagnostic only: the reason ngrok gave. The error text never holds the token.
+                eprintln!("agboard: ngrok did not open the tunnel: {e}");
+                OpenFailure {
+                    code: match e {
+                        EndpointError::Connect(_) => FailureCode::ConnectFailed,
+                        EndpointError::Listen(_) => FailureCode::EndpointFailed,
+                        EndpointError::PublicUrl => FailureCode::PublicUrlInvalid,
+                    },
+                }
+            })?;
             Ok(OpenedTunnel {
                 public: endpoint.public.clone(),
                 keep_alive: Box::new(endpoint),
@@ -239,4 +264,30 @@ pub enum StartError {
 pub enum ForgetError {
     /// The keychain is not usable, so the saved token cannot be removed.
     KeychainUnavailable,
+}
+
+#[cfg(test)]
+mod domain_tests {
+    use super::parse_domain;
+
+    #[test]
+    fn a_domain_is_a_bare_host_name() {
+        assert_eq!(
+            parse_domain(" My-App.ngrok-free.DEV ").as_deref(),
+            Some("my-app.ngrok-free.dev")
+        );
+        for bad in [
+            "",
+            "localhost",
+            "https://a.ngrok-free.dev",
+            "a.ngrok-free.dev/x",
+            "a.ngrok-free.dev:443",
+            "*.ngrok-free.dev",
+            "a..dev",
+            "-a.ngrok-free.dev",
+            "a b.dev",
+        ] {
+            assert_eq!(parse_domain(bad), None, "{bad}");
+        }
+    }
 }

@@ -13,7 +13,7 @@ flowchart LR
     LL["ローカルのリスナー（127.0.0.1）"] --> Shared
 ```
 
-- ngrokのRust SDKを`agboard`にリンクしています。外部の`ngrok`プログラムやサイドカーはありません。`src/server/monitor_connection/`の監督役が、ドメインもTraffic Policyも指定しないHTTPエンドポイントを一つ開き、入口へ転送します。公開アドレスはngrokが選びます。無料のngrokプランはTraffic Policyの操作を拒否するため、Traffic Policyは送りません。
+- ngrokのRust SDKを`agboard`にリンクしています。外部の`ngrok`プログラムやサイドカーはありません。`src/server/monitor_connection/`の監督役が、Traffic Policyを指定しないHTTPエンドポイントを一つ開き、入口へ転送します。ドメインを指定しない場合、公開アドレスはngrokが選び、開始のたびに変わります（SDKはアカウントの固定の開発用ドメインを自動では割り当てません。持っていないドメインを無料アカウントが要求すると拒否されます）。`AGBOARD_NGROK_DOMAIN`にngrokアカウントが持つドメイン（無料の固定の開発用ドメインなど）を設定すると、そのドメインでエンドポイントを要求するため、開始のたびに、またサーバーを再起動したあとも同じアドレスになります。値は起動時に一度だけ読み、ホスト名だけを受け付け（スキーム、パス、ポート、ワイルドカードは不可で、それ以外は無視します）、設定ファイルには保存しません。ngrokがドメインを拒否すると、開始は`endpoint_failed`で失敗し、理由がサーバーのログに出ます。無料のngrokプランはTraffic Policyの操作を拒否するため、Traffic Policyは送りません。
 - 入口は、接続が起動と停止を行う専用のループバックのリスナーです。ローカルのリスナーと同じ`serve`プロセスで動き、ライフサイクルのガード、FileStoreの索引とreader、監視、`changed`のbroadcastを共有します。`serve.json`にはローカルのポートだけを残すので、CLI・Hook・`wait`は影響を受けません。
 - [プロジェクトのドキュメント](../reference/web-api.md#プロジェクトのドキュメント)のルートは、ボードのそのほかのAPIと同じく、sessionの背後で入口から配信します。配信しないのは、PC上でプログラムを起動する`docs/open`だけです。
 - ローカルのリスナーと入口は別の面です。ローカルのリスナーは自身のHost・Origin・トークンの確認を保ちます。入口は、自身の検査（Host・session・Origin・CSRF）を先に行うので、ローカル用のガードを外したボードのルーターを配信し、そのページはトークンを持ちません。接続設定のAPI、`POST /api/notify`、`docs/open`はローカルのリスナーにだけあります。
@@ -47,6 +47,8 @@ flowchart LR
 | ngrokのトークン | 利用者が保存しない限り、メモリーだけ。保存したトークンは、このPCの安全な保管場所であるOSの資格情報ストア（service `agent-board`、account `ngrok-authtoken`）。 |
 | スマホの合言葉とその間違いの回数、アプリsession、CSRFトークン | 一回の起動の間、メモリーだけ。 |
 | 言語とカラーテーマ | `<データ領域>/.internal/preferences.json`。PCまたはスマホからの保存で書き込む。[共有ファイル](../reference/files.md#表示設定)を参照。 |
+
+`AGBOARD_NGROK_DOMAIN`は秘密ではなく、以下の確認も変えません。`Host`は、要求したドメインであるngrokが返すアドレスとちょうど一致する必要があります。接続を停止するとトンネルを閉じるため、次の開始までは固定のアドレスにngrokからは何も届きません。
 
 `NGROK_AUTHTOKEN`と安全な保管場所は必要になったときに読むため、トークンが要らない起動では安全な保管場所に触れません。
 

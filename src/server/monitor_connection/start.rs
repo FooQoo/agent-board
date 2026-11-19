@@ -57,6 +57,7 @@ impl MonitorConnections {
         inner.passcode = None;
         let request = OpenRequest {
             token,
+            domain: self.domain.clone(),
             backend: backend_url,
         };
         let run_gate = gate.clone();
