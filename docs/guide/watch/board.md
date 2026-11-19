@@ -130,7 +130,7 @@ Open **Settings** to choose the language (English or Japanese) and one of 24 the
 
 The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and remote access, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
 
-**Phone notifications** chooses which notifications the board may send to your phone, and the same section is in the phone layout. The choices are saved on this PC, like the language and theme, and apply once notifications are delivered to your phone; changing them sends nothing by itself.
+**Phone notifications** chooses which notifications the board may send to your phone, and the same section is in the phone layout. The choices are saved on this PC, like the language and theme, and apply to the next notification; changing them sends nothing by itself. See [What you are notified about](./remote-access.md#notified-about).
 
 - **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
 - With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
