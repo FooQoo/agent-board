@@ -11,7 +11,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `id` | 正の整数。ボード内で一意で、フォルダ名と一致する。 |
 | `title` | 前後の空白を除いて1〜100文字、1行。 |
 | `description` | frontmatterを含む`TASK.md`の全文。50,000文字の上限は本文だけを数える。CRLFはLFに正規化する。 |
-| `body` | `description`からfrontmatterを除いた本文。見出し構成は自由。GitHub Flavored Markdownに対応。 |
+| `body` | `description`からfrontmatterを除いた本文。見出し構成は自由（雛形は「背景」「やること」「進め方」「検証結果」の見出しを推奨しますが、検証はしません）。GitHub Flavored Markdownに対応。 |
 | `acceptance`・`acceptanceError` | frontmatterの完了条件（不正なときは空）と、`acceptance`かYAML構文が不正かどうか。 |
 | `assignee` | `ai`か`human`。作成時に決め、以後は変えない。 |
 | `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |

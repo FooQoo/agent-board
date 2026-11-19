@@ -15,7 +15,7 @@ Each task is a `TASK.md` file and each epic's details are an `EPIC.md` file. Age
 
 ## TASK.md
 
-A `TASK.md` starts with YAML frontmatter between two `---` lines, then the body in free Markdown:
+A `TASK.md` starts with YAML frontmatter between two `---` lines, then the body in free Markdown. The template from `agboard skills task-template` recommends the headings Background, What to do, Approach, and Verification results; they are not required:
 
 ```markdown
 ---

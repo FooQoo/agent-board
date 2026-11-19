@@ -70,7 +70,7 @@ Read the `README.md` in the returned `folder` before editing. Then:
 
 `edit --desc-file` replaces a task body and acceptance conditions while preserving its latest history and its question references (`questions`); it cannot append history, and `history` or `questions` in the input file are ignored. `epic edit --document-file` replaces the whole `EPIC.md` text. Task bodies are limited to 50,000 characters and `EPIC.md` text to 100,000; if a task plan would exceed its limit, split it into more tasks after asking the user.
 
-A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of `EPIC.md` and are not managed by the app. Start from the templates in `agboard skills epic-template` and `agboard skills task-template`, and read `agboard skills file-format` before writing either file.
+A task's completion conditions live in its frontmatter (`acceptance`), and the board reads them. Epic reference conditions belong in the free Markdown body of `EPIC.md` and are not managed by the app. Start from the templates in `agboard skills epic-template` and `agboard skills task-template` (the task template recommends body headings), and read `agboard skills file-format` before writing either file.
 
 ## 4. Plan with epics and tasks
 

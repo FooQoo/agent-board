@@ -14,5 +14,21 @@ acceptance:
 history: []
 ---
 
-(Write the task plan in free Markdown. There are no required headings. Add concise verified acceptance results and artifact references here. Automatically record progress and all operation history only in the history frontmatter; do not add an execution-history section to this body.)
+## Background
+
+(Why this task exists and what it builds on.)
+
+## What to do
+
+(The change to make, in a few sentences or a short list.)
+
+## Approach
+
+(How you will do it, and any decision that shapes it.)
+
+## Verification results
+
+(Add concise verified acceptance results and artifact references here after verification.)
 ```
+
+The body headings above are recommended, not required: a body without them is still valid. Write the headings in the language of the board, per the language rule of the skill. Automatically record progress and all operation history only in the history frontmatter; do not add an execution-history section to the body.
