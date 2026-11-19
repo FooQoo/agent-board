@@ -15,6 +15,7 @@ fn event(kind: Kind, version: Option<u32>, detail: &str) -> Event {
         kind,
         key: "key-1".to_string(),
         version,
+        question_id: None,
         detail: detail.to_string(),
     }
 }
@@ -36,6 +37,36 @@ fn a_result_links_to_its_version_and_a_question_to_the_card() {
     let question = payload_of(&event(Kind::Question, None, "Which?"), Lang::En, &origin()).unwrap();
     assert_eq!(question.path, format!("/?project={PROJECT}&task=12"));
     assert!(question.urgent);
+
+    let mut asked = event(Kind::Question, None, "Which?");
+    asked.question_id = Some("Q-7".to_string());
+    let asked = payload_of(&asked, Lang::En, &origin()).unwrap();
+    assert_eq!(
+        asked.path,
+        format!("/?project={PROJECT}&task=12&question=Q-7")
+    );
+    assert!(asked.urgent);
+}
+
+#[test]
+fn a_history_entry_links_to_the_history_tab_of_the_card() {
+    let history = payload_of(
+        &event(Kind::History, None, "Did a thing"),
+        Lang::En,
+        &origin(),
+    )
+    .unwrap();
+    assert_eq!(
+        history.path,
+        format!("/?project={PROJECT}&task=12&tab=history")
+    );
+    let state = payload_of(
+        &event(Kind::State(StateChange::Done), None, ""),
+        Lang::En,
+        &origin(),
+    )
+    .unwrap();
+    assert_eq!(state.path, format!("/?project={PROJECT}&task=12"));
 }
 
 #[test]
@@ -60,7 +91,7 @@ fn the_json_has_the_full_address_and_nothing_else_is_added() {
     let json: serde_json::Value = serde_json::from_slice(&p.json(&origin())).unwrap();
     assert_eq!(
         json["url"],
-        format!("https://board.example.dev/?project={PROJECT}&task=12")
+        format!("https://board.example.dev/?project={PROJECT}&task=12&tab=history")
     );
     let mut keys: Vec<&str> = json
         .as_object()

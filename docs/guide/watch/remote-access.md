@@ -48,6 +48,8 @@ The **Results** tab lists what an agent delivered for you to look at, newest fir
 
 A link to one result has the form `https://<host>/?project=<ProjectId>&task=<id>&result=<version>`, where `<host>` is the address of the connection. Opening it on the phone asks for the passcode first, if you have no live session, and keeps the whole address while it does. After the passcode, the board opens that project, then that task's drawer on the **Results** tab, scrolled to the result and highlighted. It does not matter which project was on the screen before. Closing the drawer takes the task and result out of the address, so the board stays where you left it. An address with a task or version that is not a positive number opens the plain board.
 
+Two other forms open a task from a notification. `https://<host>/?project=<ProjectId>&task=<id>&tab=history` opens the task's drawer on the **History** tab (on the PC board, the card with its History tab). `https://<host>/?project=<ProjectId>&task=<id>&question=<Q-n>` opens the list of messages on that question; if the question was already answered or withdrawn, it opens the card instead.
+
 Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the handle or header to dismiss the drawer. Opening a task reads its text, conditions, history, and epic once, so switching tabs does not wait for a read. If a read fails, use the retry button in that tab.
 
 The monitor updates itself when the PC saves a change. To read the latest data at once, choose the **Refresh** button in the header. The page keeps the last data it has while it reads again.
@@ -160,8 +162,8 @@ To turn them off, choose **Turn off** in the same place. If you chose Don't Allo
 The board sends only what you chose in the **Phone notifications** dialog, which you open from [Settings](./board.md#phone-notifications). At first that is results and questions that need your decision:
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
-- A **question** that needs your decision arrives with a high priority. Tap it to open the card with the question.
-- **Card state changes** and **history additions** arrive only when you switch them on, and state changes only for the transitions you picked. Tap one to open the card.
+- A **question** that needs your decision arrives with a high priority. Tap it to open that question, ready to answer.
+- **Card state changes** and **history additions** arrive only when you switch them on, and state changes only for the transitions you picked. Tap one to open the card. A history notification opens the card on its **History** tab.
 
 Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that it is done. Tap the notification to read the whole text on the board.
 

@@ -119,6 +119,10 @@ fn path_of(origin: &PublicOrigin, link: &str) -> Option<String> {
 pub(super) fn payload_of(event: &Event, lang: Lang, origin: &PublicOrigin) -> Option<Payload> {
     let link = match (event.kind, event.version) {
         (Kind::Result(_), Some(version)) => origin.result_link(&event.project, event.task, version),
+        (Kind::Question, _) if event.question_id.is_some() => {
+            origin.question_link(&event.project, event.task, event.question_id.as_deref()?)
+        }
+        (Kind::History, _) => origin.history_link(&event.project, event.task),
         _ => origin.task_link(&event.project, event.task),
     }?;
     let detail = shorten(first_sentence(&event.detail), DETAIL_CHARS);

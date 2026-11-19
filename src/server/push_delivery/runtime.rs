@@ -188,6 +188,7 @@ mod tests {
             kind: Kind::History,
             key: project.into(),
             version: None,
+            question_id: None,
             detail: String::new(),
         }
     }

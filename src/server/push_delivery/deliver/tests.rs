@@ -98,6 +98,7 @@ pub(super) fn event(kind: Kind, key: &str, version: Option<u32>) -> Event {
         kind,
         key: key.to_string(),
         version,
+        question_id: None,
         detail: "Looks good".to_string(),
     }
 }
