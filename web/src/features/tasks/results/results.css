@@ -214,3 +214,8 @@
   align-items: center;
   max-width: 100%;
 }
+
+/* Leave room for the stepper below the picture so both fit a short viewport. */
+.lightbox .results__zoom img {
+  max-height: calc(85vh - 48px);
+}

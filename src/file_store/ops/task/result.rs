@@ -113,8 +113,14 @@ fn content_key(
         hash.update([0]);
         hash.update(part.unwrap_or("").as_bytes());
     }
-    for image in images {
-        hash.update([0]);
+    // The separator before the image part is always written, so a result without
+    // images and a result with one image keep the keys they had before several
+    // images were allowed.
+    hash.update([0]);
+    for (index, image) in images.iter().enumerate() {
+        if index > 0 {
+            hash.update([0]);
+        }
         hash.update(Sha256::digest(&image.bytes));
     }
     hash.finalize()[..16]
@@ -276,5 +282,51 @@ impl FileStore {
             created: true,
             task: view(shared, project, id)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The key as it was computed when a result held at most one image.
+    fn legacy_key(summary: &str, link: Option<&str>, image: Option<&[u8]>) -> String {
+        let mut hash = Sha256::new();
+        hash.update(b"progress");
+        for part in [Some(summary), link] {
+            hash.update([0]);
+            hash.update(part.unwrap_or("").as_bytes());
+        }
+        hash.update([0]);
+        if let Some(bytes) = image {
+            hash.update(Sha256::digest(bytes));
+        }
+        hash.finalize()[..16]
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    }
+
+    fn input(bytes: &[u8]) -> AttachmentInput {
+        AttachmentInput {
+            id: String::new(),
+            name: String::new(),
+            bytes: bytes.to_vec(),
+        }
+    }
+
+    #[test]
+    fn keys_of_results_with_no_image_or_one_image_are_unchanged() {
+        let none = content_key(ResultKind::Progress, "S", Some("L"), &[]);
+        assert_eq!(none, legacy_key("S", Some("L"), None));
+        let one = content_key(ResultKind::Progress, "S", None, &[input(b"abc")]);
+        assert_eq!(one, legacy_key("S", None, Some(b"abc")));
+    }
+
+    #[test]
+    fn keys_of_several_images_depend_on_their_order() {
+        let ab = content_key(ResultKind::Progress, "S", None, &[input(b"a"), input(b"b")]);
+        let ba = content_key(ResultKind::Progress, "S", None, &[input(b"b"), input(b"a")]);
+        assert_ne!(ab, ba);
     }
 }
