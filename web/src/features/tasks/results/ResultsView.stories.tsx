@@ -61,6 +61,33 @@ export const Default: Story = {
   },
 };
 
+/** An http(s) link is an anchor that opens in a new tab; a local path stays text. */
+export const UrlLink: Story = {
+  args: {
+    state: {
+      status: 'ready',
+      results: [
+        {
+          version: 4,
+          key: 'fourth',
+          kind: 'final',
+          summary: 'The pull request is open.',
+          link: `${['https:', '', 'github.com'].join('/')}/FooQoo/agent-board/pull/123?diff=split&w=1#discussion_r1234567890123`,
+          at: '2026-11-20T06:00:00Z',
+        },
+        RESULTS[2] as TaskResult,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const anchors = within(canvasElement).getAllByRole('link');
+    await expect(anchors).toHaveLength(1);
+    await expect(anchors[0]).toHaveAttribute('target', '_blank');
+    await expect(anchors[0]).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(canvasElement).toHaveTextContent('outputs/phone-report/index.html');
+  },
+};
+
 /** The version a link points at is highlighted, even when it is not the newest. */
 export const Focused: Story = {
   args: { focusVersion: 2 },
