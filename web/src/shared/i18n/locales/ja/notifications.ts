@@ -1,7 +1,9 @@
-// The "Phone notifications" section of the settings dialog.
+// The "Phone notifications" row of the settings dialog and the dialog it opens.
 export const notificationsJa = {
   notifications: {
     title: 'スマホの通知',
+    entryBody: 'ボードがスマホに知らせる内容を選びます。',
+    entryAction: '通知の設定',
     intro:
       'ボードがスマホに知らせてよい内容を選びます。選択はこのコンピューターに保存され、スマホへの通知が届くようになった時点から反映されます。',
     loading: '保存済みの選択を読み込んでいます。',

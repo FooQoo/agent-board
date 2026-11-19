@@ -9,7 +9,11 @@ import {
   requestResidentDialog,
   onResidentDialogRequest,
 } from '../../features/resident-sessions/events';
-import { PushEntryRow } from '../../features/push-notifications/ui/PushEntryRow';
+import {
+  requestNotificationDialog,
+  onNotificationDialogRequest,
+} from '../../features/notification-settings/events';
+import { NotificationEntryRow } from '../../features/notification-settings/ui/NotificationEntryRow';
 import { PhoneSettings } from './PhoneSettings';
 
 const meta = {
@@ -24,7 +28,7 @@ const meta = {
 export default meta;
 
 /** The header's side of the slot: a settings button, and the state that opens the dialog. */
-function Header(args: { open: boolean; resident?: boolean; push?: boolean }) {
+function Header(args: { open: boolean; resident?: boolean; notification?: boolean }) {
   const [open, setOpen] = useState(args.open);
   const button = useRef<HTMLButtonElement>(null);
   return (
@@ -47,24 +51,15 @@ function Header(args: { open: boolean; resident?: boolean; push?: boolean }) {
             />
           ) : undefined
         }
-        pushRow={
-          args.push ? (
-            <PushEntryRow
-              view="off"
-              support={{
-                secureContext: true,
-                serviceWorker: true,
-                pushManager: true,
-                notification: true,
-                standalone: true,
-                ios: true,
+        notificationRow={
+          args.notification ? (
+            <NotificationEntryRow
+              onOpen={() => {
+                setOpen(false);
+                requestNotificationDialog();
               }}
-              onEnable={() => {}}
-              onDisable={() => {}}
             />
-          ) : (
-            false
-          )
+          ) : undefined
         }
       />
     </>
@@ -124,14 +119,29 @@ export const WithResidentEntry: StoryObj<typeof meta> = {
   },
 };
 
-/** The notifications row, for a phone that opened the board from the Home Screen. */
-export const WithPushEntry: StoryObj<typeof meta> = {
+/**
+ * The phone notifications row below the resident-session row. Choosing it closes the settings and
+ * asks for the dialog, which holds the notification choices and, on the Home Screen app, the
+ * control that turns notifications on.
+ */
+export const WithNotificationEntry: StoryObj<typeof meta> = {
   args: { open: true, onOpenChange: () => {}, restoreFocusRef: { current: null } },
-  render: (args) => <Header open={args.open} push />,
+  render: (args) => <Header open={args.open} notification />,
   play: async ({ canvasElement }) => {
-    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
-    await waitFor(() =>
-      expect(within(dialog).getByRole('button', { name: 'Enable notifications' })).toBeVisible(),
-    );
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole('dialog');
+    // The settings no longer list the notification choices themselves.
+    await expect(within(dialog).queryByRole('checkbox')).toBeNull();
+    let requested = 0;
+    const stop = onNotificationDialogRequest(() => {
+      requested += 1;
+    });
+    try {
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Notification settings' }));
+      await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
+      expect(requested).toBe(1);
+    } finally {
+      stop();
+    }
   },
 };

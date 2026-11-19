@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
-import { NotificationSettings } from '../features/notification-settings/ui/NotificationSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
+import { NotificationSettingsRow } from './notificationSlot';
 import { ResidentSettingsRow } from './residentSlot';
 import { usesRemoteSession } from './remote/session';
 import type { PreferencesEndpoint } from '../shared/preferences';
@@ -25,8 +25,8 @@ const boardPreferences: PreferencesEndpoint | undefined =
 const phoneConnection = () => import.meta.env.MODE !== 'demo' && !usesRemoteSession();
 
 /**
- * The settings dialog of the PC board, the remote connection dialog and the resident-session dialog its entry rows open.
- * The two dialogs are siblings: the settings dialog closes before the connection dialog opens,
+ * The settings dialog of the PC board, the remote connection dialog, and the resident-session and notification dialogs its entry rows open.
+ * The dialogs are siblings: the settings dialog closes before the connection dialog opens,
  * so only one of them is ever on the screen.
  */
 export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsSlotState) {
@@ -43,7 +43,6 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         preferencesEndpoint={boardPreferences}
         extra={
           <>
-            {boardPreferences ? <NotificationSettings /> : null}
             <div className="settings__entries">
               <TutorialEntryRow
                 onStart={() => {
@@ -60,6 +59,9 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 />
               ) : null}
               <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
+              {boardPreferences ? (
+                <NotificationSettingsRow onClose={() => onOpenChange(false)} />
+              ) : null}
             </div>
           </>
         }

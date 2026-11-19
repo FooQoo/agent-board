@@ -151,13 +151,13 @@ An iPhone can receive notifications from the board once the board is on its Home
 1. Open the board's address in Safari on the iPhone and enter the passcode, so that the phone is registered.
 2. Tap Share, choose **Add to Home Screen**, and add it.
 3. Open **Agent Board** from the Home Screen icon, not from Safari.
-4. Open the settings and choose **Enable notifications** under **Notifications**, then allow notifications when iOS asks.
+4. Open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog and allow notifications when iOS asks.
 
-To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab the row only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
+To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab that control only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
 
 ### What you are notified about {#notified-about}
 
-The board sends only what you chose under **Phone notifications** in [Settings](./board.md#settings). At first that is results and questions that need your decision:
+The board sends only what you chose in the **Phone notifications** dialog, which you open from [Settings](./board.md#phone-notifications). At first that is results and questions that need your decision:
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
 - A **question** that needs your decision arrives with a high priority. Tap it to open the card with the question.

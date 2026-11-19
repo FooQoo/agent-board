@@ -156,6 +156,21 @@
           "exclusion": "Only picks whether the row exists and wires it to the dialog request; the PhoneSettings WithResidentEntry story draws the row."
         }
       ]
+    },
+    {
+      "file": "app/notificationSlot.tsx",
+      "exports": [
+        {
+          "name": "NotificationDialogHost",
+          "stories": [],
+          "exclusion": "Only picks whether NotificationHost exists and gives it the push control; it draws nothing of its own."
+        },
+        {
+          "name": "NotificationSettingsRow",
+          "stories": [],
+          "exclusion": "Only picks whether the row exists and wires it to the dialog request; the PhoneSettings WithNotificationEntry story draws the row."
+        }
+      ]
     }
   ]
 }

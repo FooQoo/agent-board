@@ -30,7 +30,7 @@ Keep diagrams focused on one flow. Flowcharts and sequence diagrams retain their
 Regenerate the guide screenshots and the demo videos with the scripts below. Both need the web UI and CLI [built](./getting-started/setup.md#build) first, and the Playwright browser from [Verification](./getting-started/pull-request.md#verification).
 
 ```sh
-node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png (22 images, English and Japanese)
+node e2e/scripts/docs-screenshots.mjs   # docs/images/guide/*.png (24 images, English and Japanese)
 node e2e/scripts/demo-video.mjs         # docs/public/videos/ (also needs ffmpeg)
 ```
 
@@ -82,4 +82,4 @@ node e2e/scripts/readme-screenshots.mjs
 
 The script creates disposable projects in temporary `AGBOARD_HOME` directories, starts its own servers on available loopback ports, and captures the desktop board, the epic progress panel, the board at a tablet width (1024 x 768, behind the remote entrance), and four phone screens (the Doing lane with its tabs, a chosen card slid open to show its buttons, a question with a choice picked, and the bottom drawer) in English and Japanese. It never uses your saved board or port 7420. The browser renders the built UI against the real API; images are not mockups. It checks the four detail tabs, the task editor's folded conditions panel, and browser errors, and removes its temporary data afterwards.
 
-Review all fourteen images in `docs/images/` before committing them, and keep the sample text free of personal data. Screenshots do not replace the regression suite or phone keyboard checks. The guide images in `docs/images/guide/` (22 files) come from the separate script above; review them too when you regenerate them.
+Review all fourteen images in `docs/images/` before committing them, and keep the sample text free of personal data. Screenshots do not replace the regression suite or phone keyboard checks. The guide images in `docs/images/guide/` (24 files) come from the separate script above; review them too when you regenerate them.
