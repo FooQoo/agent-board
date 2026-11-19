@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailTabList, detailPanelId, detailTabId } from '../../../shared/ui/detail-tabs';
-import { TaskAcceptanceTab, TaskBodyTab, TaskHistoryTab } from './MonitorTaskTabs';
+import { TaskAcceptanceTab, TaskBodyTab, TaskHistoryTab, TaskResultsTab } from './MonitorTaskTabs';
 import { MonitorEpicContent } from './MonitorEpicContent';
 import type { Problem } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorDetailTab, MonitorReadResolvers } from '../contracts';
@@ -14,12 +14,15 @@ export function MonitorDrawerPanels({
   onTabChange,
   resolvers,
   problems,
+  focusResultVersion = null,
 }: {
   item: MonitorTask;
   tab: MonitorDetailTab;
   onTabChange(tab: MonitorDetailTab): void;
   resolvers: MonitorReadResolvers;
   problems: readonly (Problem & { projectId: string })[];
+  /** The result version a link points at; the results tab scrolls to it and highlights it. */
+  focusResultVersion?: number | null;
 }) {
   const { t } = useTranslation();
   const idBase = useId();
@@ -41,6 +44,7 @@ export function MonitorDrawerPanels({
   const tabs = [
     { id: 'description' as const, label: t('monitor.body'), icon: null },
     { id: 'acceptance' as const, label: t('detail.tabAcceptance'), icon: null },
+    { id: 'results' as const, label: t('detail.tabResults'), icon: null },
     { id: 'history' as const, label: t('detail.tabHistory'), icon: null },
     { id: 'epic' as const, label: t('monitor.epic'), icon: null },
   ];
@@ -99,6 +103,24 @@ export function MonitorDrawerPanels({
             className="monitor-drawer__panel"
           >
             {drawn('acceptance') && <TaskAcceptanceTab item={item} resolvers={resolvers} />}
+          </div>
+          <div
+            role="tabpanel"
+            id={detailPanelId(idBase, 'results')}
+            ref={panelRef('results')}
+            aria-labelledby={detailTabId(idBase, 'results')}
+            aria-hidden={tab !== 'results'}
+            inert={tab !== 'results'}
+            className="monitor-drawer__panel"
+          >
+            {drawn('results') && (
+              <TaskResultsTab
+                item={item}
+                resolvers={resolvers}
+                active={tab === 'results'}
+                focusVersion={focusResultVersion}
+              />
+            )}
           </div>
           <div
             role="tabpanel"

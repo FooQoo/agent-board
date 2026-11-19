@@ -15,6 +15,7 @@ import './components/monitor-lanes.css';
 import { Freshness } from './components/Freshness';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
+import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
@@ -70,6 +71,12 @@ export function MonitorView(props: MonitorViewProps) {
   const ordered = overlay.lanes;
   const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(tasks);
+  const { resultLink, onResultLinkClose } = props;
+  useResultLinkDrawer(tasks, resultLink ?? null, detail.show);
+  const closeDrawer = (next: boolean) => {
+    detail.close(next);
+    if (!next && resultLink != null) onResultLinkClose?.();
+  };
   const { onDetailOpenChange } = props;
   useEffect(() => {
     onDetailOpenChange?.(detail.open);
@@ -179,7 +186,12 @@ export function MonitorView(props: MonitorViewProps) {
           item={detail.target}
           open={detail.open}
           tab={detail.tab}
-          onOpenChange={detail.close}
+          onOpenChange={closeDrawer}
+          focusResultVersion={
+            resultLink != null && detail.target?.task.id === resultLink.taskId
+              ? resultLink.version
+              : null
+          }
           onTabChange={detail.setTab}
           resolvers={props.readResolvers ?? unconnectedMonitorReadResolvers}
           problems={freshness.snapshotProblems}

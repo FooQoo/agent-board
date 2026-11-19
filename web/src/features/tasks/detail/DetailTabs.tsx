@@ -1,12 +1,18 @@
-import { FileTextIcon, HistoryIcon, LayersIcon, ListChecksIcon } from 'lucide-react';
+import { FileTextIcon, HistoryIcon, InboxIcon, LayersIcon, ListChecksIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DetailTabList, detailPanelId, detailTabId } from '../../../shared/ui/detail-tabs';
 
-/** The four tabs of a card: its description, its history, and the epic it belongs to. */
-export type DetailTab = 'description' | 'acceptance' | 'history' | 'epic';
+/** The tabs of a card: its description, conditions, results, history, and the epic it belongs to. */
+export type DetailTab = 'description' | 'acceptance' | 'results' | 'history' | 'epic';
 
 /** The tabs in the order they are shown, which a sideways flick follows. */
-export const DETAIL_TABS: readonly DetailTab[] = ['description', 'acceptance', 'history', 'epic'];
+export const DETAIL_TABS: readonly DetailTab[] = [
+  'description',
+  'acceptance',
+  'results',
+  'history',
+  'epic',
+];
 
 export function tabId(base: string, tab: DetailTab): string {
   return detailTabId(base, tab);
@@ -16,7 +22,7 @@ export function panelId(base: string, tab: DetailTab): string {
   return detailPanelId(base, tab);
 }
 
-/** The four tabs of the detail column. The card's actions sit in the panel header, not beside the tabs. */
+/** The tabs of the detail column. The card's actions sit in the panel header, not beside the tabs. */
 export function DetailTabs({
   idBase,
   tab,
@@ -47,6 +53,11 @@ export function DetailTabs({
             id: 'acceptance',
             label: t('detail.tabAcceptance'),
             icon: <ListChecksIcon aria-hidden="true" />,
+          },
+          {
+            id: 'results',
+            label: t('detail.tabResults'),
+            icon: <InboxIcon aria-hidden="true" />,
           },
           {
             id: 'history',

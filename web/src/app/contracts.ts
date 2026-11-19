@@ -18,6 +18,7 @@ import type { BoardMessageKind } from '../pages/board/ui/BoardMessage';
 import type { UseProjectsResult } from '../features/projects/model/useProjects';
 import type { MessagesController } from './model/useMessagesController';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
+import type { ResultLinkTarget } from '../features/tasks/results/resultLink';
 import type { ArchivedTask } from '../features/tasks/api/read';
 import type { EpicApi } from '../features/epics/editor/epicApi';
 
@@ -83,6 +84,10 @@ export interface AppControllerModel {
     projectId: string | null,
     options?: { history?: 'push' | 'replace' },
   ) => Promise<unknown>;
+  /** The result a link points at (`?task=…&result=…`), while the link is in the address. */
+  resultLink?: ResultLinkTarget | null;
+  /** Takes the link out of the address, when its target has been shown and closed. */
+  clearResultLink?: () => void;
   restoreFailure: { projectId: ProjectId; taskId: number } | null;
   setRestoreFailure: (value: { projectId: ProjectId; taskId: number } | null) => void;
   projectName: (projectId: ProjectId) => string | undefined;

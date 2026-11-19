@@ -5,7 +5,13 @@ import type { MonitorDetailTab } from '../contracts';
 
 export { shouldIgnoreTabSwipe };
 
-export const TAB_ORDER: MonitorDetailTab[] = ['description', 'acceptance', 'history', 'epic'];
+export const TAB_ORDER: MonitorDetailTab[] = [
+  'description',
+  'acceptance',
+  'results',
+  'history',
+  'epic',
+];
 
 export function useMonitorTabSwipe(
   tab: MonitorDetailTab,

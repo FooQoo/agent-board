@@ -16,7 +16,7 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 | PUT `/api/remote/push/subscription` | sessionとCSRFトークンが必要。ブラウザの`PushSubscription.toJSON()`の本文（`endpoint`と`keys.p256dh`/`keys.auth`、JSONで4 KiBまで）を、sessionの端末のものとして保存し、古いものは置き換える。登録済みの端末がなければ409 `device_required`、公開`https`アドレスでないendpointや不正な鍵は400 `invalid_subscription`、ほかに400 `invalid_json`・413・415。`{"subscribed": true}`を返す。 |
 | DELETE `/api/remote/push/subscription` | sessionとCSRFトークンが必要。端末の購読を削除する（購読がなくても成功）。登録済みの端末がなければ409 `device_required`。 |
 | GET `/manifest.webmanifest`、`/sw.js` | sessionは不要。Webアプリのマニフェストと、ページがWeb Pushを受け取るためのService Worker。ローカルのリスナーでも提供する。 |
-| [Web API](./web-api.md)のそのほかの`/api/`の経路すべて | ボード自身の経路。SummaryとDetail、イベント（`/api/events`）、書き込み、プロジェクトのドキュメント、ガイド、表示設定。読み取りには有効なsessionが必要。変更にはさらに、公開Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Csrf`のCSRFトークンが必要で、クライアントが送った`X-Agboard-Token`は取り除く。 |
+| [Web API](./web-api.md)のそのほかの`/api/`の経路すべて | ボード自身の経路。SummaryとDetail、イベント（`/api/events`）、書き込み、プロジェクトのドキュメント、ガイド、表示設定、スマホの通知設定。読み取りには有効なsessionが必要。変更にはさらに、公開Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Csrf`のCSRFトークンが必要で、クライアントが送った`X-Agboard-Token`は取り除く。 |
 
 - sessionがないとき、ページの殻と上の静的ファイル、sessionの経路、unlockの経路以外はすべて401 `session_required`で、イベントのストリームも同じです。Cookieを設定するのは、正しい合言葉と、登録済みの端末のCookieだけです。
 - PC自身に作用する経路は、sessionがあっても入口には含めません。接続設定（`/api/monitor-connections`とその配下）、`POST /api/notify`、`POST /api/projects/{projectId}/docs/open`は、ここでは404です。
@@ -26,6 +26,25 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 ## プロジェクトの一覧と切り替え
 
 スマホでも、PCと同じ方法でプロジェクトを一覧し、切り替えます。`GET /api/projects`がすべてのプロジェクトを返し、各プロジェクトは`/api/projects/{projectId}/…`（Summary、Detail、イベントなど、[Web API](./web-api.md)のとおり）で読みます。ページはアドレスでプロジェクトを指定し（`/?project=<ProjectId>`）、ボードのアプリがPCと同じように読み取ります。パスにあるProjectIdは読み取り先を選ぶだけで、アクセス権ではありません。合言葉を通ったsessionは、PCにあるすべてのプロジェクトを読めます。
+
+## 成果のリンク
+
+成果のリンクは、ボード自身のページに、対象をクエリで付けたものです。`/?project=<ProjectId>&task=<id>&result=<version>`
+
+| 部分 | 規則 |
+| --- | --- |
+| パス | `/`。対象はパスにもハッシュにも入れません。そのため、ページ本体、解錠のリクエスト、その後の再読み込みのどれでも対象が保たれます。 |
+| `project` | ProjectId（小文字16進32桁）。`?project=`と同じ方法でプロジェクトを選びます。 |
+| `task` | タスクID（正の整数）。 |
+| `result` | そのタスクの成果の版（正の整数。[成果](./files.md#results)を参照）。 |
+
+- **配信。** ページ本体はどのクエリでも配信されます。`GET /`はクエリを無視し、Hostの検査だけを通し、トークンもボードのデータも含みません。そのため成果のリンクは、sessionなしで読み込めます。
+- **合言葉のあと。** `RemoteGate`は合言葉の画面をその場に表示し、あとからボードをマウントします。リダイレクトは行わないのでクエリは失われず、送り先となるアドレスもありません。対象はページ自身だけです。ボードは`task`と`result`をクエリから読みます（`useResultLink`、`web/src/app/model/useResultLink.ts`）。
+- **開く動作。** Summaryにそのタスクが載った時点で、スマホはタスクのドロワーを成果タブで開き、PCのボードはカードを選んで成果タブを開きます。成果までスクロールして強調表示します。値が壊れている、プロジェクトにないタスク、アーカイブ済みのタスクは、通常のボードを開きます。タスクにない版は、あるものの一覧の上に通知を表示します。
+- **消去。** ドロワーを閉じるか別のプロジェクトを選ぶと、アドレスから`task`と`result`が外れるので、再読み込みしても開き直しません。
+- **読み取り。** 成果タブは`GET …/tasks/{id}/results`（[Web API](./web-api.md)を参照）を読みます。SummaryとDetailのストリームは成果を運ばないためです。画像は`GET …/tasks/{id}/attachments/{attachmentId}`から表示します。どちらもsessionの内側にある、ボードの通常のルートです。
+
+**リンクの作り方。** `PublicOrigin::result_link(project_id, task_id, version)`（`src/server/monitor_connection/contracts/access.rs`）を使います。`https://<host>[:port]/?project=<id>&task=<n>&result=<version>`を返し、小文字16進32桁でないプロジェクトや、1未満のタスクまたは版には`None`を返します。Web側にも同じ規則の`resultLinkUrl`（`web/src/features/tasks/results/resultLink.ts`）があります。プッシュ通知は、このURLをクリック先に持たせます。
 
 ## 旧モニターのアドレスは廃止
 
