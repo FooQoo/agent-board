@@ -111,10 +111,14 @@ for (const screen of screens) {
             return box ? box.y + box.height : Infinity;
           })
           .toBeLessThanOrEqual(limit + tolerance);
-        const box = await dialog.boundingBox();
-        if (!box) throw new Error('The dialog did not render.');
-        expect(box.y).toBeGreaterThanOrEqual(-tolerance);
-        expect(box.y + box.height).toBeLessThanOrEqual(limit + tolerance);
+        // The dialog's opening zoom (200ms) can still be running when the keyboard opens, and a box measured
+        // inside it is a few pixels off; wait for the settled frame, which is what a person sees.
+        await expect
+          .poll(async () => {
+            const box = await dialog.boundingBox();
+            return box ? { top: box.y >= -tolerance, bottom: box.y + box.height <= limit + tolerance } : null;
+          })
+          .toEqual({ top: true, bottom: true });
         await expect(dialog.getByRole('button', { name: 'Close', exact: true }).first()).toBeInViewport({ ratio: 1 });
         // The field being typed in keeps a few lines in sight between the header and the footer.
         await expect
