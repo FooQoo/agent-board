@@ -38,6 +38,12 @@ export function mermaidThemeFromCss(root: HTMLElement = document.documentElement
   for (const [name, source] of Object.entries(THEME_SOURCES)) {
     variables[name] = style.getPropertyValue(source.css).trim() || source.fallback;
   }
+  // Mermaid sizes every label with its own default font ("trebuchet ms", verdana, arial). The page
+  // shows the drawing in whatever that resolves to, and Japanese falls back to another font with a
+  // taller line box, so labels were sized for one font and shown in another. Drawing with the font
+  // the page uses keeps the measured box and the shown text the same.
+  const body = getComputedStyle(root.ownerDocument.body ?? root);
+  if (body.fontFamily.trim() !== '') variables.fontFamily = body.fontFamily.trim();
   return { id: JSON.stringify(variables), variables };
 }
 

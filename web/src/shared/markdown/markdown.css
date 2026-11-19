@@ -476,6 +476,9 @@
 
 .md-mermaid__svg svg {
   display: block;
+  /* The ink of a label can reach past the box Mermaid measured for it (the phone's fonts differ
+     from the measuring ones); let it show instead of cutting it at the drawing's edge. */
+  overflow: visible;
   max-width: 100%;
   height: auto;
   margin: 0 auto;

@@ -10,6 +10,7 @@ import {
   cachedMermaid,
   clearMermaidCache,
   mermaidCacheStats,
+  mermaidThemeFromCss,
   renderMermaid,
 } from './mermaid';
 
@@ -57,5 +58,19 @@ describe('Mermaid drawing cache', () => {
     expect(stats.bytes).toBeLessThanOrEqual(MERMAID_CACHE_MAX_BYTES);
     expect(stats.entries).toBeLessThanOrEqual(2);
     render.mockImplementation(async (_id, text) => ({ svg: `<svg>${text}</svg>` }));
+  });
+});
+
+describe('Mermaid theme font', () => {
+  it('draws with the page font so labels are sized in the font they are shown in', () => {
+    const body = { fontFamily: ' system-ui, sans-serif ' };
+    const root = { ownerDocument: { body } } as unknown as HTMLElement;
+    vi.stubGlobal('getComputedStyle', (el: unknown) =>
+      el === body ? body : { getPropertyValue: () => '', fontFamily: '' },
+    );
+    const theme = mermaidThemeFromCss(root);
+    vi.unstubAllGlobals();
+    expect(theme.variables.fontFamily).toBe('system-ui, sans-serif');
+    expect(theme.id).toContain('system-ui');
   });
 });
