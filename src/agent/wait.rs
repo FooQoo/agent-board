@@ -21,6 +21,8 @@ struct Reader<'a> {
     shared: &'a Path,
     name: &'a str,
     id: ProjectId,
+    /// The version the caller holds. A read that differs from it is read again after a pause.
+    after: &'a str,
 }
 
 impl WaitReader for Reader<'_> {
@@ -41,6 +43,10 @@ impl WaitReader for Reader<'_> {
 
     fn project(&self) -> &ProjectId {
         &self.id
+    }
+
+    fn needs_settle(&self, snapshot: &Self::Snapshot) -> bool {
+        snapshot.version != self.after
     }
 }
 
@@ -86,6 +92,7 @@ pub async fn wait_for_change(
         shared: shared_dir,
         name: project,
         id,
+        after: &cursor.version,
     };
     let result = wait_until(shared_dir, &reader, deadline, |snapshot| {
         if snapshot.version == cursor.version {
