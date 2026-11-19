@@ -62,12 +62,23 @@ impl SessionStore {
 
     /// Start a session for this public origin and start generation.
     pub fn issue(&self, origin: &str, epoch: u64) -> std::io::Result<IssuedSession> {
+        self.issue_for(origin, epoch, None)
+    }
+
+    /// Like [`SessionStore::issue`], for a registered device: removing the device ends the session.
+    pub fn issue_for(
+        &self,
+        origin: &str,
+        epoch: u64,
+        device_id: Option<String>,
+    ) -> std::io::Result<IssuedSession> {
         let mut bytes = [0u8; 32];
         getrandom::fill(&mut bytes).map_err(|e| std::io::Error::other(e.to_string()))?;
         let secret: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
         let csrf = csrf_for(&secret);
         let now = self.now();
-        let session = AuthSession::issue(&secret, &csrf, origin, epoch, now, self.ttl_secs);
+        let mut session = AuthSession::issue(&secret, &csrf, origin, epoch, now, self.ttl_secs);
+        session.device_id = device_id;
         let expires_at = session.expires_at;
         let mut sessions = self.lock();
         sessions.retain(|_, s| s.expires_at > now);
@@ -114,6 +125,12 @@ impl SessionStore {
 
     pub fn revoke(&self, secret: &str) {
         self.lock().remove(&secret_hash(secret));
+    }
+
+    /// End every session that was opened for this device.
+    pub fn revoke_device(&self, device_id: &str) {
+        self.lock()
+            .retain(|_, s| s.device_id.as_deref() != Some(device_id));
     }
 
     pub fn len(&self) -> usize {

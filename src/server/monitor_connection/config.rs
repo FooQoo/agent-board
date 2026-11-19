@@ -46,6 +46,14 @@ pub struct ConfigStore {
 }
 
 impl ConfigStore {
+    /// The data area this store is in (the parent of its internal folder).
+    pub fn data_dir(&self) -> &Path {
+        self.path
+            .parent()
+            .and_then(Path::parent)
+            .unwrap_or(Path::new("."))
+    }
+
     pub fn new(data_dir: &Path) -> Self {
         Self {
             path: data_dir.join(INTERNAL_DIR).join(FILE_NAME),
@@ -94,7 +102,7 @@ impl ConfigStore {
     }
 }
 
-fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(super) fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let dir = path
         .parent()
         .ok_or_else(|| std::io::Error::other("no parent folder"))?;
@@ -102,7 +110,11 @@ fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let mut nonce = [0u8; 8];
     getrandom::fill(&mut nonce).map_err(|e| std::io::Error::other(e.to_string()))?;
     let suffix: String = nonce.iter().map(|b| format!("{b:02x}")).collect();
-    let temp = dir.join(format!(".{FILE_NAME}.tmp-{suffix}"));
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(FILE_NAME);
+    let temp = dir.join(format!(".{name}.tmp-{suffix}"));
     let result = (|| -> std::io::Result<()> {
         let mut options = std::fs::OpenOptions::new();
         options.write(true).create_new(true);

@@ -114,7 +114,7 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 
 1. On the phone, open the URL or scan the QR code.
 2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
-3. The monitor opens. The connection lasts up to 12 hours; after that, or when the connection was stopped and started again on the PC, the page asks for the passcode again.
+3. The monitor opens, and this phone is now registered. The passcode is needed only this first time: when the 12-hour session ends, after you pause and resume the connection, or after the PC restarts, the phone opens the board again by itself, as long as it reaches the same address. Registration belongs to the address: without an ngrok domain (see below), ngrok chooses a new address at every start, and a phone registered at the old address is asked for the passcode again. If the PC could not save the registration, the phone gets its session but is asked for the passcode next time. A phone that was never registered, or that you removed, is asked for the passcode.
 
 An address without a project opens the board, and you choose the project with the project switcher in the header. Links that ended in `/monitor/` in earlier versions are not served any more: they show a not-found answer. On the PC, open the remote connection settings and scan the current QR code again.
 
@@ -130,11 +130,17 @@ On ngrok's free plan, the first visit from a phone shows ngrok's warning page. C
 
 Knowing the address is not enough to read the board. A wrong passcode is refused without saying how many tries are left. After 5 wrong passcodes in a row the page says **Too many wrong passcodes** and takes no more; stop the connection on the PC and connect again to get a new passcode. If the page says the connection is stopped, check the PC.
 
-## Stop and connect again
+## Pause and resume
 
-Choose **Stop connection** in the dialog to close the connection. The dialog shows **Stopped**, and the saved token stays on this PC. The phone can no longer read the board or send answers, and the connection stays off the next time Agent Board starts. To connect again with the saved token, choose **Reconnect**. To use another token, choose **Change settings**, paste the token, and choose **Save and connect**.
+Choose **Pause connection** in the dialog to stop public access. The dialog shows **Paused**, and the saved token and the registered phones stay on this PC. No phone can read the board or send answers while it is paused, registered or not, and the connection stays off the next time Agent Board starts. To resume with the saved token, choose **Resume**: registered phones come back without the passcode if the address is the same as when they registered (always with an ngrok domain; without one, ngrok may choose a new address), and a new passcode is made for phones that are not registered yet. To use another token, choose **Change settings**, paste the token, and choose **Save and connect**.
 
-If the connection drops, for example because the PC slept or the network changed, stop it and connect again. To use another token while connected, choose **Reset token**, which shows the setup again, enter the new token, and choose **Save and connect**. This replaces the connection, so the phone has to enter the new passcode. Closing the dialog instead leaves the connection as it was.
+## Registered phones
+
+When a phone has entered the passcode, the dialog shows **Registered phones (n)** next to the status. Choose it to see each phone by a short name such as **iPhone / Safari**, when it was registered, and when it was last used. It works while the connection is paused too.
+
+Choose **Remove** to unregister a phone. It is signed out at once, even in the middle of a session, and has to enter the passcode again. Remove a phone you no longer use, and remove a phone that is lost or stolen right away: a registered phone can open the board without the passcode until you do. A phone is registered by its browser, so clearing the browser's data, or opening the address in another browser, registers it again with the passcode. If you change the ngrok domain, phones registered for the old address are asked for the passcode at the new one.
+
+If the connection drops, for example because the PC slept or the network changed, pause it and resume. To use another token while connected, choose **Reset token**, which shows the setup again, enter the new token, and choose **Save and connect**. This replaces the connection, so the phone has to enter the new passcode. Closing the dialog instead leaves the connection as it was.
 
 When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or this PC's secure storage. Without one, the dialog asks for the token.
 

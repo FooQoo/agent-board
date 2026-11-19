@@ -14,6 +14,7 @@ use axum::response::Response;
 use tokio::sync::watch;
 
 use super::contracts::{ContractError, PublicOrigin};
+use super::devices::DeviceStore;
 use crate::server::monitor_auth::passcode::UnlockGate;
 use crate::server::monitor_auth::session::SessionStore;
 
@@ -27,6 +28,8 @@ pub struct BackendPolicy {
     pub sessions: Arc<SessionStore>,
     /// The passcode of this run and the count of wrong guesses against it.
     pub unlock: Arc<UnlockGate>,
+    /// The registered devices. They outlive the run: the same store serves every start.
+    pub devices: Arc<DeviceStore>,
     revoked: Arc<watch::Sender<bool>>,
 }
 
@@ -42,8 +45,16 @@ impl BackendPolicy {
             epoch,
             sessions,
             unlock,
+            devices: Arc::new(DeviceStore::in_memory()),
             revoked: Arc::new(watch::channel(false).0),
         }
+    }
+
+    /// Use the given registered devices instead of an empty, memory-only list.
+    #[must_use]
+    pub fn with_devices(mut self, devices: Arc<DeviceStore>) -> Self {
+        self.devices = devices;
+        self
     }
 
     /// Ends open streams of this run. Called when the run is closed.

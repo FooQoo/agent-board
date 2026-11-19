@@ -4,10 +4,13 @@ import {
   ConnectionRequestError,
   deleteSavedToken,
   getConnection,
+  getDevices,
+  removeDevice as deleteDevice,
   saveSettings,
   startConnection,
   stopConnection,
   type ConnectionSnapshot,
+  type RegisteredDevice,
 } from './api';
 import type {
   ConnectionDraft,
@@ -27,6 +30,7 @@ const POLL_MS = 1500;
 export function useConnectionController(open: boolean, projectId: string | null = null) {
   const { t } = useTranslation();
   const [snapshot, setSnapshot] = useState<ConnectionSnapshot | null>(null);
+  const [devices, setDevices] = useState<RegisteredDevice[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -41,6 +45,14 @@ export function useConnectionController(open: boolean, projectId: string | null 
       setLoadFailed(false);
     } catch {
       setLoadFailed(true);
+      return;
+    }
+    // The list is secondary: when it cannot be read the dialog keeps what it showed.
+    try {
+      const list = await getDevices();
+      if (!savingRef.current && Array.isArray(list)) setDevices(list);
+    } catch {
+      // Left as it was.
     }
   }, []);
 
@@ -76,6 +88,8 @@ export function useConnectionController(open: boolean, projectId: string | null 
             return t('monitorConnectionPc.error.keychainUnavailable');
           case 'start_failed':
             return t('monitorConnectionPc.error.startFailed');
+          case 'device_not_found':
+            return t('monitorConnectionPc.error.deviceNotFound');
           default:
             return t('monitorConnectionPc.error.unreachable');
         }
@@ -163,6 +177,30 @@ export function useConnectionController(open: boolean, projectId: string | null 
     }
   }, [messageOf]);
 
+  const removeRegisteredDevice = useCallback(
+    async (id: string) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      setSaving(true);
+      setError(null);
+      try {
+        setDevices(await deleteDevice(id));
+      } catch (cause) {
+        setError(messageOf(cause));
+        // The device may already be gone; show what is really registered.
+        try {
+          setDevices(await getDevices());
+        } catch {
+          // Left as it was.
+        }
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    },
+    [messageOf],
+  );
+
   const savedDomain = snapshot?.settings.domain ?? '';
   const draft = useMemo<ConnectionDraft>(
     () => ({ token: '', save: false, domain: savedDomain }),
@@ -206,6 +244,8 @@ export function useConnectionController(open: boolean, projectId: string | null 
     tokenInfo,
     domainEnv: snapshot?.domainEnv ?? null,
     removeToken,
+    devices,
+    removeDevice: removeRegisteredDevice,
     url,
     projectSelected: isProjectIdValue(projectId),
     passcode,

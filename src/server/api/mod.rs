@@ -41,7 +41,6 @@ use epic_attachments::*;
 use epics::*;
 use guards::{host_guard, no_referrer, write_guard};
 use messages::*;
-use monitor_connections::*;
 use onboarding::*;
 use pages::*;
 use projects::*;
@@ -67,21 +66,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         port: state.port,
         token: state.token.clone(),
     };
-    let local_only = Router::new()
-        .route("/api/monitor-connections", get(get_connections))
-        .route(
-            "/api/monitor-connections/settings/ngrok",
-            put(put_ngrok_settings),
-        )
-        .route(
-            "/api/monitor-connections/transports/ngrok/start",
-            post(start_ngrok),
-        )
-        .route(
-            "/api/monitor-connections/transports/ngrok/stop",
-            post(stop_ngrok),
-        )
-        .route("/api/monitor-connections/token", delete(delete_saved_token))
+    let local_only = monitor_connections::routes()
         .route("/api/notify", post(notify))
         .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
         .route(

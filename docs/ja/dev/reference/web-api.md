@@ -215,6 +215,8 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `PUT /api/monitor-connections/settings/ngrok` | `{enabled, revision, domain?}`を保存し、状態を返す。`revision`は最後に読んだ値でなければならない。`domain`は省略でき、省略すると保存済みのドメインを保つ。空文字列で消去する。それ以外はホスト名だけ（スキーム、パス、ポート、ワイルドカードは不可）で、小文字にして保存する。違反は422 `invalid_domain`。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間に保存しても作り直さない。作り直すのは開始だけ。 |
 | `POST /api/monitor-connections/transports/ngrok/start` | 接続を開始し、202で状態（通常は`starting`）を返す。任意の本文は`{token, save}`。`token`はメモリーだけに保持する。`save: true`はこのPCの安全な保管場所（OSの資格情報ストア）にも保存し、`token`が必要。無効な設定は、先に有効として保存する。トンネルが動いている間の開始は、トンネルを作り直す（合言葉も新しくなる）。 |
 | `POST /api/monitor-connections/transports/ngrok/stop` | 接続を停止して無効として保存し、200で状態を返す。 |
+| `GET /api/monitor-connections/devices` | 登録済みの端末を、最後に使われたものが先頭の順で返す。`{"devices":[{"id","label","createdAt","lastSeenAt"}]}`。トークンもそのダイジェストも含まない。接続が一時停止中でも使える。 |
+| `DELETE /api/monitor-connections/devices/{id}` | 端末の登録を解除し、残りの端末を200で返す。その端末の有効なsessionと開いているイベントストリームはすぐに終わる。未知のidは404 `device_not_found`。一覧を保存できなければ何も変えず、500 `save_failed`を返す。 |
 | `DELETE /api/monitor-connections/token` | 安全な保管場所に保存したトークンを削除し、200で状態を返す。何も保存していなくてもエラーにしない。 |
 
 状態のオブジェクトは次のフィールドを持ちます。

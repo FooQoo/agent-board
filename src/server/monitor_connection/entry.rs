@@ -24,6 +24,7 @@ use axum::http::{HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use futures_util::StreamExt;
+use tokio::sync::broadcast;
 
 use self::reply::{forbidden, plain, session_required};
 use self::session::{current_session, open_session, unlock};
@@ -104,7 +105,13 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     request.headers_mut().remove(header::COOKIE);
     let response = next.run(request).await;
     if path == EVENTS_PATH && response.status() == StatusCode::OK {
-        return bound_events(response, &policy, secret, session.expires_at);
+        return bound_events(
+            response,
+            &policy,
+            secret,
+            session.expires_at,
+            session.device_id,
+        );
     }
     response
 }
@@ -117,21 +124,40 @@ fn with_nosniff(mut response: Response) -> Response {
     response
 }
 
+/// Completes when the device the stream belongs to is unregistered. A stream of a session
+/// that was opened with the passcode alone has no device and never completes here. Missing a
+/// notice ends the stream too: the page reconnects and its session decides.
+async fn device_removed(mut removed: broadcast::Receiver<String>, device: Option<String>) {
+    let Some(device) = device else {
+        return std::future::pending().await;
+    };
+    loop {
+        match removed.recv().await {
+            Ok(id) if id != device => {}
+            Err(broadcast::error::RecvError::Closed) => return std::future::pending().await,
+            _ => return,
+        }
+    }
+}
+
 /// Keep an event stream no longer than [`EVENTS_MAX`], the session, or the run.
 fn bound_events(
     response: Response,
     policy: &BackendPolicy,
     secret: String,
     expires_at: u64,
+    device: Option<String>,
 ) -> Response {
     let (parts, body) = response.into_parts();
     let remaining = expires_at.saturating_sub(policy.sessions.now());
     let limit = EVENTS_MAX.min(Duration::from_secs(remaining));
     let mut revoked = policy.revocation();
+    let unregistered = device_removed(policy.devices.subscribe(), device);
     let stop = async move {
         tokio::select! {
             () = tokio::time::sleep(limit) => {}
             _ = revoked.wait_for(|closed| *closed) => {}
+            () = unregistered => {}
         }
     };
     let (sessions, epoch, origin) = (
@@ -193,7 +219,7 @@ mod tests {
         let now = Arc::new(AtomicU64::new(0));
         let p = policy(&now, 1, ORIGIN);
         let issued = p.sessions.issue(ORIGIN, 1).unwrap();
-        let response = bound_events(endless(), &p, issued.secret, issued.expires_at);
+        let response = bound_events(endless(), &p, issued.secret, issued.expires_at, None);
         let (_, took) = run_until_end(response).await;
         assert_eq!(took, EVENTS_MAX);
     }
@@ -205,7 +231,7 @@ mod tests {
         let issued = p.sessions.issue(ORIGIN, 1).unwrap();
         // 30 seconds of life left.
         now.store(1_000 + SESSION_MAX_AGE_SECS - 30, Ordering::SeqCst);
-        let response = bound_events(endless(), &p, issued.secret, issued.expires_at);
+        let response = bound_events(endless(), &p, issued.secret, issued.expires_at, None);
         let (_, took) = run_until_end(response).await;
         assert_eq!(took, Duration::from_secs(30));
     }
@@ -215,7 +241,13 @@ mod tests {
         let now = Arc::new(AtomicU64::new(0));
         let p = policy(&now, 1, ORIGIN);
         let issued = p.sessions.issue(ORIGIN, 1).unwrap();
-        let response = bound_events(endless(), &p, issued.secret.clone(), issued.expires_at);
+        let response = bound_events(
+            endless(),
+            &p,
+            issued.secret.clone(),
+            issued.expires_at,
+            None,
+        );
         let closer = p.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(3500)).await;
@@ -227,7 +259,13 @@ mod tests {
 
         let p = policy(&now, 1, ORIGIN);
         let issued = p.sessions.issue(ORIGIN, 1).unwrap();
-        let response = bound_events(endless(), &p, issued.secret.clone(), issued.expires_at);
+        let response = bound_events(
+            endless(),
+            &p,
+            issued.secret.clone(),
+            issued.expires_at,
+            None,
+        );
         let sessions = p.sessions.clone();
         let secret = issued.secret;
         tokio::spawn(async move {

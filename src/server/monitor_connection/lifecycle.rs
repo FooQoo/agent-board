@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus};
+use super::devices::DeviceStore;
 use super::keychain::TokenVault;
 use super::run::Run;
 pub use super::types::*;
@@ -35,6 +36,8 @@ pub(super) struct Inner {
 
 pub struct MonitorConnections {
     pub(super) store: ConfigStore,
+    /// The registered phones and browsers; kept across stops and starts.
+    pub(super) devices: Arc<DeviceStore>,
     pub(super) connector: Arc<dyn Connector>,
     pub(super) vault: Arc<dyn TokenVault>,
     /// The server's state, given once it exists; the monitor routes read it.
@@ -68,6 +71,7 @@ impl MonitorConnections {
             idle_status(&config, env.token.is_some())
         };
         Arc::new(Self {
+            devices: Arc::new(DeviceStore::open(store.data_dir())),
             store,
             connector,
             vault,

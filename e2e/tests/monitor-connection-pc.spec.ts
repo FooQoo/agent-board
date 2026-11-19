@@ -8,7 +8,7 @@ import {
 } from '../helpers/monitor';
 
 // The PC side of the remote connection: the settings dialog hands over to the connection dialog,
-// the connected view shows the QR code and the passcode, and Reset token and Stop connection lead
+// the connected view shows the QR code and the passcode, and Reset token and Pause connection lead
 // back to the setup. The tunnel is a fake one that opens without any network, so "connected" here
 // proves what the PC dialog shows and does, not a real ngrok connection.
 test.describe.configure({ mode: 'serial' });
@@ -81,11 +81,11 @@ test('Reset token shows the setup without stopping, and closing the dialog keeps
   await expect(page.getByRole('dialog', { name: 'Remote connection' }).getByText('Accepting connections')).toBeVisible();
 });
 
-test('Stop connection returns to the setup, and Save and connect connects again with the saved token', async ({ page }) => {
+test('Pause connection returns to the setup, and Save and connect connects again with the saved token', async ({ page }) => {
   await page.goto(`${entrance.pcOrigin}/`);
   await openConnection(page);
   const dialog = page.getByRole('dialog', { name: 'Remote connection' });
-  await dialog.getByRole('button', { name: 'Stop connection' }).click();
+  await dialog.getByRole('button', { name: 'Pause connection' }).click();
   await expect(dialog.getByText('Not connected')).toBeVisible();
   await expect(dialog.getByLabel('ngrok auth token')).toBeVisible();
   await expect(dialog.getByTestId('passcode')).toHaveCount(0);

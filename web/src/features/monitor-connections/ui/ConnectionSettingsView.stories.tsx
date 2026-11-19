@@ -7,6 +7,7 @@ import { NGROK_TOKEN_URL } from './ConnectionSteps';
 import {
   ConnectionSettingsView,
   type ConnectionDraft,
+  type ConnectionDevice,
   type ConnectionQr,
 } from './ConnectionSettingsView';
 
@@ -24,6 +25,21 @@ const sampleQr: ConnectionQr = {
       '<path d="M46 6v18M46 46h20M56 46v14M80 50v14M46 66v20M62 80h24" stroke-linecap="round"/></svg>',
   )}`,
 };
+
+const phones: ConnectionDevice[] = [
+  {
+    id: 'dev_0123456789abcdef',
+    label: 'iPhone / Safari',
+    createdAt: '2026-11-19T09:00:00Z',
+    lastSeenAt: '2026-11-20T08:30:00Z',
+  },
+  {
+    id: 'dev_fedcba9876543210',
+    label: 'Android / Chrome',
+    createdAt: '2026-11-10T09:00:00Z',
+    lastSeenAt: '2026-11-12T08:30:00Z',
+  },
+];
 
 const meta = {
   title: 'Monitor connections/ConnectionSettingsView',
@@ -137,15 +153,15 @@ export const Stopped: Story = {
     const view = within(document.body);
     const dialog = view.getByRole('dialog') as HTMLElement;
     await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 560]);
-    await expect(view.getByText('Stopped')).toBeInTheDocument();
+    await expect(view.getByText('Paused')).toBeInTheDocument();
     await expect(
-      view.getByRole('heading', { name: 'You can connect again with the saved settings.' }),
+      view.getByRole('heading', { name: 'Public access is paused. Registered phones are kept.' }),
     ).toBeInTheDocument();
     await expect(view.getByText('The saved token will be used.')).toBeInTheDocument();
     await expect(view.queryByLabelText('ngrok auth token')).toBeNull();
     // Both actions are the M size (38px) high and exactly as wide as each other.
     const change = view.getByRole('button', { name: 'Change settings' });
-    const reconnect = view.getByRole('button', { name: 'Reconnect' });
+    const reconnect = view.getByRole('button', { name: 'Resume' });
     await expect(change.offsetHeight).toBe(38);
     await expect(reconnect.offsetHeight).toBe(38);
     await expect(reconnect.offsetWidth).toBe(change.offsetWidth);
@@ -193,7 +209,7 @@ export const Reconnecting: Story = { args: { status: 'reconnecting' } };
 export const Stopping: Story = {
   args: { status: 'stopping', saving: true },
   play: async () => {
-    await expect(within(document.body).getByRole('button', { name: 'Stopping…' })).toBeDisabled();
+    await expect(within(document.body).getByRole('button', { name: 'Pausing…' })).toBeDisabled();
   },
 };
 
@@ -215,7 +231,9 @@ export const Connected: Story = {
     // The copy action is on, because the address of the selected project is there.
     await expect(view.getByRole('button', { name: 'Copy URL' })).toBeEnabled();
     await expect(
-      view.getByText('The passcode changes every time the connection starts.'),
+      view.getByText(
+        'The passcode changes every time the connection starts. A phone needs it only the first time.',
+      ),
     ).toBeInTheDocument();
     await expect(
       view.getByText('Do not share the URL or the passcode with others.'),
@@ -226,7 +244,7 @@ export const Connected: Story = {
     await expect(view.queryByText('Public preview')).toBeNull();
     await userEvent.click(view.getByRole('button', { name: 'Reset token' }));
     await expect(args.onResetToken).toHaveBeenCalled();
-    await userEvent.click(view.getByRole('button', { name: 'Stop connection' }));
+    await userEvent.click(view.getByRole('button', { name: 'Pause connection' }));
     await expect(args.onStop).toHaveBeenCalled();
   },
 };
@@ -242,7 +260,7 @@ export const ConnectedStopping: Story = {
   },
   play: async () => {
     const view = within(document.body);
-    await expect(view.getByRole('button', { name: 'Stopping…' })).toBeDisabled();
+    await expect(view.getByRole('button', { name: 'Pausing…' })).toBeDisabled();
     await expect(view.getByRole('button', { name: 'Reset token' })).toBeDisabled();
   },
 };
@@ -317,4 +335,60 @@ export const ConnectedWithoutProjectJa: Story = {
   args: { status: 'ready', url: null, projectSelected: false, passcode: '4821', qr: null },
   globals: { locale: 'ja' },
   play: noProjectPlay('ja'),
+};
+
+/** Registered phones are one click away in the status line, and the dialog keeps its size. */
+export const ConnectedWithDevices: Story = {
+  args: {
+    status: 'ready',
+    url: phoneUrl,
+    passcode: '4821',
+    qr: sampleQr,
+    devices: phones,
+    onRemoveDevice: fn(),
+  },
+  play: async ({ args }) => {
+    const view = within(document.body);
+    const dialog = view.getByRole('dialog') as HTMLElement;
+    await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 560]);
+    await userEvent.click(view.getByRole('button', { name: 'Registered phones (2)' }));
+    await expect(view.getByRole('heading', { name: 'Registered phones' })).toBeInTheDocument();
+    await expect(view.getByText('iPhone / Safari')).toBeInTheDocument();
+    await expect(view.getByText('Android / Chrome')).toBeInTheDocument();
+    await expect(view.getAllByRole('listitem')).toHaveLength(2);
+    await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 560]);
+    // Removing is per phone and names the phone.
+    await userEvent.click(view.getByRole('button', { name: 'Remove Android / Chrome' }));
+    await expect(args.onRemoveDevice).toHaveBeenCalledWith('dev_fedcba9876543210');
+    await userEvent.click(view.getByRole('button', { name: 'Back' }));
+    await expect(view.getByRole('heading', { name: 'Scan the QR code' })).toBeInTheDocument();
+  },
+};
+
+/** Paused: registered phones are kept and the list says they come back on resume. */
+export const PausedWithDevices: Story = {
+  args: {
+    status: 'disabled',
+    tokenInfo: { source: 'keychain', keychainAvailable: true, saved: true },
+    devices: phones,
+  },
+  play: async () => {
+    const view = within(document.body);
+    await userEvent.click(view.getByRole('button', { name: 'Registered phones (2)' }));
+    await expect(
+      view.getByText('Public access is paused. Registered phones come back when you resume.'),
+    ).toBeInTheDocument();
+    await expect(view.getByRole('button', { name: 'Remove iPhone / Safari' })).toBeEnabled();
+  },
+};
+
+/** The list in Japanese, in the same frame. */
+export const ConnectedWithDevicesJa: Story = {
+  globals: { locale: 'ja' },
+  args: { status: 'ready', url: phoneUrl, passcode: '4821', qr: sampleQr, devices: phones },
+  play: async () => {
+    const view = within(document.body);
+    await userEvent.click(view.getByRole('button', { name: '登録済みのスマホ（2）' }));
+    await expect(view.getByRole('button', { name: 'iPhone / Safariの登録を解除' })).toBeEnabled();
+  },
 };

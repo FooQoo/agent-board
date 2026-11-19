@@ -60,6 +60,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   .internal/monitor-connection.json
   .internal/notification-settings.json
   .internal/preferences.json
+  .internal/remote-devices.json
   .internal/resident-autostart.json
 ```
 
@@ -232,6 +233,30 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 | `domain` | 省略できる。エンドポイントを要求するngrokのドメインで、小文字のホスト名だけ。開始のたびに公開アドレスが同じになる。保存していないときは書かない。ホスト名でない値は、読み込み時に無視する。環境変数`AGBOARD_NGROK_DOMAIN`があるときはそちらを使い、ファイルには書かない。 |
 
 ファイルには、ngrokのトークン、スマホの合言葉、session、CSRFトークンを入れません。利用者が保存を選んだトークンは、代わりにこのPCの安全な保管場所（OSの資格情報ストア。service `agent-board`、account `ngrok-authtoken`）に置きます。`monitor/config.json`はありません。
+
+## 登録済みの端末
+
+合言葉を入力したスマホやブラウザの登録は、`<データ領域>/.internal/remote-devices.json`に保存します。設定ファイルと同じく、アプリのものです。書くのは入口とPCのダイアログだけで、所有者だけが読み書きできる権限でatomicに置き換え、共有領域には含まれません。一時停止・再起動・更新のあとも残ります。
+
+```json
+{
+  "formatVersion": 1,
+  "devices": [
+    {
+      "id": "dev_0123456789abcdef",
+      "tokenHash": "<端末トークンのSHA-256（16進数）>",
+      "label": "iPhone / Safari",
+      "origin": "https://example.ngrok-free.dev",
+      "createdAt": "2026-11-19T09:00:00Z",
+      "lastSeenAt": "2026-11-20T08:30:00Z"
+    }
+  ]
+}
+```
+
+- `tokenHash`が端末トークンの唯一の痕跡です。トークン自体はスマホのCookieにだけあり、ほかにはありません。`origin`は端末を登録した公開アドレスで、別のアドレスで示されたCookieは一致しません。
+- `label`は、端末を見分けるためだけの、ブラウザの`User-Agent`から作る短い名前です。`lastSeenAt`は、sessionなしで端末が戻ったときに更新します。
+- 読めないファイル、または`formatVersion`が違うファイルは、空の一覧として扱います。登録し直すまで端末は受け付けず、次の変更で新しいファイルを書きます。保持するのは最大32台です。
 
 ## スマホの通知設定
 

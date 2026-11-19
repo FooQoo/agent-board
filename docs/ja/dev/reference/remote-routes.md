@@ -10,11 +10,11 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 | --- | --- |
 | GET/HEAD `/` | ボードのページ。PCと同じHTMLで、`meta[name=agboard-token]`は空。トークン・session・ボードのデータは含まない。ngrokの警告ページで**Visit Site**を押すとこのアドレスに戻る。 |
 | GET/HEAD `/assets/{name}`、`/logo.png`、`/logo-white.png`、`/docs-sandbox`、`/docs-sandbox/{name}` | 内容で名前を付けたスクリプトとスタイルシート、ロゴ、固定のDocsサンドボックスのページ。どれもトークンやボードのデータを持たないので、入口の検査は通すがsessionは要らない。 |
-| GET `/api/remote/session` | Cookieの有効なsessionを知らせ、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。有効なsessionがなければ401 `session_required`で、sessionは開始しない。クロスサイトの`Sec-Fetch-Site`は403。 |
-| POST `/api/remote/unlock` | 合言葉をsessionと交換する。本文はJSONの`{"code":"1234"}`で256バイトまで。公開Originと`Sec-Fetch-Site: same-origin`が必要で、CSRFトークンは要らない。正しければCookie`agboard_ngrok_session`（`Path=/`）を設定し、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。間違いは手がかりを示さない403 `unlock_failed`。連続5回間違えたあとは、正しい合言葉も含むすべての試行が、接続を開始し直すまで429 `unlock_locked`になる。Originやフェッチサイトの不備は403 `forbidden`、JSONと宣言されていない本文は415、256バイトを超える本文は413、解釈できない本文は400（どれも推測として数えない）。 |
+| GET `/api/remote/session` | Cookieの有効なsessionを知らせ、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。有効なsessionがなくても、有効な`agboard_ngrok_device`のCookie（登録済みの端末で、この公開アドレスに結び付く）があれば、ここで合言葉なしに新しいsessionを開き、同じ本文で200を返し、`agboard_ngrok_session`のCookieと更新した端末Cookieを設定する。なければ401 `session_required`で、何も設定しない。クロスサイトの`Sec-Fetch-Site`は403。 |
+| POST `/api/remote/unlock` | 合言葉をsessionと交換する。本文はJSONの`{"code":"1234"}`で256バイトまで。公開Originと`Sec-Fetch-Site: same-origin`が必要で、CSRFトークンは要らない。正しければCookie`agboard_ngrok_session`（`Path=/`）と、ブラウザが登録済みの端末のCookieをまだ持っていなければ新しい`agboard_ngrok_device`（`Secure; HttpOnly; SameSite=Lax; Path=/`、`Max-Age=34560000`）を設定し、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。間違いは手がかりを示さない403 `unlock_failed`。連続5回間違えたあとは、正しい合言葉も含むすべての試行が、接続を開始し直すまで429 `unlock_locked`になる。Originやフェッチサイトの不備は403 `forbidden`、JSONと宣言されていない本文は415、256バイトを超える本文は413、解釈できない本文は400（どれも推測として数えない）。 |
 | [Web API](./web-api.md)のそのほかの`/api/`の経路すべて | ボード自身の経路。SummaryとDetail、イベント（`/api/events`）、書き込み、プロジェクトのドキュメント、ガイド、表示設定、スマホの通知設定。読み取りには有効なsessionが必要。変更にはさらに、公開Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Csrf`のCSRFトークンが必要で、クライアントが送った`X-Agboard-Token`は取り除く。 |
 
-- sessionがないとき、ページの殻と上の静的ファイル、sessionの経路、unlockの経路以外はすべて401 `session_required`で、イベントのストリームも同じです。Cookieを設定するのは、正しい合言葉だけです。
+- sessionがないとき、ページの殻と上の静的ファイル、sessionの経路、unlockの経路以外はすべて401 `session_required`で、イベントのストリームも同じです。Cookieを設定するのは、正しい合言葉と、登録済みの端末のCookieだけです。
 - PC自身に作用する経路は、sessionがあっても入口には含めません。接続設定（`/api/monitor-connections`とその配下）、`POST /api/notify`、`POST /api/projects/{projectId}/docs/open`は、ここでは404です。
 - ローカルのリスナーには`/api/remote/`はなく、Host・Origin・トークンの検査は変わりません。
 - イベントのストリームは、sessionの終了・実行の終了・5分で終わります（ページが再接続します）。

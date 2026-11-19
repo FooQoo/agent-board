@@ -113,6 +113,26 @@
               "id": "monitor-connections-connectionsettingsview--connected-without-project-ja",
               "states": ["japanese wording of the no-project state"],
               "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-with-devices",
+              "states": [
+                "registered phones link in the status line",
+                "device list in place of the connected view",
+                "remove action per phone",
+                "dialog keeps its size"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--paused-with-devices",
+              "states": ["paused view keeps registered phones", "paused note in the list"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-with-devices-ja",
+              "states": ["japanese wording of the device list"],
+              "interaction": true
             }
           ]
         }
@@ -324,6 +344,45 @@
                 "copy action off",
                 "note in place of the QR code"
               ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettings--unregister-device",
+              "states": [
+                "device list from the local API",
+                "remove calls the delete route",
+                "list shrinks after removal"
+              ],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/monitor-connections/ui/ConnectionDevices.tsx",
+      "exports": [
+        {
+          "name": "ConnectionDevices",
+          "stories": [
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-with-devices",
+              "states": [
+                "registered phones link in the status line",
+                "device list in place of the connected view",
+                "remove action per phone",
+                "dialog keeps its size"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--paused-with-devices",
+              "states": ["paused view keeps registered phones", "paused note in the list"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--connected-with-devices-ja",
+              "states": ["japanese wording of the device list"],
               "interaction": true
             }
           ]

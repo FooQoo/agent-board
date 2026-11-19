@@ -7,10 +7,17 @@ import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
 import '../../../shared/styles/modal.css';
 import './connection.css';
 import { progressText } from './connectionProgress';
-import type { ConnectionDraft, ConnectionQr, ConnectionStatus, TokenInfo } from './connectionTypes';
+import type {
+  ConnectionDevice,
+  ConnectionDraft,
+  ConnectionQr,
+  ConnectionStatus,
+  TokenInfo,
+} from './connectionTypes';
+import { ConnectionDevices } from './ConnectionDevices';
 import { ConnectionReadySteps, ConnectionSetupSteps } from './ConnectionSteps';
 
-export type { ConnectionDraft, ConnectionQr, ConnectionStatus, TokenInfo };
+export type { ConnectionDevice, ConnectionDraft, ConnectionQr, ConnectionStatus, TokenInfo };
 
 export interface ConnectionSettingsViewProps {
   open: boolean;
@@ -32,6 +39,10 @@ export interface ConnectionSettingsViewProps {
   domainEnv?: string | null;
   /** Delete the token saved in this PC's secure storage. */
   onDeleteToken?: () => void;
+  /** The phones registered with the passcode; they open the board without it. */
+  devices?: ConnectionDevice[];
+  /** Unregister a phone: its sessions end at once. */
+  onRemoveDevice?: (id: string) => void;
   /** A message about the last start or save, shown with the form. */
   error?: string | null;
   /** A save or stop request is in flight. */
@@ -61,6 +72,8 @@ export function ConnectionSettingsView({
   tokenInfo = { source: null, keychainAvailable: true, saved: false },
   domainEnv = null,
   onDeleteToken,
+  devices = [],
+  onRemoveDevice,
   error = null,
   saving = false,
   onConnect,
@@ -70,6 +83,7 @@ export function ConnectionSettingsView({
   const { t } = useTranslation();
   const [values, setValues] = useState<ConnectionDraft>(draft);
   const [copied, setCopied] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
 
   // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
   useEffect(
@@ -83,11 +97,14 @@ export function ConnectionSettingsView({
   }, [copied]);
 
   const connected = status === 'ready';
-  // Stopped with a token saved: the dialog offers to connect again with it, without typing it.
+  // Paused with a token saved: the dialog offers to resume with it, without typing it, and keeps
+  // the registered phones.
   const stopped = status === 'disabled' && tokenInfo.saved;
   const busy =
     saving || status === 'starting' || status === 'reconnecting' || status === 'stopping';
   const progress = progressText(status, t);
+  // The list is shown in place of the connected or paused view, so the dialog keeps its size.
+  const showDevices = devicesOpen && (connected || stopped);
   const message = status === 'failed' ? (error ?? t('monitorConnection.failedTitle')) : error;
 
   const submit = (event: FormEvent) => {
@@ -144,10 +161,31 @@ export function ConnectionSettingsView({
             : stopped
               ? t('monitorConnection.statusStopped')
               : t('monitorConnection.statusOff')}
+          {(connected || stopped) && devices.length > 0 && !showDevices && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="s"
+              className="connection-dialog__devices-link"
+              onClick={() => setDevicesOpen(true)}
+            >
+              {t('monitorConnection.devices.open', { count: devices.length })}
+            </Button>
+          )}
         </p>
-        {!stopped && <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>}
+        {!stopped && !showDevices && (
+          <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>
+        )}
 
-        {connected ? (
+        {showDevices ? (
+          <ConnectionDevices
+            devices={devices}
+            paused={!connected}
+            busy={busy}
+            onRemove={onRemoveDevice}
+            onBack={() => setDevicesOpen(false)}
+          />
+        ) : connected ? (
           <div className="connection-dialog__main">
             <div className="connection-dialog__body">
               <ConnectionReadySteps
