@@ -3,14 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { ImageOffIcon, LinkIcon, Maximize2Icon } from 'lucide-react';
 import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
 import type { TaskResult } from '../../../shared/api/contracts';
+import { openableUrl } from './openableUrl';
 import { formatShort } from '../model/format';
 import type { TaskResultsState } from './useTaskResults';
 import './results.css';
 
 /**
  * The results tab: what an agent delivered for the task, newest first. Each one shows its kind,
- * time, summary, image (tap to enlarge), and link text. The link is shown as text because the
- * artifact may exist only on the PC. `focusVersion` is scrolled to and highlighted.
+ * time, summary, image (tap to enlarge), and link. The link is text, because the artifact may exist
+ * only on the PC, unless it is an http(s) URL, which opens in a new tab. `focusVersion` is scrolled to and highlighted.
  */
 export function ResultsView({
   state,
@@ -145,7 +146,7 @@ function ResultItem({
         <p className="results__link">
           <LinkIcon aria-hidden="true" />
           <span className="results__link-label">{t('results.link')}</span>
-          <span className="results__link-text">{result.link}</span>
+          <ResultLinkText link={result.link} />
         </p>
       )}
       {zoom && result.attachmentId !== undefined && (
@@ -157,5 +158,20 @@ function ResultItem({
         </Lightbox>
       )}
     </li>
+  );
+}
+
+function ResultLinkText({ link }: { link: string }) {
+  const href = openableUrl(link);
+  if (href === null) return <span className="results__link-text">{link}</span>;
+  return (
+    <a
+      className="results__link-text results__link-anchor"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {link}
+    </a>
   );
 }

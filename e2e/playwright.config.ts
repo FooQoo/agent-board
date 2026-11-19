@@ -39,6 +39,6 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
     // The WebKit engine (Safari's), for the phone address checks behind ngrok's warning page.
-    { name: 'webkit-iphone', testMatch: /entrance-address\.spec\.ts$/, use: { ...devices['iPhone 13'] } },
+    { name: 'webkit-iphone', testMatch: /(entrance-address|result-link)\.spec\.ts$/, use: { ...devices['iPhone 13'] } },
   ],
 });
