@@ -94,7 +94,7 @@ export const FourTabs: Story = {
   play: async () => {
     const dialog = within(await within(document.body).findByRole('dialog'));
     const tabs = dialog.getAllByRole('tab');
-    await expect(tabs).toHaveLength(4);
+    await expect(tabs).toHaveLength(5);
     await expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     await expect(await dialog.findByText('Work')).toBeInTheDocument();
     await userEvent.click(dialog.getByRole('tab', { name: /History/ }));
@@ -120,7 +120,7 @@ export const LoadingDetail: Story = {
   args: { options: { detailDelayMs: 600_000 } },
   play: async () => {
     const dialog = within(await within(document.body).findByRole('dialog'));
-    await expect(dialog.getAllByRole('tab')).toHaveLength(4);
+    await expect(dialog.getAllByRole('tab')).toHaveLength(5);
     await expect(await dialog.findByRole('status', { name: 'Loading details…' })).toBeVisible();
   },
 };
@@ -143,7 +143,7 @@ export const DetailFailure: Story = {
     const dialog = within(await within(document.body).findByRole('dialog'));
     await expect(await dialog.findByRole('alert')).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Retry' })).toBeEnabled();
-    await expect(dialog.getAllByRole('tab')).toHaveLength(4);
+    await expect(dialog.getAllByRole('tab')).toHaveLength(5);
   },
 };
 
