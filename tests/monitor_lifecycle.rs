@@ -378,6 +378,33 @@ fn a_keychain_that_waits_for_the_user_does_not_hold_up_startup() {
 }
 
 #[test]
+fn a_keychain_that_never_answers_does_not_keep_a_stopped_server_running() {
+    // The keychain read is still waiting for the user when the server is asked to stop. The run
+    // must end anyway instead of waiting for that blocking thread with no limit.
+    let home = fixture();
+    {
+        let s = Server::start(home.path(), env_opts());
+        assert_eq!(s.put(true, 0).status, 200);
+    }
+    let vault = MockVault::new(Some(TOKEN), true);
+    let (release, held) = std::sync::mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(held);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.get()["status"], "starting");
+    let began = Instant::now();
+    drop(s);
+    let took = began.elapsed();
+    drop(release);
+    assert!(took < Duration::from_secs(10), "stopping took {took:?}");
+}
+
+#[test]
 fn asking_for_the_settings_while_the_keychain_waits_for_the_user_holds_up_nothing() {
     // The setting is disabled (nothing restores at startup) and the token is
     // only in the keychain, which does not answer: a prompt nobody has clicked.

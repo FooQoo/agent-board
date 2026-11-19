@@ -226,6 +226,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
         instance::remove_serve_info_of(&serve_path, pid);
         result
     });
+    runtime.shutdown_timeout(Duration::from_secs(3)); // A drop waits on stuck blocking threads.
     drop(lifecycle);
     ended
 }
