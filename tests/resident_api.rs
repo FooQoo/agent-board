@@ -7,6 +7,7 @@ mod common;
 
 use std::os::unix::fs::PermissionsExt;
 use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use tempfile::{TempDir, tempdir};
@@ -44,6 +45,18 @@ fn project_id(server: &Running) -> String {
     projects["projects"][0]["id"].as_str().unwrap().to_string()
 }
 
+/// The session list once the launched session is in it, waiting up to five seconds.
+fn board_session_listed(server: &Running, base: &str) -> Value {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let listed = server.get(base).json();
+        if listed["counts"]["total"] != 0 || Instant::now() >= deadline {
+            return listed;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 #[test]
 fn a_session_is_launched_listed_refused_twice_and_stopped() {
     fake_claude();
@@ -70,7 +83,13 @@ fn a_session_is_launched_listed_refused_twice_and_stopped() {
 
     let listed = server.get(&base).json();
     assert_eq!(listed["launched"][0]["tool"], "claude-code");
-    assert_eq!(listed["counts"]["total"], 0);
+    // The launched session joins the list as a board session once it reports its first event.
+    let listed = board_session_listed(&server, &base);
+    assert_eq!(listed["counts"]["total"], 1);
+    assert_eq!(listed["counts"]["byOrigin"]["board"], 1);
+    let session = &listed["sessions"][0];
+    assert_eq!(session["origin"], "board");
+    assert!(session["id"].as_str().unwrap().starts_with("resident:"));
 
     let again = server.write(
         "POST",
@@ -83,13 +102,9 @@ fn a_session_is_launched_listed_refused_twice_and_stopped() {
     let stopped = server.write("POST", &format!("{base}/stop"), Some("{}"));
     assert_eq!(stopped.status, 200);
     assert_eq!(stopped.json()["stopped"], true);
-    assert_eq!(
-        server.get(&base).json()["launched"]
-            .as_array()
-            .unwrap()
-            .len(),
-        0
-    );
+    let after_stop = server.get(&base).json();
+    assert_eq!(after_stop["launched"].as_array().unwrap().len(), 0);
+    assert_eq!(after_stop["counts"]["total"], 0);
 
     let relaunched = server.write(
         "POST",
