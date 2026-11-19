@@ -258,6 +258,27 @@ The phones and browsers that entered the passcode keep their registration in `<d
 - `label` is a short name from the browser's `User-Agent`, only to tell devices apart. `lastSeenAt` is updated when the device comes back without a session.
 - A file that cannot be read, or has another `formatVersion`, is treated as an empty list: no device is accepted until it is registered again, and the next change writes a new file. At most 32 devices are kept.
 
+## Web Push subscriptions
+
+The Web Push subscription of each registered device is kept in `<data-root>/.internal/push-subscriptions.json`, and the VAPID key pair that identifies this board to push services in `<data-root>/.internal/vapid-key.json`. Both belong to the application: written only by the entrance and the PC's device removal, replaced atomically with owner-only permissions, and not part of the shared area. They stay across a pause, a restart, and an update.
+
+```json
+{
+  "formatVersion": 1,
+  "subscriptions": [
+    {
+      "deviceId": "dev_0123456789abcdef",
+      "endpoint": "https://web.push.apple.com/...",
+      "p256dh": "<unpadded base64url, 65 bytes>",
+      "auth": "<unpadded base64url, 16 bytes>",
+      "createdAt": "2026-11-19T01:00:00Z"
+    }
+  ]
+}
+```
+
+`vapid-key.json` is `{"formatVersion": 1, "pkcs8": "<base64url PKCS#8 private key>"}`; the private key is never sent anywhere except as a signature. There is one subscription per device id. An unreadable subscription file is treated as empty, and a lost key file is replaced by a new key pair, which drops the subscriptions made for the old one.
+
 ## Phone notification settings
 
 Which notifications the phone receives are saved in `<data-root>/.internal/notification-settings.json`. Like the preferences file, it belongs to the application: it is written only by `PUT /api/notification-settings`, is not in `shared/`, and is replaced atomically with owner-only permissions (`0600` where the OS has them).

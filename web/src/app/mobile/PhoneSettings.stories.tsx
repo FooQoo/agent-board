@@ -9,6 +9,7 @@ import {
   requestResidentDialog,
   onResidentDialogRequest,
 } from '../../features/resident-sessions/events';
+import { PushEntryRow } from '../../features/push-notifications/ui/PushEntryRow';
 import { PhoneSettings } from './PhoneSettings';
 
 const meta = {
@@ -23,7 +24,7 @@ const meta = {
 export default meta;
 
 /** The header's side of the slot: a settings button, and the state that opens the dialog. */
-function Header(args: { open: boolean; resident?: boolean }) {
+function Header(args: { open: boolean; resident?: boolean; push?: boolean }) {
   const [open, setOpen] = useState(args.open);
   const button = useRef<HTMLButtonElement>(null);
   return (
@@ -45,6 +46,25 @@ function Header(args: { open: boolean; resident?: boolean }) {
               }}
             />
           ) : undefined
+        }
+        pushRow={
+          args.push ? (
+            <PushEntryRow
+              view="off"
+              support={{
+                secureContext: true,
+                serviceWorker: true,
+                pushManager: true,
+                notification: true,
+                standalone: true,
+                ios: true,
+              }}
+              onEnable={() => {}}
+              onDisable={() => {}}
+            />
+          ) : (
+            false
+          )
         }
       />
     </>
@@ -101,5 +121,17 @@ export const WithResidentEntry: StoryObj<typeof meta> = {
     } finally {
       stop();
     }
+  },
+};
+
+/** The notifications row, for a phone that opened the board from the Home Screen. */
+export const WithPushEntry: StoryObj<typeof meta> = {
+  args: { open: true, onOpenChange: () => {}, restoreFocusRef: { current: null } },
+  render: (args) => <Header open={args.open} push />,
+  play: async ({ canvasElement }) => {
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Enable notifications' })).toBeVisible(),
+    );
   },
 };

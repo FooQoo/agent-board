@@ -144,6 +144,19 @@ If the connection drops, for example because the PC slept or the network changed
 
 When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or this PC's secure storage. Without one, the dialog asks for the token.
 
+## Get notifications on an iPhone
+
+An iPhone can receive notifications from the board once the board is on its Home Screen. No other notification app or account is needed.
+
+1. Open the board's address in Safari on the iPhone and enter the passcode, so that the phone is registered.
+2. Tap Share, choose **Add to Home Screen**, and add it.
+3. Open **Agent Board** from the Home Screen icon, not from Safari.
+4. Open the settings and choose **Enable notifications** under **Notifications**, then allow notifications when iOS asks.
+
+To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab the row only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
+
+This page only turns notifications on for a phone; the board does not send any yet.
+
 ## Check that ngrok keeps no traffic content
 
 ngrok's Traffic Inspector can keep request details if **Full Capture** is turned on for your account. Agent Board cannot turn it off for you. In the ngrok dashboard, open **Settings** → **Observability** and confirm that Full Capture is disabled. Do this before you use the monitor.

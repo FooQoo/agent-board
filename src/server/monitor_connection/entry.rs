@@ -12,6 +12,7 @@
 //! passcode of the run are the whole of the entrance, and the passcode is the
 //! only thing that opens a session. No board token is ever sent through here.
 
+mod push;
 mod reply;
 mod session;
 
@@ -44,7 +45,11 @@ fn is_public(method: &Method, path: &str) -> bool {
     }
     matches!(
         path,
-        "/" | "/logo.png" | "/logo-white.png" | "/docs-sandbox"
+        "/" | "/logo.png"
+            | "/logo-white.png"
+            | "/manifest.webmanifest"
+            | "/sw.js"
+            | "/docs-sandbox"
     ) || path.starts_with("/assets/")
         || path.starts_with("/docs-sandbox/")
 }
@@ -101,6 +106,9 @@ async fn entry(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
     let changing = !matches!(*request.method(), Method::GET | Method::HEAD);
     if changing && check_write(request.headers(), &policy.origin, &session).is_err() {
         return forbidden();
+    }
+    if path == push::PUSH_PATH || path.starts_with("/api/remote/push/") {
+        return push::handle(&policy, &session, request).await;
     }
     request.headers_mut().remove(header::COOKIE);
     let response = next.run(request).await;

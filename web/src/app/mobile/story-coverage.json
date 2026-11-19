@@ -13,6 +13,16 @@
       ]
     },
     {
+      "file": "app/mobile/pushRow.tsx",
+      "exports": [
+        {
+          "name": "PushSettingsRow",
+          "stories": [],
+          "exclusion": "PushSettingsRow only wires PushEntryRow to the remote entrance's push routes and shows nothing elsewhere; the row it renders has its own Stories."
+        }
+      ]
+    },
+    {
       "file": "app/mobile/PhoneSettings.tsx",
       "exports": [
         {
@@ -34,6 +44,11 @@
                 "one-line summary",
                 "choosing it closes the settings and asks for the dialog"
               ],
+              "interaction": true
+            },
+            {
+              "id": "app-mobile-phone-settings--with-push-entry",
+              "states": ["notifications row below the resident session row", "enable button"],
               "interaction": true
             }
           ]

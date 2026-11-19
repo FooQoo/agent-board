@@ -19,6 +19,7 @@ mod messages;
 mod messages_send;
 pub(crate) mod notification_settings;
 pub(crate) mod preferences;
+mod pwa;
 pub mod monitor_auth {
     pub mod contracts;
     pub mod guard;
