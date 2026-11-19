@@ -58,6 +58,8 @@ On a pull request, a newer commit cancels the run in progress. On `main`, a run 
 
 CodeRabbit reports only problems that must be fixed before merging, mainly bugs, and does not suggest optional improvements. It also checks that a change in behavior updates the documentation in the same pull request, and that a changed test is explained as an intended change of the specification or as a fix to the test. Lock files and other generated files are left out of the review. Treat its comments as suggestions: fix what is right, and reply with the reason when you do not.
 
+Wait for CodeRabbit before you merge. A Major or Critical finding makes it request changes, and it approves once those threads are resolved; the `CodeRabbit` status shows while the review runs. Check every finding against the current code, then fix it and point to the commit, or reply with the reason you leave it. When the change is too large and CodeRabbit skips the review, CI alone decides. `main` has no branch protection, so these rules are kept by the person merging, not enforced by GitHub.
+
 Check that the Rust and web jobs pass before you merge, and run `pnpm --dir e2e test` locally when the change affects the app. When the E2E job fails, its traces are attached to the run as the `e2e-results-<shard>` artifact of the shard that failed.
 
 The Rust tests run with [cargo-nextest](https://nexte.st/) (`cargo install cargo-nextest --locked`). Each test runs in its own process, and `.config/nextest.toml` stops a test that runs longer than two minutes. `TZ=UTC cargo test` still works, but it runs each test binary's tests in one process and has no time limit.
