@@ -2,6 +2,7 @@ import { AcceptanceTabView } from '../../../features/tasks/detail/AcceptanceTabV
 import { HistoryTimeline } from '../../../features/tasks/history/HistoryTimeline';
 import type { Problem } from '../../../shared/api/contracts';
 import { useTaskDetail } from '../../../shared/data/react';
+import { ResultsTab } from '../../../features/tasks/results/ResultsTab';
 import type { MonitorReadResolvers, MonitorTask } from '../contracts';
 import { attachmentResolver } from './attachment-resolver';
 import { MonitorDocument } from './MonitorDocument';
@@ -88,5 +89,29 @@ export function TaskHistoryTab({
         />
       )}
     </MonitorSection>
+  );
+}
+
+/** The results tab: read from the results route while it is shown, and again when a history entry lands. */
+export function TaskResultsTab({
+  item,
+  resolvers,
+  active,
+  focusVersion,
+}: TabProps & {
+  resolvers: MonitorReadResolvers;
+  active: boolean;
+  focusVersion?: number | null;
+}) {
+  const detail = useTaskDetail(item.projectId, item.task.id);
+  return (
+    <ResultsTab
+      projectId={item.projectId}
+      taskId={item.task.id}
+      active={active}
+      refreshKey={(detail.history.data ?? detail.history.partial)?.items.length}
+      attachmentUrl={(id) => resolvers.attachmentUrl(item.projectId, item.task.id, id)}
+      focusVersion={focusVersion}
+    />
   );
 }

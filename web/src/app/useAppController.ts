@@ -12,6 +12,7 @@ import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
 import { useMessagesController } from './model/useMessagesController';
 import { useStreamSubscriptions } from './model/useStreamSubscriptions';
+import { useLinkedTaskSelection, useResultLink } from './model/useResultLink';
 import { findTask, nextSelection } from '../features/tasks/model/board';
 import { isProjectId } from './model/projectSession';
 import { STALE_PAGE_EVENT } from './api';
@@ -33,6 +34,7 @@ const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
 export function useAppController(initial: AppInitial | undefined): AppControllerModel {
   const [requested, setRequested] = useQueryState('project', parseAsString);
   const { session, dispatch, operations } = useProjectSession(requested, initial?.select ?? null);
+  const link = useResultLink(requested, setRequested);
   const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
   const projects = useProjects();
   const activeId = session.activeProjectId;
@@ -88,6 +90,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   const messages = useMessagesController(activeId, boardData?.messages ?? null);
 
   const selected = findTask(tasks, session.selectedId);
+  useLinkedTaskSelection(link.resultLink, boardData, session, dispatch);
   const archivedSelected =
     archive.data?.tasks.find((task) => task.id === session.archiveSelectedId) ?? null;
   const activeName = projects.projects.find((project) => project.id === activeId)?.name ?? null;
@@ -278,7 +281,9 @@ export function useAppController(initial: AppInitial | undefined): AppController
     loadTask,
     loadEpic,
     isTaskListed,
-    setRequested,
+    setRequested: link.selectRequested,
+    resultLink: link.resultLink,
+    clearResultLink: link.clearResultLink,
     restoreFailure,
     setRestoreFailure,
     projectName: (projectId) => projects.projects.find((project) => project.id === projectId)?.name,

@@ -53,6 +53,24 @@ mod tests {
     use url::Url;
 
     #[test]
+    fn a_result_link_names_the_project_task_and_version_in_the_query() {
+        let origin = PublicOrigin::parse("https://abc.ngrok-free.app").unwrap();
+        let project = "0123456789abcdef0123456789abcdef";
+        assert_eq!(
+            origin.result_link(project, 12, 3).as_deref(),
+            Some(
+                "https://abc.ngrok-free.app/?project=0123456789abcdef0123456789abcdef&task=12&result=3"
+            )
+        );
+        assert_eq!(origin.result_link("nope", 12, 3), None);
+        assert_eq!(origin.result_link(&project.to_uppercase(), 12, 3), None);
+        assert_eq!(origin.result_link(project, 0, 3), None);
+        assert_eq!(origin.result_link(project, 12, 0), None);
+        assert_eq!(origin.result_link(project, 9_007_199_254_740_992, 1), None);
+        assert!(origin.result_link(project, 10_000_000_000, 1).is_some());
+    }
+
+    #[test]
     fn status_and_config_serialize_to_the_contract_names() {
         let names: Vec<String> = [
             ConnectionStatus::Disabled,

@@ -679,6 +679,19 @@ fn projects_are_listed_and_switched_through_the_entrance_as_on_the_pc() {
         assert!(!page.body.contains("Only in the second project"));
     }
 
+    // A result link adds the task and the result version to the same query. The shell is the same
+    // page with no token or board data, and it needs no session, so the passcode screen can keep the
+    // whole address.
+    let link = server.request(
+        "GET",
+        &format!("/?project={first}&task=3&result=2"),
+        &[],
+        "",
+    );
+    assert_eq!(link.status, 200);
+    assert!(link.body.contains("name=\"agboard-token\" content=\"\""));
+    assert!(!link.body.contains("Only in the second project"));
+
     // Without a session neither the list nor a project is readable.
     assert_eq!(server.request("GET", "/api/projects", &[], "").status, 401);
     assert_eq!(
