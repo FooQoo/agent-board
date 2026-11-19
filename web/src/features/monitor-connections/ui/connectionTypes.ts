@@ -20,6 +20,16 @@ export interface TokenInfo {
   saved: boolean;
 }
 
+/** A phone or browser registered with the passcode, as the PC lists it. */
+export interface ConnectionDevice {
+  id: string;
+  /** A short name made from the browser's User-Agent, such as "iPhone / Safari". */
+  label: string;
+  /** RFC 3339 times. */
+  createdAt: string;
+  lastSeenAt: string;
+}
+
 /** The QR code of the phone URL, as an image the caller already rendered. */
 export interface ConnectionQr {
   /** An image URL (a data URL is fine). */

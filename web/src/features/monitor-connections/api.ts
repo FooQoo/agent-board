@@ -53,10 +53,20 @@ export class ConnectionRequestError extends Error {
 
 const BASE = '/api/monitor-connections';
 
-async function request(
+/** A phone or browser registered with the passcode. Never carries the device token. */
+export interface RegisteredDevice {
+  id: string;
+  /** A short name made from the browser's User-Agent, such as "iPhone / Safari". */
+  label: string;
+  /** RFC 3339 times. */
+  createdAt: string;
+  lastSeenAt: string;
+}
+
+async function request<T = ConnectionSnapshot>(
   path: string,
   init: { method: 'GET' | 'PUT' | 'POST' | 'DELETE'; body?: unknown },
-): Promise<ConnectionSnapshot> {
+): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -86,7 +96,7 @@ async function request(
     }
     throw new ConnectionRequestError(response.status, code);
   }
-  return (await response.json()) as ConnectionSnapshot;
+  return (await response.json()) as T;
 }
 
 export const getConnection = () => request(BASE, { method: 'GET' });
@@ -115,3 +125,16 @@ export const stopConnection = () => request(`${BASE}/transports/ngrok/stop`, { m
 
 /** Deletes the token saved in the secure storage; a connection that is running is not touched. */
 export const deleteSavedToken = () => request(`${BASE}/token`, { method: 'DELETE', body: {} });
+
+/** The registered devices, the one used last first. */
+export const getDevices = async () =>
+  (await request<{ devices: RegisteredDevice[] }>(`${BASE}/devices`, { method: 'GET' })).devices;
+
+/** Unregisters a device: its live sessions end at once. Resolves to the devices that are left. */
+export const removeDevice = async (id: string) =>
+  (
+    await request<{ devices: RegisteredDevice[] }>(`${BASE}/devices/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: {},
+    })
+  ).devices;

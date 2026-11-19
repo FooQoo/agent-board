@@ -293,6 +293,78 @@
   line-height: 1.6;
 }
 
+/* The registered phones: a link in the status line, and the list that replaces the view. */
+.connection-dialog .connection-dialog__devices-link {
+  margin-left: auto;
+}
+
+.connection-dialog__devices {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.connection-dialog__devices h3 {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.connection-dialog__devices p {
+  margin: 0;
+  color: var(--r-text2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.connection-dialog__device-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.connection-dialog__device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--r-border);
+}
+
+.connection-dialog__device:last-child {
+  border-bottom: 1px solid var(--r-border);
+}
+
+.connection-dialog__device-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.connection-dialog__device-name {
+  color: var(--r-text);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.connection-dialog__device-meta {
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* A rule, then the actions: the connect button alone, or the notice and the two actions. */
 .connection-dialog__footer {
   display: flex;

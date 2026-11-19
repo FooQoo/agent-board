@@ -29,6 +29,8 @@ export function ConnectionSettings({
       tokenInfo={controller.tokenInfo}
       domainEnv={controller.domainEnv}
       onDeleteToken={() => void controller.removeToken()}
+      devices={controller.devices}
+      onRemoveDevice={(id) => void controller.removeDevice(id)}
       url={controller.url}
       projectSelected={controller.projectSelected}
       passcode={controller.passcode}

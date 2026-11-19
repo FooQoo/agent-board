@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
-import type { ConnectionSnapshot } from '../api';
+import type { ConnectionSnapshot, RegisteredDevice } from '../api';
 import { ConnectionSettings } from './ConnectionSettings';
 
 /** The scheme is joined here so the source keeps no literal remote address. */
@@ -39,10 +39,13 @@ function mockApi(
     outcome?: 'ready' | 'failed' | 'hold';
     conflict?: boolean;
     saveFails?: boolean;
+    /** The phones registered with the passcode. */
+    devices?: RegisteredDevice[];
   } = {},
 ): Mock {
   let snapshot = initial;
   let pending: ConnectionSnapshot | null = null;
+  let devices = options.devices ?? [];
   const calls: Mock['calls'] = [];
   const original = window.fetch;
   const reply = (status: number, body: unknown) =>
@@ -58,6 +61,11 @@ function mockApi(
     const method = init?.method ?? 'GET';
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
     calls.push({ line: `${method} ${path}`, body });
+    if (path.endsWith('/devices') && method === 'GET') return reply(200, { devices });
+    if (path.includes('/devices/') && method === 'DELETE') {
+      devices = devices.filter((device) => !path.endsWith(`/${device.id}`));
+      return reply(200, { devices });
+    }
     if (method === 'GET') {
       if (pending) {
         snapshot = pending;
@@ -206,11 +214,9 @@ export const StopConnection: Story = {
   beforeEach: install(connectedWithSavedToken),
   play: async () => {
     const view = within(document.body);
-    await userEvent.click(await view.findByRole('button', { name: 'Stop connection' }));
-    await waitFor(() =>
-      expect(view.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument(),
-    );
-    await expect(view.getByText('Stopped')).toBeInTheDocument();
+    await userEvent.click(await view.findByRole('button', { name: 'Pause connection' }));
+    await waitFor(() => expect(view.getByRole('button', { name: 'Resume' })).toBeInTheDocument());
+    await expect(view.getByText('Paused')).toBeInTheDocument();
     // The passcode belonged to the connection that ended and is not shown any more.
     await expect(view.queryByTestId('passcode')).toBeNull();
     await expect(mock?.calls.map((call) => call.line)).toContain(
@@ -354,7 +360,7 @@ export const ConnectWithSavedToken: Story = {
   beforeEach: install(savedToken),
   play: async () => {
     const view = within(document.body);
-    await userEvent.click(await view.findByRole('button', { name: 'Reconnect' }));
+    await userEvent.click(await view.findByRole('button', { name: 'Resume' }));
     await expect(await connectedView(view)).toBeInTheDocument();
     const start = mock?.calls.find((call) => call.line.includes('/start'));
     await expect(start?.body).toBeUndefined();
@@ -457,5 +463,39 @@ export const NoProjectSelected: Story = {
     );
     await expect(view.queryByRole('img', { name: 'QR code for the phone URL' })).toBeNull();
     await expect(view.getByRole('button', { name: 'Copy URL' })).toBeDisabled();
+  },
+};
+
+const phones: RegisteredDevice[] = [
+  {
+    id: 'dev_0123456789abcdef',
+    label: 'iPhone / Safari',
+    createdAt: '2026-11-19T09:00:00Z',
+    lastSeenAt: '2026-11-20T08:30:00Z',
+  },
+  {
+    id: 'dev_fedcba9876543210',
+    label: 'Android / Chrome',
+    createdAt: '2026-11-10T09:00:00Z',
+    lastSeenAt: '2026-11-12T08:30:00Z',
+  },
+];
+
+/** Registered phones are listed from the connected view, and removing one calls the delete route. */
+export const UnregisterDevice: Story = {
+  beforeEach: install(connectedWithSavedToken, { devices: phones }),
+  play: async () => {
+    const view = within(document.body);
+    await userEvent.click(await view.findByRole('button', { name: 'Registered phones (2)' }));
+    await expect(view.getByText('Android / Chrome')).toBeInTheDocument();
+    await userEvent.click(view.getByRole('button', { name: 'Remove iPhone / Safari' }));
+    await waitFor(() => expect(view.queryByText('iPhone / Safari')).toBeNull());
+    await expect(view.getByText('Android / Chrome')).toBeInTheDocument();
+    await expect(mock?.calls.map((call) => call.line)).toContain(
+      'DELETE /api/monitor-connections/devices/dev_0123456789abcdef',
+    );
+    await userEvent.click(view.getByRole('button', { name: 'Back' }));
+    await expect(view.getByRole('button', { name: 'Registered phones (1)' })).toBeInTheDocument();
+    await expect(view.getByRole('button', { name: 'Pause connection' })).toBeInTheDocument();
   },
 };
