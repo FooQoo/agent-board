@@ -4,9 +4,9 @@ import useEmblaCarousel from 'embla-carousel-react';
 export interface SwipePagesOptions {
   /**
    * Whether a press on `target` must not move the pages (a control, a text selection, an element
-   * with a sideways swipe of its own). `root` is the viewport.
+   * with a sideways swipe of its own). `root` is the viewport, and `event` the press itself.
    */
-  ignore?: (target: Element | null, root: HTMLElement) => boolean;
+  ignore?: (target: Element | null, root: HTMLElement, event: Event) => boolean;
   /**
    * Where the slide's progress, from 0 (first page) to 1 (last), is written on every frame as the
    * CSS variable `progressVar`. A tab marker reads it to follow the finger without a render.
@@ -46,7 +46,8 @@ export function useSwipePages<Page extends string>(
     loop: false,
     watchFocus: false,
     startIndex,
-    watchDrag: (api, event) => !ignoreRef.current?.(event.target as Element | null, api.rootNode()),
+    watchDrag: (api, event) =>
+      !ignoreRef.current?.(event.target as Element | null, api.rootNode(), event),
   });
   const ready = useRef<typeof carousel>(undefined);
 

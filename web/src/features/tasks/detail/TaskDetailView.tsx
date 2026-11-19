@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTabFlick } from '../../../shared/lib/gesture/tabSwipe';
+import { shouldIgnoreTabSwipe } from '../../../shared/lib/gesture/tabSwipe';
+import { useSwipePages } from '../../../shared/lib/gesture/useSwipePages';
 import { stateLabel } from '../model/format';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
 import type { SectionSnapshot } from '../../../shared/data/core';
@@ -49,9 +50,17 @@ export interface TaskDetailViewProps {
   /** Lets the person check and uncheck the conditions; without it they are read-only. */
   onToggleCondition?: (conditionId: string, done: boolean) => Promise<unknown>;
   toolbar?: ReactNode;
-  /** Switches the tabs by a sideways flick of a finger or a pen (the PC board on a tablet). */
-  flickTabs?: boolean;
+  /**
+   * Lays the tabs' pages side by side and slides them with a finger or a pen, as the phone's task
+   * drawer does (the PC board on a tablet). A mouse still selects text.
+   */
+  swipeTabs?: boolean;
   children?: ReactNode;
+}
+
+/** A press of a mouse: it selects text and drags nothing. */
+function isMouse(event: Event): boolean {
+  return event.type.startsWith('mouse') || (event as PointerEvent).pointerType === 'mouse';
 }
 
 /** Side-effect-free shared card display. Optional children are PC-only operations supplied by its host. */
@@ -79,12 +88,17 @@ export function TaskDetailView({
   readOnlyDraft = true,
   onToggleCondition,
   toolbar,
-  flickTabs = false,
+  swipeTabs = false,
   children,
 }: TaskDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
-  const flick = useTabFlick(DETAIL_TABS, tab, onTabChange, flickTabs);
+  const carouselRef = useSwipePages(DETAIL_TABS, tab, onTabChange, {
+    ignore: (target, root, event) =>
+      isMouse(event) ||
+      Boolean(window.getSelection()?.toString()) ||
+      shouldIgnoreTabSwipe(target, root),
+  });
   // The active panel scrolls the document; a long one is drawn only near the viewport.
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const panelRef = (id: DetailTab) => (tab === id ? setScroller : undefined);
@@ -102,13 +116,60 @@ export function TaskDetailView({
       : epics === undefined && !epicsFailed
         ? 'loading'
         : 'failed';
+  const content = (id: DetailTab): ReactNode => {
+    switch (id) {
+      case 'description':
+        return (
+          <BodyDocumentView
+            document={document}
+            onRetry={() => onRetryDocument?.()}
+            acceptanceError={task.acceptanceError ?? false}
+            problems={ownProblems}
+            projectId={projectId}
+            taskId={task.id}
+            attachmentUrl={attachmentUrl}
+            scrollParent={tab === id ? scroller : null}
+          />
+        );
+      case 'epic':
+        return (
+          <EpicTabView
+            projectId={projectId}
+            epic={epic}
+            status={epicStatus}
+            document={epicDocument}
+            onRetry={onRetryEpics}
+            onRetryDocument={onRetryEpicDocument}
+            scrollParent={tab === id ? scroller : null}
+            renderEpicLabel={renderEpicLabel}
+            onOpenEpic={onOpenEpic}
+          />
+        );
+      case 'history':
+        return (
+          <DetailSectionView snapshot={history} onRetry={() => onRetryHistory?.()}>
+            {(data) => <HistoryTimeline events={data.items} resolveAttachment={attachmentUrl} />}
+          </DetailSectionView>
+        );
+      case 'acceptance':
+        return (
+          <DetailSectionView snapshot={document} onRetry={() => onRetryDocument?.()}>
+            {(data) => (
+              <AcceptanceTabView
+                task={{
+                  acceptance: data.acceptance,
+                  acceptanceError: task.acceptanceError ?? false,
+                }}
+                onToggle={onToggleCondition}
+                resolveAttachment={attachmentUrl}
+              />
+            )}
+          </DetailSectionView>
+        );
+    }
+  };
   return (
-    <aside
-      className="detail detail-view"
-      aria-label={t('detail.title')}
-      data-tab-flick={flickTabs || undefined}
-      {...flick}
-    >
+    <aside className="detail detail-view" aria-label={t('detail.title')}>
       <DetailHeader
         identity={
           <>
@@ -143,86 +204,41 @@ export function TaskDetailView({
         historyCount={(history.data ?? history.partial)?.items.length}
         onChange={onTabChange}
       />
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'description')}
-        aria-labelledby={tabId(idBase, 'description')}
-        hidden={tab !== 'description'}
-        ref={panelRef('description')}
-      >
-        {tab === 'description' && (
-          <BodyDocumentView
-            document={document}
-            onRetry={() => onRetryDocument?.()}
-            acceptanceError={task.acceptanceError ?? false}
-            problems={ownProblems}
-            projectId={projectId}
-            taskId={task.id}
-            attachmentUrl={attachmentUrl}
-            scrollParent={scroller}
-          />
-        )}
-      </div>
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'epic')}
-        aria-labelledby={tabId(idBase, 'epic')}
-        hidden={tab !== 'epic'}
-        ref={panelRef('epic')}
-      >
-        {tab === 'epic' && (
-          <EpicTabView
-            projectId={projectId}
-            epic={epic}
-            status={epicStatus}
-            document={epicDocument}
-            onRetry={onRetryEpics}
-            onRetryDocument={onRetryEpicDocument}
-            scrollParent={scroller}
-            renderEpicLabel={renderEpicLabel}
-            onOpenEpic={onOpenEpic}
-          />
-        )}
-      </div>
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'history')}
-        aria-labelledby={tabId(idBase, 'history')}
-        hidden={tab !== 'history'}
-        ref={panelRef('history')}
-      >
-        {tab === 'history' && (
-          <DetailSectionView snapshot={history} onRetry={() => onRetryHistory?.()}>
-            {(data) => <HistoryTimeline events={data.items} resolveAttachment={attachmentUrl} />}
-          </DetailSectionView>
-        )}
-      </div>
-      <div
-        className="detail__viewport"
-        role="tabpanel"
-        id={panelId(idBase, 'acceptance')}
-        aria-labelledby={tabId(idBase, 'acceptance')}
-        hidden={tab !== 'acceptance'}
-        ref={panelRef('acceptance')}
-      >
-        {tab === 'acceptance' && (
-          <DetailSectionView snapshot={document} onRetry={() => onRetryDocument?.()}>
-            {(data) => (
-              <AcceptanceTabView
-                task={{
-                  acceptance: data.acceptance,
-                  acceptanceError: task.acceptanceError ?? false,
-                }}
-                onToggle={onToggleCondition}
-                resolveAttachment={attachmentUrl}
-              />
-            )}
-          </DetailSectionView>
-        )}
-      </div>
+      {swipeTabs ? (
+        <div className="detail__pages" ref={carouselRef}>
+          <div className="detail__track">
+            {DETAIL_TABS.map((id) => (
+              <div
+                key={id}
+                className="detail__viewport detail__page"
+                role="tabpanel"
+                id={panelId(idBase, id)}
+                aria-labelledby={tabId(idBase, id)}
+                aria-hidden={tab !== id}
+                inert={tab !== id}
+                ref={panelRef(id)}
+              >
+                {/* The neighbours are drawn too, so a swipe shows them while it moves. */}
+                {Math.abs(DETAIL_TABS.indexOf(id) - DETAIL_TABS.indexOf(tab)) <= 1 && content(id)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        DETAIL_TABS.map((id) => (
+          <div
+            key={id}
+            className="detail__viewport"
+            role="tabpanel"
+            id={panelId(idBase, id)}
+            aria-labelledby={tabId(idBase, id)}
+            hidden={tab !== id}
+            ref={panelRef(id)}
+          >
+            {tab === id && content(id)}
+          </div>
+        ))
+      )}
     </aside>
   );
 }

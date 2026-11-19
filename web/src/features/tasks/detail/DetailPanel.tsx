@@ -215,7 +215,7 @@ function DetailBody({
       onRetryEpicDocument={() => void epicDetail.refresh()}
       tab={tab}
       onTabChange={setTab}
-      flickTabs
+      swipeTabs
       onClose={onClose}
       epics={epics}
       epicsFailed={epicsFailed}

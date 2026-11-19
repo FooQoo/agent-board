@@ -435,6 +435,22 @@
 }
 
 /* A sideways flick switches the tabs on a tablet, so the browser keeps only vertical panning there. */
-.detail-view[data-tab-flick] .detail__viewport {
+/* The tabs' pages side by side (TaskDetailView with swipeTabs): one on screen, slid by a finger. */
+.detail__pages {
+  flex: 1 1 0;
+  min-height: 160px;
+  overflow: hidden;
   touch-action: pan-y pinch-zoom;
+}
+
+.detail__track {
+  display: flex;
+  height: 100%;
+}
+
+.detail__viewport.detail__page {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  margin-right: 0;
 }

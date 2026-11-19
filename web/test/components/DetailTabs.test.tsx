@@ -87,10 +87,8 @@ describe('tabs', () => {
       'detail__title',
       'detail__meta',
       'detail__tabs',
-      'detail__viewport',
-      'detail__viewport',
-      'detail__viewport',
-      'detail__viewport',
+      // The four tab panels sit side by side in one strip a finger slides.
+      'detail__pages',
     ]);
   });
 });
@@ -202,10 +200,8 @@ describe('toolbar', () => {
       'detail__title',
       'detail__meta',
       'detail__tabs',
-      'detail__viewport',
-      'detail__viewport',
-      'detail__viewport',
-      'detail__viewport',
+      // The four tab panels sit side by side in one strip a finger slides.
+      'detail__pages',
     ]);
     const top = container.querySelector('.detail__top') as HTMLElement;
     const toolbar = within(top).getByRole('toolbar');
