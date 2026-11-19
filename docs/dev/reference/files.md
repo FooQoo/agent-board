@@ -136,6 +136,7 @@ choices:
   - { id: delete, label: Delete them }
   - { id: keep, label: Keep them }
 recommended: keep
+askedBy: resident-3f9a1c0e5b7d2a46
 reply:
   choice: keep
   via: ui
@@ -174,6 +175,7 @@ Fields of a question:
 | `tasks` | Optional. The task numbers the question was asked for. It is kept in step with those tasks' `questions` by `message link` and `message unlink`. |
 | `choices` | Optional. 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. Without choices, the question is answered with text. |
 | `recommended` | Optional. One choice ID. |
+| `askedBy` | Optional. The launch ID (`AGBOARD_RESIDENT_ID`) of the board-launched session that asked the question; `message ask` writes it when the variable is set. The board uses it to push the answer back to that session. A question an external session asks has none. |
 | `reply` | `null` until answered. `choice` is never set when the question has no choices, and with choices at least one of `choice` and `text` is set; `text` is 1 to 2,000 characters and required when there are no choices; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. `acceptedAt` is optional: absent or `null` until an agent takes the answer in, then when it did. |
 
 Fields of a request:

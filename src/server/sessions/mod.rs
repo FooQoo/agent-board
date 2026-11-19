@@ -119,20 +119,7 @@ impl SessionRegistry {
             .map(|((_, key), entry)| view(key, entry, wall))
             .collect();
         sessions.sort_by(|a, b| (a.connected_at, &a.id).cmp(&(b.connected_at, &b.id)));
-        let mut counts = Counts::default();
-        for session in &sessions {
-            counts.total += 1;
-            counts.connected += usize::from(session.state == State::Connected);
-            match session.tool {
-                Tool::ClaudeCode => counts.by_tool.claude_code += 1,
-                Tool::Codex => counts.by_tool.codex += 1,
-                Tool::Unknown => counts.by_tool.unknown += 1,
-            }
-            match session.origin {
-                Origin::Board => counts.by_origin.board += 1,
-                Origin::External => counts.by_origin.external += 1,
-            }
-        }
+        let counts = Counts::of(&sessions);
         SessionList { sessions, counts }
     }
 

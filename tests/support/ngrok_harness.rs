@@ -1,4 +1,4 @@
-//! A fake-connector harness for the ngrok monitor connection: a real server on
+//! A mock-connector harness for the ngrok monitor connection: a real server on
 //! loopback whose tunnel is opened by a connector that never touches the network.
 
 #![allow(dead_code)]
@@ -33,7 +33,7 @@ pub struct Call {
 }
 
 #[derive(Default)]
-pub struct Fake {
+pub struct MockConnector {
     pub calls: Mutex<Vec<Call>>,
     pub opens: AtomicUsize,
     pub fail: Mutex<bool>,
@@ -43,7 +43,7 @@ pub struct Fake {
     pub public: Mutex<Option<String>>,
 }
 
-impl Connector for Fake {
+impl Connector for MockConnector {
     fn open(&self, request: OpenRequest) -> OpenFuture {
         self.opens.fetch_add(1, Ordering::SeqCst);
         self.calls.lock().unwrap().push(Call {
@@ -153,7 +153,7 @@ pub fn request(
 pub struct Server {
     pub local: std::net::SocketAddr,
     pub token: String,
-    pub fake: Arc<Fake>,
+    pub mock: Arc<MockConnector>,
     pub ready: Option<MonitorReady>,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<JoinHandle<Result<(), AgboardError>>>,
@@ -161,7 +161,7 @@ pub struct Server {
 
 /// A keychain in memory: saved tokens, a switch to make it unusable, and a count
 /// of reads so a test can show the keychain was left alone.
-pub struct FakeVault {
+pub struct MockVault {
     saved: Mutex<Option<String>>,
     usable: bool,
     pub loads: AtomicUsize,
@@ -170,7 +170,7 @@ pub struct FakeVault {
     pub hold: Mutex<Option<mpsc::Receiver<()>>>,
 }
 
-impl FakeVault {
+impl MockVault {
     pub fn new(saved: Option<&str>, usable: bool) -> Arc<Self> {
         Arc::new(Self {
             saved: Mutex::new(saved.map(str::to_owned)),
@@ -184,7 +184,7 @@ impl FakeVault {
     }
 }
 
-impl TokenVault for FakeVault {
+impl TokenVault for MockVault {
     fn available(&self) -> bool {
         self.usable
     }
@@ -216,19 +216,19 @@ impl TokenVault for FakeVault {
 }
 
 pub struct Opts {
-    pub vault: Arc<FakeVault>,
+    pub vault: Arc<MockVault>,
     pub env_token: bool,
     pub explicit: bool,
-    pub fake: Arc<Fake>,
+    pub mock: Arc<MockConnector>,
 }
 
 impl Default for Opts {
     fn default() -> Self {
         Self {
-            vault: FakeVault::new(None, true),
+            vault: MockVault::new(None, true),
             env_token: false,
             explicit: false,
-            fake: Arc::new(Fake::default()),
+            mock: Arc::new(MockConnector::default()),
         }
     }
 }
@@ -243,7 +243,7 @@ impl Server {
                 token: opts.env_token.then(|| Secret::new(TOKEN)),
             },
             explicit: opts.explicit,
-            connector: opts.fake.clone(),
+            connector: opts.mock.clone(),
             vault: opts.vault.clone(),
         };
         let handle = std::thread::spawn(move || {
@@ -269,7 +269,7 @@ impl Server {
         Ok(Self {
             local,
             token: token(&page),
-            fake: opts.fake,
+            mock: opts.mock,
             ready,
             stop: Some(started.stop),
             handle: Some(started.handle),

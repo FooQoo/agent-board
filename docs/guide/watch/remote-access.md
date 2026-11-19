@@ -6,10 +6,6 @@ title: Remote access
 
 Remote access opens the board from another device when you are away from your desk, most often a phone. Use it to check progress and to answer an agent's question. This page explains what the phone screen shows, how to connect it with ngrok, and how to check that it works.
 
-::: info Public preview
-This feature is in public preview. Its behavior and specifications may change. See [Feature stages](../feature-stages#remote-access) for its current limitations.
-:::
-
 ## What the monitor shows
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.

@@ -42,11 +42,11 @@ pub fn home() -> tempfile::TempDir {
 
 /// Records the newest tunnel request instead of opening a tunnel.
 #[derive(Default)]
-struct RecordingConnector {
+struct MockConnector {
     last: Mutex<Option<SocketAddr>>,
 }
 
-impl Connector for RecordingConnector {
+impl Connector for MockConnector {
     fn open(&self, request: OpenRequest) -> OpenFuture {
         let addr = request
             .backend
@@ -88,7 +88,7 @@ impl Running {
         let data_dir = home.to_path_buf();
         let (ready_tx, ready_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel();
-        let connector = Arc::new(RecordingConnector::default());
+        let connector = Arc::new(MockConnector::default());
         let seen = connector.clone();
         let handle = std::thread::spawn(move || {
             let mut options = MonitorOptions::without_keychain(

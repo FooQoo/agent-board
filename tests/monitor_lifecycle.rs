@@ -1,5 +1,5 @@
 //! The ngrok monitor connection over its whole life, over real HTTP on loopback:
-//! starting, stopping, changing, restarting and failing, with a fake connector
+//! starting, stopping, changing, restarting and failing, with a mock connector
 //! standing in for the tunnel. No test reaches ngrok.
 //!
 //! The tests speak to the dedicated backend as the Edge would (the public Host;
@@ -59,7 +59,7 @@ fn env_opts() -> Opts {
     }
 }
 
-/// A running server whose fake tunnel is the newest one the connector opened.
+/// A running server whose mock tunnel is the newest one the connector opened.
 struct Tunnel {
     s: Server,
     path: PathBuf,
@@ -108,12 +108,12 @@ impl Tunnel {
         if let Some(code) = self.s.get()["passcode"].as_str() {
             self.passcode = code.to_string();
         }
-        let calls = self.s.fake.calls.lock().unwrap();
+        let calls = self.s.mock.calls.lock().unwrap();
         let call = calls.last().unwrap();
         self.backend = backend_addr(call);
         self.public = self
             .s
-            .fake
+            .mock
             .public
             .lock()
             .unwrap()
@@ -222,10 +222,10 @@ impl Tunnel {
 
     /// Start the connection again, which replaces the tunnel, and wait for the new one.
     fn replace_tunnel(&mut self) {
-        let before = self.s.fake.opens.load(Ordering::SeqCst);
+        let before = self.s.mock.opens.load(Ordering::SeqCst);
         assert_eq!(self.s.start_ngrok(json!({})).status, 202);
         let end = Instant::now() + Duration::from_secs(10);
-        while self.s.fake.opens.load(Ordering::SeqCst) <= before {
+        while self.s.mock.opens.load(Ordering::SeqCst) <= before {
             assert!(Instant::now() < end, "the tunnel was not replaced");
             std::thread::sleep(Duration::from_millis(20));
         }
@@ -309,19 +309,19 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
         let s = Server::start(home.path(), env_opts());
         assert!(s.local.ip().is_loopback());
         assert_eq!(s.get()["status"], "disabled");
-        assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+        assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
         // Saving the setting, even as enabled, is not a start.
         assert_eq!(s.put(true, 0).status, 200);
         std::thread::sleep(Duration::from_millis(200));
-        assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+        assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
         assert_ne!(s.get()["status"], "ready");
     }
     // The saved, enabled setting is restored by the next plain run, and then
     // the dedicated backend is on loopback, apart from the PC entrance.
     let s = Server::start(home.path(), env_opts());
     s.wait_status("ready");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
-    let backend = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 1);
+    let backend = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
     assert!(backend.ip().is_loopback());
     assert_ne!(backend.port(), s.local.port());
     drop(s);
@@ -329,7 +329,7 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
     // Saved and enabled but no token: nothing starts; the PC entrance serves.
     let s = Server::start(home.path(), Opts::default());
     s.wait_status("needs_config");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     assert_eq!(request(s.local, "GET", "/", &[], "").status, 200);
     drop(s);
 
@@ -341,7 +341,7 @@ fn the_tunnel_starts_only_when_asked_or_restored_and_every_listener_is_loopback(
     drop(s);
     let s = Server::start(home.path(), env_opts());
     assert_eq!(s.get()["status"], "disabled");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
 }
 
 #[test]
@@ -353,7 +353,7 @@ fn a_keychain_that_waits_for_the_user_does_not_hold_up_startup() {
         let s = Server::start(home.path(), env_opts());
         assert_eq!(s.put(true, 0).status, 200);
     }
-    let vault = FakeVault::new(Some(TOKEN), true);
+    let vault = MockVault::new(Some(TOKEN), true);
     let (release, held) = std::sync::mpsc::channel::<()>();
     *vault.hold.lock().unwrap() = Some(held);
     let began = Instant::now();
@@ -367,13 +367,13 @@ fn a_keychain_that_waits_for_the_user_does_not_hold_up_startup() {
     // The server answers while the keychain is still pending.
     assert_eq!(request(s.local, "GET", "/api/health", &[], "").status, 200);
     assert!(began.elapsed() < Duration::from_secs(10));
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     let pending = s.get();
     assert_eq!(pending["status"], "starting");
     // Once the keychain answers, the saved connection is restored.
     drop(release);
     s.wait_status("ready");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 1);
     assert_eq!(vault.loads.load(Ordering::SeqCst), 1);
 }
 
@@ -382,7 +382,7 @@ fn asking_for_the_settings_while_the_keychain_waits_for_the_user_holds_up_nothin
     // The setting is disabled (nothing restores at startup) and the token is
     // only in the keychain, which does not answer: a prompt nobody has clicked.
     let home = fixture();
-    let vault = FakeVault::new(Some(TOKEN), true);
+    let vault = MockVault::new(Some(TOKEN), true);
     let (release, held) = std::sync::mpsc::channel::<()>();
     *vault.hold.lock().unwrap() = Some(held);
     let s = Server::start(
@@ -427,7 +427,7 @@ fn asking_for_the_settings_while_the_keychain_waits_for_the_user_holds_up_nothin
     assert_eq!(starting.join().unwrap().status, 202);
     let ready = s.wait_status("ready");
     assert_eq!(ready["keychainTokenSaved"], true);
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 1);
     assert_eq!(vault.loads.load(Ordering::SeqCst), 1);
 }
 
@@ -590,7 +590,7 @@ fn starting_again_or_changing_the_public_origin_ends_the_old_session_and_stream(
     let (old_backend, old_host, old_origin) = (t.backend, t.host(), t.public.clone());
 
     // A new start and, with the new tunnel, a new public origin.
-    *t.s.fake.public.lock().unwrap() = Some(OTHER_PUBLIC.into());
+    *t.s.mock.public.lock().unwrap() = Some(OTHER_PUBLIC.into());
     t.replace_tunnel();
     assert_eq!(t.public, OTHER_PUBLIC);
     assert_eq!(t.s.get()["url"], OTHER_PUBLIC);
@@ -632,7 +632,7 @@ fn a_failed_start_leaves_no_listener_or_secret_and_the_pc_and_writes_keep_workin
     let home = fixture();
     let s = Server::start(home.path(), env_opts());
     assert_eq!(s.put(true, 0).status, 200);
-    *s.fake.fail.lock().unwrap() = true;
+    *s.mock.fail.lock().unwrap() = true;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     let v = s.wait_status("failed");
     assert!(!v.to_string().contains(TOKEN));
@@ -640,7 +640,7 @@ fn a_failed_start_leaves_no_listener_or_secret_and_the_pc_and_writes_keep_workin
         v.get("passcode").is_none(),
         "a failed start shows no passcode: {v}"
     );
-    let failed_backend = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    let failed_backend = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
     assert_closed(failed_backend);
     let mut t = Tunnel::new(s, home.path().to_path_buf(), Some(home));
     no_secret_on_disk_or_in_the_pc_api(&t, &[]);
@@ -656,7 +656,7 @@ fn a_failed_start_leaves_no_listener_or_secret_and_the_pc_and_writes_keep_workin
     assert!(created.status < 300, "{} {}", created.status, created.body);
 
     // The next start works, and its session answers.
-    *t.s.fake.fail.lock().unwrap() = false;
+    *t.s.mock.fail.lock().unwrap() = false;
     t.start();
     let session = t.session();
     let request_id = t.request_id(&session);

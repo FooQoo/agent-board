@@ -150,7 +150,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `X-Agboard-Session-Tool` | `claude-code`、`codex`、`unknown`のいずれか。 |
 | `X-Agboard-Session-Origin` | `board`または`external`。 |
 
-起動の上限は`SessionRegistry::check_board_launch()`が守ります。起動処理は、セッションを起動する前にこれを呼びます。ボードが起動したセッションは、2つのツールと全プロジェクトを通して全体で1つまでです。拒否の理由には、枠を持っているツールが入ります。`grace`中のボード起動セッションも数えます。外部のセッションには上限がなく、この上限の数にも入りません。`AGBOARD_SESSION_GRACE_MS`は、30秒の猶予を指定したミリ秒に置き換えます。テストで使います。
+起動の上限は起動処理が持ちます。生きている子プロセスや待っている再起動があるときは起動を拒否し、起動処理が知らないボード起動元の待機を`SessionRegistry::check_board_launch()`が見つけたときも拒否します。ボードが起動したセッションは、2つのツールと全プロジェクトを通して全体で1つまでです。拒否の理由には、枠を持っているツールが入ります。外部のセッションには上限がなく、この上限の数にも入りません。`AGBOARD_SESSION_GRACE_MS`は、30秒の猶予を指定したミリ秒に置き換えます。テストで使います。
 
 ### セッションの起動
 
@@ -163,7 +163,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `PUT /api/projects/{projectId}/sessions/autostart` | `{"enabled": boolean, "tool"?: "claude-code" \| "codex", "model"?: string}`。サーバーと一緒にセッションを起動するかどうかと、どれを起動するか（このツール、このプロジェクト、このモデル）を保存します（`model`がない、空、または`"default"`のときは、ツールに任せます）。選択は全体で1つで、保存すると置き換わります。`enabled`が`true`のときは`tool`が必須です（ないとき、未知のツール、フラグに読めるモデルは422 `invalid_value`）。起動はせず、動いているセッションも止めません。`{"autoStart": {"tool", "projectId", "model"}}`を返し、`enabled`が`false`のときは`{"autoStart": null}`です。存在しないプロジェクトは404 `project_not_found`、存在する結び付いたフォルダがないときは409 `project_has_no_folder`です。保存するファイルは[共有ファイル](./files.md#セッションの自動起動)にあります。 |
 | `POST /api/projects/{projectId}/sessions/stop` | `{}`。起動済みのセッションを止めます。全体で1つなので、リクエストにツールは要りません（本文の`tool`は受け付けて無視します）。呼び出しが返った時点で`{"stopped": true}`を返し、動いていなかったときは`{"stopped": false}`です。待っている再起動や表示中の失敗も消します。セッションは数えられなくなるので、すぐに新しく起動できます。 |
 
-`GET /api/projects/{projectId}/sessions`は、そのプロジェクトで起動処理がプロセスを持っているセッションを、`launched`として`[{"tool", "projectId", "model", "startedAt"}]`の形でも返します。プロセスIDは含みません。起動したセッションが`sessions`に（`origin: "board"`で）現れるのは、そのセッション自身の待機が張り付いてからです。
+`GET /api/projects/{projectId}/sessions`は、そのプロジェクトで起動処理がプロセスを持っているセッションを、`launched`として`[{"tool", "projectId", "model", "startedAt"}]`の形でも返します。プロセスIDは含みません。起動したセッションは、ドライバーが最初のイベントを報告すると`sessions`に（`origin: "board"`、`id`は`resident:`に起動IDを続けたもので）現れます。ボードを待たないので、サーバーがレジストリの一覧と数に加えます。`state`は、ターンの合間は`connected`、作業中は`grace`です。外部のセッションはこれまでどおり、待機で一覧に載り、数えられます。
 
 #### セッションの健全性
 
@@ -177,6 +177,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
   "model": "sonnet",
   "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
   "waiting": false,
+  "pushStalled": [],
   "restartCount": 2,
   "lastExitAt": "2026-11-19T03:00:00Z",
   "nextRestartAt": "2026-11-19T03:00:04Z",
@@ -184,7 +185,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 }
 ```
 
-何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
+何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
 
 | 項目 | 意味 |
 | --- | --- |
@@ -192,7 +193,8 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `state` | `running`はボードがセッションを動かし続けていて、子プロセスがある状態です。`restarting`は子プロセスが終了し、`nextRestartAt`に再起動が待っている状態です。`failed`はボードが諦めた、またはセッションを起動できなかった状態で、`reason`に理由があります。`stopped`は何も動かし続けていない状態です。 |
 | `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
 | `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
-| `waiting` | セッションの待機がボードに登録されている間は`true`です。`running`で`waiting: false`のセッションはタスクの作業中で、そのことを理由に終了されることはありません。 |
+| `waiting` | セッションが張り付いていて、2つのターンの合間にいて、ボードが仕事を渡せる間は`true`です。`running`で`waiting: false`のセッションは作業中で、そのことを理由に終了されることはありません。 |
+| `pushStalled` | ボードがセッションへ何度も押し込んだのに処理されず、あきらめた項目を、1件ずつ`{"kind", "id", "attempts", "lastError"}`の形で並べます。`kind`は`request`、`answer`、`task`のいずれかで、`id`は依頼や質問のID（`Q-3`など）、またはテキストにしたタスク番号です。`attempts`は押し込んだ回数、`lastError`は直前に失敗したターンのメッセージで、なければ`null`です。なければ空です。項目がボードから消えると一覧からも消えます。[pushモード](../concepts/agents.md#push-mode)を参照。 |
 | `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
 | `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |
 | `nextRestartAt` | 待っている再起動が始まる時刻です。`restarting`以外は`null`です。 |

@@ -39,7 +39,12 @@ pub(super) async fn list_sessions(
                 .into_iter()
                 .filter(|launched| launched.project_id == project_id)
                 .collect();
-            let list = state.sessions.list(&project_id);
+            // External sessions count by their waits; the session the board launched counts by
+            // its driver, so it is added here.
+            let mut list = state.sessions.list(&project_id);
+            if let Some(board) = state.resident.board_session(&project_id) {
+                list = list.with_session(board);
+            }
             let health = state.resident.health();
             json_response(
                 StatusCode::OK,

@@ -136,6 +136,7 @@ choices:
   - { id: delete, label: 削除する }
   - { id: keep, label: 残す }
 recommended: keep
+askedBy: resident-3f9a1c0e5b7d2a46
 reply:
   choice: keep
   via: ui
@@ -174,6 +175,7 @@ createdAt: 2026-11-14T03:00:00Z
 | `tasks` | 省略できます。質問の対象としたタスク番号です。`message link`と`message unlink`で、そのタスクの`questions`と揃えて保ちます。 |
 | `choices` | 省略できます。2〜10個。選択肢のIDは質問内で一意（1〜64文字の`[A-Za-z0-9_-]`）、ラベルは1〜200文字です。選択肢がなければ、テキストで答えます。 |
 | `recommended` | 省略できます。選択肢のIDを1つ指定します。 |
+| `askedBy` | 省略できます。質問を出した、ボードが起動したセッションの起動ID（`AGBOARD_RESIDENT_ID`）です。変数が設定されているとき、`message ask`が書きます。ボードはこれを使って、回答をそのセッションへ押し込みます。外部のセッションが出した質問にはありません。 |
 | `reply` | 回答があるまでは`null`。`choice`は質問に選択肢がないときは入らず、選択肢があるときは`choice`と`text`の少なくとも一方が入ります。`text`は1〜2,000文字で、選択肢がなければ必須です。`via`は`ui`・`chat`・`cli`、`at`は記録した時刻です。`acceptedAt`は任意で、AIが回答を受け取るまでは省略または`null`、受け取るとその時刻です。 |
 
 依頼の項目です。

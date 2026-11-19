@@ -24,10 +24,10 @@ const CLAUDE_MODELS: [&str; 4] = ["opus", "sonnet", "haiku", "fable"];
 pub fn prompt(project_name: &str) -> String {
     format!(
         "You were launched by Agent Board as a resident session for project \"{project_name}\". \
-         Run `agboard skills resident` and follow it: start waiting on the board now, and in \
-         Claude Code run the wait in the background. A wait that times out, or returns with \
-         nothing to do, is never the end: run the wait again immediately, within a few seconds, \
-         and keep waiting. Ask a person only on the board with `message ask`, never in the \
+         Run `agboard skills resident` and read the part for a session the board launched. Do \
+         not run `agboard wait`: the board sends you each piece of work as a message, one at a \
+         time, when you are idle. Once you have read the skill, end your turn and wait for \
+         the next message. Ask a person only on the board with `message ask`, never in the \
          chat. Stop only when the board stops you."
     )
 }
@@ -230,47 +230,38 @@ pub fn valid_model(model: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'/' | b'-'))
 }
 
-/// The arguments of an unattended launch with automatic approval: Claude Code in auto mode with
-/// its prompts off (a refused action comes back as a denied tool result), and Codex in its
-/// workspace-write sandbox with automatic review, plus the data area as writable. `model` of `None`
-/// leaves the choice to the tool.
-pub fn launch_args(
-    tool: Tool,
-    folder: &Path,
-    data_dir: &Path,
-    model: Option<&str>,
-    prompt: &str,
-) -> Vec<OsString> {
-    let text = |values: &[&str]| values.iter().map(OsString::from).collect::<Vec<_>>();
-    let mut args = Vec::new();
-    match tool {
-        Tool::Codex => {
-            args.extend(text(&["exec", "--json", "-C"]));
-            args.push(folder.as_os_str().to_os_string());
-            if let Some(model) = model {
-                args.extend(text(&["-m", model]));
-            }
-            args.extend(text(&["--approve-for-me", "--add-dir"]));
-            args.push(data_dir.as_os_str().to_os_string());
-            args.extend(text(&["--skip-git-repo-check", prompt]));
-        }
-        _ => {
-            args.extend(text(&["-p", prompt]));
-            if let Some(model) = model {
-                args.extend(text(&["--model", model]));
-            }
-            args.extend(text(&[
-                "--permission-mode",
-                "auto",
-                "--permission-prompts",
-                "none",
-                "--output-format",
-                "stream-json",
-                "--verbose",
-            ]));
-        }
+fn text(values: &[&str]) -> Vec<OsString> {
+    values.iter().map(OsString::from).collect()
+}
+
+/// The arguments of an unattended Claude Code session over two-way stream-json: auto mode with
+/// its prompts off (a refused action comes back as a denied tool result). The first instruction
+/// is sent on standard input, not as an argument. `model` of `None` leaves the choice to the tool.
+pub fn claude_args(model: Option<&str>) -> Vec<OsString> {
+    let mut args = text(&[
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+    ]);
+    if let Some(model) = model {
+        args.extend(text(&["--model", model]));
     }
+    args.extend(text(&[
+        "--permission-mode",
+        "auto",
+        "--permission-prompts",
+        "none",
+    ]));
     args
+}
+
+/// The arguments of a Codex session over `codex app-server`. The sandbox, the review of what it
+/// asks, the writable folders, and the model are parameters of `thread/start`, not arguments.
+pub fn codex_args() -> Vec<OsString> {
+    text(&["app-server"])
 }
 
 /// Whether the environment variable of the server's own agent session must not reach a child.
@@ -316,11 +307,12 @@ mod tests {
     }
 
     #[test]
-    fn the_prompt_tells_the_session_to_wait_again_when_a_wait_ends() {
+    fn the_prompt_tells_the_session_not_to_wait_because_the_board_sends_work() {
         let text = prompt("demo");
         assert!(text.contains("\"demo\""));
         assert!(text.contains("agboard skills resident"));
-        assert!(text.contains("run the wait again immediately"));
+        assert!(text.contains("Do not run `agboard wait`"));
+        assert!(text.contains("end your turn"));
         assert!(text.contains("`message ask`"));
         assert!(text.contains("Stop only when the board stops you"));
     }

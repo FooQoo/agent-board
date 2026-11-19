@@ -264,6 +264,7 @@ fn the_conversion_runs_once_and_a_write_triggers_it_too() {
             &b.project,
             agent_board::file_store::AskInput {
                 actor: Actor::Ai,
+                asked_by: None,
                 questions: vec![agent_board::file_store::AskQuestion {
                     body: "One more?".into(),
                     choices: Vec::new(),

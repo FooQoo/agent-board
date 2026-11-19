@@ -3,7 +3,7 @@
 use super::health::{fast, no_projects, state_of};
 use super::*;
 
-fn choice(tool: Tool, model: Option<&str>) -> Option<AutoStart> {
+pub(super) fn choice(tool: Tool, model: Option<&str>) -> Option<AutoStart> {
     Some(AutoStart {
         tool,
         project_id: project(),

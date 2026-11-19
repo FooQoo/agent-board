@@ -96,6 +96,9 @@ const page = () => within(document.body);
 const phone = { storyFrame: 'monitor', layout: 'fullscreen', ...modalDocsParameters } as const;
 
 /** The list opens from the band; "AI の質問" shows the two questions, newest first. */
+/** The Markdown renderer loads on demand; on a slow runner the raw text shows first. */
+const MARKDOWN_LOADED = { timeout: 10_000 };
+
 export const ListFromAi: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: '質問・依頼を確認' }));
@@ -127,7 +130,11 @@ export const QuestionOpen: Story = {
   args: { initial: { tab: 'fromAi', openId: 'Q-12' } },
   play: async () => {
     const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
-    await within(dialog).findByRole('heading', { name: '既存のユーザーデータの扱い' });
+    await within(dialog).findByRole(
+      'heading',
+      { name: '既存のユーザーデータの扱い' },
+      MARKDOWN_LOADED,
+    );
     // Opened straight from its card, the question has no list to go back to.
     await expect(within(dialog).queryByRole('button', { name: '一覧へ戻る' })).toBeNull();
     const send = within(dialog).getByRole('button', { name: '回答を送る' });
@@ -162,7 +169,7 @@ export const AnsweredWaitingPickup: Story = {
     const row = state.closest('button');
     if (!row) throw new Error('The answered row is not a button.');
     await userEvent.click(row);
-    await within(list).findByRole('heading', { name: 'ログイン画面の文言' });
+    await within(list).findByRole('heading', { name: 'ログイン画面の文言' }, MARKDOWN_LOADED);
     const answer = within(list).getByRole('region', { name: 'あなたの回答' });
     await expect(answer).toHaveTextContent('変えてよい — ボタンの色はそのままで。');
     await expect(within(list).queryByRole('button', { name: '回答を送る' })).toBeNull();
@@ -450,7 +457,7 @@ export const PhoneQuestionMarkdown: Story = {
   globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async () => {
     const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
-    await within(sheet).findByRole('heading', { name: '認証方式の選び方' });
+    await within(sheet).findByRole('heading', { name: '認証方式の選び方' }, MARKDOWN_LOADED);
     const body = sheet.querySelector('.surface__body');
     if (!(body instanceof HTMLElement)) throw new Error('The sheet has no body.');
     // The sheet never scrolls sideways; wide blocks scroll inside themselves.

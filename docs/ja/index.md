@@ -81,7 +81,6 @@ landing:
         title: どこからでも確認
         text: 席を離れていても、スマホやタブレットでボードを開き、仕事を見守り、エージェントの質問に答えられます。
         link: { text: リモートアクセス, link: /ja/guide/watch/remote-access }
-        preview: /ja/guide/feature-stages#remote-access
         tabletAlt: "タブレットで開いた同じボード。未着手・進行中・完了の列が並び、待機中のタスクと「質問に回答する」ボタンが見える"
         alts:
           - 待機中のタスクと「質問に回答する」ボタンが見える、リモートアクセスのカードの一覧
@@ -131,7 +130,7 @@ landing:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
       - { title: エージェントとプロジェクトを設定する, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: ボードを開く, commands: [agboard serve] }
-    note: "バージョン1.0.0には、ドキュメントやリモートアクセスなど、パブリックプレビューの機能が含まれます。詳しくは"
+    note: "ドキュメントや常駐セッションなど、一部の機能はパブリックプレビューです。詳しくは"
     noteLinks:
       - { text: 機能の提供段階, link: /ja/guide/feature-stages }
     noteJoin: と

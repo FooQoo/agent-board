@@ -54,7 +54,7 @@ The board is one monitor for the work, not the whole of it. A monitor is a place
 
 - **The board.** Watch the work move through Todo, Doing, and Done. Step in on a card without stopping the agent, and answer questions right on the task. [Using the board](https://fooqoo.github.io/agent-board/guide/watch/board)
 - **Epics and progress.** An epic holds the plan and the order of its tasks, and the progress table returns the work that can move next to your agent. [Epics and progress](https://fooqoo.github.io/agent-board/guide/watch/epics)
-- **Check from anywhere.** Away from your desk, watch the work and answer the agent from your phone or tablet with remote access. In public preview. [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access)
+- **Check from anywhere.** Away from your desk, watch the work and answer the agent from your phone or tablet with remote access. [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access)
 - **Project docs.** Open the design notes and specs in your project's `docs/` folder right from the board. In public preview. [Project docs](https://fooqoo.github.io/agent-board/guide/watch/docs)
 
 You can also answer in the chat with your agent, and the `agboard` command is what the agent and your scripts use. Plans and results are Markdown files on your machine (`EPIC.md` and `TASK.md`), with acceptance conditions and history in the frontmatter.
@@ -111,11 +111,11 @@ Update the command. The Agent Board plugin follows it:
 brew upgrade fooqoo/tap/agboard
 ```
 
-The plugin updates itself: when a new agent session starts and the plugin differs from the one your `agboard` ships, it is reinstalled in the background and applies from the next session. Run `agboard update` yourself for Codex (it trusts the new hooks) or when the automatic update could not finish. It shows what will change and asks before it runs; `agboard update --yes` answers the question in advance. Restart `agboard serve` after an upgrade.
+The plugin updates itself: when a new agent session starts and the plugin differs from the one your `agboard` ships, it is reinstalled in the background and applies from the next session. Run `agboard update` yourself only when the automatic update could not finish, for example when Codex has to trust a changed hook definition, or to repair the plugin. It shows what will change and asks before it runs; `agboard update --yes` answers the question in advance. Restart `agboard serve` after an upgrade.
 
 ## Feature stages
 
-Version 1.0.0 mixes generally available (GA) features and features in public preview. Docs, task listening, and remote access are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
+Agent Board mixes generally available (GA) features and features in public preview. Docs, resident sessions, and questions and requests are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
 
 ## License
 

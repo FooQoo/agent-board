@@ -4,8 +4,9 @@
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+use super::driver::AgentDriver;
 use crate::error::AgboardError;
 
 /// Marks a finished child; set by the reaper after it has cleaned up.
@@ -37,23 +38,17 @@ impl Exit {
     }
 }
 
-/// SIGTERM every group, wait for each to be reaped, SIGKILL what is left.
-pub(super) fn terminate(targets: &[(u32, Arc<Exit>)], grace: Duration) {
-    for (pid, _) in targets {
-        signal_group(*pid, false);
-    }
-    let deadline = Instant::now() + grace;
-    for (pid, exit) in targets {
-        let left = deadline.saturating_duration_since(Instant::now());
-        if !exit.wait(left) {
-            signal_group(*pid, true);
-            exit.wait(Duration::from_secs(2));
-        }
+/// Stop each driver and wait until its reaper has cleaned up. A driver ends its own process:
+/// its input closes first, then SIGTERM to the group, then SIGKILL after `grace`.
+pub(super) fn terminate(targets: &[(Arc<dyn AgentDriver>, Arc<Exit>)], grace: Duration) {
+    for (driver, exit) in targets {
+        driver.stop(grace);
+        exit.wait(Duration::from_secs(2));
     }
 }
 
 #[cfg(unix)]
-fn signal_group(pid: u32, kill: bool) {
+pub(super) fn signal_group(pid: u32, kill: bool) {
     let signal = if kill { libc::SIGKILL } else { libc::SIGTERM };
     // SAFETY: plain syscalls; the child was started as the leader of its own process group, so
     // `-pid` names only that child and the commands it started.
@@ -64,7 +59,44 @@ fn signal_group(pid: u32, kill: bool) {
 }
 
 #[cfg(not(unix))]
-fn signal_group(_pid: u32, _kill: bool) {}
+pub(super) fn signal_group(_pid: u32, _kill: bool) {}
+
+/// SIGKILL to the members of the group `pid` led, and only to them: unlike [`signal_group`] it
+/// does not signal `pid` itself, which may have been reaped and reused by now.
+#[cfg(unix)]
+pub(super) fn kill_members(pid: u32) {
+    // SAFETY: plain syscall; the group was created by the child that led it.
+    unsafe {
+        libc::kill(-(pid as i32), libc::SIGKILL);
+    }
+}
+
+#[cfg(not(unix))]
+pub(super) fn kill_members(_pid: u32) {}
+
+/// Whether any process is left in the group `pid` led (the leader's exit does not end it).
+#[cfg(unix)]
+pub(super) fn group_alive(pid: u32) -> bool {
+    // SAFETY: signal 0 only checks that the group has a member.
+    unsafe { libc::kill(-(pid as i32), 0) == 0 }
+}
+
+#[cfg(not(unix))]
+pub(super) fn group_alive(_pid: u32) -> bool {
+    false
+}
+
+/// Wait until nothing is left in the group `pid` led, for at most `limit`.
+pub(super) fn wait_group_gone(pid: u32, limit: Duration) -> bool {
+    let until = std::time::Instant::now() + limit;
+    while group_alive(pid) {
+        if std::time::Instant::now() >= until {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    true
+}
 
 pub(super) fn open_log(path: &Path) -> std::io::Result<std::fs::File> {
     if let Some(dir) = path.parent() {

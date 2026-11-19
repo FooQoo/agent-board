@@ -16,7 +16,7 @@ static ENV: Mutex<()> = Mutex::new(());
 const SCRIPT: &str = r#"#!/bin/sh
 d=$(dirname "$0")
 n=$(basename "$0")
-if [ -f "$d/slow" ] && { [ "$1" = auth ] || [ "$1" = login ] || [ "$1" = debug ]; }; then exec sleep 60; fi
+if [ -f "$d/slow" ] && { [ "$1" = auth ] || [ "$1" = login ] || [ "$1" = debug ]; }; then : > "$d/slow.started"; exec sleep 60; fi
 case "$1" in
   auth) if [ -f "$d/logged-out" ]; then echo '{"loggedIn":false}'; else echo '{"loggedIn":true}'; fi; exit 0 ;;
   login) if [ -f "$d/logged-out" ]; then exit 1; fi; exit 0 ;;
@@ -25,7 +25,62 @@ esac
 echo x >> "$d/$n.starts"
 { echo "ARGS: $*"; echo "PWD: $(pwd)"; env; } > "$d/$n.record.tmp"
 mv "$d/$n.record.tmp" "$d/$n.record"
-if [ -f "$d/exit-now" ]; then exit 0; fi
+if [ -f "$d/orphan" ]; then
+  # A command of the session that outlives it and ignores SIGTERM, in the session's group.
+  (trap '' TERM; exec sleep 30) &
+  echo $! > "$d/orphan.pid.tmp"
+  mv "$d/orphan.pid.tmp" "$d/orphan.pid"
+fi
+if [ -f "$d/exit-now" ]; then
+  while [ -f "$d/hold" ]; do sleep 0.05; done
+  exit 0
+fi
+if [ "$n" = claude ]; then
+  # The two-way stream-json session: the first user message arrives on stdin.
+  IFS= read -r first
+  printf '%s\n' "$first" > "$d/$n.stdin.tmp"
+  mv "$d/$n.stdin.tmp" "$d/$n.stdin"
+  if [ -f "$d/silent" ]; then exec sleep 60; fi
+  echo '{"type":"system","subtype":"init","session_id":"fake-1","claude_code_version":"9.9.9"}'
+  if [ -f "$d/finish-turn" ]; then echo '{"type":"result","subtype":"success","is_error":false,"result":"ok"}'; fi
+  if [ -f "$d/ask-permission" ]; then
+    echo '{"type":"control_request","request_id":"req-1","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"/tmp/x","content":"hi"},"tool_use_id":"tool-1"}}'
+    IFS= read -r answer
+    printf '%s\n' "$answer" > "$d/$n.answer.tmp"
+    mv "$d/$n.answer.tmp" "$d/$n.answer"
+  fi
+  if [ -f "$d/stubborn" ]; then exec sleep 60; fi
+  # Like the real CLI, end when standard input closes.
+  cat > /dev/null
+  exit 0
+fi
+if [ "$n" = codex ]; then
+  # The app-server session: JSON-RPC lines on stdin and stdout. Every line received is kept.
+  while IFS= read -r line; do
+    printf '%s\n' "$line" >> "$d/codex.stdin"
+    id=$(printf '%s' "$line" | sed -n 's/^{"id":\([0-9][0-9]*\),.*/\1/p')
+    case "$line" in
+      *'"method":"initialize"'*) printf '{"id":%s,"result":{"userAgent":"agboard/9.9.9 (fake)"}}\n' "$id" ;;
+      *'"method":"thread/start"'*) printf '{"id":%s,"result":{"thread":{"id":"fake-thread"}}}\n' "$id" ;;
+      *'"method":"turn/start"'*)
+        printf '{"id":%s,"result":{"turn":{"id":"turn-1"}}}\n' "$id"
+        echo '{"method":"turn/started","params":{"turn":{"id":"turn-1"}}}'
+        if [ -f "$d/stubborn" ]; then exec sleep 60; fi
+        if [ -f "$d/fail-turn" ]; then echo '{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"failed","error":{"message":"boom"}}}}'; fi
+        if [ -f "$d/ask-permission" ]; then
+          echo '{"id":77,"method":"item/commandExecution/requestApproval","params":{"itemId":"i1","command":"ls -la"}}'
+          echo '{"id":78,"method":"item/tool/call","params":{}}'
+        fi
+        echo '{"method":"item/completed","params":{"item":{"type":"agentMessage","id":"m1","text":"working"}}}' ;;
+      *'"method":"turn/steer"'*) printf '{"id":%s,"result":{"turnId":"turn-1"}}\n' "$id" ;;
+      *'"method":"turn/interrupt"'*)
+        printf '{"id":%s,"result":{}}\n' "$id"
+        echo '{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"interrupted"}}}' ;;
+    esac
+  done
+  # Like the real server, end when standard input closes.
+  exit 0
+fi
 exec sleep 60
 "#;
 
@@ -49,6 +104,10 @@ fn fixture() -> Fixture {
 }
 
 fn fixture_timed(timing: Timing) -> Fixture {
+    fixture_with(timing, driver::default_factory())
+}
+
+fn fixture_with(timing: Timing, factory: driver::DriverFactory) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let folder = tempfile::tempdir().unwrap();
     let bin = |name: &str| {
@@ -63,12 +122,13 @@ fn fixture_timed(timing: Timing) -> Fixture {
     std::fs::write(dir.path().join("models.json"), MODELS).unwrap();
     let registry = SessionRegistry::new(Duration::from_secs(30));
     let data = dir.path().join("data");
-    let launcher = Launcher::with_timing(
+    let launcher = Launcher::with_factory(
         registry.clone(),
         Executables::fixed(Some(claude), Some(codex)),
         &data,
         Duration::from_secs(5),
         timing,
+        factory,
     );
     Fixture {
         dir,
@@ -86,7 +146,12 @@ impl Fixture {
 
     /// The record the fake script wrote, once it has started.
     fn record(&self, name: &str) -> String {
-        let path = self.dir.path().join(format!("{name}.record"));
+        self.file(&format!("{name}.record"))
+    }
+
+    /// A file the fake script writes, once it exists.
+    fn file(&self, name: &str) -> String {
+        let path = self.dir.path().join(name);
         let until = Instant::now() + DEADLINE;
         while Instant::now() < until {
             if let Ok(text) = std::fs::read_to_string(&path) {
@@ -94,7 +159,7 @@ impl Fixture {
             }
             std::thread::sleep(Duration::from_millis(20));
         }
-        panic!("{name} never started");
+        panic!("{name} never appeared");
     }
 }
 
@@ -150,8 +215,20 @@ fn claude_starts_headless_with_every_permission_and_a_scrubbed_environment() {
     assert!(record.contains("--model sonnet"), "{record}");
     assert!(record.contains("--output-format stream-json"), "{record}");
     assert!(
-        record.contains("-p You were launched by Agent Board"),
+        record.contains("ARGS: -p --input-format stream-json --output-format stream-json --verbose --model sonnet --permission-mode auto --permission-prompts none"),
         "{record}"
+    );
+    // The first instruction is the first user message on standard input, not an argument.
+    assert!(!record.contains("You were launched"), "{record}");
+    let first: serde_json::Value = serde_json::from_str(fx.file("claude.stdin").trim()).unwrap();
+    assert_eq!(first["type"], "user");
+    assert_eq!(first["message"]["role"], "user");
+    assert!(
+        first["message"]["content"]
+            .as_str()
+            .unwrap()
+            .starts_with("You were launched by Agent Board"),
+        "{first}"
     );
     assert!(
         record.lines().all(|l| !l.starts_with("CLAUDECODE=")),
@@ -189,77 +266,10 @@ fn claude_starts_headless_with_every_permission_and_a_scrubbed_environment() {
     fx.launcher.shutdown();
 }
 
-#[test]
-fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
-    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let fx = fixture();
-    fx.launch(Tool::Codex, None).unwrap();
-    let record = fx.record("codex");
-    assert!(record.contains("ARGS: exec --json -C "), "{record}");
-    assert!(record.contains("--approve-for-me"));
-    assert!(!record.contains("bypass"), "{record}");
-    let data = fx.dir.path().join("data");
-    assert!(
-        record.contains(&format!("--add-dir {}", data.display())),
-        "{record}"
-    );
-    assert!(record.contains("--skip-git-repo-check"));
-    assert!(!record.contains(" -m "), "{record}");
-    fx.launcher.stop().unwrap();
-    fx.launch(Tool::Codex, Some("gpt-a")).unwrap();
-    wait_until("the second codex record", || {
-        fx.record("codex").contains(" -m gpt-a ")
-    });
-    fx.launcher.shutdown();
-}
-
-#[test]
-fn a_second_launch_is_refused_with_a_reason_whichever_the_tool() {
-    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let fx = fixture();
-    fx.launch(Tool::ClaudeCode, None).unwrap();
-    for tool in [Tool::ClaudeCode, Tool::Codex] {
-        let refused = fx.launch(tool, None).unwrap_err();
-        assert_eq!(refused.code(), "session_launch_refused", "{tool:?}");
-        assert!(
-            refused.reason().contains("claude-code"),
-            "{}",
-            refused.reason()
-        );
-        assert!(refused.reason().contains("already running"));
-    }
-    fx.launcher.shutdown();
-    assert!(fx.launcher.status().is_empty());
-}
-
-#[test]
-fn a_board_session_the_registry_counts_refuses_a_launch() {
-    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let fx = fixture();
-    let _hold = fx.registry.register(Attributes {
-        project: project(),
-        key: "resident:abc".into(),
-        tool: Tool::Codex,
-        origin: Origin::Board,
-    });
-    let refused = fx.launch(Tool::Codex, None).unwrap_err();
-    assert_eq!(refused.code(), "session_launch_refused");
-    // The other tool is refused too: the board keeps one session in total.
-    let other = fx.launch(Tool::ClaudeCode, None).unwrap_err();
-    assert_eq!(other.code(), "session_launch_refused");
-    assert!(other.reason().contains("codex"), "{}", other.reason());
-    // An external session of the same tool does not count.
-    fx.registry.remove_board(Tool::Codex);
-    let _external = fx.registry.register(Attributes {
-        project: project(),
-        key: "codex:def".into(),
-        tool: Tool::Codex,
-        origin: Origin::External,
-    });
-    fx.launch(Tool::Codex, None).unwrap();
-    fx.launcher.shutdown();
-}
-
 mod autostart;
+mod codex;
+mod drivers;
 mod health;
 mod lifecycle;
+mod push;
+mod races;

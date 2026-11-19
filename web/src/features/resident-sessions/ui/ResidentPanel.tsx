@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { attachedCounts } from '../state';
 import type { ResidentPanelProps } from '../types';
+import { PreviewNotice } from '@/shared/ui/preview-feature/PreviewNotice';
 import { ExternalSessions } from './ExternalSessions';
+import { StalledNotice } from './StalledNotice';
 import { ResidentNotice } from './ResidentNotice';
 import { SessionCard } from './SessionCard';
 import './resident.css';
@@ -31,6 +33,7 @@ export function ResidentPanel(props: ResidentPanelProps) {
   return (
     <div className="resident-body">
       <p className="resident-intro">{t('resident.intro')}</p>
+      <PreviewNotice feature="resident" />
       {props.loadFailed && (
         <p className="resident-error" role="status">
           {t('resident.loadFailed')}
@@ -38,6 +41,7 @@ export function ResidentPanel(props: ResidentPanelProps) {
       )}
       <Summary {...counts} />
       <SessionCard {...props} />
+      <StalledNotice health={props.snapshot.health} />
       <ResidentNotice />
       <ExternalSessions sessions={external} open={props.externalOpen ?? false} />
     </div>

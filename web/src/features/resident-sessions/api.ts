@@ -13,6 +13,16 @@ export interface AutoStart {
 }
 
 /** The single health object of the board's one session slot (`state` is the launcher's, not the badge's). */
+/** An item the board pushed to the session several times without it being handled. */
+export interface StalledItem {
+  kind: 'request' | 'answer' | 'task';
+  /** The request or question ID such as Q-3, or the task number as text. */
+  id: string;
+  attempts: number;
+  /** How the last turn failed, when it did. */
+  lastError: string | null;
+}
+
 export interface SessionHealth {
   tool: SessionTool | null;
   state: 'running' | 'restarting' | 'failed' | 'stopped';
@@ -21,6 +31,8 @@ export interface SessionHealth {
   reason: string | null;
   /** True while the session's wait is registered; a running session with false is working on a task. */
   waiting: boolean;
+  /** Items the board gave up pushing after several attempts. */
+  pushStalled: StalledItem[];
   restartCount: number;
   lastExitAt: string | null;
   nextRestartAt: string | null;

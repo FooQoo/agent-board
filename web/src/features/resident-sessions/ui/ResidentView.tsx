@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { PreviewBadge } from '@/shared/ui/preview-feature/PreviewBadge';
 import { Surface } from '@/shared/ui/surface/Surface';
 import type { ResidentPanelProps } from '../types';
 import { ResidentPanel } from './ResidentPanel';
@@ -15,6 +16,7 @@ export function ResidentView({
     <Surface
       kind={kind}
       title={t('resident.title')}
+      badge={<PreviewBadge feature="resident" decorative />}
       closeLabel={t('dialog.close')}
       onClose={onClose}
       className="resident-surface"

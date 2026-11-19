@@ -15,7 +15,9 @@
                 "tool heading",
                 "stop button",
                 "auto-start checked",
-                "guide link"
+                "guide link",
+                "public preview badge",
+                "notice with link to the stages page"
               ],
               "interaction": true
             },
@@ -27,6 +29,11 @@
             {
               "id": "resident-residentview--restarting",
               "states": ["restarting", "retry countdown", "reason"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stalled-items",
+              "states": ["stalled items", "item names", "last failure", "hint"],
               "interaction": true
             },
             {
@@ -81,7 +88,7 @@
             },
             {
               "id": "resident-residentview--japanese",
-              "states": ["japanese", "working on a task"],
+              "states": ["japanese", "working on a task", "public preview badge"],
               "interaction": true
             },
             {
@@ -91,10 +98,25 @@
             },
             {
               "id": "resident-residentview--sheet",
-              "states": ["bottom sheet", "phone width", "next start hint"],
+              "states": ["bottom sheet", "phone width", "next start hint", "public preview badge"],
               "interaction": true
             }
           ]
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/StalledNotice.tsx",
+      "exports": [
+        {
+          "name": "StalledNotice",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog by the ResidentView stalled-items story."
+        },
+        {
+          "name": "useStalledName",
+          "stories": [],
+          "exclusion": "A hook that names an item; the dialog and footer stories read its output."
         }
       ]
     },
@@ -253,6 +275,11 @@
               "id": "resident-residentfooter--failed",
               "states": ["failed", "red"],
               "interaction": false
+            },
+            {
+              "id": "resident-residentfooter--stalled",
+              "states": ["stalled items", "warning with count", "button opens the dialog"],
+              "interaction": true
             },
             {
               "id": "resident-residentfooter--stopped",
