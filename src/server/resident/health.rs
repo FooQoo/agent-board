@@ -28,6 +28,9 @@ pub struct Health {
     pub model: Option<String>,
     /// Why the session is restarting or failed.
     pub reason: Option<String>,
+    /// Whether the session's wait is registered now. A running session that does not wait is
+    /// working on a task.
+    pub waiting: bool,
     /// Restarts since the last launch or stop by a person.
     pub restart_count: u32,
     #[serde(with = "crate::clock::serde_opt_utc")]
@@ -54,6 +57,7 @@ impl Launcher {
                         project_id: None,
                         model: None,
                         reason: None,
+                        waiting: false,
                         restart_count: 0,
                         last_exit_at: None,
                         next_restart_at: None,
@@ -71,6 +75,8 @@ impl Launcher {
                     project_id: Some(plan.project.clone()),
                     model: plan.model.clone(),
                     reason: plan.reason.clone(),
+                    waiting: matches!(plan.state, PlanState::Running)
+                        && self.registry.has_board(*tool),
                     restart_count: plan.restarts,
                     last_exit_at: plan.last_exit_at,
                     next_restart_at,

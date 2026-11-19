@@ -34,8 +34,6 @@ pub struct Timing {
     pub window: Duration,
     /// How long a new child has to attach (register a wait on the board) before it is unhealthy.
     pub startup_allowance: Duration,
-    /// How long an attached child may go without a registered wait before it is unhealthy.
-    pub detached_after: Duration,
 }
 
 impl Default for Timing {
@@ -47,7 +45,6 @@ impl Default for Timing {
             max_failures: 5,
             window: Duration::from_secs(10 * 60),
             startup_allowance: Duration::from_secs(3 * 60),
-            detached_after: Duration::from_secs(3 * 60),
         }
     }
 }

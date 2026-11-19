@@ -91,20 +91,21 @@ impl Launcher {
             for (tool, plan) in plans.iter_mut() {
                 match plan.state {
                     PlanState::Running => {
-                        if self.registry.has_board(*tool) {
-                            plan.attached = Some(now);
-                        }
-                        let (since, limit, what) = match plan.attached {
-                            Some(at) => (at, self.timing.detached_after, "no longer waits"),
-                            None => (plan.started, self.timing.startup_allowance, "never waited"),
-                        };
-                        if now.saturating_duration_since(since) > limit {
-                            plan.kill_reason = Some(format!(
-                                "The {} session {what} on the board for {}, so the board ended it.",
-                                tool.as_str(),
-                                span(limit)
-                            ));
-                            unhealthy.push(*tool);
+                        // Once a child has attached, only its exit ends it: it closes its wait
+                        // while it works on a task, which can take far longer than any limit.
+                        if plan.attached.is_none() {
+                            if self.registry.has_board(*tool) {
+                                plan.attached = Some(now);
+                            } else if now.saturating_duration_since(plan.started)
+                                > self.timing.startup_allowance
+                            {
+                                plan.kill_reason = Some(format!(
+                                    "The {} session never waited on the board for {}, so the board ended it.",
+                                    tool.as_str(),
+                                    span(self.timing.startup_allowance)
+                                ));
+                                unhealthy.push(*tool);
+                            }
                         }
                     }
                     PlanState::Restarting { due: at, .. } if now >= at => due.push(*tool),

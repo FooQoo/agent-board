@@ -177,12 +177,13 @@ These routes start and stop the headless sessions the board launches (see [Launc
     "projectId": "0123456789abcdef0123456789abcdef",
     "model": "sonnet",
     "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
+    "waiting": false,
     "restartCount": 2,
     "lastExitAt": "2026-11-19T03:00:00Z",
     "nextRestartAt": "2026-11-19T03:00:04Z",
     "autoStart": { "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
   },
-  { "tool": "codex", "state": "stopped", "projectId": null, "model": null, "reason": null,
+  { "tool": "codex", "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false,
     "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null }
 ]
 ```
@@ -192,6 +193,7 @@ These routes start and stop the headless sessions the board launches (see [Launc
 | `state` | `running`: the board keeps a session running, and its child exists. `restarting`: the child ended and a restart is waiting for `nextRestartAt`. `failed`: the board gave up, or could not start the session, and `reason` says why. `stopped`: nothing is kept running. |
 | `projectId`, `model` | What the board relaunches. `null` while `stopped`. |
 | `reason` | Why the session is `restarting` or `failed`; `null` otherwise. A crash loop ends in `failed` with a reason that says the board stopped restarting. |
+| `waiting` | `true` while the session's wait is registered on the board. A `running` session with `waiting: false` is working on a task, and is never ended for that. |
 | `restartCount` | The restarts since the last launch or stop by a person. |
 | `lastExitAt` | When the child last ended without a stop by a person; `null` if it never did. |
 | `nextRestartAt` | When the waiting restart starts; `null` unless `restarting`. |

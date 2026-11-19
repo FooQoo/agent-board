@@ -177,12 +177,13 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
     "projectId": "0123456789abcdef0123456789abcdef",
     "model": "sonnet",
     "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
+    "waiting": false,
     "restartCount": 2,
     "lastExitAt": "2026-11-19T03:00:00Z",
     "nextRestartAt": "2026-11-19T03:00:04Z",
     "autoStart": { "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
   },
-  { "tool": "codex", "state": "stopped", "projectId": null, "model": null, "reason": null,
+  { "tool": "codex", "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false,
     "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null }
 ]
 ```
@@ -192,6 +193,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `state` | `running`はボードがセッションを動かし続けていて、子プロセスがある状態です。`restarting`は子プロセスが終了し、`nextRestartAt`に再起動が待っている状態です。`failed`はボードが諦めた、またはセッションを起動できなかった状態で、`reason`に理由があります。`stopped`は何も動かし続けていない状態です。 |
 | `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
 | `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
+| `waiting` | セッションの待機がボードに登録されている間は`true`です。`running`で`waiting: false`のセッションはタスクの作業中で、そのことを理由に終了されることはありません。 |
 | `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
 | `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |
 | `nextRestartAt` | 待っている再起動が始まる時刻です。`restarting`以外は`null`です。 |

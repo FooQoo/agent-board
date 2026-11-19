@@ -10,7 +10,6 @@ fn fast() -> Timing {
         max_failures: 3,
         window: Duration::from_secs(30),
         startup_allowance: Duration::from_secs(30),
-        detached_after: Duration::from_secs(30),
     }
 }
 
@@ -158,11 +157,10 @@ fn a_child_that_never_waits_on_the_board_is_replaced() {
 }
 
 #[test]
-fn a_child_that_keeps_waiting_is_left_alone() {
+fn an_attached_child_is_left_alone_even_while_it_works() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture_timed(Timing {
         startup_allowance: Duration::from_millis(200),
-        detached_after: Duration::from_millis(200),
         ..fast()
     });
     fx.launcher.start(no_projects);
@@ -171,10 +169,15 @@ fn a_child_that_keeps_waiting_is_left_alone() {
     std::thread::sleep(Duration::from_millis(700));
     assert_eq!(starts(&fx, "claude"), 1);
     assert_eq!(state_of(&fx, Tool::ClaudeCode).state, HealthState::Running);
-    // Once the wait is gone for good, the child is replaced.
+    assert!(state_of(&fx, Tool::ClaudeCode).waiting);
+    // A session that works on a task has closed its wait; it is left alone however long it takes.
     drop(_hold);
     fx.registry.remove_board(Tool::ClaudeCode);
-    wait_until("the replacement", || starts(&fx, "claude") == 2);
+    std::thread::sleep(Duration::from_millis(700));
+    assert_eq!(starts(&fx, "claude"), 1);
+    let health = state_of(&fx, Tool::ClaudeCode);
+    assert_eq!(health.state, HealthState::Running);
+    assert!(!health.waiting);
     fx.launcher.shutdown();
 }
 
