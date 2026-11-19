@@ -57,7 +57,7 @@ The domain is not a secret and does not change the checks below: `Host` must sti
 
 `NGROK_AUTHTOKEN` and the secure storage are read lazily, so a run that never needs a token never touches the secure storage.
 
-The secure storage is never read or written while the supervisor's state is held, because it can stop to ask the user. The first `GET /api/monitor-connections` starts the read in the background and waits for it for at most one second; while the user has not answered, it returns what is known, and the dialog's next read shows what the storage holds. A start and a deletion wait for the secure storage, but only that request waits: the board, the other requests, and the idle check keep answering.
+The secure storage is never read or written while the supervisor's state is held, because it can stop to ask the user. The first `GET /api/monitor-connections` starts the read in the background and waits for it for at most one second; while the user has not answered, it returns what is known, and the dialog's next read shows what the storage holds. A deletion waits for the secure storage, and so does a start that has no token in hand (none from `NGROK_AUTHTOKEN`, none held from an earlier start, none in the request); a start with a token never waits for it, so restarting a running connection cannot hang on a prompt nobody answers. Only that request waits: the board, the other requests, and the idle check keep answering.
 
 When the secure storage is missing or refuses, `keychainAvailable` is false, saving is refused with `keychain_unavailable`, and the user enters the token each time.
 

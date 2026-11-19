@@ -109,7 +109,6 @@ impl MonitorConnections {
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
-
     /// Startup. When `explicit` (`--monitor ngrok`), start now and wait for the
     /// result so that a failure can end the process; otherwise restore a saved
     /// enabled setting in the background, or wait for the PC when no token is held.
@@ -208,7 +207,10 @@ impl MonitorConnections {
                 }
                 inner.config.revision
             };
-            self.probed().await;
+            // A known token needs no keychain read, so a restart while connected cannot hang on it.
+            if token.is_none() && self.lock().token.is_none() {
+                self.probed().await;
+            }
             if save && let Some(token) = &token {
                 let vault = self.vault.clone();
                 let token = token.clone();
@@ -241,6 +243,7 @@ impl MonitorConnections {
         }
         if save && token.is_some() {
             inner.keychain_saved = Some(true);
+            inner.probing = false;
         }
         if let Some(token) = token {
             inner.token = Some(token);
@@ -262,7 +265,6 @@ impl MonitorConnections {
             self.store.save(&next).map_err(|_| StartError::SaveFailed)?;
             inner.config = next;
         }
-        // The receiver is dropped: the caller polls the status instead.
         drop(self.begin(&mut inner)?);
         Ok(self.snapshot_now(&inner))
     }

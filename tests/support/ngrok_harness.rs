@@ -195,6 +195,9 @@ impl TokenVault for MockVault {
     }
     fn load(&self) -> Result<Option<Secret>, VaultError> {
         self.loads.fetch_add(1, Ordering::SeqCst);
+        // What the read finds is fixed before it waits, as a slow keychain answers with
+        // what it held when the read began.
+        let found = self.saved();
         let hold = self.hold.lock().unwrap().take();
         if let Some(rx) = hold {
             let _ = rx.recv_timeout(Duration::from_secs(20));
@@ -202,7 +205,7 @@ impl TokenVault for MockVault {
         if !self.usable {
             return Err(VaultError::Unavailable);
         }
-        Ok(self.saved().map(Secret::new))
+        Ok(found.map(Secret::new))
     }
     fn save(&self, token: &Secret) -> Result<(), VaultError> {
         if !self.usable {
