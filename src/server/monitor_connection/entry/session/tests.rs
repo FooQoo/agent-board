@@ -154,3 +154,19 @@ async fn a_session_ends_after_twelve_hours_and_never_crosses_a_generation_or_ori
     );
     assert_eq!(try_code(&p, CODE).await.status(), StatusCode::OK);
 }
+
+#[test]
+fn a_session_for_a_device_removed_in_the_meantime_is_not_kept() {
+    let now = Arc::new(AtomicU64::new(10_000));
+    let p = policy(&now, 1, ORIGIN);
+    let registered = p.devices.register(ORIGIN, None).unwrap();
+    // The device was checked, then removed before its session was issued.
+    assert!(p.devices.remove(&registered.id).unwrap());
+    assert!(session_response(&p, Some(registered.id)).is_none());
+    assert!(p.sessions.is_empty());
+
+    // A registered device and a session with no device still get theirs.
+    let kept = p.devices.register(ORIGIN, None).unwrap();
+    assert!(session_response(&p, Some(kept.id)).is_some());
+    assert!(session_response(&p, None).is_some());
+}
