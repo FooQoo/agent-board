@@ -103,9 +103,9 @@ pub(crate) fn run<F: Future<Output = ()>>(
     let shared = data_dir.join("shared");
     crate::file_store::io::remove_stale_temporaries(&shared, STALE_TEMPORARY_AGE);
     crate::file_store::FileStore::open(&shared).seed_unseeded_projects(chrono::Utc::now());
-    let docs_locale =
+    let locale =
         DocsLocale::from_locale(&preferences::PreferencesStore::new(&data_dir).load().locale);
-    crate::file_store::FileStore::open(&shared).ensure_docs_dirs(docs_locale);
+    crate::file_store::FileStore::open(&shared).ensure_docs_dirs(locale);
     let (listener, notice) = match launch.auto {
         None => (bind::bind_exact(launch.port)?, None),
         Some(_) => bind::bind_preferring(launch.port)?,
@@ -128,7 +128,6 @@ pub(crate) fn run<F: Future<Output = ()>>(
         // read is queued and read again.
         let index = Arc::new(RwLock::new(ProjectIndex::default()));
         let changed = change_feed::ChangeFeed::new();
-        let (preferences_changed, _) = broadcast::channel(16);
         let (docs_changed, _) = broadcast::channel(64);
         let docs_sender = docs_changed.clone();
         let (_watch, reloader) = Watch::start_with_docs(
@@ -157,7 +156,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             ),
             preferences: preferences::PreferencesStore::new(&data_dir),
             notification_settings: notification_settings::NotificationSettingsStore::new(&data_dir),
-            preferences_changed,
+            preferences_changed: broadcast::channel(16).0,
             docs_changed,
             activity: activity.clone(),
             sessions: sessions.clone(),

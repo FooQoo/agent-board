@@ -3,8 +3,12 @@
 
 use std::sync::Arc;
 
+use axum::Router;
 use axum::extract::State;
 use axum::response::Response;
+use axum::routing::get;
+
+use super::notification_settings::{get_notification_settings, put_notification_settings};
 
 use super::super::AppState;
 use super::super::preferences::http;
@@ -19,4 +23,17 @@ pub(super) async fn put_preferences(
     ApiJson(body): ApiJson<serde_json::Value>,
 ) -> Response {
     http::save(&state.preferences, &state.preferences_changed, body)
+}
+
+/// The routes of the two saved settings: the display preferences and the phone notifications.
+pub(super) fn routes() -> Router<Arc<AppState>> {
+    Router::new()
+        .route(
+            "/api/preferences",
+            get(get_preferences).put(put_preferences),
+        )
+        .route(
+            "/api/notification-settings",
+            get(get_notification_settings).put(put_notification_settings),
+        )
 }
