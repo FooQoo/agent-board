@@ -104,8 +104,10 @@ export const ListFromAi: Story = {
     await userEvent.click(within(canvasElement).getByRole('button', { name: '質問・依頼を確認' }));
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
     await expect(within(list).getAllByRole('tab')).toHaveLength(2);
-    await expect(within(list).getAllByText('未回答')).toHaveLength(2);
-    await expect(within(list).queryByText('受け取り待ち')).toBeNull();
+    // Both tabs' pages are drawn side by side for the swipe; only the selected one is a tab panel.
+    const panel = within(list).getByRole('tabpanel');
+    await expect(within(panel).getAllByText('未回答')).toHaveLength(2);
+    await expect(within(panel).queryByText('受け取り待ち')).toBeNull();
   },
 };
 
@@ -114,8 +116,9 @@ export const ListFromYou: Story = {
   args: { initial: { tab: 'fromYou' } },
   play: async () => {
     const list = await page().findByRole('dialog', { name: 'メッセージ' });
-    await expect(within(list).getByText('受け取り待ち')).toBeInTheDocument();
-    await expect(within(list).queryByText('未回答')).toBeNull();
+    const panel = within(list).getByRole('tabpanel');
+    await expect(within(panel).getByText('受け取り待ち')).toBeInTheDocument();
+    await expect(within(panel).queryByText('未回答')).toBeNull();
     // A message opened from the list offers the way back to it.
     const row = within(list).getByText('受け取り待ち').closest('button');
     if (!row) throw new Error('The request row is not a button.');
