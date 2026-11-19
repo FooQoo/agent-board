@@ -4,7 +4,7 @@ title: Quickstart
 
 # Quickstart
 
-In about ten minutes you delegate your first piece of work: you tell your agent what you want, it puts a plan on the board, you answer its questions, the agent starts the plan, and you watch it work until the tasks reach Done.
+In about ten minutes you delegate your first piece of work: you ask for what you want with **Ask AI**, the agent puts a plan on the board, you answer its questions, the agent starts the plan, and you watch it work until the tasks reach Done.
 
 You need a running installation and an agent. If you have not installed `agboard` and set up your agent, start with [Install and start](./getting-started) and [Working with agents](./delegate/agents#set-up-your-agents).
 
@@ -22,11 +22,13 @@ Open [http://127.0.0.1:7420/](http://127.0.0.1:7420/) and select **My project** 
 
 Start a new agent session in the same folder, so that it loads the plugin. The agent finds the project from the folder.
 
-## 2. Tell the agent what you want
+## 2. Ask for what you want
 
-In the agent's chat, ask for a piece of work that is more than one step, in your own words. For example:
+Choose **Ask AI** in the board's header and ask for a piece of work that is more than one step, in your own words. For example:
 
 > Add a dark mode to the settings page, and update the docs.
+
+Choose **Send request**. The request counts under **Your requests** in the **Messages** band until an agent takes it. A session that waits on the board takes it at once: one you keep there with `/agent-board:wait`, or a resident session started from **Settings** (see [Working with agents](./delegate/agents)). You can also ask in the agent's chat instead.
 
 You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a plan at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until it is started. On the board the tasks are ordinary cards in Todo with a **Draft** badge. Open them to read the plan while the agent asks about it.
 
@@ -72,19 +74,20 @@ agboard serve --port 7420
 
 Leave the server running and open [http://127.0.0.1:7420/](http://127.0.0.1:7420/). Select **Quickstart** in the header. The board is empty. Use a second terminal for the commands below.
 
-### 2. Add a task yourself
+### 2. Send a request
 
-In the second terminal, add a task you own:
+In the browser, choose **Ask AI**, write `Check that the install steps work`, and choose **Send request**. The **Messages** band counts it under **Your requests**.
+
+### 3. Play the agent: take the request and plan a task
+
+In the second terminal, list the messages and accept the request, as an agent does when it takes one:
 
 ```sh
-agboard --project "Quickstart" add "Write the setup guide" --assignee human --actor human
+agboard --project "Quickstart" message ls
+agboard --project "Quickstart" message accept Q-1 --actor ai
 ```
 
-The task appears in Todo as task #1, with a user icon. The board has no button for adding a task by hand; you ask the agents with **Ask AI**, and the CLI and the agents create tasks.
-
-### 3. Hand a task to an agent
-
-Create a file `task.md` that contains one acceptance condition:
+The request leaves **Your requests**. Now plan the work as a task. Create a file `task.md` that contains one acceptance condition:
 
 ```markdown
 ---
@@ -98,42 +101,42 @@ history: []
 Walk through the install steps and note anything that is unclear.
 ```
 
-Add it as an AI-owned task:
+Add it as an AI-owned task, as the agent would:
 
 ```sh
 agboard --project "Quickstart" add "Check the install steps" --assignee ai --actor ai --desc-file task.md
 ```
 
-The command prints the new task's ID; this page assumes **#2**. The task appears in Todo with an AI icon and `0/1` conditions.
+The command prints the new task's ID; this page assumes **#1**. The task appears in Todo with an AI icon, a **Draft** badge, and `0/1` conditions.
 
 ### 4. Play the agent: start working
 
 An agent starts its draft, moves it to Doing, and reports that it is running:
 
 ```sh
-agboard --project "Quickstart" start 2 --actor ai
-agboard --project "Quickstart" mv 2 doing --actor ai --reason "Start checking the install steps"
-agboard --project "Quickstart" state 2 running --actor ai --reason "Following the install page"
-agboard --project "Quickstart" history add 2 --reason "Built the web UI and installed agboard without errors"
+agboard --project "Quickstart" start 1 --actor ai
+agboard --project "Quickstart" mv 1 doing --actor ai --reason "Start checking the install steps"
+agboard --project "Quickstart" state 1 running --actor ai --reason "Following the install page"
+agboard --project "Quickstart" history add 1 --reason "Built the web UI and installed agboard without errors"
 ```
 
-In the browser, task #2 moves to Doing and shows **Running**. Select it and open the **History** tab: each step is there with its time and reason.
+In the browser, task #1 moves to Doing and shows **Running**. Select it and open the **History** tab: each step is there with its time and reason.
 
 ### 5. Ask a question and answer it
 
 When an agent needs a decision, it asks a question with choices:
 
 ```sh
-agboard --project "Quickstart" message ask --actor ai --task 2 --questions-json '{"questions":[{"body":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
+agboard --project "Quickstart" message ask --actor ai --task 1 --questions-json '{"questions":[{"body":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
 ```
 
-This command waits for your answer, up to 10 minutes by default, through the server you started. (Without one, it would start a server in the background.) Task #2 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command prints the answer and ends, and the task returns to **Idle**.
+This command waits for your answer, up to 10 minutes by default, through the server you started. (Without one, it would start a server in the background.) Task #1 shows **Pending** and the question with its two options. In the browser, choose an option, optionally write a note, and send the answer. The command prints the answer and ends, and the task returns to **Idle**.
 
 The agent reads the answer in the task's history and resumes:
 
 ```sh
-agboard --project "Quickstart" show 2
-agboard --project "Quickstart" state 2 running --actor ai --reason "Windows is not needed; continuing with macOS"
+agboard --project "Quickstart" show 1
+agboard --project "Quickstart" state 1 running --actor ai --reason "Windows is not needed; continuing with macOS"
 ```
 
 ### 6. Finish: check the condition
@@ -141,12 +144,12 @@ agboard --project "Quickstart" state 2 running --actor ai --reason "Windows is n
 When the agent has verified a condition, it records the verification and marks the condition done. Mark it done in a copy of the file and apply it:
 
 ```sh
-agboard --project "Quickstart" history add 2 --reason "Verified the install steps on a clean machine"
+agboard --project "Quickstart" history add 1 --reason "Verified the install steps on a clean machine"
 sed 's/done: false/done: true/' task.md > task-done.md
-agboard --project "Quickstart" edit 2 --desc-file task-done.md
+agboard --project "Quickstart" edit 1 --desc-file task-done.md
 ```
 
-With the server running, task #2 moves to Done by itself: every condition is done, so there is nothing left for you to do. This works for AI-owned tasks that are not drafts; your own task #1 stays where you put it.
+With the server running, task #1 moves to Done by itself: every condition is done, so there is nothing left for you to do. This works for AI-owned tasks that are not drafts.
 
 ### 7. Clean up
 
@@ -158,7 +161,7 @@ agboard --project "Quickstart" project rm
 
 ## What you learned
 
-- You ask, and the agent proposes a plan; you do not write it.
+- You ask with **Ask AI** or in the chat, and the agent proposes a plan; you do not write it.
 - You answer the questions, then the agent starts the plan itself; you do not approve the start.
 - Tasks move through **Todo → Doing → Done**, and agents report **Idle**, **Running**, or **Pending**.
 - Every change is recorded in the task's history with a reason.

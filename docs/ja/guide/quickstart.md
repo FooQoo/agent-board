@@ -4,7 +4,7 @@ title: クイックスタート
 
 # クイックスタート
 
-約10分で、最初の仕事を任せます。エージェントに頼みたいことを伝えると、エージェントが計画をボードに置きます。計画の質問に答えると、エージェントが計画を開始し、作業が進んでタスクが完了に届くまでを見届けます。
+約10分で、最初の仕事を任せます。**AI に依頼**で頼みたいことを伝えると、エージェントが計画をボードに置きます。計画の質問に答えると、エージェントが計画を開始し、作業が進んでタスクが完了に届くまでを見届けます。
 
 インストールとエージェントの設定が済んでいることが前提です。`agboard`をインストールしていなければ、[インストールと起動](./getting-started)と[エージェントを設定する](./delegate/agents#set-up-your-agents)から始めてください。
 
@@ -22,11 +22,13 @@ agboard serve
 
 同じフォルダで新しいエージェントのセッションを始めると、プラグインが読み込まれます。エージェントはフォルダからプロジェクトを見つけます。
 
-## 2. 何をしたいか、エージェントに伝える
+## 2. 何をしたいか、AI に依頼する
 
-エージェントのチャットで、複数の手順にわたる仕事を、普通の言葉で頼みます。たとえば次のように頼みます。
+ボードのヘッダーで**AI に依頼**を選び、複数の手順にわたる仕事を、普通の言葉で頼みます。たとえば次のように頼みます。
 
 > 設定ページにダークモードを追加して、ドキュメントも更新して。
+
+**依頼する**を選ぶと、エージェントが受け取るまで、依頼は**メッセージ**の帯の**あなたの依頼**に数えられます。ボードで待っているセッションがあれば、すぐに受け取ります。`/agent-board:wait`でボードに張り付かせたセッションか、**設定**から起動した常駐セッションです（[エージェントとの連携](./delegate/agents)を参照）。エージェントのチャットで頼んでもかまいません。
 
 タスクや条件を自分で用意する必要はありません。エージェントはボードを読み、この規模の依頼なら、すぐに計画を登録します。目的と範囲を書いたエピックと、作業する順に並べたタスク（それぞれに完了条件つき）です。エージェントが作ったものは、開始されるまでAIの下書きなので、まだどれも始まりません。ボードでは、タスクは**下書き**バッジの付いた通常のカードとして未着手に並びます。エージェントが質問している間に、カードを開いて計画を読めます。
 
@@ -72,19 +74,20 @@ agboard serve --port 7420
 
 サーバーを起動したまま、[http://127.0.0.1:7420/](http://127.0.0.1:7420/)を開きます。ヘッダーで**Quickstart**を選びます。作成直後のボードにはタスクがありません。ここからのコマンドは、別のターミナルで実行します。
 
-### 2. 自分でタスクを追加する
+### 2. 依頼を送る
 
-2つ目のターミナルで、自分が担当するタスクを追加します。
+ブラウザで**AI に依頼**を選び、`インストール手順が動くか確認して`と書いて、**依頼する**を選びます。**メッセージ**の帯の**あなたの依頼**に数えられます。
+
+### 3. エージェント役: 依頼を受け取り、タスクにする
+
+2つ目のターミナルでメッセージの一覧を見て、エージェントが依頼を受け取るときと同じように承認します。
 
 ```sh
-agboard --project "Quickstart" add "Write the setup guide" --assignee human --actor human
+agboard --project "Quickstart" message ls
+agboard --project "Quickstart" message accept Q-1 --actor ai
 ```
 
-未着手の列に、ユーザー担当のタスク#1が追加されます。ボードには、手でタスクを追加するボタンはありません。エージェントへは**AI に依頼**で頼み、タスクはCLIやエージェントが作ります。
-
-### 3. エージェントにタスクを渡す
-
-完了条件を一つ持つファイル`task.md`を作ります。
+依頼は**あなたの依頼**から消えます。次に、作業をタスクにします。完了条件を一つ持つファイル`task.md`を作ります。
 
 ```markdown
 ---
@@ -98,42 +101,42 @@ history: []
 Walk through the install steps and note anything that is unclear.
 ```
 
-AI担当のタスクとして追加します。
+エージェントと同じように、AI担当のタスクとして追加します。
 
 ```sh
 agboard --project "Quickstart" add "Check the install steps" --assignee ai --actor ai --desc-file task.md
 ```
 
-コマンドが新しいタスクのIDを表示します。ここではタスクIDを`#2`として説明します。未着手の列に、AIのアイコンと完了条件の達成数`0/1`が付いたタスクが追加されます。
+コマンドが新しいタスクのIDを表示します。ここではタスクIDを`#1`として説明します。未着手の列に、AIのアイコンと**下書き**バッジ、完了条件の達成数`0/1`が付いたタスクが追加されます。
 
 ### 4. エージェント役: 作業を始める
 
 エージェントは、自分の下書きを開始し、進行中に移して、稼働中だと報告して作業を始めます。
 
 ```sh
-agboard --project "Quickstart" start 2 --actor ai
-agboard --project "Quickstart" mv 2 doing --actor ai --reason "Start checking the install steps"
-agboard --project "Quickstart" state 2 running --actor ai --reason "Following the install page"
-agboard --project "Quickstart" history add 2 --reason "Built the web UI and installed agboard without errors"
+agboard --project "Quickstart" start 1 --actor ai
+agboard --project "Quickstart" mv 1 doing --actor ai --reason "Start checking the install steps"
+agboard --project "Quickstart" state 1 running --actor ai --reason "Following the install page"
+agboard --project "Quickstart" history add 1 --reason "Built the web UI and installed agboard without errors"
 ```
 
-ブラウザでは、タスク#2が進行中に移り、**稼働中**と表示されます。選んで**履歴**タブを開くと、各操作が日時と理由とともに並んでいます。
+ブラウザでは、タスク#1が進行中に移り、**稼働中**と表示されます。選んで**履歴**タブを開くと、各操作が日時と理由とともに並んでいます。
 
 ### 5. 質問して回答する
 
 エージェントは、判断が必要になると、選択肢つきで質問します。
 
 ```sh
-agboard --project "Quickstart" message ask --actor ai --task 2 --questions-json '{"questions":[{"body":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
+agboard --project "Quickstart" message ask --actor ai --task 1 --questions-json '{"questions":[{"body":"Should the guide also cover Windows?","choices":[{"id":"yes","label":"Yes, include Windows"},{"id":"no","label":"No, macOS only"}]}]}'
 ```
 
-このコマンドは、起動したサーバーを通して回答まで待ちます（既定では最長10分。サーバーがなければ、裏で起動します）。タスク#2が**待機中**になり、質問と2つの選択肢が表示されます。ブラウザで選択肢を選び、必要ならメモを書いて、回答を送ります。コマンドは回答を表示して終わり、タスクは**未稼働**に戻ります。
+このコマンドは、起動したサーバーを通して回答まで待ちます（既定では最長10分。サーバーがなければ、裏で起動します）。タスク#1が**待機中**になり、質問と2つの選択肢が表示されます。ブラウザで選択肢を選び、必要ならメモを書いて、回答を送ります。コマンドは回答を表示して終わり、タスクは**未稼働**に戻ります。
 
 エージェントは、タスクの履歴で回答を読んで、作業を再開します。
 
 ```sh
-agboard --project "Quickstart" show 2
-agboard --project "Quickstart" state 2 running --actor ai --reason "Windows is not needed; continuing with macOS"
+agboard --project "Quickstart" show 1
+agboard --project "Quickstart" state 1 running --actor ai --reason "Windows is not needed; continuing with macOS"
 ```
 
 ### 6. 完了条件を満たして完了する
@@ -141,12 +144,12 @@ agboard --project "Quickstart" state 2 running --actor ai --reason "Windows is n
 エージェントは完了条件を検証し、結果を記録してから達成済みにします。ここでは、元のファイルをコピーして`done: true`に書き換え、タスクへ反映します。
 
 ```sh
-agboard --project "Quickstart" history add 2 --reason "Verified the install steps on a clean machine"
+agboard --project "Quickstart" history add 1 --reason "Verified the install steps on a clean machine"
 sed 's/done: false/done: true/' task.md > task-done.md
-agboard --project "Quickstart" edit 2 --desc-file task-done.md
+agboard --project "Quickstart" edit 1 --desc-file task-done.md
 ```
 
-サーバーが動いていれば、タスク#2は自動で完了に移ります。完了の列へ手動で移す必要はありません。自動完了は、下書きではないAI担当のタスクが対象です。ユーザー担当のタスク#1は、未着手の列に残ります。
+サーバーが動いていれば、タスク#1は自動で完了に移ります。完了の列へ手動で移す必要はありません。自動完了は、下書きではないAI担当のタスクが対象です。
 
 ### 7. 片付ける
 
@@ -158,7 +161,7 @@ agboard --project "Quickstart" project rm
 
 ## ここで確認したこと
 
-- 頼むと、エージェントが計画を提案します。計画を書くのはあなたではありません。
+- **AI に依頼**かチャットで頼むと、エージェントが計画を提案します。計画を書くのはあなたではありません。
 - 質問に答えると、エージェントが自分で計画を開始します。開始にあなたの承認は要りません。
 - タスクは**未着手 → 進行中 → 完了**と進み、エージェントは**未稼働**・**稼働中**・**待機中**を報告します。
 - すべての変更が、理由つきでタスクの履歴に記録されます。

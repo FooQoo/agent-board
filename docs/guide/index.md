@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 
 <video class="demo-video" :src="withBase('/videos/demo.mp4')" :poster="withBase('/videos/demo.jpg')" autoplay muted loop playsinline></video>
 
-One task, start to finish: the agent starts the task and asks a question, you answer on the task, and the agent resumes. When every acceptance condition is checked, the task moves to Done on its own.
+From a request to Done: you ask for the work with **Ask AI**, the agent turns it into tasks on the board and asks what only you can decide, and you answer on the task. The agent then starts its plan, and when every acceptance condition of a task is checked, the task moves to Done on its own.
 
 Want to see it for yourself? [Try the demo](https://fooqoo.github.io/agent-board/demo/) in your browser, with nothing to install. It opens the first-run guide on sample data, in Japanese when your browser prefers Japanese and in English otherwise. Reloading the page starts it over.
 
@@ -35,7 +35,7 @@ Everything is stored as plain files on your machine, and you and the agent read 
 
 You do not write the plan. You ask, and the agent does the planning on the board.
 
-1. **Request.** Tell the agent what you want in the chat, in your own words.
+1. **Request.** Ask for what you want in your own words, with **Ask AI** on the board or in the agent's chat.
 2. **Plan.** The agent puts a plan on the board right away: an epic, and tasks in work order, each with acceptance conditions. They show as ordinary Todo cards with a **Draft** badge. The agent also asks the questions it cannot settle itself.
 3. **Answers, then the start.** You answer the questions. Once they are answered and the plan is written up, the agent starts the plan itself. You do not approve the start, and a task does not start while a question linked to it is open.
 4. **Work in order.** The agent works through the tasks, records what it does, and decides everything else itself.
