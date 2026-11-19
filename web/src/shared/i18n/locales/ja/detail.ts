@@ -32,6 +32,7 @@ export const detailJa = {
   results: {
     loading: '成果を読み込み中…',
     failed: '成果を読み込めませんでした。',
+    refreshFailed: '成果を更新できませんでした。以下は先に読み込んだものです。',
     retry: '再試行',
     empty: 'まだ成果はありません。',
     versionMissing: '成果 {{version}} は見つかりませんでした。以下はこのタスクにある成果です。',

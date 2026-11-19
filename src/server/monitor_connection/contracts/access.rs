@@ -44,13 +44,13 @@ impl PublicOrigin {
     /// The address that opens one result of a task on the phone:
     /// `https://host[:port]/?project=<id>&task=<n>&result=<version>`. The path is `/` and the target
     /// is in the query, so the page shell and the passcode screen keep it. `None` when the project
-    /// is not 32 lowercase hex digits or the task or version is not a positive number.
+    /// is not 32 lowercase hex digits or the task (up to 2^53 - 1) or version is not a positive number.
     pub fn result_link(&self, project_id: &str, task_id: i64, version: u32) -> Option<String> {
         let valid_project = project_id.len() == 32
             && project_id
                 .bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
-        if !valid_project || task_id < 1 || version < 1 {
+        if !valid_project || !(1..=9_007_199_254_740_991).contains(&task_id) || version < 1 {
             return None;
         }
         Some(format!(

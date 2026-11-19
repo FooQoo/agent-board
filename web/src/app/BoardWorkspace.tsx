@@ -201,7 +201,10 @@ export function BoardWorkspace({
                   : boardData === null && Boolean(activeId)
               }
               focusResultVersion={
-                !archiveVisible && selected !== null && model.resultLink?.taskId === selected.id
+                !archiveVisible &&
+                selected !== null &&
+                model.resultLink?.projectId === activeId &&
+                model.resultLink.taskId === selected.id
                   ? model.resultLink.version
                   : null
               }

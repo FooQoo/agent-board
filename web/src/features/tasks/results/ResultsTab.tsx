@@ -25,6 +25,7 @@ export function ResultsTab({
   return (
     <ResultsView
       state={results}
+      refreshFailed={results.refreshFailed}
       attachmentUrl={attachmentUrl}
       focusVersion={focusVersion}
       onRetry={results.retry}

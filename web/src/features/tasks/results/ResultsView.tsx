@@ -16,11 +16,14 @@ export function ResultsView({
   state,
   attachmentUrl,
   focusVersion,
+  refreshFailed = false,
   onRetry,
 }: {
   state: TaskResultsState;
   attachmentUrl: (attachmentId: string) => string;
   focusVersion?: number | null;
+  /** The latest read failed; the results shown are the ones read before. */
+  refreshFailed?: boolean;
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
@@ -44,17 +47,27 @@ export function ResultsView({
         )}
       </div>
     );
-  if (state.results.length === 0) return <p className="results__note">{t('results.empty')}</p>;
   const newestFirst = [...state.results].sort((a, b) => b.version - a.version);
   const missing =
     focusVersion != null && !state.results.some((result) => result.version === focusVersion);
   return (
     <div className="results">
+      {refreshFailed && (
+        <div className="results__note" role="alert">
+          <p>{t('results.refreshFailed')}</p>
+          {onRetry && (
+            <button type="button" className="results__retry" onClick={onRetry}>
+              {t('results.retry')}
+            </button>
+          )}
+        </div>
+      )}
       {missing && (
         <p className="results__note" role="status">
           {t('results.versionMissing', { version: focusVersion })}
         </p>
       )}
+      {state.results.length === 0 && <p className="results__note">{t('results.empty')}</p>}
       <ol className="results__list" ref={listRef} onLoadCapture={settleFocus}>
         {newestFirst.map((result) => (
           <ResultItem

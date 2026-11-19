@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import type { TaskResult } from '../../../shared/api/contracts';
 import { ResultsView } from './ResultsView';
 
@@ -85,7 +85,7 @@ export const EnlargeImage: Story = {
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
     await userEvent.click(view.getAllByRole('button', { name: /Enlarge/ })[0] as HTMLElement);
-    await expect(within(document.body).getByRole('dialog')).toBeVisible();
+    await waitFor(() => expect(within(document.body).getByRole('dialog')).toBeVisible());
   },
 };
 

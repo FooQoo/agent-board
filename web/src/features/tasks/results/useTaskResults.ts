@@ -17,11 +17,12 @@ export function useTaskResults(
   taskId: number,
   refreshKey: unknown,
   enabled = true,
-): TaskResultsState & { retry: () => void } {
-  const [state, setState] = useState<{ key: string; value: TaskResultsState }>({
-    key: '',
-    value: { status: 'loading' },
-  });
+): TaskResultsState & { refreshFailed: boolean; retry: () => void } {
+  const [state, setState] = useState<{
+    key: string;
+    value: TaskResultsState;
+    refreshFailed: boolean;
+  }>({ key: '', value: { status: 'loading' }, refreshFailed: false });
   const [attempt, setAttempt] = useState(0);
   const identity = `${projectId}/${taskId}`;
   // `refreshKey` and `attempt` only make the read run again.
@@ -31,15 +32,20 @@ export function useTaskResults(
     let live = true;
     getJson<{ results: TaskResult[] }>(`${projectPath(projectId)}/tasks/${taskId}/results`).then(
       (body) => {
-        if (live) setState({ key: identity, value: { status: 'ready', results: body.results } });
+        if (live)
+          setState({
+            key: identity,
+            value: { status: 'ready', results: body.results },
+            refreshFailed: false,
+          });
       },
       () => {
-        // A failed read keeps what was shown for this task.
+        // A failed read keeps what was shown for this task and says that the refresh failed.
         if (live)
           setState((current) =>
             current.key === identity && current.value.status === 'ready'
-              ? current
-              : { key: identity, value: { status: 'error' } },
+              ? { ...current, refreshFailed: true }
+              : { key: identity, value: { status: 'error' }, refreshFailed: false },
           );
       },
     );
@@ -49,5 +55,5 @@ export function useTaskResults(
   }, [projectId, taskId, identity, refreshKey, attempt, enabled]);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const value: TaskResultsState = state.key === identity ? state.value : { status: 'loading' };
-  return { ...value, retry };
+  return { ...value, refreshFailed: state.key === identity && state.refreshFailed, retry };
 }

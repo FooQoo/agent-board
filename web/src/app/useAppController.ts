@@ -34,7 +34,7 @@ const BOARD_MESSAGE: Partial<Record<AppView, AppControllerModel['message']>> = {
 export function useAppController(initial: AppInitial | undefined): AppControllerModel {
   const [requested, setRequested] = useQueryState('project', parseAsString);
   const { session, dispatch, operations } = useProjectSession(requested, initial?.select ?? null);
-  const link = useResultLink(setRequested);
+  const link = useResultLink(requested, setRequested);
   const [docsOpenFor, setDocsOpenFor] = useState<ProjectId | null>(null);
   const projects = useProjects();
   const activeId = session.activeProjectId;

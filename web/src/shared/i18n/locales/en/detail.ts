@@ -33,6 +33,7 @@ export const detailEn = {
   results: {
     loading: 'Loading the results…',
     failed: 'The results could not be read.',
+    refreshFailed: 'The results could not be updated. These are the ones read earlier.',
     retry: 'Try again',
     empty: 'No results yet.',
     versionMissing:

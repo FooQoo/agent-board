@@ -11,6 +11,7 @@ import type { SessionAction, SessionState } from './projectSession';
  * link's task belongs to the project it named.
  */
 export function useResultLink(
+  requested: string | null,
   setRequested: (
     projectId: string | null,
     options?: { history?: 'push' | 'replace' },
@@ -20,8 +21,14 @@ export function useResultLink(
   const [resultParam, setResultParam] = useQueryState('result', parseAsString);
   const resultLink = useMemo(
     () =>
-      parseResultTarget(new URLSearchParams({ task: taskParam ?? '', result: resultParam ?? '' })),
-    [taskParam, resultParam],
+      parseResultTarget(
+        new URLSearchParams({
+          project: requested ?? '',
+          task: taskParam ?? '',
+          result: resultParam ?? '',
+        }),
+      ),
+    [requested, taskParam, resultParam],
   );
   const clearResultLink = useCallback(() => {
     void setTaskParam(null, { history: 'replace' });
@@ -48,6 +55,7 @@ export function useLinkedTaskSelection(
   const { activeProjectId, viewMode } = session;
   useEffect(() => {
     if (resultLink === null || boardData === null || viewMode !== 'board') return;
+    if (activeProjectId !== resultLink.projectId) return;
     const key = `${activeProjectId}:${resultLink.taskId}:${resultLink.version}`;
     if (opened.current === key || findTask(boardData.tasks, resultLink.taskId) === null) return;
     opened.current = key;

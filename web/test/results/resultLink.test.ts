@@ -32,10 +32,12 @@ describe('result link', () => {
 
   it('reads the target of a page query and round-trips a built one', () => {
     expect(parseResultTarget(`?project=${project}&task=12&result=3`)).toEqual({
+      projectId: project,
       taskId: 12,
       version: 3,
     });
     expect(parseResultTarget(resultLinkQuery(project, 7, 2) ?? '')).toEqual({
+      projectId: project,
       taskId: 7,
       version: 2,
     });
@@ -50,8 +52,24 @@ describe('result link', () => {
       '?task=a&result=3',
       '?task=1.5&result=3',
       '?task=-1&result=3',
-      '?task=12&result=99999999999',
+      '?task=12&result=4294967296',
+      '?task=9007199254740993&result=3',
     ])
-      expect(parseResultTarget(query)).toBeNull();
+      expect(parseResultTarget(query.replace('?', `?project=${project}&`))).toBeNull();
+  });
+
+  it('takes a link without a valid project for no target', () => {
+    expect(parseResultTarget('?task=12&result=3')).toBeNull();
+    expect(parseResultTarget('?project=nope&task=12&result=3')).toBeNull();
+  });
+
+  it('parses every task and version the builders emit', () => {
+    const link = resultLinkQuery(project, 10_000_000_000, 4_294_967_295) ?? '';
+    expect(parseResultTarget(link)).toEqual({
+      projectId: project,
+      taskId: 10_000_000_000,
+      version: 4_294_967_295,
+    });
+    expect(resultLinkQuery(project, 1, 4_294_967_296)).toBeNull();
   });
 });

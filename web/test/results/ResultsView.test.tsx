@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from '../../src/features/tasks/results/ResultsView';
 import { selectLocale } from '../../src/shared/i18n';
 import type { TaskResult } from '../../src/shared/api/contracts';
@@ -81,5 +81,28 @@ describe('ResultsView', () => {
     expect(screen.getByText('Loading the results…')).toBeTruthy();
     rerender(<ResultsView state={{ status: 'error' }} attachmentUrl={url} onRetry={() => {}} />);
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  });
+
+  it('says the linked version is missing even when the task has no results', () => {
+    render(
+      <ResultsView state={{ status: 'ready', results: [] }} attachmentUrl={url} focusVersion={3} />,
+    );
+    expect(screen.getByText('No results yet.')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('Result 3 was not found');
+  });
+
+  it('keeps the earlier results and offers a retry when a refresh failed', () => {
+    const retry = vi.fn();
+    render(
+      <ResultsView
+        state={{ status: 'ready', results }}
+        attachmentUrl={url}
+        refreshFailed
+        onRetry={retry}
+      />,
+    );
+    expect(screen.getByText('Screen is ready')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(retry).toHaveBeenCalled();
   });
 });

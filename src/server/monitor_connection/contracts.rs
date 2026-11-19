@@ -66,6 +66,8 @@ mod tests {
         assert_eq!(origin.result_link(&project.to_uppercase(), 12, 3), None);
         assert_eq!(origin.result_link(project, 0, 3), None);
         assert_eq!(origin.result_link(project, 12, 0), None);
+        assert_eq!(origin.result_link(project, 9_007_199_254_740_992, 1), None);
+        assert!(origin.result_link(project, 10_000_000_000, 1).is_some());
     }
 
     #[test]
