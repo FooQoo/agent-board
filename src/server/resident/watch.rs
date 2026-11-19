@@ -64,20 +64,42 @@ impl Launcher {
         let launcher = self.clone();
         std::thread::spawn(move || {
             if let Some(choice) = launcher.autostart.get() {
+                // Read before the project is resolved: a stop or a launch while it resolves
+                // cancels this start.
+                let epoch = launcher.epoch();
                 let tool = choice.tool;
                 let project = choice.project_id.clone();
                 let (name, folder) = match resolve(&project) {
                     Ok(found) => found,
                     Err(error) => {
                         let none = std::path::Path::new("");
-                        launcher.start_failed(tool, &project, &choice, "", none, &error);
+                        launcher.start_failed(
+                            epoch,
+                            tool,
+                            &project,
+                            choice.model.as_deref(),
+                            ("", none),
+                            &error,
+                        );
                         return;
                     }
                 };
-                if let Err(error) =
-                    launcher.launch(&project, &name, &folder, tool, choice.model.as_deref())
-                {
-                    launcher.start_failed(tool, &project, &choice, &name, &folder, &error);
+                if let Err(error) = launcher.launch_auto(
+                    epoch,
+                    &project,
+                    &name,
+                    &folder,
+                    tool,
+                    choice.model.as_deref(),
+                ) {
+                    launcher.start_failed(
+                        epoch,
+                        tool,
+                        &project,
+                        choice.model.as_deref(),
+                        (&name, &folder),
+                        &error,
+                    );
                 }
             }
         });
@@ -127,6 +149,7 @@ impl Launcher {
                 .filter(|plan| matches!(plan.state, PlanState::Restarting { .. }))
                 .map(|plan| {
                     (
+                        plan.generation,
                         plan.project.clone(),
                         plan.project_name.clone(),
                         plan.folder.clone(),
@@ -134,7 +157,7 @@ impl Launcher {
                     )
                 })
         };
-        let Some((project, name, folder, model)) = target else {
+        let Some((generation, project, name, folder, model)) = target else {
             return;
         };
         let result: Result<Launched, AgboardError> = self.spawn_child(
@@ -143,7 +166,7 @@ impl Launcher {
             &folder,
             tool,
             model.as_deref(),
-            Spawn::Relaunch,
+            Spawn::Relaunch(generation),
         );
         if let Err(error) = result {
             let mut plans = self.plans();

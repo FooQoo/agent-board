@@ -8,12 +8,12 @@
 //! that a running child has attached.
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
 
 use super::Launcher;
-use super::autostart::AutoStart;
 use super::spawn::Spawn;
 use crate::clock::{Clock, SystemClock};
 use crate::domain::ProjectId;
@@ -69,6 +69,9 @@ pub(super) enum PlanState {
 
 /// What the board keeps running for one tool.
 pub(super) struct Plan {
+    /// The epoch this plan was made under; a restart is admitted only for the plan it was
+    /// prepared from.
+    pub generation: u64,
     pub project: ProjectId,
     pub project_name: String,
     pub folder: PathBuf,
@@ -88,6 +91,7 @@ pub(super) struct Plan {
 
 impl Plan {
     pub(super) fn new(
+        generation: u64,
         project: &ProjectId,
         project_name: &str,
         folder: &std::path::Path,
@@ -95,6 +99,7 @@ impl Plan {
         launch_id: &str,
     ) -> Plan {
         Plan {
+            generation,
             project: project.clone(),
             project_name: project_name.to_string(),
             folder: folder.to_path_buf(),
@@ -164,11 +169,11 @@ impl Launcher {
             .map(|(tool, _)| *tool)
     }
 
-    pub(super) fn restart_pending(&self, tool: Tool) -> bool {
-        matches!(
-            self.plans().get(&tool).map(|plan| &plan.state),
-            Some(PlanState::Restarting { .. })
-        )
+    /// Whether the plan of `tool` made under `generation` is waiting to restart.
+    pub(super) fn restart_pending(&self, tool: Tool, generation: u64) -> bool {
+        self.plans().get(&tool).is_some_and(|plan| {
+            plan.generation == generation && matches!(plan.state, PlanState::Restarting { .. })
+        })
     }
 
     /// Called under the live lock when a child has been started.
@@ -182,7 +187,7 @@ impl Launcher {
     ) {
         let mut plans = self.plans();
         match (kind, plans.get_mut(&tool)) {
-            (Spawn::Relaunch, Some(plan)) => {
+            (Spawn::Relaunch(_), Some(plan)) => {
                 plan.state = PlanState::Running;
                 plan.launch_id = launched.launch_id.clone();
                 plan.started = launched.started;
@@ -193,9 +198,11 @@ impl Launcher {
             _ => {
                 // A person's launch replaces whatever was kept, such as a shown failure.
                 plans.clear();
+                let generation = self.epoch.fetch_add(1, Ordering::SeqCst) + 1;
                 plans.insert(
                     tool,
                     Plan::new(
+                        generation,
                         &launched.project,
                         project_name,
                         folder,
@@ -238,19 +245,24 @@ impl Launcher {
         plan.fail(&self.timing, reason, true);
     }
 
-    /// A start that did not even produce a child (auto-start at server start).
+    /// A start that did not even produce a child (auto-start at server start). `epoch` is the one
+    /// the start was prepared under: when a stop or another launch came since, the failure is not
+    /// recorded, so it cannot replace what that one keeps.
     pub(super) fn start_failed(
         &self,
+        epoch: u64,
         tool: Tool,
         project: &ProjectId,
-        choice: &AutoStart,
-        name: &str,
-        folder: &std::path::Path,
+        model: Option<&str>,
+        (name, folder): (&str, &std::path::Path),
         error: &AgboardError,
     ) {
-        let mut plan = Plan::new(project, name, folder, choice.model.as_deref(), "");
+        let mut plan = Plan::new(epoch, project, name, folder, model, "");
         plan.fail(&self.timing, error.reason(), retryable(error));
         let mut plans = self.plans();
+        if self.epoch() != epoch {
+            return;
+        }
         plans.clear();
         plans.insert(tool, plan);
     }

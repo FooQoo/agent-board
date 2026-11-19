@@ -16,7 +16,7 @@ static ENV: Mutex<()> = Mutex::new(());
 const SCRIPT: &str = r#"#!/bin/sh
 d=$(dirname "$0")
 n=$(basename "$0")
-if [ -f "$d/slow" ] && { [ "$1" = auth ] || [ "$1" = login ] || [ "$1" = debug ]; }; then exec sleep 60; fi
+if [ -f "$d/slow" ] && { [ "$1" = auth ] || [ "$1" = login ] || [ "$1" = debug ]; }; then : > "$d/slow.started"; exec sleep 60; fi
 case "$1" in
   auth) if [ -f "$d/logged-out" ]; then echo '{"loggedIn":false}'; else echo '{"loggedIn":true}'; fi; exit 0 ;;
   login) if [ -f "$d/logged-out" ]; then exit 1; fi; exit 0 ;;
@@ -25,7 +25,16 @@ esac
 echo x >> "$d/$n.starts"
 { echo "ARGS: $*"; echo "PWD: $(pwd)"; env; } > "$d/$n.record.tmp"
 mv "$d/$n.record.tmp" "$d/$n.record"
-if [ -f "$d/exit-now" ]; then exit 0; fi
+if [ -f "$d/orphan" ]; then
+  # A command of the session that outlives it and ignores SIGTERM, in the session's group.
+  (trap '' TERM; exec sleep 30) &
+  echo $! > "$d/orphan.pid.tmp"
+  mv "$d/orphan.pid.tmp" "$d/orphan.pid"
+fi
+if [ -f "$d/exit-now" ]; then
+  while [ -f "$d/hold" ]; do sleep 0.05; done
+  exit 0
+fi
 if [ "$n" = claude ]; then
   # The two-way stream-json session: the first user message arrives on stdin.
   IFS= read -r first
@@ -263,3 +272,4 @@ mod drivers;
 mod health;
 mod lifecycle;
 mod push;
+mod races;

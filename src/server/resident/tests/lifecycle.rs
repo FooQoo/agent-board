@@ -31,8 +31,11 @@ fn stop_ends_the_process_drops_the_registry_entry_and_allows_a_relaunch() {
 fn a_child_that_exits_by_itself_is_reaped_and_forgotten() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture();
+    // The child waits for `hold` to go, so it cannot be reaped before the session registers.
     std::fs::write(fx.dir.path().join("exit-now"), "").unwrap();
+    std::fs::write(fx.dir.path().join("hold"), "").unwrap();
     fx.launch(Tool::ClaudeCode, None).unwrap();
+    fx.record("claude");
     // Its own session registers, then the process dies.
     let _hold2 = fx.registry.register(Attributes {
         project: project(),
@@ -40,6 +43,7 @@ fn a_child_that_exits_by_itself_is_reaped_and_forgotten() {
         tool: Tool::ClaudeCode,
         origin: Origin::Board,
     });
+    std::fs::remove_file(fx.dir.path().join("hold")).unwrap();
     wait_until("the exit to be noticed", || fx.launcher.status().is_empty());
     wait_until("the registry entry to go", || {
         fx.registry.check_board_launch().is_ok()

@@ -17,7 +17,10 @@ use crate::server::sessions::Tool;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Spawn {
     User,
-    Relaunch,
+    /// The saved auto-start, prepared under this epoch.
+    Auto(u64),
+    /// A restart of the plan that was made under this epoch.
+    Relaunch(u64),
 }
 
 fn refused_stopped() -> AgboardError {
@@ -43,20 +46,35 @@ impl Launcher {
                 reason: format!("\"{model}\" is not a model name."),
             });
         }
-        let mut live = self.lock();
-        if kind == Spawn::Relaunch && !self.restart_pending(tool) {
+        // Held to the end: a launch, a stop and a restart never interleave. The live set is locked
+        // only to look at it and to add the child, not during the slow checks below.
+        let _gate = self.gate();
+        if self.is_closing() {
             return Err(refused_stopped());
+        }
+        match kind {
+            Spawn::Relaunch(generation) if !self.restart_pending(tool, generation) => {
+                return Err(refused_stopped());
+            }
+            Spawn::Auto(epoch) if epoch != self.epoch() => {
+                return Err(AgboardError::SessionLaunchRefused {
+                    reason: "The saved auto-start was cancelled by a stop or another launch."
+                        .to_string(),
+                });
+            }
+            _ => {}
         }
         let refused = |reason: String| AgboardError::SessionLaunchRefused { reason };
         // One board-launched session in total: any live child, or a restart that is waiting,
         // holds the slot (a restart of the same tool is the supervisor itself).
-        if let Some(running) = live.keys().next() {
+        let running = self.lock().keys().next().copied();
+        if let Some(running) = running {
             return Err(refused(format!(
                 "A {} session launched by the board is already running. Stop it first.",
                 running.as_str()
             )));
         }
-        if kind == Spawn::User
+        if !matches!(kind, Spawn::Relaunch(_))
             && let Some(waiting) = self.restarting_tool()
         {
             return Err(refused(format!(
@@ -121,9 +139,11 @@ impl Launcher {
         };
         let exit = launched.exit.clone();
         let push = launched.push.clone();
-        self.supervise_launch(tool, kind, &launched, project_name, folder);
-        live.insert(tool, launched);
-        drop(live);
+        {
+            let mut live = self.lock();
+            self.supervise_launch(tool, kind, &launched, project_name, folder);
+            live.insert(tool, launched);
+        }
 
         // The pusher gives the idle session what the board has for it.
         let pusher = self.clone();
