@@ -5,6 +5,9 @@ import { DetailTabList, detailPanelId, detailTabId } from '../../../shared/ui/de
 /** The four tabs of a card: its description, its history, and the epic it belongs to. */
 export type DetailTab = 'description' | 'acceptance' | 'history' | 'epic';
 
+/** The tabs in the order they are shown, which a sideways flick follows. */
+export const DETAIL_TABS: readonly DetailTab[] = ['description', 'acceptance', 'history', 'epic'];
+
 export function tabId(base: string, tab: DetailTab): string {
   return detailTabId(base, tab);
 }

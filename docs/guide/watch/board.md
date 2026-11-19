@@ -36,6 +36,8 @@ You can check and uncheck a condition in the Conditions tab. The change shows at
 - Unchecking a condition of a task in Done leaves it in Done. Move it yourself if work should continue.
 - An archived task's conditions cannot be changed. To change a condition's text, restore the task and open its preview.
 
+On a touch screen, swipe the panel sideways to move to the next or previous tab. A swipe that starts on a button, a link, code, an image, or a table that scrolls sideways is left to that element.
+
 Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
 
 ## Move a task

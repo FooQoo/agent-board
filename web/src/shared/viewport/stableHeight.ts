@@ -49,7 +49,10 @@ export function watchStableHeight(target: Window = window): () => void {
   // area then (using the visual viewport from keyboardInset.ts), so their buttons and text fields
   // stay above it. Without a focused field there is no keyboard, whatever the heights say.
   const mark = () =>
-    root.toggleAttribute('data-keyboard', typing() && kept !== null && kept.height > viewport().height);
+    root.toggleAttribute(
+      'data-keyboard',
+      typing() && kept !== null && kept.height > viewport().height,
+    );
   const update = () => {
     const next = nextStableHeight(kept, viewport(), typing());
     if (next !== kept) {

@@ -206,7 +206,7 @@ export function MessagesSurface({
         messages={messages}
         tab={tab}
         onTabChange={setTab}
-        swipe={kind === 'sheet'}
+        swipe
         onOpen={(message) => {
           setFromList(true);
           show(message.id);

@@ -136,7 +136,7 @@ function SwipeRows({
   );
 }
 
-/** The list of open messages in two tabs; on a phone the tabs also switch by a sideways swipe. */
+/** The list of open messages in two tabs; the tabs also switch by a sideways swipe. */
 export function MessageList({
   messages,
   tab,
@@ -149,7 +149,7 @@ export function MessageList({
   onTabChange: (tab: MessageTab) => void;
   /** A question or a request was chosen. */
   onOpen: (message: Message) => void;
-  /** Switches the tabs by a sideways swipe (a phone). */
+  /** Switches the tabs by a sideways swipe (the phone sheet and the PC modal). */
   swipe?: boolean;
 }) {
   const { t } = useTranslation();

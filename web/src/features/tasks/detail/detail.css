@@ -433,3 +433,8 @@
     column-gap: 8px;
   }
 }
+
+/* A sideways flick switches the tabs on a tablet, so the browser keeps only vertical panning there. */
+.detail-view[data-tab-flick] .detail__viewport {
+  touch-action: pan-y pinch-zoom;
+}

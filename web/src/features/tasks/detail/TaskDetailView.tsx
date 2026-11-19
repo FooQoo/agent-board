@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTabFlick } from '../../../shared/lib/gesture/tabSwipe';
 import { stateLabel } from '../model/format';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
 import type { SectionSnapshot } from '../../../shared/data/core';
@@ -7,7 +8,7 @@ import { AssigneeLabel } from '../assignee/AssigneeLabel';
 import { HistoryTimeline } from '../history/HistoryTimeline';
 import { StatusLabel } from '../status/StatusLabel';
 import { BodyDocumentView } from './BodyDocumentView';
-import { type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
+import { DETAIL_TABS, type DetailTab, DetailTabs, panelId, tabId } from './DetailTabs';
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
 import { AcceptanceTabView } from './AcceptanceTabView';
@@ -48,6 +49,8 @@ export interface TaskDetailViewProps {
   /** Lets the person check and uncheck the conditions; without it they are read-only. */
   onToggleCondition?: (conditionId: string, done: boolean) => Promise<unknown>;
   toolbar?: ReactNode;
+  /** Switches the tabs by a sideways flick of a finger or a pen (the PC board on a tablet). */
+  flickTabs?: boolean;
   children?: ReactNode;
 }
 
@@ -76,10 +79,12 @@ export function TaskDetailView({
   readOnlyDraft = true,
   onToggleCondition,
   toolbar,
+  flickTabs = false,
   children,
 }: TaskDetailViewProps) {
   const { t } = useTranslation();
   const idBase = useId();
+  const flick = useTabFlick(DETAIL_TABS, tab, onTabChange, flickTabs);
   // The active panel scrolls the document; a long one is drawn only near the viewport.
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   const panelRef = (id: DetailTab) => (tab === id ? setScroller : undefined);
@@ -98,7 +103,12 @@ export function TaskDetailView({
         ? 'loading'
         : 'failed';
   return (
-    <aside className="detail detail-view" aria-label={t('detail.title')}>
+    <aside
+      className="detail detail-view"
+      aria-label={t('detail.title')}
+      data-tab-flick={flickTabs || undefined}
+      {...flick}
+    >
       <DetailHeader
         identity={
           <>
