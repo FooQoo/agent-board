@@ -63,6 +63,8 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 依頼者が見られる最初の成果ができたら、作業の途中でも記録し、そのまま作業を続けます。成果は短い文章（`--summary`）で、画像（`--file`。複数の画像は繰り返して指定し、指定した順に最大20枚）と、主な成果物へのリンクまたは保存場所（`--link`）を添えられます。`--final`を付けない成果は途中のもの、`--final`を付けると完成したものです。
 
+AIタスクの条件がすべて満たされているのに最終の成果がないとき、`agboard progress`とエージェントのHookが`finalResultMissing`にそのタスクを載せ、エージェントに成果の記録を促します。自動Doneを止めたり遅らせたりはせず、Doneになったタスクにも最初の最終の成果を記録できます。
+
 ```sh
 agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
 agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai

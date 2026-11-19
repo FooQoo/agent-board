@@ -20,6 +20,8 @@ Write the summary so that it stands alone on a phone: what can be seen, and what
 
 When the work is finished and verified, deliver the finished result with `--final`, then complete the conditions as usual (see the work loop in `agboard skills`). A final result does not move the task to Done by itself.
 
+Automatic Done can complete a task before you write the final result. The progress table (and the hook) then lists it in `finalResultMissing` as `{id, title, taskPath}`, also while all its conditions are met but it is not yet Done. Record `result add <id> --final` for each listed task, with a PR link, a capture, or the verified outcome; `result add --final` is accepted on a Done task that has no final result, and the entry disappears afterwards. A Done task still refuses every other agent change, including a progress result. Do not stop other work for it.
+
 ## A result needs no reply
 
 A result is a notification, not a question. Feedback on it is optional. Do not phrase it as a request ("let me know", "is this OK?") and do not block on it: a person who has nothing to say leaves the work to continue, and one who does can send a request or a message later.
