@@ -130,23 +130,29 @@ Open **Settings** to choose the language (English or Japanese) and one of 24 the
 
 The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and remote access, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
 
-**Phone notifications** chooses which notifications the board may send to your phone, and the same section is in the phone layout. The choices are saved on this PC, like the language and theme, and apply to the next notification; changing them sends nothing by itself. See [What you are notified about](./remote-access.md#notified-about).
-
-- **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
-- With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
-- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours. See [What you are notified about](./remote-access.md#notified-about) for what it says.
-
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
-Below the themes, three rows open other features. Each has an icon, a title, one line of description, and a button:
+Below the themes, four rows open other features. Each has an icon, a title, one line of description, and a button:
 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again, on the screen you are using.
 - **Remote connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [remote access guide](./remote-access).
 - **Resident session** with **Resident session settings** opens the dialog that starts and stops an agent session kept attached to the board; see [Resident session](../delegate/resident-session). While a session is launched, or auto-start is on, the footer also shows its tool and state, and clicking it opens the same dialog.
+- **Phone notifications** with **Notification settings** opens the dialog that chooses what the board may tell your phone about; see [Phone notifications](#phone-notifications).
 
-![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Remote connection rows](../../images/guide/settings.png){.screenshot}
+![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial, Remote connection, Resident session, and Phone notifications rows](../../images/guide/settings.png){.screenshot}
 
 The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors. On a narrow window the button of each row moves under its description.
+
+### Phone notifications {#phone-notifications}
+
+**Notification settings** on the **Phone notifications** row opens a dialog of its own, on the PC and in the phone layout. On a narrow screen it opens as a bottom sheet. Closing it returns you to the board. The choices are saved on this PC, like the language and theme, and apply to the next notification; changing them sends nothing by itself. See [What you are notified about](./remote-access.md#notified-about).
+
+- **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
+- With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
+- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours. See [What you are notified about](./remote-access.md#notified-about) for what it says.
+- In the Home Screen app on an iPhone, **Enable notifications** is at the top of this dialog; see [Get notifications on an iPhone](./remote-access.md#get-notifications-on-an-iphone).
+
+![Phone notifications dialog with the four kinds, the state changes, and the periodic notification interval](../../images/guide/notification-settings.png){.screenshot}
 
 ![The board in a dark theme](../../images/guide/board-dark.png){.screenshot}
 

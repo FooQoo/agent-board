@@ -83,3 +83,8 @@
     margin-top: 0;
   }
 }
+
+/* The Home Screen control above the choices keeps its own rule and a gap before the intro. */
+.notification-surface__push {
+  margin-bottom: 14px;
+}

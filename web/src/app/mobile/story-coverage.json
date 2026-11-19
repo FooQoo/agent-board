@@ -47,8 +47,12 @@
               "interaction": true
             },
             {
-              "id": "app-mobile-phone-settings--with-push-entry",
-              "states": ["notifications row below the resident session row", "enable button"],
+              "id": "app-mobile-phone-settings--with-notification-entry",
+              "states": [
+                "phone notifications row below the resident session row",
+                "settings list has no notification checkboxes",
+                "choosing it closes the settings and asks for the dialog"
+              ],
               "interaction": true
             }
           ]

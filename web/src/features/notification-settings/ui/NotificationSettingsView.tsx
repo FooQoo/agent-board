@@ -124,7 +124,7 @@ function Loaded({
   );
 }
 
-/** The "Phone notifications" section of the settings dialog, drawn from a loaded state. */
+/** The choices of the "Phone notifications" dialog, drawn from a loaded state. */
 export function NotificationSettingsView({
   state,
   onChange,
@@ -133,16 +133,12 @@ export function NotificationSettingsView({
   onChange: (patch: NotificationSettingsPatch) => void;
 }) {
   const { t } = useTranslation();
-  const headingId = useId();
   return (
     <section
       className="settings__section notification-settings"
-      aria-labelledby={headingId}
+      aria-label={t('notifications.title')}
       data-notification-settings=""
     >
-      <h3 className="settings__heading" id={headingId}>
-        {t('notifications.title')}
-      </h3>
       <p className="notification-settings__intro">{t('notifications.intro')}</p>
       {state.status === 'loading' ? (
         <p className="notification-settings__intro">{t('notifications.loading')}</p>
