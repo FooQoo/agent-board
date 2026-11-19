@@ -9,10 +9,12 @@
 
 use std::sync::Arc;
 
+use axum::Router;
 use axum::body::Bytes;
 use axum::extract::{Path, Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
+use axum::routing::{delete, get, post, put};
 use serde::Deserialize;
 
 use crate::server::AppState;
@@ -21,6 +23,30 @@ use crate::server::monitor_connection::lifecycle::{
     ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError, parse_domain,
 };
 use crate::server::response::{error_response, forbidden, json_response};
+
+/// The connection routes. They are on the local listener only; the entrance never serves them.
+pub(super) fn routes() -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/api/monitor-connections", get(get_connections))
+        .route(
+            "/api/monitor-connections/settings/ngrok",
+            put(put_ngrok_settings),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/start",
+            post(start_ngrok),
+        )
+        .route(
+            "/api/monitor-connections/transports/ngrok/stop",
+            post(stop_ngrok),
+        )
+        .route("/api/monitor-connections/token", delete(delete_saved_token))
+        .route("/api/monitor-connections/devices", get(list_devices))
+        .route(
+            "/api/monitor-connections/devices/{device_id}",
+            delete(remove_device),
+        )
+}
 
 const MAX_BODY: usize = 16 * 1024;
 const MAX_TOKEN: usize = 512;

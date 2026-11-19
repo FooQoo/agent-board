@@ -294,27 +294,3 @@ pub(super) fn failure_of(error: &StartError) -> FailureCode {
         _ => FailureCode::Internal,
     }
 }
-
-impl MonitorConnections {
-    /// The registered devices, the one seen last first.
-    pub fn devices(&self) -> Vec<super::devices::DeviceInfo> {
-        self.devices.list()
-    }
-
-    /// Unregister a device. Its sessions that are still valid end at once, and so do their open
-    /// event streams. `Ok(false)` when there is no such device.
-    pub fn remove_device(&self, id: &str) -> Result<bool, super::devices::SaveFailed> {
-        let removed = self.devices.remove(id)?;
-        if removed {
-            let policy = self
-                .lock()
-                .run
-                .as_ref()
-                .and_then(|run| run.gate.read().unwrap_or_else(|e| e.into_inner()).clone());
-            if let Some(policy) = policy {
-                policy.sessions.revoke_device(id);
-            }
-        }
-        Ok(removed)
-    }
-}

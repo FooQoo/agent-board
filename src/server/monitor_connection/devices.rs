@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::config::write_private_atomic;
+use super::lifecycle::MonitorConnections;
 use crate::server::monitor_auth::contracts::{constant_time_eq, secret_hash};
 
 const FILE_NAME: &str = "remote-devices.json";
@@ -213,6 +214,30 @@ impl DeviceStore {
     /// Ids of devices as they are removed.
     pub fn subscribe(&self) -> broadcast::Receiver<String> {
         self.removed.subscribe()
+    }
+}
+
+impl MonitorConnections {
+    /// The registered devices, the one seen last first.
+    pub fn devices(&self) -> Vec<DeviceInfo> {
+        self.devices.list()
+    }
+
+    /// Unregister a device. Its sessions that are still valid end at once, and so do their open
+    /// event streams. `Ok(false)` when there is no such device.
+    pub fn remove_device(&self, id: &str) -> Result<bool, SaveFailed> {
+        let removed = self.devices.remove(id)?;
+        if removed {
+            let policy = self
+                .lock()
+                .run
+                .as_ref()
+                .and_then(|run| run.gate.read().unwrap_or_else(|e| e.into_inner()).clone());
+            if let Some(policy) = policy {
+                policy.sessions.revoke_device(id);
+            }
+        }
+        Ok(removed)
     }
 }
 
