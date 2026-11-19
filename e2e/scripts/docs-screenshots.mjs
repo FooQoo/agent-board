@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect } from '@playwright/test';
@@ -20,6 +20,7 @@ const extra = {
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     preview: 'Open full screen (task)', close: 'Close', settings: 'Settings',
+    residentRow: 'Resident session settings', residentDialog: 'Resident session', residentWaiting: 'Waiting', residentStart: 'Start',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
     messages: 'Messages', later: 'Later', discard: 'Discard and close',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
@@ -37,6 +38,7 @@ const extra = {
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定',
+    residentRow: '常駐セッションの設定', residentDialog: '常駐セッション', residentWaiting: '待機中', residentStart: '起動',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
     messages: 'メッセージ', later: 'あとでやる', discard: '破棄して閉じる',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
@@ -60,6 +62,23 @@ function addDocs(home, id, locale, more) {
   return docs;
 }
 
+// A stand-in for the `claude` command, so the resident session dialog can show a running session without
+// a real agent: it is logged in, and it ends every turn at once, so the board sees it waiting.
+function fakeClaude(dir) {
+  const file = path.join(dir, 'claude');
+  writeFileSync(file, `#!/bin/sh
+case "$1" in
+  auth|login) echo '{"loggedIn":true}'; exit 0 ;;
+esac
+while IFS= read -r line; do
+  echo '{"type":"system","subtype":"init","session_id":"docs-fake","claude_code_version":"9.9.9"}'
+  echo '{"type":"result","subtype":"success","is_error":false,"result":"done"}'
+done
+`);
+  chmodSync(file, 0o755);
+  return file;
+}
+
 function addSamples(home, id, text, more) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
   run('edit', String(more.editorTask + 1), '--desc',
@@ -81,6 +100,11 @@ try {
       const text = copy[locale];
       const more = extra[locale];
       const id = addSamples(home, seed(home, text), text, more);
+      // The resident session needs a bound folder and a command to start; the stand-in keeps the shot free of a real agent.
+      const folder = path.join(home, 'work');
+      mkdirSync(folder);
+      cli(home, ['project', 'bind', project, '--folder', folder]);
+      process.env.AGBOARD_CLAUDE_BIN = fakeClaude(home);
       seedProposal(home, text);
       const docs = addDocs(home, id, locale, more);
       const started = await startServer(home);
@@ -164,6 +188,15 @@ try {
       await expect(settings).toBeVisible();
       await expect(settings.getByRole('radio').first()).toBeVisible();
       await shot('settings', page, page);
+      // resident-session: the dialog of a running session, opened from the Resident session row of Settings.
+      await settings.getByRole('button', { name: more.residentRow }).click();
+      const resident = page.getByRole('dialog', { name: more.residentDialog });
+      await expect(resident).toBeVisible();
+      await resident.getByRole('button', { name: more.residentStart, exact: true }).click();
+      await expect(resident.getByText(more.residentWaiting, { exact: true }).first()).toBeVisible();
+      await shot('resident-session', resident, page);
+      await page.keyboard.press('Escape');
+      await expect(resident).toHaveCount(0);
       await page.keyboard.press('Escape');
       await expect(settings).toHaveCount(0);
 
@@ -213,10 +246,11 @@ try {
 
 
       expect(errors).toEqual([]);
-      console.log(`${locale}: captured 10 guide screenshots; no browser errors.`);
+      console.log(`${locale}: captured 11 guide screenshots; no browser errors.`);
     } finally {
       await Promise.all(contexts.map((ctx) => ctx.close()));
       await stop(server);
+      delete process.env.AGBOARD_CLAUDE_BIN;
       rmSync(home, { recursive: true, force: true });
     }
   }
