@@ -7,6 +7,9 @@ mod create;
 mod delete;
 mod draft;
 mod edit;
+mod result;
+
+pub use result::{MAX_RESULTS, RecordedResult, ResultInput};
 
 use std::path::Path;
 

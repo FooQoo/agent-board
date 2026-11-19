@@ -32,12 +32,8 @@ use axum::middleware;
 use axum::response::Response;
 use axum::routing::{delete, get, patch, post, put};
 
-use super::response::{agboard_error_response, error_response, json_response};
-use super::store::refresh_index;
+use super::response::error_response;
 use super::{AppState, events};
-use crate::domain::Changed;
-use crate::error::AgboardError;
-use crate::file_store::model::TaskView;
 use archive::*;
 use detail::{epic_detail, task_detail};
 use docs::*;
@@ -192,6 +188,10 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
                 .patch(edit_task_multipart),
         )
         .route(
+            "/api/projects/{project_id}/tasks/{id}/results",
+            get(list_task_results),
+        )
+        .route(
             "/api/projects/{project_id}/tasks/{id}/attachments/{attachment_id}",
             get(get_task_attachment).delete(delete_task_attachment),
         )
@@ -278,20 +278,4 @@ fn parse_task_id(raw: &str) -> Result<i64, Box<Response>> {
             "Task ID is invalid.",
         ))
     })
-}
-
-/// A task as `{"task": ...}`, telling the browsers only if something changed.
-fn changed_task_response(
-    state: &AppState,
-    result: Result<Changed<TaskView>, AgboardError>,
-) -> Response {
-    match result {
-        Ok(result) => {
-            if result.changed {
-                refresh_index(state);
-            }
-            json_response(StatusCode::OK, &serde_json::json!({"task": result.value}))
-        }
-        Err(error) => agboard_error_response(&error),
-    }
 }

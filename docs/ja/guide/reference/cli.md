@@ -16,6 +16,7 @@ title: CLIリファレンス
 | 進捗を記録する | `history add` |
 | タスクの本文を編集する | `edit` |
 | 画像を添付する | `attachment` |
+| 成果を依頼者に届ける | `result add`、`result ls` |
 | タスクをまとめて順序づける | `epic`、`progress` |
 | 変更を待つ | `wait` |
 | プロジェクトとフォルダを管理する | `project`、`workspace` |
@@ -57,6 +58,19 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
 コマンドが時刻を付け、AIの書き込み権限を適用します。actor・イベントID・種別・時刻の指定は要りません。意味のある進捗、判断、検証、中断、再開のときに、実際の作業と検証に基づく簡潔な理由を書きます。理由を省略するか空白にすると、状態に合った既定の文を生成します。AIは、下書き・アーカイブ済み・完了のタスクに履歴を追加できません。
+
+### 成果を届ける {#deliver-a-result}
+
+依頼者が見られる最初の成果ができたら、作業の途中でも記録し、そのまま作業を続けます。成果は短い文章（`--summary`）で、画像（`--file`）と、主な成果物へのリンクまたは保存場所（`--link`）を添えられます。`--final`を付けない成果は途中のもの、`--final`を付けると完成したものです。
+
+```sh
+agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
+agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai
+agboard --project "My project" result add 1 --summary "Finished and checked" --final --actor ai
+agboard --project "My project" result ls 1
+```
+
+成果には、タスクごとに次の版番号（1、2、……）が付きます。記録しても列と稼働状態は変わらず、履歴が1件増えます。同じ成果を繰り返し送っても安全です。すでに記録した成果を見つけて`created: false`を返し、何も書きません。`--key`を省くと、内容（種別・要約・リンク・画像のバイト列）で同じ成果かを判断します。`--key <key>`で自分で名前を付けることもでき、別の内容に同じキーを使うと`invalid_value`で失敗します。要約とリンクは1〜2,000文字、1つのタスクに残せる成果は100件までです。AIは、人の下書き・アーカイブ済み・完了のタスクには成果を記録できません。ただし、すでに記録した成果の再送は成功します。
 
 ### タスクを終える
 

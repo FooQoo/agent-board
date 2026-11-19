@@ -1,7 +1,7 @@
 //! Resolving the target project for a command and dispatching it to its
 //! handler, for the commands that work on a board.
 
-use crate::cli::args::{Cli, Command, EpicCommand, MessageCommand, ProjectCommand};
+use crate::cli::args::{Cli, Command, EpicCommand, MessageCommand, ProjectCommand, ResultCommand};
 use crate::cli::{Context, Env, Outcome, Target, commands};
 use crate::clock::SystemClock;
 use crate::domain::validate_project_name;
@@ -50,6 +50,10 @@ fn access(command: &Command) -> Access {
                 Access::ReadProject
             }
             _ => Access::ChangeProject,
+        },
+        Command::Result(args) => match args.command {
+            ResultCommand::Ls(_) => Access::ReadProject,
+            ResultCommand::Add(_) => Access::ChangeProject,
         },
         Command::Init(_) => Access::ChangeOrCreateProject,
         Command::Add(_)
@@ -125,6 +129,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Init(args) => commands::init::run(ctx, args),
         Command::Add(args) => commands::add::run(ctx, args),
         Command::Attachment(args) => commands::attachment::run(ctx, args),
+        Command::Result(args) => commands::result::run(ctx, args),
         Command::Epic(args) => commands::epic::run(ctx, args),
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),

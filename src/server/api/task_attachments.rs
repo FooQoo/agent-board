@@ -38,6 +38,28 @@ pub(super) async fn list_task_attachments(
         Err(error) => agboard_error_response(&error),
     }
 }
+/// The results recorded on a task, oldest first. Read-only. The images of the
+/// results are fetched from the attachment route with each `attachmentId`.
+pub(super) async fn list_task_results(
+    State(state): State<Arc<AppState>>,
+    Path((raw_project, raw_id)): Path<(String, String)>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    let id = match parse_task_id(&raw_id) {
+        Ok(id) => id,
+        Err(response) => return *response,
+    };
+    match with_files(&state, move |store| store.task(&project_id, id)).await {
+        Ok(task) => json_response(
+            StatusCode::OK,
+            &serde_json::json!({"taskId": task.id, "results": task.results}),
+        ),
+        Err(error) => agboard_error_response(&error),
+    }
+}
 pub(super) async fn add_task_attachment(
     State(state): State<Arc<AppState>>,
     Path((raw_project, raw_id)): Path<(String, String)>,
