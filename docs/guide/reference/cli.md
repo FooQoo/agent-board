@@ -148,6 +148,14 @@ Before a task, the wait can return `{"kind":"answers",…}` (answers to question
 
 When there has been no eligible task for the full interval, it prints `{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}` and exits 0. This is a normal idle completion; it does not say that previous work succeeded. `board_unavailable`, `project_not_found`, invalid board data, and invalid arguments remain errors with non-zero exit codes. `--timeout` applies only to `--after` mode; it reports `wait_timeout` as an error and does not answer a question.
 
+To wait with no time limit, use `--until work`. It returns the same `answers`, `requests`, and `task` results in the same order, but never `idle_timeout`; it keeps waiting until there is something to act on. It does not accept `--idle-timeout`. This is the wait for a session that stays attached to a board:
+
+```sh
+agboard --project "My project" wait --until work --json
+```
+
+If the connection to the server drops, `--until work` fails with `board_unavailable`, as `--until task` does.
+
 ## Run the server
 
 You rarely need to start the server yourself. `wait`, a question that waits for its answer, and the agent hook start it in the background when none is running. A command that starts it prints one line on standard error:

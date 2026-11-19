@@ -115,7 +115,7 @@ impl Cli {
             }
             Command::Wait(args) if args.until.is_none() && args.after.is_none() => {
                 Err(AgboardError::InvalidArgument {
-                    message: "wait requires --after CURSOR or --until task --idle-timeout SECONDS.".into(),
+                    message: "wait requires --after CURSOR, --until task --idle-timeout SECONDS, or --until work.".into(),
                     command: Some("wait".into()),
                 })
             }
@@ -124,6 +124,14 @@ impl Cli {
             {
                 Err(AgboardError::InvalidArgument {
                     message: "wait --until task requires --idle-timeout SECONDS.".into(),
+                    command: Some("wait".into()),
+                })
+            }
+            Command::Wait(args)
+                if args.until == Some(WaitUntilArg::Work) && args.idle_timeout.is_some() =>
+            {
+                Err(AgboardError::InvalidArgument {
+                    message: "wait --until work has no time limit; --idle-timeout is only valid with --until task.".into(),
                     command: Some("wait".into()),
                 })
             }

@@ -172,8 +172,17 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                     runtime.block_on(crate::agent::task_wait::wait_for_task(
                         &env.shared_dir,
                         cli.project().unwrap_or_default(),
-                        args.idle_timeout
-                            .expect("wait task mode requires --idle-timeout"),
+                        Some(
+                            args.idle_timeout
+                                .expect("wait task mode requires --idle-timeout"),
+                        ),
+                    ))
+                }
+                Some(args::WaitUntilArg::Work) => {
+                    runtime.block_on(crate::agent::task_wait::wait_for_task(
+                        &env.shared_dir,
+                        cli.project().unwrap_or_default(),
+                        None,
                     ))
                 }
                 None => runtime.block_on(crate::agent::wait::wait_for_change(

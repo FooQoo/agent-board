@@ -49,7 +49,7 @@ pub struct HookArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --json\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --timeout 60 --json\n  agboard --project demo wait --until task --idle-timeout 300 --json"
+    after_help = "Examples:\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --json\n  agboard --project demo wait --after f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef --timeout 60 --json\n  agboard --project demo wait --until task --idle-timeout 300 --json\n  agboard --project demo wait --until work --json"
 )]
 pub struct WaitArgs {
     /// Cursor to wait after, as printed by snapshot: f1:<project-id>:<version>
@@ -58,17 +58,20 @@ pub struct WaitArgs {
     /// Maximum time to wait for a board change; only with --after
     #[arg(long, requires = "after", conflicts_with_all = ["until", "idle_timeout"])]
     pub timeout: Option<u64>,
-    /// Wait for the next eligible task
+    /// Wait for the next thing to act on: task (ends with idle_timeout) or work (no time limit)
     #[arg(long, value_enum, conflicts_with_all = ["after", "timeout"])]
     pub until: Option<WaitUntilArg>,
-    /// Seconds with no eligible task before normal idle completion (1..86400)
+    /// Seconds with no eligible task before normal idle completion (1..86400); only with --until task
     #[arg(long, value_name = "SECONDS", value_parser = clap::value_parser!(u64).range(1..=86400), requires = "until")]
     pub idle_timeout: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum WaitUntilArg {
+    /// Answers, requests, or one eligible task; ends with idle_timeout after --idle-timeout
     Task,
+    /// The same results as task, with no time limit; for resident sessions
+    Work,
 }
 
 fn parse_cursor(text: &str) -> Result<ChangeCursor, String> {

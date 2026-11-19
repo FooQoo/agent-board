@@ -148,6 +148,14 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 
 指定した時間に対象タスクがなかった場合は、`{"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}`を出力して終了コード0を返します。これは対象なしでの正常終了であり、それまでの作業成功を示しません。`board_unavailable`・`project_not_found`・不正なボードデータ・引数誤りは、引き続き終了コード0以外のエラーです。`--timeout`は`--after`モードだけに指定でき、変更待ちが成立しなければエラー`wait_timeout`になります。質問への回答にはなりません。
 
+時間の上限なしで待つには`--until work`を使います。`answers`・`requests`・`task`を同じ順序で返しますが`idle_timeout`は返さず、対応すべきものが現れるまで待ち続けます。`--idle-timeout`は指定できません。ボードに張り付いたセッションが使う待機です。
+
+```sh
+agboard --project "My project" wait --until work --json
+```
+
+サーバーとの接続が切れた場合、`--until task`と同じく`board_unavailable`で失敗します。
+
 ## サーバーを起動する
 
 サーバーを自分で起動することは、ほとんどありません。`wait`、回答を待つ質問、エージェントのHookが、動いていなければ裏で起動します。起動したコマンドは、標準エラーに1行出します。

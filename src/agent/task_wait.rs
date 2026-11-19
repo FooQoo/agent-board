@@ -91,10 +91,13 @@ struct IdleTimeoutOutput {
 /// Resolve the project name once, then track its immutable identity through
 /// renames. The absolute monotonic deadline is created once and shared by all
 /// notifications and the final snapshot check.
+///
+/// `idle_timeout_seconds` of `None` waits with no limit (`wait --until work`): the wait ends only
+/// when there is something to act on or the board becomes unavailable.
 pub async fn wait_for_task(
     shared: &Path,
     project_name: &str,
-    idle_timeout_seconds: u64,
+    idle_timeout_seconds: Option<u64>,
 ) -> Result<String, AgboardError> {
     let project_name = validate_project_name(project_name)?;
     let project_id = FileStore::open(shared)
@@ -120,8 +123,9 @@ pub async fn wait_for_task(
         return Ok(output);
     }
 
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(idle_timeout_seconds);
-    match wait_until(shared, &reader, Some(deadline), |snapshot| {
+    let deadline = idle_timeout_seconds
+        .map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
+    match wait_until(shared, &reader, deadline, |snapshot| {
         Ok(match ready(shared, snapshot, &project_id)? {
             Some(output) => Evaluation::Ready(output),
             None => Evaluation::Continue,
@@ -133,7 +137,7 @@ pub async fn wait_for_task(
         WaitResult::DeadlineReached(_) => serde_json::to_string(&IdleTimeoutOutput {
             kind: "idle_timeout",
             project_id,
-            idle_timeout_seconds,
+            idle_timeout_seconds: idle_timeout_seconds.unwrap_or_default(),
         })
         .map_err(|error| AgboardError::BoardUnavailable {
             reason: error.to_string(),

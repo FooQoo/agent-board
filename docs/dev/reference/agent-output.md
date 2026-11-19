@@ -102,7 +102,7 @@ If the requested interval passes with no eligible task, no open request, and no 
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}
 ```
 
-The timeout is required and ranges from 1 to 86,400 seconds. Connection, project, data, and argument errors remain errors; they are not encoded as `idle_timeout`. See [Error codes](./errors.md#server-and-waiting).
+The timeout is required and ranges from 1 to 86,400 seconds. `wait --until work --json` takes no timeout: it returns the same `answers`, `requests`, and `task` results in the same order, and never `idle_timeout`; it keeps waiting until there is something to return or an error occurs. Connection, project, data, and argument errors remain errors; they are not encoded as `idle_timeout`. See [Error codes](./errors.md#server-and-waiting).
 
 ## Open
 

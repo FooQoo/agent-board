@@ -102,7 +102,7 @@ taskの項目を省略した例です。
 {"kind":"idle_timeout","projectId":"<id>","idleTimeoutSeconds":300}
 ```
 
-待機秒数は必須で、1〜86,400秒です。接続・プロジェクト・データ・引数のエラーは、`idle_timeout`にはなりません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
+待機秒数は必須で、1〜86,400秒です。`wait --until work --json`は待機秒数を取りません。`answers`・`requests`・`task`を同じ順序で返し、`idle_timeout`は返さず、返すものが現れるかエラーになるまで待ち続けます。接続・プロジェクト・データ・引数のエラーは、`idle_timeout`にはなりません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
 
 ## open
 

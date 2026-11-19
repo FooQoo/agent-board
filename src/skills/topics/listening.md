@@ -46,4 +46,6 @@ When the task is resolved or intentionally paused with its current state and rea
 - `message ask --task <id> --questions-json <json>` waits for the answers to its questions in the same command, 600 seconds by default. `message wait <Q-id>...` waits again. `--no-wait` registers the questions and returns immediately. A timeout or interruption never withdraws a question.
 - `wait --until task --idle-timeout <seconds>` waits for one eligible task and returns it, or exits normally with `idle_timeout` after a continuous interval with no eligible task.
 
+`wait --until work` waits with no time limit and returns the same answers, requests, and task results, never `idle_timeout`; it is for a session that stays attached to a board.
+
 All three use the event-driven wait engine. They have different conditions and return values; never interpret one mode's timeout or result as another mode's success.

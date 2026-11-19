@@ -130,6 +130,20 @@ fn wait(home: &Path, project: &str, timeout: &str) -> std::process::Child {
         .unwrap()
 }
 
+fn wait_work(home: &Path, project: &str) -> std::process::Child {
+    Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_OPEN_BROWSER", "0")
+        .env("AGBOARD_WATCH", "poll")
+        .env("AGBOARD_HOME", home)
+        .env("TZ", "UTC")
+        .args(["--project", project, "--json", "wait", "--until", "work"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap()
+}
+
 fn output(child: std::process::Child) -> (std::process::Output, Duration) {
     let began = Instant::now();
     let result = child.wait_with_output().unwrap();
@@ -641,4 +655,151 @@ fn malformed_project_data_fails_instead_of_becoming_an_idle_timeout() {
     let error: Value = serde_json::from_slice(&result.stderr).unwrap();
     assert_eq!(error["error"]["code"], "board_unavailable");
     assert_ne!(error["error"]["code"], "idle_timeout");
+}
+
+#[test]
+fn work_wait_has_no_limit_and_returns_a_task_a_request_then_an_answer_as_they_arrive() {
+    let (home, _) = demo();
+    let _server = serve(home.path());
+
+    // No limit: still waiting well after an idle interval would have ended a task wait.
+    let mut waiter = wait_work(home.path(), "Demo");
+    thread::sleep(Duration::from_millis(1500));
+    assert!(
+        waiter.try_wait().unwrap().is_none(),
+        "work wait ended early"
+    );
+    let task_id = add(home.path(), "Demo", "arrived", "ai", None);
+    let result = waiter.wait_with_output().unwrap();
+    assert!(result.status.success());
+    let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(selected["kind"], "task");
+    assert_eq!(selected["task"]["id"], task_id);
+
+    // A request outranks the task that is still eligible.
+    let waiter = wait_work(home.path(), "Demo");
+    let result = waiter.wait_with_output().unwrap();
+    assert_eq!(
+        serde_json::from_slice::<Value>(&result.stdout).unwrap()["kind"],
+        "task"
+    );
+    json(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "send",
+            "--actor",
+            "human",
+            "--text",
+            "Hello",
+            "--json",
+        ],
+    );
+    let result = wait_work(home.path(), "Demo").wait_with_output().unwrap();
+    assert_eq!(
+        serde_json::from_slice::<Value>(&result.stdout).unwrap()["kind"],
+        "requests"
+    );
+}
+
+#[test]
+fn work_wait_returns_an_answer_that_arrives_while_listening() {
+    let (home, _) = demo();
+    let _server = serve(home.path());
+    let task = add(home.path(), "Demo", "Work", "ai", None).to_string();
+    let asked = json(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "ask",
+            "--actor",
+            "ai",
+            "--task",
+            &task,
+            "--questions-json",
+            r##"{"questions":[{"body":"# Which colour?","choices":[{"id":"blue","label":"Blue"},{"id":"red","label":"Red"}]}]}"##,
+            "--no-wait",
+            "--json",
+        ],
+    );
+    let id = asked["questions"][0]["id"].as_str().unwrap().to_string();
+    let waiter = wait_work(home.path(), "Demo");
+    thread::sleep(Duration::from_millis(250));
+    json(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "answer",
+            &id,
+            "--actor",
+            "human",
+            "--via",
+            "cli",
+            "--choice",
+            "blue",
+            "--json",
+        ],
+    );
+    let result = waiter.wait_with_output().unwrap();
+    assert!(result.status.success());
+    let selected: Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(selected["kind"], "answers");
+    assert_eq!(selected["answers"][0]["id"], id.as_str());
+}
+
+#[test]
+fn work_wait_stream_drop_is_an_error_and_arguments_are_validated() {
+    let (home, _) = demo();
+    let server = serve(home.path());
+    let waiter = wait_work(home.path(), "Demo");
+    thread::sleep(Duration::from_millis(250));
+    drop(server);
+    let result = waiter.wait_with_output().unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    let error: Value = serde_json::from_slice(&result.stderr).unwrap();
+    assert_eq!(error["error"]["code"], "board_unavailable");
+
+    for args in [
+        vec![
+            "--project",
+            "Demo",
+            "wait",
+            "--until",
+            "work",
+            "--idle-timeout",
+            "5",
+        ],
+        vec![
+            "--project",
+            "Demo",
+            "wait",
+            "--until",
+            "work",
+            "--after",
+            "f1:0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef",
+        ],
+        vec![
+            "--project",
+            "Demo",
+            "wait",
+            "--until",
+            "work",
+            "--timeout",
+            "1",
+        ],
+    ] {
+        AssertCommand::cargo_bin("agboard")
+            .unwrap()
+            .env("AGBOARD_AUTOSTART", "0")
+            .env("AGBOARD_HOME", home.path())
+            .args(args)
+            .assert()
+            .code(2);
+    }
 }
