@@ -14,6 +14,7 @@ use tokio_stream::{Stream, StreamExt};
 use super::AppState;
 use super::change_feed::{ChangeFeed, resync_data};
 use super::preferences::Preferences;
+use super::sessions::Attributes;
 use super::web_assets::APP_BUILD_ID;
 use crate::domain::ProjectId;
 
@@ -53,12 +54,14 @@ pub(crate) async fn events(
     // The stream is use for as long as it is open, so an automatic server keeps running.
     let board = !headers.contains_key(WAITING_COMMAND_HEADER);
     let held = state.activity.open_stream(board);
+    // A wait that names its session is counted for as long as the stream is open.
+    let session = Attributes::from_headers(&headers).map(|named| state.sessions.register(named));
     let stream = tokio_stream::once(Ok(Event::default()
         .event("ready")
         .data(format!(r#"{{"build":"{APP_BUILD_ID}"}}"#))))
     .chain(changes.merge(preferences).merge(docs))
     .map(move |event| {
-        let _ = &held;
+        let _ = (&held, &session);
         event
     });
     Sse::new(stream).keep_alive(KeepAlive::new().interval(KEEP_ALIVE))

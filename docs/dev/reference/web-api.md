@@ -37,6 +37,7 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `POST …/tasks/archive-done` | `{ids: number[]}`; empty, duplicate, or invalid IDs are 422. Returns `{tasks, archivedCount}`. |
 | `GET /api/projects/{projectId}/archive` | Archived tasks with bodies, full history, and attachment metadata, plus `epics` from the same snapshot. Each task's `epicId` resolves against that list; a task without an epic, or one whose epic is missing, has no label. |
 | `GET /api/projects/{projectId}/summary` | The list data for the board: project, `version`, tasks, epics, and problems, without any body text. See [Summary and Detail](#summary-and-detail). |
+| `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts. See [Attached sessions](#attached-sessions). Never cached. |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | One task's body, acceptance conditions, and history as an NDJSON stream. Archived tasks are read the same way. |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | One epic's document as an NDJSON stream. |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | The project's documents in `docs/`, read-only: the folder tree, one Markdown or MDX file, an image, and opening the folder or a file in the computer's own app. See [Project docs](#project-docs). |
@@ -108,6 +109,47 @@ The order is `start`, then for each requested section `section-start`, its items
 A client that sees a gap in `seq`, a new `instanceId`, or an event it does not know drops the Summary and the related cached details. `ready` and `preferences` are unchanged.
 
 The server compares the parsed data before and after every reload, so a save that changes nothing the Summary or a Detail shows sends no event. A file that cannot be parsed changes every facet of its resource. A stream that fell too far behind gets `resync` (`{"instanceId", "seq"}`, the newest number) instead of the events it missed, and the client fetches everything again.
+
+### Attached sessions
+
+`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values.
+
+```json
+{
+  "sessions": [
+    {
+      "id": "claude:0a1b2c3d4e5f6071",
+      "tool": "claude-code",
+      "origin": "external",
+      "connectedAt": "2026-11-19T01:00:00Z",
+      "lastSeenAt": "2026-11-19T01:12:30Z",
+      "state": "connected"
+    }
+  ],
+  "counts": {
+    "total": 1,
+    "connected": 1,
+    "byTool": { "claude-code": 1, "codex": 0, "unknown": 0 },
+    "byOrigin": { "board": 0, "external": 1 }
+  }
+}
+```
+
+- `tool` is `claude-code`, `codex`, or `unknown`. `origin` is `board` for a session the board launched and `external` for any other.
+- `state` is `connected` while a stream is open and `grace` for 30 seconds after the last one closed, so the gap between one wait and the next does not make the count flicker. A session in grace still counts in `total` and the other counts; `connected` counts only open ones. After the grace period the session is gone. `lastSeenAt` is the current time while connected and the time the last stream closed in grace. A session that reconnects within the grace period is the same session and keeps its first `connectedAt`.
+- Sessions are ordered by `connectedAt`. A malformed project ID is 422 `invalid_value`; a project with no sessions (or one that does not exist) has an empty list.
+- The server keeps the registry in memory only. After a restart it is empty and fills again as the waits reconnect. The list is read on request; the UI polls it, and no event announces a change.
+
+How a stream names its session: a command that waits for tasks sends four headers with its `GET /api/events` request, and a stream without a valid set is simply not counted.
+
+| Header | Value |
+| --- | --- |
+| `X-Agboard-Session` | The session key: 1 to 64 characters of `A-Z a-z 0-9 . _ : -`. |
+| `X-Agboard-Session-Project` | The project's ID. |
+| `X-Agboard-Session-Tool` | `claude-code`, `codex`, or `unknown`. |
+| `X-Agboard-Session-Origin` | `board` or `external`. |
+
+The limit on launching is not a route. The board's launcher (a later change) calls `SessionRegistry::check_board_launch(tool)` before it starts a session: board-launched sessions are limited to one per tool over all projects, a board-launched session in grace still counts, and external sessions are never limited or counted against that limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
 
 ### Remote connection
 

@@ -37,6 +37,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
 | `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
+| `GET /api/projects/{projectId}/sessions` | プロジェクトに張り付いているエージェントセッションと、その数。[張り付いたセッション](#張り付いたセッション)を参照。キャッシュしません。 |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・完了条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にある文書を読むだけのルート。フォルダのツリー、MarkdownかMDXのファイル1つ、画像、フォルダやファイルをコンピュータのアプリで開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
@@ -108,6 +109,47 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 `seq`の欠番、新しい`instanceId`、未知のイベントを見たクライアントは、Summaryと関係するキャッシュ済みのDetailを破棄します。`ready`と`preferences`は変わりません。
 
 サーバーは再読込のたびに解析済みデータを前後で比べるため、SummaryにもDetailにも見える内容が変わらない保存ではイベントを送りません。解析できないファイルは、そのリソースのすべてのfacetを変更とします。遅れすぎたストリームには、取りこぼしたイベントの代わりに`resync`（`{"instanceId", "seq"}`。`seq`は最新の番号）を送り、クライアントは全体を取得し直します。
+
+### 張り付いたセッション
+
+`GET /api/projects/{projectId}/sessions`は、プロジェクトを待っているエージェントセッションを返します。設定画面とフッターが使います。セッションの`wait --until task`コマンドが`/api/events`のストリームを開いている間、そのセッションは張り付いているとみなします。ほかの読み取りと同じく、ngrokの入口でもパスコードのセッションの内側で同じルートを使えます。パス、プロセスID、環境変数の値は含みません。
+
+```json
+{
+  "sessions": [
+    {
+      "id": "claude:0a1b2c3d4e5f6071",
+      "tool": "claude-code",
+      "origin": "external",
+      "connectedAt": "2026-11-19T01:00:00Z",
+      "lastSeenAt": "2026-11-19T01:12:30Z",
+      "state": "connected"
+    }
+  ],
+  "counts": {
+    "total": 1,
+    "connected": 1,
+    "byTool": { "claude-code": 1, "codex": 0, "unknown": 0 },
+    "byOrigin": { "board": 0, "external": 1 }
+  }
+}
+```
+
+- `tool`は`claude-code`、`codex`、`unknown`のいずれかです。`origin`は、ボードが起動したセッションなら`board`、それ以外は`external`です。
+- `state`は、ストリームが開いている間は`connected`、最後のストリームが閉じてから30秒間は`grace`です。待機から次の待機までの間に数がちらつかないようにするためです。`grace`のセッションも`total`などの数に含まれ、`connected`は開いているものだけを数えます。猶予が過ぎるとセッションは消えます。`lastSeenAt`は、接続中は現在時刻、`grace`では最後のストリームが閉じた時刻です。猶予の間に再接続したセッションは同じセッションとして扱い、最初の`connectedAt`を保ちます。
+- セッションは`connectedAt`順に並びます。形式の誤ったプロジェクトIDは422 `invalid_value`です。セッションがないプロジェクト（存在しないプロジェクトも）は空のリストを返します。
+- 登録はサーバーのメモリにだけ置きます。再起動すると空になり、待機が再接続するたびに戻ります。一覧はリクエストのたびに読みます。UIはポーリングし、変更を知らせるイベントはありません。
+
+ストリームがセッションを名乗る方法は次のとおりです。タスクを待つコマンドは、`GET /api/events`のリクエストに4つのヘッダーを付けます。正しい組がないストリームは、数えられないだけで、通常どおり使えます。
+
+| ヘッダー | 値 |
+| --- | --- |
+| `X-Agboard-Session` | セッションのキー。`A-Z a-z 0-9 . _ : -`の1〜64文字。 |
+| `X-Agboard-Session-Project` | プロジェクトのID。 |
+| `X-Agboard-Session-Tool` | `claude-code`、`codex`、`unknown`のいずれか。 |
+| `X-Agboard-Session-Origin` | `board`または`external`。 |
+
+起動の上限はルートではありません。ボードの起動処理（今後の変更で追加）は、セッションを起動する前に`SessionRegistry::check_board_launch(tool)`を呼びます。ボードが起動したセッションは、全プロジェクトを通してツールごとに1つまでです。`grace`中のボード起動セッションも数えます。外部のセッションには上限がなく、この上限の数にも入りません。`AGBOARD_SESSION_GRACE_MS`を設定すると、30秒の猶予をミリ秒で置き換えられます。テストが使います。
 
 ### リモート接続
 

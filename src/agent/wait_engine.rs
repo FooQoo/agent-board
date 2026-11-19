@@ -11,6 +11,7 @@ use std::time::Duration;
 use eventsource_stream::Eventsource;
 use futures_util::StreamExt;
 
+use super::session_identity::SessionIdentity;
 use super::wait_connect::{Connected, connect};
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
@@ -23,6 +24,12 @@ pub(crate) trait WaitReader {
 
     /// The project followed, whose board a server started for the wait opens.
     fn project(&self) -> &ProjectId;
+
+    /// The session to tell the server about while the wait listens. Only a wait that keeps a
+    /// resident session on the board names one.
+    fn session(&self) -> Option<SessionIdentity> {
+        None
+    }
 }
 
 /// Result of applying a wait's purpose-specific predicate to a snapshot.
@@ -100,7 +107,14 @@ where
         if crate::autostart::enabled() {
             crate::autostart::ensure_serving(dir, Some(reader.project()))?;
         }
-        match connect(dir, deadline).await {
+        let session = reader.session();
+        match connect(
+            dir,
+            deadline,
+            session.as_ref().map(|s| (reader.project(), s)),
+        )
+        .await
+        {
             Ok(Connected::Stream(response)) => break response,
             Ok(Connected::DeadlineReached) => return final_read(reader, &mut evaluate).await,
             Err(AgboardError::BoardUnavailable { .. })

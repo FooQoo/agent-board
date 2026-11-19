@@ -5,7 +5,9 @@
 use std::path::Path;
 use std::time::Duration;
 
-use crate::{error::AgboardError, paths};
+use super::session_identity::SessionIdentity;
+use crate::server::sessions;
+use crate::{domain::ProjectId, error::AgboardError, paths};
 
 const CONNECT_LIMIT: Duration = Duration::from_secs(3);
 
@@ -63,6 +65,7 @@ fn reach_error(
 pub(crate) async fn connect(
     dir: &Path,
     deadline: Option<tokio::time::Instant>,
+    session: Option<(&ProjectId, &SessionIdentity)>,
 ) -> Result<Connected, AgboardError> {
     let info = paths::read_serve_info_in(dir).ok_or_else(|| {
         unavailable("No running Agent Board server was found. Run \"agboard serve\".")
@@ -125,15 +128,18 @@ pub(crate) async fn connect(
     if budget.is_zero() {
         return Ok(Connected::DeadlineReached);
     }
-    let connecting = tokio::time::timeout(
-        budget,
-        client
-            .get(format!("{base}/api/events"))
-            .header("Host", format!("127.0.0.1:{}", info.port))
-            .header(crate::server::WAITING_COMMAND_HEADER, "1")
-            .send(),
-    )
-    .await;
+    let mut request = client
+        .get(format!("{base}/api/events"))
+        .header("Host", format!("127.0.0.1:{}", info.port))
+        .header(crate::server::WAITING_COMMAND_HEADER, "1");
+    if let Some((project, identity)) = session {
+        request = request
+            .header(sessions::SESSION_HEADER, &identity.key)
+            .header(sessions::SESSION_TOOL_HEADER, identity.tool.as_str())
+            .header(sessions::SESSION_ORIGIN_HEADER, identity.origin.as_str())
+            .header(sessions::SESSION_PROJECT_HEADER, project.as_str());
+    }
+    let connecting = tokio::time::timeout(budget, request.send()).await;
     match connecting {
         Ok(Ok(response)) => response
             .error_for_status()

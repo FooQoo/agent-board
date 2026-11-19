@@ -27,6 +27,7 @@ pub mod monitor_auth {
 pub mod monitor_connection;
 mod request;
 mod response;
+pub mod sessions;
 mod store;
 mod summary_response;
 pub mod web_assets;
@@ -80,6 +81,8 @@ pub(crate) struct AppState {
     pub docs_changed: broadcast::Sender<Option<ProjectId>>,
     /// When the server was last used; an automatic server stops after its idle time.
     pub activity: Arc<idle::Activity>,
+    /// The agent sessions that wait on the board, counted while their streams are open.
+    pub sessions: Arc<sessions::SessionRegistry>,
 }
 
 pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {
