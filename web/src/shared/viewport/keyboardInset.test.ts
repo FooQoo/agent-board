@@ -27,6 +27,8 @@ describe('watchKeyboardInset', () => {
       value: 800,
       configurable: true,
     });
+    const field = document.body.appendChild(document.createElement('input'));
+    field.focus();
     const stop = watchKeyboardInset(target);
     const root = document.documentElement;
     expect(root.style.getPropertyValue('--keyboard-inset')).toBe('300px');
@@ -39,5 +41,29 @@ describe('watchKeyboardInset', () => {
     stop();
     expect(root.style.getPropertyValue('--visual-top')).toBe('');
     expect(root.hasAttribute('data-visual-keyboard')).toBe(false);
+    field.remove();
+  });
+
+  it('marks no keyboard while no text field has the focus', () => {
+    // A pinch zoom or a toolbar also makes the visual viewport smaller; dialogs must stay centered.
+    const viewport = Object.assign(new EventTarget(), { height: 500, offsetTop: 0 });
+    const target = Object.assign(new EventTarget(), {
+      visualViewport: viewport,
+      document,
+    }) as unknown as Window;
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      value: 800,
+      configurable: true,
+    });
+    const field = document.body.appendChild(document.createElement('input'));
+    const stop = watchKeyboardInset(target);
+    const root = document.documentElement;
+    expect(root.hasAttribute('data-visual-keyboard')).toBe(false);
+    field.focus();
+    expect(root.hasAttribute('data-visual-keyboard')).toBe(true);
+    field.blur();
+    expect(root.hasAttribute('data-visual-keyboard')).toBe(false);
+    stop();
+    field.remove();
   });
 });

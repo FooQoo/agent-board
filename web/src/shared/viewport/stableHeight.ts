@@ -42,19 +42,31 @@ export function nextStableHeight(kept: Viewport | null, now: Viewport, typing: b
 export function watchStableHeight(target: Window = window): () => void {
   const root = target.document.documentElement;
   let kept: Viewport | null = null;
+  const viewport = () => ({ width: target.innerWidth, height: target.innerHeight });
+  const typing = () => editingText(target.document.activeElement);
+  // While the kept height is taller than the viewport and a text field has the focus, the keyboard
+  // covers the bottom of the page; the dialog rule in ui.css fits centered dialogs into the visible
+  // area then (using the visual viewport from keyboardInset.ts), so their buttons and text fields
+  // stay above it. Without a focused field there is no keyboard, whatever the heights say.
+  const mark = () =>
+    root.toggleAttribute('data-keyboard', typing() && kept !== null && kept.height > viewport().height);
   const update = () => {
-    const now = { width: target.innerWidth, height: target.innerHeight };
-    const next = nextStableHeight(kept, now, editingText(target.document.activeElement));
-    // While the kept height is taller than the viewport, the keyboard covers the bottom of the
-    // page; the dialog rule in ui.css fits centered dialogs into the visible area then (using the visual
-    // viewport from keyboardInset.ts), so their buttons and text fields stay above it.
-    root.toggleAttribute('data-keyboard', next.height > now.height);
-    if (next === kept) return;
-    kept = next;
-    root.style.setProperty('--stable-vh', `${next.height}px`);
+    const next = nextStableHeight(kept, viewport(), typing());
+    if (next !== kept) {
+      kept = next;
+      root.style.setProperty('--stable-vh', `${next.height}px`);
+    }
+    mark();
   };
   update();
   // A closing keyboard grows the viewport again, which is always followed.
   target.addEventListener('resize', update);
-  return () => target.removeEventListener('resize', update);
+  // The focus leaving a field ends the keyboard layout at once; the kept height waits for the resize.
+  target.document.addEventListener('focusin', mark);
+  target.document.addEventListener('focusout', mark);
+  return () => {
+    target.removeEventListener('resize', update);
+    target.document.removeEventListener('focusin', mark);
+    target.document.removeEventListener('focusout', mark);
+  };
 }
