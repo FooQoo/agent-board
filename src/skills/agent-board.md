@@ -164,7 +164,7 @@ Lane and run-state operations already append their own history. Do not add a sec
 
 Keep history reasons concise and useful. Use Markdown in a reason when it makes the evidence easier to read. Record concise verification results in the TASK body; use image attachments for visual proof. Do not store full test logs on the board.
 
-Work in parallel and do not wait when you can avoid it. While a question is open or something else is pending, continue the other tasks that do not depend on it. Pick up the ready tasks in `nextTasks` in parallel, after checking each `EPIC.md` for dependencies, and look at `nextTasks` again whenever a task completes.
+Work in parallel and do not wait when you can avoid it. While a question is open or something else is pending, continue the other tasks that do not depend on it. Pick up the ready tasks in `nextTasks` in parallel, after checking each `EPIC.md` for dependencies, and look at `nextTasks` again whenever a task completes. Start every task that its dependencies allow without waiting to be told, and give each one that changes a Git repository its own branch in its own worktree, so that parallel work never shares a working tree. Follow the repository's own branch rules for naming and merging those branches.
 
 When your agent can spawn subagents, the main agent orchestrates and subagents do the work. Give each independent task its own subagent, with its task ID, plan, and acceptance conditions, and keep the implementation, investigation, and verification in the subagents. The main agent manages the project: it picks and orders the work, starts the subagents, reviews what they report, asks the user, and keeps the board updates (lane, run state, history, acceptance) itself, so every change goes through one writer.
 
