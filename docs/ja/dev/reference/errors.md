@@ -79,7 +79,9 @@
 | `port_in_use` | `serve`に指定したポートが使われている。理由には使っているものを示す。データ領域の違う別のAgent Boardのサーバー（pidつき）か、別のプログラム。自動のサーバーは代わりに別のポートを使う。 | 1 | なし |
 | `local_network_denied` | OSやサンドボックスが、`agboard`が`127.0.0.1`で待ち受けることや接続することを拒んだ（`EACCES`か`EPERM`）。Codexでは`agboard setup`で`agboard`をサンドボックスの外で動かせるようにする。 | 1 | なし |
 | `board_unavailable` | 回答を待つ`message ask`、`message wait`、`wait`、`open`、Hookがサーバーに届かない。自動起動が無効（`AGBOARD_AUTOSTART=0`）、サーバーを起動できない（理由に`serve.log`を示す）、`serve.json`のサーバーが応えない、接続に失敗した、のどれか。回答を待つ`message ask`は保存前にサーバーを確認するため、利用できない場合は質問を保存しない。`--no-wait`ならサーバーは不要。 | 1 | なし |
-| `remote_unavailable` | `remote`が報告できる、準備のできたngrok接続がない。サーバーが動いていないか、接続が`ready`ではない（無効、開始中、再接続中、失敗など）。理由にどちらかを示し、接続が失敗したときは失敗コードも示す。何も起動せず、アドレスと合言葉は出力しない。 | 1 | なし |
+| `remote_unavailable` | `--project`を付けた`show remote`が報告できる、準備のできたngrok接続がない。サーバーが動いていないか、接続が`ready`ではない（無効、開始中、再接続中、失敗など）。理由にどちらかを示し、接続が失敗したときは失敗コードも示す。何も起動せず、アドレスと合言葉は出力しない。 | 1 | なし |
+| `invalid_domain` | `setup remote --domain`の値がホスト名だけではない（スキーム、パス、ポート、ワイルドカード、空白を含む）。ボードの設定APIも同じコードをHTTP 422で返す。何も保存しない。 | 2 | 422 |
+| `keychain_unavailable` | `setup remote --token-stdin`（または`setup`のトークンの質問）がOSのキーチェーンを使えない。同じコマンドのほかのオプションも含めて、何も保存しない。ボードのAPIも同じコードをHTTP 409で返す。 | 1 | 409 |
 | `browser_open_failed` | `open`が、ブラウザーを開くプログラム（`open`、`xdg-open`、`AGBOARD_BROWSER_OPENER`）を起動できなかった。理由に、手で開くアドレスを示す。ブラウザーを開いてはいけないとき（`AGBOARD_OPEN_BROWSER=0`、SSH、画面がない）はエラーではない。 | 1 | なし |
 | `agent_cli_missing` | `claude`または`codex`がサーバーの`PATH`にない（または`AGBOARD_CLAUDE_BIN`・`AGBOARD_CODEX_BIN`がファイルを指していない）ため、ボードがセッションを起動できない。 | 1 | 409 |
 | `agent_cli_logged_out` | エージェントのCLIはあるが、ログインしていない（`claude auth status`の`loggedIn`がfalse、または`codex login status`が失敗）。理由に、ターミナルでログインするよう示す。 | 1 | 409 |

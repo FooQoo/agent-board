@@ -145,11 +145,24 @@ pub struct LsArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo show 12\n  agboard --project demo show 12 --json"
+    args_conflicts_with_subcommands = true,
+    after_help = "Examples:\n  agboard --project demo show 12\n  agboard --project demo show 12 --json\n  agboard show remote\n  agboard --project demo show remote --json"
 )]
 pub struct ShowArgs {
     /// ID of the task
-    pub id: i64,
+    #[arg(value_name = "ID")]
+    pub id: Option<i64>,
+    #[command(subcommand)]
+    pub command: Option<ShowCommand>,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum ShowCommand {
+    /// Show the saved ngrok settings and the connection state; with --project and a ready connection, also the phone URL and passcode
+    #[command(
+        after_help = "Without --project it prints the saved settings (enabled, fixed domain, whether a token is saved in the keychain, whether the keychain is available) and the connection state of the running server. The token is never shown.\nWith --project NAME it is what you give a person who wants to open that project on a phone: the URL and the 4-digit passcode of the ready connection. Nothing is started: without a ready connection it prints the reason and exits 1 as remote_unavailable.\nThe passcode is printed only here, on this computer. Anyone who gets it can open the board while the connection is up.\nChange the settings with \"agboard setup remote\".\n\nExamples:\n  agboard show remote\n  agboard show remote --json\n  agboard --project \"My project\" show remote\n  agboard --project \"My project\" show remote --json"
+    )]
+    Remote,
 }
 
 #[derive(Args, Debug)]

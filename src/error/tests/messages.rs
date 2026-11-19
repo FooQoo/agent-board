@@ -198,6 +198,14 @@ fn messages_and_reasons_follow_the_design_table() {
             "No server is running.",
         ),
         (
+            "the ngrok domain is not valid.",
+            "Give a host name only, such as example.ngrok-free.dev, without https://, a path, or a port.",
+        ),
+        (
+            "secure storage on this computer is not available.",
+            "The keychain is not available.",
+        ),
+        (
             "cannot open the browser.",
             "Cannot start xdg-open: No such file or directory (os error 2). Open http://127.0.0.1:7420/?project=0123456789abcdef0123456789abcdef in your browser yourself.",
         ),

@@ -8,6 +8,7 @@ use std::time::Duration;
 use super::contracts::{ConnectionStatus, PublicOrigin};
 use super::keychain::VaultError;
 use super::lifecycle::{Inner, MonitorConnections, idle_status};
+use super::types::FailureCode;
 use super::types::Settings;
 use super::types::{ForgetError, Secret, Snapshot, TokenSource};
 
@@ -20,6 +21,7 @@ impl MonitorConnections {
     /// The current state. The first call starts the keychain read in the
     /// background and waits for it at most `PROBE_GRACE`, without the lock.
     pub async fn snapshot(self: &Arc<Self>) -> Snapshot {
+        self.sync_config();
         let _ = tokio::time::timeout(PROBE_GRACE, self.probed()).await;
         self.snapshot_now(&self.lock())
     }
@@ -90,6 +92,38 @@ impl MonitorConnections {
                 self.probe_in_background(&mut inner);
             }
             notified.await;
+        }
+    }
+
+    /// Take in settings saved from the command line (`agboard setup remote`, `agboard setup`),
+    /// which write the file without going through this server. They always move the revision
+    /// forward, so a file whose revision is not the one held here is newer. A saved token is
+    /// found again too: the keychain is looked at again on the next read. A connection that is
+    /// up is left alone; the new settings apply to the next start. An unreadable file is ignored.
+    pub(super) fn synced(&self) -> std::sync::MutexGuard<'_, Inner> {
+        self.sync_config();
+        self.lock()
+    }
+
+    fn sync_config(&self) {
+        let Ok(file) = self.store.load() else {
+            return;
+        };
+        let mut inner = self.lock();
+        if file.revision == inner.config.revision {
+            return;
+        }
+        inner.config = file;
+        if inner.failure == Some(FailureCode::ConfigUnreadable) {
+            inner.failure = None;
+        }
+        inner.keychain_saved = None;
+        if inner.token_source == Some(TokenSource::Keychain) {
+            inner.token = None;
+            inner.token_source = None;
+        }
+        if inner.run.is_none() && inner.failure.is_none() {
+            inner.status = idle_status(&inner.config, inner.token.is_some());
         }
     }
 

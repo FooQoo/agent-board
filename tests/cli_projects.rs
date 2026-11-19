@@ -989,6 +989,9 @@ fn help_lists_project_commands_and_every_example_names_its_project() {
         let examples: Vec<&str> = help
             .lines()
             .filter(|line| line.trim_start().starts_with("agboard "))
+            // `show remote` reads the settings of the data folder and names a project only to
+            // give the phone address of that one; it has its own tests.
+            .filter(|line| !line.contains("show remote") && !line.contains("<COMMAND>"))
             .collect();
         assert!(!examples.is_empty(), "{command:?} has no example:\n{help}");
         for example in &examples {

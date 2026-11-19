@@ -146,7 +146,7 @@ impl MonitorConnections {
 
     /// Save new settings. Nothing changes unless the save succeeds.
     pub fn update(self: &Arc<Self>, update: SettingsUpdate) -> Result<Snapshot, UpdateError> {
-        let mut inner = self.lock();
+        let mut inner = self.synced();
         if update.revision != inner.config.revision {
             return Err(UpdateError::Conflict);
         }
@@ -193,7 +193,7 @@ impl MonitorConnections {
         token: Option<Secret>,
         save: bool,
     ) -> Result<Snapshot, StartError> {
-        if self.lock().failure == Some(FailureCode::ConfigUnreadable) {
+        if self.synced().failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
         self.probed().await;

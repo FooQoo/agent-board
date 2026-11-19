@@ -145,7 +145,7 @@ fn the_remote_skill_hands_out_the_address_without_starting_anything() {
     assert!(skill.starts_with("---\nname: remote\n"));
     for needed in [
         "agboard progress --json",
-        "agboard --project \"<name>\" remote --json",
+        "agboard --project \"<name>\" show remote --json",
         "`ready`",
         "anyone who can read this chat",
         "remote_unavailable",

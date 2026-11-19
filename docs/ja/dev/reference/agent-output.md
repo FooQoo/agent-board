@@ -116,15 +116,25 @@ taskの項目を省略した例です。
 
 ## remote
 
-`agboard remote --json`は、動いているサーバーにngrok接続を問い合わせ、`ready`のときにオブジェクトを一つ出します。
+`agboard --project <name> show remote --json`は、動いているサーバーにngrok接続を問い合わせ、`ready`のときにオブジェクトを一つ出します。保存済みの設定も同じオブジェクトに入ります。
 
 ```json
-{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"},"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":true,"keychainAvailable":true}
 ```
 
-`--project`は必須で、指定しないと`invalid_argument`（終了コード2）です。`url`は指定したプロジェクトのボードを開くアドレスで、`entrance`はプロジェクトを含まないアドレスです。指定したプロジェクトがなければ`project_not_found`です。
+`url`は指定したプロジェクトのボードを開くアドレスで、`entrance`はプロジェクトを含まないアドレスです。指定したプロジェクトがなければ`project_not_found`です。`show <id>`は、これまでどおりタスクを表示します。`show`がタスクIDの代わりに受け付ける語は`remote`だけです。
 
 それ以外のときは、標準出力には何も出さず、終了コード1と`remote_unavailable`で終わります。サーバーが動いていないか、接続が`ready`ではない場合です。エラーにはアドレスも合言葉も含まれません。サーバーはこの情報をローカルのアドレスにだけ返すので、合言葉はこのコンピューターの前にいる人にだけ届き、トンネルは通りません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
+
+`--project`を付けない`agboard show remote --json`は、接続が止まっていても失敗せず、合言葉もプロジェクトのアドレスも出しません。
+
+```json
+{"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":false,"keychainAvailable":true,"status":"ready","entrance":"https://<name>.ngrok-free.dev"}
+```
+
+`status`は、サーバーが動いていなければ`no_server`、サーバーが応えなければ`unknown`です。それ以外は接続の状態（`ready`、`disabled`、`starting`、`reconnecting`、`failed`など）です。`entrance`は接続が`ready`のときだけアドレスで、それ以外は`null`です。ngrokのトークンは出力に含まれません。`tokenSaved`は、OSのキーチェーンにトークンがあるかどうかを示します。
+
+`agboard setup remote --domain … --enabled … --token-stdin --json`は、保存した設定を同じ4つのフィールド（`enabled`、`domain`、`tokenSaved`、`keychainAvailable`）で出力し、`saved: true`と、設定は次に接続を開始するときから使われることを伝える`note`を加えます。
 
 ## messageのイベント
 

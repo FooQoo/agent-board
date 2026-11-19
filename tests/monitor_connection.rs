@@ -569,6 +569,38 @@ fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
 }
 
 #[test]
+fn settings_saved_from_the_command_line_show_in_a_running_board_without_a_reload() {
+    use agent_board::remote_settings::{Change, apply};
+    use agent_board::server::monitor_connection::keychain::NoKeychain;
+
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    let before = s.get();
+    assert_eq!(before["settings"]["enabled"], false);
+    assert_eq!(before["settings"]["domain"], Value::Null);
+    let saved = apply(
+        home.path(),
+        &NoKeychain,
+        Change {
+            domain: Some(Some("example.ngrok-free.dev".to_string())),
+            enabled: Some(true),
+            ..Change::default()
+        },
+    )
+    .unwrap();
+    let after = s.get();
+    assert_eq!(after["settings"]["domain"], "example.ngrok-free.dev");
+    assert_eq!(after["settings"]["enabled"], true);
+    assert_eq!(after["revision"], saved.revision);
+    // Saving does not start or replace a connection.
+    assert_ne!(after["status"], "ready");
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
+    // The board's own save then works on top of what the command line wrote.
+    assert_eq!(s.put(false, saved.revision).status, 200);
+    assert_eq!(s.get()["settings"]["enabled"], false);
+}
+
+#[test]
 fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
     let home = home();
     let s = Server::start(
