@@ -80,6 +80,13 @@ export const monitorEn = {
     tokenThisRun: 'Entered for this run only. It is not saved.',
     tokenNoKeychain: 'This PC cannot save the token. Enter it each time.',
     deleteToken: 'Delete the saved token',
+    domain: 'ngrok domain',
+    domainRecommended: 'Recommended',
+    domainPlaceholder: 'example.ngrok-free.dev',
+    domainHint:
+      'Optional. Without it, the address changes every time the connection starts, so a bookmark or a home-screen icon on your phone stops working. Use a domain your ngrok account owns, such as the free static domain on the ngrok dashboard.',
+    domainFromEnv:
+      'Using the AGBOARD_NGROK_DOMAIN environment variable. It is used instead of a saved domain.',
     save: 'Save and connect',
     connecting: 'Connecting…',
     startingTitle: 'Connecting to ngrok…',
@@ -130,6 +137,8 @@ export const monitorEn = {
       conflict: 'The settings changed on another screen. Review them and try again.',
       saveFailed: 'The settings could not be saved. The connection was not started.',
       invalid: 'Check the ngrok auth token.',
+      invalidDomain:
+        'Enter the domain as a host name only, such as example.ngrok-free.dev, with no scheme or path.',
       unreadable: 'The saved settings could not be read. Save them again to continue.',
       startFailed: 'The connection could not be started. Try again.',
       keychainUnavailable: 'This PC cannot save the token. Enter it each time.',

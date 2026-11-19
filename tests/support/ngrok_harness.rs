@@ -30,6 +30,7 @@ pub const PUBLIC: &str = "https://fake-abc.ngrok.app";
 pub struct Call {
     pub token: String,
     pub backend: String,
+    pub domain: Option<String>,
 }
 
 #[derive(Default)]
@@ -49,6 +50,7 @@ impl Connector for MockConnector {
         self.calls.lock().unwrap().push(Call {
             token: request.token.expose().to_string(),
             backend: request.backend.to_string(),
+            domain: request.domain.clone(),
         });
         let fail = *self.fail.lock().unwrap();
         let hold = self.hold.lock().unwrap().take();
@@ -218,6 +220,8 @@ impl TokenVault for MockVault {
 pub struct Opts {
     pub vault: Arc<MockVault>,
     pub env_token: bool,
+    /// `AGBOARD_NGROK_DOMAIN`.
+    pub env_domain: Option<String>,
     pub explicit: bool,
     pub mock: Arc<MockConnector>,
 }
@@ -227,6 +231,7 @@ impl Default for Opts {
         Self {
             vault: MockVault::new(None, true),
             env_token: false,
+            env_domain: None,
             explicit: false,
             mock: Arc::new(MockConnector::default()),
         }
@@ -241,6 +246,7 @@ impl Server {
         let monitor = MonitorOptions {
             env: MonitorEnv {
                 token: opts.env_token.then(|| Secret::new(TOKEN)),
+                domain: opts.env_domain.clone(),
             },
             explicit: opts.explicit,
             connector: opts.mock.clone(),
@@ -301,6 +307,15 @@ impl Server {
         let r = request(self.local, "GET", "/api/monitor-connections", &[], "");
         assert_eq!(r.status, 200, "{}", r.body);
         r.json()
+    }
+
+    /// Settings with a domain: a string to save, or an empty one to clear it.
+    pub fn put_domain(&self, enabled: bool, revision: u64, domain: &str) -> Reply {
+        self.write(
+            "PUT",
+            "/api/monitor-connections/settings/ngrok",
+            &json!({"enabled": enabled, "revision": revision, "domain": domain}),
+        )
     }
 
     pub fn put(&self, enabled: bool, revision: u64) -> Reply {

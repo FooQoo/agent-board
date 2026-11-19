@@ -14,7 +14,8 @@ const idle: ConnectionSnapshot = {
   status: 'disabled',
   url: null,
   revision: 3,
-  settings: { enabled: false },
+  settings: { enabled: false, domain: null },
+  domainEnv: null,
   tokenConfigured: false,
   tokenSource: null,
   keychainAvailable: true,
@@ -70,7 +71,8 @@ function mockApi(
       snapshot = {
         ...snapshot,
         revision: snapshot.revision + 1,
-        settings: { enabled: body.enabled },
+        settings: { enabled: body.enabled, domain: body.domain || null },
+        domainEnv: null,
       };
       return reply(200, snapshot);
     }
@@ -165,8 +167,8 @@ export const SaveAndConnect: Story = {
     await expect(start?.body).toEqual({ token: 'story-token' });
     const save = mock?.calls.find((call) => call.line.startsWith('PUT'));
     await expect(JSON.stringify(save?.body)).not.toContain('story-token');
-    // Only the enabled flag is saved with the settings: no domain, no email, no Google app.
-    await expect(save?.body).toEqual({ enabled: true, revision: 3 });
+    // The enabled flag and the (empty) domain are saved with the settings: no email, no Google app.
+    await expect(save?.body).toEqual({ enabled: true, revision: 3, domain: '' });
   },
 };
 
@@ -175,7 +177,8 @@ const connected: ConnectionSnapshot = {
   status: 'ready',
   url: phoneUrl,
   tokenConfigured: true,
-  settings: { enabled: true },
+  settings: { enabled: true, domain: null },
+  domainEnv: null,
   passcode,
 };
 
@@ -320,7 +323,8 @@ const savedToken: ConnectionSnapshot = {
   tokenConfigured: true,
   tokenSource: 'keychain',
   keychainTokenSaved: true,
-  settings: { enabled: true },
+  settings: { enabled: true, domain: null },
+  domainEnv: null,
 };
 
 /** A token saved on this PC is announced and can be deleted in the setup that the stopped view opens. */

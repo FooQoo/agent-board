@@ -738,6 +738,76 @@ fn a_restart_never_revives_an_old_session_and_keeps_no_secret() {
     }
 }
 
+// ------------------------------------------------------------ the fixed domain
+
+#[test]
+fn a_saved_domain_is_used_by_every_start_and_the_environment_one_wins() {
+    let home = fixture();
+    let domain = |s: &Server, n: usize| s.mock.calls.lock().unwrap()[n].domain.clone();
+    {
+        let s = Server::start(home.path(), env_opts());
+        assert_eq!(s.get()["settings"]["domain"], Value::Null);
+        assert_eq!(s.get()["domainEnv"], Value::Null);
+        // A domain that is not a bare host name is refused and nothing is saved.
+        for bad in ["https://a.ngrok-free.dev", "a.ngrok-free.dev/x", "no-dot"] {
+            let r = s.put_domain(false, 0, bad);
+            assert_eq!(
+                (r.status, r.json()["error"]["code"].clone()),
+                (422, json!("invalid_domain")),
+                "{bad}"
+            );
+        }
+        assert_eq!(s.get()["revision"], 0);
+        let saved = s.put_domain(true, 0, " Example.NGROK-free.dev ");
+        assert_eq!(saved.status, 200, "{}", saved.body);
+        assert_eq!(saved.json()["settings"]["domain"], "example.ngrok-free.dev");
+        // A save without a domain keeps the saved one.
+        assert_eq!(
+            s.put(true, 1).json()["settings"]["domain"],
+            "example.ngrok-free.dev"
+        );
+        assert_eq!(s.start_ngrok(json!({})).status, 202);
+        s.wait_status("ready");
+        assert_eq!(domain(&s, 0).as_deref(), Some("example.ngrok-free.dev"));
+        s.stop_ngrok();
+    }
+    // The next run, after the server restarted, asks for the same domain.
+    {
+        let s = Server::start(home.path(), env_opts());
+        assert_eq!(s.get()["settings"]["domain"], "example.ngrok-free.dev");
+        assert_eq!(s.start_ngrok(json!({})).status, 202);
+        s.wait_status("ready");
+        assert_eq!(domain(&s, 0).as_deref(), Some("example.ngrok-free.dev"));
+        s.stop_ngrok();
+    }
+    // The environment variable wins over the saved domain and is shown.
+    {
+        let s = Server::start(
+            home.path(),
+            Opts {
+                env_domain: Some("from-env.ngrok-free.dev".into()),
+                ..env_opts()
+            },
+        );
+        assert_eq!(s.get()["domainEnv"], "from-env.ngrok-free.dev");
+        assert_eq!(s.get()["settings"]["domain"], "example.ngrok-free.dev");
+        assert_eq!(s.start_ngrok(json!({})).status, 202);
+        s.wait_status("ready");
+        assert_eq!(domain(&s, 0).as_deref(), Some("from-env.ngrok-free.dev"));
+        s.stop_ngrok();
+    }
+    // An empty domain clears the saved one: ngrok chooses the address again.
+    {
+        let s = Server::start(home.path(), env_opts());
+        let revision = s.get()["revision"].as_u64().unwrap();
+        let cleared = s.put_domain(true, revision, "");
+        assert_eq!(cleared.json()["settings"]["domain"], Value::Null);
+        assert_eq!(s.start_ngrok(json!({})).status, 202);
+        s.wait_status("ready");
+        assert_eq!(domain(&s, 0), None);
+    }
+}
+
 // ------------------------------------------------------------ the boundaries
 
 #[test]

@@ -23,7 +23,11 @@ export interface ConnectionSnapshot {
   revision: number;
   settings: {
     enabled: boolean;
+    /** The saved ngrok domain, or null when none is saved (ngrok then chooses the address). */
+    domain: string | null;
   };
+  /** The domain from the AGBOARD_NGROK_DOMAIN environment variable; when set, it is the one used. */
+  domainEnv: string | null;
   /** Whether a token is available: from the environment, this PC's secure storage or this run. */
   tokenConfigured: boolean;
   /** Where the token in use comes from; the value itself is never sent. */
@@ -90,6 +94,8 @@ export const getConnection = () => request(BASE, { method: 'GET' });
 export interface SettingsInput {
   enabled: boolean;
   revision: number;
+  /** A host name to save; an empty string clears it; left out, the saved one is kept. */
+  domain?: string;
 }
 
 export const saveSettings = (input: SettingsInput) =>

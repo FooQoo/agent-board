@@ -116,7 +116,7 @@ describe('a generally available screen', () => {
           open
           onOpenChange={() => {}}
           status="needs_config"
-          draft={{ token: '', save: false }}
+          draft={{ token: '', save: false, domain: '' }}
           onConnect={() => {}}
           onStop={() => {}}
           onResetToken={() => {}}

@@ -25,7 +25,7 @@ impl MonitorConnections {
     }
 
     pub(super) fn snapshot_now(&self, inner: &Inner) -> Snapshot {
-        snapshot_of(inner, self.vault.available())
+        snapshot_of(inner, self.vault.available(), self.domain.as_deref())
     }
 
     /// Look at the keychain once, off the request path. The keychain may stop
@@ -118,14 +118,16 @@ impl MonitorConnections {
     }
 }
 
-fn snapshot_of(inner: &Inner, keychain_available: bool) -> Snapshot {
+fn snapshot_of(inner: &Inner, keychain_available: bool, domain_env: Option<&str>) -> Snapshot {
     Snapshot {
         status: inner.status,
         url: inner.url.clone(),
         revision: inner.config.revision,
         settings: Settings {
             enabled: inner.config.enabled,
+            domain: inner.config.domain.clone(),
         },
+        domain_env: domain_env.map(str::to_string),
         token_configured: inner.token.is_some(),
         token_source: inner.token_source,
         keychain_available,

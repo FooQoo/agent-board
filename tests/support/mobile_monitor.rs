@@ -94,6 +94,7 @@ impl Running {
             let mut options = MonitorOptions::without_keychain(
                 MonitorEnv {
                     token: Some(Secret::new("tok-fixture-0123456789")),
+                    domain: None,
                 },
                 true,
             );

@@ -25,6 +25,9 @@ struct StoredFile {
     format_version: u32,
     revision: u64,
     enabled: bool,
+    /// Absent in files written before the domain was a setting.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    domain: Option<String>,
 }
 
 /// Why the saved settings could not be read or written. Never carries file contents.
@@ -66,6 +69,11 @@ impl ConfigStore {
         Ok(ConnectionConfig {
             enabled: stored.enabled,
             revision: stored.revision,
+            // A saved value that is not a plain host name is not used.
+            domain: stored
+                .domain
+                .as_deref()
+                .and_then(super::types::parse_domain),
         })
     }
 
@@ -76,6 +84,7 @@ impl ConfigStore {
             format_version: FORMAT_VERSION,
             revision: config.revision,
             enabled: config.enabled,
+            domain: config.domain.clone(),
         };
         let mut text =
             serde_json::to_string_pretty(&stored).map_err(|e| ConfigError::Io(e.to_string()))?;
@@ -141,6 +150,7 @@ mod tests {
         ConnectionConfig {
             enabled: true,
             revision: 3,
+            domain: Some("example.ngrok-free.dev".to_string()),
         }
     }
 
@@ -188,15 +198,10 @@ mod tests {
         assert_eq!(store.load(), Err(ConfigError::Invalid));
         std::fs::write(&path, "not json").unwrap();
         assert_eq!(store.load(), Err(ConfigError::Invalid));
-        // A file with fields this build does not know (a domain, the Google sign-in) is not read.
-        for stale in [
-            r#"{"formatVersion":1,"revision":1,"enabled":true,"domain":"a.ngrok.app"}"#,
-            r#"{"formatVersion":1,"revision":1,"enabled":true,"domain":null}"#,
-            r#"{"formatVersion":1,"revision":1,"enabled":true,"allowEmails":["a@x.com"],"oauthApp":"managed"}"#,
-        ] {
-            std::fs::write(&path, stale).unwrap();
-            assert_eq!(store.load(), Err(ConfigError::Invalid), "{stale}");
-        }
+        // A file with fields this build does not know (the Google sign-in) is not read.
+        let stale = r#"{"formatVersion":1,"revision":1,"enabled":true,"allowEmails":["a@x.com"],"oauthApp":"managed"}"#;
+        std::fs::write(&path, stale).unwrap();
+        assert_eq!(store.load(), Err(ConfigError::Invalid));
     }
 
     #[test]
@@ -214,6 +219,29 @@ mod tests {
             .map(String::as_str)
             .collect();
         keys.sort();
-        assert_eq!(keys, ["enabled", "formatVersion", "revision"]);
+        assert_eq!(keys, ["domain", "enabled", "formatVersion", "revision"]);
+    }
+
+    #[test]
+    fn a_file_without_a_domain_loads_and_a_bad_domain_is_dropped() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(dir.path());
+        let path = dir.path().join(".internal/monitor-connection.json");
+        store
+            .save(&ConnectionConfig {
+                enabled: true,
+                revision: 1,
+                domain: None,
+            })
+            .unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(!text.contains("domain"));
+        assert_eq!(store.load().unwrap().domain, None);
+        std::fs::write(
+            &path,
+            r#"{"formatVersion":1,"revision":1,"enabled":true,"domain":"https://a.ngrok.app/x"}"#,
+        )
+        .unwrap();
+        assert_eq!(store.load().unwrap().domain, None);
     }
 }

@@ -28,6 +28,8 @@ export interface ConnectionSettingsViewProps {
   passcode?: string | null;
   qr?: ConnectionQr | null;
   tokenInfo?: TokenInfo;
+  /** The domain from the AGBOARD_NGROK_DOMAIN environment variable; when set, the field only shows it. */
+  domainEnv?: string | null;
   /** Delete the token saved in this PC's secure storage. */
   onDeleteToken?: () => void;
   /** A message about the last start or save, shown with the form. */
@@ -57,6 +59,7 @@ export function ConnectionSettingsView({
   passcode = null,
   qr = null,
   tokenInfo = { source: null, keychainAvailable: true, saved: false },
+  domainEnv = null,
   onDeleteToken,
   error = null,
   saving = false,
@@ -69,7 +72,10 @@ export function ConnectionSettingsView({
   const [copied, setCopied] = useState(false);
 
   // Reset only when the values differ, so an equal draft from a re-render keeps what was typed.
-  useEffect(() => setValues({ token: draft.token, save: draft.save }), [draft.token, draft.save]);
+  useEffect(
+    () => setValues({ token: draft.token, save: draft.save, domain: draft.domain }),
+    [draft.token, draft.save, draft.domain],
+  );
   useEffect(() => {
     if (!copied) return;
     const timer = window.setTimeout(() => setCopied(false), 2000);
@@ -103,7 +109,7 @@ export function ConnectionSettingsView({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="modal connection-dialog"
+        className={`modal connection-dialog${connected || stopped ? '' : ' connection-dialog--setup'}`}
         showCloseButton={false}
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
@@ -197,7 +203,7 @@ export function ConnectionSettingsView({
                   type="button"
                   className="connection-dialog__reconnect"
                   disabled={busy}
-                  onClick={() => onConnect({ token: '', save: false })}
+                  onClick={() => onConnect({ token: '', save: false, domain: draft.domain })}
                 >
                   {t('monitorConnection.reconnect')}
                 </Button>
@@ -217,6 +223,7 @@ export function ConnectionSettingsView({
                   values={values}
                   onChange={setValues}
                   tokenInfo={tokenInfo}
+                  domainEnv={domainEnv}
                   busy={busy}
                   onDeleteToken={onDeleteToken}
                 />
