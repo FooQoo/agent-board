@@ -8,6 +8,7 @@ mod help;
 mod history;
 mod message;
 mod project;
+mod result;
 mod task;
 mod validate;
 
@@ -18,6 +19,7 @@ pub use self::epic::*;
 pub use self::history::*;
 pub use self::message::*;
 pub use self::project::*;
+pub use self::result::*;
 pub use self::task::*;
 pub use self::validate::*;
 
@@ -75,6 +77,8 @@ pub enum Command {
     Show(ShowArgs),
     /// Add, list, or read image attachments
     Attachment(AttachmentArgs),
+    /// Record the results delivered to the requester, or list them
+    Result(ResultArgs),
     /// Create, list, show, edit, or delete epics
     Epic(EpicArgs),
     /// Fetch the complete board and history without modifying it
@@ -127,6 +131,7 @@ impl Command {
             Command::Ls(_) => "ls",
             Command::Show(_) => "show",
             Command::Attachment(_) => "attachment",
+            Command::Result(_) => "result",
             Command::Epic(_) => "epic",
             Command::Snapshot(_) => "snapshot",
             Command::Hook(_) => "hook",
@@ -144,7 +149,7 @@ impl Command {
     }
 }
 
-pub const SUBCOMMAND_NAMES: [&str; 25] = [
+pub const SUBCOMMAND_NAMES: [&str; 26] = [
     "project",
     "init",
     "add",
@@ -157,6 +162,7 @@ pub const SUBCOMMAND_NAMES: [&str; 25] = [
     "ls",
     "show",
     "attachment",
+    "result",
     "epic",
     "snapshot",
     "serve",

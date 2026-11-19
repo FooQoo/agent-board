@@ -23,6 +23,7 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `requestAnswers` | Answers recorded by earlier versions of Agent Board, kept as a record. Nothing adds to it. |
 | `archivedAt` | `null`, or the archive time. |
 | `attachments` | ID, name, size, MIME type, and creation time of each image. |
+| `results` | The results delivered to the requester, oldest first (`[]` when none). See [Results](#results). |
 | `simpleRequest` | Legacy optional metadata `{requestId, payloadHash}` from older short-request submissions. New tasks do not write or use it. |
 | `createdAt`, `updatedAt` | Creation time; when read, the later of the `task.json` and `TASK.md` modification times. |
 | `agentStatusChangedAt`, `taskStatusChangedAt` | Last run-state change and last real lane change. Body edits, progress records, and same-lane operations do not change `taskStatusChangedAt`. |
@@ -105,6 +106,7 @@ A `task.json` looks like this:
 }
 ```
 
+- `results` is written only when the task has at least one result, so a file from before results existed is unchanged and reads as `results: []`. The format version stays 1.
 - Each `requestAnswers` item is `{requestId, actor, choiceId, choiceLabel, text, at}`. `choiceId` and `choiceLabel` are both `null` or both set; `text` is `null` or a valid answer; at least one of choice or text is present.
 - `pendingRequestId` and `pendingRequest`, written by earlier versions, are ignored when read and are not written on the next save.
 - Older short-request tasks may contain `simpleRequest` metadata. It remains readable for compatibility but new tasks do not write or use it to detect repeats.
@@ -120,6 +122,22 @@ history:
     reason: "Verified the setup guide links and recorded the result in the task body."
 ---
 ```
+
+### Results {#results}
+
+A result is something the requester can look at, delivered by an agent with `agboard result add` (see [Deliver a result](../../guide/reference/cli.md#deliver-a-result)). Results are stored in `task.json` rather than in `TASK.md`, because they are structured data a client reads by version; history stays the only time-ordered text in `TASK.md`. Each entry of `results` has:
+
+| Field | Meaning |
+| --- | --- |
+| `version` | A positive integer that starts at 1 for each task and grows by one. It never changes or repeats, so a task, a result, and its version name one delivery. |
+| `key` | Identifies the delivery for retries: the `--key` the agent gave (1 to 64 characters of letters, digits, `.`, `_`, `:`, `-`), or by default 32 hex digits derived from the kind, summary, link, and image bytes. A key is unique within the task. |
+| `kind` | `progress` for an intermediate result, or `final`. |
+| `summary` | 1 to 2,000 characters of text. |
+| `attachmentId` | Optional. The ID of an image in the task's `attachments`; the file is read from the attachment route. The image cannot be deleted while a result uses it. |
+| `link` | Optional. A URL or a storage location of the main artifact, 1 to 2,000 characters on one line. It is stored as given; Agent Board never opens it. |
+| `at` | UTC time the result was recorded. |
+
+Recording a result changes neither `taskStatus` nor `agentStatus`. Under one project lock it writes the image (if any), then saves `task.json` and `TASK.md` together with one history entry. If the save fails, the image file is removed and no entry exists, so a failed save is never something to deliver. If the key already exists with the same content, nothing is written and the existing entry is returned. A task holds at most 100 results.
 
 ## Messages
 
@@ -261,7 +279,7 @@ The file holds no secret. A project that no longer exists, or has no bound folde
 
 ## Task JSON and snapshots
 
-The CLI, web API, and hook share one camelCase task representation: the `task.json` metadata plus `history`, `description`, `body`, `acceptance`, `acceptanceError`, the displayed `updatedAt`, and `epic` (`{id, name, color}` or `null`). The derived fields are `agentStatus`; `questionIds` (the task's `questions`), `questionsError` (whether that frontmatter is invalid), and `openQuestionIds`; and `pendingRequestId`, `pendingReason`, and `pendingChoices`, taken from the open question with the smallest ID while the task shows `pending` (otherwise `null` and empty). `pendingRequestId` holds that question's ID, such as `Q-12`, which is what the board sends when it answers. `requestAnswers` never appears in history.
+The CLI, web API, and hook share one camelCase task representation: the `task.json` metadata (including `results`, always present as an array) plus `history`, `description`, `body`, `acceptance`, `acceptanceError`, the displayed `updatedAt`, and `epic` (`{id, name, color}` or `null`). The derived fields are `agentStatus`; `questionIds` (the task's `questions`), `questionsError` (whether that frontmatter is invalid), and `openQuestionIds`; and `pendingRequestId`, `pendingReason`, and `pendingChoices`, taken from the open question with the smallest ID while the task shows `pending` (otherwise `null` and empty). `pendingRequestId` holds that question's ID, such as `Q-12`, which is what the board sends when it answers. `requestAnswers` never appears in history.
 
 - A snapshot returns `project`, `version`, `cursor`, `epics`, `tasks` (each with full history), and `problems` from a single read. The CLI snapshot also includes `nextTaskId`; CLI snapshots, the hook, and `wait` include `fetchedAt`.
 - The project list returns `projects` (id, name, createdAt) and `catalogVersion`, without tasks.

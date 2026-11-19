@@ -1,0 +1,248 @@
+//! `agboard result add|ls`: results recorded with versions, safe to retry.
+
+mod common;
+
+use std::path::{Path, PathBuf};
+
+use common::{demo_project, json_error, json_ok, png};
+use serde_json::Value;
+
+const P: [&str; 2] = ["--project", "Demo"];
+
+fn run(home: &Path, rest: &[&str]) -> Value {
+    json_ok(home, &[&P[..], rest, &["--json"]].concat())
+}
+
+fn add(home: &Path, task: &str, rest: &[&str]) -> Value {
+    run(
+        home,
+        &[&["result", "add", task][..], rest, &["--actor", "ai"]].concat(),
+    )
+}
+
+fn task_json(home: &Path, id: i64) -> PathBuf {
+    fn find(dir: &Path, id: i64) -> Option<PathBuf> {
+        for entry in std::fs::read_dir(dir).ok()?.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(found) = find(&path, id) {
+                    return Some(found);
+                }
+            } else if path.file_name().is_some_and(|n| n == "task.json")
+                && path.parent().and_then(|p| p.file_name()) == Some(id.to_string().as_ref())
+            {
+                return Some(path);
+            }
+        }
+        None
+    }
+    find(home, id).expect("task.json")
+}
+
+#[test]
+fn text_only_result_keeps_lane_and_state_and_retry_changes_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let before = run(home.path(), &["show", "1"]);
+    assert_eq!(before["task"]["results"], serde_json::json!([]));
+
+    let first = add(
+        home.path(),
+        "1",
+        &["--summary", "First 30 seconds are ready"],
+    );
+    assert_eq!(first["created"], true);
+    assert_eq!(first["result"]["version"], 1);
+    assert_eq!(first["result"]["kind"], "progress");
+    assert_eq!(first["result"]["summary"], "First 30 seconds are ready");
+    assert!(first["result"].get("attachmentId").is_none());
+    assert!(first["result"].get("link").is_none());
+
+    let shown = run(home.path(), &["show", "1"]);
+    let task = &shown["task"];
+    assert_eq!(task["taskStatus"], before["task"]["taskStatus"]);
+    assert_eq!(task["agentStatus"], before["task"]["agentStatus"]);
+    assert_eq!(task["results"].as_array().unwrap().len(), 1);
+    let history = task["history"].as_array().unwrap();
+    assert_eq!(
+        history.len(),
+        before["task"]["history"].as_array().unwrap().len() + 1
+    );
+    assert!(
+        history.last().unwrap()["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("Recorded progress result v1: First 30 seconds")
+    );
+
+    // The same delivery again: same entry, nothing written, no new history.
+    let retry = add(
+        home.path(),
+        "1",
+        &["--summary", "First 30 seconds are ready"],
+    );
+    assert_eq!(retry["created"], false);
+    assert_eq!(retry["result"], first["result"]);
+    let again = run(home.path(), &["show", "1"]);
+    assert_eq!(again["task"]["results"], task["results"]);
+    assert_eq!(again["task"]["history"], task["history"]);
+    assert_eq!(again["task"]["updatedAt"], task["updatedAt"]);
+
+    // Different content is the next version.
+    let second = add(home.path(), "1", &["--summary", "Second cut", "--final"]);
+    assert_eq!(second["result"]["version"], 2);
+    assert_eq!(second["result"]["kind"], "final");
+    let listed = run(home.path(), &["result", "ls", "1"]);
+    assert_eq!(listed["results"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn image_and_link_are_stored_once_and_retry_keeps_one_attachment() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let shot = home.path().join("shot.png");
+    std::fs::write(&shot, png()).unwrap();
+    let args = [
+        "--summary",
+        "Top page capture",
+        "--file",
+        shot.to_str().unwrap(),
+        "--link",
+        "https://example.com/draft.mp4",
+    ];
+    let first = add(home.path(), "1", &args);
+    assert_eq!(first["created"], true);
+    let attachment_id = first["result"]["attachmentId"].as_str().unwrap();
+    assert_eq!(first["result"]["link"], "https://example.com/draft.mp4");
+    assert_eq!(
+        first["path"],
+        format!("assets/{attachment_id}.png").as_str()
+    );
+
+    let retry = add(home.path(), "1", &args);
+    assert_eq!(retry["created"], false);
+    assert_eq!(retry["result"]["attachmentId"], attachment_id);
+    let task = &run(home.path(), &["show", "1"])["task"];
+    assert_eq!(task["attachments"].as_array().unwrap().len(), 1);
+    assert_eq!(task["results"].as_array().unwrap().len(), 1);
+
+    let stored = std::fs::read_to_string(task_json(home.path(), 1)).unwrap();
+    assert!(!stored.contains(home.path().to_str().unwrap()));
+}
+
+#[test]
+fn explicit_key_dedupes_and_rejects_a_different_result() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let first = add(home.path(), "1", &["--summary", "A", "--key", "cut-1"]);
+    assert_eq!(first["result"]["key"], "cut-1");
+    let retry = add(home.path(), "1", &["--summary", "A", "--key", "cut-1"]);
+    assert_eq!(retry["created"], false);
+    let (_, code) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "result",
+            "add",
+            "1",
+            "--summary",
+            "B",
+            "--key",
+            "cut-1",
+            "--actor",
+            "ai",
+        ],
+    );
+    assert_eq!(code, "invalid_value");
+    let listed = run(home.path(), &["result", "ls", "1"]);
+    assert_eq!(listed["results"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn a_rejected_result_is_not_recorded_and_leaves_no_file() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let bad = home.path().join("bad.png");
+    std::fs::write(&bad, b"not an image").unwrap();
+    for rest in [
+        vec!["--summary", "  "],
+        vec!["--summary", "x", "--file", bad.to_str().unwrap()],
+        vec!["--summary", "x", "--key", "bad key!"],
+    ] {
+        let (_, code) = json_error(
+            home.path(),
+            &[
+                &["--project", "Demo", "result", "add", "1"][..],
+                &rest,
+                &["--actor", "ai"],
+            ]
+            .concat(),
+        );
+        assert_eq!(code, "invalid_value");
+    }
+    let task = &run(home.path(), &["show", "1"])["task"];
+    assert_eq!(task["results"], serde_json::json!([]));
+    assert_eq!(task["attachments"], serde_json::json!([]));
+}
+
+#[test]
+fn tasks_without_results_read_as_before_and_store_no_results_key() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let stored = std::fs::read_to_string(task_json(home.path(), 1)).unwrap();
+    assert!(!stored.contains("results"));
+    let listed = run(home.path(), &["ls"]);
+    assert_eq!(listed["tasks"][0]["results"], serde_json::json!([]));
+
+    add(home.path(), "1", &["--summary", "Hello"]);
+    let stored = std::fs::read_to_string(task_json(home.path(), 1)).unwrap();
+    assert!(stored.contains("\"results\""));
+    // The record still reads after a later change of another kind.
+    run(
+        home.path(),
+        &["history", "add", "1", "--reason", "Went on working."],
+    );
+    let task = &run(home.path(), &["show", "1"])["task"];
+    assert_eq!(task["results"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn a_done_task_refuses_a_new_result_but_a_retry_still_succeeds() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    add(home.path(), "1", &["--summary", "Done soon", "--final"]);
+    // Mark the lane Done as a person would.
+    json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            "1",
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "Accepted.",
+            "--json",
+        ],
+    );
+    let retry = add(home.path(), "1", &["--summary", "Done soon", "--final"]);
+    assert_eq!(retry["created"], false);
+    let (_, code) = json_error(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "result",
+            "add",
+            "1",
+            "--summary",
+            "Late",
+            "--actor",
+            "ai",
+        ],
+    );
+    assert_eq!(code, "task_is_done");
+}

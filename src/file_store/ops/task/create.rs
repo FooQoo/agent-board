@@ -128,6 +128,7 @@ impl FileStore {
             agent_status_changed_at: at,
             task_status_changed_at: at,
             attachments: Vec::new(),
+            results: Vec::new(),
             simple_request: None,
             onboarding_sample: None,
             history: vec![transition_event(Transition {
