@@ -4,7 +4,7 @@ title: Feature stages
 
 # Feature stages
 
-Every feature in Agent Board v1.0.0 is in one of two stages: general availability (GA) or public preview. This page explains what each stage means, lists the features in each, and states the limits you should know before you rely on a preview feature. Version 1.0.0 mixes both stages, so not every feature in it is GA.
+Every feature in Agent Board is in one of two stages: general availability (GA) or public preview. This page explains what each stage means, lists the features in each, and states the limits you should know before you rely on a preview feature. The product mixes both stages, so not every feature is GA.
 
 ## What the stages mean
 
@@ -26,8 +26,8 @@ Where you see it:
 | Feature | Where the notice appears |
 | --- | --- |
 | [Docs](#docs) | The heading of the Docs dialog shows a **Public preview** badge, with the notice and a link to this page below it. |
-| [Remote access](#remote-access) | The **Remote connection** dialog on the computer shows the badge. Before you connect, it also shows the notice and a link to this page. The monitor on the phone does not show it. |
-| [Task listening](#listen) | No screen. This page and the agent skill describe it. |
+| [Resident sessions](#resident-sessions) | The **Resident session** dialog in Settings shows a **Public preview** badge beside its heading, with the notice and a link to this page below the introduction. |
+| [Questions and requests](#questions-and-requests) | No screen. This page and the agent skill describe it. |
 
 Features that are GA show no notice.
 
@@ -44,8 +44,9 @@ Features that are GA show no notice.
 | Projects and working folders | CLI, PC browser | The nearest bound folder decides which project a folder belongs to. | [CLI reference](./reference/cli#projects) |
 | Saving and recovery of data | macOS | Only files with `formatVersion` 1 are supported. | [Data and backups](./operations/data) |
 | Language and themes | PC, remote access | English and Japanese, and 24 themes. | [Settings](./watch/board#settings) |
-| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Skill comes from the installed `agboard`, and the plugin updates itself when a session starts; for Codex, run `agboard update` once after upgrading it to trust the new hooks. You start the agent yourself. | [Working with agents](./delegate/agents) |
+| Agent CLI, JSON output, Hook, and `wait` | Claude Code, Codex | The Skill comes from the installed `agboard`, and the plugin updates itself when a session starts, trusting the Codex hook as well while its definition is the one `agboard` ships. Run `agboard update` only when the automatic update could not finish or the plugin needs repair. You start the agent yourself. | [Working with agents](./delegate/agents) |
 | `setup` and `update` | macOS, with Claude Code or Codex found on your `PATH` and a network connection to GitHub | On a terminal both commands ask first; `--yes` agrees in advance. They depend on the plugin commands of Claude Code and Codex. | [Working with agents](./delegate/agents#set-up-your-agents), [CLI reference](./reference/cli#setup-and-update) |
+| Remote access | A browser on a phone, a tablet, or another computer, through ngrok. Below 768px wide it shows the phone screen; at 768px or wider, the same board as on the PC. | It depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and the server is running. | [Remote access](./watch/remote-access) |
 | First-run welcome | PC and phone browsers | It is offered once for a data area, and you can show it again from Settings. It runs in the browser and never changes your board. | [The first-run guide](./watch/board#the-first-run-guide) |
 
 ## Features in public preview
@@ -58,21 +59,21 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 - **Limits:** a Markdown or MDX file can be up to 2 MiB, and an image up to 10 MiB.
 - **Guide:** [Project docs](./watch/docs).
 
-### Task listening {#listen}
+### Resident sessions {#resident-sessions}
 
-`agboard wait --until task` lets one open Claude Code or Codex session keep picking up AI tasks one after another.
+A resident session is a Claude Code or Codex session that Agent Board starts and keeps attached to the board. The board sends it your requests, the answers to its questions, and ready tasks, one at a time.
 
-- **Supported range:** Claude Code and Codex, following the procedure in the agent skill.
-- **Limits:** it does not guarantee that two sessions will not pick the same task. A person starts the continuous run in the agent's session.
+- **Supported range:** Claude Code and Codex on the computer that runs `agboard serve`. You start and stop the session from **Settings** on the PC; the phone connection cannot.
+- **Limits:** the session runs unattended and approves its actions automatically, so start it only in projects you trust. It depends on the `claude` stream-json interface and on `codex app-server`, which Codex marks as experimental, so it may change when those CLIs update. The board keeps one session at a time. An item that fails three times is skipped and shown in the dialog.
+- **Guide:** [Resident session](./delegate/resident-session).
+
+### Questions and requests {#questions-and-requests}
+
+An agent session you open yourself can keep itself on the board. `agboard wait --until task`, or the `wait` skill (`/agent-board:wait` in Claude Code), makes the session receive your requests, the answers to its questions, and tasks one after another.
+
+- **Supported range:** Claude Code and Codex, following the procedure in the agent skill. A person starts it in the agent's session.
+- **Limits:** a task is not reserved when it is returned, so two sessions can still pick the same task. Only requests and answers are protected: the first `message accept` wins, and another session that tries gets `request_accepted`. The session ends when you interrupt it or when an error stops it.
 - **Guide:** [Listen for the next task](./delegate/agents#listen-for-the-next-task).
-
-### Remote access {#remote-access}
-
-Remote access opens the board from a phone, a tablet, or another computer, and lets you answer an agent's question.
-
-- **Supported range:** a browser on a phone, a tablet, or another computer, through ngrok. Below 768px wide it shows the phone screen; at 768px or wider, the same board as on the PC.
-- **Limits:** it depends on ngrok, and ngrok ends the HTTPS connection. It works only while your computer is on and the server is running. The way it connects may change.
-- **Guide:** [Remote access](./watch/remote-access).
 
 ## Related
 

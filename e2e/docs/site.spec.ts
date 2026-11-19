@@ -104,12 +104,11 @@ for (const lang of langs) {
     await expect(landing.locator('.lp-loop .lp-card')).toHaveCount(5);
     await expect(landing.locator('.lp-loop .lp-card--human')).toHaveCount(2);
 
-    // Four features; only remote access and Docs carry the public preview badge.
+    // Four features; only Docs carries the public preview badge.
     await expect(landing.locator('.lp-feature')).toHaveCount(4);
     const badges = landing.getByRole('link', { name: en ? 'Public preview' : 'パブリックプレビュー' });
     const stages = `/agent-board/${pagePath(lang, 'feature-stages')}`;
     expect(await badges.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual([
-      `${stages}#remote-access`,
       `${stages}#docs`,
     ]);
 
