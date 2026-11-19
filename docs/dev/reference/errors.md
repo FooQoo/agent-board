@@ -84,7 +84,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `agent_cli_missing` | The board cannot launch a session because `claude` or `codex` is not installed on the server's `PATH` (or `AGBOARD_CLAUDE_BIN` / `AGBOARD_CODEX_BIN` does not name a file). | 1 | 409 |
 | `agent_cli_logged_out` | The agent CLI is installed but not logged in (`claude auth status` reports `loggedIn` false, or `codex login status` fails). The reason says to log in in a terminal. | 1 | 409 |
 | `session_launch_refused` | The board already launched a session of that tool and it is still running or attached. Board-launched sessions are limited to one per tool over all projects. The reason says to stop it first. | 1 | 409 |
-| `session_launch_failed` | The agent CLI could not be started, or its log file could not be written. | 1 | 500 |
+| `session_launch_failed` | The agent CLI could not be started, its log file could not be written, or its login check did not finish within 20 seconds. | 1 | 500 |
 | `project_has_no_folder` | A session cannot be launched because the project has no bound folder that still exists. Bind one with `agboard project bind`. | 1 | 409 |
 | `cursor_invalid` | The cursor is malformed or belongs to another project. | 1 | n/a |
 | `wait_timeout` | Change mode (`wait --after`) reached its optional `--timeout` with no change, with no change. A `message ask` or `message wait` that reaches its `--timeout` is not an error: it prints a `timeout` event and exits 5. | 1 | n/a |

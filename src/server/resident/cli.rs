@@ -4,6 +4,7 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::Serialize;
 
@@ -54,7 +55,11 @@ pub struct Executables {
     claude: Option<PathBuf>,
     codex: Option<PathBuf>,
     path: Option<OsString>,
+    timeout: Duration,
 }
+
+/// How long the login check and the model list may take; a launch request waits for them.
+const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 
 impl Executables {
     /// `AGBOARD_CLAUDE_BIN` and `AGBOARD_CODEX_BIN` when set, else the server's `PATH`.
@@ -68,6 +73,7 @@ impl Executables {
             claude: var(CLAUDE_BIN_ENV),
             codex: var(CODEX_BIN_ENV),
             path: std::env::var_os("PATH"),
+            timeout: CHECK_TIMEOUT,
         }
     }
 
@@ -77,7 +83,14 @@ impl Executables {
             claude,
             codex,
             path: None,
+            timeout: CHECK_TIMEOUT,
         }
+    }
+
+    /// The same executables with another time limit for the CLI calls (tests shorten it).
+    pub fn with_timeout(mut self, timeout: Duration) -> Executables {
+        self.timeout = timeout;
+        self
     }
 
     /// The executable of `tool`, or `agent_cli_missing`.
@@ -103,15 +116,24 @@ impl Executables {
         let logged_out = || AgboardError::AgentCliLoggedOut {
             tool: command_name(tool).to_string(),
         };
-        let logged_in = match tool {
-            Tool::Codex => agent_cli::run(&program, &["login", "status"], None)
-                .map(|out| out.ok)
-                .unwrap_or(false),
-            _ => agent_cli::run(&program, &["auth", "status"], None)
-                .ok()
-                .and_then(|out| serde_json::from_str::<serde_json::Value>(out.stdout.trim()).ok())
-                .and_then(|json| json.get("loggedIn").and_then(serde_json::Value::as_bool))
-                .unwrap_or(false),
+        let run = |args: &[&str]| agent_cli::run_with_timeout(&program, args, None, self.timeout);
+        let answered = match tool {
+            Tool::Codex => run(&["login", "status"]).map(|out| out.ok),
+            _ => run(&["auth", "status"]).map(|out| {
+                serde_json::from_str::<serde_json::Value>(out.stdout.trim())
+                    .ok()
+                    .and_then(|json| json.get("loggedIn").and_then(serde_json::Value::as_bool))
+                    .unwrap_or(false)
+            }),
+        };
+        let logged_in = match answered {
+            Ok(logged_in) => logged_in,
+            Err(reason) if reason.contains("did not finish") => {
+                return Err(AgboardError::SessionLaunchFailed {
+                    reason: format!("The login check of {}: {reason}.", command_name(tool)),
+                });
+            }
+            Err(_) => false,
         };
         if logged_in {
             Ok(program)
@@ -137,7 +159,7 @@ impl Executables {
                 reason: None,
             });
         }
-        Ok(match read_codex_models(&program) {
+        Ok(match read_codex_models(&program, self.timeout) {
             Ok(models) => ModelList {
                 models,
                 reason: None,
@@ -150,8 +172,8 @@ impl Executables {
     }
 }
 
-fn read_codex_models(program: &Path) -> Result<Vec<ModelOption>, String> {
-    let output = agent_cli::run(program, &["debug", "models"], None)?;
+fn read_codex_models(program: &Path, timeout: Duration) -> Result<Vec<ModelOption>, String> {
+    let output = agent_cli::run_with_timeout(program, &["debug", "models"], None, timeout)?;
     if !output.ok {
         return Err(format!("codex debug models failed: {}", output.reason()));
     }

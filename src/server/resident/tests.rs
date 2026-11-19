@@ -16,6 +16,7 @@ static ENV: Mutex<()> = Mutex::new(());
 const SCRIPT: &str = r#"#!/bin/sh
 d=$(dirname "$0")
 n=$(basename "$0")
+if [ -f "$d/slow" ] && { [ "$1" = auth ] || [ "$1" = login ] || [ "$1" = debug ]; }; then exec sleep 60; fi
 case "$1" in
   auth) if [ -f "$d/logged-out" ]; then echo '{"loggedIn":false}'; else echo '{"loggedIn":true}'; fi; exit 0 ;;
   login) if [ -f "$d/logged-out" ]; then exit 1; fi; exit 0 ;;

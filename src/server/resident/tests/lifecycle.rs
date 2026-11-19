@@ -114,3 +114,36 @@ fn shutdown_stops_every_child() {
     assert!(!alive(b.pid));
     assert!(fx.launcher.status().is_empty());
 }
+
+#[test]
+fn a_cli_that_does_not_answer_in_time_cannot_block_a_request() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture();
+    std::fs::write(fx.dir.path().join("slow"), "").unwrap();
+    let quick = Launcher::new(
+        fx.registry.clone(),
+        Executables::fixed(
+            Some(fx.dir.path().join("claude")),
+            Some(fx.dir.path().join("codex")),
+        )
+        .with_timeout(Duration::from_millis(300)),
+        &fx.dir.path().join("data"),
+    );
+    let started = Instant::now();
+    for tool in [Tool::ClaudeCode, Tool::Codex] {
+        let error = quick
+            .launch(&project(), "demo", fx.folder.path(), tool, None)
+            .unwrap_err();
+        assert_eq!(error.code(), "session_launch_failed", "{tool:?}");
+        assert!(
+            error.reason().contains("did not finish"),
+            "{}",
+            error.reason()
+        );
+    }
+    let models = quick.models(Tool::Codex).unwrap();
+    assert!(models.models.is_empty());
+    assert!(models.reason.unwrap().contains("did not finish"));
+    assert!(started.elapsed() < Duration::from_secs(10));
+    assert!(quick.status().is_empty());
+}
