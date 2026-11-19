@@ -75,6 +75,49 @@ mod tests {
     }
 
     #[test]
+    fn a_history_link_names_the_project_and_task_and_the_history_tab() {
+        let origin = PublicOrigin::parse("https://abc.ngrok-free.app").unwrap();
+        let project = "0123456789abcdef0123456789abcdef";
+        assert_eq!(
+            origin.history_link(project, 12).as_deref(),
+            Some(
+                "https://abc.ngrok-free.app/?project=0123456789abcdef0123456789abcdef&task=12&tab=history"
+            )
+        );
+        assert_eq!(origin.history_link("nope", 12), None);
+        assert_eq!(origin.history_link(&project.to_uppercase(), 12), None);
+        assert_eq!(origin.history_link(project, 0), None);
+        assert_eq!(origin.history_link(project, 9_007_199_254_740_992), None);
+    }
+
+    #[test]
+    fn a_question_link_names_the_task_and_the_question() {
+        let origin = PublicOrigin::parse("https://abc.ngrok-free.app").unwrap();
+        let project = "0123456789abcdef0123456789abcdef";
+        assert_eq!(
+            origin.question_link(project, 12, "Q-7").as_deref(),
+            Some(
+                "https://abc.ngrok-free.app/?project=0123456789abcdef0123456789abcdef&task=12&question=Q-7"
+            )
+        );
+        for bad in [
+            "",
+            "Q-",
+            "Q-0",
+            "Q-07",
+            "q-7",
+            "Q-7&x=1",
+            "Q-a",
+            "7",
+            "Q-12345678901234567",
+        ] {
+            assert_eq!(origin.question_link(project, 12, bad), None, "{bad}");
+        }
+        assert_eq!(origin.question_link("nope", 12, "Q-7"), None);
+        assert_eq!(origin.question_link(project, 0, "Q-7"), None);
+    }
+
+    #[test]
     fn status_and_config_serialize_to_the_contract_names() {
         let names: Vec<String> = [
             ConnectionStatus::Disabled,

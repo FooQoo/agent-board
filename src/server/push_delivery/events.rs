@@ -99,6 +99,8 @@ pub(super) struct Event {
     pub key: String,
     /// The result version a result event is about.
     pub version: Option<u32>,
+    /// The id (`Q-<n>`) of the question a question event is about.
+    pub question_id: Option<String>,
     /// The summary, the question, or the history reason, as the board has it.
     pub detail: String,
 }
@@ -118,6 +120,7 @@ fn event(project: &str, now: &Facts, kind: Kind, key: String, detail: &str) -> E
         kind,
         key: format!("{key}:{project}:{}", now.id),
         version: None,
+        question_id: None,
         detail: detail.to_string(),
     }
 }
@@ -142,13 +145,9 @@ pub(super) fn diff_task(project: &str, before: &Facts, now: &Facts) -> Vec<Event
     for id in &now.open_questions {
         if !before.open_questions.contains(id) {
             let text = now.question.as_deref().unwrap_or_default();
-            events.push(event(
-                project,
-                now,
-                Kind::Question,
-                format!("question:{id}"),
-                text,
-            ));
+            let mut e = event(project, now, Kind::Question, format!("question:{id}"), text);
+            e.question_id = Some(id.clone());
+            events.push(e);
         }
     }
     if now.history.len() > before.history.len() {

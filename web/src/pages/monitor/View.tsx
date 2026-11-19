@@ -72,7 +72,17 @@ export function MonitorView(props: MonitorViewProps) {
   const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(tasks);
   const { resultLink, onResultLinkClose } = props;
-  useResultLinkDrawer(tasks, resultLink ?? null, detail.show);
+  useResultLinkDrawer(
+    tasks,
+    resultLink ?? null,
+    detail.show,
+    props.messagesApi
+      ? {
+          messages: props.messages,
+          open: (messageId) => panel.open({ tab: 'fromAi', openId: messageId }),
+        }
+      : undefined,
+  );
   const closeDrawer = (next: boolean) => {
     detail.close(next);
     if (!next && resultLink != null) onResultLinkClose?.();

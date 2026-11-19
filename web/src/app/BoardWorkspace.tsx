@@ -208,6 +208,13 @@ export function BoardWorkspace({
                   ? model.resultLink.version
                   : null
               }
+              focusHistory={
+                !archiveVisible &&
+                selected !== null &&
+                model.resultLink?.projectId === activeId &&
+                model.resultLink.taskId === selected.id &&
+                model.resultLink.tab === 'history'
+              }
               onRetryEpics={actions.onRetryEpics}
               onPreview={actions.onPreviewTask}
               onOpenEpic={actions.onOpenEpic}
