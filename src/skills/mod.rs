@@ -24,6 +24,7 @@ pub const TOPICS: &[(&str, &str)] = &[
     ),
     ("drafts", include_str!("topics/drafts.md")),
     ("phone", include_str!("topics/phone.md")),
+    ("results", include_str!("topics/results.md")),
     ("task-template", include_str!("topics/task-template.md")),
     ("epic-template", include_str!("topics/epic-template.md")),
     (
