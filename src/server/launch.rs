@@ -184,12 +184,9 @@ pub(crate) fn run<F: Future<Output = ()>>(
                 )));
             }
         };
-
-        // Only now: a session started before this point would outlive a failed start.
         state.resident.start(move |project| {
             resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
         });
-
         let pid = std::process::id();
         let auto = Arc::new(AtomicBool::new(launch.auto.is_some()));
         if launch.auto.is_some() {
