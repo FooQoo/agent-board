@@ -78,14 +78,19 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
     const view = within(document.body);
     // 24 themes and 2 languages; the notification choices live in their own dialog.
     await waitFor(() => expect(view.getAllByRole('radio')).toHaveLength(26));
-    await expect(await view.findByRole('button', { name: 'Notification settings' })).toBeVisible();
+    // Dialogs fade in, and toBeVisible fails while opacity is still below 1, so wait for it
+    // rather than asserting the moment the element exists.
+    const notification = await view.findByRole('button', { name: 'Notification settings' });
+    await waitFor(() => expect(notification).toBeVisible());
     await expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
     await userEvent.click(await view.findByRole('button', { name: 'Connection settings' }));
     // The settings dialog is gone and the connection dialog is the only one on the screen.
     await waitFor(() => expect(view.queryAllByRole('radio')).toHaveLength(0));
     await waitFor(() => expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1));
-    await expect(await view.findByRole('heading', { name: 'Remote connection' })).toBeVisible();
-    await expect(await view.findByLabelText('ngrok auth token')).toBeVisible();
+    const heading = await view.findByRole('heading', { name: 'Remote connection' });
+    await waitFor(() => expect(heading).toBeVisible());
+    const token = await view.findByLabelText('ngrok auth token');
+    await waitFor(() => expect(token).toBeVisible());
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(view.queryAllByRole('dialog', { hidden: true })).toHaveLength(0));
     await waitFor(() =>
