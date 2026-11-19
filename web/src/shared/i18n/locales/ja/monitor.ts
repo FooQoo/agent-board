@@ -79,6 +79,12 @@ export const monitorJa = {
     tokenThisRun: '今回だけ入力されています（保存されません）。',
     tokenNoKeychain: 'このPCでは保存できません（都度入力）。',
     deleteToken: '保存したトークンを削除',
+    domain: 'ngrokのドメイン',
+    domainRecommended: '推奨',
+    domainPlaceholder: 'example.ngrok-free.dev',
+    domainHint:
+      '任意です。空のままだと、接続を開始するたびにアドレスが変わり、スマホのブックマークやホーム画面のアイコンから開けなくなります。ngrokのダッシュボードにある無料の固定ドメインなど、ngrokアカウントが持つドメインを指定してください。',
+    domainFromEnv: '環境変数 AGBOARD_NGROK_DOMAIN を使います。保存したドメインより優先されます。',
     save: '保存して接続',
     connecting: '接続しています…',
     startingTitle: 'ngrokに接続しています…',
@@ -129,6 +135,8 @@ export const monitorJa = {
       conflict: '別の画面で設定が変更されました。内容を確認してもう一度お試しください。',
       saveFailed: '設定を保存できませんでした。接続は開始していません。',
       invalid: 'ngrokの認証トークンを確認してください。',
+      invalidDomain:
+        'ドメインは、スキームやパスを付けず、example.ngrok-free.dev のようにホスト名だけで入力してください。',
       unreadable: '保存済みの設定を読み込めませんでした。保存し直してから続けてください。',
       startFailed: '接続を開始できませんでした。もう一度お試しください。',
       keychainUnavailable: 'このPCでは保存できません（都度入力）。',

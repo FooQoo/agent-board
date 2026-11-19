@@ -209,7 +209,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | API | 入出力と動作 |
 | --- | --- |
 | `GET /api/monitor-connections` | 現在の状態（下記）。秘密の値は含まない。 |
-| `PUT /api/monitor-connections/settings/ngrok` | `{enabled, revision}`を保存し、状態を返す。`revision`は最後に読んだ値でなければならない。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間に保存しても作り直さない。作り直すのは開始だけ。 |
+| `PUT /api/monitor-connections/settings/ngrok` | `{enabled, revision, domain?}`を保存し、状態を返す。`revision`は最後に読んだ値でなければならない。`domain`は省略でき、省略すると保存済みのドメインを保つ。空文字列で消去する。それ以外はホスト名だけ（スキーム、パス、ポート、ワイルドカードは不可）で、小文字にして保存する。違反は422 `invalid_domain`。未知のフィールドは422 `invalid_value`、古いrevisionは409 `revision_conflict`、保存の失敗は500 `save_failed`で何も変えない。トンネルが動いている間に保存しても作り直さない。作り直すのは開始だけ。 |
 | `POST /api/monitor-connections/transports/ngrok/start` | 接続を開始し、202で状態（通常は`starting`）を返す。任意の本文は`{token, save}`。`token`はメモリーだけに保持する。`save: true`はこのPCの安全な保管場所（OSの資格情報ストア）にも保存し、`token`が必要。無効な設定は、先に有効として保存する。トンネルが動いている間の開始は、トンネルを作り直す（合言葉も新しくなる）。 |
 | `POST /api/monitor-connections/transports/ngrok/stop` | 接続を停止して無効として保存し、200で状態を返す。 |
 | `DELETE /api/monitor-connections/token` | 安全な保管場所に保存したトークンを削除し、200で状態を返す。何も保存していなくてもエラーにしない。 |
@@ -221,7 +221,8 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `status` | `disabled`・`needs_config`・`starting`・`ready`・`reconnecting`・`failed`・`stopping`のいずれか。 |
 | `url` | `ready`のときの公開HTTPSアドレス。それ以外は`null`。 |
 | `revision` | `PUT`に使う設定のrevision。 |
-| `settings` | `enabled`。 |
+| `settings` | `enabled`と`domain`（保存したngrokのドメイン。なければ`null`）。 |
+| `domainEnv` | 環境変数`AGBOARD_NGROK_DOMAIN`のドメイン。なければ`null`。設定されているとき、開始は`settings.domain`の代わりにこれを使う。 |
 | `tokenConfigured` | 開始したときにトークンが見つかるか。 |
 | `tokenSource` | `env`（`NGROK_AUTHTOKEN`）、`keychain`（安全な保管場所）、`session`（今回の起動だけ入力）、`null`のいずれか。値は返さない。 |
 | `keychainAvailable` | このPCに、トークンを保存できる安全な保管場所（OSの資格情報ストア）があるか。 |

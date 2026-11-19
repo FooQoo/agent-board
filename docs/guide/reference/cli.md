@@ -190,7 +190,7 @@ Start it yourself to keep it running, to choose the port, or to connect a phone 
 
 | Option | Meaning |
 | --- | --- |
-| `--monitor ngrok` | Starts the remote access connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. Set `AGBOARD_NGROK_DOMAIN` to a domain your ngrok account owns to keep the same address at every start; see [Keep the same address](../watch/remote-access#keep-the-same-address). |
+| `--monitor ngrok` | Starts the remote access connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. To keep the same address at every start, enter a domain your ngrok account owns in the dialog, or set `AGBOARD_NGROK_DOMAIN`; see [Keep the same address](../watch/remote-access#keep-the-same-address). |
 
 The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. An invalid `--monitor` value, a missing `NGROK_AUTHTOKEN`, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
 

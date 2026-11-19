@@ -202,6 +202,8 @@ pub struct Snapshot {
     pub url: Option<String>,
     pub revision: u64,
     pub settings: Settings,
+    /// The domain from `AGBOARD_NGROK_DOMAIN`. When set it is the one used, over the saved one.
+    pub domain_env: Option<String>,
     pub token_configured: bool,
     /// Which token a start would use; `None` when there is none. Never the value.
     pub token_source: Option<TokenSource>,
@@ -232,6 +234,8 @@ pub enum TokenSource {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub enabled: bool,
+    /// The saved domain; `None` when none is saved.
+    pub domain: Option<String>,
 }
 
 /// A settings change from the PC. `revision` is the one the PC last saw.
@@ -239,6 +243,8 @@ pub struct Settings {
 pub struct SettingsUpdate {
     pub enabled: bool,
     pub revision: u64,
+    /// `None` keeps the saved domain, `Some(None)` clears it, `Some(Some(d))` saves `d`.
+    pub domain: Option<Option<String>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

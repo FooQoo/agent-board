@@ -106,6 +106,7 @@ These are returned by the `/api/monitor-connections` routes (see [Web API](./web
 | `keychain_unavailable` | Saving or deleting the token was asked for but the PC's secure storage cannot do it. Nothing was saved or changed. | n/a | 409 |
 | `settings_unreadable` | A start while the saved settings file cannot be read. Save the settings again first. | n/a | 409 |
 | `start_failed` | The connection could not be started for an internal reason. | n/a | 500 |
+| `invalid_domain` | The domain in the settings is not a bare host name (a scheme, path, port, or wildcard was given). Nothing was saved. | n/a | 422 |
 | `invalid_value` | The token or the body breaks a rule (for example `save` without a token, or an unknown field). | n/a | 422 |
 
 On the command line, `serve --monitor ngrok` with a missing or invalid option exits 2 with `invalid_argument`; a connection that cannot start exits 1. The failure codes in the state object (`failure`) are listed in [Web API](./web-api.md#remote-connection).

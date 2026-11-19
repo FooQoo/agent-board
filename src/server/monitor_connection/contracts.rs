@@ -27,6 +27,10 @@ pub enum ConnectionStatus {
 pub struct ConnectionConfig {
     pub enabled: bool,
     pub revision: u64,
+    /// The ngrok domain to open the endpoint on, so the address stays the same.
+    /// `None` lets ngrok choose a new address at every start.
+    #[serde(default)]
+    pub domain: Option<String>,
 }
 
 /// Why an input or request was refused. Messages never include secret values.
@@ -87,10 +91,9 @@ mod tests {
         let v = serde_json::to_value(ConnectionConfig::default()).unwrap();
         let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
         keys.sort();
-        assert_eq!(keys, ["enabled", "revision"]);
-        // Only the enabled flag and the revision are settings: a file with any other field is not read.
+        assert_eq!(keys, ["domain", "enabled", "revision"]);
+        // Only the enabled flag, the revision and the domain are settings: a file with any other field is not read.
         for stale in [
-            r#"{"enabled":false,"revision":0,"domain":null}"#,
             r#"{"enabled":false,"revision":0,"allowEmails":[]}"#,
             r#"{"enabled":false,"revision":0,"oauthApp":"managed"}"#,
             r#"{"enabled":false,"revision":0,"deviceStore":1}"#,

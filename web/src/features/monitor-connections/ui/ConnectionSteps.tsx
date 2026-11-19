@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLinkIcon } from 'lucide-react';
+import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Input } from '@/shared/ui/input';
@@ -44,6 +45,8 @@ export interface ConnectionSetupStepsProps {
   values: ConnectionDraft;
   onChange: (values: ConnectionDraft) => void;
   tokenInfo: TokenInfo;
+  /** The domain from the environment; when set it wins and the field is read-only. */
+  domainEnv?: string | null;
   /** A request is in flight: the fields stay as they are. */
   busy: boolean;
   /** Delete the token saved in this PC's secure storage. */
@@ -55,11 +58,12 @@ export function ConnectionSetupSteps({
   values,
   onChange,
   tokenInfo,
+  domainEnv = null,
   busy,
   onDeleteToken,
 }: ConnectionSetupStepsProps) {
   const { t } = useTranslation();
-  const ids = { token: useId(), save: useId() };
+  const ids = { token: useId(), save: useId(), domain: useId() };
   const canSave = tokenInfo.keychainAvailable;
   const tokenNote = !canSave
     ? t('monitorConnection.tokenNoKeychain')
@@ -72,64 +76,88 @@ export function ConnectionSetupSteps({
           : t('monitorConnection.tokenNote');
 
   return (
-    <ol className="connection-dialog__steps">
-      <Step number={1} title={t('monitorConnection.getTokenTitle')}>
-        <p className="connection-dialog__step-text">{t('monitorConnection.getTokenBody')}</p>
-        <Button asChild variant="outline" className="connection-dialog__token-link">
-          <a href={NGROK_TOKEN_URL} target="_blank" rel="noopener noreferrer">
-            {t('monitorConnection.getTokenAction')}
-            <ExternalLinkIcon aria-hidden="true" />
-          </a>
-        </Button>
-        <p className="connection-dialog__step-text">{t('monitorConnection.ngrokNote')}</p>
-      </Step>
-      <Step number={2} title={t('monitorConnection.pasteTitle')}>
-        <div className="connection-dialog__field">
-          <Label htmlFor={ids.token}>{t('monitorConnection.token')}</Label>
-          <Input
-            id={ids.token}
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={t('monitorConnection.tokenPlaceholder')}
-            value={values.token}
-            disabled={busy}
-            onChange={(event) => onChange({ ...values, token: event.target.value })}
-          />
-        </div>
-        <div className="connection-dialog__save">
-          <Checkbox
-            id={ids.save}
-            checked={canSave && values.save}
-            disabled={busy || !canSave}
-            onCheckedChange={(checked) => onChange({ ...values, save: checked === true })}
-          />
-          <Label htmlFor={ids.save}>{t('monitorConnection.saveToken')}</Label>
-        </div>
-        {canSave && (
-          <p className="connection-dialog__step-text">{t('monitorConnection.saveNote')}</p>
-        )}
-        <p
-          className="connection-dialog__step-text connection-dialog__step-text--note"
-          data-testid="token-note"
-        >
-          {tokenNote}
-        </p>
-        {tokenInfo.saved && (
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              size="s"
+    <>
+      <ol className="connection-dialog__steps">
+        <Step number={1} title={t('monitorConnection.getTokenTitle')}>
+          <p className="connection-dialog__step-text">{t('monitorConnection.getTokenBody')}</p>
+          <Button asChild variant="outline" className="connection-dialog__token-link">
+            <a href={NGROK_TOKEN_URL} target="_blank" rel="noopener noreferrer">
+              {t('monitorConnection.getTokenAction')}
+              <ExternalLinkIcon aria-hidden="true" />
+            </a>
+          </Button>
+          <p className="connection-dialog__step-text">{t('monitorConnection.ngrokNote')}</p>
+        </Step>
+        <Step number={2} title={t('monitorConnection.pasteTitle')}>
+          <div className="connection-dialog__field">
+            <Label htmlFor={ids.token}>{t('monitorConnection.token')}</Label>
+            <Input
+              id={ids.token}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={t('monitorConnection.tokenPlaceholder')}
+              value={values.token}
               disabled={busy}
-              onClick={onDeleteToken}
-            >
-              {t('monitorConnection.deleteToken')}
-            </Button>
+              onChange={(event) => onChange({ ...values, token: event.target.value })}
+            />
           </div>
-        )}
-      </Step>
-    </ol>
+          <div className="connection-dialog__save">
+            <Checkbox
+              id={ids.save}
+              checked={canSave && values.save}
+              disabled={busy || !canSave}
+              onCheckedChange={(checked) => onChange({ ...values, save: checked === true })}
+            />
+            <Label htmlFor={ids.save}>{t('monitorConnection.saveToken')}</Label>
+          </div>
+          {canSave && (
+            <p className="connection-dialog__step-text">{t('monitorConnection.saveNote')}</p>
+          )}
+          <p
+            className="connection-dialog__step-text connection-dialog__step-text--note"
+            data-testid="token-note"
+          >
+            {tokenNote}
+          </p>
+          {tokenInfo.saved && (
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="s"
+                disabled={busy}
+                onClick={onDeleteToken}
+              >
+                {t('monitorConnection.deleteToken')}
+              </Button>
+            </div>
+          )}
+        </Step>
+      </ol>
+      <div className="connection-dialog__field connection-dialog__domain">
+        <div className="connection-dialog__domain-head">
+          <Label htmlFor={ids.domain}>{t('monitorConnection.domain')}</Label>
+          <Badge variant="outline">{t('monitorConnection.domainRecommended')}</Badge>
+        </div>
+        <Input
+          id={ids.domain}
+          type="text"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder={t('monitorConnection.domainPlaceholder')}
+          value={domainEnv ?? values.domain}
+          disabled={busy || domainEnv !== null}
+          onChange={(event) => onChange({ ...values, domain: event.target.value })}
+        />
+        <p className="connection-dialog__step-text" data-testid="domain-note">
+          {domainEnv !== null
+            ? t('monitorConnection.domainFromEnv')
+            : t('monitorConnection.domainHint')}
+        </p>
+      </div>
+    </>
   );
 }
 

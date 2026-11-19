@@ -18,7 +18,7 @@ use serde::Deserialize;
 use crate::server::AppState;
 use crate::server::guard::{header_text, origin_allowed};
 use crate::server::monitor_connection::lifecycle::{
-    ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError,
+    ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError, parse_domain,
 };
 use crate::server::response::{error_response, forbidden, json_response};
 
@@ -60,6 +60,27 @@ pub(super) async fn get_connections(
 struct SettingsBody {
     enabled: bool,
     revision: u64,
+    /// Absent keeps the saved domain; an empty string clears it.
+    #[serde(default)]
+    domain: Option<String>,
+}
+
+/// The domain a request asks to save: `None` keeps it, `Some(None)` clears it.
+#[allow(clippy::option_option)]
+fn requested_domain(raw: Option<String>) -> Result<Option<Option<String>>, Box<Response>> {
+    match raw {
+        None => Ok(None),
+        Some(text) if text.trim().is_empty() => Ok(Some(None)),
+        Some(text) => match parse_domain(&text) {
+            Some(domain) => Ok(Some(Some(domain))),
+            None => Err(Box::new(error_response(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "invalid_domain",
+                "the ngrok domain is not valid.",
+                "Enter a host name only, such as example.ngrok-free.dev, without https://, a path, or a port.",
+            ))),
+        },
+    }
 }
 
 pub(super) async fn put_ngrok_settings(
@@ -72,9 +93,14 @@ pub(super) async fn put_ngrok_settings(
     let Ok(body) = serde_json::from_slice::<SettingsBody>(&body) else {
         return invalid("settings are malformed.");
     };
+    let domain = match requested_domain(body.domain) {
+        Ok(domain) => domain,
+        Err(r) => return *r,
+    };
     let result = state.monitor.update(SettingsUpdate {
         enabled: body.enabled,
         revision: body.revision,
+        domain,
     });
     match result {
         Ok(snapshot) => snapshot_response(StatusCode::OK, &snapshot),

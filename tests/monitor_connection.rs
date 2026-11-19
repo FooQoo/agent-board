@@ -515,6 +515,7 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
         .save(&ConnectionConfig {
             enabled: true,
             revision: 4,
+            domain: None,
         })
         .unwrap();
     {
@@ -610,6 +611,7 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_a_saved_off_setting(
         .save(&ConnectionConfig {
             enabled: false,
             revision: 2,
+            domain: None,
         })
         .unwrap();
     let s = Server::start(
@@ -812,6 +814,7 @@ fn a_saved_token_restores_an_enabled_connection_at_startup() {
         .save(&ConnectionConfig {
             enabled: true,
             revision: 1,
+            domain: None,
         })
         .unwrap();
     let s = Server::start(
