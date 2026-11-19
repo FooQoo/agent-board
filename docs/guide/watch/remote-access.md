@@ -163,6 +163,8 @@ The board sends only what you chose in the **Phone notifications** dialog, which
 - A **question** that needs your decision arrives with a high priority. Tap it to open the card with the question.
 - **Card state changes** and **history additions** arrive only when you switch them on, and state changes only for the transitions you picked. Tap one to open the card.
 
+Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that it is done. Tap the notification to read the whole text on the board.
+
 With **Periodic status notification** on, the board also sends one notification every interval you chose (30 minutes, 1 hour, 2 hours, or 4 hours) about the cards in Doing, even if nothing new was recorded. It is separate from the choices above, and a first draft, a final result, or a question is never held back for it: those arrive at once. The first one comes one interval after the board starts or after the previous one. Each card in it says one of these:
 
 - **New records.** How many records (history entries and results) were written since the previous report, with the time and content of the latest.

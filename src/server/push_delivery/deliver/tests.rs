@@ -137,7 +137,7 @@ async fn a_result_reaches_the_device_encrypted_with_a_link_to_its_version() {
         format!("https://board.example.dev/?project={PROJECT}&task=12&result=2")
     );
     assert_eq!(json["tag"], "result:2");
-    assert_eq!(json["title"], "A result is ready to look at");
+    assert_eq!(json["title"], "Make the thing");
     assert!(!String::from_utf8_lossy(&request.body).contains("Looks good"));
 }
 

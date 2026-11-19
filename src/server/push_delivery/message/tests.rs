@@ -28,8 +28,8 @@ fn a_result_links_to_its_version_and_a_question_to_the_card() {
     )
     .unwrap();
     assert_eq!(result.path, format!("/?project={PROJECT}&task=12&result=3"));
-    assert_eq!(result.title, "A result is ready to look at");
-    assert_eq!(result.body, "#12 Make the thing\nLooks good");
+    assert_eq!(result.title, "Make the thing");
+    assert_eq!(result.body, "Looks good");
     assert_eq!(result.tag, "key-1");
     assert!(!result.urgent);
 
@@ -42,8 +42,8 @@ fn a_result_links_to_its_version_and_a_question_to_the_card() {
 fn the_wording_follows_the_language() {
     let e = event(Kind::State(StateChange::Done), None, "");
     let ja = payload_of(&e, Lang::Ja, &origin()).unwrap();
-    assert_eq!(ja.title, "カードが完了しました");
-    assert_eq!(ja.body, "#12 Make the thing");
+    assert_eq!(ja.title, "Make the thing");
+    assert_eq!(ja.body, "カードが完了しました");
     assert_eq!(Lang::from_locale("ja"), Lang::Ja);
     assert_eq!(Lang::from_locale("en"), Lang::En);
     assert_eq!(Lang::from_locale("fr"), Lang::En);
@@ -95,4 +95,26 @@ fn text_is_one_short_line() {
     let cut = shorten(&long, 140);
     assert_eq!(cut.chars().count(), 140);
     assert!(cut.ends_with('…'));
+}
+
+#[test]
+fn the_detail_is_cut_to_forty_characters() {
+    let e = event(Kind::Question, None, &"y".repeat(300));
+    let body = payload_of(&e, Lang::En, &origin()).unwrap().body;
+    assert_eq!(body.chars().count(), 40);
+    assert!(body.ends_with('…'));
+}
+
+#[test]
+fn the_line_is_the_first_sentence() {
+    for (detail, line) in [
+        ("Pick one. The rest can wait.", "Pick one."),
+        ("どちらにしますか？ 理由も書きます。", "どちらにしますか？"),
+        ("要約です。続きの文", "要約です。"),
+        ("First line\nsecond line", "First line"),
+        ("Version 1.6 is out", "Version 1.6 is out"),
+    ] {
+        let p = payload_of(&event(Kind::History, None, detail), Lang::En, &origin()).unwrap();
+        assert_eq!(p.body, line);
+    }
 }
