@@ -2,14 +2,11 @@ import { useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
-import { ConnectedResidentEntryRow } from '../features/resident-sessions/ui/ResidentEntryRow';
-import { requestResidentDialog } from '../features/resident-sessions/events';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
-import { residentAvailable } from './residentSlot';
-import { usesRemoteSession } from './remote/session';
+import { ResidentSettingsRow } from './residentSlot';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
@@ -53,15 +50,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 }}
               />
             ) : null}
-            {residentAvailable(projectId) && !usesRemoteSession() ? (
-              <ConnectedResidentEntryRow
-                projectId={projectId}
-                onOpen={() => {
-                  onOpenChange(false);
-                  requestResidentDialog();
-                }}
-              />
-            ) : null}
+            <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
           </div>
         }
       />

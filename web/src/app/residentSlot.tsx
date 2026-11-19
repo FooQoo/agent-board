@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { requestResidentDialog } from '../features/resident-sessions/events';
+import { ConnectedResidentEntryRow } from '../features/resident-sessions/ui/ResidentEntryRow';
 import { ConnectedResidentIndicator } from '../features/resident-sessions/ui/ResidentFooter';
 import { ResidentHost } from '../features/resident-sessions/ui/ResidentHost';
 import { isProjectId } from './model/projectSession';
@@ -24,4 +26,28 @@ export function residentFooterSlot(projectId: string | null): ReactNode {
 export function ResidentDialogHost({ projectId }: { projectId: string | null }) {
   if (!residentAvailable(projectId) || usesRemoteSession()) return null;
   return <ResidentHost key={projectId} projectId={projectId} />;
+}
+
+/**
+ * The settings row that opens the resident-session dialog, for the PC and the phone settings
+ * alike. It closes the settings dialog first, so only one dialog is on the screen. Absent on a
+ * page that came through the remote entrance, which cannot launch.
+ */
+export function ResidentSettingsRow({
+  projectId,
+  onClose,
+}: {
+  projectId: string | null;
+  onClose: () => void;
+}) {
+  if (!residentAvailable(projectId) || usesRemoteSession()) return null;
+  return (
+    <ConnectedResidentEntryRow
+      projectId={projectId}
+      onOpen={() => {
+        onClose();
+        requestResidentDialog();
+      }}
+    />
+  );
 }

@@ -39,4 +39,4 @@ The dialog also counts the sessions attached to the board, split into those the 
 
 ## Remote access {#remote-access}
 
-Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone layout, which has no footer, does not show it.
+Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone layout has no footer, so it shows no indicator. Its **Settings** has the same **Resident session** row on a local page; the dialog opens as a bottom sheet.

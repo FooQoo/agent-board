@@ -37,8 +37,8 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(lane(page, 'Todo')).toBeVisible();
   await expect(lane(page, 'Doing')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Settings' }).click();
-  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
   const englishOption = settings.getByRole('radio', { name: 'English' });
   const japaneseOption = settings.getByRole('radio', { name: '日本語' });
   await expect(englishOption).toHaveAttribute('aria-checked', 'true');
@@ -48,7 +48,7 @@ test('starts in English in a Japanese browser, switches and persists without tra
 
   // The choice applies at once and the dialog stays open; the board behind it is inert until it closes.
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '設定', exact: true })).toBeVisible();
   await expect(page.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -108,9 +108,9 @@ test('starts in English in a Japanese browser, switches and persists without tra
   await expect(lane(page, '未着手')).toBeVisible();
   await expect(task(page, 12)).toContainText('待機中');
 
-  await page.getByRole('button', { name: '設定' }).click();
+  await page.getByRole('button', { name: '設定', exact: true }).click();
   await page.getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -125,10 +125,10 @@ test('keyboard selection keeps an open archive confirmation and the selected tas
   await panel.getByRole('button', { name: 'Archive task' }).click();
   await expect(panel.getByText('Archive #12 "Restore a board from JSON"? You can restore it from the archive.')).toBeVisible();
 
-  const trigger = page.getByRole('button', { name: 'Settings' });
+  const trigger = page.getByRole('button', { name: 'Settings', exact: true });
   await trigger.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('radio', { name: 'English' })).toBeFocused();
   // The language options are one radio group: the arrow keys move between them and select.
@@ -139,10 +139,10 @@ test('keyboard selection keeps an open archive confirmation and the selected tas
   await page.keyboard.up('ArrowLeft');
   await expect(page.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '設定', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  const japaneseTrigger = page.getByRole('button', { name: '設定' });
+  const japaneseTrigger = page.getByRole('button', { name: '設定', exact: true });
   await expect(japaneseTrigger).toBeFocused();
   await expect(dialog).toHaveCount(0);
   await expect(task(page, 12)).toHaveAttribute('aria-current', 'true');
@@ -192,9 +192,9 @@ test('the settings dialog stays within the desktop viewports', async ({ page }, 
       })
       .toBe(true);
     const before = await board.boundingBox();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
 
-    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    const dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
     await expect(dialog).toBeVisible();
     const bounds = await dialog.boundingBox();
     expect(bounds).not.toBeNull();
