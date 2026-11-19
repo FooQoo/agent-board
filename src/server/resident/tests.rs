@@ -24,6 +24,7 @@ case "$1" in
 esac
 { echo "ARGS: $*"; echo "PWD: $(pwd)"; env; } > "$d/$n.record.tmp"
 mv "$d/$n.record.tmp" "$d/$n.record"
+echo x >> "$d/$n.starts"
 if [ -f "$d/exit-now" ]; then exit 0; fi
 exec sleep 60
 "#;
@@ -44,6 +45,10 @@ fn project() -> ProjectId {
 }
 
 fn fixture() -> Fixture {
+    fixture_timed(Timing::default())
+}
+
+fn fixture_timed(timing: Timing) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let folder = tempfile::tempdir().unwrap();
     let bin = |name: &str| {
@@ -58,11 +63,12 @@ fn fixture() -> Fixture {
     std::fs::write(dir.path().join("models.json"), MODELS).unwrap();
     let registry = SessionRegistry::new(Duration::from_secs(30));
     let data = dir.path().join("data");
-    let launcher = Launcher::with_stop_grace(
+    let launcher = Launcher::with_timing(
         registry.clone(),
         Executables::fixed(Some(claude), Some(codex)),
         &data,
         Duration::from_secs(5),
+        timing,
     );
     Fixture {
         dir,
@@ -241,4 +247,5 @@ fn a_board_session_the_registry_counts_refuses_a_launch() {
     fx.launcher.shutdown();
 }
 
+mod health;
 mod lifecycle;

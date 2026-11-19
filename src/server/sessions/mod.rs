@@ -153,6 +153,15 @@ impl SessionRegistry {
         }
     }
 
+    /// Whether a board-launched session of `tool` counts now (connected, or in grace).
+    pub fn has_board(&self, tool: Tool) -> bool {
+        let mut entries = self.lock();
+        self.prune(&mut entries, Instant::now());
+        entries
+            .values()
+            .any(|entry| entry.origin == Origin::Board && entry.tool == tool)
+    }
+
     /// Drop every board-launched session of `tool` from the count at once, without the grace
     /// period. The launcher calls it when it has stopped the process, or the process has exited,
     /// so that the next launch is not refused for a session that is gone.

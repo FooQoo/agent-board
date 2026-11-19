@@ -49,7 +49,7 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
-use sessions::{launch_session, list_sessions, session_models, stop_session};
+use sessions::{launch_session, list_sessions, session_models, set_autostart, stop_session};
 use summary::summary;
 use task_acceptance::*;
 use task_attachments::*;
@@ -99,6 +99,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         .route(
             "/api/projects/{project_id}/sessions/stop",
             post(stop_session),
+        )
+        .route(
+            "/api/projects/{project_id}/sessions/autostart",
+            put(set_autostart),
         );
     routes(get(index))
         .merge(local_only)

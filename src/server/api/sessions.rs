@@ -13,7 +13,7 @@ use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::server::AppState;
 use crate::server::request::ApiJson;
-use crate::server::resident::Launched;
+use crate::server::resident::{AutoStart, Health, Launched, resolve_project};
 use crate::server::response::{agboard_error_response, json_response};
 use crate::server::sessions::{SessionList, Tool};
 use crate::server::store::{parse_project_id, with_files};
@@ -23,6 +23,8 @@ struct Listed {
     #[serde(flatten)]
     list: SessionList,
     launched: Vec<Launched>,
+    /// The health of the session of each tool.
+    health: Vec<Health>,
 }
 
 pub(super) async fn list_sessions(
@@ -38,7 +40,15 @@ pub(super) async fn list_sessions(
                 .filter(|launched| launched.project_id == project_id)
                 .collect();
             let list = state.sessions.list(&project_id);
-            json_response(StatusCode::OK, &Listed { list, launched })
+            let health = state.resident.health();
+            json_response(
+                StatusCode::OK,
+                &Listed {
+                    list,
+                    launched,
+                    health,
+                },
+            )
         }
         Err(error) => agboard_error_response(&error),
     }
@@ -132,27 +142,62 @@ async fn project_folder(
     state: &AppState,
     project: ProjectId,
 ) -> Result<(String, std::path::PathBuf), AgboardError> {
-    with_files(state, move |files| {
-        let catalog = files.catalog()?;
-        let meta = catalog
-            .projects
-            .iter()
-            .find(|meta| meta.id == project)
-            .ok_or_else(|| AgboardError::ProjectNotFound {
-                project: project.to_string(),
-            })?;
-        let folder = files
-            .bindings()?
-            .into_iter()
-            .filter(|binding| binding.project_id == project)
-            .map(|binding| binding.folder)
-            .find(|folder| folder.is_dir())
-            .ok_or_else(|| AgboardError::ProjectHasNoFolder {
-                project: meta.name.clone(),
-            })?;
-        Ok((meta.name.clone(), folder))
-    })
-    .await
+    with_files(state, move |files| resolve_project(&files, &project)).await
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct AutoStartBody {
+    tool: Tool,
+    enabled: bool,
+    #[serde(default)]
+    model: Option<String>,
+}
+
+/// Save whether the session of a tool starts with the server, and with which project and model.
+/// It does not launch anything by itself.
+pub(super) async fn set_autostart(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+    ApiJson(body): ApiJson<AutoStartBody>,
+) -> Response {
+    let project_id = match parse_project_id(&raw_project) {
+        Ok(id) => id,
+        Err(error) => return agboard_error_response(&error),
+    };
+    let result = async {
+        let tool = crate::server::resident::cli::launchable(body.tool)?;
+        let model = body
+            .model
+            .as_deref()
+            .filter(|model| !model.is_empty() && *model != "default");
+        let choice = if body.enabled {
+            if let Some(model) =
+                model.filter(|model| !crate::server::resident::cli::valid_model(model))
+            {
+                return Err(AgboardError::InvalidValue {
+                    field: "model".to_string(),
+                    reason: format!("\"{model}\" is not a model name."),
+                });
+            }
+            project_folder(&state, project_id.clone()).await?;
+            Some(AutoStart {
+                project_id,
+                model: model.map(str::to_string),
+            })
+        } else {
+            None
+        };
+        let launcher = state.resident.clone();
+        let saved = choice.clone();
+        blocking(move || launcher.autostart().set(tool, saved)).await?;
+        Ok(choice)
+    }
+    .await;
+    match result {
+        Ok(choice) => json_response(StatusCode::OK, &serde_json::json!({ "autoStart": choice })),
+        Err(error) => agboard_error_response(&error),
+    }
 }
 
 /// Run blocking launcher work (it starts and waits for processes) off the async threads.
