@@ -218,9 +218,23 @@ impl MonitorConnections {
                     super::keychain::replace_token(&*vault, &token)
                 })
                 .await
-                .unwrap_or(Err(super::keychain::VaultError::Failed))
-                .map_err(|_| StartError::KeychainUnavailable)?;
-                previous.get_or_insert(replaced);
+                .unwrap_or(Err(super::keychain::VaultError::Failed));
+                match replaced {
+                    Ok(replaced) => {
+                        previous.get_or_insert(replaced);
+                    }
+                    Err(_) => {
+                        // An earlier pass may have replaced the token: put it back.
+                        if let Some(previous) = previous {
+                            let vault = self.vault.clone();
+                            let _ = tokio::task::spawn_blocking(move || {
+                                super::keychain::put_back(&*vault, previous)
+                            })
+                            .await;
+                        }
+                        return Err(StartError::KeychainUnavailable);
+                    }
+                }
             }
             let Ok(held) = self.write_guard() else {
                 // The token goes back so the keychain and the saved revision agree.
@@ -244,6 +258,8 @@ impl MonitorConnections {
         if save && token.is_some() {
             inner.keychain_saved = Some(true);
             inner.probing = false;
+            // A read that began before this save must not overwrite what it now says.
+            inner.probe_epoch += 1;
         }
         if let Some(token) = token {
             inner.token = Some(token);

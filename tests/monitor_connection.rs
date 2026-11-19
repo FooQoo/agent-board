@@ -575,6 +575,63 @@ fn a_keychain_read_in_flight_cannot_bring_back_a_token_deleted_after_a_save() {
     assert_eq!(v["tokenConfigured"], false);
 }
 
+#[test]
+fn a_keychain_read_that_began_before_a_saving_start_cannot_clear_the_saved_flag() {
+    let home = home();
+    let vault = MockVault::new(None, true);
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(hold_rx);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    // The read starts, finds nothing, and stays pending.
+    let _ = s.get();
+    assert_eq!(
+        s.start_ngrok(json!({"token": TOKEN, "save": true})).status,
+        202
+    );
+    drop(hold_tx);
+    std::thread::sleep(Duration::from_millis(300));
+    // The late read must not say that no token is saved.
+    assert_eq!(vault.saved().as_deref(), Some(TOKEN));
+    assert_eq!(s.get()["keychainTokenSaved"], true);
+}
+
+#[test]
+fn a_retry_that_cannot_save_puts_back_the_token_an_earlier_pass_replaced() {
+    let home = home();
+    let vault = MockVault::new(Some(SAVED), true);
+    // The first save goes through; a settings change from the command line then moves the
+    // revision, so the start goes round again, and the second save fails.
+    vault.fail_second_save.store(true, Ordering::SeqCst);
+    let dir = home.path().to_path_buf();
+    *vault.after_first_save.lock().unwrap() = Some(Box::new(move || {
+        ConfigStore::new(&dir)
+            .save(&ConnectionConfig {
+                enabled: false,
+                revision: 1,
+                domain: None,
+            })
+            .unwrap();
+    }));
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    let r = s.start_ngrok(json!({"token": TOKEN, "save": true}));
+    assert!(r.status >= 400, "{} {}", r.status, r.body);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
+    // What the keychain held before is back.
+    assert_eq!(vault.saved().as_deref(), Some(SAVED));
+}
+
 // ------------------------------------------------------- startup and restore
 
 #[test]
