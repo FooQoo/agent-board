@@ -280,7 +280,7 @@ test('an image in a history reason shows in the History tab from the attachment 
   await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
 
-test('nothing is read or answered without a session, and a replaced tunnel needs a new passcode', async ({ page }) => {
+test('nothing is read or answered without a session, and a replaced tunnel needs a new passcode only from an unregistered browser', async ({ page }) => {
   const bare = await playwrightRequest.newContext();
   const base = `${entrance.phoneOrigin}/api`;
   for (const path of [`/projects/${alpha}/summary`, `/projects/${alpha}/tasks/1/detail`, '/events', '/remote/session']) {
@@ -310,12 +310,21 @@ test('nothing is read or answered without a session, and a replaced tunnel needs
   expect((await old.get(`${base}/projects/${alpha}/summary`)).status()).toBe(401);
   await old.dispose();
 
-  // The page does not open a session by itself: it asks for the passcode of the new run.
+  // A browser that was never registered has to enter the passcode of the new run.
+  const stranger = await page.context().browser()!.newContext();
+  const strangerPage = await stranger.newPage();
+  await strangerPage.goto(phoneUrl());
+  await expect(strangerPage.getByRole('heading', { name: 'Enter the passcode' })).toBeVisible();
+  await expect(strangerPage.getByRole('article')).toHaveCount(0);
+  await entrance.unlockPage(strangerPage);
+  await expect(strangerPage.getByRole('article', { name: /Alpha running one/ })).toBeVisible();
+  await stranger.close();
+
+  // The first page entered the passcode earlier, so its device is registered: it comes back to the
+  // new run by itself, without the passcode.
   await page.goto(phoneUrl());
-  await expect(page.getByRole('heading', { name: 'Enter the passcode' })).toBeVisible();
-  await expect(page.getByRole('article')).toHaveCount(0);
-  await entrance.unlockPage(page);
   await expect(page.getByRole('article', { name: /Alpha running one/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Enter the passcode' })).toHaveCount(0);
 
   // Stopped, the phone can read nothing.
   await entrance.stopTunnel();
