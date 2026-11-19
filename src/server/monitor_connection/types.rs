@@ -164,6 +164,8 @@ pub struct MonitorOptions {
     pub connector: Arc<dyn Connector>,
     /// Where a saved token lives. Tests replace it so the real keychain is untouched.
     pub vault: Arc<dyn TokenVault>,
+    /// Posts Web Push messages to the push services. Tests replace it so nothing reaches one.
+    pub push_transport: Arc<dyn crate::server::push_delivery::PushTransport>,
 }
 
 impl MonitorOptions {
@@ -174,6 +176,7 @@ impl MonitorOptions {
             explicit,
             connector: Arc::new(SdkConnector),
             vault: Arc::new(OsKeychain),
+            push_transport: Arc::new(crate::server::push_delivery::HttpTransport::new()),
         }
     }
 

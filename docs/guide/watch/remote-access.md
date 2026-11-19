@@ -155,7 +155,17 @@ An iPhone can receive notifications from the board once the board is on its Home
 
 To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab the row only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
 
-This page only turns notifications on for a phone; the board does not send any yet.
+### What you are notified about {#notified-about}
+
+The board sends only what you chose under **Phone notifications** in [Settings](./board.md#settings). At first that is results and questions that need your decision:
+
+- A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
+- A **question** that needs your decision arrives with a high priority. Tap it to open the card with the question.
+- **Card state changes** and **history additions** arrive only when you switch them on, and state changes only for the transitions you picked. Tap one to open the card.
+
+If one change matches several of the kinds you chose, for example a question that also makes the card wait, you get one notification, and it opens the result or the question. The same result or question is never shown twice on a phone, even if the board reads it again.
+
+Notifications carry a link, so they are sent only while the remote connection is up. If the connection is paused or the PC is off, nothing is sent for that time, and the board still shows everything. If the push service does not accept a notification, the board tries again a few times with growing pauses and then gives up; the result stays readable on the board either way. Notifications are encrypted from the PC to your phone; see [Security](../../dev/concepts/security.md#the-ngrok-entrance) for what the push service can see.
 
 ## Check that ngrok keeps no traffic content
 

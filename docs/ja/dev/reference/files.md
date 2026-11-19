@@ -59,6 +59,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   autostart.paused
   .internal/monitor-connection.json
   .internal/notification-settings.json
+  .internal/push-ledger.json
   .internal/preferences.json
   .internal/remote-devices.json
   .internal/resident-autostart.json
@@ -278,6 +279,30 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 ```
 
 `vapid-key.json`は`{"formatVersion": 1, "pkcs8": "<base64urlのPKCS#8秘密鍵>"}`で、秘密鍵は署名として使う以外に外へ出しません。購読は端末idごとに1件です。読めない購読ファイルは空として扱い、鍵ファイルを失うと新しい鍵ペアを作って、古い鍵での購読を破棄します。
+
+## プッシュ配信の台帳
+
+どの端末に何を送ったかは`<データ領域>/.internal/push-ledger.json`に記録します。再起動したときや、同じボードのデータをもう一度読んだときに、同じ通知を2回送らないためです。ほかの内部ファイルと同じく、サーバーだけが書き込み、所有者だけが読める権限でアトミックに置き換え、共有領域には含みません。
+
+```json
+{
+  "formatVersion": 1,
+  "entries": [
+    {
+      "deviceId": "dev_0123456789abcdef",
+      "key": "result:2:0123456789abcdef0123456789abcdef:12",
+      "state": "sent",
+      "attempts": 1,
+      "at": "2026-11-20T08:30:00Z",
+      "retryAt": null
+    }
+  ]
+}
+```
+
+- `key`はボード上の出来事1件を指します。`result:<版>:<プロジェクト>:<タスク>`、`question:<id>:…`、`state:<started|pending|done>:<時刻>:…`、`history:<n>:…`のいずれかで、通知の`tag`にもなります。
+- `state`は`sent`、`pending`（プッシュサービスが受け付けなかった。`retryAt`が次に試す時刻で、`payload`に再送するタイトル・本文・リンクのパス・tagを保持）、`skipped`（リモート接続が止まっていた）、`dropped`（拒否された、または5回試して諦めた）のいずれかです。
+- 終わったエントリーは14日間、最大2000件まで保持します。読めないファイルは空の台帳として扱い、保存に失敗しても無視します。ボードがこのファイルを待つことはありません。端末を削除すると、その端末のエントリーも消えます。
 
 ## スマホの通知設定
 
