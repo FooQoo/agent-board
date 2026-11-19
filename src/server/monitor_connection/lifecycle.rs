@@ -29,6 +29,8 @@ pub(super) struct Inner {
     /// Whether the keychain is being read in the background; nobody else
     /// reads it until that read is done.
     pub(super) probing: bool,
+    /// Moves when the saved settings change, so a keychain read started before is not used.
+    pub(super) probe_epoch: u64,
     pub(super) generation: u64,
     pub(super) run: Option<Run>,
     /// The passcode of the running connection; set once it is ready.
@@ -90,6 +92,7 @@ impl MonitorConnections {
                 token: env.token,
                 keychain_saved: None,
                 probing: false,
+                probe_epoch: 0,
                 generation: 0,
                 run: None,
                 passcode: None,
@@ -145,7 +148,7 @@ impl MonitorConnections {
 
     /// Save new settings. Nothing changes unless the save succeeds.
     pub fn update(self: &Arc<Self>, update: SettingsUpdate) -> Result<Snapshot, UpdateError> {
-        let mut inner = self.lock();
+        let (_file, mut inner) = self.write_guard().map_err(|_| UpdateError::SaveFailed)?;
         if update.revision != inner.config.revision {
             return Err(UpdateError::Conflict);
         }
@@ -192,27 +195,52 @@ impl MonitorConnections {
         token: Option<Secret>,
         save: bool,
     ) -> Result<Snapshot, StartError> {
-        if self.lock().failure == Some(FailureCode::ConfigUnreadable) {
-            return Err(StartError::SettingsUnreadable);
-        }
-        if token.is_none() && self.lock().token.is_none() {
-            self.probed().await;
-        }
-        if save && let Some(token) = &token {
-            let vault = self.vault.clone();
-            let token = token.clone();
-            tokio::task::spawn_blocking(move || vault.save(&token))
-                .await
-                .unwrap_or(Err(super::keychain::VaultError::Failed))
-                .map_err(|_| StartError::KeychainUnavailable)?;
-        }
-        let mut inner = self.lock();
+        // Settings saved from the command line while the keychain is asked for are taken in, and
+        // the keychain is then read again, so that a stale domain or token is never used or saved.
+        let mut attempts = 0;
+        let mut previous = None;
+        let (_file, mut inner) = loop {
+            let seen = {
+                let inner = self.synced();
+                if inner.failure == Some(FailureCode::ConfigUnreadable) {
+                    return Err(StartError::SettingsUnreadable);
+                }
+                inner.config.revision
+            };
+            // A known token needs no keychain read, so a restart while connected cannot hang on it.
+            if token.is_none() && self.lock().token.is_none() {
+                self.probed().await;
+            }
+            if save && let Some(token) = &token {
+                match super::keychain::replace_token_off_thread(&self.vault, token).await {
+                    Ok(replaced) => {
+                        previous.get_or_insert(replaced);
+                    }
+                    Err(_) => {
+                        // An earlier pass may have replaced the token: put it back.
+                        super::keychain::put_back_off_thread(&self.vault, previous).await;
+                        return Err(StartError::KeychainUnavailable);
+                    }
+                }
+            }
+            let Ok(held) = self.write_guard() else {
+                // The token goes back so the keychain and the saved revision agree.
+                super::keychain::put_back_off_thread(&self.vault, previous).await;
+                return Err(StartError::SaveFailed);
+            };
+            attempts += 1;
+            if held.1.config.revision == seen || attempts >= 3 {
+                break held;
+            }
+        };
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
         if save && token.is_some() {
             inner.keychain_saved = Some(true);
             inner.probing = false;
+            // A read that began before this save must not overwrite what it now says.
+            inner.probe_epoch += 1;
         }
         if let Some(token) = token {
             inner.token = Some(token);
@@ -238,39 +266,6 @@ impl MonitorConnections {
         Ok(self.snapshot_now(&inner))
     }
 
-    /// Stop the connection, forget any pending start, and save `enabled: false`.
-    pub fn stop(self: &Arc<Self>) -> Snapshot {
-        let mut inner = self.lock();
-        self.teardown(&mut inner);
-        if inner.config.enabled {
-            let mut next = inner.config.clone();
-            next.enabled = false;
-            next.revision += 1;
-            if self.store.save(&next).is_ok() {
-                inner.config = next;
-            }
-        }
-        inner.status = idle_status(&inner.config, inner.token.is_some());
-        self.snapshot_now(&inner)
-    }
-
-    /// Whether the connection is up or on its way up (the server is in use).
-    pub(crate) fn is_active(&self) -> bool {
-        matches!(
-            self.lock().status,
-            ConnectionStatus::Starting
-                | ConnectionStatus::Ready
-                | ConnectionStatus::Reconnecting
-                | ConnectionStatus::Stopping
-        )
-    }
-
-    /// Close everything, leaving the saved settings (server exit, rollback).
-    pub fn shutdown(&self) {
-        let mut inner = self.lock();
-        self.teardown(&mut inner);
-        inner.status = ConnectionStatus::Disabled;
-    }
     pub(super) fn teardown(&self, inner: &mut Inner) {
         inner.generation += 1;
         if let Some(run) = inner.run.take() {

@@ -1,3 +1,4 @@
+// file-size: allow (one enum lists every error of the command line and the server)
 use thiserror::Error;
 
 use crate::domain::{Column, RunState};
@@ -262,8 +263,14 @@ pub enum AgboardError {
     DocsOpenFailed {
         reason: String,
     },
-    /// `agboard remote` has no ready ngrok connection to report.
+    /// `agboard show remote` with a project has no ready ngrok connection to report.
     RemoteUnavailable {
+        reason: String,
+    },
+    /// `setup remote --domain` was not a bare host name.
+    InvalidDomain,
+    /// `setup remote --token-stdin`, or the token step of `setup`, cannot use the OS keychain.
+    KeychainUnavailable {
         reason: String,
     },
     /// `agboard open` could not start the program that opens the browser.

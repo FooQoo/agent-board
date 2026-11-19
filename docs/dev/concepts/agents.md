@@ -7,7 +7,7 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | Piece | Lives in | Job |
 | --- | --- | --- |
 | Skill `agent-board` | `src/skills/agent-board.md` and `src/skills/topics/`, printed by `agboard skills`; the plugin's `SKILL.md` only runs that command | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
-| Skill `remote` | `plugins/agent-board/skills/remote/SKILL.md` | Hands the user the phone address and passcode from `agboard remote --json`; starts nothing. |
+| Skill `remote` | `plugins/agent-board/skills/remote/SKILL.md` | Hands the user the phone address and passcode from `agboard --project "<name>" show remote --json`; starts nothing. |
 | Skill `wait` | `plugins/agent-board/skills/wait/SKILL.md` | Keeps a session listening: follows `agboard skills resident` with a 3600-second default timeout and restarts the wait after `idle_timeout`. |
 | Hook | `agboard hook` (`src/agent/hook.rs`) | Fetching and formatting: after tool calls, attach the current progress table to the agent's context. |
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |

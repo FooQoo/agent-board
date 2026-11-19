@@ -2,7 +2,7 @@
 
 use super::{
     AttachmentArgs, AttachmentCommand, Cli, Command, EpicArgs, EpicCommand, ProjectArgs,
-    ProjectCommand, ServeArgs, WaitUntilArg,
+    ProjectCommand, ServeArgs, ShowArgs, ShowCommand, WaitUntilArg,
 };
 use crate::error::AgboardError;
 
@@ -12,6 +12,15 @@ impl Cli {
     pub fn validate(&self) -> Result<(), AgboardError> {
         let command = self.command.name();
         match (&self.command, self.project()) {
+            // `show remote` works without a project (the saved settings) and with one
+            // (the phone address of that project).
+            (
+                Command::Show(ShowArgs {
+                    command: Some(ShowCommand::Remote),
+                    ..
+                }),
+                _,
+            ) => {}
             // The read-only list of every project names no single project.
             (Command::Ls(args), Some(_)) if args.all_projects => {
                 return Err(AgboardError::InvalidArgument {
@@ -75,6 +84,12 @@ impl Cli {
             (_, Some(_)) => {}
         }
         match &self.command {
+            Command::Show(args) if args.id.is_none() && args.command.is_none() => {
+                Err(AgboardError::InvalidArgument {
+                    message: "give the ID of the task to show, or \"remote\" to show the remote access.".to_string(),
+                    command: Some("show".to_string()),
+                })
+            }
             Command::Edit(args)
                 if args.title.is_none()
                     && args.description.desc.is_none()

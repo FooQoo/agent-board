@@ -39,6 +39,11 @@ pub enum ConfigError {
     Io(String),
 }
 
+/// An exclusive lock, across processes, on the settings file. Whoever reads the settings in order
+/// to change them (this server, `agboard setup remote`) holds it from the read to the save, so
+/// two writers never both build on the same revision. Released when dropped.
+pub struct ConfigLock(#[allow(dead_code)] Option<std::fs::File>);
+
 /// Reads and atomically replaces the settings file.
 #[derive(Debug, Clone)]
 pub struct ConfigStore {
@@ -52,6 +57,38 @@ impl ConfigStore {
             .parent()
             .and_then(Path::parent)
             .unwrap_or(Path::new("."))
+    }
+
+    /// Take the exclusive lock, waiting for the holder (who keeps it only for a read and a
+    /// save). When the lock cannot be taken the caller must not write.
+    pub fn lock(&self) -> Result<ConfigLock, ConfigError> {
+        let io = |e: std::io::Error| ConfigError::Io(e.kind().to_string());
+        let dir = self
+            .path
+            .parent()
+            .ok_or_else(|| ConfigError::Io("no parent folder".to_string()))?;
+        create_private_dir(dir).map_err(io)?;
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(dir.join("monitor-connection.lock"))
+            .map_err(io)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::io::AsRawFd;
+            loop {
+                // SAFETY: flock on a descriptor this function owns.
+                if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
+                    break;
+                }
+                let error = std::io::Error::last_os_error();
+                if error.kind() != std::io::ErrorKind::Interrupted {
+                    return Err(io(error));
+                }
+            }
+        }
+        Ok(ConfigLock(Some(file)))
     }
 
     pub fn new(data_dir: &Path) -> Self {

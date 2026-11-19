@@ -143,6 +143,10 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         AgboardError::RemoteUnavailable {
             reason: "No server is running.".into(),
         },
+        AgboardError::InvalidDomain,
+        AgboardError::KeychainUnavailable {
+            reason: "The keychain is not available.".into(),
+        },
         AgboardError::BrowserOpenFailed {
             url: "http://127.0.0.1:7420/?project=0123456789abcdef0123456789abcdef".into(),
             reason: "Cannot start xdg-open: No such file or directory (os error 2).".into(),
@@ -226,6 +230,8 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("docs_not_implemented", 1),
             ("docs_open_failed", 1),
             ("remote_unavailable", 1),
+            ("invalid_domain", 2),
+            ("keychain_unavailable", 1),
             ("browser_open_failed", 1),
             ("agent_cli_missing", 1),
             ("agent_cli_logged_out", 1),
