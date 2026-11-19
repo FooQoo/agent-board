@@ -11,7 +11,7 @@ How the board is used:
 
 ## Language of board content
 
-Write your chat replies, and everything you put on the board, in the language the user speaks with you: task and epic titles, `EPIC.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. Keep these in English in any language: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; run `agboard skills file-format`), commands, EPIC-IDs, choice `id`s, and code.
+Write your chat replies, and everything you put on the board, in the language the user speaks with you: task and epic titles, `EPIC.md` and `TASK.md` bodies, status reasons, questions, and choice labels. If the user asked for a different language for the board, use that one. Within a project, follow the language of the existing tasks and plans. The progress table may carry `locale` (for example `"ja"`), the language the user chose in the board's settings. Use it when the conversation language is unclear (a new project, a session the board started) and as a reminder to keep replying in the user's language, even right after English tool output or reports. It is a hint: the user's conversation language wins. No `locale` means English is the default; assume nothing beyond the conversation. Keep these in English: the frontmatter keys (`acceptance`, `history`, `at`, `reason`, `id`, `text`, `done`; run `agboard skills file-format`), commands, EPIC-IDs, choice `id`s, and code.
 
 For every history reason you author, read the task body first and use the same language as that body, including lane/state reasons, progress, verification, and resumption notes. This takes precedence over the conversation language and the language of repository code or comments. If the body has no usable prose, follow the task title and existing project content. Always supply a nonblank `--reason` (or `--reason-file`) for these notes rather than relying on a generated default. Keep command names and other technical identifiers unchanged.
 
@@ -41,10 +41,10 @@ Before choosing, starting, or resuming work, read the progress table:
 agboard progress --json
 ```
 
-It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. A `requests` array lists the open requests a person sent you (see "Accept a request" in section 4). An `answers` array lists the answers to your questions that you have not taken in (see "Take in an answer" in section 4). Questions remain on the board until answered; inspect them with `show` or `snapshot`, rather than interpreting absence from progress as expiry. The table includes task IDs, titles, owners, statuses, acceptance counts, and relevant `documentPath`/`taskPath` values, but not file bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
+It groups active tasks under epics and lists unassigned work. Done, archived, and Pending tasks are omitted. A `requests` array lists the open requests a person sent you (see "Accept a request" in section 4). An `answers` array lists the answers to your questions that you have not taken in (see "Take in an answer" in section 4). A question stays on the board until answered; inspect it with `show` or `snapshot`, never read its absence from progress as expiry. It has IDs, titles, owners, statuses, acceptance counts, and paths, but no bodies, history, or images. Read only the selected epic's `EPIC.md` and task's `TASK.md` before implementation. Use `show <id> --json` when history or a current question/answer is needed. Hooks attach the same table:
 
 - `AGBOARD_PROGRESS` is followed by the progress table for the nearest bound folder or explicit project.
-- `AGBOARD_ERROR` (`folder_unbound`, `bound_project_missing`, `project_not_found`, `board_unavailable`, ...) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
+- `AGBOARD_ERROR` (for example `bound_project_missing`) means there is no usable table. Resolve the correct folder or report the problem; do not guess.
 
 After context compaction, read a fresh progress table before any board-dependent change. This skill does not register hooks; never add or edit the user's installed hook command.
 
@@ -227,23 +227,23 @@ When the user wants to open the board on the phone, run `agboard skills phone`.
 
 ## 8. Wait and resume
 
-When no work can proceed in the ordinary work loop, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; optionally set `--timeout` to limit the wait command, or press Ctrl+C to stop it. Neither action changes tasks or questions:
+When no work can proceed in the ordinary work loop, wait for a change using the `cursor` of the latest snapshot of the same project. This wait can continue indefinitely; `--timeout` or Ctrl+C ends it without changing tasks or questions:
 
 ```sh
 agboard --project "<name>" wait --after "<cursor>" --json
 ```
 
-Do not poll or re-read the board on a timer. `wait` follows the same project through a rename and ignores other projects. `wait_timeout` is only the end of an optional wait-command limit; `board_unavailable` is a technical server or connection failure. Neither is an answer. A command that waits starts the server itself; do not start `agboard serve` yourself first. `local_network_denied` means this environment does not allow local network connections: tell the user the reason it gives (in Codex, `agboard setup` allows `agboard` to run outside the sandbox) and make no board-dependent changes until it is fixed. A question remains open until it is answered or withdrawn with `message withdraw <Q-id> --actor ai`. `cursor_invalid` and `project_not_found` are also errors, not answers: report them and make no board-dependent changes.
+Never poll the board on a timer. `wait` follows the project through a rename and ignores others. `wait_timeout` (the end of an optional limit) and `board_unavailable` (a technical failure) are not answers. A waiting command starts the server itself; never start `agboard serve` first. `local_network_denied` means this environment does not allow local network connections: tell the user its reason (in Codex, `agboard setup` allows `agboard` outside the sandbox) and make no board-dependent changes until fixed. A question remains open until it is answered or withdrawn with `message withdraw <Q-id> --actor ai`. `cursor_invalid` and `project_not_found` are errors too: report them and make no board-dependent changes.
 
-After `wait` or `message ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `message ask`. Reconsider the plan in light of the answer and update the task plan if needed. Resume with a reason; the state operation records it automatically:
+After `wait` or `message ask` returns, read the complete snapshot and history, including the user's reason and the answers printed by `message ask`. Reconsider the plan in light of the answer and update it if needed. Resume with a reason, which the state operation records:
 
 ```sh
 agboard --project "<name>" state <id> running --actor ai --reason "<how the answer changes the work>"
 ```
 
-If the answer changes the scope or completion conditions, update `TASK.md` (and `EPIC.md` if affected) before resuming. If new information still conflicts, ask again.
+If the answer changes the scope or completion conditions, update `TASK.md` (and `EPIC.md`) before resuming; if information still conflicts, ask again.
 
-For an explicitly requested serial listener, use the listener procedure in `agboard skills listening` and `wait --until task --idle-timeout <seconds> --json`. That mode returns one eligible task or a successful `idle_timeout`; it is distinct from waiting for a change or for answers with `message ask`. Do not start it implicitly as part of the ordinary work loop.
+For an explicitly requested serial listener, use the listener procedure in `agboard skills listening` and `wait --until task --idle-timeout <seconds> --json`. It is distinct from waiting for a change or for answers with `message ask`; never start it implicitly.
 
 ## 9. Drafts and archived tasks
 

@@ -35,6 +35,11 @@ pub struct Progress {
     pub fetched_at: DateTime<Utc>,
     pub version: String,
     pub cursor: ChangeCursor,
+    /// The language saved in the board's settings, a hint for the language of
+    /// replies (`ja`). Left out for English, the default, and when none is
+    /// saved. The callers fill it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locale: Option<String>,
     /// Epics in ID order. An epic with no listed task is left out.
     pub epics: Vec<ProgressEpic>,
     /// Listed tasks that belong to no epic, in ID order.
@@ -169,6 +174,7 @@ pub fn build_with(
         fetched_at,
         version: snapshot.version.clone(),
         cursor: snapshot.cursor.clone(),
+        locale: None,
         epics: groups,
         next_tasks: next::next_tasks(&listed, &project_dir),
         unassigned: unassigned

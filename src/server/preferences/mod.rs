@@ -81,6 +81,12 @@ pub(crate) enum UpdateError {
     Unavailable,
 }
 
+/// The non-English language saved under the data area that holds `shared`, or
+/// `None` when nothing usable is saved or the language is English. Needs no running server.
+pub(crate) fn saved_locale(shared: &Path) -> Option<String> {
+    PreferencesStore::new(shared.parent()?).saved_locale()
+}
+
 /// Reads and atomically replaces the preferences file. Clones share one lock,
 /// so two saves never interleave their read and write.
 #[derive(Debug, Clone)]
@@ -103,6 +109,16 @@ impl PreferencesStore {
         let loaded = self.read_file();
         drop(guard);
         loaded
+    }
+
+    /// The saved language when it is not English, or `None` when no usable
+    /// file is saved or English is (the default). Reads the file only: the
+    /// server need not run.
+    pub(crate) fn saved_locale(&self) -> Option<String> {
+        let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
+        self.read_saved()
+            .map(|saved| saved.locale)
+            .filter(|locale| locale != "en")
     }
 
     /// Applies the sent fields and saves the result as the next revision.
