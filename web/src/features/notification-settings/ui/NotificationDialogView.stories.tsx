@@ -37,7 +37,7 @@ function EnableRow({ on }: { on: boolean }) {
   );
 }
 
-/** The PC modal: the four kinds, the state-change picks, and the periodic notification. */
+/** The PC modal: the three kinds. */
 export const Desktop: Story = {
   play: async ({ args }) => {
     const dialog = await within(document.body).findByRole('dialog');

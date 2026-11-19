@@ -14,11 +14,11 @@ describe('notification settings api', () => {
 
   it('sends a PUT with the patch as JSON', async () => {
     const fetcher = reply(DEFAULT_NOTIFICATION_SETTINGS);
-    const periodic = { enabled: true, intervalMinutes: 30 } as const;
-    await saveNotificationSettings({ periodic }, fetcher);
+    const kinds = { ...DEFAULT_NOTIFICATION_SETTINGS.kinds, history: true };
+    await saveNotificationSettings({ kinds }, fetcher);
     const init = fetcher.mock.calls[0]?.[1] as RequestInit;
     expect(init.method).toBe('PUT');
-    expect(JSON.parse(String(init.body))).toEqual({ periodic });
+    expect(JSON.parse(String(init.body))).toEqual({ kinds });
   });
 
   it('fails on a refusal, a body of another shape, and no answer', async () => {

@@ -288,7 +288,6 @@ What was sent to which device is kept in `<data-root>/.internal/push-ledger.json
 ```json
 {
   "formatVersion": 1,
-  "periodicAt": "2026-11-20T08:00:00Z",
   "entries": [
     {
       "deviceId": "dev_0123456789abcdef",
@@ -302,9 +301,9 @@ What was sent to which device is kept in `<data-root>/.internal/push-ledger.json
 }
 ```
 
-- `key` names one occurrence on the board: `result:<version>:<project>:<task>`, `question:<id>:…`, `state:<started|pending|done>:<time>:…`, or `history:<n>:…`. It is also the notification's `tag`.
+- `key` names one occurrence on the board: `result:<version>:<project>:<task>`, `question:<id>:…`, or `history:<n>:…`. It is also the notification's `tag`.
 - `state` is `sent`, `pending` (the push service did not take it; `retryAt` says when to try again, and `payload` holds the title, body, link path and tag to send again), `skipped` (the remote connection was down), or `dropped` (refused, or given up after five tries).
-- `periodicAt` is when the last periodic status notification was made (`null` before the first), so a restart does not start the interval again. Periodic entries have the key `periodic:<unix seconds>`.
+- A file written by an older version may still hold `periodicAt` and entries with the keys `periodic:<unix seconds>` or `state:<…>`. The field is read and dropped, and the next save leaves it out; the entries age out like the others.
 - Finished entries are kept for 14 days and at most 2000. A file that cannot be read is an empty ledger, and a save that fails is ignored; the board never waits for it. Removing a device removes its entries.
 
 ## Phone notification settings
@@ -315,9 +314,7 @@ Which notifications the phone receives are saved in `<data-root>/.internal/notif
 {
   "formatVersion": 1,
   "revision": 4,
-  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
-  "stateChanges": { "started": true, "pending": true, "done": true },
-  "periodic": { "enabled": false, "intervalMinutes": 60 }
+  "kinds": { "results": true, "questions": true, "history": false }
 }
 ```
 
@@ -325,14 +322,13 @@ Which notifications the phone receives are saved in `<data-root>/.internal/notif
 | --- | --- |
 | `formatVersion` | Always `1`. Any other value, an unknown field, a missing field, or a malformed file is read as the defaults, and the next save replaces the file. |
 | `revision` | `0` when nothing is saved, and goes up by one with each save. |
-| `kinds` | Four switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), `stateChanges` (a card changed state), and `history` (a history entry was added). The defaults are `results` and `questions` on, `stateChanges` and `history` off. All four off is allowed. |
-| `stateChanges` | Which state changes count while `kinds.stateChanges` is on: `started`, `pending` (waiting for an answer), and `done`. All three default to on, so turning the kind on notifies every change until the user narrows it. |
-| `periodic.enabled` | Whether the periodic status notification is on. It is independent of `kinds`. The default is off. |
-| `periodic.intervalMinutes` | One of `30`, `60`, `120`, `240`. The default is `60`. |
+| `kinds` | Three switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), and `history` (a history entry was added). The defaults are `results` and `questions` on, `history` off. All three off is allowed. |
 
-A save changes only the groups it sends (`kinds`, `stateChanges`, `periodic`); a group that is sent carries all of its fields. The last save wins, and there is no conflict check. The file holds no secret.
+A file written by an older version may also hold `kinds.stateChanges`, a `stateChanges` group, and a `periodic` group, from the removed card state change and periodic status notifications. They are read and dropped, and the next save leaves them out; they do not make the file invalid.
 
-The code that sends the notifications reads the saved value with `NotificationSettingsStore::load()` in `src/server/notification_settings/`, which returns the defaults when the file cannot be used. `NotificationSettings::wants_state_change` answers whether one state change is wanted, and the module's `PERIODIC_INTERVALS` and `Default` are the single definition of the intervals and defaults. A save does not announce itself on the events stream: the settings dialog reads the value each time it opens.
+A save sends the `kinds` group with all of its fields. The last save wins, and there is no conflict check. The file holds no secret.
+
+The code that sends the notifications reads the saved value with `NotificationSettingsStore::load()` in `src/server/notification_settings/`, which returns the defaults when the file cannot be used. The module's `Default` is the single definition of the defaults. A save does not announce itself on the events stream: the settings dialog reads the value each time it opens.
 
 ## Display preferences
 

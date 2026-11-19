@@ -12,7 +12,6 @@ use super::deliver::{Context, Dispatcher, NowFn};
 use super::events::{Event, ProjectFacts, diff, project_facts};
 use super::ledger::Ledger;
 use super::message::Lang;
-use super::periodic::Schedule;
 use super::transport::PushTransport;
 use crate::domain::ProjectId;
 use crate::server::AppState;
@@ -94,24 +93,20 @@ fn split_by_entrance(events: Vec<Event>, seen: &Seen) -> (Vec<Event>, Vec<Event>
         .partition(|e| seen.get(&e.project).copied().unwrap_or(false))
 }
 
-/// Looks at the failed sends and the periodic report on its own task, so a slow push service
-/// holds up neither the change feed nor the next pass: a pass ends before the next one starts.
+/// Looks at the failed sends on its own task, so a slow push service holds up neither the
+/// change feed nor the next pass: a pass ends before the next one starts.
 async fn retry_loop(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
-    let mut schedule = Schedule::new((dispatcher.now)(), dispatcher.ledger.periodic_at());
     let mut retry = tokio::time::interval(RETRY_EVERY);
     retry.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     retry.tick().await;
     loop {
         retry.tick().await;
-        let (ctx, facts) = {
+        let ctx = {
             let Some(state) = weak.upgrade() else { return };
-            (context(&state, true), baseline(&state))
+            context(&state, true)
         };
         if let Some(ctx) = ctx {
             dispatcher.retry_due(&ctx).await;
-            dispatcher
-                .deliver_periodic(&ctx, &mut schedule, &facts)
-                .await;
         }
     }
 }

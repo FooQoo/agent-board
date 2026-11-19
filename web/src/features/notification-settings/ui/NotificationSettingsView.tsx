@@ -1,15 +1,7 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { RadioGroup } from '@/shared/ui/radio-group';
-import {
-  KIND_KEYS,
-  PERIODIC_INTERVALS,
-  STATE_CHANGE_KEYS,
-  type NotificationSettings,
-  type NotificationSettingsPatch,
-} from '../model';
+import { KIND_KEYS, type NotificationSettings, type NotificationSettingsPatch } from '../model';
 import type { NotificationSettingsState } from '../useNotificationSettings';
 import './notification-settings.css';
 
@@ -51,74 +43,19 @@ function Loaded({
   onChange: (patch: NotificationSettingsPatch) => void;
 }) {
   const { t } = useTranslation();
-  const intervalId = useId();
-  const { kinds, stateChanges, periodic } = settings;
+  const { kinds } = settings;
   return (
     <>
       <div className="notification-settings__group">
         {KIND_KEYS.map((key) => (
-          <div key={key}>
-            <Option
-              checked={kinds[key]}
-              label={t(`notifications.kinds.${key}.label`)}
-              hint={t(`notifications.kinds.${key}.hint`)}
-              onChange={(checked) => onChange({ kinds: { ...kinds, [key]: checked } })}
-            />
-            {key === 'stateChanges' ? (
-              <div
-                className="notification-settings__sub"
-                role="group"
-                aria-label={t('notifications.stateChangesGroup')}
-              >
-                {STATE_CHANGE_KEYS.map((change) => (
-                  <Option
-                    key={change}
-                    checked={stateChanges[change]}
-                    disabled={!kinds.stateChanges}
-                    label={t(`notifications.stateChanges.${change}`)}
-                    onChange={(checked) =>
-                      onChange({ stateChanges: { ...stateChanges, [change]: checked } })
-                    }
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
+          <Option
+            key={key}
+            checked={kinds[key]}
+            label={t(`notifications.kinds.${key}.label`)}
+            hint={t(`notifications.kinds.${key}.hint`)}
+            onChange={(checked) => onChange({ kinds: { ...kinds, [key]: checked } })}
+          />
         ))}
-      </div>
-      <div className="notification-settings__group">
-        <Option
-          checked={periodic.enabled}
-          label={t('notifications.periodic.label')}
-          hint={t('notifications.periodic.hint')}
-          onChange={(enabled) => onChange({ periodic: { ...periodic, enabled } })}
-        />
-        <div className="notification-settings__sub">
-          <span className="settings__current" id={intervalId}>
-            {t('notifications.periodic.interval')}
-          </span>
-          <RadioGroup
-            className="segmented"
-            aria-labelledby={intervalId}
-            value={String(periodic.intervalMinutes)}
-            disabled={!periodic.enabled}
-            onValueChange={(value) => {
-              const minutes = PERIODIC_INTERVALS.find((m) => String(m) === value);
-              if (minutes !== undefined)
-                onChange({ periodic: { ...periodic, intervalMinutes: minutes } });
-            }}
-          >
-            {PERIODIC_INTERVALS.map((minutes) => (
-              <RadioGroupPrimitive.Item
-                key={minutes}
-                value={String(minutes)}
-                className="segmented__option"
-              >
-                {t(`notifications.periodic.intervals.m${minutes}`)}
-              </RadioGroupPrimitive.Item>
-            ))}
-          </RadioGroup>
-        </div>
       </div>
     </>
   );

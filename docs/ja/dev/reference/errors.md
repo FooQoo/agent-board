@@ -144,7 +144,7 @@ ngrokの入口では、Hostの確認に失敗した要求は理由`not available
 
 | コード | 発生する場面 | 終了コード | HTTP |
 | --- | --- | --- | --- |
-| `invalid_notification_settings` | 本文が空、未知の項目か足りない項目がある、または用意されていない定期通知の間隔を指定している。何も保存しない。 | なし | 422 |
+| `invalid_notification_settings` | 本文が空、`kinds`がない、または未知の項目か足りない項目がある。何も保存しない。 | なし | 422 |
 | `notification_settings_unavailable` | 設定ファイルに書けなかった。保存済みの値は変わらない。 | なし | 500 |
 
 ## 終了コード

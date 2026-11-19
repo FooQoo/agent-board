@@ -40,9 +40,9 @@ fn a_result_links_to_its_version_and_a_question_to_the_card() {
 
 #[test]
 fn the_wording_follows_the_language() {
-    let e = event(Kind::State(StateChange::Done), None, "");
+    let e = event(Kind::History, None, "");
     let ja = payload_of(&e, Lang::Ja, &origin()).unwrap();
-    assert_eq!(ja.title, "カードが完了しました");
+    assert_eq!(ja.title, "履歴が追加されました");
     assert_eq!(ja.body, "#12 Make the thing");
     assert_eq!(Lang::from_locale("ja"), Lang::Ja);
     assert_eq!(Lang::from_locale("en"), Lang::En);
