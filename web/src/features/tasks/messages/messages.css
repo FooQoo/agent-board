@@ -109,6 +109,17 @@
   min-height: 100%;
 }
 
+/* The PC modal's body has no fixed height for a percentage to resolve against: the list takes the
+   body's height as a flex item instead, so a swipe anywhere below the tabs switches them. */
+.surface-modal.message-surface:not(.message-surface--answering) .surface__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.surface-modal.message-surface .message-list {
+  flex: 1 1 auto;
+}
+
 .message-tabs {
   display: flex;
   gap: 4px;
