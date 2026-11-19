@@ -1,7 +1,7 @@
 //! The headless agent sessions the board starts itself (resident sessions).
 //!
-//! The launcher runs `claude` or `codex` in the folder of a project with every permission and no
-//! prompts, and keeps its child process. The session then waits on the board like any other and
+//! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
+//! approval instead of prompts, and keeps its child process. The session then waits on the board like any other and
 //! registers with origin `board`. At most one session per tool is launched by the board, over all
 //! projects. [`cli`] is the only place that knows the CLIs' names and flags.
 //!
@@ -179,6 +179,7 @@ impl Launcher {
             .args(cli::launch_args(
                 tool,
                 folder,
+                &self.data_dir,
                 model,
                 &cli::prompt(project_name),
             ))

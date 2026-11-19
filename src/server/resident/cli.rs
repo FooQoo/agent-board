@@ -229,9 +229,17 @@ pub fn valid_model(model: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'/' | b'-'))
 }
 
-/// The arguments of a headless launch with every permission and no prompts. `model` of `None`
+/// The arguments of an unattended launch with automatic approval: Claude Code in auto mode with
+/// its prompts off (a refused action comes back as a denied tool result), and Codex in its
+/// workspace-write sandbox with automatic review, plus the data area as writable. `model` of `None`
 /// leaves the choice to the tool.
-pub fn launch_args(tool: Tool, folder: &Path, model: Option<&str>, prompt: &str) -> Vec<OsString> {
+pub fn launch_args(
+    tool: Tool,
+    folder: &Path,
+    data_dir: &Path,
+    model: Option<&str>,
+    prompt: &str,
+) -> Vec<OsString> {
     let text = |values: &[&str]| values.iter().map(OsString::from).collect::<Vec<_>>();
     let mut args = Vec::new();
     match tool {
@@ -241,11 +249,9 @@ pub fn launch_args(tool: Tool, folder: &Path, model: Option<&str>, prompt: &str)
             if let Some(model) = model {
                 args.extend(text(&["-m", model]));
             }
-            args.extend(text(&[
-                "--dangerously-bypass-approvals-and-sandbox",
-                "--skip-git-repo-check",
-                prompt,
-            ]));
+            args.extend(text(&["--approve-for-me", "--add-dir"]));
+            args.push(data_dir.as_os_str().to_os_string());
+            args.extend(text(&["--skip-git-repo-check", prompt]));
         }
         _ => {
             args.extend(text(&["-p", prompt]));
@@ -254,7 +260,9 @@ pub fn launch_args(tool: Tool, folder: &Path, model: Option<&str>, prompt: &str)
             }
             args.extend(text(&[
                 "--permission-mode",
-                "bypassPermissions",
+                "auto",
+                "--permission-prompts",
+                "none",
                 "--output-format",
                 "stream-json",
                 "--verbose",

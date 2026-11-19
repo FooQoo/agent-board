@@ -135,7 +135,7 @@ fn claude_starts_headless_with_every_permission_and_a_scrubbed_environment() {
         }
     }
     assert!(
-        record.contains("--permission-mode bypassPermissions"),
+        record.contains("--permission-mode auto --permission-prompts none"),
         "{record}"
     );
     assert!(record.contains("--model sonnet"), "{record}");
@@ -187,7 +187,13 @@ fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
     fx.launch(Tool::Codex, None).unwrap();
     let record = fx.record("codex");
     assert!(record.contains("ARGS: exec --json -C "), "{record}");
-    assert!(record.contains("--dangerously-bypass-approvals-and-sandbox"));
+    assert!(record.contains("--approve-for-me"));
+    assert!(!record.contains("bypass"), "{record}");
+    let data = fx.dir.path().join("data");
+    assert!(
+        record.contains(&format!("--add-dir {}", data.display())),
+        "{record}"
+    );
     assert!(record.contains("--skip-git-repo-check"));
     assert!(!record.contains(" -m "), "{record}");
     fx.launcher.stop(Tool::Codex).unwrap();

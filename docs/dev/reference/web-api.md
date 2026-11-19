@@ -154,7 +154,7 @@ The limit on launching is enforced by `SessionRegistry::check_board_launch(tool)
 
 ### Launching sessions
 
-These routes start and stop the headless sessions the board launches (see [Launching resident sessions](../concepts/agents.md#launching-resident-sessions)). **A launched session runs with every permission and no prompts**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
+These routes start and stop the headless sessions the board launches (see [Launching resident sessions](../concepts/agents.md#launching-resident-sessions)). **A launched session runs unattended with automatic approval**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
 
 | API | Contract |
 | --- | --- |
