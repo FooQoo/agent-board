@@ -4,7 +4,8 @@ import path from 'node:path';
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard } from '../helpers/agboard';
 import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { openAskAi } from '../helpers/ask-ai';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
 import { answerButton, sendAnswer } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
@@ -155,13 +156,13 @@ test('the details panel does not hold updates; a dialog holds them while open an
   await expect(preview).toHaveCount(0);
   await expect(task(page, 14).getByText('Draft', { exact: true })).toHaveCount(0, { timeout: 2_000 });
 
-  // A change from the CLI made while a dialog is open waits until it has been closed for 3 seconds. The new
-  // task dialog closes without saving, so nothing reads the board at once.
-  const create = await openManualCreateDialog(page);
+  // A change from the CLI made while a dialog is open waits until it has been closed for 3 seconds. The Ask AI
+  // dialog closes without sending, so nothing reads the board at once.
+  const create = await openAskAi(page);
   agboardOk(mainProject, ['mv', '15', 'doing']);
   await page.waitForTimeout(1000);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 /, includeHidden: true })).toHaveCount(0);
-  await create.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await create.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(create).toHaveCount(0);
   await page.waitForTimeout(1500);
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#15 / })).toHaveCount(0);

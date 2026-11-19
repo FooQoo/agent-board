@@ -170,9 +170,8 @@ export interface Board {
   problems: Problem[];
 }
 
-/** What a card dialog (create, move, edit) is asked to do. */
+/** What a card dialog (ask, move, edit) is asked to do. */
 export type DialogAction =
-  | { kind: 'create' }
   | { kind: 'request' }
   | { kind: 'move'; task: TaskSummary; target: ColumnName }
   | { kind: 'edit'; task: Task; archived?: boolean }

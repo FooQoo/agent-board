@@ -103,7 +103,6 @@ export interface AppWorkspaceActions {
   onSelectProject: (projectId: ProjectId) => void;
   onBack: () => void;
   onAdd: () => void;
-  onAddManually: () => void;
   onArchive: () => void;
   onEpics: () => void;
   onDocs: () => void;

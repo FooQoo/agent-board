@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   acceptanceProblem,
-  composeNewText,
   nextId,
   progressOf,
 } from '../src/features/tasks/acceptance/model/acceptance';
@@ -33,19 +32,6 @@ describe('nextId', () => {
 
   it('ignores IDs that are not of the form AC-n', () => {
     expect(nextId(['AC-2', 'x', 'AC-x', 'ac-9'])).toBe('AC-3');
-  });
-});
-
-describe('composeNewText', () => {
-  it('writes the frontmatter of a new file from the body and the conditions', () => {
-    const text = composeNewText('Body.\n', [{ id: 'AC-1', text: 'Works: "yes"', done: false }]);
-    expect(text).toBe(
-      '---\nacceptance:\n  - id: "AC-1"\n    text: "Works: \\"yes\\""\n    done: false\n---\n\nBody.\n',
-    );
-  });
-
-  it('writes an empty list when there are no conditions', () => {
-    expect(composeNewText('', [])).toBe('---\nacceptance: []\n---\n\n');
   });
 });
 

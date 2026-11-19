@@ -22,7 +22,7 @@ const open = (operationId: number, projectId = A, kind: 'create' | 'move' = 'cre
     operationId,
     kind,
     projectId,
-    dialog: { kind: 'create' },
+    dialog: { kind: 'request' },
   }) as const;
 
 describe('sessionReducer: switching without an operation', () => {
@@ -62,7 +62,7 @@ describe('sessionReducer: operations hold the switch', () => {
   it('records the project the operation started in and the dialog', () => {
     const state = run(initSession(A), open(1));
     expect(state.operation).toEqual({ id: 1, kind: 'create', projectId: A, saving: false });
-    expect(state.dialog).toEqual({ kind: 'create' });
+    expect(state.dialog).toEqual({ kind: 'request' });
   });
 
   it('refuses to open a second operation while one is open', () => {
@@ -79,7 +79,7 @@ describe('sessionReducer: operations hold the switch', () => {
     );
     expect(state.activeProjectId).toBe(A);
     expect(state.selectedId).toBe(8);
-    expect(state.dialog).toEqual({ kind: 'create' });
+    expect(state.dialog).toEqual({ kind: 'request' });
     expect(state.operation?.projectId).toBe(A);
     expect(state.pendingTarget).toEqual({ projectId: C });
   });
@@ -178,7 +178,7 @@ describe('sessionReducer: saving', () => {
     const failed = run(saving, { type: 'SAVE_FAILED', operationId: 1 });
     expect(failed.operation).toEqual({ id: 1, kind: 'create', projectId: A, saving: false });
     expect(failed.activeProjectId).toBe(A);
-    expect(failed.dialog).toEqual({ kind: 'create' });
+    expect(failed.dialog).toEqual({ kind: 'request' });
     expect(failed.pendingTarget).toEqual({ projectId: B });
     expect(failed.selectedId).toBe(8);
   });

@@ -11,10 +11,8 @@ function leafPaths(value: unknown, prefix = ''): string[] {
 }
 
 describe('dialog texts', () => {
-  it('uses the design wording for the move title, the assignee and the confirm buttons', () => {
+  it('uses the design wording for the move title and the confirm buttons', () => {
     expect(resources.ja.translation.dialog.moveTitle).toBe('列を移動');
-    expect(resources.ja.translation.editor.assigneeAi).toBe('AI');
-    expect(resources.en.translation.editor.add).toBe('Add');
     expect(resources.ja.translation.editor.save).toBe('保存');
     expect(resources.ja.translation.editor.discardAndMove).toBe('破棄して移動');
     expect(resources.en.translation.dialog.submitMove).toBe('Move');

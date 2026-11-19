@@ -80,7 +80,7 @@ export function useOverLimit(
 /** The demo build keeps nothing it could save pictures to, so it offers no images panel. */
 const SAVES_IMAGES = import.meta.env.MODE !== 'demo';
 
-/** The body shared by the edit and the add dialogs: outline, title, the rich editor and the images. */
+/** The body shared by the task and epic editors: outline, title, the rich editor and the images. */
 export function EditorBody({
   title,
   onTitleChange,

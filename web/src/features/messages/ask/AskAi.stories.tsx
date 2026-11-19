@@ -53,7 +53,6 @@ export const Dialog: Story = {
     await expect(page().getByRole('button', { name: 'Image' })).toBeVisible();
     await expect(await sendButton()).toBeDisabled();
     await expect(page().queryByText(/epic/i)).toBeNull();
-    await expect(page().queryByRole('button', { name: /manually/i })).toBeNull();
   },
 };
 

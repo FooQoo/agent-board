@@ -15,7 +15,7 @@ const meta = {
   args: {
     model: {
       session: {
-        dialog: { kind: 'create' },
+        dialog: { kind: 'request' },
         operation: { id: 1, kind: 'create', projectId: project.id, saving: false },
         bulkArchive: null,
         answerLeases: [],
@@ -41,7 +41,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Create: Story = {
+export const Request: Story = {
   play: async () => {
     await expect(within(document.body).findByRole('dialog')).resolves.toBeInTheDocument();
   },

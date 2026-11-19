@@ -1,13 +1,11 @@
 import { expectHistoryNote } from '../helpers/history';
 import { expect, test, type Page } from '../helpers/fixtures';
-import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, type TaskJson, askArgs, decisionJson } from '../helpers/agboard';
-import { startImageServer, type ImageServer } from '../helpers/imageServer';
-import { openManualCreateDialog, pasteMarkdown, closeForUpdates, readBoardAfterReset, waitForSync } from '../helpers/ui';
-import { putDraft } from '../helpers/drafts';
+import { agboardOk, mainProject, resetBoard, type TaskJson, askArgs, decisionJson } from '../helpers/agboard';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { answerButton, answerDialog, answerNote, answerSend, fillAnswer, laterButton, openAnswer, pressSend, send } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
 
-// Adding a card in the shared dialog, and answering a decision request on its card, on the real page.
+// Answering a decision request on its card, on the real page.
 
 interface ShownTask extends TaskJson {
   description: string;
@@ -24,112 +22,11 @@ function show(id: number): ShownTask {
   return JSON.parse(agboardOk(mainProject, ['show', String(id), '--json']).stdout).task;
 }
 
-let images: ImageServer;
-
-test.beforeAll(async () => {
-  images = await startImageServer();
-});
-test.afterAll(async () => {
-  await images.close();
-});
-
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   await page.goto('/');
   await waitForSync(page);
   await readBoardAfterReset(page);
-});
-
-// ------------------------------------------------------------------ Adding a card
-
-test('a task is added with a title, the AI as the default owner, and a Markdown body; it is not a draft', async ({
-  page,
-}) => {
-  const id = nextTaskId(mainProject);
-  const dialog = await openManualCreateDialog(page);
-  await expect(dialog).toContainText('Add task');
-  // The owner defaults to the AI; nothing can be added without a title.
-  await expect(dialog.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
-  await expect(dialog.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
-  const add = dialog.getByRole('button', { name: 'Add', exact: true });
-  await expect(add).toBeDisabled();
-  // The body starts empty and the outline has a hint until there is a heading.
-  const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
-  await expect(dialog.getByText('0 / 50,000')).toBeVisible();
-  await expect(dialog.getByText('Add a heading (## ) and the outline appears here.')).toBeVisible();
-
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the release');
-  await expect(add).toBeEnabled();
-  // The body is plain Markdown with no headings, so the outline is empty; the pictures are typed as Markdown.
-  await pasteMarkdown(
-    editor,
-    taskBody(`Ship it.\n\n![found](${images.origin}/ok.png)\n\n![lost](${images.origin}/missing.png)`),
-  );
-  await expect(dialog.getByRole('navigation', { name: 'Outline' }).getByRole('button')).toHaveCount(0);
-  await expect(dialog.getByText(/^\d+ \/ 50,000$/)).not.toHaveText('0 / 50,000');
-  await expect(add).toBeEnabled();
-
-  await add.click();
-  await expect(dialog).toHaveCount(0);
-
-  // The CLI sees an ordinary new card: Todo, Idle, the AI's, not a draft, with the text as typed.
-  const stored = show(id);
-  expect(stored).toMatchObject({ title: 'Plan the release', taskStatus: 'todo', agentStatus: 'idle', assignee: 'ai', draft: null });
-  expect(stored.description).toContain('Ship it.');
-  // A pasted picture keeps its alt text and URL; the editor may add a title equal to the alt text.
-  expect(stored.description).toContain(`![found](${images.origin}/ok.png`);
-  expect(stored.description).toContain(`![lost](${images.origin}/missing.png`);
-  await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id} AI Plan the release `) })).toBeVisible();
-
-  // The owner cannot be changed afterwards: the details have no control for it, and neither has the editor.
-  await task(page, id).click();
-  await expect(details(page).getByRole('radiogroup')).toHaveCount(0);
-  await expect(details(page).getByRole('combobox')).toHaveCount(0);
-  await putDraft(id);
-  await details(page).getByRole('button', { name: 'Open full screen (task)', exact: true }).click();
-  const editing = page.getByRole('dialog', { name: new RegExp(`^#${id} Task preview`) });
-  await expect(editing).toBeVisible();
-  await expect(editing.getByRole('radiogroup')).toHaveCount(0);
-  await expect(editing.getByText('Assignee')).toHaveCount(0);
-});
-
-test('a task for the user is added without a body; closing without typing asks nothing', async ({ page }) => {
-  const id = nextTaskId(mainProject);
-  const dialog = await openManualCreateDialog(page);
-  await dialog.getByRole('radio', { name: 'User', exact: true }).check();
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Check the invoice');
-  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  // No body given: the CLI writes the frontmatter with no conditions and an empty body.
-  expect(show(id)).toMatchObject({ title: 'Check the invoice', assignee: 'human', draft: null, agentStatus: 'idle' });
-  expect(show(id).body).toBe('');
-  expect(show(id).description).toContain('acceptance: []\nhistory:\n- at:');
-  expect(show(id).history).toHaveLength(1);
-  expectHistoryNote(show(id).history[0], ['Created task in Todo', 'agent idle']);
-  await task(page, id).click();
-
-  await openManualCreateDialog(page);
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(listTasks(mainProject).map((item) => item.id)).toEqual(expect.not.arrayContaining([id + 1]));
-});
-
-test('a title or body over the limit cannot be added', async ({ page }) => {
-  const dialog = await openManualCreateDialog(page);
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Long body');
-  await dialog.getByRole('textbox', { name: 'Description (Markdown)' }).click();
-  // The counter counts the Markdown the editor writes, so the text is filled up to the limit by reading it.
-  const counter = dialog.locator('.editor__counter');
-  const shown = async () => Number((await counter.textContent())!.split('/')[0].replace(/,/g, '').trim());
-  await page.keyboard.insertText('x'.repeat(50_000));
-  await expect.poll(shown).toBeGreaterThan(49_000);
-  await page.waitForTimeout(300);
-  await page.keyboard.insertText('x'.repeat(50_001 - (await shown())));
-  await expect(dialog.locator('.editor__counter', { hasText: '50,001 / 50,000' })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
-  await expect(dialog.getByText('Over the 50,000-character limit. Remove 1 character.')).toBeVisible();
-  await page.keyboard.press('Backspace');
-  await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
 });
 
 // ------------------------------------------------------------------ Answering in the dialog

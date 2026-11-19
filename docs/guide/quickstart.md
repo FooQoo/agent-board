@@ -74,7 +74,13 @@ Leave the server running and open [http://127.0.0.1:7420/](http://127.0.0.1:7420
 
 ### 2. Add a task yourself
 
-In the browser, open the small menu beside **Ask AI** in the header and choose **Add a task manually**. Type the title `Write the setup guide`, leave the owner as **User**, and add the task. It appears in Todo as task #1.
+In the second terminal, add a task you own:
+
+```sh
+agboard --project "Quickstart" add "Write the setup guide" --assignee human --actor human
+```
+
+The task appears in Todo as task #1, with a user icon. The board has no button for adding a task by hand; you ask the agents with **Ask AI**, and the CLI and the agents create tasks.
 
 ### 3. Hand a task to an agent
 

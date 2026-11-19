@@ -9,11 +9,6 @@
           "name": "ActionDialog",
           "stories": [
             {
-              "id": "task-dialogs-actiondialog--create",
-              "states": ["create action opens real CreateDialog"],
-              "interaction": false
-            },
-            {
               "id": "task-dialogs-actiondialog--request",
               "states": ["request action opens the Ask AI dialog"],
               "interaction": false

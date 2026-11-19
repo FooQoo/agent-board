@@ -1,4 +1,5 @@
-import { editorValue, openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
+import { openAskAi, fillRequest, requestField, sendRequest } from '../helpers/ask-ai';
+import { readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '../helpers/fixtures';
@@ -485,7 +486,7 @@ test('the settings dialog takes the focus, keeps it inside, and gives it back', 
   await page.keyboard.press('Escape');
 });
 
-test('task creation dialogs take focus, keep it inside, and preserve the manual input across a click outside', async ({
+test('the Ask AI dialog takes focus, keeps it inside, and gives it back', async ({
   page,
 }) => {
   await openFresh(page);
@@ -502,37 +503,6 @@ test('task creation dialogs take focus, keep it inside, and preserve the manual 
   await page.keyboard.press('Escape');
   await expect(request).toHaveCount(0);
   await expect(add).toBeFocused();
-
-  const dialog = await openManualCreateDialog(page);
-  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeFocused();
-  for (let step = 0; step < 12; step += 1) {
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-  }
-  for (let step = 0; step < 12; step += 1) {
-    await page.keyboard.press('Shift+Tab');
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-  }
-
-  // Without a title there is nothing to add: the button stays disabled and the dialog stays.
-  await expect(dialog.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
-  // A click on the page behind does not close it or lose what was typed.
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed and kept');
-  await page.mouse.click(4, 4);
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed and kept');
-
-  // The typed title is unsaved, so Escape asks first; Discard and close discards it.
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Discard and close' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(listTasks(mainProject).map(({ title }) => title)).not.toContain('Typed and kept');
-
-  // Cancel and the close button also dismiss the manual editor.
-  await (await openManualCreateDialog(page)).getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ })).toHaveCount(0);
-  await (await openManualCreateDialog(page)).getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ })).toHaveCount(0);
 });
 
 test('the move dialog and the answer dialog take the focus and give it back', async ({ page }) => {
@@ -564,50 +534,12 @@ test('the move dialog and the answer dialog take the focus and give it back', as
   expect(listTasks(mainProject).find(({ id }) => id === 12)?.agentStatus).toBe('pending');
 });
 
-test('while a task is being saved the dialog cannot be submitted again or closed', async ({ page }) => {
-  await openFresh(page);
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let posts = 0;
-  await page.route('**/api/projects/*/tasks', async (route) => {
-    if (route.request().method() !== 'POST') return route.fallback();
-    posts += 1;
-    await gate;
-    return route.fallback();
-  });
-  const dialog = await openManualCreateDialog(page);
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Saved once');
-  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-
-  const saving = dialog.getByRole('button', { name: 'Saving…' });
-  await expect(saving).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Close' })).toBeDisabled();
-  await page.keyboard.press('Escape');
-  await page.mouse.click(4, 4);
-  await page.keyboard.press('Enter');
-  await expect(dialog).toBeVisible();
-  expect(posts).toBe(1);
-
-  release();
-  await expect(dialog).toHaveCount(0);
-  await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Saved once `) })).toBeVisible();
-  expect(posts).toBe(1);
-  expect(listTasks(mainProject).filter(({ title }) => title === 'Saved once')).toHaveLength(1);
-});
-
 // ------------------------------------------------------------------ The language never changes the data
 
 test('changing the language does not translate or alter what was entered', async ({ page }) => {
   await openFresh(page);
   // Enter a card in English, move it with a reason, and answer a decision request.
-  const create = await openManualCreateDialog(page);
-  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Draft the release note');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Line one\n\nLine two'));
-  await create.getByRole('radio', { name: 'User' }).click();
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
+  agboardOk(mainProject, ['add', 'Draft the release note', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Line one\n\nLine two')]);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
   const move = await dragTaskTo(page, fresh, 'Doing');
   await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the draft today.');
@@ -643,14 +575,6 @@ test('changing the language does not translate or alter what was entered', async
   await panel.getByRole('tab', { name: /^履歴/ }).click();
   await expect(panel).toContainText('Keep the database name.');
   expect(listTasks(mainProject)).toEqual(before);
-
-  // A card entered in Japanese mode is stored as typed too.
-  const japaneseCreate = await openManualCreateDialog(page);
-  await expect(japaneseCreate).toBeVisible();
-  await japaneseCreate.getByRole('textbox', { name: 'タイトル', exact: true }).fill('Release note review');
-  await japaneseCreate.getByRole('button', { name: '追加', exact: true }).click();
-  await expect(lane(page, '未着手').getByRole('button', { name: new RegExp(`^#${fresh + 1} `) })).toContainText('Release note review');
-  expect(listTasks(mainProject).find(({ id }) => id === fresh + 1)?.title).toBe('Release note review');
 });
 
 // ------------------------------------------------------------------ The board operations with a chosen theme
@@ -666,12 +590,8 @@ test('create, move with a reason, answer, archive, and live updates work with a 
     (window as unknown as { __opened: boolean }).__opened = true;
   });
 
-  // Create.
-  const create = await openManualCreateDialog(page);
-  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Review the themes');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check all 24 themes.'));
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(create).toHaveCount(0);
+  // A task added from the CLI appears on the board.
+  agboardOk(mainProject, ['add', 'Review the themes', '--assignee', 'ai', '--actor', 'human', '--desc', taskBody('Check all 24 themes.')]);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
   await expect(created).toBeVisible();
   await expect(lane(page, 'Todo').getByText('4', { exact: true })).toBeVisible();
@@ -741,10 +661,13 @@ test('create, move with a reason, answer, archive, and live updates work with a 
 
 // ------------------------------------------------------------------ A failing request keeps the input
 
+const requestsText = (): string =>
+  agboardOk(mainProject, ['message', 'ls', '--type', 'request', '--status', 'all', '--json']).stdout;
+
 test('a request that fails keeps what was typed, shows the reason, and can be sent again', async ({ page }) => {
   await openFresh(page);
   let mode: 'reject' | 'abort' | 'pass' = 'reject';
-  await page.route('**/api/projects/*/tasks', async (route) => {
+  await page.route('**/api/projects/*/messages/requests', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     if (mode === 'abort') return route.abort('failed');
     if (mode === 'reject') {
@@ -757,35 +680,28 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
     return route.fallback();
   });
 
-  const create = await openManualCreateDialog(page);
-  await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed title');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Typed description\n\nsecond line'));
-  await create.getByRole('radio', { name: 'User' }).click();
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
-  await expect(create.getByRole('alert')).not.toContainText('The storage is busy.');
+  const ask = await openAskAi(page);
+  await fillRequest(ask, 'Typed request');
+  const sendButton = ask.getByRole('button', { name: 'Send request' });
+  await sendButton.click();
+  await expect(ask.getByRole('alert')).toBeVisible();
   const keepsInput = async () => {
-    await expect(create).toBeVisible();
-    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed title');
-    expect(await editorValue(create.getByRole('textbox', { name: 'Description (Markdown)' }))).toContain('Typed description\n\nsecond line');
-    await expect(create.getByRole('radio', { name: 'User' })).toHaveAttribute('aria-checked', 'true');
-    await expect(create.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
-    await expect(create.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    await expect(ask).toBeVisible();
+    await expect(requestField(ask)).toHaveValue('Typed request');
+    await expect(sendButton).toBeEnabled();
   };
   await keepsInput();
-  expect(listTasks(mainProject).map(({ title }) => title)).not.toContain('Typed title');
+  expect(requestsText()).not.toContain('Typed request');
 
   mode = 'abort';
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
+  await sendButton.click();
   // A request that never reached the server has no reason of its own: the dialog's own message shows.
-  await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
+  await expect(ask.getByRole('alert')).toContainText('Could not send the request. Your text and images are kept. Try again.');
   await keepsInput();
 
   mode = 'pass';
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(create).toHaveCount(0);
-  await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Typed title `) })).toBeVisible();
-  expect(listTasks(mainProject).filter(({ title }) => title === 'Typed title')).toHaveLength(1);
+  await sendRequest(ask);
+  expect(requestsText()).toContain('Typed request');
 
   // Moving: a refused move keeps the reason and the card where it was.
   let moveFails = true;
@@ -914,8 +830,8 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   }
 
   // The dialogs, in Dark Red.
-  await openManualCreateDialog(page);
-  await shot(page, testInfo, '07-create-dark-red.png');
+  await openAskAi(page);
+  await shot(page, testInfo, '07-ask-ai-dark-red.png');
   await page.keyboard.press('Escape');
   const move = await dragTaskTo(page, 16, 'Doing');
   await shot(page, testInfo, '08-move-dark-red.png');

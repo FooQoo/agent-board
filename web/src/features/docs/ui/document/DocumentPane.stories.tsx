@@ -31,7 +31,6 @@ function Harness(pane: DocumentPaneProps) {
       idLabel=""
       title="Tasks.md"
       badge=""
-      variant="edit"
       dirty={false}
       saving={false}
       error={null}

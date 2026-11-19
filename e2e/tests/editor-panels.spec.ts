@@ -2,7 +2,7 @@ import { expect, test } from '../helpers/fixtures';
 import path from 'node:path';
 import { agboardOk, mainProject, nextTaskId, projectId, replaceFileAtomically, resetBoard, workspace } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
 
 const conditions = Array.from({ length: 40 }, (_, i) => `- [ ] Condition ${i + 1}`).join('\n');
@@ -62,7 +62,7 @@ for (const mode of ['light', 'dark'] as const) {
   }
 }
 
-test('creation and task editing use the same single conditions panel and compact body start', async ({ page }, testInfo) => {
+test('task editing uses a single conditions panel and a compact body start', async ({ page }, testInfo) => {
   resetBoard(mainProject);
   const id = nextTaskId(mainProject);
   agboardOk(mainProject, ['add', 'Task layout', '--desc', body, '--assignee', 'human', '--actor', 'human']);
@@ -77,18 +77,4 @@ test('creation and task editing use the same single conditions panel and compact
   await expect(dialog.locator('.conditions-dock__title')).toHaveCSS('font-size', '14px');
   await page.screenshot({ path: testInfo.outputPath('card-edit.png') });
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click();
-  await openManualCreateDialog(page);
-  await dialog.locator('.conditions-dock__head').click();
-  await dialog.getByRole('button', { name: 'Add condition', exact: true }).click();
-  await dialog.getByRole('textbox', { name: 'Condition AC-1', exact: true }).fill('First condition');
-  await expect(dialog.getByRole('textbox', { name: 'Condition AC-1', exact: true })).not.toHaveAttribute('aria-invalid', 'true');
-  const editor = dialog.getByRole('textbox', { name: 'Description (Markdown)' });
-  await editor.fill('First body line.');
-  await expect(dialog.locator('.editor__counter')).toHaveText('17 / 50,000');
-  const label = await dialog.locator('.editor__label-row').boundingBox();
-  const text = await editor.locator('p').first().boundingBox();
-  // The label, then the box's frame and its 12px top padding, then the first line.
-  expect(text!.y - label!.y - label!.height).toBeLessThanOrEqual(29);
-  await expect(editor.locator('p').first()).toHaveCSS('font-size', '14px');
-  await page.screenshot({ path: testInfo.outputPath('card-create.png') });
 });

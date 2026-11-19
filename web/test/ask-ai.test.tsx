@@ -109,7 +109,6 @@ describe('the Ask AI dialog', () => {
     expect(await screen.findByText('Enter your request.')).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.queryByText(/epic/i)).toBeNull();
-    expect(screen.queryByRole('button', { name: /manually/i })).toBeNull();
   });
 
   it('hands the text over trimmed with the attached images', async () => {

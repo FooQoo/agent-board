@@ -10,13 +10,7 @@
           "stories": [
             {
               "id": "messages-askai--dialog",
-              "states": [
-                "modal",
-                "empty",
-                "send disabled",
-                "no epic selector",
-                "no manual creation"
-              ],
+              "states": ["modal", "empty", "send disabled", "no epic selector"],
               "interaction": true
             },
             {

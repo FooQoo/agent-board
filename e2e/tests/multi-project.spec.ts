@@ -17,7 +17,8 @@ import {
 } from '../helpers/agboard';
 import { spawn, spawnSync } from 'node:child_process';
 import { resetPreferences, setPreferences, type Accent, type Mode } from '../helpers/preferences';
-import { openManualCreateDialog, waitForDrop } from '../helpers/ui';
+import { fillRequest, openAskAi, requestField, sendRequest } from '../helpers/ask-ai';
+import { waitForDrop } from '../helpers/ui';
 import { answerButton, fillAnswer, openAnswer, send } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
 
@@ -92,6 +93,11 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await expect(dialog).toBeVisible();
   await waitForDrop(page);
   return dialog;
+}
+
+/** The text of every request the project holds, as one string. */
+function requestsOf(project: string, home: string): string {
+  return agboardOk(project, ['message', 'ls', '--type', 'request', '--status', 'all', '--json'], home).stdout;
 }
 
 /** The project's snapshot from the CLI, without the time it was fetched. */
@@ -228,11 +234,8 @@ test.describe('two projects with the same task numbers', () => {
     await expect(details(page).getByRole('listitem').first()).toContainText('Use the MIT license.');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
 
-    // Create a card in Alpha; it gets the next Alpha number.
-    const create = await openManualCreateDialog(page);
-    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Alpha: made on the page');
-    await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create).toHaveCount(0);
+    // Create a card in Alpha from the CLI; it gets the next Alpha number and appears on the open board.
+    agboardOk('Alpha', ['add', 'Alpha: made on the page', '--assignee', 'ai', '--actor', 'human'], home);
     await expect(task(page, fresh)).toContainText('Alpha: made on the page');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
 
@@ -392,20 +395,20 @@ test.describe('two projects with the same task numbers', () => {
     await expect(switcher(page)).toBeFocused();
     // Tab leaves the menu closed and moves on.
     await page.keyboard.press('Tab');
-    // The header order is project, Ask AI, the menu of other ways to add, Docs, Epics, Archive, Settings.
+    // The header order is project, Ask AI, Docs, Epics, Archive, Settings.
     await expect(page.getByRole('button', { name: 'Ask AI', exact: true })).toBeFocused();
   });
 
-  for (const kind of ['create', 'move', 'delete'] as const) {
+  for (const kind of ['ask', 'move', 'delete'] as const) {
     test(`while a ${kind} form is open the menu is disabled, and it works again when the form is done`, async ({
       page,
     }) => {
       await open(page, alpha);
       let close: () => Promise<void>;
-      if (kind === 'create') {
-        const dialog = await openManualCreateDialog(page);
+      if (kind === 'ask') {
+        const dialog = await openAskAi(page);
         close = async () => {
-          await dialog.getByRole('button', { name: 'Cancel' }).click();
+          await dialog.getByRole('button', { name: 'Close', exact: true }).click();
         };
       } else if (kind === 'move') {
         const dialog = await dragTaskTo(page, 1, 'Doing');
@@ -441,10 +444,9 @@ test.describe('two projects with the same task numbers', () => {
     page.on('request', (request) => {
       if (request.method() === 'POST') posts.push(new URL(request.url()).pathname);
     });
-    const fresh = nextTaskId('Beta', home);
 
-    const create = await openManualCreateDialog(page);
-    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Typed in Beta');
+    const create = await openAskAi(page);
+    await fillRequest(create, 'Typed in Beta');
     // The browser walks the history back and forth several times while the form is open.
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
@@ -454,24 +456,22 @@ test.describe('two projects with the same task numbers', () => {
     await expect.poll(() => projectParam(page)).toBe(alpha);
     // The form stays, with what was typed, on the project it was opened in.
     await expect(create).toBeVisible();
-    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Typed in Beta');
+    await expect(requestField(create)).toHaveValue('Typed in Beta');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(switcherBehindDialog(page)).toBeDisabled();
 
-    await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create).toHaveCount(0);
+    await sendRequest(create);
     // Done: the latest URL (Alpha) is shown now.
     await expect(switcher(page)).toHaveText('Alpha');
     await expect(page).toHaveTitle('Alpha - Agent Board');
     await expect(task(page, 1)).toHaveText(/Alpha: draft the release notes/);
-    expect(posts).toEqual([`/api/projects/${beta}/tasks`]);
-    expect(listTasks('Beta', home).map(({ id, title }) => [id, title])).toContainEqual([fresh, 'Typed in Beta']);
+    expect(posts).toEqual([`/api/projects/${beta}/messages/requests`]);
+    expect(requestsOf('Beta', home)).toContain('Typed in Beta');
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
 
     // The history was not changed by the form: forward returns to Beta, back to Alpha again.
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
-    await expect(task(page, fresh)).toContainText('Typed in Beta');
     await page.goBack();
     await expect(switcher(page)).toHaveText('Alpha');
   });
@@ -484,18 +484,18 @@ test.describe('two projects with the same task numbers', () => {
     await expect(task(page, 1)).toHaveText(/Beta: benchmark the importer/);
 
     // Cancel: the form closes and the screen follows the URL (Alpha).
-    const create = await openManualCreateDialog(page);
-    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Never saved');
+    const create = await openAskAi(page);
+    await fillRequest(create, 'Never saved');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
-    // The typed title is unsaved, so the question comes first; discarding closes the form.
+    // The typed request is unsent, so the question comes first; discarding closes the form.
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Discard and close' }).click();
     await expect(create).toHaveCount(0);
     await expect(switcher(page)).toHaveText('Alpha');
-    expect(listTasks('Beta', home).map(({ title }) => title)).not.toContain('Never saved');
-    expect(listTasks('Alpha', home).map(({ title }) => title)).not.toContain('Never saved');
+    expect(requestsOf('Beta', home)).not.toContain('Never saved');
+    expect(requestsOf('Alpha', home)).not.toContain('Never saved');
 
     // A move opened in Beta, with the URL moved back to Alpha meanwhile, moves Beta's card #1.
     await page.goForward();
@@ -548,7 +548,7 @@ test.describe('two projects with the same task numbers', () => {
     expect(snapshotOf('Alpha', home)).toEqual(alphaBefore);
   });
 
-  test('a failed save keeps the input and the project; while saving the menu stays disabled', async ({ page }) => {
+  test('a failed send keeps the input and the project; while sending the menu stays disabled', async ({ page }) => {
     await open(page, alpha);
     await choose(page, 'Beta');
     await expect(task(page, 1)).toHaveText(/Beta: benchmark the importer/);
@@ -557,7 +557,7 @@ test.describe('two projects with the same task numbers', () => {
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route('**/api/projects/*/tasks', async (route: Route) => {
+    await page.route('**/api/projects/*/messages/requests', async (route: Route) => {
       if (route.request().method() !== 'POST') return route.fallback();
       if (mode === 'fail') {
         return route.fulfill({
@@ -570,33 +570,31 @@ test.describe('two projects with the same task numbers', () => {
       return route.fallback();
     });
 
-    const create = await openManualCreateDialog(page);
-    await create.getByRole('textbox', { name: 'Title', exact: true }).fill('Kept title');
-    await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create.getByRole('alert')).toContainText('Could not save. Your input is kept. Try again.');
-    await expect(create.getByRole('alert')).not.toContainText('The storage is busy.');
+    const create = await openAskAi(page);
+    await fillRequest(create, 'Kept request');
+    const send = create.getByRole('button', { name: 'Send request' });
+    await send.click();
+    await expect(create.getByRole('alert')).toBeVisible();
     // Failure: the input is kept, the form stays on Beta, and the menu stays disabled.
-    await expect(create.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Kept title');
+    await expect(requestField(create)).toHaveValue('Kept request');
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     await expect(switcherBehindDialog(page)).toBeDisabled();
-    expect(listTasks('Beta', home).map(({ title }) => title)).not.toContain('Kept title');
+    expect(requestsOf('Beta', home)).not.toContain('Kept request');
 
-    // Saving: the answer is slow; during it the URL changes and the form cannot be left.
+    // Sending: the answer is slow; during it the URL changes and the form cannot be left.
     mode = 'hold';
-    const fresh = nextTaskId('Beta', home);
-    await create.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(create.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    await send.click();
+    await expect(send).toBeDisabled();
     await expect(switcherBehindDialog(page)).toBeDisabled();
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
     await expect(switcherBehindDialog(page)).toHaveText('Beta');
     release();
     await expect(create).toHaveCount(0);
-    // The save went to Beta; the screen then follows the URL to Alpha, which did not get the card.
+    // The request went to Beta; the screen then follows the URL to Alpha, which did not get it.
     await expect(switcher(page)).toHaveText('Alpha');
-    await expect(page.getByText('Kept title')).toHaveCount(0);
-    expect(listTasks('Beta', home).map(({ id, title }) => [id, title])).toContainEqual([fresh, 'Kept title']);
-    expect(listTasks('Alpha', home).map(({ title }) => title)).not.toContain('Kept title');
+    expect(requestsOf('Beta', home)).toContain('Kept request');
+    expect(requestsOf('Alpha', home)).not.toContain('Kept request');
     mode = 'pass';
   });
 

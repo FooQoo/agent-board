@@ -52,7 +52,6 @@ function EpicPreview() {
       idLabel="PROGRESS-TABLE"
       title={t('editor.previewEpicTitle')}
       badge={<StateChip kind="draft" />}
-      variant="edit"
       dirty={false}
       saving={false}
       error={null}

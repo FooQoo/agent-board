@@ -1,7 +1,6 @@
 import type { Epic, ProjectId, Task, TaskSummary, DialogAction } from '../../shared/api/contracts';
 import type { ChangeSubscription } from '../../shared/ui/editor/useFollowLatest';
 import type { ActionDialogData } from '../../features/tasks/model/actionData';
-import { CreateDialog } from '../../features/tasks/create/CreateDialog';
 import { AskAiDialog } from '../../features/messages/ask/AskAiDialog';
 import { EditDialog } from '../../features/tasks/editor/EditDialog';
 import { TaskPreviewDialog } from './TaskPreviewDialog';
@@ -73,15 +72,6 @@ export function ActionDialog({
   onChanged?: () => void;
 }) {
   switch (action.kind) {
-    case 'create':
-      return (
-        <CreateDialog
-          projectId={projectId}
-          onClose={onClose}
-          onSavingChange={onSavingChange}
-          onSubmit={onSubmit}
-        />
-      );
     case 'request':
       return (
         <AskAiDialog

@@ -56,7 +56,7 @@ Only the `TASK.md`/`task.json` pair, and a message change with the task pairs it
 
 The short request form sends the description, optional epic, and images together through `POST /api/projects/{projectId}/tasks/multipart`. FileStore validates the project, epic, description, and every image under one project lock. Each accepted submission creates a new task; the server does not compare content to recognize retries, so resubmitting after an uncertain network failure can create a second task.
 
-The task metadata and body are written into a private staging directory, followed by the image files. One same-filesystem directory rename publishes the complete task. Until that rename, task listing and the wait selector cannot see it. The success response and change notification happen after publication. A failure removes the staging directory; an already-reserved task number may remain unused. This path creates an AI-owned Todo task and keeps the submitted text under `## 元の依頼`; normal manual task creation and editing retain their existing behavior.
+The task metadata and body are written into a private staging directory, followed by the image files. One same-filesystem directory rename publishes the complete task. Until that rename, task listing and the wait selector cannot see it. The success response and change notification happen after publication. A failure removes the staging directory; an already-reserved task number may remain unused. This path creates an AI-owned Todo task and keeps the submitted text under `## 元の依頼`; creating a task with its own metadata, and editing, retain their existing behavior.
 
 ## Project docs
 

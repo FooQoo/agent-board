@@ -11,7 +11,7 @@ const meta: Meta<typeof ActionDialog> = {
   component: ActionDialog,
   parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
-    action: { kind: 'create' },
+    action: { kind: 'request' },
     onClose: fn(),
     onSubmit: fn(async () => {}),
     tasks: [task],
@@ -29,8 +29,7 @@ const meta: Meta<typeof ActionDialog> = {
 };
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Create: Story = {};
-export const Request: Story = { args: { action: { kind: 'request' } } };
+export const Request: Story = {};
 export const Move: Story = { args: { action: { kind: 'move', task, target: 'doing' } } };
 export const Edit: Story = { args: { action: { kind: 'edit', task } } };
 export const Epic: Story = {

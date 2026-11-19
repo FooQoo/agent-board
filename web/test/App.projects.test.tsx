@@ -639,17 +639,18 @@ describe('refreshing on events', () => {
   });
 });
 
-async function openCreateForm() {
-  await userEvent.click(screen.getByRole('button', { name: 'More ways to add' }));
-  await userEvent.click(screen.getByRole('menuitem', { name: 'Add a task manually' }));
+async function openAskForm() {
+  await userEvent.click(screen.getByRole('button', { name: 'Ask AI' }));
   return screen.getByRole('dialog');
 }
 
+const REQUEST_LABEL = 'What would you like done?';
+
 describe('switching while a form is open', () => {
-  it('disables the switcher and Ask AI while the add form is open', async () => {
+  it('disables the switcher while the Ask AI form is open', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await openCreateForm();
+    await openAskForm();
     // The open dialog hides the page from the accessibility tree, so look at the DOM.
     const button = document.querySelector<HTMLButtonElement>('.project-switcher');
     expect(button?.disabled).toBe(true);
@@ -657,27 +658,29 @@ describe('switching while a form is open', () => {
     await waitFor(() => expect(button?.disabled).toBe(false));
   });
 
-  it('holds the latest URL request, keeps the board and the input, and applies it after cancel without a new history entry', async () => {
+  it('holds the latest URL request, keeps the board and the input, and applies it after close', async () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title'), 'Half written');
+    const dialog = await openAskForm();
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: REQUEST_LABEL }),
+      'Half written',
+    );
 
     app.navigate(urlOf(PROJECT_C.id));
     app.navigate(urlOf(PROJECT_B.id));
     await act(async () => {});
 
-    expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveProperty(
-      'value',
-      'Half written',
-    );
+    expect(
+      within(screen.getByRole('dialog')).getByRole('textbox', { name: REQUEST_LABEL }),
+    ).toHaveProperty('value', 'Half written');
     expect(document.body.textContent).toContain('Initialize the board');
     expect(document.body.textContent).not.toContain('Eight in knowledge');
 
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
     );
-    // The typed title is unsaved, so the question comes first; discarding it applies the URL.
+    // The typed request is unsaved, so the question comes first; discarding it applies the URL.
     const question = await screen.findByRole('dialog', { name: 'Discard changes?' });
     await userEvent.click(within(question).getByRole('button', { name: 'Discard and close' }));
     await screen.findByText('Eight in knowledge');
@@ -688,22 +691,21 @@ describe('switching while a form is open', () => {
   it('writes to the project the form was opened in, then shows the project the URL moved to', async () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title'), 'New task');
+    const dialog = await openAskForm();
+    await userEvent.type(within(dialog).getByRole('textbox', { name: REQUEST_LABEL }), 'New task');
 
     app.navigate(urlOf(PROJECT_B.id));
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send request' }),
+    );
 
     await screen.findByText('Eight in knowledge');
     const posts = writes();
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/tasks`);
-    expect(JSON.parse(String(posts[0]?.[1]?.body))).toEqual({
-      title: 'New task',
-      description: '---\nacceptance: []\n---\n\n',
-      assignee: 'ai',
-      draft: null,
-    });
+    expect(posts[0]?.[0]).toBe(`/api/projects/${PROJECT_A.id}/messages/requests`);
+    const form = posts[0]?.[1]?.body;
+    expect(form).toBeInstanceOf(FormData);
+    expect((form as FormData).get('text')).toBe('New task');
     expect(app.updates()).toHaveLength(0);
   });
 
@@ -715,21 +717,24 @@ describe('switching while a form is open', () => {
       );
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    const dialog = await openCreateForm();
-    await userEvent.type(within(dialog).getByLabelText('Title'), 'Keep me');
+    const dialog = await openAskForm();
+    await userEvent.type(within(dialog).getByRole('textbox', { name: REQUEST_LABEL }), 'Keep me');
     app.navigate(urlOf(PROJECT_B.id));
 
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Add' }));
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Send request' }),
+    );
 
-    // The server's reason is not shown; the design's sentence is.
-    expect(await screen.findByText('Could not save. Your input is kept. Try again.')).toBeTruthy();
-    expect(screen.queryByText('The board is busy.')).toBeNull();
+    expect((await screen.findByRole('alert')).textContent).toContain('The board is busy.');
     const open = screen.getByRole('dialog');
-    expect(within(open).getByLabelText('Title')).toHaveProperty('value', 'Keep me');
+    expect(within(open).getByRole('textbox', { name: REQUEST_LABEL })).toHaveProperty(
+      'value',
+      'Keep me',
+    );
     expect(document.body.textContent).toContain('Initialize the board');
 
     backend.write = undefined;
-    await userEvent.click(within(open).getByRole('button', { name: 'Add' }));
+    await userEvent.click(within(open).getByRole('button', { name: 'Send request' }));
     await screen.findByText('Eight in knowledge');
   });
 
@@ -951,7 +956,7 @@ describe('switching while a form is open', () => {
   it('leaves the language and the details width alone for the held request', async () => {
     renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
-    await openCreateForm();
+    await openAskForm();
     await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
     await userEvent.click(screen.getByRole('radio', { name: '日本語' }));

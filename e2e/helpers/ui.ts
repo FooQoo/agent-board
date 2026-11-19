@@ -75,15 +75,6 @@ export async function closeForUpdates(close: () => Promise<void>, check: () => P
   await expect(check).toPass({ timeout: 15_000 });
 }
 
-/** Open the full task editor from the header's secondary menu item, "Add a task manually". */
-export async function openManualCreateDialog(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: /^(More ways to add|ほかの追加方法)$/ }).click();
-  await page.getByRole('menuitem', { name: /^(Add a task manually|タスクを手動で追加)$/ }).click();
-  const dialog = page.getByRole('dialog', { name: /^(Add task|タスクを追加)/ });
-  await dialog.waitFor({ state: 'visible' });
-  return dialog;
-}
-
 /**
  * Put Markdown into the rich editor the way a paste does. Typing a whole TASK.md body key by key mangles its
  * checklist lines, so a body with several blocks is pasted as plain text, which the editor parses as Markdown.

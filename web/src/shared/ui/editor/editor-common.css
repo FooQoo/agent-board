@@ -1,17 +1,8 @@
 /*
- * The parts of the card and epic editors added with the rich body: the draft box,
+ * The parts of the card and epic editors added with the rich body:
  * the epic label row, the task list under the outline and its filter menu. Colors are the r-*
  * tokens of theme.css, as in editor.css.
  */
-.editor__draft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--r-text2);
-  font-size: 13px;
-  line-height: 19px;
-}
-
 .editor__epic-row,
 .epic-label-row {
   display: flex;
@@ -222,11 +213,6 @@
 .editor__outline-item[aria-current="location"]::before {
   border-color: var(--r-accent);
   background: var(--r-accent);
-}
-
-/* While a save runs the draft box is faded, as the design shows. */
-.editor__footer[data-saving="true"] .editor__draft {
-  opacity: 0.45;
 }
 
 /* The over-limit band above the footer: the message at the left, the count at the right. */

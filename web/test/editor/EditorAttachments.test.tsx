@@ -99,7 +99,6 @@ describe('editor attachment side panel', () => {
         <EditorShell
           title="Task editor"
           badge="New"
-          variant="create"
           dirty
           saving={false}
           error={null}

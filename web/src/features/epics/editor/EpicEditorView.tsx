@@ -95,7 +95,6 @@ export function EpicEditorView({
       returnFocusSelector={`[data-epic-label="${epic.id}"]`}
       title={t('editor.previewEpicTitle')}
       badge={locked ? <StateChip kind="draft" /> : ''}
-      variant="edit"
       dirty={dirty}
       saving={saving}
       error={error ?? (lockFailed ? t('editor.saveFailed') : null)}

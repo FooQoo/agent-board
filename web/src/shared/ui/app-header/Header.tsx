@@ -4,7 +4,6 @@ import {
   ArchiveIcon,
   ArrowLeftIcon,
   BookOpenIcon,
-  ChevronDownIcon,
   LayersIcon,
   SettingsIcon,
   SparklesIcon,
@@ -12,12 +11,6 @@ import {
 import { Button, type ButtonSize } from '@/shared/ui/button';
 import { IconLabel } from '@/shared/ui/icon-label';
 import type { Project, ProjectId } from '../../api/contracts';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../dropdown-menu';
 
 export type ViewMode = 'board' | 'archive' | 'epics';
 
@@ -46,8 +39,6 @@ export interface HeaderProps {
   canAdd?: boolean;
   /** Opens "Ask AI". */
   onAdd?: () => void;
-  /** Opens the manual task form; offered in a small menu beside "Ask AI" when given. */
-  onAddManually?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
   /** Opens the project's docs. Offered with Epics and Archive, on the board only. */
@@ -72,7 +63,6 @@ export function Header({
   switchDisabled = false,
   canAdd = false,
   onAdd = () => {},
-  onAddManually,
   onArchive = () => {},
   onEpics = () => {},
   onDocs,
@@ -117,32 +107,9 @@ export function Header({
       )}
       <span className="header__spacer" aria-hidden="true" />
       {viewMode === 'board' && canAdd && (
-        <>
-          <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
-            <IconLabel icon={SparklesIcon}>{t('askAi.button')}</IconLabel>
-          </Button>
-          {onAddManually && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  iconOnly
-                  className="header__add-more"
-                  aria-label={t('askAi.moreWays')}
-                  disabled={switchDisabled}
-                >
-                  <ChevronDownIcon aria-hidden="true" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={onAddManually}>
-                  {t('askAi.addManually')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </>
+        <Button type="button" className="header__add" disabled={switchDisabled} onClick={onAdd}>
+          <IconLabel icon={SparklesIcon}>{t('askAi.button')}</IconLabel>
+        </Button>
       )}
       {viewMode === 'archive' || viewMode === 'epics' ? (
         <Button

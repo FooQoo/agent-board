@@ -54,8 +54,6 @@ The request is a message to the agents, not a task. It is not linked to any task
 
 The text field is plain text, without headings or lists to format. The text is required, up to 20,000 characters, so an image alone enables **Send request** but the form then asks for text. Images use the same PNG, JPEG, WebP, and GIF limits as task attachments. Choose **Image**, paste an image into the text, or drop one onto the form; the images are sent with the request. If sending fails, the form keeps your text and images so you can try again.
 
-To create a task yourself instead, open the small menu beside **Ask AI** and choose **Add a task manually**. The full task editor lets you set the title, description, assignee, draft state, conditions, and images yourself. The usual task editor and its save behavior remain available.
-
 ## Add images
 
 In the browser editor, select, drop, or paste an image, then insert it into the text. Images can be PNG, JPEG, WebP, or GIF, up to 10 MiB each, with at most 20 per task and 50 MiB in total.

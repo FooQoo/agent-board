@@ -23,7 +23,6 @@ export interface EditorShellProps {
   title: ReactNode;
   /** Shown after the title: a label such as Draft, or a badge element; empty shows nothing. */
   badge: ReactNode;
-  variant: 'edit' | 'create';
   /** There are unsaved changes: closing asks first. */
   dirty: boolean;
   saving: boolean;
@@ -69,7 +68,6 @@ export function EditorShell({
   returnFocusSelector,
   title,
   badge,
-  variant,
   dirty,
   saving,
   error,
@@ -106,7 +104,7 @@ export function EditorShell({
   return (
     <Dialog open onOpenChange={(open) => !open && requestClose()}>
       <DialogContent
-        className={`editor-dialog editor-dialog--${variant}${className ? ` ${className}` : ''}`}
+        className={`editor-dialog editor-dialog--edit${className ? ` ${className}` : ''}`}
         {...dialogData}
         showCloseButton={false}
         aria-describedby={undefined}
@@ -119,7 +117,6 @@ export function EditorShell({
           event.preventDefault();
           close.click();
         }}
-        onPointerDownOutside={(event) => variant === 'create' && event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           if (!(event.currentTarget instanceof HTMLElement)) return;

@@ -23,7 +23,6 @@ function EditorHost() {
       taskId={42}
       title="Edit task"
       badge="Draft"
-      variant="edit"
       dirty={title !== 'Prepare release notes'}
       saving={false}
       error={null}
@@ -80,7 +79,6 @@ export const SavingErrorAndRetry: Story = {
     <EditorShell
       title="Edit task"
       badge="Draft"
-      variant="edit"
       dirty
       saving={false}
       error="Could not save. Try again."

@@ -23,7 +23,7 @@ const PICTURES_ALLOWED = import.meta.env.MODE !== 'demo';
 /**
  * The "Ask AI" composer, laid out like a chat input: only the title on top, a plain text field that
  * fills the height, and a toolbar at the bottom with "Image" and "Send request" and the attached
- * thumbnails just above it. It has no epic selector and no manual creation, because a request is
+ * thumbnails just above it. It has no epic selector, because a request is
  * linked to neither tasks nor epics. It is a modal on the board and a bottom sheet on a phone.
  */
 export function AskAiDialog({

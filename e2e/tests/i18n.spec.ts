@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page, type TestInfo } from '../helpers/fixtures';
 import { listTasks, mainHome, resetBoard, mainProject } from '../helpers/agboard';
 import { getPreferences, resetPreferences } from '../helpers/preferences';
-import { openManualCreateDialog, readBoardAfterReset } from '../helpers/ui';
+import { readBoardAfterReset } from '../helpers/ui';
 
 test.use({ locale: 'ja-JP' });
 
@@ -82,16 +82,10 @@ test('starts in English in a Japanese browser, switches and persists without tra
   ]);
   await expect(panel.getByRole('tabpanel').getByRole('img')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('02-japanese-board-detail.png') });
-  // The conditions are called 完了条件 on every screen, in the details and in the add dialog.
+  // The conditions are called 完了条件 on every screen.
   await panel.getByRole('tab', { name: /^完了条件/ }).click();
   await expect(panel.getByRole('tabpanel')).toContainText('完了条件');
   await expect(panel).not.toContainText(/受入|受け入れ/);
-  const createDialog = await openManualCreateDialog(page);
-  await expect(createDialog.getByRole('button', { name: /^完了条件/ })).toBeVisible();
-  await expect(createDialog).not.toContainText(/受入|受け入れ/);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-
   const storedTask = listTasks(mainProject).find(({ id }) => id === 12);
   expect(storedTask).toMatchObject({
     title: 'Restore a board from JSON',

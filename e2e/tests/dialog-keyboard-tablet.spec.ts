@@ -2,7 +2,6 @@ import { expect, test } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { resetPreferences } from '../helpers/preferences';
 import { openAskAi } from '../helpers/ask-ai';
-import { openManualCreateDialog } from '../helpers/ui';
 
 // iPad-sized touch screens, wide enough for the PC layout, so dialogs are centered, not sheets. The
 // landscape one is how a tablet is mostly held and leaves the least height above the keyboard.
@@ -13,7 +12,6 @@ const screens = [
 
 const dialogs = [
   { name: 'Ask AI', open: openAskAi, submit: 'Send request' },
-  { name: 'Add task', open: openManualCreateDialog, submit: 'Add' },
 ] as const;
 
 // Positions are compared with 2px of room for subpixel rounding.

@@ -212,7 +212,6 @@ export function EditDialog({
       taskId={task.id}
       title={t('editor.previewTaskTitle')}
       badge={badge}
-      variant="edit"
       dialogData={readOnly ? { 'data-read-only': '' } : undefined}
       dirty={dirty}
       saving={flow.saving}

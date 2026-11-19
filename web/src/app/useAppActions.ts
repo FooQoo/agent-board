@@ -1,19 +1,12 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
-import {
-  WriteError,
-  createNewTask,
-  editTask,
-  editTaskMultipart,
-  moveTask,
-  reorderTask,
-} from './api';
+import { WriteError, editTask, editTaskMultipart, moveTask, reorderTask } from './api';
 import { sendMessageRequest } from '../features/messages/ask/sendRequest';
 import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
-import type { Assignee, ColumnName } from '../shared/api/contracts';
+import type { ColumnName } from '../shared/api/contracts';
 import { isProjectId } from './model/projectSession';
 
 export function useAppActions(model: AppControllerModel) {
@@ -39,7 +32,6 @@ export function useAppActions(model: AppControllerModel) {
     },
     onBack: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'board' }),
     onAdd: () => model.openDialog({ kind: 'request' }),
-    onAddManually: () => model.openDialog({ kind: 'create' }),
     onArchive: () => dispatch({ type: 'SET_VIEW_MODE', mode: 'archive' }),
     onDocs: () => {
       if (isProjectId(activeId)) model.setDocsProjectId(activeId);
@@ -148,15 +140,6 @@ export function useAppActions(model: AppControllerModel) {
         await sendMessageRequest(projectId, {
           text: data.requestText ?? '',
           attachments: data.attachments ?? [],
-        });
-      } else if (dialog.kind === 'create') {
-        await createNewTask(projectId, {
-          title: data.title ?? '',
-          description: data.description ?? '',
-          assignee: data.assignee as Assignee,
-          draft: data.draft,
-          requestId: data.requestId,
-          attachments: data.attachments,
         });
       } else if (dialog.kind === 'move') {
         await moveTask(

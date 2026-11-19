@@ -46,20 +46,3 @@ export function acceptanceProblem(items: readonly AcceptanceItem[]): number | nu
   });
   return index === -1 ? null : index;
 }
-
-/**
- * The whole text of a new file: the frontmatter with the conditions, then the body. Strings are written as
- * JSON, which is also valid YAML. A file that exists is written by the server instead, which keeps its keys.
- */
-export function composeNewText(body: string, items: readonly AcceptanceItem[]): string {
-  const list =
-    items.length === 0
-      ? ' []'
-      : items
-          .map(
-            (item) =>
-              `\n  - id: ${JSON.stringify(item.id)}\n    text: ${JSON.stringify(item.text)}\n    done: ${item.done}`,
-          )
-          .join('');
-  return `---\nacceptance:${list}\n---\n\n${body}`;
-}

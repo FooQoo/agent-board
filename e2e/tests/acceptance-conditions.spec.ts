@@ -13,7 +13,7 @@ import {
   workspace,
   type TaskJson,
 } from '../helpers/agboard';
-import { editorValue, openManualCreateDialog, readBoardAfterReset, waitForSync } from '../helpers/ui';
+import { editorValue, readBoardAfterReset, waitForSync } from '../helpers/ui';
 import { putDraft } from '../helpers/drafts';
 
 // The acceptance conditions on the real page and in the real CLI: how they show on the board and in the details,
@@ -125,23 +125,13 @@ test('the board and the details show the number of conditions done, and nothing 
   await expect(details(page).getByText('Second', { exact: true })).toBeVisible();
 });
 
-test('a person adds conditions when creating a task, and the CLI reads them back with the same ids and text', async ({ page }) => {
-  const id = nextTaskId(mainProject);
-  const dialog = await openManualCreateDialog(page);
-  await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Plan the list endpoint');
-  await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
-  for (const [index, condition] of THREE.entries()) {
-    await dialog.getByRole('button', { name: 'Add condition' }).click();
-    await dialog.getByRole('textbox', { name: `Condition AC-${index + 1}` }).fill(condition.text);
-  }
-  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-
-  expect(show(id).acceptance).toEqual(THREE);
-});
-
 test('the focus ring of the first condition is not cut off by the scrolling list', async ({ page }) => {
-  const dialog = await openManualCreateDialog(page);
+  const id = addTask('Focus ring', frontmatter([], 'Body text.'));
+  await page.reload();
+  await waitForSync(page);
+  await readBoardAfterReset(page);
+  await startFromDraft(page, id);
+  const { dialog } = await openEdit(page, id);
   await dialog.getByRole('button', { name: /^Acceptance conditions/ }).click();
   await dialog.getByRole('button', { name: 'Add condition' }).click();
   const first = dialog.getByRole('textbox', { name: 'Condition AC-1' });

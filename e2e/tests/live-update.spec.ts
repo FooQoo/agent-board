@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
-import { openManualCreateDialog, pasteMarkdown, readBoardAfterReset, waitForDrop } from '../helpers/ui';
+import { readBoardAfterReset, waitForDrop } from '../helpers/ui';
 import { openAnswer, sendAnswer } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
 
@@ -151,14 +151,8 @@ test('an open task follows its move to another lane while its details stay open'
   await notReloaded(page);
 });
 
-test('users can add a task, choose its owner, and move it with a reason', async ({ page }) => {
-  const create = await openManualCreateDialog(page);
-  await expect(create.getByRole('radio', { name: 'AI', exact: true })).toBeChecked();
-  await expect(create.getByRole('radio', { name: 'User', exact: true })).not.toBeChecked();
-  await create.getByRole('textbox', { name: 'Title' }).fill('Review the release notes');
-  await pasteMarkdown(create.getByRole('textbox', { name: 'Description (Markdown)' }), taskBody('Check the wording with the release owner.'));
-  await create.getByRole('radio', { name: 'User' }).check();
-  await create.getByRole('button', { name: 'Add', exact: true }).click();
+test('a task for the user added from the CLI appears live and moves with a reason', async ({ page }) => {
+  agboardOk(mainProject, ['add', 'Review the release notes', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Check the wording with the release owner.')]);
 
   const userTask = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) });
   await expect(userTask).toBeVisible();

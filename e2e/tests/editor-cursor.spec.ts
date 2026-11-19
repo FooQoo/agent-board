@@ -1,9 +1,10 @@
 import { expect, test } from '../helpers/fixtures';
-import { resetBoard, mainProject } from '../helpers/agboard';
+import { agboardOk, resetBoard, mainProject, nextTaskId } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
-import { waitForSync, editorValue, openManualCreateDialog } from '../helpers/ui';
+import { putDraft } from '../helpers/drafts';
+import { waitForSync, editorValue } from '../helpers/ui';
 
-// The rich body editor of the add dialog: an empty editor shows its placeholder and takes typing, Enter starts a
+// The rich body editor of a task's full-screen editor: an empty editor shows its placeholder and takes typing, Enter starts a
 // new paragraph, and Home and the arrows move the caret inside the text. The Markdown it writes has a blank line
 // between blocks.
 
@@ -17,18 +18,19 @@ for (const locale of ['en', 'ja'] as const) {
       await setPreferences({ locale, theme: { mode, accent: 'blue' } });
       await page.goto('/');
       await waitForSync(page);
-      const dialog = await openManualCreateDialog(page);
+      // An empty draft, created the way the CLI does, opened in its full-screen editor.
+      const id = nextTaskId(mainProject);
+      agboardOk(mainProject, ['add', 'Cursor check', '--assignee', 'human', '--actor', 'human']);
+      await page.reload();
+      await waitForSync(page);
+      await page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) }).click();
+      await putDraft(id);
+      await page
+        .getByRole('complementary', { name: /^(Task details|タスクの詳細)$/ })
+        .getByRole('button', { name: /^(Open full screen \(task\)|全画面で開く（タスク）)$/ })
+        .click();
+      const dialog = page.getByRole('dialog', { name: new RegExp(`^#${id} `) });
       await expect(dialog).toBeVisible();
-      const ai = dialog.getByRole('radio', { name: 'AI', exact: true });
-      const user = dialog.getByRole('radio', { name: locale === 'ja' ? 'ユーザ' : 'User', exact: true });
-      await expect(ai.locator('svg')).toBeVisible();
-      await expect(user.locator('svg')).toBeVisible();
-      await expect(ai).toHaveText('AI');
-      await expect(user).toHaveText(locale === 'ja' ? 'ユーザ' : 'User');
-      await expect(ai).toHaveCSS('width', '100px');
-      await expect(user).toHaveCSS('width', '100px');
-      await expect(ai).toHaveAttribute('aria-checked', 'true');
-      await dialog.locator('.editor__segments').screenshot({ path: test.info().outputPath('assignee-icons.png') });
 
       const content = dialog.getByRole('textbox', { name: locale === 'ja' ? '説明(Markdown)' : 'Description (Markdown)' });
       await content.click({ position: { x: 18, y: 20 } });

@@ -165,7 +165,6 @@ export function DocsDialogView({
     <EditorShell
       title={<DocsTitle path={hasFile && pane === 'body' ? selectedPath : null} />}
       badge={<PreviewBadge feature="docs" decorative />}
-      variant="edit"
       className="docs-dialog"
       dialogData={{
         'data-compact': phone ? 'true' : 'false',

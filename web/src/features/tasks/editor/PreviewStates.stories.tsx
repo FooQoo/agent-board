@@ -49,7 +49,6 @@ function TaskPreview({ state }: { state: PreviewState }) {
       badge={
         state === 'read' ? '' : <StateChip kind={state === 'readOnly' ? 'running' : 'draft'} />
       }
-      variant="edit"
       dialogData={state === 'readOnly' ? { 'data-read-only': '' } : undefined}
       dirty={false}
       saving={false}

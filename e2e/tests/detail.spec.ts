@@ -174,7 +174,6 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   expect(visited).toEqual([
     'BUTTON agent-board',
     'BUTTON Ask AI',
-    'BUTTON More ways to add',
     'BUTTON Docs',
     'BUTTON Epics',
     'BUTTON Archive',
@@ -212,8 +211,8 @@ test('the task grips never take keyboard focus', async ({ page }) => {
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
       .map((element) => (element.textContent ?? '').trim().slice(0, 3) || element.getAttribute('aria-label')),
   );
-  // Header actions (switcher, Ask AI, More ways to add, Docs, Epics, Archive, Settings), the band's two counts and its button, eight
+  // Header actions (switcher, Ask AI, Docs, Epics, Archive, Settings), the band's two counts and its button, eight
   // cards, the Pending card's answer button, Archive completed tasks, four detail controls.
-  expect(focusable).toHaveLength(7 + 3 + 8 + 1 + 1 + 4);
+  expect(focusable).toHaveLength(6 + 3 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });

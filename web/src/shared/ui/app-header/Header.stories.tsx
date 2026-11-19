@@ -39,7 +39,6 @@ interface HeaderDemoProps {
   viewMode?: ViewMode;
   withSettings?: boolean;
   onAdd?: () => void;
-  onAddManually?: () => void;
   onArchive?: () => void;
   onEpics?: () => void;
   onDocs?: () => void;
@@ -84,7 +83,6 @@ const meta = {
     canAdd: true,
     viewMode: 'board',
     onAdd: fn(),
-    onAddManually: fn(),
     onArchive: fn(),
     onEpics: fn(),
     onDocs: fn(),
@@ -199,18 +197,6 @@ export const ActionCallbacks: Story = {
     await expect(args.onEpics).toHaveBeenCalledTimes(1);
     await userEvent.click(canvas.getByRole('button', { name: /archive/i }));
     await expect(args.onArchive).toHaveBeenCalledTimes(1);
-  },
-};
-
-/** A small menu beside "Ask AI" keeps the manual task form reachable. */
-export const ManualTaskMenu: Story = {
-  play: async ({ args, canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'More ways to add' }));
-    await userEvent.click(
-      await within(document.body).findByRole('menuitem', { name: 'Add a task manually' }),
-    );
-    await expect(args.onAddManually).toHaveBeenCalledTimes(1);
-    await expect(args.onAdd).not.toHaveBeenCalled();
   },
 };
 

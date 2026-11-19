@@ -114,8 +114,8 @@
           "name": "AppDialogs",
           "stories": [
             {
-              "id": "app-app-dialogs--create",
-              "states": ["create dialog through the lazy boundary"],
+              "id": "app-app-dialogs--request",
+              "states": ["ask dialog through the lazy boundary"],
               "interaction": true
             }
           ]

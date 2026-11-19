@@ -11,9 +11,7 @@ The board is where you watch the work and step in while the agent keeps going. Y
 1. Select a project in the header and choose **Ask AI**.
 2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and it counts under **Your requests** in the band above the lanes, where the list shows it as **Waiting to be picked up**, until an agent receives it.
 
-To create a task yourself, open the small menu beside **Ask AI** and choose **Add a task manually**. The full editor lets you set the title, owner, acceptance conditions, and draft state. See [Editing and image attachments](./editing#ask-ai). The owner cannot be changed after the task is created.
-
-A task you add manually appears at the end of Todo.
+The board has no form for adding a task by hand. Agents create tasks from your requests, and you can also add one with `agboard add` (see [CLI](../reference/cli)). A new task appears at the end of Todo. The owner cannot be changed after the task is created.
 
 ## Read a task {#read-a-task}
 
@@ -68,7 +66,7 @@ To edit a task or put it in an epic, choose **Open full screen** in the details 
 
 A draft is a task that agents must leave alone while you write it. Agents cannot change a draft, including its `TASK.md` file.
 
-- To create a draft, choose **Add a task manually** from the menu beside **Ask AI** and check **Draft** in the full editor.
+- Tasks that agents create start as AI drafts.
 - To change an existing task, open its preview. Your first change makes it a draft, and **Save** releases it, so agents can work on the task again. The editor has no Draft checkbox.
 - To drop your changes, choose **Cancel** and then **Discard and close**. The text returns to the saved version, and the history records `Discarded draft changes.`
 - A running task opens read-only and cannot become a draft.
