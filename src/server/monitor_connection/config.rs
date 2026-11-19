@@ -39,6 +39,11 @@ pub enum ConfigError {
     Io(String),
 }
 
+/// An exclusive lock, across processes, on the settings file. Whoever reads the settings in order
+/// to change them (this server, `agboard setup remote`) holds it from the read to the save, so
+/// two writers never both build on the same revision. Released when dropped.
+pub struct ConfigLock(#[allow(dead_code)] Option<std::fs::File>);
+
 /// Reads and atomically replaces the settings file.
 #[derive(Debug, Clone)]
 pub struct ConfigStore {
@@ -52,6 +57,30 @@ impl ConfigStore {
             .parent()
             .and_then(Path::parent)
             .unwrap_or(Path::new("."))
+    }
+
+    /// Take the exclusive lock, waiting for the holder. Without a lock file that can be opened
+    /// (or off Unix) there is no lock, as there was none before.
+    pub fn lock(&self) -> ConfigLock {
+        let Some(dir) = self.path.parent() else {
+            return ConfigLock(None);
+        };
+        if create_private_dir(dir).is_err() {
+            return ConfigLock(None);
+        }
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(dir.join("monitor-connection.lock"))
+            .ok();
+        #[cfg(unix)]
+        if let Some(file) = &file {
+            use std::os::unix::io::AsRawFd;
+            // SAFETY: flock on a descriptor this function owns; it blocks until the lock is held.
+            unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) };
+        }
+        ConfigLock(file)
     }
 
     pub fn new(data_dir: &Path) -> Self {

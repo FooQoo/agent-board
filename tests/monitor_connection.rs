@@ -601,6 +601,31 @@ fn settings_saved_from_the_command_line_show_in_a_running_board_without_a_reload
 }
 
 #[test]
+fn a_stop_keeps_a_domain_saved_from_the_command_line_meanwhile() {
+    use agent_board::remote_settings::{Change, apply};
+    use agent_board::server::monitor_connection::keychain::NoKeychain;
+
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    assert_eq!(s.put(true, 0).status, 200);
+    apply(
+        home.path(),
+        &NoKeychain,
+        Change {
+            domain: Some(Some("example.ngrok-free.dev".to_string())),
+            ..Change::default()
+        },
+    )
+    .unwrap();
+    // No read in between: the stop must still see the newer file.
+    let stopped = s.stop_ngrok();
+    assert_eq!(stopped.status, 200);
+    let v = s.get();
+    assert_eq!(v["settings"]["domain"], "example.ngrok-free.dev");
+    assert_eq!(v["settings"]["enabled"], false);
+}
+
+#[test]
 fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
     let home = home();
     let s = Server::start(

@@ -151,6 +151,8 @@ pub fn apply(
     change: Change,
 ) -> Result<Saved, AgboardError> {
     let store = ConfigStore::new(data_dir);
+    // Held from the read to the save, as the server holds it, so no change is lost.
+    let _lock = store.lock();
     let current = store.load().unwrap_or_default();
     if let Some(token) = &change.token {
         vault.save(token).map_err(|_| vault_error())?;
@@ -263,6 +265,34 @@ mod tests {
         let text = std::fs::read_to_string(dir.path().join(FILE)).unwrap();
         assert!(!text.contains("tok_secret"), "{text}");
         assert!(!format!("{saved:?}{}", saved.to_json()).contains("tok_secret"));
+    }
+
+    #[test]
+    fn concurrent_saves_from_several_processes_never_reuse_a_revision() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    for _ in 0..5 {
+                        apply(
+                            &path,
+                            &MemoryVault::default(),
+                            Change {
+                                enabled: Some(true),
+                                ..Change::default()
+                            },
+                        )
+                        .unwrap();
+                    }
+                })
+            })
+            .collect();
+        for t in threads {
+            t.join().unwrap();
+        }
+        assert_eq!(read(&path, &NoKeychain).unwrap().revision, 40);
     }
 
     #[test]

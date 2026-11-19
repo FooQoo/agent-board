@@ -21,9 +21,9 @@ impl MonitorConnections {
     /// The current state. The first call starts the keychain read in the
     /// background and waits for it at most `PROBE_GRACE`, without the lock.
     pub async fn snapshot(self: &Arc<Self>) -> Snapshot {
-        self.sync_config();
+        drop(self.synced());
         let _ = tokio::time::timeout(PROBE_GRACE, self.probed()).await;
-        self.snapshot_now(&self.lock())
+        self.snapshot_now(&self.synced())
     }
 
     pub(super) fn snapshot_now(&self, inner: &Inner) -> Snapshot {
@@ -39,11 +39,12 @@ impl MonitorConnections {
             return;
         }
         inner.probing = true;
+        let epoch = inner.probe_epoch;
         let this = self.clone();
         tokio::spawn(async move {
             let loaded = this.read_keychain().await;
             let mut inner = this.lock();
-            this.apply_probe(&mut inner, loaded);
+            this.apply_probe(&mut inner, loaded, epoch);
         });
     }
 
@@ -61,7 +62,13 @@ impl MonitorConnections {
         &self,
         inner: &mut Inner,
         loaded: Result<Option<Secret>, VaultError>,
+        epoch: u64,
     ) {
+        if epoch != inner.probe_epoch {
+            // The saved settings changed while the keychain was read: another read is needed.
+            self.probed.notify_waiters();
+            return;
+        }
         inner.probing = false;
         let saved = matches!(loaded, Ok(Some(_)));
         if let Ok(Some(token)) = loaded
@@ -101,15 +108,26 @@ impl MonitorConnections {
     /// found again too: the keychain is looked at again on the next read. A connection that is
     /// up is left alone; the new settings apply to the next start. An unreadable file is ignored.
     pub(super) fn synced(&self) -> std::sync::MutexGuard<'_, Inner> {
-        self.sync_config();
-        self.lock()
+        let mut inner = self.lock();
+        self.sync_locked(&mut inner);
+        inner
     }
 
-    fn sync_config(&self) {
+    /// The lock on the settings file and then the state, taken in that order, with the state
+    /// brought up to date. Whoever changes the saved settings holds both until it has saved.
+    pub(super) fn write_guard(
+        &self,
+    ) -> (super::config::ConfigLock, std::sync::MutexGuard<'_, Inner>) {
+        let file = self.store.lock();
+        (file, self.synced())
+    }
+
+    /// The file is read while the state is locked, so a read that is older than a save made here
+    /// can never replace it.
+    fn sync_locked(&self, inner: &mut Inner) {
         let Ok(file) = self.store.load() else {
             return;
         };
-        let mut inner = self.lock();
         if file.revision == inner.config.revision {
             return;
         }
@@ -117,6 +135,9 @@ impl MonitorConnections {
         if inner.failure == Some(FailureCode::ConfigUnreadable) {
             inner.failure = None;
         }
+        // A keychain read that is under way started before this change: its result is dropped.
+        inner.probe_epoch += 1;
+        inner.probing = false;
         inner.keychain_saved = None;
         if inner.token_source == Some(TokenSource::Keychain) {
             inner.token = None;
