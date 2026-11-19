@@ -2,6 +2,33 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.5.2
+
+A release that retells the first steps around Ask AI: you send a request, the agent plans it as tasks, you answer its questions, and the tasks reach Done on their own.
+
+### Changes
+
+- **A new first-run guide.** The guide now walks through the way you work with Agent Board: send a sample request with **Ask AI**, see the agent turn it into an epic and draft tasks with acceptance conditions, answer the agent's question, then watch it start the plan and move the cards to Done. It is still simulated in your browser and changes nothing on your board. Open it again any time from **Settings**, **Tutorial**, **Try it**.
+- **A new demo video and guide pages.** The video on the documentation site and the introduction follow the same story, from a request with **Ask AI** to automatic Done. The Quickstart starts with **Ask AI**, and its hands-on practice sends a request and plays the agent that takes it. The guide's screenshots show the current board.
+
+### Fixes
+
+None.
+
+### Breaking changes
+
+None.
+
+### Required update steps
+
+Update the command:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+```
+
+Restart `agboard serve` after the upgrade. `agboard update` is not needed: this release changes no hook command, so the plugin updates itself at the first agent session after the upgrade.
+
 ## v1.5.1
 
 A release that makes the PC board work better on a tablet, stops a stopped server from hanging, and leaves adding tasks to agents and the CLI.
