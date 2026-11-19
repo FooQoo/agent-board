@@ -168,6 +168,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
         });
         state.monitor.attach(&state);
         let files = state.shared.clone();
+        state.resident.watch_board(&state.shared, &state.changed);
         state.resident.start(move |project| {
             resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
         });

@@ -1,6 +1,6 @@
 //! A resident session end to end, with a fake `claude` or `codex` that behaves as the resident skill
-//! tells a session to: it runs the real `agboard wait --until task` with the environment the
-//! launcher sets, accepts every request it is handed, and waits again. The server runs on port 0
+//! tells a session the board launched to: it never runs `wait`, takes the message the board pushes
+//! when it is idle, acts on it with the real `agboard` commands, and ends the turn. The server runs on port 0
 //! in a temporary data directory; nothing here needs a real agent CLI.
 #![cfg(unix)]
 
@@ -35,34 +35,40 @@ fn lines(path: &Path) -> Vec<String> {
         .collect()
 }
 
-/// How a fake CLI starts: it reads its first instruction in the tool's own protocol and then runs
-/// the wait loop in the foreground, as the real agent does inside one long turn.
-fn handshake(tool: &str) -> &'static str {
-    if tool == "codex" {
-        // `codex app-server`: JSON-RPC lines. The first instruction is the `turn/start`.
-        return r#"while IFS= read -r line; do
+/// The fake session as a shell script. It behaves as the resident skill tells a session the
+/// board launched to behave: it never runs `wait`. The board sends it one message per turn; the
+/// session records the message, does what the message asks (accepts each request, asks a
+/// question when a request says "Ask me", accepts each answer), and ends the turn.
+fn fake_session(tool: &str, bin: &str, home: &Path, log: &Path) -> String {
+    let (setup, run) = if tool == "codex" {
+        (
+            "turn=0",
+            r#"while IFS= read -r line; do
   id=$(printf '%s' "$line" | sed -n 's/^{"id":\([0-9][0-9]*\),.*/\1/p')
   case "$line" in
     *'"method":"initialize"'*) printf '{"id":%s,"result":{"userAgent":"agboard/9.9.9 (fake)"}}\n' "$id" ;;
     *'"method":"thread/start"'*) printf '{"id":%s,"result":{"thread":{"id":"e2e-fake"}}}\n' "$id" ;;
     *'"method":"turn/start"'*)
-      echo "$line" >> "$LOG/prompts"
-      printf '{"id":%s,"result":{"turn":{"id":"turn-1"}}}\n' "$id"
-      echo '{"method":"turn/started","params":{"turn":{"id":"turn-1"}}}'
-      break ;;
+      turn=$((turn+1))
+      printf '{"id":%s,"result":{"turn":{"id":"turn-%s"}}}\n' "$id" "$turn"
+      printf '{"method":"turn/started","params":{"turn":{"id":"turn-%s"}}}\n' "$turn"
+      handle "$line"
+      printf '{"method":"turn/completed","params":{"turn":{"id":"turn-%s","status":"completed"}}}\n' "$turn" ;;
   esac
 done
-"#;
-    }
-    r#"IFS= read -r first
-echo "$first" >> "$LOG/prompts"
-echo '{"type":"system","subtype":"init","session_id":"e2e-fake","claude_code_version":"9.9.9"}'
-"#
-}
-
-/// The fake session. It records each start (its process ID), each wait result, and each request
-/// it accepted in `log`.
-fn fake_session(tool: &str, bin: &str, home: &Path, log: &Path) -> String {
+"#,
+        )
+    } else {
+        (
+            ":",
+            r#"while IFS= read -r line; do
+  echo '{"type":"system","subtype":"init","session_id":"e2e-fake","claude_code_version":"9.9.9"}'
+  handle "$line"
+  echo '{"type":"result","subtype":"success","is_error":false,"result":"done"}'
+done
+"#,
+        )
+    };
     format!(
         r#"#!/bin/sh
 case "$1" in
@@ -71,21 +77,31 @@ esac
 export AGBOARD_HOME='{home}' AGBOARD_AUTOSTART=0 AGBOARD_OPEN_BROWSER=0 AGBOARD_WATCH=poll TZ=UTC
 LOG='{log}'
 echo $$ >> '{log}/starts'
-{handshake}echo "$AGBOARD_SESSION_ORIGIN $AGBOARD_SESSION_TOOL" >> '{log}/env'
-while :; do
-  out=$('{bin}' --project Demo wait --until task --idle-timeout 2 --json 2>>'{log}/err')
-  echo "$out" >> '{log}/waits'
-  if echo "$out" | grep -q '"kind": *"requests"'; then
-    for id in $(echo "$out" | grep -o 'Q-[0-9]*' | sort -u); do
-      '{bin}' --project Demo message accept "$id" --actor ai >/dev/null && echo "$id" >> '{log}/accepted'
-    done
-  fi
-  sleep 0.1
-done
-"#,
+echo "$AGBOARD_SESSION_ORIGIN $AGBOARD_SESSION_TOOL" >> '{log}/env'
+{setup}
+handle() {{
+  printf '%s\n' "$1" >> "$LOG/pushed"
+  ids=$(printf '%s' "$1" | grep -o 'Q-[0-9]*' | sort -u)
+  case "$1" in
+    *requests*)
+      for id in $ids; do
+        '{bin}' --project Demo message accept "$id" --actor ai >/dev/null && echo "$id" >> "$LOG/accepted"
+      done
+      case "$1" in
+        *'Ask me'*) '{bin}' --project Demo message ask --actor ai --no-wait --questions-json '{{"questions":[{{"body":"Which one?"}}]}}' >> "$LOG/asked" ;;
+      esac ;;
+    *answers*)
+      for id in $ids; do
+        '{bin}' --project Demo message accept "$id" --actor ai >/dev/null && echo "$id" >> "$LOG/answered"
+      done ;;
+  esac
+}}
+{run}"#,
         home = home.display(),
         log = log.display(),
-        handshake = handshake(tool),
+        bin = bin,
+        setup = setup,
+        run = run,
     )
 }
 
@@ -96,7 +112,7 @@ fn sessions(server: &Running, base: &str) -> Value {
 /// Both tools in turn, in one test, because each run sets the executable of its tool in the
 /// process environment before its server starts.
 #[test]
-fn a_launched_session_accepts_a_request_waits_again_is_restarted_and_stops() {
+fn a_launched_session_is_pushed_work_is_restarted_and_stops() {
     scenario("claude-code", "claude", "AGBOARD_CLAUDE_BIN");
     scenario("codex", "codex", "AGBOARD_CODEX_BIN");
 }
@@ -133,7 +149,8 @@ fn scenario(tool: &str, program: &str, bin_var: &str) {
         .to_string();
     let base = format!("/api/projects/{id}/sessions");
 
-    // Launch: the session attaches and its wait is registered.
+    // Launch: the session starts, its first turn (the launch prompt) ends, and the board counts
+    // it as waiting without any `wait` from the session.
     let launched = server.write(
         "POST",
         &format!("{base}/launch"),
@@ -147,11 +164,12 @@ fn scenario(tool: &str, program: &str, bin_var: &str) {
     });
     assert_eq!(attached["sessions"][0]["origin"], "board");
     assert_eq!(attached["sessions"][0]["tool"], tool);
+    assert_eq!(attached["sessions"][0]["state"], "connected");
     assert_eq!(attached["health"]["state"], "running");
     assert_eq!(lines(&log.path().join("env")), [format!("board {tool}")]);
     // The first instruction arrived in the tool's own protocol: a stream-json user message for
     // Claude Code, the first turn of the thread for Codex.
-    let prompts = lines(&log.path().join("prompts"));
+    let prompts = lines(&log.path().join("pushed"));
     assert_eq!(prompts.len(), 1);
     let first: Value = serde_json::from_str(&prompts[0]).unwrap();
     let text = if tool == "codex" {
@@ -161,9 +179,46 @@ fn scenario(tool: &str, program: &str, bin_var: &str) {
         assert_eq!(first["type"], "user");
         &first["message"]["content"]
     };
-    assert!(text.as_str().unwrap().contains("agboard skills resident"));
+    let text = text.as_str().unwrap();
+    assert!(text.contains("agboard skills resident"));
+    assert!(text.contains("Do not run `agboard wait`"), "{text}");
 
-    // A request made on the board is accepted by the session with no human action.
+    // An external session still attaches with `wait` and is counted next to the board's own.
+    let mut external = std::process::Command::new(env!("CARGO_BIN_EXE_agboard"))
+        .args([
+            "--project",
+            "Demo",
+            "wait",
+            "--until",
+            "task",
+            "--idle-timeout",
+            "60",
+        ])
+        .env("AGBOARD_HOME", home.path())
+        .env("AGBOARD_AUTOSTART", "0")
+        .env("AGBOARD_WATCH", "poll")
+        .env("TZ", "UTC")
+        .env_remove("AGBOARD_RESIDENT_ID")
+        .env_remove("AGBOARD_SESSION_ORIGIN")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let both = until(
+        "the external wait to be counted beside the board session",
+        || {
+            let body = sessions(&server, &base);
+            (body["counts"]["byOrigin"]["external"] == 1
+                && body["counts"]["byOrigin"]["board"] == 1)
+                .then_some(body)
+        },
+    );
+    assert_eq!(both["counts"]["total"], 2);
+    let _ = external.kill();
+    let _ = external.wait();
+
+    // A request made on the board is pushed to the idle session, which accepts it with no
+    // human action.
     let (code, out, err) = agboard(
         home.path(),
         &[
@@ -191,24 +246,65 @@ fn scenario(tool: &str, program: &str, bin_var: &str) {
             .is_empty()
             .then_some(())
     });
+    until("the session to be idle again", || {
+        (sessions(&server, &base)["health"]["waiting"] == true).then_some(())
+    });
 
-    // After the wait that returned the request, the session waits again, and an idle timeout
-    // never ends it.
-    let before = lines(&log.path().join("waits")).len();
-    until(
-        "two more waits to end and the session to wait again",
-        || {
-            let waits = lines(&log.path().join("waits"));
-            let health = sessions(&server, &base)["health"].clone();
-            (waits.len() >= before + 2 && health["waiting"] == true && health["state"] == "running")
-                .then_some(())
-        },
+    // A question the session asks carries its launch ID, and the person's answer is pushed back
+    // to it.
+    let (code, out, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "send",
+            "--actor",
+            "human",
+            "--text",
+            "Ask me which one",
+        ],
     );
+    assert_eq!(code, 0, "{out}{err}");
+    until("the session to ask", || {
+        (!lines(&log.path().join("asked")).is_empty()).then_some(())
+    });
+    until("the session to be idle again", || {
+        (sessions(&server, &base)["health"]["waiting"] == true).then_some(())
+    });
+    let (code, out, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "message",
+            "answer",
+            "Q-3",
+            "--actor",
+            "human",
+            "--via",
+            "cli",
+            "--text",
+            "The first one",
+        ],
+    );
+    assert_eq!(code, 0, "{out}{err}");
+    let answered = until("the answer to be pushed and taken in", || {
+        let ids = lines(&log.path().join("answered"));
+        (!ids.is_empty()).then_some(ids)
+    });
+    assert_eq!(answered, ["Q-3"]);
+
+    // The session never ran `wait`, and the board's own session shows as idle and waiting.
     assert!(
-        lines(&log.path().join("waits"))
-            .iter()
-            .any(|w| w.contains("idle_timeout"))
+        !log.path().join("waits").exists(),
+        "a board-launched session must not wait"
     );
+    let health = until("the session to be waiting", || {
+        let health = sessions(&server, &base)["health"].clone();
+        (health["waiting"] == true).then_some(health)
+    });
+    assert_eq!(health["state"], "running");
     assert_eq!(lines(&log.path().join("starts")).len(), 1);
 
     // Killing the process makes the supervisor start it again, and it attaches again.
@@ -232,10 +328,11 @@ fn scenario(tool: &str, program: &str, bin_var: &str) {
     let stopped = server.write("POST", &format!("{base}/stop"), Some("{}"));
     assert_eq!(stopped.json()["stopped"], true);
     let after = sessions(&server, &base);
-    assert_eq!(after["counts"]["total"], 0, "{after}");
+    // The external session killed above may still be in its grace period; the board's is gone.
+    assert_eq!(after["counts"]["byOrigin"]["board"], 0, "{after}");
     assert_eq!(after["health"]["state"], "stopped");
     std::thread::sleep(Duration::from_millis(2500));
     assert_eq!(lines(&log.path().join("starts")).len(), 2);
-    assert_eq!(sessions(&server, &base)["counts"]["total"], 0);
+    assert_eq!(sessions(&server, &base)["counts"]["byOrigin"]["board"], 0);
     server.stop();
 }

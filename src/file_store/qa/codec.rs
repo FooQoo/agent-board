@@ -46,6 +46,8 @@ struct QuestionFront {
     choices: Vec<Choice>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     recommended: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    asked_by: Option<String>,
     #[serde(default)]
     reply: Option<ReplyFront>,
     #[serde(default, with = "crate::clock::serde_opt_utc")]
@@ -111,6 +113,7 @@ pub fn parse_message(id: &str, text: &str) -> Result<Message, Defect> {
                 }),
                 withdrawn_at: f.withdrawn_at,
                 created_at: f.created_at,
+                asked_by: f.asked_by,
             }))
         }
         Some("human") => {
@@ -143,6 +146,7 @@ pub fn render_message(message: &Message) -> Result<String, Defect> {
                 tasks: q.tasks.clone(),
                 choices: q.choices.clone(),
                 recommended: q.recommended.clone(),
+                asked_by: q.asked_by.clone(),
                 reply: q.reply.as_ref().map(|r| ReplyFront {
                     choice: r.choice.clone(),
                     text: r.text.clone(),
@@ -214,9 +218,11 @@ mod tests {
             }),
             withdrawn_at: None,
             created_at: at,
+            asked_by: Some("r1".into()),
         };
         let written = render_message(&Message::Question(q.clone())).unwrap();
         assert!(written.contains("via: cli") && !written.contains("choice:"));
+        assert!(written.contains("askedBy: r1"));
         assert_eq!(
             parse_message("Q-1", &written).unwrap(),
             Message::Question(q)

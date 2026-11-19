@@ -32,6 +32,8 @@ pub struct AskQuestion {
 #[derive(Debug, Clone)]
 pub struct AskInput {
     pub actor: Actor,
+    /// The board-launched session that asks (`AGBOARD_RESIDENT_ID`), recorded on each question.
+    pub asked_by: Option<String>,
     pub questions: Vec<AskQuestion>,
     /// Tasks that wait on every question.
     pub tasks: Vec<i64>,
@@ -73,6 +75,7 @@ fn normalize(input: &AskInput) -> Result<Vec<Question>, AgboardError> {
             reply: None,
             withdrawn_at: None,
             created_at: chrono::DateTime::<Utc>::UNIX_EPOCH,
+            asked_by: input.asked_by.clone(),
         };
         if let Some(d) = question_defect(&question) {
             return Err(invalid(format!("questions[{index}].{}", d.field), d.reason));

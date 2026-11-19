@@ -12,10 +12,12 @@
 //! of after the registry's grace period.
 
 mod autostart;
+mod board;
 pub mod cli;
 pub mod driver;
 mod health;
 mod process;
+mod push;
 mod spawn;
 mod supervisor;
 mod watch;
@@ -56,6 +58,7 @@ struct Live {
     started: Instant,
     exit: Arc<Exit>,
     driver: Arc<dyn AgentDriver>,
+    push: Arc<push::Push>,
 }
 
 /// A launched session as the status lists it. The process ID is for the server's own use and is
@@ -84,6 +87,8 @@ pub struct Launcher {
     plans: Mutex<HashMap<Tool, Plan>>,
     autostart: AutoStartStore,
     closing: AtomicBool,
+    /// The shared data folder of the boards, once the server has told the launcher.
+    board: Mutex<Option<PathBuf>>,
 }
 
 impl Launcher {
@@ -147,6 +152,7 @@ impl Launcher {
             plans: Mutex::new(HashMap::new()),
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
+            board: Mutex::new(None),
         })
     }
 

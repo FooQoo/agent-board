@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use super::driver::{AgentDriver, DriverEvent, PermissionRequest, StartSpec, decide_permission};
 use super::process::{Exit, new_launch_id, open_log};
+use super::push::{self, Push};
 use super::{Launched, Launcher, Live, cli};
 use crate::clock::{Clock, SystemClock};
 use crate::domain::ProjectId;
@@ -109,6 +110,7 @@ impl Launcher {
             started: std::time::Instant::now(),
             exit: Exit::new(),
             driver: driver.clone(),
+            push: Arc::new(push::Push::new()),
         };
         let view = Launched {
             tool,
@@ -118,13 +120,30 @@ impl Launcher {
             started_at: launched.started_at,
         };
         let exit = launched.exit.clone();
+        let push = launched.push.clone();
         self.supervise_launch(tool, kind, &launched, project_name, folder);
         live.insert(tool, launched);
         drop(live);
 
+        // The pusher gives the idle session what the board has for it.
+        let pusher = self.clone();
+        let (pusher_driver, pusher_push) = (driver.clone(), push.clone());
+        let (pusher_project, pusher_name, pusher_id) =
+            (project.clone(), project_name.to_string(), launch_id.clone());
+        std::thread::spawn(move || {
+            pusher.run_pusher(
+                &pusher_project,
+                &pusher_name,
+                &pusher_id,
+                pusher_driver.as_ref(),
+                &pusher_push,
+            );
+        });
+
         let launcher = self.clone();
         std::thread::spawn(move || {
-            let reason = pump(tool, driver.as_ref());
+            let reason = launcher.pump(tool, &launch_id, driver.as_ref(), &push);
+            push.close();
             launcher.forget(tool, &launch_id);
             launcher.on_exit(tool, &launch_id, &reason);
             exit.finish();
@@ -133,22 +152,62 @@ impl Launcher {
     }
 }
 
-/// Read the events of a session until it exits, and answer what it asks. This is the one channel
-/// through which a driver reaches the launcher. Returns why the session ended.
-fn pump(tool: Tool, driver: &dyn AgentDriver) -> String {
-    loop {
-        match driver.next_event() {
-            DriverEvent::Exited { code, signal } => return exit_reason(tool, code, signal),
-            DriverEvent::PermissionRequest { id, kind, summary } => {
-                let answer = decide_permission(&PermissionRequest { kind, summary });
-                // A request that cannot be answered ends with the session; nothing to do here.
-                let _ = driver.answer_permission(&id, answer);
+impl Launcher {
+    /// Read the events of a session until it exits, and answer what it asks. This is the one
+    /// channel through which a driver reaches the launcher. The first event shows the child is
+    /// attached, and the end of a turn wakes the pusher. Returns why the session ended.
+    fn pump(&self, tool: Tool, launch_id: &str, driver: &dyn AgentDriver, push: &Push) -> String {
+        loop {
+            match driver.next_event() {
+                DriverEvent::Exited { code, signal } => return exit_reason(tool, code, signal),
+                DriverEvent::PermissionRequest { id, kind, summary } => {
+                    let answer = decide_permission(&PermissionRequest { kind, summary });
+                    // A request that cannot be answered ends with the session; nothing to do here.
+                    let _ = driver.answer_permission(&id, answer);
+                }
+                DriverEvent::Started { .. } => {
+                    push.attach(SystemClock.now());
+                    self.on_attached(tool, launch_id);
+                }
+                DriverEvent::TurnEnded(outcome) => {
+                    push.attach(SystemClock.now());
+                    self.on_attached(tool, launch_id);
+                    push.turn_ended(&outcome);
+                }
+                DriverEvent::Activity { .. } | DriverEvent::Unknown => {}
             }
-            DriverEvent::Started { .. }
-            | DriverEvent::Activity { .. }
-            | DriverEvent::TurnEnded(_)
-            | DriverEvent::Unknown => {}
         }
+    }
+
+    /// Push work to the session while it lives: look at the board when woken (the board changed,
+    /// or a turn ended) and at least every `push_poll`.
+    fn run_pusher(
+        &self,
+        project: &ProjectId,
+        project_name: &str,
+        launch_id: &str,
+        driver: &dyn AgentDriver,
+        push: &Push,
+    ) {
+        let policy = push::Policy::of(&self.timing);
+        while !push.is_closed() && !self.is_closing() {
+            push.sleep(self.timing.push_poll);
+            if push.is_closed() || self.is_closing() {
+                break;
+            }
+            let Some(shared) = self.board_dir() else {
+                continue;
+            };
+            if !self.is_current(launch_id) {
+                break;
+            }
+            push::push_once(&shared, project, project_name, driver, push, &policy);
+        }
+    }
+
+    /// Whether `launch_id` is the child the launcher keeps.
+    fn is_current(&self, launch_id: &str) -> bool {
+        self.lock().values().any(|live| live.launch_id == launch_id)
     }
 }
 

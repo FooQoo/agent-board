@@ -106,6 +106,18 @@ pub struct SessionList {
     pub counts: Counts,
 }
 
+impl SessionList {
+    /// The list with one more session, for a session the board counts without a wait stream
+    /// (the one it launched itself). Oldest first, and the counts include it.
+    pub fn with_session(mut self, extra: SessionView) -> SessionList {
+        self.sessions.push(extra);
+        self.sessions
+            .sort_by(|a, b| (a.connected_at, &a.id).cmp(&(b.connected_at, &b.id)));
+        self.counts = Counts::of(&self.sessions);
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Counts {
@@ -113,6 +125,26 @@ pub struct Counts {
     pub connected: usize,
     pub by_tool: ToolCounts,
     pub by_origin: OriginCounts,
+}
+
+impl Counts {
+    pub fn of(sessions: &[SessionView]) -> Counts {
+        let mut counts = Counts::default();
+        for session in sessions {
+            counts.total += 1;
+            counts.connected += usize::from(session.state == State::Connected);
+            match session.tool {
+                Tool::ClaudeCode => counts.by_tool.claude_code += 1,
+                Tool::Codex => counts.by_tool.codex += 1,
+                Tool::Unknown => counts.by_tool.unknown += 1,
+            }
+            match session.origin {
+                Origin::Board => counts.by_origin.board += 1,
+                Origin::External => counts.by_origin.external += 1,
+            }
+        }
+        counts
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]

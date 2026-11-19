@@ -107,6 +107,7 @@ fn read_legacy(dirs: &[PathBuf]) -> Found {
                     reply: None,
                     withdrawn_at: None,
                     created_at: request.created_at,
+                    asked_by: None,
                 };
                 if question_defect(&question).is_some() {
                     found.dropped.push(old.id);

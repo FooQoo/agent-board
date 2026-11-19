@@ -32,8 +32,16 @@ pub struct Timing {
     pub max_failures: usize,
     /// A session that stayed up this long starts counting again from zero.
     pub window: Duration,
-    /// How long a new child has to attach (register a wait on the board) before it is unhealthy.
+    /// How long a new child has to attach (report its first event) before it is unhealthy.
     pub startup_allowance: Duration,
+    /// How often an idle board session looks at the board when nothing woke it.
+    pub push_poll: Duration,
+    /// The wait before an item that is still on the board is pushed a second time; each further
+    /// push doubles it.
+    pub push_backoff_base: Duration,
+    pub push_backoff_max: Duration,
+    /// An item is pushed this many times at most; after that it is listed as stalled.
+    pub push_max_attempts: u32,
 }
 
 impl Default for Timing {
@@ -45,6 +53,10 @@ impl Default for Timing {
             max_failures: 5,
             window: Duration::from_secs(10 * 60),
             startup_allowance: Duration::from_secs(3 * 60),
+            push_poll: Duration::from_secs(10),
+            push_backoff_base: Duration::from_secs(30),
+            push_backoff_max: Duration::from_secs(5 * 60),
+            push_max_attempts: 3,
         }
     }
 }
@@ -64,7 +76,7 @@ pub(super) struct Plan {
     pub state: PlanState,
     pub launch_id: String,
     pub started: Instant,
-    /// The last time the registry counted a board session of the tool, once there was one.
+    /// When the child first reported an event (it started and speaks), once it did.
     pub attached: Option<Instant>,
     pub failures: Vec<Instant>,
     pub restarts: u32,
@@ -192,6 +204,16 @@ impl Launcher {
                     ),
                 );
             }
+        }
+    }
+
+    /// The child `launch_id` reported its first event: it is attached.
+    pub(super) fn on_attached(&self, tool: Tool, launch_id: &str) {
+        if let Some(plan) = self.plans().get_mut(&tool)
+            && plan.launch_id == launch_id
+            && plan.attached.is_none()
+        {
+            plan.attached = Some(Instant::now());
         }
     }
 

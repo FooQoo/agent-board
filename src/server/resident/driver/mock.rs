@@ -35,22 +35,32 @@ pub enum Step {
 
 pub type Calls = Arc<Mutex<Vec<Call>>>;
 
+struct State {
+    script: VecDeque<Step>,
+    stopped: bool,
+}
+
 pub struct MockDriver {
-    script: Mutex<VecDeque<Step>>,
-    calls: Calls,
-    stopped: Mutex<bool>,
+    state: Mutex<State>,
     changed: Condvar,
+    calls: Calls,
     idle: AtomicBool,
+    /// The steps the session plays after each message it receives, as a CLI would answer it.
+    reply: Vec<Step>,
 }
 
 impl MockDriver {
-    pub fn new(script: Vec<Step>, calls: Calls) -> MockDriver {
+    /// A session that plays `reply` after every message sent to it.
+    pub fn replying(script: Vec<Step>, reply: Vec<Step>, calls: Calls) -> MockDriver {
         MockDriver {
-            script: Mutex::new(script.into()),
-            calls,
-            stopped: Mutex::new(false),
+            state: Mutex::new(State {
+                script: script.into(),
+                stopped: false,
+            }),
             changed: Condvar::new(),
+            calls,
             idle: AtomicBool::new(false),
+            reply,
         }
     }
 
@@ -59,6 +69,10 @@ impl MockDriver {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .push(call);
+    }
+
+    fn state(&self) -> std::sync::MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
@@ -76,44 +90,45 @@ impl AgentDriver for MockDriver {
     }
 
     fn is_idle(&self) -> bool {
-        self.idle.load(Ordering::SeqCst) && !*self.stopped.lock().unwrap_or_else(|e| e.into_inner())
+        self.idle.load(Ordering::SeqCst) && !self.state().stopped
     }
 
     fn next_event(&self) -> DriverEvent {
         loop {
-            let step = self
-                .script
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .pop_front();
-            match step {
-                Some(Step::Event(event)) => {
-                    match &event {
-                        DriverEvent::TurnEnded(_) => self.idle.store(true, Ordering::SeqCst),
-                        DriverEvent::Started { .. } => self.idle.store(false, Ordering::SeqCst),
-                        _ => {}
+            let mut state = self.state();
+            if let Some(step) = state.script.pop_front() {
+                drop(state);
+                match step {
+                    Step::Event(event) => {
+                        match &event {
+                            DriverEvent::TurnEnded(_) => self.idle.store(true, Ordering::SeqCst),
+                            DriverEvent::Started { .. } => self.idle.store(false, Ordering::SeqCst),
+                            _ => {}
+                        }
+                        return event;
                     }
-                    return event;
+                    Step::Sleep(pause) => std::thread::sleep(pause),
                 }
-                Some(Step::Sleep(pause)) => std::thread::sleep(pause),
-                None => {
-                    let stopped = self.stopped.lock().unwrap_or_else(|e| e.into_inner());
-                    let _held = self
-                        .changed
-                        .wait_while(stopped, |stopped| !*stopped)
-                        .unwrap_or_else(|e| e.into_inner());
-                    return DriverEvent::Exited {
-                        code: None,
-                        signal: Some(15),
-                    };
-                }
+                continue;
             }
+            if state.stopped {
+                return DriverEvent::Exited {
+                    code: None,
+                    signal: Some(15),
+                };
+            }
+            let _woken = self
+                .changed
+                .wait_while(state, |state| state.script.is_empty() && !state.stopped)
+                .unwrap_or_else(|e| e.into_inner());
         }
     }
 
     fn send_user_message(&self, text: &str) -> Result<(), AgboardError> {
         self.record(Call::Send(text.to_string()));
         self.idle.store(false, Ordering::SeqCst);
+        self.state().script.extend(self.reply.clone());
+        self.changed.notify_all();
         Ok(())
     }
 
@@ -132,16 +147,26 @@ impl AgentDriver for MockDriver {
 
     fn stop(&self, _grace: Duration) {
         self.record(Call::Stop);
-        *self.stopped.lock().unwrap_or_else(|e| e.into_inner()) = true;
+        self.state().stopped = true;
         self.changed.notify_all();
     }
 }
 
 /// A factory whose every driver plays `script`, and the calls all of them receive.
 pub fn factory(script: Vec<Step>) -> (DriverFactory, Calls) {
+    factory_replying(script, Vec::new())
+}
+
+/// [`factory`] for drivers that also play `reply` after every message they receive.
+pub fn factory_replying(script: Vec<Step>, reply: Vec<Step>) -> (DriverFactory, Calls) {
     let calls: Calls = Arc::new(Mutex::new(Vec::new()));
     let shared = calls.clone();
-    let make: DriverFactory =
-        Arc::new(move |_, _| Box::new(MockDriver::new(script.clone(), shared.clone())));
+    let make: DriverFactory = Arc::new(move |_, _| {
+        Box::new(MockDriver::replying(
+            script.clone(),
+            reply.clone(),
+            shared.clone(),
+        ))
+    });
     (make, calls)
 }

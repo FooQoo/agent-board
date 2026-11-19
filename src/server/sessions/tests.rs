@@ -81,3 +81,27 @@ fn keys_are_limited_to_a_safe_alphabet() {
     assert!(!valid_key("has space"));
     assert!(!valid_key(&"a".repeat(65)));
 }
+
+#[test]
+fn a_session_added_from_outside_the_registry_is_counted_with_the_external_ones() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let _external = registry.register(attrs("ext", Tool::Codex, Origin::External));
+    let wall = Utc::now();
+    let board = SessionView {
+        id: "resident:r1".into(),
+        tool: Tool::ClaudeCode,
+        origin: Origin::Board,
+        connected_at: wall - chrono::Duration::seconds(5),
+        last_seen_at: wall,
+        state: State::Connected,
+    };
+    let list = registry.list(&project()).with_session(board);
+    assert_eq!(list.counts.total, 2);
+    assert_eq!(list.counts.connected, 2);
+    assert_eq!(list.counts.by_origin.board, 1);
+    assert_eq!(list.counts.by_origin.external, 1);
+    assert_eq!(list.counts.by_tool.claude_code, 1);
+    assert_eq!(list.counts.by_tool.codex, 1);
+    // The older one comes first.
+    assert_eq!(list.sessions[0].origin, Origin::Board);
+}

@@ -150,7 +150,7 @@ How a stream names its session: a command that waits for tasks sends four header
 | `X-Agboard-Session-Tool` | `claude-code`, `codex`, or `unknown`. |
 | `X-Agboard-Session-Origin` | `board` or `external`. |
 
-The limit on launching is enforced by `SessionRegistry::check_board_launch()`, which the launcher calls before it starts a session: board-launched sessions are limited to one in total, over both tools and all projects. The refusal names the tool that holds the slot. A board-launched session in grace still counts, and external sessions are never limited or counted against the limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+The limit on launching is held by the launcher: it refuses a launch while it has a live child or a waiting restart, and also when `SessionRegistry::check_board_launch()` finds a board-origin wait of a session it does not know. Board-launched sessions are limited to one in total, over both tools and all projects. The refusal names the tool that holds the slot. External sessions are never limited or counted against the limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
 
 ### Launching sessions
 
@@ -163,7 +163,7 @@ These routes start and stop the headless sessions the board launches (see [Launc
 | `PUT /api/projects/{projectId}/sessions/autostart` | `{"enabled": boolean, "tool"?: "claude-code" \| "codex", "model"?: string}`. Saves whether a session starts with the server, and which: this tool, in this project, with this model (a missing, empty, or `"default"` model leaves the choice to the tool). There is one choice in total; saving replaces it. `tool` is required when `enabled` is `true` (else 422 `invalid_value`, as for an unknown tool or a model that is a flag). It does not launch anything and does not stop a running session. Returns `{"autoStart": {"tool", "projectId", "model"}}`, or `{"autoStart": null}` when `enabled` is `false`. An unknown project: 404 `project_not_found`; no existing bound folder: 409 `project_has_no_folder`. The stored file is in [Shared files](./files.md#session-auto-start). |
 | `POST /api/projects/{projectId}/sessions/stop` | `{}`. Stops the launched session, which is one in total, so the request names no tool (a `tool` in the body is accepted and ignored). Returns `{"stopped": true}` when the call returns, or `{"stopped": false}` when none was running. It also clears a waiting restart or a shown failure. The session no longer counts, so a new launch is possible at once. |
 
-`GET /api/projects/{projectId}/sessions` also carries `launched`, the sessions of that project that the launcher holds a process for, as `[{"tool", "projectId", "model", "startedAt"}]`. It has no process ID. A launched session appears in `sessions` (with `origin: "board"`) only once its own wait has attached.
+`GET /api/projects/{projectId}/sessions` also carries `launched`, the sessions of that project that the launcher holds a process for, as `[{"tool", "projectId", "model", "startedAt"}]`. It has no process ID. A launched session appears in `sessions` (with `origin: "board"`, and an `id` of `resident:` plus its launch ID) once its driver has reported its first event. It does not wait on the board, so the server adds it to the registry's list and counts: `state` is `connected` while the session is idle between turns and `grace` while it works. External sessions are listed and counted by their waits as before.
 
 #### Session health
 
@@ -177,6 +177,7 @@ These routes start and stop the headless sessions the board launches (see [Launc
   "model": "sonnet",
   "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
   "waiting": false,
+  "pushStalled": [],
   "restartCount": 2,
   "lastExitAt": "2026-11-19T03:00:00Z",
   "nextRestartAt": "2026-11-19T03:00:04Z",
@@ -184,7 +185,7 @@ These routes start and stop the headless sessions the board launches (see [Launc
 }
 ```
 
-When nothing is launched, it is `{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}` (with `autoStart` set when a choice is saved).
+When nothing is launched, it is `{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}` (with `autoStart` set when a choice is saved).
 
 | Field | Meaning |
 | --- | --- |
@@ -192,7 +193,8 @@ When nothing is launched, it is `{"tool": null, "state": "stopped", "projectId":
 | `state` | `running`: the board keeps a session running, and its child exists. `restarting`: the child ended and a restart is waiting for `nextRestartAt`. `failed`: the board gave up, or could not start the session, and `reason` says why. `stopped`: nothing is kept running. |
 | `projectId`, `model` | What the board relaunches. `null` while `stopped`. |
 | `reason` | Why the session is `restarting` or `failed`; `null` otherwise. A crash loop ends in `failed` with a reason that says the board stopped restarting. |
-| `waiting` | `true` while the session's wait is registered on the board. A `running` session with `waiting: false` is working on a task, and is never ended for that. |
+| `waiting` | `true` while the session is attached and idle between two turns, so the board can hand it work. A `running` session with `waiting: false` is working, and is never ended for that. |
+| `pushStalled` | Items the board pushed to the session several times without the session handling them, and gave up on, each as a sentence. Empty when there are none; an item leaves the list when it leaves the board. See [Push mode](../concepts/agents.md#push-mode). |
 | `restartCount` | The restarts since the last launch or stop by a person. |
 | `lastExitAt` | When the child last ended without a stop by a person; `null` if it never did. |
 | `nextRestartAt` | When the waiting restart starts; `null` unless `restarting`. |

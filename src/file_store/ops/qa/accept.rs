@@ -13,6 +13,7 @@ use crate::file_store::transaction::save_batch_locked;
 
 /// A message after an agent accepted it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)] // a question view is larger than a request view; boxing would change every caller
 pub enum Accepted {
     Request(RequestView),
     Question(QuestionView),
