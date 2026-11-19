@@ -135,7 +135,8 @@ fn excerpt(summary: &str) -> String {
 impl FileStore {
     /// Record a result on a task, from the agent side (the CLI). A task that is
     /// archived, a draft, or Done refuses it, as for any agent change, except
-    /// that a retry of a result that was already recorded succeeds quietly.
+    /// that a retry of a result that was already recorded succeeds quietly and
+    /// the first final result may be added to a Done task.
     pub fn add_result(
         &self,
         project: &ProjectId,
@@ -192,7 +193,13 @@ impl FileStore {
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
         }
-        ensure_ai_task_not_done(&task, crate::domain::Actor::Ai)?;
+        // A final result may still be recorded on a Done task that has none: automatic Done
+        // can happen before the agent writes it.
+        let late_final = input.kind == ResultKind::Final
+            && !task.results.iter().any(|r| r.kind == ResultKind::Final);
+        if !late_final {
+            ensure_ai_task_not_done(&task, crate::domain::Actor::Ai)?;
+        }
         if task.draft == Some(Draft::Human) {
             return Err(AgboardError::TaskIsDraft { id });
         }

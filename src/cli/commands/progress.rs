@@ -44,6 +44,13 @@ pub fn render(table: &Progress) -> String {
         }
         out.push('\n');
     }
+    if !table.final_result_missing.is_empty() {
+        out.push_str("Final result missing (record with result add --final)\n");
+        for task in &table.final_result_missing {
+            let _ = writeln!(out, "  #{} {}", task.id, task.title);
+        }
+        out.push('\n');
+    }
     for epic in &table.epics {
         let _ = writeln!(out, "{} {}", epic.id, epic.name);
         for task in &epic.tasks {
