@@ -93,6 +93,9 @@ fn build_script_passes_and_watches_the_dist_directory_when_built() {
     let dir = fake_manifest(&[
         "logo.png",
         "logo-white.png",
+        "home-icon-180.png",
+        "home-icon-192.png",
+        "home-icon-512.png",
         "access/index.html",
         "access/entry.js",
         "assets/app-A.js",
@@ -518,7 +521,13 @@ fn logos_are_served_as_png() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("web/dist");
-    for name in ["logo.png", "logo-white.png"] {
+    for name in [
+        "logo.png",
+        "logo-white.png",
+        "home-icon-180.png",
+        "home-icon-192.png",
+        "home-icon-512.png",
+    ] {
         let reply = server.get(&format!("/{name}"));
         assert_eq!(reply.status, 200, "{name}");
         assert_eq!(reply.content_type.as_deref(), Some("image/png"), "{name}");

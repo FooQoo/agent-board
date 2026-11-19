@@ -9,7 +9,7 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 | ルート | 内容 |
 | --- | --- |
 | GET/HEAD `/` | ボードのページ。PCと同じHTMLで、`meta[name=agboard-token]`は空。トークン・session・ボードのデータは含まない。ngrokの警告ページで**Visit Site**を押すとこのアドレスに戻る。 |
-| GET/HEAD `/assets/{name}`、`/logo.png`、`/logo-white.png`、`/docs-sandbox`、`/docs-sandbox/{name}` | 内容で名前を付けたスクリプトとスタイルシート、ロゴ、固定のDocsサンドボックスのページ。どれもトークンやボードのデータを持たないので、入口の検査は通すがsessionは要らない。 |
+| GET/HEAD `/assets/{name}`、`/logo.png`、`/logo-white.png`、`/home-icon-{180,192,512}.png`、`/docs-sandbox`、`/docs-sandbox/{name}` | 内容で名前を付けたスクリプトとスタイルシート、ロゴ、背景が白で不透明なホーム画面用アイコン、固定のDocsサンドボックスのページ。どれもトークンやボードのデータを持たないので、入口の検査は通すがsessionは要らない。 |
 | GET `/api/remote/session` | Cookieの有効なsessionを知らせ、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。有効なsessionがなくても、有効な`agboard_ngrok_device`のCookie（登録済みの端末で、この公開アドレスに結び付く）があれば、ここで合言葉なしに新しいsessionを開き、同じ本文で200を返し、`agboard_ngrok_session`のCookieと更新した端末Cookieを設定する。なければ401 `session_required`で、何も設定しない。クロスサイトの`Sec-Fetch-Site`は403。 |
 | POST `/api/remote/unlock` | 合言葉をsessionと交換する。本文はJSONの`{"code":"1234"}`で256バイトまで。公開Originと`Sec-Fetch-Site: same-origin`が必要で、CSRFトークンは要らない。正しければCookie`agboard_ngrok_session`（`Path=/`）と、ブラウザが登録済みの端末のCookieをまだ持っていなければ新しい`agboard_ngrok_device`（`Secure; HttpOnly; SameSite=Lax; Path=/`、`Max-Age=34560000`）を設定し、`csrfToken`・`expiresAt`・`expiresInSeconds`を返す。間違いは手がかりを示さない403 `unlock_failed`。連続5回間違えたあとは、正しい合言葉も含むすべての試行が、接続を開始し直すまで429 `unlock_locked`になる。Originやフェッチサイトの不備は403 `forbidden`、JSONと宣言されていない本文は415、256バイトを超える本文は413、解釈できない本文は400（どれも推測として数えない）。 |
 | GET `/api/remote/push` | sessionが必要。`{deviceRegistered, publicKey, subscribed}`を返す。sessionに登録済みの端末があるか、購読に使うVAPIDの公開鍵、端末がすでに購読しているか。登録済みの端末がなければ`{"deviceRegistered": false}`だけで、鍵は返さない。 |
