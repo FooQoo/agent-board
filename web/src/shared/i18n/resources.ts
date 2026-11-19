@@ -8,6 +8,7 @@ import { docsEntryEn } from './locales/en/docs-entry';
 import { editEn } from './locales/en/edit';
 import { messagesEn } from './locales/en/messages';
 import { monitorEn } from './locales/en/monitor';
+import { pushEn } from './locales/en/push';
 import { questionsEn } from './locales/en/questions';
 import { residentEn } from './locales/en/resident';
 import { commonJa } from './locales/ja/common';
@@ -20,6 +21,7 @@ import { docsEntryJa } from './locales/ja/docs-entry';
 import { editJa } from './locales/ja/edit';
 import { messagesJa } from './locales/ja/messages';
 import { monitorJa } from './locales/ja/monitor';
+import { pushJa } from './locales/ja/push';
 import { questionsJa } from './locales/ja/questions';
 import { residentJa } from './locales/ja/resident';
 
@@ -33,6 +35,7 @@ export const resources = {
       ...editEn,
       ...messagesEn,
       ...monitorEn,
+      ...pushEn,
       ...questionsEn,
       ...residentEn,
       ...dataLayerConnectionEn,
@@ -50,6 +53,7 @@ export const resources = {
       ...editJa,
       ...messagesJa,
       ...monitorJa,
+      ...pushJa,
       ...questionsJa,
       ...residentJa,
       ...dataLayerConnectionJa,

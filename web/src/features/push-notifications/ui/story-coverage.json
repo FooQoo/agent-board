@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "files": [
+    {
+      "file": "features/push-notifications/ui/PushEntryRow.tsx",
+      "exports": [
+        {
+          "name": "PushEntryRow",
+          "stories": [
+            {
+              "id": "pushnotifications-pushentryrow--off",
+              "states": ["off", "enable button asks for the permission"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--on",
+              "states": ["on", "turn-off button"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--denied",
+              "states": ["denied", "how to allow it again", "no button"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--unsupported-iphone-tab",
+              "states": ["iPhone tab", "add to Home Screen", "no button"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--unsupported-browser",
+              "states": ["browser cannot receive", "no button"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--needs-device",
+              "states": ["session without a registered device"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--busy",
+              "states": ["button disabled while working"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushentryrow--failed",
+              "states": ["failure message"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

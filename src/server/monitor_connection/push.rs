@@ -9,10 +9,8 @@
 //! The VAPID key pair (P-256) is made once, the first time something asks for it, and kept in
 //! `<data_dir>/.internal/vapid-key.json` (owner-only). The private key never leaves this
 //! module except through [`PushStore::vapid_signer`], which the sender uses to sign.
-//!
-//! An unreadable or unrecognized subscription file is treated as an empty list; the phones
-//! subscribe again. An unreadable key file is replaced by a new key pair, which makes the old
-//! subscriptions unusable, so they are dropped with it.
+//! An unreadable subscription file is an empty list; a lost key file is replaced, dropping the
+//! subscriptions made for the old key.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;

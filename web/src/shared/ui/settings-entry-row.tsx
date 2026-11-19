@@ -13,14 +13,16 @@ export function SettingsEntryRow({
   title,
   body,
   action,
+  disabled = false,
   onOpen,
 }: {
   icon: LucideIcon;
   title: string;
   body: string;
-  /** The button's label. */
-  action: string;
-  onOpen: () => void;
+  /** The button's label. A row with no label is a note with no button. */
+  action?: string;
+  disabled?: boolean;
+  onOpen?: () => void;
 }) {
   const titleId = useId();
   const bodyId = useId();
@@ -38,16 +40,19 @@ export function SettingsEntryRow({
             {body}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="m"
-          className="settings-entry__action"
-          aria-describedby={bodyId}
-          onClick={onOpen}
-        >
-          {action}
-        </Button>
+        {action !== undefined && onOpen !== undefined ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="m"
+            className="settings-entry__action"
+            aria-describedby={bodyId}
+            disabled={disabled}
+            onClick={onOpen}
+          >
+            {action}
+          </Button>
+        ) : null}
       </div>
     </section>
   );
