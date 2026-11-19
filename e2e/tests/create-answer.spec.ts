@@ -148,10 +148,10 @@ test('a waiting card opens its answer in a dialog; Later closes it without sendi
   const dialog = await openAnswer(page);
   const note = answerNote(page);
   await expect(dialog).toContainText('Waiting for confirmation on how to replace a board.');
-  // A question with options cannot be sent with a note alone.
+  // Nothing to send yet; a note alone is enough, even for a question with options.
   await expect(answerSend(page)).toBeDisabled();
   await note.fill('Keep the current name.\nDo not migrate.');
-  await expect(answerSend(page)).toBeDisabled();
+  await expect(answerSend(page)).toBeEnabled();
 
   // Later closes the dialog without sending, and keeps nothing: the card still asks the question.
   await laterButton(page).click();
