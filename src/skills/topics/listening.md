@@ -1,6 +1,6 @@
 # Listen for tasks in one session
 
-Use this procedure only when the user explicitly asks you to listen for work. It keeps one already-open agent session working through one project's eligible tasks in order. It does not start an agent, resume a closed conversation, or claim tasks.
+Use this procedure only when the user explicitly asks you to listen for work. It keeps one already-open agent session working through one project's eligible tasks in order. It does not start an agent, resume a closed conversation, or claim tasks. The plugin's `wait` skill (`/agent-board:wait`) is the resident form of this procedure: it uses 3600 seconds when no timeout is given and starts the wait again after `idle_timeout`.
 
 ## Start listening
 

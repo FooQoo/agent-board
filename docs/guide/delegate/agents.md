@@ -169,6 +169,8 @@ The timeout is required and must be from 1 to 86,400 seconds; there is no defaul
 
 Use the listener procedure of the agent-board skill (printed by `agboard skills listening`) for the full loop, including pending decisions and recovery after a session is interrupted. A Pending task keeps the same session waiting for the answer; it is not another task to skip to, and its time does not count toward idle timeout. After the answer, read it and resume that task before listening again.
 
+To keep a session on the board without typing the command, invoke the plugin's `wait` skill (`/agent-board:wait` in Claude Code). It follows the listener procedure with a 3600-second idle timeout when you give none, and starts the wait again after each `idle_timeout`, so the session stays attached until you interrupt it or an error stops it. It handles answers and requests before tasks.
+
 `idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](../reference/cli#wait-for-changes-or-a-task) for the output and error codes.
 
 ## Drafts and errors

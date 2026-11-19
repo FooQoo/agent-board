@@ -155,3 +155,21 @@ fn the_remote_skill_hands_out_the_address_without_starting_anything() {
         assert!(skill.contains(needed), "the remote Skill omits {needed}");
     }
 }
+
+#[test]
+fn the_wait_skill_keeps_listening_after_an_idle_timeout() {
+    let path = repo("plugins/agent-board/skills/wait/SKILL.md");
+    let skill = std::fs::read_to_string(path).unwrap();
+    assert!(skill.starts_with("---\nname: wait\n"));
+    for needed in [
+        "allowed-tools: Bash(agboard *)",
+        "agboard skills listening",
+        "idle_timeout",
+        "3600",
+        "board_unavailable",
+        "local_network_denied",
+        "project_not_found",
+    ] {
+        assert!(skill.contains(needed), "the wait Skill omits {needed}");
+    }
+}

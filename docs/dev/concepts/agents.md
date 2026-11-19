@@ -8,6 +8,7 @@ Agents use Agent Board through three pieces: the skill that tells them how to wo
 | --- | --- | --- |
 | Skill `agent-board` | `src/skills/agent-board.md` and `src/skills/topics/`, printed by `agboard skills`; the plugin's `SKILL.md` only runs that command | Judgment: how to choose work, report progress, ask decisions, and respect drafts and Done tasks. |
 | Skill `remote` | `plugins/agent-board/skills/remote/SKILL.md` | Hands the user the phone address and passcode from `agboard remote --json`; starts nothing. |
+| Skill `wait` | `plugins/agent-board/skills/wait/SKILL.md` | Keeps a session listening: follows `agboard skills listening` with a 3600-second default timeout and restarts the wait after `idle_timeout`. |
 | Hook | `agboard hook` (`src/agent/hook.rs`) | Fetching and formatting: after tool calls, attach the current progress table to the agent's context. |
 | Progress table | `src/progress.rs` | The list of workable tasks, shared by `agboard progress` and the hook. |
 | `wait` | `src/agent/wait.rs`, `src/agent/task_wait.rs` | Block until the project changes or the next task is ready. |
@@ -106,6 +107,7 @@ The Skill and the Hook are distributed as one plugin, `agent-board`, from a mark
 | `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | The plugin manifests. |
 | `plugins/agent-board/skills/agent-board/` | The thin entry of the Skill: `SKILL.md` only. |
 | `plugins/agent-board/skills/remote/` | The `remote` Skill: `SKILL.md` only. |
+| `plugins/agent-board/skills/wait/` | The `wait` Skill: `SKILL.md` only. |
 | `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | The Hook of each agent. |
 
 The plugin versions in both manifests equal the crate version, and the Hook commands carry no version: they are exactly `agboard hook --agent <agent>`. `tests/plugin_layout.rs` and `scripts/release/check-version.py` check this, so a release tag always holds a plugin of the same version as the binary.
@@ -132,7 +134,7 @@ The 256 KiB table, 10 second limit, event allowlist, and fixed command stay. The
 
 The `agent-board` Skill text is embedded in `agboard` at build time, so it always matches the binary that runs it. `agboard skills` prints the main text (`src/skills/agent-board.md`, without frontmatter). `agboard skills <topic>` prints one reference or template: `file-format`, `listening`, `planning`, `fixed-epic-bodies`, `drafts`, `phone`, `task-template`, `epic-template`, `bug-epic-template`, or `enhancement-epic-template` (`src/skills/topics/`). The main text says when to run each situational topic. Claude Code inlines a `!` command's output only up to about 30,000 characters (a longer one is cut to a preview), so a unit test keeps the main text and every topic at 28,000 characters or fewer; move situational sections into topics when it grows. A name that is no topic prints the list of topics. The command reads and writes nothing, takes no lock, starts no server, uses no network, and always exits 0; this holds even when no data area can be resolved.
 
-The plugin's `SKILL.md` keeps `name`, `description`, and `compatibility`, adds `allowed-tools: Bash(agboard *)`, and has one body line, `` !`agboard skills` ``. Claude Code replaces that line with the command's output when the Skill is invoked, and the `allowed-tools` rule lets the command and the agent's later `agboard` commands run without a prompt. The injection works only for a plain command: `$(...)` and compound commands are not replaced. Agents without command injection (Codex) read the sentence after it and run `agboard skills` themselves. The `remote` Skill stays static in the plugin. The project's `.claude/skills/agent-board` is a symbolic link to the plugin's Skill folder, so this repository's own Claude Code sessions use the same entry and the `agboard` on `PATH`.
+The plugin's `SKILL.md` keeps `name`, `description`, and `compatibility`, adds `allowed-tools: Bash(agboard *)`, and has one body line, `` !`agboard skills` ``. Claude Code replaces that line with the command's output when the Skill is invoked, and the `allowed-tools` rule lets the command and the agent's later `agboard` commands run without a prompt. The injection works only for a plain command: `$(...)` and compound commands are not replaced. Agents without command injection (Codex) read the sentence after it and run `agboard skills` themselves. The `remote` and `wait` Skills stay static in the plugin. The project's `.claude/skills/agent-board` is a symbolic link to the plugin's Skill folder, so this repository's own Claude Code sessions use the same entry and the `agboard` on `PATH`.
 
 ## Automatic plugin update
 

@@ -74,7 +74,7 @@
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
-- `plugins/agent-board/`: Agent Boardプラグインです。マニフェスト、`skills/agent-board/`の`agent-board`スキルの薄い入口、`skills/remote/`の`remote`スキル、`hooks/`の各エージェントのHookを置きます。
+- `plugins/agent-board/`: Agent Boardプラグインです。マニフェスト、`skills/agent-board/`の`agent-board`スキルの薄い入口、`skills/remote/`の`remote`スキル、`skills/wait/`の`wait`スキル、`hooks/`の各エージェントのHookを置きます。
 - `.agents/plugins/marketplace.json`と`.claude-plugin/marketplace.json`: CodexとClaude Codeのマーケットプレイスのカタログです。
 
 ### プラグインのsetupとupdate
