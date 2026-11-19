@@ -47,6 +47,9 @@ fn is_public(method: &Method, path: &str) -> bool {
         path,
         "/" | "/logo.png"
             | "/logo-white.png"
+            | "/home-icon-180.png"
+            | "/home-icon-192.png"
+            | "/home-icon-512.png"
             | "/manifest.webmanifest"
             | "/sw.js"
             | "/docs-sandbox"

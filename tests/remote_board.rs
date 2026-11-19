@@ -444,7 +444,13 @@ fn the_page_and_its_static_files_carry_no_token_and_need_no_session() {
             }
         }
     }
-    files.extend(["/logo.png".into(), "/logo-white.png".into()]);
+    files.extend([
+        "/logo.png".into(),
+        "/logo-white.png".into(),
+        "/home-icon-180.png".into(),
+        "/home-icon-192.png".into(),
+        "/home-icon-512.png".into(),
+    ]);
     files.extend(["/docs-sandbox".into()]);
     assert!(files.iter().any(|f| f.starts_with("/assets/")), "{files:?}");
     let sandbox = server.request("GET", "/docs-sandbox", &[], "");
