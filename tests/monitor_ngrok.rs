@@ -1,7 +1,7 @@
 //! The ngrok monitor entrance over real HTTP on loopback: what the dedicated
 //! backend admits.
 //!
-//! No test reaches ngrok. A fake connector opens the "tunnel", and the tests
+//! No test reaches ngrok. A mock connector opens the "tunnel", and the tests
 //! speak to the backend as the Edge would (the public Host). The Edge is opened
 //! without a Traffic Policy and sets no header the app relies on: the entrance is
 //! the exact public Host and the passcode of the start, which opens a session
@@ -60,7 +60,7 @@ fn fixture() -> tempfile::TempDir {
     home
 }
 
-/// A running server with the fake tunnel up.
+/// A running server with the mock tunnel up.
 struct Tunnel {
     s: Server,
     home: tempfile::TempDir,
@@ -92,7 +92,7 @@ impl Tunnel {
     }
 
     fn current(s: &Server) -> SocketAddr {
-        let calls = s.fake.calls.lock().unwrap();
+        let calls = s.mock.calls.lock().unwrap();
         backend_addr(calls.last().unwrap())
     }
 
@@ -217,7 +217,7 @@ fn the_endpoint_is_opened_without_a_traffic_policy_and_nothing_checks_a_proof_he
     // can run it.
     let t = Tunnel::up();
     {
-        let calls = t.s.fake.calls.lock().unwrap();
+        let calls = t.s.mock.calls.lock().unwrap();
         let call = calls.last().unwrap();
         assert_eq!(call.token, TOKEN);
         assert!(call.backend.starts_with("http://127.0.0.1:"));
@@ -654,12 +654,12 @@ fn a_session_dies_with_the_run_that_issued_it() {
         200
     );
     let old_backend = t.backend;
-    let opens = t.s.fake.opens.load(Ordering::SeqCst);
+    let opens = t.s.mock.opens.load(Ordering::SeqCst);
 
     // A new start means a new tunnel, passcode and session store.
     assert_eq!(t.s.start_ngrok(json!({})).status, 202);
     let end = Instant::now() + Duration::from_secs(10);
-    while t.s.fake.opens.load(Ordering::SeqCst) <= opens {
+    while t.s.mock.opens.load(Ordering::SeqCst) <= opens {
         assert!(Instant::now() < end, "the tunnel was not replaced");
         std::thread::sleep(Duration::from_millis(20));
     }

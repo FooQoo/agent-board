@@ -1,7 +1,7 @@
 //! `agboard remote`: the ngrok connection state, the public address with the
 //! project, and the passcode, read from a real server on loopback.
 //!
-//! No test connects to ngrok: the tunnel is opened by a fake connector.
+//! No test connects to ngrok: the tunnel is opened by a mock connector.
 
 #[path = "support/mobile_monitor.rs"]
 mod support;
@@ -139,7 +139,7 @@ fn a_connection_that_is_not_ready_fails_and_prints_no_address_or_passcode() {
     assert!(!err(&run).contains(PUBLIC));
 
     // A connection that failed to start.
-    *s.fake.fail.lock().unwrap() = true;
+    *s.mock.fail.lock().unwrap() = true;
     assert_eq!(s.put(true, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({"token": TOKEN})).status, 202);
     s.wait_status("failed");
