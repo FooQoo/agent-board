@@ -55,6 +55,39 @@ impl PublicOrigin {
         ))
     }
 
+    /// The address that opens one task on the phone on its History tab:
+    /// `https://host[:port]/?project=<id>&task=<n>&tab=history`. `None` under the same limits as
+    /// [`PublicOrigin::task_link`].
+    pub fn history_link(&self, project_id: &str, task_id: i64) -> Option<String> {
+        Some(format!(
+            "{}&tab=history",
+            self.task_link(project_id, task_id)?
+        ))
+    }
+
+    /// The address that opens one question on the phone:
+    /// `https://host[:port]/?project=<id>&task=<n>&question=<Q-n>`. The task is the card that waits
+    /// on it, so the page can fall back to the card when the question is gone. `None` under the
+    /// limits of [`PublicOrigin::task_link`], or when the id is not `Q-` and a positive number.
+    pub fn question_link(
+        &self,
+        project_id: &str,
+        task_id: i64,
+        question_id: &str,
+    ) -> Option<String> {
+        let digits = question_id.strip_prefix("Q-")?;
+        let valid = (1..=16).contains(&digits.len())
+            && digits.bytes().all(|b| b.is_ascii_digit())
+            && !digits.starts_with('0');
+        if !valid {
+            return None;
+        }
+        Some(format!(
+            "{}&question={question_id}",
+            self.task_link(project_id, task_id)?
+        ))
+    }
+
     /// The address that opens one project on the phone: `https://host[:port]/?project=<id>`.
     /// `None` when the project is not 32 lowercase hex digits.
     pub fn project_link(&self, project_id: &str) -> Option<String> {

@@ -87,7 +87,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   );
   const boardData = view === 'board' ? boardView : null;
   const tasks = isProjectId(activeId) ? (boardData?.tasks ?? []) : [];
-  const messages = useMessagesController(activeId, boardData?.messages ?? null);
+  const messages = useMessagesController(activeId, boardData?.messages ?? null, link.resultLink);
 
   const selected = findTask(tasks, session.selectedId);
   useLinkedTaskSelection(link.resultLink, boardData, session, dispatch);

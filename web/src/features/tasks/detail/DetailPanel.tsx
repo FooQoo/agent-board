@@ -53,6 +53,8 @@ export interface DetailPanelProps {
   restoreFailed?: boolean;
   /** The result version a link points at: the panel opens its results tab on it. */
   focusResultVersion?: number | null;
+  /** A history link: the panel opens its history tab. */
+  focusHistory?: boolean;
 }
 
 export function DetailPanel({
@@ -78,6 +80,7 @@ export function DetailPanel({
   epicsFailed = false,
   onRetryEpics,
   focusResultVersion = null,
+  focusHistory = false,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (task === null || projectId === null) {
@@ -116,6 +119,7 @@ export function DetailPanel({
       onRetryEpics={onRetryEpics}
       attachmentUrl={attachmentUrl}
       focusResultVersion={focusResultVersion}
+      focusHistory={focusHistory}
     />
   );
 }
@@ -152,15 +156,20 @@ function DetailBody({
   epicsFailed,
   onRetryEpics,
   focusResultVersion = null,
+  focusHistory = false,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<DetailTab>(
-    focusResultVersion === null ? 'description' : 'results',
+    focusResultVersion !== null ? 'results' : focusHistory ? 'history' : 'description',
   );
   // A link to another result of the same task opens the results tab again.
   useEffect(() => {
     if (focusResultVersion !== null) setTab('results');
   }, [focusResultVersion]);
+  // A link to the history of a task opens the history tab.
+  useEffect(() => {
+    if (focusHistory) setTab('history');
+  }, [focusHistory]);
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftFailed, setDraftFailed] = useState(false);
