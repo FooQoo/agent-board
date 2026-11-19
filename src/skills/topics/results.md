@@ -25,7 +25,7 @@ A result is a notification, not a question. Feedback on it is optional. Do not p
 
 ## When a choice is needed, ask with `message ask`
 
-Only when the work cannot go on without the user's choice, or a wrong guess would be costly to undo, put the concrete question on the existing questions (section 7 of the main instructions, `agboard skills`). Deliver the result first if it helps the user decide, then ask, with the choices and your recommendation:
+Section 7 of the main instructions (`agboard skills`) decides when to call the user: unclear intent, a preference or value, an action that cannot be undone, or growing scope. When one applies, put the concrete question on the board with `message ask`; otherwise decide, record the decision in history, and keep working. Deliver the result first if it helps the user decide, then ask, with the choices and your recommendation:
 
 ```sh
 agboard --project "<name>" message ask --actor ai --task <id> --questions-json - --json <<'JSON'
