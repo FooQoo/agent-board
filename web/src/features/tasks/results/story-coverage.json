@@ -14,6 +14,11 @@
               "interaction": true
             },
             {
+              "id": "task-detail-resultsview--url-link",
+              "states": ["http(s) link as anchor", "local path stays text"],
+              "interaction": true
+            },
+            {
               "id": "task-detail-resultsview--focused",
               "states": ["linked version highlighted"],
               "interaction": true
