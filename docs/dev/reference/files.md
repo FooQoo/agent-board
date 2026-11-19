@@ -58,6 +58,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   autostart.paused
   .internal/monitor-connection.json
   .internal/preferences.json
+  .internal/resident-autostart.json
 ```
 
 - JSON is UTF-8, camelCase, two-space indented, with one trailing newline. Unknown fields are rejected.
@@ -234,6 +235,27 @@ The saved language and color theme live in `<data-root>/.internal/preferences.js
 | `theme.accent` | One of the 12 accents: `blue`, `sky`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `purple`, `gray`. The default is `blue`. |
 
 A save changes only the fields it sends; the others keep their saved values. The last save wins, and there is no conflict check. The preferences hold no secret, and the file never holds a token, a passcode, or a session.
+
+## Session auto-start
+
+The session the board launches when the server starts is saved in `<data-root>/.internal/resident-autostart.json`. The board launches one session in total, so there is at most one choice. The file belongs to the application: it is written only by `PUT /api/projects/{projectId}/sessions/autostart` on the local listener, never by hand. It is not in `shared/`. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+
+```json
+{
+  "formatVersion": 2,
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `2`. Any other value (including the earlier per-tool format `1`), an unknown field, or a malformed file reads as nothing to start. |
+| `autoStart` | The choice, or `null` for none. |
+| `autoStart.tool` | `claude-code` or `codex`. |
+| `autoStart.projectId` | The project whose bound folder the session starts in. |
+| `autoStart.model` | A model name, or `null` for the tool's own default. |
+
+The file holds no secret. A project that no longer exists, or has no bound folder, is not removed from the file: the start shows as `failed` with the reason, and the choice stays until it is turned off.
 
 ## Task JSON and snapshots
 

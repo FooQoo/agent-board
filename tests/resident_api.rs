@@ -76,11 +76,7 @@ fn a_session_is_launched_listed_refused_twice_and_stopped() {
     assert_eq!(again.status, 409);
     assert_eq!(again.code(), "session_launch_refused");
 
-    let stopped = server.write(
-        "POST",
-        &format!("{base}/stop"),
-        Some(r#"{"tool":"claude-code"}"#),
-    );
+    let stopped = server.write("POST", &format!("{base}/stop"), Some("{}"));
     assert_eq!(stopped.status, 200);
     assert_eq!(stopped.json()["stopped"], true);
     assert_eq!(
@@ -130,5 +126,79 @@ fn launching_needs_the_page_guard_and_a_known_tool_and_project() {
     );
     assert_eq!(missing.status, 404);
     assert_eq!(missing.code(), "project_not_found");
+    server.stop();
+}
+
+#[test]
+fn health_is_listed_and_auto_start_is_saved_guarded_and_used_at_the_next_start() {
+    fake_claude();
+    let home = tempdir().unwrap();
+    demo_project(home.path());
+    let server = Running::start(home.path());
+    let id = project_id(&server);
+    let base = format!("/api/projects/{id}/sessions");
+
+    let health = server.get(&base).json()["health"].clone();
+    assert_eq!(health["tool"], Value::Null);
+    assert_eq!(health["state"], "stopped");
+    assert_eq!(health["autoStart"], Value::Null);
+
+    let unguarded = server.request(
+        "PUT",
+        &format!("{base}/autostart"),
+        Some(r#"{"tool":"claude-code","enabled":true}"#),
+        &[],
+        Some("application/json"),
+    );
+    assert_eq!(unguarded.status, 403);
+    for body in [
+        r#"{"tool":"unknown","enabled":true}"#,
+        r#"{"enabled":true}"#,
+        r#"{"tool":"claude-code","enabled":true,"model":"--help"}"#,
+    ] {
+        let refused = server.write("PUT", &format!("{base}/autostart"), Some(body));
+        assert_eq!(refused.status, 422, "{body}");
+    }
+
+    let saved = server.write(
+        "PUT",
+        &format!("{base}/autostart"),
+        Some(r#"{"tool":"claude-code","enabled":true,"model":"sonnet"}"#),
+    );
+    assert_eq!(saved.status, 200, "{}", saved.body);
+    assert_eq!(saved.json()["autoStart"]["projectId"], id.as_str());
+    assert_eq!(saved.json()["autoStart"]["tool"], "claude-code");
+    let health = server.get(&base).json()["health"].clone();
+    assert_eq!(health["autoStart"]["model"], "sonnet");
+    assert_eq!(health["state"], "stopped");
+    server.stop();
+
+    // The next server starts the session by itself.
+    let server = Running::start(home.path());
+    let mut state = Value::Null;
+    for _ in 0..600 {
+        state = server.get(&base).json()["health"].clone();
+        if state["state"] == "running" {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert_eq!(state["state"], "running", "{state}");
+    assert_eq!(state["tool"], "claude-code");
+    assert_eq!(server.get(&base).json()["launched"][0]["model"], "sonnet");
+
+    let off = server.write(
+        "PUT",
+        &format!("{base}/autostart"),
+        Some(r#"{"enabled":false}"#),
+    );
+    assert_eq!(off.json()["autoStart"], Value::Null);
+    // A stop names no tool.
+    let stopped = server.write("POST", &format!("{base}/stop"), Some("{}"));
+    assert_eq!(stopped.status, 200);
+    assert_eq!(stopped.json()["stopped"], true);
+    let health = server.get(&base).json()["health"].clone();
+    assert_eq!(health["state"], "stopped");
+    assert_eq!(health["autoStart"], Value::Null);
     server.stop();
 }

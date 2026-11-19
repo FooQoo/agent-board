@@ -22,6 +22,7 @@ case "$1" in
   login) if [ -f "$d/logged-out" ]; then exit 1; fi; exit 0 ;;
   debug) cat "$d/models.json"; exit $?  ;;
 esac
+echo x >> "$d/$n.starts"
 { echo "ARGS: $*"; echo "PWD: $(pwd)"; env; } > "$d/$n.record.tmp"
 mv "$d/$n.record.tmp" "$d/$n.record"
 if [ -f "$d/exit-now" ]; then exit 0; fi
@@ -44,6 +45,10 @@ fn project() -> ProjectId {
 }
 
 fn fixture() -> Fixture {
+    fixture_timed(Timing::default())
+}
+
+fn fixture_timed(timing: Timing) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let folder = tempfile::tempdir().unwrap();
     let bin = |name: &str| {
@@ -58,11 +63,12 @@ fn fixture() -> Fixture {
     std::fs::write(dir.path().join("models.json"), MODELS).unwrap();
     let registry = SessionRegistry::new(Duration::from_secs(30));
     let data = dir.path().join("data");
-    let launcher = Launcher::with_stop_grace(
+    let launcher = Launcher::with_timing(
         registry.clone(),
         Executables::fixed(Some(claude), Some(codex)),
         &data,
         Duration::from_secs(5),
+        timing,
     );
     Fixture {
         dir,
@@ -81,7 +87,7 @@ impl Fixture {
     /// The record the fake script wrote, once it has started.
     fn record(&self, name: &str) -> String {
         let path = self.dir.path().join(format!("{name}.record"));
-        let until = Instant::now() + Duration::from_secs(10);
+        let until = Instant::now() + DEADLINE;
         while Instant::now() < until {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 return text;
@@ -97,8 +103,11 @@ fn alive(pid: u32) -> bool {
     unsafe { libc::kill(pid as i32, 0) == 0 }
 }
 
+/// Every wait for a state polls until it holds, with a deadline far beyond a slow, busy machine.
+const DEADLINE: Duration = Duration::from_secs(60);
+
 fn wait_until(what: &str, mut ready: impl FnMut() -> bool) {
-    let until = Instant::now() + Duration::from_secs(10);
+    let until = Instant::now() + DEADLINE;
     while Instant::now() < until {
         if ready() {
             return;
@@ -196,7 +205,7 @@ fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
     );
     assert!(record.contains("--skip-git-repo-check"));
     assert!(!record.contains(" -m "), "{record}");
-    fx.launcher.stop(Tool::Codex).unwrap();
+    fx.launcher.stop().unwrap();
     fx.launch(Tool::Codex, Some("gpt-a")).unwrap();
     wait_until("the second codex record", || {
         fx.record("codex").contains(" -m gpt-a ")
@@ -205,14 +214,20 @@ fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
 }
 
 #[test]
-fn a_second_launch_of_a_tool_is_refused_with_a_reason_but_another_tool_is_not() {
+fn a_second_launch_is_refused_with_a_reason_whichever_the_tool() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture();
     fx.launch(Tool::ClaudeCode, None).unwrap();
-    let refused = fx.launch(Tool::ClaudeCode, None).unwrap_err();
-    assert_eq!(refused.code(), "session_launch_refused");
-    assert!(refused.reason().contains("already running"));
-    fx.launch(Tool::Codex, None).unwrap();
+    for tool in [Tool::ClaudeCode, Tool::Codex] {
+        let refused = fx.launch(tool, None).unwrap_err();
+        assert_eq!(refused.code(), "session_launch_refused", "{tool:?}");
+        assert!(
+            refused.reason().contains("claude-code"),
+            "{}",
+            refused.reason()
+        );
+        assert!(refused.reason().contains("already running"));
+    }
     fx.launcher.shutdown();
     assert!(fx.launcher.status().is_empty());
 }
@@ -229,6 +244,10 @@ fn a_board_session_the_registry_counts_refuses_a_launch() {
     });
     let refused = fx.launch(Tool::Codex, None).unwrap_err();
     assert_eq!(refused.code(), "session_launch_refused");
+    // The other tool is refused too: the board keeps one session in total.
+    let other = fx.launch(Tool::ClaudeCode, None).unwrap_err();
+    assert_eq!(other.code(), "session_launch_refused");
+    assert!(other.reason().contains("codex"), "{}", other.reason());
     // An external session of the same tool does not count.
     fx.registry.remove_board(Tool::Codex);
     let _external = fx.registry.register(Attributes {
@@ -241,4 +260,6 @@ fn a_board_session_the_registry_counts_refuses_a_launch() {
     fx.launcher.shutdown();
 }
 
+mod autostart;
+mod health;
 mod lifecycle;

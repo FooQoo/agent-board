@@ -2,32 +2,42 @@
 //!
 //! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
 //! approval instead of prompts, and keeps its child process. The session then waits on the board like any other and
-//! registers with origin `board`. At most one session per tool is launched by the board, over all
-//! projects. [`cli`] is the only place that knows the CLIs' names and flags.
+//! registers with origin `board`. The board keeps at most one such session in total, whichever
+//! tool and project. [`cli`] is the only place that knows the CLIs' names and flags.
 //!
 //! A child lives in its own process group, so stopping it also stops the commands it started (for
 //! example its `agboard wait`). A thread reaps each child when it exits, whoever ends it, and
 //! takes its entry out of the session registry so that a launch is possible again at once instead
 //! of after the registry's grace period.
 
+mod autostart;
 pub mod cli;
+mod health;
 mod process;
+mod spawn;
+mod supervisor;
+mod watch;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::clock::{Clock, SystemClock};
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::server::sessions::{SessionRegistry, Tool};
+pub use autostart::{AutoStart, AutoStartStore};
 pub use cli::{Executables, ModelList, ModelOption};
-use process::{Exit, new_launch_id, open_log, terminate};
+pub use health::{Health, HealthState};
+use process::{Exit, terminate};
+use spawn::Spawn;
+use supervisor::Plan;
+pub use supervisor::Timing;
+pub use watch::resolve_project;
 
 /// How long a stopped child has to exit after SIGTERM before it gets SIGKILL.
 const STOP_GRACE: Duration = Duration::from_secs(5);
@@ -40,6 +50,7 @@ struct Live {
     project: ProjectId,
     model: Option<String>,
     started_at: DateTime<Utc>,
+    started: Instant,
     exit: Arc<Exit>,
 }
 
@@ -64,6 +75,10 @@ pub struct Launcher {
     data_dir: PathBuf,
     live: Arc<Mutex<HashMap<Tool, Live>>>,
     stop_grace: Duration,
+    timing: Timing,
+    plans: Mutex<HashMap<Tool, Plan>>,
+    autostart: AutoStartStore,
+    closing: AtomicBool,
 }
 
 impl Launcher {
@@ -81,17 +96,50 @@ impl Launcher {
         data_dir: &Path,
         stop_grace: Duration,
     ) -> Arc<Launcher> {
+        Launcher::with_timing(
+            registry,
+            executables,
+            data_dir,
+            stop_grace,
+            Timing::default(),
+        )
+    }
+
+    pub fn with_timing(
+        registry: Arc<SessionRegistry>,
+        executables: Executables,
+        data_dir: &Path,
+        stop_grace: Duration,
+        timing: Timing,
+    ) -> Arc<Launcher> {
         Arc::new(Launcher {
             registry,
             executables,
             data_dir: data_dir.to_path_buf(),
             live: Arc::new(Mutex::new(HashMap::new())),
             stop_grace,
+            timing,
+            plans: Mutex::new(HashMap::new()),
+            autostart: AutoStartStore::new(data_dir),
+            closing: AtomicBool::new(false),
         })
     }
 
     fn lock(&self) -> MutexGuard<'_, HashMap<Tool, Live>> {
         self.live.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn plans(&self) -> MutexGuard<'_, HashMap<Tool, Plan>> {
+        self.plans.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn is_closing(&self) -> bool {
+        self.closing.load(Ordering::SeqCst)
+    }
+
+    /// The saved auto-start choices.
+    pub fn autostart(&self) -> &AutoStartStore {
+        &self.autostart
     }
 
     /// The log of the session of `tool`, replaced at every launch.
@@ -126,7 +174,7 @@ impl Launcher {
     /// Start a session of `tool` in `folder` for the project named `project_name`. `model` of
     /// `None` uses the tool's own default. Refused while this launcher has a live child of the
     /// tool (which closes the gap before its wait registers) or the registry counts a
-    /// board-launched session of it.
+    /// board-launched session of it. A launch by a person starts supervision: see [`supervisor`].
     pub fn launch(
         self: &Arc<Self>,
         project: &ProjectId,
@@ -135,104 +183,7 @@ impl Launcher {
         tool: Tool,
         model: Option<&str>,
     ) -> Result<Launched, AgboardError> {
-        let tool = cli::launchable(tool)?;
-        if let Some(model) = model.filter(|model| !cli::valid_model(model)) {
-            return Err(AgboardError::InvalidValue {
-                field: "model".to_string(),
-                reason: format!("\"{model}\" is not a model name."),
-            });
-        }
-        let mut live = self.lock();
-        let refused = |reason: String| AgboardError::SessionLaunchRefused { reason };
-        if live.contains_key(&tool) {
-            return Err(refused(format!(
-                "A {} session launched by the board is already running. Stop it first.",
-                tool.as_str()
-            )));
-        }
-        if self.registry.check_board_launch(tool).is_err() {
-            return Err(refused(format!(
-                "A {} session launched by the board is already attached. Stop it first, or wait for it to leave.",
-                tool.as_str()
-            )));
-        }
-        let program = self.executables.check(tool)?;
-        if let Some(model) = model {
-            let offered = self.executables.models(tool)?;
-            if !offered.models.is_empty() && !offered.models.iter().any(|m| m.id == model) {
-                return Err(AgboardError::InvalidValue {
-                    field: "model".to_string(),
-                    reason: format!("\"{model}\" is not one of the models of {}.", tool.as_str()),
-                });
-            }
-        }
-        let failed = |reason: String| AgboardError::SessionLaunchFailed { reason };
-        let log_path = self.log_path(tool);
-        let log = open_log(&log_path)
-            .map_err(|e| failed(format!("Cannot write {}: {e}.", log_path.display())))?;
-        let log_err = log
-            .try_clone()
-            .map_err(|e| failed(format!("Cannot write {}: {e}.", log_path.display())))?;
-        let launch_id = new_launch_id()?;
-        let mut command = Command::new(&program);
-        command
-            .args(cli::launch_args(
-                tool,
-                folder,
-                &self.data_dir,
-                model,
-                &cli::prompt(project_name),
-            ))
-            .current_dir(folder)
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(log))
-            .stderr(Stdio::from(log_err));
-        for (name, _) in std::env::vars_os() {
-            if name.to_str().is_some_and(cli::scrubbed) {
-                command.env_remove(&name);
-            }
-        }
-        command
-            .env("AGBOARD_RESIDENT_ID", &launch_id)
-            .env("AGBOARD_SESSION_TOOL", tool.as_str())
-            .env("AGBOARD_SESSION_ORIGIN", "board");
-        #[cfg(unix)]
-        std::os::unix::process::CommandExt::process_group(&mut command, 0);
-        let mut child = command.spawn().map_err(|e| {
-            failed(format!(
-                "{} could not be started: {e}.",
-                program
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            ))
-        })?;
-        let launched = Live {
-            launch_id: launch_id.clone(),
-            pid: child.id(),
-            project: project.clone(),
-            model: model.map(str::to_string),
-            started_at: SystemClock.now(),
-            exit: Exit::new(),
-        };
-        let view = Launched {
-            tool,
-            pid: launched.pid,
-            project_id: launched.project.clone(),
-            model: launched.model.clone(),
-            started_at: launched.started_at,
-        };
-        let exit = launched.exit.clone();
-        live.insert(tool, launched);
-        drop(live);
-
-        let launcher = self.clone();
-        std::thread::spawn(move || {
-            let _ = child.wait();
-            launcher.forget(tool, &launch_id);
-            exit.finish();
-        });
-        Ok(view)
+        self.spawn_child(project, project_name, folder, tool, model, Spawn::User)
     }
 
     /// Take the launch `launch_id` out of the live set and the registry, when it is still there.
@@ -244,22 +195,40 @@ impl Launcher {
         }
     }
 
-    /// Stop the session of `tool`: SIGTERM to its process group, SIGKILL after the grace time.
+    /// Stop the board-launched session (there is at most one): SIGTERM to its process group,
+    /// SIGKILL after the grace time.
     /// Returns whether a session was running. When it returns, a new launch is possible.
-    pub fn stop(&self, tool: Tool) -> Result<bool, AgboardError> {
+    /// A stop clears what the supervisor keeps, so the session is not restarted and
+    /// a restart that was waiting or a failure that was shown is cleared too.
+    pub fn stop(&self) -> Result<bool, AgboardError> {
+        self.plans().clear();
+        let targets: Vec<(u32, Arc<Exit>)> = self
+            .lock()
+            .values()
+            .map(|live| (live.pid, live.exit.clone()))
+            .collect();
+        if targets.is_empty() {
+            return Ok(false);
+        }
+        terminate(&targets, self.stop_grace);
+        Ok(true)
+    }
+
+    /// End the child of `tool` without clearing its plan (the supervisor ends an unhealthy one).
+    fn kill(&self, tool: Tool) {
         let target = self
             .lock()
             .get(&tool)
             .map(|live| (live.pid, live.exit.clone()));
-        let Some((pid, exit)) = target else {
-            return Ok(false);
-        };
-        terminate(&[(pid, exit)], self.stop_grace);
-        Ok(true)
+        if let Some(target) = target {
+            terminate(&[target], self.stop_grace);
+        }
     }
 
     /// Stop every launched session (the server is shutting down).
     pub fn shutdown(&self) {
+        self.closing.store(true, Ordering::SeqCst);
+        self.plans().clear();
         let targets: Vec<(u32, Arc<Exit>)> = self
             .lock()
             .values()

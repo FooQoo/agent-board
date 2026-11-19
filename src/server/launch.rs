@@ -167,6 +167,10 @@ pub(crate) fn run<F: Future<Output = ()>>(
             ),
         });
         state.monitor.attach(&state);
+        let files = state.shared.clone();
+        state.resident.start(move |project| {
+            resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
+        });
         let app = api::router(state.clone());
 
         // A command-line monitor must be up before the board announces itself;
