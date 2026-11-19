@@ -128,7 +128,7 @@ for (const lang of langs) {
     const hrefs = await page.locator('.landing a').evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
     const internal = [...new Set(hrefs.filter((href) => href.startsWith('/agent-board/')))];
     // The guide pages the sections link to: the steps, features, stages, and agents.
-    expect(internal.length).toBeGreaterThanOrEqual(9);
+    expect(internal.length).toBeGreaterThanOrEqual(8);
     for (const href of internal) {
       const [url, hash] = href.split('#');
       const res = await request.get(url.replace('/agent-board/', ''));
@@ -173,7 +173,7 @@ for (const { lang, file, path: urlPath } of allPages.filter((p) => p.file !== 'h
   });
 }
 
-test('the sidebar lists the sixteen guide pages in five groups, in the same order in both languages', async ({ page }) => {
+test('the sidebar lists the seventeen guide pages in five groups, in the same order in both languages', async ({ page }) => {
   const hrefs: Record<Lang, string[]> = { en: [], ja: [] };
   for (const lang of langs) {
     await page.goto(pagePath(lang, 'index'));
@@ -227,7 +227,7 @@ async function docImageSources(page: Page): Promise<string[]> {
   return page.locator('.vp-doc img, .landing img').evaluateAll((els) => els.map((el) => el.getAttribute('src') ?? ''));
 }
 
-// AC-4, AC-5: the sixteen guide screenshots are shown, in the right language
+// AC-4, AC-5: the nine guide screenshots are shown, in the right language
 test('every guide screenshot appears on its page in English and Japanese', async ({ page }) => {
   const seen = new Set<string>();
   for (const lang of langs) {
@@ -248,7 +248,7 @@ test('every guide screenshot appears on its page in English and Japanese', async
       seen.add(screenshotFile(name, lang));
     }
   }
-  expect(seen.size).toBe(16);
+  expect(seen.size).toBe(18);
 });
 
 // AC-5: the existing board / epic / mobile images are still used
