@@ -48,6 +48,8 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
+| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`stateChanges`・`periodic`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
+| `PUT /api/notification-settings` | JSONの本文で`kinds`・`stateChanges`・`periodic`のグループのいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 | `GET /api/monitor-connections`とその配下の経路 | ngrokのリモート接続。[リモート接続](#リモート接続)を参照。 |
@@ -246,6 +248,25 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 保存に成功すると保存した内容を返し、開いているイベントストリームすべてに`preferences`イベントを送ります。対象は`/api/events`です。イベントのデータは`GET`と同じJSONです。PCの`PUT`は、ほかのPCの書き込みと同じ書き込みの保護（Host・Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Token`）を通ります。ngrokの入口を通す`PUT`は、回答と同じくsessionとCSRFトークンが必要です。
 
 JSONとして読めない本文は、ほかの書き込みと同じく400です。`locale`と`theme`のどちらもない本文、それ以外の項目を含む本文、許可されない値は422 `invalid_preferences`です。revisionの確認はなく、後から保存した内容が優先されます。
+
+### スマホの通知設定
+
+`GET`と`PUT /api/notification-settings`はローカルのリスナーにあります。ngrokの入口は、表示設定と同じく、この組をsessionの背後で提供します（[入口のルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#スマホの通知設定)で説明しています。
+
+`GET`は保存済みの設定を返します。何も保存していなければ、`revision`が`0`の既定値です。
+
+```json
+{
+  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
+  "stateChanges": { "started": true, "pending": true, "done": true },
+  "periodic": { "enabled": false, "intervalMinutes": 60 },
+  "revision": 0
+}
+```
+
+`PUT`は、`kinds`・`stateChanges`・`periodic`のいずれか、または複数を持つJSONの本文を取ります。送らなかったグループは保存済みの値のままです。送るグループはすべての項目を持つ必要があり、`periodic.intervalMinutes`は`30`・`60`・`120`・`240`のいずれかです。`GET`と同じ形を、`revision`を1増やして返します。書き込みの保護は`PUT /api/preferences`と同じです。
+
+JSONとして読めない本文は400です。空の本文、未知の項目、足りない項目、用意されていない間隔は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`です。拒否した場合は何も保存しません。revisionの確認はなく、後から保存した内容が優先されます。
 
 ### プロジェクトのドキュメント
 

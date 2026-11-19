@@ -58,6 +58,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
+  .internal/notification-settings.json
   .internal/preferences.json
   .internal/resident-autostart.json
 ```
@@ -231,6 +232,33 @@ The ngrok remote connection keeps its non-secret settings in `<data-root>/.inter
 | `domain` | Optional. The ngrok domain the endpoint is requested on, a bare lower-case host name, so the public address is the same at every start. Left out when none is saved. A saved value that is not a bare host name is ignored when read. `AGBOARD_NGROK_DOMAIN`, when set, is used instead of it and is never written to the file. |
 
 The file never holds the ngrok token, the phone passcode, a session, or a CSRF token. A token the user chooses to save lives in the PC's secure storage (the OS credential store) instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
+
+## Phone notification settings
+
+Which notifications the phone receives are saved in `<data-root>/.internal/notification-settings.json`. Like the preferences file, it belongs to the application: it is written only by `PUT /api/notification-settings`, is not in `shared/`, and is replaced atomically with owner-only permissions (`0600` where the OS has them).
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 4,
+  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
+  "stateChanges": { "started": true, "pending": true, "done": true },
+  "periodic": { "enabled": false, "intervalMinutes": 60 }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `1`. Any other value, an unknown field, a missing field, or a malformed file is read as the defaults, and the next save replaces the file. |
+| `revision` | `0` when nothing is saved, and goes up by one with each save. |
+| `kinds` | Four switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), `stateChanges` (a card changed state), and `history` (a history entry was added). The defaults are `results` and `questions` on, `stateChanges` and `history` off. All four off is allowed. |
+| `stateChanges` | Which state changes count while `kinds.stateChanges` is on: `started`, `pending` (waiting for an answer), and `done`. All three default to on, so turning the kind on notifies every change until the user narrows it. |
+| `periodic.enabled` | Whether the periodic status notification is on. It is independent of `kinds`. The default is off. |
+| `periodic.intervalMinutes` | One of `30`, `60`, `120`, `240`. The default is `60`. |
+
+A save changes only the groups it sends (`kinds`, `stateChanges`, `periodic`); a group that is sent carries all of its fields. The last save wins, and there is no conflict check. The file holds no secret.
+
+The code that sends the notifications reads the saved value with `NotificationSettingsStore::load()` in `src/server/notification_settings/`, which returns the defaults when the file cannot be used. `NotificationSettings::wants_state_change` answers whether one state change is wanted, and the module's `PERIODIC_INTERVALS` and `Default` are the single definition of the intervals and defaults. A save does not announce itself on the events stream: the settings dialog reads the value each time it opens.
 
 ## Display preferences
 
