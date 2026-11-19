@@ -59,7 +59,6 @@ struct KeyFile {
     pkcs8: String,
 }
 
-/// What the browser is given to subscribe with: the uncompressed public key, base64url.
 #[derive(Clone)]
 struct Vapid {
     pkcs8: Vec<u8>,
