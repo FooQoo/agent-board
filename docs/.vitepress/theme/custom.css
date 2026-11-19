@@ -127,6 +127,13 @@ video.demo-video {
   margin-inline: auto;
 }
 
+/* Mermaid sizes each label box from text it measured before the page fonts applied. Japanese
+   text falls back to a font with taller line boxes, so the rendered label is a few pixels
+   taller than its box and the bottom of every line is cut off. Let the label draw past it. */
+.vp-doc .mermaid foreignObject {
+  overflow: visible;
+}
+
 /* Mermaid's default edge-label background is a light grey box; in dark mode use the page
    background so the light label text sits on a dark ground like the rest of the page. */
 .dark .vp-doc .mermaid .edgeLabel,

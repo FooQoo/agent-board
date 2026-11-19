@@ -99,6 +99,7 @@ The suite (`e2e/playwright.demo.config.ts` and `e2e/demo/`) serves `docs/.vitepr
 - the Docs button and the remote connection are absent, and a reload starts again from the sample data
 - in a `ja-JP` browser, the screens, the guide, and the sample cards start in Japanese
 - a language chosen in the settings lasts until the page is reloaded, and a reload starts in the browser's language again
+- on the documentation pages with flowcharts, in English and Japanese and at phone and desktop width, no Mermaid label is cut off by its box (`e2e/demo/docs-mermaid.spec.ts`)
 
 The English tests set their browser locale to `en-US` and the Japanese ones to `ja-JP`, with `test.use({ locale })`.
 
