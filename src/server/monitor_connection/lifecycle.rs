@@ -212,39 +212,20 @@ impl MonitorConnections {
                 self.probed().await;
             }
             if save && let Some(token) = &token {
-                let vault = self.vault.clone();
-                let token = token.clone();
-                let replaced = tokio::task::spawn_blocking(move || {
-                    super::keychain::replace_token(&*vault, &token)
-                })
-                .await
-                .unwrap_or(Err(super::keychain::VaultError::Failed));
-                match replaced {
+                match super::keychain::replace_token_off_thread(&self.vault, token).await {
                     Ok(replaced) => {
                         previous.get_or_insert(replaced);
                     }
                     Err(_) => {
                         // An earlier pass may have replaced the token: put it back.
-                        if let Some(previous) = previous {
-                            let vault = self.vault.clone();
-                            let _ = tokio::task::spawn_blocking(move || {
-                                super::keychain::put_back(&*vault, previous)
-                            })
-                            .await;
-                        }
+                        super::keychain::put_back_off_thread(&self.vault, previous).await;
                         return Err(StartError::KeychainUnavailable);
                     }
                 }
             }
             let Ok(held) = self.write_guard() else {
                 // The token goes back so the keychain and the saved revision agree.
-                if let Some(previous) = previous {
-                    let vault = self.vault.clone();
-                    let _ = tokio::task::spawn_blocking(move || {
-                        super::keychain::put_back(&*vault, previous)
-                    })
-                    .await;
-                }
+                super::keychain::put_back_off_thread(&self.vault, previous).await;
                 return Err(StartError::SaveFailed);
             };
             attempts += 1;

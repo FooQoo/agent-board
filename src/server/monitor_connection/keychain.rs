@@ -49,6 +49,29 @@ pub fn put_back(vault: &dyn TokenVault, previous: Previous) {
     };
 }
 
+/// `replace_token` on a blocking thread, since the keychain may stop to ask the user.
+pub async fn replace_token_off_thread(
+    vault: &std::sync::Arc<dyn TokenVault>,
+    token: &Secret,
+) -> Result<Previous, VaultError> {
+    let vault = vault.clone();
+    let token = token.clone();
+    tokio::task::spawn_blocking(move || replace_token(&*vault, &token))
+        .await
+        .unwrap_or(Err(VaultError::Failed))
+}
+
+/// `put_back` on a blocking thread; nothing to put back is a no-op.
+pub async fn put_back_off_thread(
+    vault: &std::sync::Arc<dyn TokenVault>,
+    previous: Option<Previous>,
+) {
+    if let Some(previous) = previous {
+        let vault = vault.clone();
+        let _ = tokio::task::spawn_blocking(move || put_back(&*vault, previous)).await;
+    }
+}
+
 /// The operating system's keychain: Keychain on macOS, Credential Manager on
 /// Windows, the Secret Service on Linux.
 pub struct OsKeychain;
