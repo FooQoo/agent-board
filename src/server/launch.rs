@@ -14,7 +14,7 @@ use super::idle::{Activity, IdleStop};
 use super::monitor_connection::config::ConfigStore;
 use super::monitor_connection::lifecycle::MonitorConnections;
 use super::{AppState, MonitorOptions, MonitorReady, api, assets, bind, change_feed, instance};
-use super::{STALE_TEMPORARY_AGE, preferences, sessions};
+use super::{STALE_TEMPORARY_AGE, preferences, resident, sessions};
 use crate::clock::format_utc;
 use crate::docs::DocsLocale;
 use crate::error::AgboardError;
@@ -141,6 +141,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             }),
         )?;
         let activity = Activity::new();
+        let sessions = sessions::SessionRegistry::new(session_grace());
         let state = Arc::new(AppState {
             port: addr.port(),
             token: assets::new_token()?,
@@ -158,7 +159,12 @@ pub(crate) fn run<F: Future<Output = ()>>(
             preferences_changed,
             docs_changed,
             activity: activity.clone(),
-            sessions: sessions::SessionRegistry::new(session_grace()),
+            sessions: sessions.clone(),
+            resident: resident::Launcher::new(
+                sessions,
+                resident::Executables::from_env(),
+                &data_dir,
+            ),
         });
         state.monitor.attach(&state);
         let app = api::router(state.clone());
@@ -212,6 +218,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             () = idle_stop => Ok(Ended::Idle),
         };
         state.monitor.shutdown();
+        state.resident.shutdown();
         instance::remove_serve_info_of(&serve_path, pid);
         result
     });

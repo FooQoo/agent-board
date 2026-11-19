@@ -122,6 +122,19 @@ impl AgboardError {
                 "the ngrok connection is not available.".to_string()
             }
             AgboardError::BrowserOpenFailed { .. } => "cannot open the browser.".to_string(),
+            AgboardError::AgentCliMissing { tool } => {
+                format!("the {tool} command is not installed.")
+            }
+            AgboardError::AgentCliLoggedOut { tool } => format!("{tool} is not logged in."),
+            AgboardError::SessionLaunchRefused { .. } => {
+                "the session was not launched.".to_string()
+            }
+            AgboardError::SessionLaunchFailed { .. } => {
+                "the session could not be started.".to_string()
+            }
+            AgboardError::ProjectHasNoFolder { .. } => {
+                "the project has no bound folder.".to_string()
+            }
         }
     }
 }

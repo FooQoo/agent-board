@@ -3,7 +3,9 @@
 //! environment itself never is, and the key is a hash, not the agent's own session ID.
 //!
 //! - Origin: `AGBOARD_RESIDENT_ID` set (by the board's launcher) means `board`; otherwise `external`.
-//! - Tool: `CLAUDECODE` or `CLAUDE_CODE_SESSION_ID` means `claude-code`; `CODEX_THREAD_ID`,
+//!   The launcher also sets `AGBOARD_SESSION_ORIGIN=board`, which is informational.
+//! - Tool: `AGBOARD_SESSION_TOOL` (`claude-code` or `codex`, set by the board's launcher) wins;
+//!   otherwise `CLAUDECODE` or `CLAUDE_CODE_SESSION_ID` means `claude-code`; `CODEX_THREAD_ID`,
 //!   `CODEX_SANDBOX` or `CODEX_SANDBOX_NETWORK_DISABLED` means `codex`; otherwise `unknown`.
 //! - Key, first one present: `AGBOARD_RESIDENT_ID`, `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`,
 //!   else the parent process ID (the agent's shell, so it differs between commands of tools that
@@ -49,7 +51,13 @@ impl SessionIdentity {
         ]
         .iter()
         .any(|name| value(name).is_some());
-        let tool = if claude {
+        // The board's launcher names the tool itself; the agent's own variables are not needed.
+        let named = value("AGBOARD_SESSION_TOOL")
+            .map(|name| Tool::parse(&name))
+            .filter(|tool| *tool != Tool::Unknown);
+        let tool = if let Some(tool) = named {
+            tool
+        } else if claude {
             Tool::ClaudeCode
         } else if codex {
             Tool::Codex
@@ -101,6 +109,28 @@ mod tests {
         assert_eq!(found.origin, Origin::Board);
         assert_eq!(found.tool, Tool::ClaudeCode);
         assert!(found.key.starts_with("resident:"));
+    }
+
+    #[test]
+    fn the_launcher_names_the_tool_whatever_else_leaked_in() {
+        let found = identity(
+            &[
+                ("AGBOARD_RESIDENT_ID", "r1"),
+                ("AGBOARD_SESSION_TOOL", "codex"),
+                ("CLAUDECODE", "1"),
+            ],
+            7,
+        );
+        assert_eq!(found.tool, Tool::Codex);
+        assert_eq!(found.origin, Origin::Board);
+        let unknown = identity(
+            &[
+                ("AGBOARD_SESSION_TOOL", "nonsense"),
+                ("CODEX_THREAD_ID", "t"),
+            ],
+            7,
+        );
+        assert_eq!(unknown.tool, Tool::Codex);
     }
 
     #[test]

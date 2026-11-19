@@ -171,6 +171,17 @@ impl AgboardError {
             AgboardError::BrowserOpenFailed { url, reason } => {
                 format!("{reason} Open {url} in your browser yourself.")
             }
+            AgboardError::AgentCliMissing { tool } => format!(
+                "Install {tool} and make it available on the PATH of the server, then try again."
+            ),
+            AgboardError::AgentCliLoggedOut { tool } => {
+                format!("Log in to {tool} in a terminal, then try again.")
+            }
+            AgboardError::SessionLaunchRefused { reason } => reason.clone(),
+            AgboardError::SessionLaunchFailed { reason } => reason.clone(),
+            AgboardError::ProjectHasNoFolder { project } => format!(
+                "Bind a folder to project {project} with \"agboard project bind\" in that folder."
+            ),
         }
     }
 }

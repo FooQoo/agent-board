@@ -152,6 +152,14 @@ impl SessionRegistry {
             Ok(())
         }
     }
+
+    /// Drop every board-launched session of `tool` from the count at once, without the grace
+    /// period. The launcher calls it when it has stopped the process, or the process has exited,
+    /// so that the next launch is not refused for a session that is gone.
+    pub fn remove_board(&self, tool: Tool) {
+        self.lock()
+            .retain(|_, entry| !(entry.origin == Origin::Board && entry.tool == tool));
+    }
 }
 
 fn view(key: &str, entry: &Entry, wall: DateTime<Utc>) -> SessionView {
