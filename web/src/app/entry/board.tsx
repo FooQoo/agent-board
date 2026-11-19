@@ -13,6 +13,7 @@ import '../../shared/styles/tokens.css';
 import '../../shared/styles/app.css';
 import '../../shared/styles/resize.css';
 import '../../shared/styles/ui.css';
+import '../../shared/styles/keyboard-fit.css';
 import '../../shared/styles/theme.css';
 
 initializeTheme();

@@ -186,11 +186,11 @@ ol {
 }
 
 /*
- * Narrow windows keep the project name readable: below 1024px the Docs button shows its icon only.
- * A tablet held sideways (about 1180px) keeps the label.
+ * Narrow windows keep the project name readable: below 1024px the Docs, Epics and Archive buttons
+ * show their icons only, all at one width. A tablet held sideways (about 1180px) keeps the labels.
  */
 @media (max-width: 1023px) {
-  .header__docs-label {
+  .header__label {
     display: none;
   }
 }

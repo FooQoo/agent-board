@@ -1,4 +1,4 @@
-import { editingText } from './stableHeight';
+import { editingText, revealFocusedField } from './stableHeight';
 
 /**
  * How much of the layout viewport the on-screen keyboard covers at the bottom, in pixels. iOS Safari
@@ -30,10 +30,12 @@ export function watchKeyboardInset(target: Window = window): () => void {
     root.style.setProperty('--keyboard-inset', `${keyboardInset(root.clientHeight, viewport)}px`);
     root.style.setProperty('--visual-vh', `${Math.round(viewport.height)}px`);
     root.style.setProperty('--visual-top', `${Math.round(viewport.offsetTop)}px`);
-    root.toggleAttribute(
+    const was = root.hasAttribute('data-visual-keyboard');
+    const now = root.toggleAttribute(
       'data-visual-keyboard',
       keyboardInset(root.clientHeight, viewport) > 0 && editingText(target.document.activeElement),
     );
+    if (now && !was) revealFocusedField(target);
   };
   update();
   viewport.addEventListener('resize', update);

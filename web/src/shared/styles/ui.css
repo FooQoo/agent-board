@@ -189,9 +189,12 @@
   padding-inline: 12px;
 }
 
-/* Narrow windows keep the project name readable: the Docs button is an icon there. */
-@media (max-width: 1200px) {
-  .header__docs {
+/* Narrow windows keep the project name readable: the secondary buttons are icons there (app.css),
+   square like the settings button. */
+@media (max-width: 1023px) {
+  .header__docs,
+  .header__epics,
+  .header__archive {
     min-width: 0;
     padding-inline: 10px;
   }
@@ -230,9 +233,9 @@
    Safari); `data-keyboard` is a browser that shrinks the viewport instead (see stableHeight.ts).
    One rule for both, and the dialog's own fixed heights only act as its upper limit. */
 :root:is([data-visual-keyboard], [data-keyboard]) [data-slot="dialog-content"].top-\[50\%\] {
-  top: calc(var(--visual-top, 0px) + max(12px, env(safe-area-inset-top)));
+  top: calc(var(--visual-top, 0px) + max(6px, env(safe-area-inset-top)));
   translate: -50% 0;
-  max-height: calc(var(--visual-vh, 100svh) - max(12px, env(safe-area-inset-top)) - 12px);
+  max-height: calc(var(--visual-vh, 100svh) - max(6px, env(safe-area-inset-top)) - 6px);
 }
 
 /* The body gives up its minimum height there, so it can shrink and scroll. */

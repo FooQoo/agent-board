@@ -137,7 +137,7 @@ export function Header({
               onClick={onDocs}
             >
               <IconLabel icon={BookOpenIcon}>
-                <span className="header__docs-label">{t('docs.title')}</span>
+                <span className="header__label">{t('docs.title')}</span>
               </IconLabel>
             </Button>
           )}
@@ -145,19 +145,25 @@ export function Header({
             type="button"
             variant="outline"
             className="header__epics"
+            aria-label={t('epics.title')}
             disabled={switchDisabled}
             onClick={onEpics}
           >
-            <IconLabel icon={LayersIcon}>{t('epics.title')}</IconLabel>
+            <IconLabel icon={LayersIcon}>
+              <span className="header__label">{t('epics.title')}</span>
+            </IconLabel>
           </Button>
           <Button
             type="button"
             variant="outline"
             className="header__archive"
+            aria-label={t('archive.title')}
             disabled={switchDisabled}
             onClick={onArchive}
           >
-            <IconLabel icon={ArchiveIcon}>{t('archive.title')}</IconLabel>
+            <IconLabel icon={ArchiveIcon}>
+              <span className="header__label">{t('archive.title')}</span>
+            </IconLabel>
           </Button>
         </>
       ) : null}

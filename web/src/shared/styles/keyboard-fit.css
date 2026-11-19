@@ -1,0 +1,112 @@
+/*
+ * A centered dialog while a tablet's software keyboard is open (see ui.css for how it is placed in
+ * the strip above the keyboard). That strip can be under 200px high, so every dialog a person types
+ * in follows the same rules there:
+ *
+ * - the frame, the header and the footer give up most of their padding, and their buttons get lower;
+ * - the side columns and secondary parts fold away unless they hold the field being typed in;
+ * - the body scrolls and gets all the height that is left, so the field keeps a few lines.
+ *
+ * The keyboard closes, the attribute goes, and the dialog is laid out as before.
+ */
+
+:root:is([data-visual-keyboard], [data-keyboard]) [data-slot="dialog-content"].top-\[50\%\] {
+  --kb-pad: 12px;
+  --kb-button-h: 32px;
+}
+
+/* Frames. */
+:root:is([data-visual-keyboard], [data-keyboard]) .modal[data-slot="dialog-content"].top-\[50\%\] {
+  gap: 8px;
+  padding: 11px 15px;
+}
+
+/* Headers. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .modal__title {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .editor__header {
+  align-items: center;
+  height: auto;
+  padding: 6px var(--kb-pad);
+}
+
+/* Footers. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .editor__footer {
+  height: auto;
+  padding: 6px var(--kb-pad);
+}
+
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .editor__status {
+  display: none;
+}
+
+/* The buttons of the header and the footer. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  :is(.modal__header, .editor__header, .surface__footer, .editor__footer)
+  button {
+  height: var(--kb-button-h);
+  min-height: var(--kb-button-h);
+}
+
+/* Parts that fold away while another field has the keyboard. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  :is(.editor__side, .editor__aside, .editor__dock, .editor__field):not(:focus-within) {
+  display: none;
+}
+
+/* The body: less padding, and it scrolls. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .editor__main {
+  gap: 6px;
+  padding: 6px var(--kb-pad);
+}
+
+/* An open question in the messages: the frame has no padding of its own; its header and footer do. */
+:root:is([data-visual-keyboard], [data-keyboard])
+.modal.message-surface--answering[data-slot="dialog-content"].top-\[50\%\] {
+  gap: 0;
+  padding: 0;
+}
+
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\].message-surface--answering
+  :is(.modal__header, .surface__footer) {
+  padding: 6px var(--kb-pad);
+}
+
+/* The editor's field captions and counter give their line to the text. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .editor__label-row {
+  display: none;
+}
+
+/* An open question: the answer being typed takes the whole body; the question is back once the
+   keyboard closes. */
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .decision-panel__question:not(:focus-within) {
+  display: none;
+}
+
+:root:is([data-visual-keyboard], [data-keyboard])
+  [data-slot="dialog-content"].top-\[50\%\]
+  .decision-panel__answer {
+  flex: 1 1 auto;
+  width: auto;
+  padding: 8px var(--kb-pad);
+}

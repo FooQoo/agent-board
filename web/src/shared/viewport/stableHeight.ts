@@ -28,6 +28,27 @@ export function editingText(element: Element | null): boolean {
   return false;
 }
 
+/**
+ * Bring the focused field of a dialog back into sight once the keyboard layout has squeezed the
+ * dialog: the browser scrolled it into view while the dialog was still tall, and a body that shrank
+ * afterwards can leave it below the fold.
+ */
+export function revealFocusedField(target: Window): void {
+  const reveal = () => {
+    const field = target.document.activeElement;
+    if (!editingText(field) || !field?.closest('[data-slot="dialog-content"]')) return;
+    field.scrollIntoView({ block: 'nearest' });
+  };
+  // Once the new layout is in, and again after the dialog's own transition has settled.
+  const view = target.document.defaultView;
+  if (!view) return;
+  view.requestAnimationFrame(reveal);
+  view.setTimeout(reveal, REVEAL_SETTLE_MS);
+}
+
+/** Longer than the dialog's transition, so the second look sees the final layout. */
+const REVEAL_SETTLE_MS = 320;
+
 export interface Viewport {
   width: number;
   height: number;
@@ -48,11 +69,14 @@ export function watchStableHeight(target: Window = window): () => void {
   // covers the bottom of the page; the dialog rule in ui.css fits centered dialogs into the visible
   // area then (using the visual viewport from keyboardInset.ts), so their buttons and text fields
   // stay above it. Without a focused field there is no keyboard, whatever the heights say.
-  const mark = () =>
-    root.toggleAttribute(
+  const mark = () => {
+    const was = root.hasAttribute('data-keyboard');
+    const now = root.toggleAttribute(
       'data-keyboard',
       typing() && kept !== null && kept.height > viewport().height,
     );
+    if (now && !was) revealFocusedField(target);
+  };
   const update = () => {
     const next = nextStableHeight(kept, viewport(), typing());
     if (next !== kept) {
