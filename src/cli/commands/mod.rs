@@ -13,6 +13,7 @@ pub mod open;
 pub mod progress;
 pub mod project;
 pub mod remote;
+pub mod result;
 pub mod rm;
 pub mod serve;
 pub mod serve_auto;

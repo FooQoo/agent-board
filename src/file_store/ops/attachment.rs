@@ -67,6 +67,46 @@ pub(super) fn last_part(name: &str) -> String {
     name.rsplit(['/', '\\']).next().unwrap_or(name).to_string()
 }
 
+/// Validate an image and write its file below the owner's `assets/` folder.
+/// Nothing is recorded: the caller adds the returned metadata to the owner,
+/// saves it, and removes the file again when the save fails.
+pub(super) fn write_image(
+    shared: &Path,
+    project_dir: &Path,
+    owner: &AttachmentOwner,
+    existing: &[Attachment],
+    input: &AttachmentInput,
+    at: DateTime<Utc>,
+) -> Result<(Attachment, PathBuf), AgboardError> {
+    let media_type = validate_attachment(&input.id, &input.name, &input.bytes)?;
+    if existing.iter().any(|a| a.id == input.id) {
+        return Err(AgboardError::InvalidValue {
+            field: "attachmentId".into(),
+            reason: "Attachment IDs must be unique.".into(),
+        });
+    }
+    check_limits(existing, input.bytes.len())?;
+
+    let path = asset_file(project_dir, owner, &input.id, media_type)?;
+    let label = layout::shared_label(shared, &path);
+    if layout::has_symlink_below(project_dir, &path).map_err(|e| io::write_error(&label, e))? {
+        return Err(io::write_error(&label, "a symbolic link is in the way"));
+    }
+    let metadata = Attachment {
+        id: input.id.clone(),
+        name: last_part(&input.name),
+        media_type: media_type.to_string(),
+        size: input.bytes.len() as i64,
+        created_at: at,
+    };
+    // The file's parent is the owner's `assets/` folder.
+    if let Some(assets) = path.parent() {
+        fs::create_dir_all(assets).map_err(|e| io::write_error(&label, e))?;
+    }
+    io::write_atomic(&path, &input.bytes, &label)?;
+    Ok((metadata, path))
+}
+
 impl FileStore {
     /// Register an image for a task or an epic, from the agent side (the CLI):
     /// a draft task refuses it with `task_is_draft`.
@@ -106,36 +146,16 @@ impl FileStore {
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut loaded = load(shared, project, owner)?;
         loaded.ensure_writable(block_drafts)?;
-        let media_type = validate_attachment(&input.id, &input.name, &input.bytes)?;
-        if loaded.attachments().iter().any(|a| a.id == input.id) {
-            return Err(AgboardError::InvalidValue {
-                field: "attachmentId".into(),
-                reason: "Attachment IDs must be unique.".into(),
-            });
-        }
-        check_limits(loaded.attachments(), input.bytes.len())?;
-
-        let path = asset_file(&project_dir, owner, &input.id, media_type)?;
-        let label = layout::shared_label(shared, &path);
-        if layout::has_symlink_below(&project_dir, &path).map_err(|e| io::write_error(&label, e))? {
-            return Err(io::write_error(&label, "a symbolic link is in the way"));
-        }
-        let at = stamp(now);
-        let metadata = Attachment {
-            id: input.id.clone(),
-            name: last_part(&input.name),
-            media_type: media_type.to_string(),
-            size: input.bytes.len() as i64,
-            created_at: at,
-        };
-        // The file's parent is the owner's `assets/` folder.
-        if let Some(assets) = path.parent() {
-            fs::create_dir_all(assets).map_err(|e| io::write_error(&label, e))?;
-        }
-        io::write_atomic(&path, &input.bytes, &label)?;
-
+        let (metadata, path) = write_image(
+            shared,
+            &project_dir,
+            owner,
+            loaded.attachments(),
+            &input,
+            stamp(now),
+        )?;
         loaded.attachments_mut().push(metadata.clone());
-        loaded.touch(at);
+        loaded.touch(metadata.created_at);
         if let Err(error) = save(shared, &project_dir, &loaded) {
             let _ = fs::remove_file(&path);
             return Err(error);
@@ -186,6 +206,12 @@ impl FileStore {
             .ok_or_else(|| AgboardError::AttachmentNotFound {
                 id: attachment_id.to_string(),
             })?;
+        if let Some(version) = loaded.result_using(attachment_id) {
+            return Err(AgboardError::InvalidValue {
+                field: "attachmentId".into(),
+                reason: format!("Result version {version} uses this image."),
+            });
+        }
         let media_type = loaded.attachments()[index].media_type.clone();
         let path = asset_file(&project_dir, owner, attachment_id, &media_type)?;
         let label = layout::shared_label(shared, &path);
