@@ -61,7 +61,7 @@ describe('monitor detail drawer', () => {
     await user.click(screen.getByRole('button', { name: 'Todo work item 1' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Todo work item 1')).toBeTruthy();
-    expect(within(dialog).getAllByRole('tab')).toHaveLength(4);
+    expect(within(dialog).getAllByRole('tab')).toHaveLength(5);
     expect(within(dialog).getByRole('status', { name: 'Loading details…' })).toBeTruthy();
     expect(await within(dialog).findByText('Work')).toBeTruthy();
     expect(within(dialog).queryByRole('status', { name: 'Loading details…' })).toBeNull();
@@ -201,7 +201,7 @@ describe('monitor detail drawer', () => {
     expect(
       (within(dialog).getByRole('button', { name: 'Retry' }) as HTMLButtonElement).disabled,
     ).toBe(false);
-    expect(within(dialog).getAllByRole('tab')).toHaveLength(4);
+    expect(within(dialog).getAllByRole('tab')).toHaveLength(5);
   });
 
   it('distinguishes a deleted epic from a retriable read error', async () => {

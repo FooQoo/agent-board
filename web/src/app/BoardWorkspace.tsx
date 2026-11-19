@@ -200,6 +200,14 @@ export function BoardWorkspace({
                   ? archive.status === 'error'
                   : boardData === null && Boolean(activeId)
               }
+              focusResultVersion={
+                !archiveVisible &&
+                selected !== null &&
+                model.resultLink?.projectId === activeId &&
+                model.resultLink.taskId === selected.id
+                  ? model.resultLink.version
+                  : null
+              }
               onRetryEpics={actions.onRetryEpics}
               onPreview={actions.onPreviewTask}
               onOpenEpic={actions.onOpenEpic}

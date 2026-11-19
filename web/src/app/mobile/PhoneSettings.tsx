@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
+import { NotificationSettings } from '../../features/notification-settings/ui/NotificationSettings';
 import { SettingsDialog } from '../../features/settings/ui/SettingsDialog';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { SettingsSlotState } from '../../shared/ui/app-header/Header';
@@ -36,18 +37,21 @@ export function PhoneSettings({
       restoreFocusRef={restoreFocusRef}
       preferencesEndpoint={preferencesEndpoint}
       extra={
-        <div className="settings__entries">
-          <TutorialEntryRow
-            onStart={() => {
-              onOpenChange(false);
-              requestTutorial();
-            }}
-          />
-          {residentRow ?? (
-            <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
-          )}
-          {pushRow ?? <PushSettingsRow />}
-        </div>
+        <>
+          {preferencesEndpoint ? <NotificationSettings /> : null}
+          <div className="settings__entries">
+            <TutorialEntryRow
+              onStart={() => {
+                onOpenChange(false);
+                requestTutorial();
+              }}
+            />
+            {residentRow ?? (
+              <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
+            )}
+            {pushRow ?? <PushSettingsRow />}
+          </div>
+        </>
       }
     />
   );

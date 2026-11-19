@@ -113,6 +113,8 @@ The earlier read-mostly phone monitor is gone. Its addresses, `/monitor`, `/moni
 
 The phone address that the PC dialog and its QR code show is the board's root with the project in the query, `https://<host>/?project=<ProjectId>`. The board app picks the project from `?project=`, as it does on the PC.
 
+A link to one result adds `&task=<id>&result=<version>` to that query. The passcode screen is drawn in place, so the whole address survives the unlock, and the board then opens that task on its Results tab. See [Result links](../reference/remote-routes.md#result-links).
+
 ## Fetching and recovery
 
 The phone screen shows either fresh data or an honest "stale" state, without polling. It is drawn from the board's own data layer, so it reads the same Summary and Detail routes and follows the same `/api/events` stream as the PC board; see [Notifications](./notifications.md) for the stream and [Server and web UI](./server-and-ui.md#behavior-on-failure-in-the-ui) for how the UI behaves on failure.

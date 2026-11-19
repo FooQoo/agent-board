@@ -17,6 +17,7 @@ pub(crate) mod instance;
 mod launch;
 mod messages;
 mod messages_send;
+pub(crate) mod notification_settings;
 pub(crate) mod preferences;
 mod pwa;
 pub mod monitor_auth {
@@ -77,6 +78,8 @@ pub(crate) struct AppState {
     pub monitor: Arc<MonitorConnections>,
     /// The saved language and theme, read and written by `/api/preferences` and the monitor.
     pub preferences: preferences::PreferencesStore,
+    /// Which notifications the phone receives, read and written by `/api/notification-settings`.
+    pub notification_settings: notification_settings::NotificationSettingsStore,
     /// Sends each saved preference set; the events streams forward it as `preferences`.
     pub preferences_changed: broadcast::Sender<preferences::Preferences>,
     /// The projects whose Docs changed (`None`: any project); the board's stream sends `docs`.

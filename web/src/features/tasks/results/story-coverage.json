@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "owner": "U11",
+  "files": [
+    {
+      "file": "features/tasks/results/ResultsView.tsx",
+      "exports": [
+        {
+          "name": "ResultsView",
+          "stories": [
+            {
+              "id": "task-detail-resultsview--default",
+              "states": ["newest first", "kind badge", "summary", "image", "link text"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--focused",
+              "states": ["linked version highlighted"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--text-only",
+              "states": ["no image", "no link"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--enlarge-image",
+              "states": ["image enlarged"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--version-missing",
+              "states": ["linked version not found"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--empty",
+              "states": ["no results"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-resultsview--loading",
+              "states": ["loading"],
+              "interaction": false
+            },
+            {
+              "id": "task-detail-resultsview--read-failed",
+              "states": ["read failed", "retry"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--japanese-dark-narrow",
+              "states": ["japanese locale", "dark theme", "phone width"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import { DETAIL_TABS, type DetailTab, DetailTabs, panelId, tabId } from './Detai
 import { DraftStatus } from './DraftStatus';
 import { EpicTabView, type EpicTabStatus } from './EpicTabView';
 import { AcceptanceTabView } from './AcceptanceTabView';
+import { ResultsTab } from '../results/ResultsTab';
 import { DetailSectionView } from './DetailSection';
 import { DetailHeader } from './DetailHeader';
 import './detail.css';
@@ -55,6 +56,8 @@ export interface TaskDetailViewProps {
    * drawer does (the PC board on a tablet). A mouse still selects text.
    */
   swipeTabs?: boolean;
+  /** The result version a link points at; the results tab scrolls to it and highlights it. */
+  focusResultVersion?: number | null;
   children?: ReactNode;
 }
 
@@ -89,6 +92,7 @@ export function TaskDetailView({
   onToggleCondition,
   toolbar,
   swipeTabs = false,
+  focusResultVersion = null,
   children,
 }: TaskDetailViewProps) {
   const { t } = useTranslation();
@@ -143,6 +147,17 @@ export function TaskDetailView({
             scrollParent={tab === id ? scroller : null}
             renderEpicLabel={renderEpicLabel}
             onOpenEpic={onOpenEpic}
+          />
+        );
+      case 'results':
+        return (
+          <ResultsTab
+            projectId={projectId}
+            taskId={task.id}
+            active={tab === id}
+            refreshKey={(history.data ?? history.partial)?.items.length}
+            attachmentUrl={attachmentUrl}
+            focusVersion={focusResultVersion}
           />
         );
       case 'history':
