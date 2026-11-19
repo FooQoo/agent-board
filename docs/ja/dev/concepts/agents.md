@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | スキル`agent-board` | `src/skills/agent-board.md`と`src/skills/topics/`。`agboard skills`が出力する。プラグインの`SKILL.md`はそのコマンドを実行するだけ | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
 | スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
+| スキル`wait` | `plugins/agent-board/skills/wait/SKILL.md` | セッションをボードに張り付かせる。`agboard skills listening`に従い、タイムアウトの既定は3600秒で、`idle_timeout`のあとは待ち直す。 |
 | Hook |（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
 | `wait` | `src/agent/wait.rs`、`src/agent/task_wait.rs` | プロジェクトが変わるか、次のタスクが用意できるまで待つ。 |
@@ -106,6 +107,7 @@ SkillとHookは、このリポジトリのマーケットプレイスから、1�
 | `plugins/agent-board/.codex-plugin/plugin.json`<br>`plugins/agent-board/.claude-plugin/plugin.json` | プラグインのマニフェスト。 |
 | `plugins/agent-board/skills/agent-board/` | Skillの薄い入口。`SKILL.md`のみ。 |
 | `plugins/agent-board/skills/remote/` | `remote` Skill。`SKILL.md`のみ。 |
+| `plugins/agent-board/skills/wait/` | `wait` Skill。`SKILL.md`のみ。 |
 | `plugins/agent-board/hooks/codex.json`<br>`plugins/agent-board/hooks/claude.json` | 各エージェントのHook。 |
 
 両方のマニフェストのプラグインの版はクレートの版と同じで、Hookのコマンドは版を持たず、`agboard hook --agent <agent>`そのものです。`tests/plugin_layout.rs`と`scripts/release/check-version.py`がこれを確かめるので、リリースのタグには、常にバイナリと同じ版のプラグインが入っています。
@@ -132,7 +134,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 
 `agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、状況に応じたトピックをいつ実行するかを示します。Claude Codeは`!`コマンドの出力を約30,000文字までしか取り込まず（超えるとプレビューに切り詰めます）、単体テストが本文と各トピックを28,000文字以下に保ちます。増えたときは、状況に応じた節をトピックへ移します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
 
-プラグインの`SKILL.md`は、`name`、`description`、`compatibility`を残し、`allowed-tools: Bash(agboard *)`を加え、本文は`` !`agboard skills` ``の1行です。Claude Codeは、Skillを呼び出すときにこの行をコマンドの出力に置き換えます。`allowed-tools`の規則により、このコマンドと、そのあとのエージェントの`agboard`コマンドは確認なしで実行できます。置き換えが働くのは単純なコマンドだけで、`$(...)`や複合コマンドは置き換わりません。コマンドの埋め込みがないエージェント（Codex）は、その次の文を読み、自分で`agboard skills`を実行します。`remote` Skillは、これまでどおりプラグイン内の静的なファイルです。プロジェクトの`.claude/skills/agent-board`はプラグインのSkillフォルダへのシンボリックリンクなので、このリポジトリ自身のClaude Codeのセッションも、同じ入口と`PATH`の`agboard`を使います。
+プラグインの`SKILL.md`は、`name`、`description`、`compatibility`を残し、`allowed-tools: Bash(agboard *)`を加え、本文は`` !`agboard skills` ``の1行です。Claude Codeは、Skillを呼び出すときにこの行をコマンドの出力に置き換えます。`allowed-tools`の規則により、このコマンドと、そのあとのエージェントの`agboard`コマンドは確認なしで実行できます。置き換えが働くのは単純なコマンドだけで、`$(...)`や複合コマンドは置き換わりません。コマンドの埋め込みがないエージェント（Codex）は、その次の文を読み、自分で`agboard skills`を実行します。`remote`と`wait`のSkillは、これまでどおりプラグイン内の静的なファイルです。プロジェクトの`.claude/skills/agent-board`はプラグインのSkillフォルダへのシンボリックリンクなので、このリポジトリ自身のClaude Codeのセッションも、同じ入口と`PATH`の`agboard`を使います。
 
 ## プラグインの自動更新
 
