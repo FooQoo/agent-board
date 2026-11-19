@@ -4,8 +4,9 @@
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+use super::driver::AgentDriver;
 use crate::error::AgboardError;
 
 /// Marks a finished child; set by the reaper after it has cleaned up.
@@ -37,23 +38,17 @@ impl Exit {
     }
 }
 
-/// SIGTERM every group, wait for each to be reaped, SIGKILL what is left.
-pub(super) fn terminate(targets: &[(u32, Arc<Exit>)], grace: Duration) {
-    for (pid, _) in targets {
-        signal_group(*pid, false);
-    }
-    let deadline = Instant::now() + grace;
-    for (pid, exit) in targets {
-        let left = deadline.saturating_duration_since(Instant::now());
-        if !exit.wait(left) {
-            signal_group(*pid, true);
-            exit.wait(Duration::from_secs(2));
-        }
+/// Stop each driver and wait until its reaper has cleaned up. A driver ends its own process:
+/// its input closes first, then SIGTERM to the group, then SIGKILL after `grace`.
+pub(super) fn terminate(targets: &[(Arc<dyn AgentDriver>, Arc<Exit>)], grace: Duration) {
+    for (driver, exit) in targets {
+        driver.stop(grace);
+        exit.wait(Duration::from_secs(2));
     }
 }
 
 #[cfg(unix)]
-fn signal_group(pid: u32, kill: bool) {
+pub(super) fn signal_group(pid: u32, kill: bool) {
     let signal = if kill { libc::SIGKILL } else { libc::SIGTERM };
     // SAFETY: plain syscalls; the child was started as the leader of its own process group, so
     // `-pid` names only that child and the commands it started.
@@ -64,7 +59,7 @@ fn signal_group(pid: u32, kill: bool) {
 }
 
 #[cfg(not(unix))]
-fn signal_group(_pid: u32, _kill: bool) {}
+pub(super) fn signal_group(_pid: u32, _kill: bool) {}
 
 pub(super) fn open_log(path: &Path) -> std::io::Result<std::fs::File> {
     if let Some(dir) = path.parent() {

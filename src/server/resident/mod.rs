@@ -1,7 +1,8 @@
 //! The headless agent sessions the board starts itself (resident sessions).
 //!
 //! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
-//! approval instead of prompts, and keeps its child process. The session then waits on the board like any other and
+//! approval instead of prompts, and keeps its child process. It talks to the CLI only through an
+//! [`driver::AgentDriver`]. The session then waits on the board like any other and
 //! registers with origin `board`. The board keeps at most one such session in total, whichever
 //! tool and project. [`cli`] is the only place that knows the CLIs' names and flags.
 //!
@@ -12,6 +13,7 @@
 
 mod autostart;
 pub mod cli;
+pub mod driver;
 mod health;
 mod process;
 mod spawn;
@@ -32,6 +34,7 @@ use crate::error::AgboardError;
 use crate::server::sessions::{SessionRegistry, Tool};
 pub use autostart::{AutoStart, AutoStartStore};
 pub use cli::{Executables, ModelList, ModelOption};
+use driver::{AgentDriver, DriverFactory};
 pub use health::{Health, HealthState};
 use process::{Exit, terminate};
 use spawn::Spawn;
@@ -52,6 +55,7 @@ struct Live {
     started_at: DateTime<Utc>,
     started: Instant,
     exit: Arc<Exit>,
+    driver: Arc<dyn AgentDriver>,
 }
 
 /// A launched session as the status lists it. The process ID is for the server's own use and is
@@ -76,6 +80,7 @@ pub struct Launcher {
     live: Arc<Mutex<HashMap<Tool, Live>>>,
     stop_grace: Duration,
     timing: Timing,
+    factory: DriverFactory,
     plans: Mutex<HashMap<Tool, Plan>>,
     autostart: AutoStartStore,
     closing: AtomicBool,
@@ -112,6 +117,25 @@ impl Launcher {
         stop_grace: Duration,
         timing: Timing,
     ) -> Arc<Launcher> {
+        Launcher::with_factory(
+            registry,
+            executables,
+            data_dir,
+            stop_grace,
+            timing,
+            driver::default_factory(),
+        )
+    }
+
+    /// A launcher whose children are driven by `factory` instead of the shipped drivers.
+    pub fn with_factory(
+        registry: Arc<SessionRegistry>,
+        executables: Executables,
+        data_dir: &Path,
+        stop_grace: Duration,
+        timing: Timing,
+        factory: DriverFactory,
+    ) -> Arc<Launcher> {
         Arc::new(Launcher {
             registry,
             executables,
@@ -119,6 +143,7 @@ impl Launcher {
             live: Arc::new(Mutex::new(HashMap::new())),
             stop_grace,
             timing,
+            factory,
             plans: Mutex::new(HashMap::new()),
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
@@ -195,17 +220,17 @@ impl Launcher {
         }
     }
 
-    /// Stop the board-launched session (there is at most one): SIGTERM to its process group,
-    /// SIGKILL after the grace time.
+    /// Stop the board-launched session (there is at most one): the driver closes its input, then
+    /// SIGTERM to its process group, SIGKILL after the grace time.
     /// Returns whether a session was running. When it returns, a new launch is possible.
     /// A stop clears what the supervisor keeps, so the session is not restarted and
     /// a restart that was waiting or a failure that was shown is cleared too.
     pub fn stop(&self) -> Result<bool, AgboardError> {
         self.plans().clear();
-        let targets: Vec<(u32, Arc<Exit>)> = self
+        let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
             .lock()
             .values()
-            .map(|live| (live.pid, live.exit.clone()))
+            .map(|live| (live.driver.clone(), live.exit.clone()))
             .collect();
         if targets.is_empty() {
             return Ok(false);
@@ -219,7 +244,7 @@ impl Launcher {
         let target = self
             .lock()
             .get(&tool)
-            .map(|live| (live.pid, live.exit.clone()));
+            .map(|live| (live.driver.clone(), live.exit.clone()));
         if let Some(target) = target {
             terminate(&[target], self.stop_grace);
         }
@@ -229,10 +254,10 @@ impl Launcher {
     pub fn shutdown(&self) {
         self.closing.store(true, Ordering::SeqCst);
         self.plans().clear();
-        let targets: Vec<(u32, Arc<Exit>)> = self
+        let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
             .lock()
             .values()
-            .map(|live| (live.pid, live.exit.clone()))
+            .map(|live| (live.driver.clone(), live.exit.clone()))
             .collect();
         terminate(&targets, self.stop_grace);
     }

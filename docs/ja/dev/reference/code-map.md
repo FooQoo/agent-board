@@ -95,7 +95,7 @@
 
 - `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
 - `src/server/api/docs/`: ボードのルーターにある4つのルート。
-- `src/server/resident/`: 画面を持たないClaude CodeとCodexのセッションの起動処理です。これらのCLIを知っている唯一のコードです（`cli.rs`は名前、ログインの確認、モデル、引数、環境の除去、`mod.rs`は起動処理、停止、シャットダウン、`spawn.rs`は子プロセスの起動と回収、`supervisor.rs`と`watch.rs`は再起動、不健全の確認、サーバー起動時の自動起動、`health.rs`はAPIが返す健全性、`autostart.rs`は`.internal/resident-autostart.json`）。ルートは`src/server/api/sessions.rs`にあります。
+- `src/server/resident/`: 画面を持たないClaude CodeとCodexのセッションの起動処理です。これらのCLIを知っている唯一のコードです（`cli.rs`は名前、ログインの確認、モデル、引数、環境の除去、`mod.rs`は起動処理、停止、シャットダウン、`driver/`は`AgentDriver`トレイトとその出来事、`ClaudeDriver`（双方向のstream-json）、`LegacyExecDriver`（Codexの1方向の`exec`）、`spawn.rs`はドライバーを通したセッションの起動と出来事の読み取り、`supervisor.rs`と`watch.rs`は再起動、不健全の確認、サーバー起動時の自動起動、`health.rs`はAPIが返す健全性、`autostart.rs`は`.internal/resident-autostart.json`）。ルートは`src/server/api/sessions.rs`にあります。
 - `src/server/sessions/`、`src/server/api/sessions.rs`、`src/agent/session_identity.rs`: 張り付いたエージェントセッションのメモリ上の登録、その読み取りルート、待機中のコマンドが自分のセッションを名乗る方法。
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。
 - `web/src/features/resident-sessions/`: 常駐セッションのダイアログ、設定画面の行、フッターの表示。`api.ts`はセッションのルートのクライアント、`state.ts`は`health`オブジェクトからバッジの状態（`working`・`waiting`・`restarting`・`stopped`・`failed`）を求め、`useResidentSession.ts`はセッションのルートをポーリングし、`useResidentController.ts`はダイアログの選択・起動・停止・自動起動を扱い、`ui/`がダイアログ（`ResidentView.tsx`・`ResidentDialog.tsx`）、行、表示を描きます。それらをどこに出すかは`web/src/app/residentSlot.tsx`が決めます。利用者に見える内容は[常駐セッションのガイド](../../guide/delegate/resident-session.md)を参照してください。
