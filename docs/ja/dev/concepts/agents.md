@@ -79,10 +79,23 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 `wait --until task`は、どのセッションが待っているかもサーバーに伝えます。ボードに張り付いているセッションを数えるためです。イベントストリームのリクエストに、セッションのキー、ツール、起動元、プロジェクトのIDを`X-Agboard-Session*`ヘッダーで付けます（[張り付いたセッション](../reference/web-api.md#張り付いたセッション)を参照）。出力するJSONは変わりません。コマンドは自分の環境変数からこれらを読み、環境からはそれ以外を送りません。
 
 - 起動元: `AGBOARD_RESIDENT_ID`が設定されていれば（ボードの起動処理が設定します）`board`、なければ`external`です。
-- ツール: `CLAUDECODE`または`CLAUDE_CODE_SESSION_ID`があれば`claude-code`、`CODEX_THREAD_ID`、`CODEX_SANDBOX`、`CODEX_SANDBOX_NETWORK_DISABLED`のいずれかがあれば`codex`、どれもなければ`unknown`です。`CODEX_COMPANION_SESSION_ID`はClaude Codeのプラグインの変数でCodexのものではないため、使いません。
+- ツール: `AGBOARD_SESSION_TOOL`（`claude-code`または`codex`。ボードの起動処理が設定します）があれば、それが優先されます。なければ`CLAUDECODE`または`CLAUDE_CODE_SESSION_ID`があれば`claude-code`、`CODEX_THREAD_ID`、`CODEX_SANDBOX`、`CODEX_SANDBOX_NETWORK_DISABLED`のいずれかがあれば`codex`、どれもなければ`unknown`です。`CODEX_COMPANION_SESSION_ID`はClaude Codeのプラグインの変数でCodexのものではないため、使いません。
 - キー: `AGBOARD_RESIDENT_ID`、`CLAUDE_CODE_SESSION_ID`、`CODEX_THREAD_ID`のうち最初に設定されているもの、どれもなければ親プロセスIDです。送るキーは、接頭辞（`resident`、`claude`、`codex`、`ppid`）と、値のSHA-256の先頭16桁（16進数）で、値そのものは送りません。コマンドごとに新しいシェルを起動し、これらのどれも設定しないエージェントでは、親プロセスIDがコマンドごとに変わるため、短いセッションが何本も見えます。ボードはこれを隠しません。
 
 サーバーは、ストリームが開いている間と、閉じてから30秒の猶予の間、セッションを数えます。待機を繰り返すセッションは、1つのセッションのままです。登録はサーバーのメモリ（`src/server/sessions/`）にあり、保存しません。Codexの変数はCodexがコマンド向けに公開しているものですが、この変更を書いた時点では、動作中のCodexで確認していません。
+
+### 張り付くセッションの起動
+
+ボードのサーバーは、プロジェクトに結び付けたフォルダで、画面を持たないClaude CodeまたはCodexのセッションを起動できます。起動したセッションは、自分で起動したセッションと同じようにボードを待ちます。起動処理（`src/server/resident/`）は、これらのCLIに対するAgent Boardの唯一の依存先です。`claude`や`codex`の名前、フラグ、出力を知っているのはここだけです。ルートは[セッションの起動](../reference/web-api.md#セッションの起動)にあります。**起動したセッションは、無人で自動承認のまま動きます。** 先に[ボードが起動するセッション](./security.md#ボードが起動するセッション)を読んでください。
+
+起動処理がすること:
+
+- **確認。** CLIがサーバーの`PATH`にあり（なければ`agent_cli_missing`）、ログイン済みであること（`agent_cli_logged_out`）を確かめます。Claude Codeは`claude auth status`の`loggedIn`、Codexは`codex login status`が終了コード0で終わるかどうかです。これらの呼び出しとモデルの一覧は、リクエストが長く待たされないよう、それぞれ20秒を上限とします。ログインの確認が時間切れになると`session_launch_failed`です。`AGBOARD_CLAUDE_BIN`と`AGBOARD_CODEX_BIN`は、`PATH`を探す代わりに実行ファイルを指定します。テストはこれに偽のスクリプトを指定します。
+- **モデル。** Claude Codeにはモデルを一覧するコマンドがないので、固定の別名`opus`、`sonnet`、`haiku`、`fable`を示します。Codexは`codex debug models`で一覧し、`visibility`が`list`のモデルだけを示します。一覧を読めないとき（コマンドがない、失敗した、20秒を超えた、期待するJSONではない）は、`reason`付きの空の一覧を返し、モデルを指定しない起動ではツール自身の既定のモデルを使います。示していないモデルと、フラグに読めてしまう名前は、`invalid_value`で拒否します。
+- **承認。** Claude Codeは`--permission-mode auto --permission-prompts none`で動きます。レビュアーが各操作を確認し、確認が必要になる操作は、拒否されたツールの結果として返るので、人を待つことはありません。Codexは`--approve-for-me`（workspace-writeのサンドボックス、承認は自動レビュー）と`--add-dir <データ領域>`で動き、セッションの`agboard`の書き込みがサンドボックスに阻まれません。作業フォルダは`-C <プロジェクトのフォルダ>`です。これらのフラグを書いてあるのはここだけです。
+- **起動。** ツールごとに1つ、全プロジェクトを通して1つです。この起動処理にすでにそのツールの生きている子プロセスがあるとき（セッションの待機が登録される前の隙間を塞ぎます）、または、登録にそのツールのボード起動のセッションが数えられているときは、理由付きで`session_launch_refused`として拒否します。子プロセスは、プロジェクトに結び付けたフォルダで標準入力なしに起動し、出力は`<データ領域>/resident/<ツール>.log`に書きます。最初の指示は、`agent-board`スキルを使ってボードを待つこと、待機が終わるたびにすぐ待ち直すことを伝えるので、止まるのはボードが止めたときだけです。
+- **環境。** 子プロセスには、サーバーの環境から`CLAUDECODE`、`CLAUDE_CODE_*`、`CODEX_*`、`AGBOARD_RESIDENT_ID`を除いたものを渡します。サーバー自身のエージェントのセッションが、子プロセスを別のツールに見せないためです。`CODEX_HOME`、`CODEX_API_KEY`、`CLAUDE_CODE_OAUTH_TOKEN`は、CLIの設定やサインインに使うので残します。そのうえで`AGBOARD_RESIDENT_ID`（ランダムな起動ID）、`AGBOARD_SESSION_TOOL`、`AGBOARD_SESSION_ORIGIN=board`を設定します。これにより、子プロセスの`wait --until task`が、起動元`board`と正しいツールを報告します。
+- **停止。** 子プロセスは、自分のプロセスグループの先頭です。停止はグループへSIGTERMを送り、5秒後にSIGKILLを送ったうえで、そのセッションの登録をすぐに外します。すでにいないセッションの30秒の猶予のために、次の起動が拒否されることはありません。子プロセスが自分で終了したときも同じで、すべての子プロセスをスレッドが待つので、ゾンビは残りません。サーバーが終了するときは、起動したすべての子プロセスを止めます。強制終了されたサーバーは、これを行えず、子プロセスが動いたまま残ります。
 
 ## 自動Done
 

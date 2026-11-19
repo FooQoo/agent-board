@@ -37,7 +37,8 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `POST …/tasks/archive-done` | `{ids: number[]}`; empty, duplicate, or invalid IDs are 422. Returns `{tasks, archivedCount}`. |
 | `GET /api/projects/{projectId}/archive` | Archived tasks with bodies, full history, and attachment metadata, plus `epics` from the same snapshot. Each task's `epicId` resolves against that list; a task without an epic, or one whose epic is missing, has no label. |
 | `GET /api/projects/{projectId}/summary` | The list data for the board: project, `version`, tasks, epics, and problems, without any body text. See [Summary and Detail](#summary-and-detail). |
-| `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts. See [Attached sessions](#attached-sessions). Never cached. |
+| `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts, plus the sessions the board launched. See [Attached sessions](#attached-sessions). Never cached. |
+| `GET …/sessions/models`, `POST …/sessions/launch`, `POST …/sessions/stop` | Launch and stop headless Claude Code and Codex sessions. Local listener only. See [Launching sessions](#launching-sessions). |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | One task's body, acceptance conditions, and history as an NDJSON stream. Archived tasks are read the same way. |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | One epic's document as an NDJSON stream. |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | The project's documents in `docs/`, read-only: the folder tree, one Markdown or MDX file, an image, and opening the folder or a file in the computer's own app. See [Project docs](#project-docs). |
@@ -112,7 +113,7 @@ The server compares the parsed data before and after every reload, so a save tha
 
 ### Attached sessions
 
-`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values.
+`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values. The response also has `launched`; see [Launching sessions](#launching-sessions).
 
 ```json
 {
@@ -149,7 +150,19 @@ How a stream names its session: a command that waits for tasks sends four header
 | `X-Agboard-Session-Tool` | `claude-code`, `codex`, or `unknown`. |
 | `X-Agboard-Session-Origin` | `board` or `external`. |
 
-The limit on launching is not a route. The board's launcher (a later change) calls `SessionRegistry::check_board_launch(tool)` before it starts a session: board-launched sessions are limited to one per tool over all projects, a board-launched session in grace still counts, and external sessions are never limited or counted against that limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+The limit on launching is enforced by `SessionRegistry::check_board_launch(tool)`, which the launcher calls before it starts a session: board-launched sessions are limited to one per tool over all projects, a board-launched session in grace still counts, and external sessions are never limited or counted against that limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+
+### Launching sessions
+
+These routes start and stop the headless sessions the board launches (see [Launching resident sessions](../concepts/agents.md#launching-resident-sessions)). **A launched session runs unattended with automatic approval**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
+
+| API | Contract |
+| --- | --- |
+| `GET /api/projects/{projectId}/sessions/models?tool=` | `tool` is `claude-code` or `codex` (another value is 422 `invalid_value`). Returns `{"models": [{"id", "label"}], "reason": null}`. When the list cannot be read it is `{"models": [], "reason": "<why>"}`, and a launch without a model uses the tool's default. The command is not installed: 409 `agent_cli_missing`. |
+| `POST /api/projects/{projectId}/sessions/launch` | `{"tool": "claude-code" \| "codex", "model"?: string}`. A missing, empty, or `"default"` model leaves the choice to the tool. Starts the session in a bound folder of the project and returns `{"launched": {"tool", "projectId", "model", "startedAt"}}`. A model that is not offered, or that is not a model name: 422 `invalid_value`. An unknown project: 404 `project_not_found`; a project with no existing bound folder: 409 `project_has_no_folder`; the CLI missing or logged out: 409 `agent_cli_missing` or `agent_cli_logged_out`; a session of that tool already launched or attached by the board: 409 `session_launch_refused` with the reason; the process could not be started: 500 `session_launch_failed`. |
+| `POST /api/projects/{projectId}/sessions/stop` | `{"tool": "claude-code" \| "codex"}`. Stops the launched session of that tool (the tool, not the project, names it, because the limit is one per tool over all projects) and returns `{"stopped": true}` when the call returns, or `{"stopped": false}` when none was running. The session no longer counts, so a new launch is possible at once. |
+
+`GET /api/projects/{projectId}/sessions` also carries `launched`, the sessions of that project that the launcher holds a process for, as `[{"tool", "projectId", "model", "startedAt"}]`. It has no process ID. A launched session appears in `sessions` (with `origin: "board"`) only once its own wait has attached.
 
 ### Remote connection
 

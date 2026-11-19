@@ -23,6 +23,7 @@ Everything below serves one of these two goals. When a protection only restrains
 | Paths or text escape their folder | IDs are validated before paths are built; text never becomes a path or shell code. | [Files and paths](#files-and-paths) |
 | A docs path reaches outside `docs/` | Paths are checked element by element, symbolic links are refused, and only `.md` files and four image types are served. | [Project docs](#project-docs) |
 | An agent confuses projects | Every write names one project by an immutable ProjectId. | [Project boundaries](#project-boundaries) |
+| A board-launched session does something you did not expect | **Reduced, not removed.** It runs unattended with automatic approval, as your account. | [Sessions the board launches](#sessions-the-board-launches) |
 | Setup grants too much | Only the data area is added; existing restrictions are kept. | [Agent access setup](#agent-access-setup) |
 
 ## Exposure
@@ -162,10 +163,22 @@ What this protects: the token and the files stay out of reach of a document's co
 - **Fixed commands.** The Hook command is fixed in the plugin and is never built from task text or tool input.
 - **Backups hold your settings.** They keep the original file's access rights, and are never put in a shared folder for you.
 
+## Sessions the board launches
+
+The board can start a headless Claude Code or Codex session in a project's bound folder (see [Launching resident sessions](./agents.md#launching-resident-sessions)). **Nobody watches such a session, and its approvals are automatic.** Neither agent stops to ask you.
+
+- Claude Code is started in auto mode (`--permission-mode auto --permission-prompts none`). A reviewer checks each action, and an action that would have asked is refused and returned to the agent as a denied tool result; nothing waits for you.
+- Codex is started with `--approve-for-me`: its workspace-write sandbox stays on, and approvals go through automatic review. The board adds its own data area as writable (`--add-dir`), so the session's `agboard` commands are not blocked by the sandbox before the review. The project folder is the working folder (`-C`).
+- Automatic review is not a person. It can approve an action you would not, and a mistaken or hijacked instruction, for example one written in a task or in a web page the agent reads, can still reach what the session's account and approved actions reach. The session also holds your signed-in agent account. Launch these sessions only in projects you trust.
+- The launcher scrubs the agents' own session variables from the child and sets `AGBOARD_RESIDENT_ID`, `AGBOARD_SESSION_TOOL`, and `AGBOARD_SESSION_ORIGIN` so the child is told apart from a session you started yourself. This is identification, not a restriction.
+- Only the local page can start or stop a session. The routes are not served through the ngrok entrance, so a phone that is allowed in cannot launch one. Each launch needs the page's write guard like any other write.
+- The board launches at most one session per tool, and stops every session it launched when the server stops.
+
 ## What is not prevented
 
 These limits are deliberate. Keep them in mind when someone asks for "just one more check".
 
+- **A board-launched session.** It runs unattended, and its approvals are automatic, so the automatic review is the only check on what it does. See [Sessions the board launches](#sessions-the-board-launches).
 - **ngrok and its account owner.** The tunnel is not end-to-end encrypted: ngrok ends the HTTPS connection, so ngrok can see the traffic, and an administrator of the ngrok account can change how the address is served.
 - **A local process that sends HTTP straight to the entrance's loopback port.** The entrance listens on `127.0.0.1` on a random port, and nothing proves that a request came through ngrok: a program on the PC that sends `Host: <the public address>` to that port is admitted past the Host check. Its only way on is the passcode and the session behind it, so the board's data stays unreadable without the passcode, but such a program can guess (five tries per start) and can spend those tries, which locks the phone out until the connection is started again. The user who runs the PC is trusted: the same programs can read the shared files directly, so no further defence is added for this path. A website cannot do it, because a browser cannot send another `Host`.
 - **A phone that is allowed in, or someone who takes over its session.** Such a person can do on the board what the PC's board page can do: read every project, add, edit, move, archive, and delete tasks and epics, answer questions, check acceptance conditions (which can complete an AI task), and change the language and color theme. Only the connection settings, notifications, and opening a docs path with the operating system stay out of reach.

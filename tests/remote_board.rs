@@ -268,6 +268,9 @@ fn what_acts_on_the_pc_itself_is_not_served_through_the_entrance() {
         ("DELETE", "/api/monitor-connections/token".to_string()),
         ("POST", "/api/notify".to_string()),
         ("POST", format!("{base}/docs/open")),
+        ("GET", format!("{base}/sessions/models?tool=codex")),
+        ("POST", format!("{base}/sessions/launch")),
+        ("POST", format!("{base}/sessions/stop")),
     ] {
         let reply = if method == "GET" {
             server.get(&session, &path)

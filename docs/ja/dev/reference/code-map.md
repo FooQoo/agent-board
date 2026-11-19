@@ -95,6 +95,7 @@
 
 - `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
 - `src/server/api/docs/`: ボードのルーターにある4つのルート。
+- `src/server/resident/`: 画面を持たないClaude CodeとCodexのセッションの起動処理です。これらのCLIを知っている唯一のコードです（`cli.rs`は名前、ログインの確認、モデル、引数、環境の除去、`mod.rs`は起動、回収、停止、シャットダウン）。ルートは`src/server/api/sessions.rs`にあります。
 - `src/server/sessions/`、`src/server/api/sessions.rs`、`src/agent/session_identity.rs`: 張り付いたエージェントセッションのメモリ上の登録、その読み取りルート、待機中のコマンドが自分のセッションを名乗る方法。
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。
 - `web/src/features/docs/`: リクエスト（`api/docsApi.ts`）、ツリー・選んだファイル・ディスクの変化への追従（`model/`）、ダイアログ（`ui/DocsDialogContainer.tsx`。外枠とファイル一覧は`ui/shell/`、本文の欄・フロントマター・ファイルの表示・MDXの枠は`ui/document/`）。

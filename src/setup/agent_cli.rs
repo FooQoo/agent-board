@@ -64,6 +64,16 @@ fn is_executable(path: &Path) -> bool {
 /// Runs `program args…` in `cwd` and waits for it. `Err` means it could not
 /// be started or did not finish in time.
 pub fn run(program: &Path, args: &[&str], cwd: Option<&Path>) -> Result<CliOutput, String> {
+    run_with_timeout(program, args, cwd, TIMEOUT)
+}
+
+/// [`run`] with its own time limit, for callers that must answer quickly.
+pub fn run_with_timeout(
+    program: &Path,
+    args: &[&str],
+    cwd: Option<&Path>,
+    limit: Duration,
+) -> Result<CliOutput, String> {
     let mut command = Command::new(program);
     command
         .args(args)
@@ -83,7 +93,7 @@ pub fn run(program: &Path, args: &[&str], cwd: Option<&Path>) -> Result<CliOutpu
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
-            Ok(None) if started.elapsed() < TIMEOUT => {
+            Ok(None) if started.elapsed() < limit => {
                 std::thread::sleep(Duration::from_millis(20));
             }
             _ => {
@@ -91,7 +101,7 @@ pub fn run(program: &Path, args: &[&str], cwd: Option<&Path>) -> Result<CliOutpu
                 let _ = child.wait();
                 return Err(format!(
                     "{shown} did not finish within {} seconds",
-                    TIMEOUT.as_secs()
+                    limit.as_secs().max(1)
                 ));
             }
         }

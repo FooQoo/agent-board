@@ -147,6 +147,21 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
             url: "http://127.0.0.1:7420/?project=0123456789abcdef0123456789abcdef".into(),
             reason: "Cannot start xdg-open: No such file or directory (os error 2).".into(),
         },
+        AgboardError::AgentCliMissing {
+            tool: "claude".into(),
+        },
+        AgboardError::AgentCliLoggedOut {
+            tool: "codex".into(),
+        },
+        AgboardError::SessionLaunchRefused {
+            reason: "A board-launched claude-code session already exists.".into(),
+        },
+        AgboardError::SessionLaunchFailed {
+            reason: "claude could not be started.".into(),
+        },
+        AgboardError::ProjectHasNoFolder {
+            project: "demo".into(),
+        },
     ]
 }
 
@@ -212,6 +227,11 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("docs_open_failed", 1),
             ("remote_unavailable", 1),
             ("browser_open_failed", 1),
+            ("agent_cli_missing", 1),
+            ("agent_cli_logged_out", 1),
+            ("session_launch_refused", 1),
+            ("session_launch_failed", 1),
+            ("project_has_no_folder", 1),
         ]
     );
 }

@@ -52,6 +52,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   bindings.json
   serve.json
   serve.log
+  resident/<tool>.log
   lifecycle.lock
   autostart.lock
   autostart.paused
@@ -71,6 +72,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
   `mode` is `auto` for a server a command started and `manual` for `serve` and `serve -d`; a file without it is read as `manual`. `idleTimeoutSeconds` is present only for an automatic server.
 - `serve.log` is the output of a server started in the background, by `serve -d` or by a command (owner-only, replaced at every start). An automatic server writes there why it took another port and when it stopped.
+- `resident/<tool>.log` (`claude-code.log` or `codex.log`) is the output of the session the board launched for that tool: its standard output and error (owner-only, replaced at every launch). It can hold what the agent printed, so treat it like any other output of an agent running with your account. See [Launching resident sessions](../concepts/agents.md#launching-resident-sessions).
 - `autostart.lock` orders commands that start the server at the same time. `autostart.paused` is left by `agboard stop` so that the hook does not start the server again; a command that waits, `serve`, or `serve -d` removes it. See [Server and web UI](../concepts/server-and-ui.md#starting-and-stopping-serve).
 
 `docs/` holds the project's own Markdown documents, which the Docs dialog reads (see [Project docs](#project-docs)).
