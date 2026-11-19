@@ -6,7 +6,14 @@ use std::path::Path;
 /// Files `pnpm --dir web build` must produce under `web/dist/`.
 /// The scripts and stylesheets are named by their content, so `build.rs`
 /// checks them through the files the HTML names.
-pub const REQUIRED_FILES: [&str; 3] = ["index.html", "logo.png", "logo-white.png"];
+pub const REQUIRED_FILES: [&str; 6] = [
+    "index.html",
+    "logo.png",
+    "logo-white.png",
+    "home-icon-180.png",
+    "home-icon-192.png",
+    "home-icon-512.png",
+];
 
 /// Actionable error for an incomplete isolated web build.
 pub fn namespace_error_message(namespace: &str, missing: &[&str]) -> String {
@@ -47,15 +54,16 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         assert_eq!(
             missing_files(&tmp.path().join("dist")),
-            vec!["index.html", "logo.png", "logo-white.png"]
+            REQUIRED_FILES.to_vec()
         );
     }
 
     #[test]
     fn only_the_absent_files_are_reported() {
         let tmp = tempfile::tempdir().unwrap();
-        touch(tmp.path(), "index.html");
-        touch(tmp.path(), "logo-white.png");
+        for rel in REQUIRED_FILES.into_iter().filter(|rel| *rel != "logo.png") {
+            touch(tmp.path(), rel);
+        }
         assert_eq!(missing_files(tmp.path()), vec!["logo.png"]);
     }
 
@@ -71,8 +79,12 @@ mod tests {
     #[test]
     fn a_directory_in_place_of_a_file_does_not_count() {
         let tmp = tempfile::tempdir().unwrap();
-        touch(tmp.path(), "logo.png");
-        touch(tmp.path(), "logo-white.png");
+        for rel in REQUIRED_FILES
+            .into_iter()
+            .filter(|rel| *rel != "index.html")
+        {
+            touch(tmp.path(), rel);
+        }
         std::fs::create_dir_all(tmp.path().join("index.html")).unwrap();
         assert_eq!(missing_files(tmp.path()), vec!["index.html"]);
     }

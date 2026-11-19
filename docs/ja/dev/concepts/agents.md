@@ -26,7 +26,7 @@
 
 `src/progress.rs`は、`Include`に応じて任意の`pending`節と`done`節を作ります。`agboard progress`と`agboard hook`が`--include-pending`と`--include-done`から`Include`を作ります。既定の`Include`は何も追加しないため、既定の表は変わりません。オプションは[エピックと進行表](../../guide/watch/epics.md#進行表を読む)を参照してください。
 
-Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登録済みの祖先からプロジェクトを識別します。セッションIDは使わず、登録がないときに全プロジェクトを選ぶことも、最も近い登録が壊れているときに親へ戻ることもありません。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。登録がまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
+Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登録済みの祖先からプロジェクトを識別します。セッションIDは使わず、登録がないときに全プロジェクトを選ぶことも、最も近い登録が壊れているときに親へ戻ることもありません。保存した言語が英語以外のときは、返答の言語の手がかりとして、`preferences.json`から直接読んだ値（`src/server/preferences/`の`saved_locale`）を、一覧の最上位の`locale`に載せます。一覧は`hookSpecificOutput.additionalContext`に`AGBOARD_PROGRESS`のJSONとして返し、失敗したときは`bound_project_missing`などの`AGBOARD_ERROR`を返します。登録がまったくないフォルダはエラーではありません。[Hookのスキップとエラー](#hookのスキップとエラー)を参照してください。
 
 - **Claude Code。** プラグインの`hooks/claude.json`が、プロジェクト名を固定せずに`agboard hook --agent claude`をSessionStart（`startup`、`resume`、`clear`、`compact`）、PostToolUse、PostToolUseFailureに登録します。汎用スキルのfrontmatterのHookは使いません。
 - **Codex。** プラグインの`hooks/codex.json`が、`agboard hook --agent codex`をSessionStartとPostToolUseに登録します。Codexはプラグインのhookを、信頼されたものだけ実行します。信頼の設定は`agboard setup`と`agboard update`が行います（[setupとupdate](#setupとupdate)を参照）。

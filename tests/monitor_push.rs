@@ -329,6 +329,15 @@ fn the_manifest_and_worker_are_served_without_a_session_and_the_local_page_has_t
         "application/manifest+json"
     );
     assert_eq!(m.json()["display"], "standalone");
+    assert_eq!(m.json()["background_color"], "#ffffff");
+    let manifest = m.json();
+    let icons: Vec<&str> = manifest["icons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["src"].as_str().unwrap())
+        .collect();
+    assert_eq!(icons, ["/home-icon-192.png", "/home-icon-512.png"]);
     let w = call(&s, "GET", "/sw.js", "", &[], "");
     assert_eq!(w.status, 200);
     assert!(

@@ -358,6 +358,8 @@ The saved language and color theme live in `<data-root>/.internal/preferences.js
 | `theme.mode` | `light` or `dark`. The default is `light`. |
 | `theme.accent` | One of the 12 accents: `blue`, `sky`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `purple`, `gray`. The default is `blue`. |
 
+The progress table reads the file too: `agboard progress --json` and the hook add `locale` to the table when the saved language is not English, so an agent keeps replying in the user's language (see [Hook, progress, and wait output](./agent-output.md#progress-table)). Like the README language, this is a read of the file alone; the server need not run, and a missing or invalid file simply leaves the field out.
+
 A save changes only the fields it sends; the others keep their saved values. The last save wins, and there is no conflict check. The preferences hold no secret, and the file never holds a token, a passcode, or a session.
 
 ## Session auto-start

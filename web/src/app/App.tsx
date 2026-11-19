@@ -9,6 +9,7 @@ import { NARROW_VIEWPORT_QUERY, useNarrowViewport } from '../shared/lib/viewport
 import { preloadable } from '../shared/lib/lazy/preloadable';
 import { createPhoneGuideLink } from '../features/onboarding/model/phoneGuideLink';
 import { guideLayer } from './onboarding/lazyGuide';
+import { NotificationDialogHost } from './notificationSlot';
 import { ResidentDialogHost } from './residentSlot';
 import { isProjectId } from './model/projectSession';
 
@@ -87,6 +88,7 @@ function AppScreen({ initial }: AppProps) {
       </Suspense>
       {/* Above the width switch too: a dialog left open becomes a sheet when the window narrows. */}
       <ResidentDialogHost projectId={known && isProjectId(activeId) ? activeId : null} />
+      <NotificationDialogHost />
       <AppDialogs
         model={model}
         onSubmit={actions.submitDialog}

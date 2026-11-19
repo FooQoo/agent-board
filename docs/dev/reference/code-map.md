@@ -70,7 +70,7 @@ The main files and directories outside `src/` are:
 - `src/domain/markdown_blocks.rs`: splits a body into top-level Markdown blocks for the Detail stream. It does no I/O.
 - `web/src/shared/data/`: the data layer. `api/` holds the contract types and the Detail parser, `core/` the framework-free cache, scheduler, and event connection, and `react/` the hooks the screens use. See [Reading and updating data](../concepts/server-and-ui.md#reading-and-updating-data).
 - `web/src/shared/markdown/`: the Markdown renderer. `MarkdownBlocks` draws the blocks of a body and virtualizes a large one (`VirtualMarkdown.tsx`).
-- `web/src/features/notification-settings/`: the "Phone notifications" section of the settings dialog, with its reads, saves, and the same kinds and defaults as the server.
+- `web/src/features/notification-settings/`: the "Phone notifications" row of the settings dialog and the dialog it opens, with its reads, saves, and the same kinds and defaults as the server.
 - `web/src/shared/preferences/`: the saved language and color theme on the web side: the reads and saves, the browser's first-paint copy, and the `preferences` event. See [Server and web UI](../concepts/server-and-ui.md).
 - `web/.storybook/`: Storybook configuration, synthetic fixtures, decorators, network guards, and support tests. UI Stories and coverage ledgers live beside the source they describe; see [Storybook setup and coverage](../getting-started/setup.md#storybook).
 - `tests/`: Rust integration and CLI tests.

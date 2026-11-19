@@ -76,8 +76,9 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
   },
   play: async () => {
     const view = within(document.body);
-    // 24 themes, 2 languages, and the 4 periodic intervals of the notification section.
-    await waitFor(() => expect(view.getAllByRole('radio')).toHaveLength(30));
+    // 24 themes and 2 languages; the notification choices live in their own dialog.
+    await waitFor(() => expect(view.getAllByRole('radio')).toHaveLength(26));
+    await expect(await view.findByRole('button', { name: 'Notification settings' })).toBeVisible();
     await expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
     await userEvent.click(await view.findByRole('button', { name: 'Connection settings' }));
     // The settings dialog is gone and the connection dialog is the only one on the screen.

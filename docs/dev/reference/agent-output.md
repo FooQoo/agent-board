@@ -12,6 +12,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
   "project": { "id": "ef18518d…", "name": "agent-board", "createdAt": "2026-10-10T22:59:43Z" },
   "version": "781ad752…",
   "cursor": "f1:ef18518d…:781ad752…",
+  "locale": "ja",
   "epics": [
     {
       "id": "SPEC-MIGRATION",
@@ -53,6 +54,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 - When a person has answered a question and no agent has taken the answer in (the reply has no `acceptedAt`), the table has an `answers` array in ID order. Each entry is `{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`: `title` follows the same rule as a request's title, `tasks` lists the unarchived tasks that refer to the question, and `choiceId`, `choiceLabel`, and `text` are `null` when the answer has no such part: a note-only answer to a question with choices has `choiceId` and `choiceLabel` `null` and `text` set. Without such an answer the field is absent. An agent reads the whole answer with `message show` and takes it in with `message accept`.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
+- `locale` is the language saved in the board's settings, a short hint for the language of the agent's replies. It is read from `<data-root>/.internal/preferences.json` without the server, and is present only when the saved language is not English (today, `"ja"`). It is absent for English, when no language is saved, and when the file is missing or invalid, so existing readers are unaffected. The text form of `agboard progress` does not show it.
 - The paths appear only in local CLI and hook output, never in remote JSON.
 - The earlier `planPath` field is no longer produced or accepted. See the [data guide](../../guide/operations/data.md).
 

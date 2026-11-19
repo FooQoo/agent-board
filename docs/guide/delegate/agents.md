@@ -140,7 +140,7 @@ The agent keeps `message ask` running until every question is answered, up to 10
 - **Claude Code** waits in the background and ends its turn. An answer on the board finishes the wait and wakes the agent, so it continues without a message from you. If you reply in the chat instead, the agent records your reply and continues.
 - **Codex** waits in the foreground after writing the question in the chat. Answer on the board, or interrupt the agent and reply in the chat; it then records your reply.
 
-The agent writes its chat replies in the language you use with it. When nobody is in the conversation, such as while it listens for tasks, the agent asks only on the board.
+The agent writes its chat replies in the language you use with it. If you chose a language other than English in the board's settings, the progress table also carries it as a hint, so the agent keeps replying in your language even after long English tool output. What you write in the conversation still wins. When nobody is in the conversation, such as while it listens for tasks, the agent asks only on the board.
 
 The agent uses `--no-wait` only when you explicitly ask it to register a question and return immediately. If the board is unavailable, it reports the problem and waits to ask there.
 

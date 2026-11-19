@@ -117,6 +117,29 @@ pub(super) async fn logo_png() -> Response {
         .into_response()
 }
 
+fn png(bytes: &'static [u8]) -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "image/png"),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+
+pub(super) async fn home_icon_180_png() -> Response {
+    png(assets::HOME_ICON_180_PNG)
+}
+
+pub(super) async fn home_icon_192_png() -> Response {
+    png(assets::HOME_ICON_192_PNG)
+}
+
+pub(super) async fn home_icon_512_png() -> Response {
+    png(assets::HOME_ICON_512_PNG)
+}
+
 pub(super) async fn logo_white_png() -> Response {
     (
         [

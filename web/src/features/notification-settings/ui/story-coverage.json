@@ -48,12 +48,77 @@
       ]
     },
     {
-      "file": "features/notification-settings/ui/NotificationSettings.tsx",
+      "file": "features/notification-settings/ui/NotificationEntryRow.tsx",
       "exports": [
         {
-          "name": "NotificationSettings",
+          "name": "NotificationEntryRow",
+          "stories": [
+            {
+              "id": "settings-notificationentryrow--default",
+              "states": ["icon, title, one line, button", "button asks for the dialog"],
+              "interaction": true
+            },
+            {
+              "id": "settings-notificationentryrow--dark-japanese",
+              "states": ["Japanese", "dark theme"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/notification-settings/ui/NotificationDialogView.tsx",
+      "exports": [
+        {
+          "name": "NotificationDialogView",
+          "stories": [
+            {
+              "id": "settings-notificationdialogview--desktop",
+              "states": ["PC modal", "title", "a choice is saved", "close button"],
+              "interaction": true
+            },
+            {
+              "id": "settings-notificationdialogview--phone",
+              "states": ["bottom sheet", "phone width"],
+              "interaction": true
+            },
+            {
+              "id": "settings-notificationdialogview--phone-with-enable",
+              "states": ["Home Screen app", "enable button above the choices"],
+              "interaction": true
+            },
+            {
+              "id": "settings-notificationdialogview--dark-japanese",
+              "states": ["Japanese", "dark theme", "notifications on"],
+              "interaction": false
+            },
+            {
+              "id": "settings-notificationdialogview--load-failed",
+              "states": ["load failure", "visible alert"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/notification-settings/ui/NotificationDialog.tsx",
+      "exports": [
+        {
+          "name": "default",
           "stories": [],
-          "exclusion": "Reads and writes the board's local API, which Stories may not call; NotificationSettingsView draws the section."
+          "exclusion": "Reads and writes the board's local API, which Stories may not call; NotificationDialogView draws the dialog."
+        }
+      ]
+    },
+    {
+      "file": "features/notification-settings/ui/NotificationHost.tsx",
+      "exports": [
+        {
+          "name": "NotificationHost",
+          "stories": [],
+          "exclusion": "Only opens the lazily loaded dialog when asked; NotificationDialogView draws it."
         }
       ]
     }
