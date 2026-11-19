@@ -23,7 +23,10 @@ fn endpoints_must_be_public_https_addresses() {
         "https://intranet/x",
         "https://user:pw@web.push.apple.com/x",
         "not a url",
-        &format!("https://web.push.apple.com/{}", "a".repeat(MAX_ENDPOINT)),
+        &format!(
+            "https://web.push.apple.com/{}",
+            "a".repeat(check::MAX_ENDPOINT)
+        ),
     ] {
         assert!(!endpoint_ok(bad), "{bad}");
     }
@@ -134,4 +137,20 @@ fn an_unreadable_file_means_no_subscriptions() {
     )
     .unwrap();
     assert!(PushStore::open(dir.path()).list().is_empty());
+}
+
+#[test]
+fn unsubscribing_an_endpoint_keeps_a_replacement() {
+    let s = PushStore::in_memory();
+    s.subscribe("dev_a", ENDPOINT, &p256dh(), &auth())
+        .unwrap()
+        .unwrap();
+    let newer = "https://web.push.apple.com/Other";
+    s.subscribe("dev_a", newer, &p256dh(), &auth())
+        .unwrap()
+        .unwrap();
+    assert_eq!(s.unsubscribe_endpoint("dev_a", ENDPOINT), Ok(false));
+    assert!(s.is_subscribed("dev_a"));
+    assert_eq!(s.unsubscribe_endpoint("dev_a", newer), Ok(true));
+    assert!(!s.is_subscribed("dev_a"));
 }

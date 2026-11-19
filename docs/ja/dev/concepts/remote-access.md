@@ -44,6 +44,7 @@ flowchart LR
 | 内容 | 保存先 |
 | --- | --- |
 | 登録済みの端末（id、ラベル、origin、2つの時刻、端末トークンのSHA-256ダイジェスト） | `<データ領域>/.internal/remote-devices.json`。所有者だけが読み書きできる、アプリの内部ファイル。原子的に置き換える。生の端末トークンは保存しない。[共有ファイル](../reference/files.md#登録済みの端末)を参照。 |
+| 配信の台帳（どの端末に何を送ったか） | `<データ領域>/.internal/push-ledger.json`。所有者だけが読み書きでき、アトミックに置き換える。[共有ファイル](../reference/files.md#プッシュ配信の台帳)を参照。 |
 | Web Pushの購読（端末ごとのendpointと鍵）とVAPID鍵ペア | `<データ領域>/.internal/push-subscriptions.json`と`vapid-key.json`。所有者だけが読み書きできる、アプリの内部ファイル。原子的に置き換える。[共有ファイル](../reference/files.md#web-pushの購読)を参照。 |
 | `enabled`、`revision` | `<データ領域>/.internal/monitor-connection.json`。所有者だけが読み書きできる、アプリの内部ファイル。[共有ファイル](../reference/files.md#モニター接続の設定)を参照。 |
 | ngrokのトークン | 利用者が保存しない限り、メモリーだけ。保存したトークンは、このPCの安全な保管場所であるOSの資格情報ストア（service `agent-board`、account `ngrok-authtoken`）。 |
@@ -89,14 +90,14 @@ Edgeがアプリのために行うことはありません。エンドポイン�
 
 ## Web Pushの購読
 
-ホーム画面にボードを追加したスマホは、Web Pushを購読できます。外部の通知アプリやアカウントを使わずに、PCから後でそのスマホへ通知するためです。この機能が扱うのは購読の受け取りだけで、送信は別の機能です。
+ホーム画面にボードを追加したスマホは、Web Pushを購読できます。外部の通知アプリやアカウントを使わずに、PCから後でそのスマホへ通知するためです。このセクションは購読の受け取りを扱います。何をいつ送るかは[Web Pushの配信](./notifications.md#web-pushの配信)にあります。
 
 - **アプリの外枠。** 入口は`GET /manifest.webmanifest`（`/`から始まるスタンドアロンのアプリ）と`GET /sw.js`（Service Worker）を、ページの外枠と同じくsessionなしで返します。ページはマニフェストとApple用のアイコンをリンクします。Workerは何もキャッシュせず、fetchにも応答しません。`push`イベント（JSONの`{title, body, url, tag}`）に対して通知を表示し、通知をタップすると、ペイロードの`url`でボードを開くか前面に出します（別originのアドレスは無視）。ページがWorkerを登録するのは、入口でsessionが開いたあと、セキュアコンテキストの場合だけです。
 - **鍵。** 必要になった最初のときに、PCはP-256のVAPID鍵ペアを`ring`で作り、`<データ領域>/.internal/vapid-key.json`に保存します。公開鍵は購読のためにスマホへ渡し、秘密鍵は返さず、送信側が`PushStore::vapid_signer`を通して読むだけです。鍵ファイルを失うと新しい鍵ペアを作り、古い鍵での購読はプッシュサービスに拒否されるので破棄します。
 - **購読。** タップのあと（許可のダイアログにはユーザー操作が必要）、ページは許可を求め、公開鍵で`PushManager.subscribe`を呼び、結果を`PUT /api/remote/push/subscription`に送ります。PCは端末idごとに1件を`<データ領域>/.internal/push-subscriptions.json`に保存し、古いものは置き換えます。PCが受け付けなかった場合、ページはブラウザ側の購読も取り消します。登録済みの端末を持たないsession（登録を保存できず、合言葉だけで開いたもの）は購読できません。このルートは409 `device_required`を返し、ページはスマホをもう一度登録するよう案内します。
 - **検証。** endpointは名前付きホストの`https`アドレスで、IPアドレス・ドット無しのホスト・認証情報は不可、2048文字までです。`p256dh`は`0x04`で始まる65バイト、`auth`は16バイトで、どちらもパディング無しのbase64urlです。本文は4 KiBまでです。
 - **購読の終わり。** スマホ側でオフにできます（`DELETE /api/remote/push/subscription`）。PCで端末の登録を解除すると、その購読も一緒に削除します。`MonitorConnections::push_subscriptions`も、一覧を返す前に端末がなくなった購読（端末の一覧が満杯で押し出されたものなど）を破棄します。ファイルはディスクにあるので、PCの再起動や一時停止のあとも購読は残ります。
-- **送信側向け。** `MonitorConnections::push_subscriptions()`が送信先（`device_id`・`endpoint`・`p256dh`・`auth`・`created_at`）を返し、`push_store().vapid_signer()`がVAPIDヘッダーに署名する`ring`のECDSA P-256鍵ペアを返します。プッシュサービスがendpointに404か410を返したら、スマホが購読を取り消したということなので、送信側は`push_store().unsubscribe(device_id)`で削除してください。
+- **送信側向け。** `MonitorConnections::push_subscriptions()`が送信先（`device_id`・`endpoint`・`p256dh`・`auth`・`created_at`）を返し、`push_store().vapid_signer()`がVAPIDヘッダーに署名する`ring`のECDSA P-256鍵ペアを返します。`public_origin()`は、接続がreadyの間だけ公開アドレスを返し、それ以外は`None`です（その間は何も送りません）。プッシュサービスがendpointに404か410を返したら、スマホが購読を取り消したということなので、送信側は`push_store().unsubscribe_endpoint(device_id, endpoint)`で削除します。送信中にスマホが購読を作り直していた場合、その新しい購読は残ります。
 
 利用者向けの手順は[リモートアクセス](../../guide/watch/remote-access.md#iphoneで通知を受け取る)にあります。
 

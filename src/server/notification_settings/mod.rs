@@ -98,7 +98,6 @@ impl Default for NotificationSettings {
 impl NotificationSettings {
     /// Whether a state change to `started`, `pending`, or `done` is wanted:
     /// the state-changes kind is on and that change is picked.
-    #[allow(dead_code)] // Called by the Web Push delivery.
     pub(crate) fn wants_state_change(&self, change: StateChange) -> bool {
         self.kinds.state_changes
             && match change {
@@ -110,7 +109,6 @@ impl NotificationSettings {
 }
 
 /// A card state change the delivery side may announce.
-#[allow(dead_code)] // Used by the Web Push delivery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StateChange {
     Started,

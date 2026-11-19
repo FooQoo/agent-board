@@ -16,6 +16,7 @@ use agent_board::server::monitor_connection::keychain::{TokenVault, VaultError};
 use agent_board::server::monitor_connection::lifecycle::{
     Connector, FailureCode, MonitorEnv, OpenFailure, OpenFuture, OpenRequest, OpenedTunnel, Secret,
 };
+use agent_board::server::push_delivery::{Outcome, PushTransport, Request, SendFuture};
 use agent_board::server::{MonitorOptions, MonitorReady, ServeConfig, run_until_with_monitor_in};
 use serde_json::{Value, json};
 
@@ -156,6 +157,8 @@ pub struct Server {
     pub local: std::net::SocketAddr,
     pub token: String,
     pub mock: Arc<MockConnector>,
+    /// What the fake push services were sent.
+    pub push: Arc<RecordingPush>,
     pub ready: Option<MonitorReady>,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
     handle: Option<JoinHandle<Result<(), AgboardError>>>,
@@ -224,6 +227,21 @@ pub struct Opts {
     pub env_domain: Option<String>,
     pub explicit: bool,
     pub mock: Arc<MockConnector>,
+    /// Stands in for the push services: records each message and answers `Delivered`.
+    pub push: Arc<RecordingPush>,
+}
+
+/// A push service that takes everything and keeps what it was sent.
+#[derive(Default)]
+pub struct RecordingPush {
+    pub requests: Mutex<Vec<Request>>,
+}
+
+impl PushTransport for RecordingPush {
+    fn send(&self, request: Request) -> SendFuture {
+        self.requests.lock().unwrap().push(request);
+        Box::pin(async { Outcome::Delivered })
+    }
 }
 
 impl Default for Opts {
@@ -234,6 +252,7 @@ impl Default for Opts {
             env_domain: None,
             explicit: false,
             mock: Arc::new(MockConnector::default()),
+            push: Arc::new(RecordingPush::default()),
         }
     }
 }
@@ -251,6 +270,7 @@ impl Server {
             explicit: opts.explicit,
             connector: opts.mock.clone(),
             vault: opts.vault.clone(),
+            push_transport: opts.push.clone(),
         };
         let handle = std::thread::spawn(move || {
             run_until_with_monitor_in(
@@ -276,6 +296,7 @@ impl Server {
             local,
             token: token(&page),
             mock: opts.mock,
+            push: opts.push,
             ready,
             stop: Some(started.stop),
             handle: Some(started.handle),
