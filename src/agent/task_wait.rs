@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 
+use crate::agent::session_identity::SessionIdentity;
 use crate::agent::wait_engine::{Evaluation, WaitReader, WaitResult, wait_until};
 use crate::domain::{Assignee, Column, ProjectId, RunState, validate_project_name};
 use crate::error::AgboardError;
@@ -44,6 +45,11 @@ impl WaitReader for Reader<'_> {
 
     fn project(&self) -> &ProjectId {
         &self.project_id
+    }
+
+    /// A task wait keeps a resident session on the board, so it tells the server which one.
+    fn session(&self) -> Option<SessionIdentity> {
+        Some(SessionIdentity::from_env())
     }
 }
 

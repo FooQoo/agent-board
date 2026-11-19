@@ -14,6 +14,7 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
+mod sessions;
 mod summary;
 mod task_acceptance;
 mod task_attachments;
@@ -48,6 +49,7 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
+use sessions::list_sessions;
 use summary::summary;
 use task_acceptance::*;
 use task_attachments::*;
@@ -132,6 +134,7 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route("/api/projects", get(projects))
         .route("/api/projects/{project_id}/archive", get(archive))
         .route("/api/projects/{project_id}/summary", get(summary))
+        .route("/api/projects/{project_id}/sessions", get(list_sessions))
         .route(
             "/api/projects/{project_id}/tasks/{id}/detail",
             get(task_detail),

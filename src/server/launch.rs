@@ -14,7 +14,7 @@ use super::idle::{Activity, IdleStop};
 use super::monitor_connection::config::ConfigStore;
 use super::monitor_connection::lifecycle::MonitorConnections;
 use super::{AppState, MonitorOptions, MonitorReady, api, assets, bind, change_feed, instance};
-use super::{STALE_TEMPORARY_AGE, preferences};
+use super::{STALE_TEMPORARY_AGE, preferences, sessions};
 use crate::clock::format_utc;
 use crate::docs::DocsLocale;
 use crate::error::AgboardError;
@@ -26,6 +26,15 @@ use crate::paths::{self, ServeInfo, ServeMode};
 /// How long an automatic server waits for a stopping server to let go of the
 /// data directory.
 const AUTO_LIFECYCLE_WAIT: Duration = Duration::from_secs(10);
+
+/// How long a session whose wait ended stays counted: `AGBOARD_SESSION_GRACE_MS` when set to a
+/// number of milliseconds (tests shorten it), else [`sessions::GRACE`].
+fn session_grace() -> Duration {
+    std::env::var("AGBOARD_SESSION_GRACE_MS")
+        .ok()
+        .and_then(|text| text.trim().parse::<u64>().ok())
+        .map_or(sessions::GRACE, Duration::from_millis)
+}
 
 /// What to start.
 pub(crate) struct Launch<'a> {
@@ -149,6 +158,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             preferences_changed,
             docs_changed,
             activity: activity.clone(),
+            sessions: sessions::SessionRegistry::new(session_grace()),
         });
         state.monitor.attach(&state);
         let app = api::router(state.clone());

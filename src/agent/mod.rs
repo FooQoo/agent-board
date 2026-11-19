@@ -1,5 +1,6 @@
 pub mod hook;
 pub mod message_wait;
+pub(crate) mod session_identity;
 pub mod task_wait;
 pub mod wait;
 pub(crate) mod wait_connect;

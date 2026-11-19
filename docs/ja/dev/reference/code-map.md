@@ -95,6 +95,7 @@
 
 - `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
 - `src/server/api/docs/`: ボードのルーターにある4つのルート。
+- `src/server/sessions/`、`src/server/api/sessions.rs`、`src/agent/session_identity.rs`: 張り付いたエージェントセッションのメモリ上の登録、その読み取りルート、待機中のコマンドが自分のセッションを名乗る方法。
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。
 - `web/src/features/docs/`: リクエスト（`api/docsApi.ts`）、ツリー・選んだファイル・ディスクの変化への追従（`model/`）、ダイアログ（`ui/DocsDialogContainer.tsx`。外枠とファイル一覧は`ui/shell/`、本文の欄・フロントマター・ファイルの表示・MDXの枠は`ui/document/`）。
 - `web/src/shared/markdown/frontmatter.ts`と`resolveRelativeImage.ts`: ダイアログが使う、フロントマターの分離と相対パスの画像の解決。

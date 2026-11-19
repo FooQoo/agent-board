@@ -76,6 +76,14 @@ A person's request reaches an agent in three places: the `requests` array of the
 
 For one-session orchestration, the listener procedure (`agboard skills listening`, from `src/skills/topics/listening.md`) describes task enrichment, plan checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
 
+`wait --until task` also tells the server which session is listening, so the board can count the sessions attached to it. Its event-stream request carries the session's key, tool, origin, and the project's ID in `X-Agboard-Session*` headers (see [Attached sessions](../reference/web-api.md#attached-sessions)), and the JSON it prints does not change. The command reads these from its own environment and sends nothing else from it:
+
+- Origin: `AGBOARD_RESIDENT_ID` set (the board's launcher sets it) means `board`; otherwise `external`.
+- Tool: `CLAUDECODE` or `CLAUDE_CODE_SESSION_ID` means `claude-code`; `CODEX_THREAD_ID`, `CODEX_SANDBOX`, or `CODEX_SANDBOX_NETWORK_DISABLED` means `codex`; anything else is `unknown`. `CODEX_COMPANION_SESSION_ID` belongs to a Claude Code plugin, not to Codex, and is not used.
+- Key: the first of `AGBOARD_RESIDENT_ID`, `CLAUDE_CODE_SESSION_ID`, and `CODEX_THREAD_ID` that is set, else the parent process ID. The key sent is a prefix (`resident`, `claude`, `codex`, or `ppid`) and the first 16 hex digits of the value's SHA-256, never the value. Where an agent starts a new shell for each command and sets none of these, the parent process ID differs from one command to the next, so such a session appears as several short ones; the board does not hide this.
+
+The server counts a session while its stream is open and for a 30-second grace period after it closes, so a session that loops between waits stays one session. The registry is in server memory (`src/server/sessions/`), not saved. The Codex variables are the ones Codex documents for its commands; they were not checked against a running Codex when this was written.
+
 ## Automatic Done
 
 The rule is defined in [Data model](./history-and-decisions.md#acceptance-conditions-and-automatic-done). Evaluation works like this:

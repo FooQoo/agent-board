@@ -76,6 +76,14 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 一つのセッションで続けて作業する手順として、タスク情報の補完、計画の確認、回答待ち、直列処理、中断後の復帰をリッスン手順（`agboard skills listening`、元は`src/skills/topics/listening.md`）に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
+`wait --until task`は、どのセッションが待っているかもサーバーに伝えます。ボードに張り付いているセッションを数えるためです。イベントストリームのリクエストに、セッションのキー、ツール、起動元、プロジェクトのIDを`X-Agboard-Session*`ヘッダーで付けます（[張り付いたセッション](../reference/web-api.md#張り付いたセッション)を参照）。出力するJSONは変わりません。コマンドは自分の環境変数からこれらを読み、環境からはそれ以外を送りません。
+
+- 起動元: `AGBOARD_RESIDENT_ID`が設定されていれば（ボードの起動処理が設定します）`board`、なければ`external`です。
+- ツール: `CLAUDECODE`または`CLAUDE_CODE_SESSION_ID`があれば`claude-code`、`CODEX_THREAD_ID`、`CODEX_SANDBOX`、`CODEX_SANDBOX_NETWORK_DISABLED`のいずれかがあれば`codex`、どれもなければ`unknown`です。`CODEX_COMPANION_SESSION_ID`はClaude Codeのプラグインの変数でCodexのものではないため、使いません。
+- キー: `AGBOARD_RESIDENT_ID`、`CLAUDE_CODE_SESSION_ID`、`CODEX_THREAD_ID`のうち最初に設定されているもの、どれもなければ親プロセスIDです。送るキーは、接頭辞（`resident`、`claude`、`codex`、`ppid`）と、値のSHA-256の先頭16桁（16進数）で、値そのものは送りません。コマンドごとに新しいシェルを起動し、これらのどれも設定しないエージェントでは、親プロセスIDがコマンドごとに変わるため、短いセッションが何本も見えます。ボードはこれを隠しません。
+
+サーバーは、ストリームが開いている間と、閉じてから30秒の猶予の間、セッションを数えます。待機を繰り返すセッションは、1つのセッションのままです。登録はサーバーのメモリ（`src/server/sessions/`）にあり、保存しません。Codexの変数はCodexがコマンド向けに公開しているものですが、この変更を書いた時点では、動作中のCodexで確認していません。
+
 ## 自動Done
 
 規則は[データモデル](./history-and-decisions.md#完了条件と自動done)で定めています。評価は次のように行います。
