@@ -8,7 +8,7 @@ use std::sync::Arc;
 use super::Launcher;
 use super::autostart::AutoStart;
 use super::driver::AgentDriver;
-use super::push;
+use super::push::{self, Stalled};
 use super::supervisor::PlanState;
 use crate::domain::ProjectId;
 use crate::server::sessions::Tool;
@@ -38,7 +38,7 @@ pub struct Health {
     /// running session that is not is working on something.
     pub waiting: bool,
     /// Items the board pushed several times without the session handling them, and gave up on.
-    pub push_stalled: Vec<String>,
+    pub push_stalled: Vec<Stalled>,
     /// Restarts since the last launch or stop by a person.
     pub restart_count: u32,
     #[serde(with = "crate::clock::serde_opt_utc")]

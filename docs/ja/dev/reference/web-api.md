@@ -194,7 +194,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
 | `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
 | `waiting` | セッションが張り付いていて、2つのターンの合間にいて、ボードが仕事を渡せる間は`true`です。`running`で`waiting: false`のセッションは作業中で、そのことを理由に終了されることはありません。 |
-| `pushStalled` | ボードがセッションへ何度も押し込んだのに処理されず、あきらめた項目を、1件1文で並べます。なければ空です。項目がボードから消えると一覧からも消えます。[pushモード](../concepts/agents.md#pushモード)を参照。 |
+| `pushStalled` | ボードがセッションへ何度も押し込んだのに処理されず、あきらめた項目を、1件ずつ`{"kind", "id", "attempts", "lastError"}`の形で並べます。`kind`は`request`、`answer`、`task`のいずれかで、`id`は依頼や質問のID（`Q-3`など）、またはテキストにしたタスク番号です。`attempts`は押し込んだ回数、`lastError`は直前に失敗したターンのメッセージで、なければ`null`です。なければ空です。項目がボードから消えると一覧からも消えます。[pushモード](../concepts/agents.md#pushモード)を参照。 |
 | `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
 | `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |
 | `nextRestartAt` | 待っている再起動が始まる時刻です。`restarting`以外は`null`です。 |

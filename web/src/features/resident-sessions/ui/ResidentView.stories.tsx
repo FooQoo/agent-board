@@ -51,6 +51,18 @@ export const Restarting: Story = {
   },
 };
 
+/** Items the board gave up pushing: each is named, with the last failure, and the hint says how to clear them. */
+export const StalledItems: Story = {
+  args: scenarios.stalled,
+  play: async () => {
+    await expect(await page().findByText('Some items could not be handled')).toBeInTheDocument();
+    await expect(page().getByText('Request Q-3')).toBeInTheDocument();
+    await expect(page().getByText('Answer to Q-5')).toBeInTheDocument();
+    await expect(page().getByText('Task #12')).toBeInTheDocument();
+    await expect(page().getByText('rate limited')).toBeInTheDocument();
+  },
+};
+
 /** Next start: Codex is chosen while Claude Code runs, so a hint says what the next start uses. */
 export const NextStartHint: Story = {
   args: scenarios.nextStart,

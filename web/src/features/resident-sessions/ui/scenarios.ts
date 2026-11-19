@@ -64,6 +64,7 @@ export type ScenarioId =
   | 'waiting'
   | 'restarting'
   | 'nextStart'
+  | 'stalled'
   | 'stopped'
   | 'failed'
   | 'cliMissing'
@@ -110,6 +111,28 @@ export const scenarios: Record<ScenarioId, ResidentPanelProps> = {
         nextRestartAt: new Date(Date.now() + 8000).toISOString(),
       },
       { ...external },
+    ),
+  ),
+  stalled: base(
+    snapshotOf(
+      {
+        state: 'running',
+        waiting: true,
+        tool: 'claude-code',
+        projectId: PROJECT,
+        model: 'sonnet',
+        pushStalled: [
+          {
+            kind: 'request',
+            id: 'Q-3',
+            attempts: 3,
+            lastError: 'The turn ended without an answer',
+          },
+          { kind: 'answer', id: 'Q-5', attempts: 3, lastError: null },
+          { kind: 'task', id: '12', attempts: 3, lastError: 'rate limited' },
+        ],
+      },
+      { ...launched('claude-code', 'sonnet') },
     ),
   ),
   nextStart: {
