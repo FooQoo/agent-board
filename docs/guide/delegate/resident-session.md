@@ -4,7 +4,7 @@ title: Resident session
 
 # Resident session
 
-A resident session is an agent session that Agent Board starts for you and keeps attached to the board. It waits for your requests and for the answers to its questions, so you do not have to start an agent in a terminal first. You start and stop it from **Settings**.
+A resident session is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, one at a time and only while it is idle, so you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
 
 ::: warning It runs unattended with automatic approval
 A session the board starts runs without a person watching it, and it approves the actions it takes by itself. Start it only for projects you trust. It works in the folder bound to the project and can change files there.
@@ -29,13 +29,17 @@ Turn on **Start automatically when Agent Board starts** to start the session eac
 
 | State | Meaning |
 | --- | --- |
-| **Working on a task** | The session runs and is not waiting on the board, because it is busy with a task. |
-| **Waiting** | The session runs and waits for a request or an answer. |
+| **Working on a task** | The session runs and is busy with a turn, for example a task or a request you sent. |
+| **Waiting** | The session runs and is idle. The board hands it the next request, answer, or task as soon as there is one. |
 | **Restarting** | The session ended and the board starts it again. The dialog shows the next try and how many times it restarted. |
 | **Stopped** | Nothing is running. |
 | **Failed** | The board gave up, for example after the session ended repeatedly in a short time. The reason is shown. Fix the cause, then choose **Restart**. |
 
 The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows the tool and a dot while a session is launched or auto-start is on; click it to open the dialog.
+
+## When a session does not handle something {#not-handled}
+
+If the session ends its turn without handling an item, for example a request it did not accept, the board sends the item again after a short delay, up to three times. After that it stops sending that item so a failing turn cannot loop, and the other items keep going. Handle the item yourself, or stop and start the session. The board does not show this in the dialog yet; the `pushStalled` field of the sessions response lists such items.
 
 ## Remote access {#remote-access}
 
