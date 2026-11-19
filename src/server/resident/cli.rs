@@ -258,23 +258,10 @@ pub fn claude_args(model: Option<&str>) -> Vec<OsString> {
     args
 }
 
-/// The arguments of an unattended one-way `codex exec` launch: the workspace-write sandbox with
-/// automatic review, plus the data area as writable.
-pub fn codex_args(
-    folder: &Path,
-    data_dir: &Path,
-    model: Option<&str>,
-    prompt: &str,
-) -> Vec<OsString> {
-    let mut args = text(&["exec", "--json", "-C"]);
-    args.push(folder.as_os_str().to_os_string());
-    if let Some(model) = model {
-        args.extend(text(&["-m", model]));
-    }
-    args.extend(text(&["--approve-for-me", "--add-dir"]));
-    args.push(data_dir.as_os_str().to_os_string());
-    args.extend(text(&["--skip-git-repo-check", prompt]));
-    args
+/// The arguments of a Codex session over `codex app-server`. The sandbox, the review of what it
+/// asks, the writable folders, and the model are parameters of `thread/start`, not arguments.
+pub fn codex_args() -> Vec<OsString> {
+    text(&["app-server"])
 }
 
 /// Whether the environment variable of the server's own agent session must not reach a child.

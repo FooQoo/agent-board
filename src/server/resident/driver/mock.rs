@@ -1,5 +1,6 @@
-//! A driver that plays a script, for tests of the launcher: it hands out the scripted events one
-//! by one, records every call it receives, and ends when it is stopped.
+//! `MockDriver`, a scripted implementation of `AgentDriver` for tests of the launcher: it hands
+//! out the scripted events one by one, records every call it receives so a test can check them
+//! afterwards, and ends when it is stopped.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,7 +35,7 @@ pub enum Step {
 
 pub type Calls = Arc<Mutex<Vec<Call>>>;
 
-pub struct FakeDriver {
+pub struct MockDriver {
     script: Mutex<VecDeque<Step>>,
     calls: Calls,
     stopped: Mutex<bool>,
@@ -42,9 +43,9 @@ pub struct FakeDriver {
     idle: AtomicBool,
 }
 
-impl FakeDriver {
-    pub fn new(script: Vec<Step>, calls: Calls) -> FakeDriver {
-        FakeDriver {
+impl MockDriver {
+    pub fn new(script: Vec<Step>, calls: Calls) -> MockDriver {
+        MockDriver {
             script: Mutex::new(script.into()),
             calls,
             stopped: Mutex::new(false),
@@ -61,7 +62,7 @@ impl FakeDriver {
     }
 }
 
-impl AgentDriver for FakeDriver {
+impl AgentDriver for MockDriver {
     fn start(&self, spec: StartSpec) -> Result<(), AgboardError> {
         self.record(Call::Start {
             prompt: spec.prompt,
@@ -141,6 +142,6 @@ pub fn factory(script: Vec<Step>) -> (DriverFactory, Calls) {
     let calls: Calls = Arc::new(Mutex::new(Vec::new()));
     let shared = calls.clone();
     let make: DriverFactory =
-        Arc::new(move |_, _| Box::new(FakeDriver::new(script.clone(), shared.clone())));
+        Arc::new(move |_, _| Box::new(MockDriver::new(script.clone(), shared.clone())));
     (make, calls)
 }

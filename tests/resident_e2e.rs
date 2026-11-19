@@ -1,4 +1,4 @@
-//! A resident session end to end, with a fake `claude` that behaves as the resident skill
+//! A resident session end to end, with a fake `claude` or `codex` that behaves as the resident skill
 //! tells a session to: it runs the real `agboard wait --until task` with the environment the
 //! launcher sets, accepts every request it is handed, and waits again. The server runs on port 0
 //! in a temporary data directory; nothing here needs a real agent CLI.
@@ -35,20 +35,43 @@ fn lines(path: &Path) -> Vec<String> {
         .collect()
 }
 
+/// How a fake CLI starts: it reads its first instruction in the tool's own protocol and then runs
+/// the wait loop in the foreground, as the real agent does inside one long turn.
+fn handshake(tool: &str) -> &'static str {
+    if tool == "codex" {
+        // `codex app-server`: JSON-RPC lines. The first instruction is the `turn/start`.
+        return r#"while IFS= read -r line; do
+  id=$(printf '%s' "$line" | sed -n 's/^{"id":\([0-9][0-9]*\),.*/\1/p')
+  case "$line" in
+    *'"method":"initialize"'*) printf '{"id":%s,"result":{"userAgent":"agboard/9.9.9 (fake)"}}\n' "$id" ;;
+    *'"method":"thread/start"'*) printf '{"id":%s,"result":{"thread":{"id":"e2e-fake"}}}\n' "$id" ;;
+    *'"method":"turn/start"'*)
+      echo "$line" >> "$LOG/prompts"
+      printf '{"id":%s,"result":{"turn":{"id":"turn-1"}}}\n' "$id"
+      echo '{"method":"turn/started","params":{"turn":{"id":"turn-1"}}}'
+      break ;;
+  esac
+done
+"#;
+    }
+    r#"IFS= read -r first
+echo "$first" >> "$LOG/prompts"
+echo '{"type":"system","subtype":"init","session_id":"e2e-fake","claude_code_version":"9.9.9"}'
+"#
+}
+
 /// The fake session. It records each start (its process ID), each wait result, and each request
 /// it accepted in `log`.
-fn fake_session(bin: &str, home: &Path, log: &Path) -> String {
+fn fake_session(tool: &str, bin: &str, home: &Path, log: &Path) -> String {
     format!(
         r#"#!/bin/sh
 case "$1" in
-  auth) echo '{{"loggedIn":true}}'; exit 0 ;;
+  auth|login) echo '{{"loggedIn":true}}'; exit 0 ;;
 esac
 export AGBOARD_HOME='{home}' AGBOARD_AUTOSTART=0 AGBOARD_OPEN_BROWSER=0 AGBOARD_WATCH=poll TZ=UTC
+LOG='{log}'
 echo $$ >> '{log}/starts'
-IFS= read -r first
-echo "$first" >> '{log}/prompts'
-echo '{{"type":"system","subtype":"init","session_id":"e2e-fake","claude_code_version":"9.9.9"}}'
-echo "$AGBOARD_SESSION_ORIGIN $AGBOARD_SESSION_TOOL" >> '{log}/env'
+{handshake}echo "$AGBOARD_SESSION_ORIGIN $AGBOARD_SESSION_TOOL" >> '{log}/env'
 while :; do
   out=$('{bin}' --project Demo wait --until task --idle-timeout 2 --json 2>>'{log}/err')
   echo "$out" >> '{log}/waits'
@@ -62,6 +85,7 @@ done
 "#,
         home = home.display(),
         log = log.display(),
+        handshake = handshake(tool),
     )
 }
 
@@ -69,21 +93,33 @@ fn sessions(server: &Running, base: &str) -> Value {
     server.get(base).json()
 }
 
+/// Both tools in turn, in one test, because each run sets the executable of its tool in the
+/// process environment before its server starts.
 #[test]
 fn a_launched_session_accepts_a_request_waits_again_is_restarted_and_stops() {
+    scenario("claude-code", "claude", "AGBOARD_CLAUDE_BIN");
+    scenario("codex", "codex", "AGBOARD_CODEX_BIN");
+}
+
+fn scenario(tool: &str, program: &str, bin_var: &str) {
     let tools = tempdir().unwrap();
     let home = tempdir().unwrap();
     let log = tempdir().unwrap();
-    let claude = tools.path().join("claude");
+    let fake = tools.path().join(program);
     std::fs::write(
-        &claude,
-        fake_session(env!("CARGO_BIN_EXE_agboard"), home.path(), log.path()),
+        &fake,
+        fake_session(
+            program,
+            env!("CARGO_BIN_EXE_agboard"),
+            home.path(),
+            log.path(),
+        ),
     )
     .unwrap();
-    std::fs::set_permissions(&claude, std::fs::Permissions::from_mode(0o755)).unwrap();
-    // SAFETY: set before the only server of this test binary starts.
+    std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // SAFETY: set before the server of this run starts, and runs of this test binary are serial.
     unsafe {
-        std::env::set_var("AGBOARD_CLAUDE_BIN", &claude);
+        std::env::set_var(bin_var, &fake);
         std::env::set_var("AGBOARD_SESSION_GRACE_MS", "5000");
     }
 
@@ -101,7 +137,7 @@ fn a_launched_session_accepts_a_request_waits_again_is_restarted_and_stops() {
     let launched = server.write(
         "POST",
         &format!("{base}/launch"),
-        Some(r#"{"tool":"claude-code"}"#),
+        Some(&format!(r#"{{"tool":"{tool}"}}"#)),
     );
     assert_eq!(launched.status, 200, "{}", launched.body);
     let attached = until("the session to attach", || {
@@ -110,20 +146,22 @@ fn a_launched_session_accepts_a_request_waits_again_is_restarted_and_stops() {
             .then_some(body)
     });
     assert_eq!(attached["sessions"][0]["origin"], "board");
-    assert_eq!(attached["sessions"][0]["tool"], "claude-code");
+    assert_eq!(attached["sessions"][0]["tool"], tool);
     assert_eq!(attached["health"]["state"], "running");
-    assert_eq!(lines(&log.path().join("env")), ["board claude-code"]);
-    // The first instruction arrived as the first stream-json user message on standard input.
+    assert_eq!(lines(&log.path().join("env")), [format!("board {tool}")]);
+    // The first instruction arrived in the tool's own protocol: a stream-json user message for
+    // Claude Code, the first turn of the thread for Codex.
     let prompts = lines(&log.path().join("prompts"));
     assert_eq!(prompts.len(), 1);
     let first: Value = serde_json::from_str(&prompts[0]).unwrap();
-    assert_eq!(first["type"], "user");
-    assert!(
-        first["message"]["content"]
-            .as_str()
-            .unwrap()
-            .contains("agboard skills resident")
-    );
+    let text = if tool == "codex" {
+        assert_eq!(first["method"], "turn/start");
+        &first["params"]["input"][0]["text"]
+    } else {
+        assert_eq!(first["type"], "user");
+        &first["message"]["content"]
+    };
+    assert!(text.as_str().unwrap().contains("agboard skills resident"));
 
     // A request made on the board is accepted by the session with no human action.
     let (code, out, err) = agboard(
