@@ -43,6 +43,33 @@ if [ "$n" = claude ]; then
   cat > /dev/null
   exit 0
 fi
+if [ "$n" = codex ]; then
+  # The app-server session: JSON-RPC lines on stdin and stdout. Every line received is kept.
+  while IFS= read -r line; do
+    printf '%s\n' "$line" >> "$d/codex.stdin"
+    id=$(printf '%s' "$line" | sed -n 's/^{"id":\([0-9][0-9]*\),.*/\1/p')
+    case "$line" in
+      *'"method":"initialize"'*) printf '{"id":%s,"result":{"userAgent":"agboard/9.9.9 (fake)"}}\n' "$id" ;;
+      *'"method":"thread/start"'*) printf '{"id":%s,"result":{"thread":{"id":"fake-thread"}}}\n' "$id" ;;
+      *'"method":"turn/start"'*)
+        printf '{"id":%s,"result":{"turn":{"id":"turn-1"}}}\n' "$id"
+        echo '{"method":"turn/started","params":{"turn":{"id":"turn-1"}}}'
+        if [ -f "$d/stubborn" ]; then exec sleep 60; fi
+        if [ -f "$d/fail-turn" ]; then echo '{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"failed","error":{"message":"boom"}}}}'; fi
+        if [ -f "$d/ask-permission" ]; then
+          echo '{"id":77,"method":"item/commandExecution/requestApproval","params":{"itemId":"i1","command":"ls -la"}}'
+          echo '{"id":78,"method":"item/tool/call","params":{}}'
+        fi
+        echo '{"method":"item/completed","params":{"item":{"type":"agentMessage","id":"m1","text":"working"}}}' ;;
+      *'"method":"turn/steer"'*) printf '{"id":%s,"result":{"turnId":"turn-1"}}\n' "$id" ;;
+      *'"method":"turn/interrupt"'*)
+        printf '{"id":%s,"result":{}}\n' "$id"
+        echo '{"method":"turn/completed","params":{"turn":{"id":"turn-1","status":"interrupted"}}}' ;;
+    esac
+  done
+  # Like the real server, end when standard input closes.
+  exit 0
+fi
 exec sleep 60
 "#;
 
@@ -228,31 +255,8 @@ fn claude_starts_headless_with_every_permission_and_a_scrubbed_environment() {
     fx.launcher.shutdown();
 }
 
-#[test]
-fn codex_starts_in_the_project_folder_without_a_model_flag_by_default() {
-    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let fx = fixture();
-    fx.launch(Tool::Codex, None).unwrap();
-    let record = fx.record("codex");
-    assert!(record.contains("ARGS: exec --json -C "), "{record}");
-    assert!(record.contains("--approve-for-me"));
-    assert!(!record.contains("bypass"), "{record}");
-    let data = fx.dir.path().join("data");
-    assert!(
-        record.contains(&format!("--add-dir {}", data.display())),
-        "{record}"
-    );
-    assert!(record.contains("--skip-git-repo-check"));
-    assert!(!record.contains(" -m "), "{record}");
-    fx.launcher.stop().unwrap();
-    fx.launch(Tool::Codex, Some("gpt-a")).unwrap();
-    wait_until("the second codex record", || {
-        fx.record("codex").contains(" -m gpt-a ")
-    });
-    fx.launcher.shutdown();
-}
-
 mod autostart;
+mod codex;
 mod drivers;
 mod health;
 mod lifecycle;

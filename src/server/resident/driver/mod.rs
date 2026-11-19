@@ -2,17 +2,21 @@
 //!
 //! The supervisor, the health check, and the watcher know nothing about a CLI's wire format.
 //! They start a driver, read [`DriverEvent`]s from it, and answer what it asks. Each CLI has one
-//! implementation: [`claude`] speaks two-way stream-json, and [`legacy`] wraps Codex's one-way
-//! `codex exec --json` until a driver for `codex app-server` replaces it.
+//! implementation: [`claude`] speaks two-way stream-json, and [`codex`] speaks JSON-RPC with
+//! `codex app-server`.
 //!
 //! Only [`DriverEvent::Exited`] ends a session. A turn that ends is not the end: Claude Code wakes
 //! itself when a background command finishes, and a resident session waits on the board that way.
 
 pub(super) mod claude;
 mod claude_parse;
+pub(super) mod codex;
+mod codex_inbound;
+mod codex_parse;
+#[cfg(test)]
+mod codex_tests;
 #[cfg(test)]
 pub(super) mod fake;
-pub(super) mod legacy;
 mod lines;
 mod proc;
 #[cfg(test)]
@@ -119,7 +123,7 @@ pub type DriverFactory = std::sync::Arc<dyn Fn(Tool, &Path) -> Box<dyn AgentDriv
 /// The drivers the board ships: `program` is the executable found for `tool`.
 pub fn default_factory() -> DriverFactory {
     std::sync::Arc::new(|tool, program| match tool {
-        Tool::Codex => Box::new(legacy::LegacyExecDriver::new(program)),
+        Tool::Codex => Box::new(codex::CodexDriver::new(program)),
         _ => Box::new(claude::ClaudeDriver::new(program)),
     })
 }
@@ -136,10 +140,4 @@ pub struct PermissionRequest {
 /// what it already would have done. A later stage can put the decision on the board here.
 pub fn decide_permission(_request: &PermissionRequest) -> PermissionAnswer {
     PermissionAnswer::Allow
-}
-
-pub(super) fn unsupported(what: &str) -> AgboardError {
-    AgboardError::SessionLaunchFailed {
-        reason: format!("This session cannot {what}."),
-    }
 }
