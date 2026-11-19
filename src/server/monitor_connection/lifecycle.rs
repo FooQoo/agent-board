@@ -195,7 +195,6 @@ impl MonitorConnections {
         if self.lock().failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
-        // With a token in hand a stuck keychain must not hold up the start.
         if token.is_none() && self.lock().token.is_none() {
             self.probed().await;
         }
@@ -213,6 +212,7 @@ impl MonitorConnections {
         }
         if save && token.is_some() {
             inner.keychain_saved = Some(true);
+            inner.probing = false;
         }
         if let Some(token) = token {
             inner.token = Some(token);
