@@ -122,7 +122,7 @@ JSONとHTMLの応答は`no-store`です。スクリプトとスタイルシー�
 | --- | --- |
 | `app/` | 入口（`entry/board.tsx`）、ボードの`App`、プロジェクトのセッション、集約する`api.ts`、遅延ダイアログの接続、サンプルデータのモード。 |
 | `pages/` | 画面ごとのフォルダー: `board/`・`archive/`・`epics/`・`monitor/`（スマホ画面の部品）。 |
-| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`docs/`（プロジェクトのドキュメントのダイアログ）・`monitor-connections/`（リモート接続のPC用ダイアログ）: 一つの主題の表示、フック、計算、リクエスト。 |
+| `features/` | `tasks/`・`epics/`・`projects/`・`settings/`・`docs/`（プロジェクトのドキュメントのダイアログ）・`monitor-connections/`（リモート接続のPC用ダイアログ）・`resident-sessions/`（常駐セッションのダイアログとフッターの表示）: 一つの主題の表示、フック、計算、リクエスト。 |
 | `shared/` | `ui/`の基盤部品と汎用の枠、`markdown/`、`rich-editor/`、`api/`（HTTPの共通処理とサーバーのやり取りの型）、`lib/`、`styles/`、`theme/`、`i18n/`。 |
 
 ファイルがimportしてよいのは、自分の機能またはページと、それより下の層です。`shared/`は上の層をimportせず、機能どうし・ページどうしも直接importしません。隣の機能のものが必要な部品は、ページまたは`app/`が組み合わせて渡します。`TaskCard`は`renderEpic`、`EditDialog`は`renderEpicChip`、`EpicDialog`は`renderTask`、`Header`は`projectSwitcher`と`settings`を受け取ります。ボードの設定スロット（`app/BoardSettings.tsx`）もこうした組み合わせの一つで、設定ダイアログにチュートリアルとリモート接続の行を置き、隣にある接続ダイアログを持ちます。そのため、設定ダイアログを閉じてから接続ダイアログが開きます。2つの行は、`shared/ui`の`SettingsEntryRow`を呼ぶ薄い部品（`TutorialEntryRow`・`ConnectionEntryRow`）で、アイコンのタイル、文言、ボタンは`SettingsEntryRow`が描きます。モニターの`useBuildReload`も、入口から同じように渡します。
@@ -219,3 +219,7 @@ UI部品のStory、焦点を絞ったテスト、専用CSS、Story対応台帳�
 スポットライトの枠の高さは、中のカードの高さに合わせます。ただし、下端が案内パネルより24px上に収まるよう上限を設け、それより高いカードは枠の中でスクロールします。
 
 スマホ幅の画面では（`App`が`PhoneGuideLink`付きの`phone`を渡します）、層はPCボードのレーンの代わりに、スマホのレーン表示にあるその手順のレーンの先頭を枠で囲みます。`usePhoneLaneRect`はレーンの`.monitor-lane__scroll`の領域を測り、先頭までスクロールした状態に保ち、レーンが画面へ滑り込む間もそれに追従します。枠の中には、スマホ画面自身の`MonitorTask`で描いたサンプルカードを置きます。リンク（`web/src/features/onboarding/model/phoneGuideLink.ts`）が運ぶのは1つだけです。案内は、その手順が指すレーンを表示するようスマホ画面に頼み、レーンとそのタブが画面に出ます。サンプルの回答シートを開いている間は、説明が画面上部の細い帯になり、舞台は何も枠で囲みません。説明とダイアログは、幅に応じてCSS（`max-width: 767px`）で切り替えます。案内のボタンはどちらの表示でも横幅いっぱいで、2つ並ぶときは行を等分します。
+
+## 常駐セッションの画面
+
+設定ダイアログの**常駐セッション**の行がダイアログを開き、共有の`StatusBar`は省略可能な`slot`を受け取ってフッターの表示を置きます。利用者に見える内容は[常駐セッションのガイド](../../guide/delegate/resident-session.md)を参照してください。サーバーはセッションのイベントを送らないため、画面は`GET /api/projects/{id}/sessions`をポーリングで読みます。ダイアログを開いている間は2秒ごと、フッターは5秒ごと、ダイアログで変更するたび、ページが再び表示されたときです。起動・停止・モデル・自動起動のルートはローカル専用なので、ngrokの入口を通ったページ（`usesRemoteSession()`）ではダイアログも設定の行も出さず、フッターの表示は見るだけです。サンプルデータモードとデモにはサーバーがないため、どちらも出しません。狭いレイアウトにはフッターも設定の行もなく、開いたままのダイアログは、ウィンドウが狭くなるとボトムシートになります。

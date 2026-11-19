@@ -84,7 +84,8 @@ describe('the writes', () => {
       { enabled: true, tool: 'codex', model: 'gpt-5.4' },
       { enabled: false },
     ]);
-    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).method).toBe('PUT');
+    const [, firstInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(firstInit.method).toBe('PUT');
   });
 
   it('carry the code and the server reason of a refusal', async () => {

@@ -4,7 +4,7 @@ import { messagesApi } from '../features/tasks/messages/api';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
-import { ResidentDialogHost, residentFooterSlot } from './residentSlot';
+import { residentFooterSlot } from './residentSlot';
 import { Board } from '../pages/board/ui/Board';
 import { ArchiveList } from '../pages/archive/ui/ArchiveList';
 import { EpicList } from '../pages/epics/ui/EpicList';
@@ -221,7 +221,6 @@ export function BoardWorkspace({
           </>
         ) : null}
       </div>
-      {residentSessions ? <ResidentDialogHost projectId={known ? activeId : null} /> : null}
       <StatusBar
         slot={residentSessions ? residentFooterSlot(known ? activeId : null) : undefined}
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
