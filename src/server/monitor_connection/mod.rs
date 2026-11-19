@@ -8,6 +8,7 @@ pub mod devices;
 mod entry;
 pub mod keychain;
 pub mod lifecycle;
+pub mod push;
 mod restore;
 pub mod router;
 mod run;

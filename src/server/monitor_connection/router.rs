@@ -15,6 +15,7 @@ use tokio::sync::watch;
 
 use super::contracts::{ContractError, PublicOrigin};
 use super::devices::DeviceStore;
+use super::push::PushStore;
 use crate::server::monitor_auth::passcode::UnlockGate;
 use crate::server::monitor_auth::session::SessionStore;
 
@@ -30,6 +31,8 @@ pub struct BackendPolicy {
     pub unlock: Arc<UnlockGate>,
     /// The registered devices. They outlive the run: the same store serves every start.
     pub devices: Arc<DeviceStore>,
+    /// The push subscriptions of those devices; they outlive the run too.
+    pub push: Arc<PushStore>,
     revoked: Arc<watch::Sender<bool>>,
 }
 
@@ -46,6 +49,7 @@ impl BackendPolicy {
             sessions,
             unlock,
             devices: Arc::new(DeviceStore::in_memory()),
+            push: Arc::new(PushStore::in_memory()),
             revoked: Arc::new(watch::channel(false).0),
         }
     }
@@ -54,6 +58,13 @@ impl BackendPolicy {
     #[must_use]
     pub fn with_devices(mut self, devices: Arc<DeviceStore>) -> Self {
         self.devices = devices;
+        self
+    }
+
+    /// Use the given push subscriptions instead of an empty, memory-only list.
+    #[must_use]
+    pub fn with_push(mut self, push: Arc<PushStore>) -> Self {
+        self.push = push;
         self
     }
 

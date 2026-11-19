@@ -130,6 +130,8 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route("/assets/{name}", get(asset))
         .route("/docs-sandbox", get(docs_sandbox))
         .route("/docs-sandbox/{name}", get(docs_sandbox_asset))
+        .route("/manifest.webmanifest", get(crate::server::pwa::manifest))
+        .route("/sw.js", get(crate::server::pwa::service_worker))
         .route("/logo.png", get(logo_png))
         .route("/logo-white.png", get(logo_white_png))
         .route("/api/events", get(events::events))

@@ -87,7 +87,8 @@ impl MonitorConnections {
                     }
                     *gate.write().unwrap_or_else(|e| e.into_inner()) = Some(
                         BackendPolicy::new(opened.public, generation, sessions, unlock)
-                            .with_devices(this.devices.clone()),
+                            .with_devices(this.devices.clone())
+                            .with_push(this.push.clone()),
                     );
                     inner.status = ConnectionStatus::Ready;
                     inner.url = Some(url.clone());

@@ -12,6 +12,7 @@ use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus};
 use super::devices::DeviceStore;
 use super::keychain::TokenVault;
+use super::push::PushStore;
 use super::run::Run;
 pub use super::types::*;
 use crate::server::monitor_auth::passcode::Passcode;
@@ -38,6 +39,8 @@ pub struct MonitorConnections {
     pub(super) store: ConfigStore,
     /// The registered phones and browsers; kept across stops and starts.
     pub(super) devices: Arc<DeviceStore>,
+    /// The Web Push subscriptions of those devices and the key that identifies this board.
+    pub(super) push: Arc<PushStore>,
     pub(super) connector: Arc<dyn Connector>,
     pub(super) vault: Arc<dyn TokenVault>,
     /// The server's state, given once it exists; the monitor routes read it.
@@ -72,6 +75,7 @@ impl MonitorConnections {
         };
         Arc::new(Self {
             devices: Arc::new(DeviceStore::open(store.data_dir())),
+            push: Arc::new(PushStore::open(store.data_dir())),
             store,
             connector,
             vault,

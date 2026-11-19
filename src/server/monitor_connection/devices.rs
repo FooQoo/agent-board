@@ -11,7 +11,7 @@
 //! it is registered again, and the next change writes a fresh file.
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -223,11 +223,27 @@ impl MonitorConnections {
         self.devices.list()
     }
 
+    /// The Web Push subscriptions to send to: one per registered device that subscribed. Entries
+    /// whose device is no longer registered are dropped first. Sending is done elsewhere; use
+    /// [`PushStore::vapid_signer`] through [`MonitorConnections::push_store`] to sign.
+    pub fn push_subscriptions(&self) -> Vec<super::push::Subscription> {
+        self.push.retain_devices(|id| self.devices.contains(id));
+        self.push.list()
+    }
+
+    /// The push store, for the sender's VAPID signing key.
+    pub fn push_store(&self) -> &Arc<super::push::PushStore> {
+        &self.push
+    }
+
     /// Unregister a device. Its sessions that are still valid end at once, and so do their open
     /// event streams. `Ok(false)` when there is no such device.
     pub fn remove_device(&self, id: &str) -> Result<bool, SaveFailed> {
         let removed = self.devices.remove(id)?;
         if removed {
+            // A device that is gone is no longer a send target. If this save fails the stale
+            // entry is dropped by `push_subscriptions` the next time it is read.
+            let _ = self.push.unsubscribe(id);
             let policy = self
                 .lock()
                 .run
