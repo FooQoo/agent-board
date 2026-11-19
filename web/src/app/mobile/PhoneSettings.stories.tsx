@@ -86,7 +86,8 @@ export const WithResidentEntry: StoryObj<typeof meta> = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
     const dialog = await body.findByRole('dialog');
-    await expect(within(dialog).getByText('Codex · failed')).toBeVisible();
+    // The sheet fades in, so wait until the summary is visible rather than asserting at once.
+    await waitFor(() => expect(within(dialog).getByText('Codex · failed')).toBeVisible());
     let requested = 0;
     const stop = onResidentDialogRequest(() => {
       requested += 1;
