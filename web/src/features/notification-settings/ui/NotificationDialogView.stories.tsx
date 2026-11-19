@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { BellIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { SettingsEntryRow } from '@/shared/ui/settings-entry-row';
 import { DEFAULT_NOTIFICATION_SETTINGS } from '../model';
 import { NotificationDialogView } from './NotificationDialogView';
@@ -9,7 +11,7 @@ import { NotificationDialogView } from './NotificationDialogView';
 const meta = {
   title: 'Settings/NotificationDialogView',
   component: NotificationDialogView,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', ...modalDocsParameters },
   args: {
     kind: 'dialog',
     onClose: fn(),
@@ -20,20 +22,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Stands in for the Home Screen control the board passes in (the push-notifications row).
-const enableRow = (on: boolean) => (
-  <SettingsEntryRow
-    icon={BellIcon}
-    title="Notifications"
-    body={
-      on
-        ? 'Notifications are on for this phone.'
-        : 'Get a notification on this phone when the board has something for you.'
-    }
-    action={on ? 'Turn off' : 'Enable notifications'}
-    onOpen={fn()}
-  />
-);
+// Stands in for the Home Screen control the board passes in (the push-notifications row), with
+// the board's own texts so both languages read in full.
+function EnableRow({ on }: { on: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <SettingsEntryRow
+      icon={BellIcon}
+      title={t('push.title')}
+      body={t(on ? 'push.onBody' : 'push.offBody')}
+      action={t(on ? 'push.disable' : 'push.enable')}
+      onOpen={fn()}
+    />
+  );
+}
 
 /** The PC modal: the four kinds, the state-change picks, and the periodic notification. */
 export const Desktop: Story = {
@@ -52,8 +54,7 @@ export const Desktop: Story = {
 /** The bottom sheet of a phone in the browser: the same choices, no Home Screen control. */
 export const Phone: Story = {
   args: { kind: 'sheet' },
-  globals: { width: 'phone-375' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { viewport: { value: 'mobile1' } },
   play: async () => {
     const dialog = await within(document.body).findByRole('dialog');
     await waitFor(() =>
@@ -66,10 +67,9 @@ export const Phone: Story = {
 export const PhoneWithEnable: Story = {
   args: {
     kind: 'sheet',
-    push: enableRow(false),
+    push: <EnableRow on={false} />,
   },
-  globals: { width: 'phone-375' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { viewport: { value: 'mobile1' } },
   play: async () => {
     const dialog = await within(document.body).findByRole('dialog');
     await waitFor(() =>
@@ -81,7 +81,7 @@ export const PhoneWithEnable: Story = {
 /** Japanese in the dark theme with the Home Screen control, on the PC. */
 export const DarkJapanese: Story = {
   args: {
-    push: enableRow(true),
+    push: <EnableRow on />,
   },
   globals: { locale: 'ja', mode: 'dark', accent: 'sky' },
 };
