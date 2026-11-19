@@ -24,6 +24,7 @@ pub(in crate::file_store) use qa::migrate_legacy_locked;
 use qa::task_waits;
 pub use qa::{Accepted, AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
 pub use start::EpicStarted;
+pub use task::{MAX_RESULTS, RecordedResult, ResultInput};
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};
 use self::save::{save_task, save_task_with_markdown};
