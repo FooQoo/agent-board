@@ -191,6 +191,7 @@ export function MonitorView(props: MonitorViewProps) {
         problemCount={freshness.snapshotProblems.length}
         onRefresh={props.onRefresh}
         refreshing={props.refreshing}
+        slot={props.statusSlot}
       />
     </main>
   );

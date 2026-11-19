@@ -371,3 +371,27 @@ button.resident-footer {
 .resident-surface .surface__body {
   min-height: 0;
 }
+
+/* In the phone board's status line the indicator is plain text beside the connection state. */
+.monitor-freshness .resident-footer {
+  margin-inline: 0;
+  padding: 0;
+  font-size: inherit;
+  white-space: nowrap;
+}
+
+.resident-footer__state {
+  color: var(--r-muted);
+}
+
+.monitor-freshness .resident-footer {
+  margin-left: auto;
+  min-width: 0;
+}
+
+/* Narrow phones: the indicator takes the room of the last-fetched time, which stays in wider lines. */
+@media (max-width: 420px) {
+  .monitor-freshness:has(.resident-footer) .monitor-freshness__time {
+    display: none;
+  }
+}

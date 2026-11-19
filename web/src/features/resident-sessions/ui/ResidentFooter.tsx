@@ -14,10 +14,13 @@ import './resident.css';
 export function ResidentIndicator({
   health,
   onOpen,
+  withState = false,
 }: {
   health: SessionHealth;
   /** Absent on the remote view. */
   onOpen?: () => void;
+  /** Say the state in words after the tool name, for a line that has no tooltip to hover. */
+  withState?: boolean;
 }) {
   const { t } = useTranslation();
   const label = useStateLabel();
@@ -31,6 +34,7 @@ export function ResidentIndicator({
   const inner = (
     <>
       <span>{state === 'stopped' ? t('resident.footerLabel') : name}</span>
+      {withState && <span className="resident-footer__state">{label(state, true)}</span>}
       <span className="resident-footer__dot" aria-hidden="true" />
     </>
   );
@@ -56,9 +60,11 @@ export function ResidentIndicator({
 export function ConnectedResidentIndicator({
   projectId,
   remote,
+  withState = false,
 }: {
   projectId: string;
   remote: boolean;
+  withState?: boolean;
 }) {
   const { snapshot } = useResidentSession(projectId, FOOTER_POLL_MS);
   if (!snapshot) return null;
@@ -66,6 +72,7 @@ export function ConnectedResidentIndicator({
     <ResidentIndicator
       health={snapshot.health}
       onOpen={remote ? undefined : requestResidentDialog}
+      withState={withState}
     />
   );
 }

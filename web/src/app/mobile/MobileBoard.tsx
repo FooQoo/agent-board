@@ -8,6 +8,7 @@ import { Header } from '../../shared/ui/app-header/Header';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import { isProjectId } from '../model/projectSession';
 import type { AppControllerModel, AppWorkspaceActions } from '../contracts';
+import { residentFooterSlot } from '../residentSlot';
 import { boardEnvironment } from './boardEnvironment';
 import '../../shared/styles/modal.css';
 import '../../features/tasks/answer/decision-answer.css';
@@ -66,6 +67,7 @@ export default function MobileBoard({
       onNotFound={stays}
       header={header}
       guideLink={guideLink}
+      statusSlot={residentFooterSlot(activeId, { displayOnly: true })}
     />
   );
 }

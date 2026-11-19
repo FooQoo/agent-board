@@ -15,11 +15,21 @@ export const residentAvailable = (projectId: string | null): projectId is string
 
 /**
  * The footer indicator of the board. Through the remote entrance it is display-only, because the
- * launch, stop, model and auto-start routes are served on the local listener only.
+ * launch, stop, model and auto-start routes are served on the local listener only. The phone
+ * layout always asks for `displayOnly`: its status line has no room for a button.
  */
-export function residentFooterSlot(projectId: string | null): ReactNode {
+export function residentFooterSlot(
+  projectId: string | null,
+  { displayOnly = false }: { displayOnly?: boolean } = {},
+): ReactNode {
   if (!residentAvailable(projectId)) return undefined;
-  return <ConnectedResidentIndicator projectId={projectId} remote={usesRemoteSession()} />;
+  return (
+    <ConnectedResidentIndicator
+      projectId={projectId}
+      remote={displayOnly || usesRemoteSession()}
+      withState={displayOnly}
+    />
+  );
 }
 
 /** The dialog the footer and the settings row open; absent on the remote view, which cannot launch. */
