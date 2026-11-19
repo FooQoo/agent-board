@@ -52,7 +52,10 @@ test('the settings dialog closes and the connected dialog shows the QR code and 
   await expect(dialog.getByTestId('passcode')).toHaveText(entrance.passcode);
   await expect(dialog.getByText('Do not share the URL or the passcode with others.')).toBeVisible();
   // The design's size: 680 x 560 (the layout size, which the opening animation does not change).
-  expect(await dialog.evaluate((element: HTMLElement) => [element.offsetWidth, element.offsetHeight])).toEqual([680, 560]);
+  // Poll, because the dialog's stylesheet can apply a moment after the dialog first lays out.
+  await expect
+    .poll(() => dialog.evaluate((element: HTMLElement) => [element.offsetWidth, element.offsetHeight]))
+    .toEqual([680, 560]);
   // Neither a domain field nor the old advanced settings exist.
   await expect(dialog.getByLabel(/domain/i)).toHaveCount(0);
   await expect(dialog.getByText(/advanced|Protected by a passcode/i)).toHaveCount(0);
