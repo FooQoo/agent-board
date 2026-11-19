@@ -14,33 +14,47 @@
               "interaction": true
             },
             {
-              "id": "app-onboarding-mock-screens--samples-created",
-              "states": ["02 two sample cards framed in To do", "step 1 of 4"],
+              "id": "app-onboarding-mock-screens--request-to-send",
+              "states": ["02 request step before the Ask AI box opens", "step 1 of 5"],
               "interaction": false
             },
             {
-              "id": "app-onboarding-mock-screens--automatic-progress",
-              "states": ["03 running sample in In progress", "step 2 of 4"],
+              "id": "app-onboarding-mock-screens--plan-made",
+              "states": [
+                "03 epic and AI draft cards in To do with acceptance conditions",
+                "step 2 of 5"
+              ],
               "interaction": false
             },
             {
               "id": "app-onboarding-mock-screens--decision-needed",
-              "states": ["04 pending card with the answer form", "waiting badge, step 3 of 4"],
+              "states": [
+                "04 pending draft card with the answer button",
+                "waiting badge, step 3 of 5"
+              ],
               "interaction": false
             },
             {
               "id": "app-onboarding-mock-screens--decision-needed-dark",
-              "states": ["08 pending card in the dark theme", "waiting badge, step 3 of 4"],
+              "states": ["08 pending draft card in the dark theme", "waiting badge, step 3 of 5"],
               "interaction": false
             },
             {
-              "id": "app-onboarding-mock-screens--resumed-after-answer",
-              "states": ["05 resumed card running again", "step 4 of 4"],
+              "id": "app-onboarding-mock-screens--plan-started",
+              "states": [
+                "05 drafts finalized and the first card running in In progress",
+                "step 4 of 5"
+              ],
+              "interaction": false
+            },
+            {
+              "id": "app-onboarding-mock-screens--cards-done",
+              "states": ["07 all cards in Done with their conditions checked", "step 5 of 5"],
               "interaction": false
             },
             {
               "id": "app-onboarding-mock-screens--completed",
-              "states": ["06 completion dialog after both samples are done", "finish action"],
+              "states": ["06 completion dialog after the plan is done", "finish action"],
               "interaction": false
             }
           ]

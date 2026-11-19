@@ -55,7 +55,7 @@ To work on the web UI alone with sample data:
 pnpm --dir web dev --mode mock --port <port>
 ```
 
-The sample data starts like a new data area: the [first-run guide](../../guide/quickstart.md#before-you-start-the-first-run-guide) opens on the first page load, runs in the page with two sample cards that are not part of the board, and can be skipped. Once it is finished or skipped, it stays closed until the dev server restarts or `POST /api/__mock/reset` restores the sample data.
+The sample data starts like a new data area: the [first-run guide](../../guide/quickstart.md#before-you-start-the-first-run-guide) opens on the first page load, runs in the page with a sample request and a plan that are not part of the board, and can be skipped. Once it is finished or skipped, it stays closed until the dev server restarts or `POST /api/__mock/reset` restores the sample data.
 
 For manual CLI experiments, use a temporary data area:
 

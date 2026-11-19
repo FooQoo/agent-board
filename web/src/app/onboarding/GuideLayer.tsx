@@ -16,13 +16,18 @@ import { OnboardingStage } from '../../features/onboarding/ui/OnboardingStage';
 import { OnboardingWelcome } from '../../features/onboarding/ui/OnboardingWelcome';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import '../../shared/i18n/onboarding-strings';
-import { focusOrdinal } from './guideSamples';
+import { AskAiDialog } from '../../features/messages/ask/AskAiDialog';
+import { EpicLabel } from '../../features/epics/label/EpicLabel';
+import type { EpicRef } from '../../shared/api/contracts';
+import { focusColumn, sampleRequest } from './guideSamples';
 import type { GuidePhase } from './guideTiming';
 import { phoneItemOf, usePhoneLaneRect } from './phoneTarget';
 import { SampleAnswer } from './SampleAnswer';
 import { useGuide } from './useGuide';
 
 type Column = 'todo' | 'doing' | 'done';
+
+const noop = () => {};
 
 /** The gap between the frame and the guide panel, in pixels. */
 const PANEL_GAP = 24;
@@ -91,21 +96,26 @@ function useLaneRect(column: Column | null): SpotlightRect | null {
 }
 
 const PANEL_INDEX: Record<GuidePhase, number> = {
-  samples: 1,
-  'first-running': 2,
-  'first-done': 2,
+  request: 1,
+  planned: 2,
   question: 3,
-  'second-running': 4,
-  'second-done': 4,
+  started: 4,
+  done: 5,
 };
+
+/** The steps the panel counts. */
+const STEP_TOTAL = 5;
+
+/** The epic's label on a sample card: it looks like the board's and opens nothing. */
+function renderSampleEpic(epic: EpicRef) {
+  return <EpicLabel epic={epic} className="card__epic" stopPropagation onClick={noop} />;
+}
 
 /** What the guide needs to draw itself on the phone screen, which replaces the PC board below 768px. */
 export interface PhoneGuide {
   link: PhoneGuideLink;
   projectName: string;
 }
-
-const noop = () => {};
 
 export function GuideLayer({
   projectId,
@@ -125,13 +135,18 @@ export function GuideLayer({
   useEffect(() => {
     if (phase !== 'question') setAnswering(false);
   }, [phase]);
-  // The spotlight is on the lane of the card the step is about: the first card, then the second.
-  const focus = samples[focusOrdinal(phase) - 1];
-  const stepColumn: Column | null = screen.kind === 'step' && focus ? focus.taskStatus : null;
+  // The request box is open: it too has the screen. It opens by itself when its step starts.
+  const [asking, setAsking] = useState(false);
+  const stepShown = screen.kind === 'step';
+  useEffect(() => {
+    setAsking(stepShown && phase === 'request');
+  }, [stepShown, phase]);
+  // The spotlight is on the lane the step is about; the request step frames no lane.
+  const stepColumn: Column | null = stepShown ? focusColumn(phase) : null;
   const inLane = samples.filter((card) => card.taskStatus === stepColumn);
   const laneRect = useLaneRect(phone ? null : stepColumn);
   const phoneRect = usePhoneLaneRect(phone ? stepColumn : null);
-  const rect = answering ? null : phone ? phoneRect : laneRect;
+  const rect = answering || asking ? null : phone ? phoneRect : laneRect;
   const cards = inLane.map((card) =>
     phone && projectId ? (
       <MonitorTask
@@ -147,6 +162,7 @@ export function GuideLayer({
         selected={false}
         onSelect={noop}
         projectId={projectId ?? undefined}
+        renderEpic={renderSampleEpic}
         onAnswer={() => setAnswering(true)}
       />
     ),
@@ -174,7 +190,7 @@ export function GuideLayer({
   const copy = panelCopy(phase);
   // A question waits on the card instead of offering the step's action.
   const waiting = phase === 'question';
-  const holding = (phase === 'first-running' || phase === 'second-running') && !ready;
+  const holding = phase === 'started' && !ready;
   return (
     <>
       <OnboardingStage
@@ -196,21 +212,29 @@ export function GuideLayer({
         guide={
           <OnboardingGuidePanel
             index={index}
-            total={4}
+            total={STEP_TOTAL}
             title={t(copy.title)}
             body={t(copy.body)}
-            hint={t(waiting ? 'onboarding.guide.waitingHint' : 'onboarding.guide.readFirst')}
+            hint={t(hintKey(phase))}
             waitingBadge={waiting ? t('onboarding.guide.waitingBadge') : undefined}
             actionLabel={t(
-              phase === 'samples' ? 'onboarding.guide.watch' : 'onboarding.guide.next',
+              phase === 'request' ? 'onboarding.guide.write' : 'onboarding.guide.next',
             )}
             actionDisabled={holding}
-            onAction={guide.next}
+            onAction={phase === 'request' ? () => setAsking(true) : guide.next}
             onExit={guide.exit}
-            compact={phone !== null && answering}
+            compact={phone !== null && (answering || asking)}
           />
         }
       />
+      {asking && (
+        <AskAiDialog
+          kind={phone ? 'sheet' : 'dialog'}
+          initialText={sampleRequest(locale)}
+          onSubmit={async () => guide.sent()}
+          onClose={() => setAsking(false)}
+        />
+      )}
       {answering && (
         <SampleAnswer
           phone={phone !== null}
@@ -226,18 +250,12 @@ export function GuideLayer({
   );
 }
 
+function hintKey(phase: GuidePhase): string {
+  if (phase === 'request') return 'onboarding.guide.requestHint';
+  if (phase === 'question') return 'onboarding.guide.waitingHint';
+  return 'onboarding.guide.readFirst';
+}
+
 function panelCopy(phase: GuidePhase): { title: string; body: string } {
-  switch (phase) {
-    case 'first-running':
-      return { title: 'onboarding.steps.running.title', body: 'onboarding.steps.running.body' };
-    case 'first-done':
-      return { title: 'onboarding.steps.done.title', body: 'onboarding.steps.done.body' };
-    case 'question':
-      return { title: 'onboarding.steps.pending.title', body: 'onboarding.steps.pending.body' };
-    case 'second-running':
-    case 'second-done':
-      return { title: 'onboarding.steps.resumed.title', body: 'onboarding.steps.resumed.body' };
-    default:
-      return { title: 'onboarding.steps.samples.title', body: 'onboarding.steps.samples.body' };
-  }
+  return { title: `onboarding.steps.${phase}.title`, body: `onboarding.steps.${phase}.body` };
 }

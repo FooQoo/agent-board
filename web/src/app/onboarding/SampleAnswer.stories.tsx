@@ -21,10 +21,10 @@ export const Dialog: Story = {
   play: async ({ args }) => {
     await expect(await page().findByRole('dialog')).toBeInTheDocument();
     await expect(
-      await page().findByText('Which explanation is easier to read?'),
+      await page().findByText('Which period should the figures cover?'),
     ).toBeInTheDocument();
     await expect(page().getByRole('button', { name: 'Send answer' })).toBeDisabled();
-    await userEvent.click(page().getByRole('radio', { name: 'Keep it brief' }));
+    await userEvent.click(page().getByRole('radio', { name: 'This month only' }));
     await userEvent.click(page().getByRole('button', { name: 'Send answer' }));
     await expect(args.onSend).toHaveBeenCalledTimes(1);
   },
@@ -38,9 +38,9 @@ export const SheetJapaneseNarrow: Story = {
   globals: { locale: 'ja', width: 'phone-375' },
   play: async ({ args }) => {
     await waitFor(() =>
-      expect(page().getByText('案内の文章は、どちらが読みやすいですか？')).toBeVisible(),
+      expect(page().getByText('集計の対象は、どの期間にしますか？')).toBeVisible(),
     );
-    await userEvent.click(page().getByRole('radio', { name: '短く、要点だけ' }));
+    await userEvent.click(page().getByRole('radio', { name: '今月だけ' }));
     await userEvent.click(page().getByRole('button', { name: '回答を送る' }));
     await expect(args.onSend).toHaveBeenCalledTimes(1);
   },

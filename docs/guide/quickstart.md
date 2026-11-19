@@ -58,7 +58,7 @@ If you want to see the loop without an agent, you can play the agent yourself wi
 
 ### The first-run guide
 
-The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see how an AI agent works on a card and asks you for a decision. The guide runs in your browser: it draws two sample cards over the board and simulates the AI's progress on them. Your board and your data are never changed. No AI agent or API key is needed. You answer the second card's question in the same answer form you use for real questions, and nothing you choose there is sent anywhere.
+The first time you open a board in this data area, Agent Board offers a short guide. Choose **Start guide** to see the whole loop: you send a request with **Ask AI**, the agent turns it into a plan on the board, asks you a question, and then does the work. The guide runs in your browser: it simulates the agent and draws the plan over the board. Your board and your data are never changed. No AI agent or API key is needed. You send a prepared sample request from the real **Ask AI** window and answer the agent's question in the same answer form you use for real questions, and nothing you send or choose there goes anywhere.
 
 - **Skip** closes the guide. The guide is not shown again in this data area.
 - **End guide** ends the guide early, and so does Escape, unless you are typing in an answer field. Like **Skip**, it closes the guide for good. **Finish and get started** at the last step also closes it for good.

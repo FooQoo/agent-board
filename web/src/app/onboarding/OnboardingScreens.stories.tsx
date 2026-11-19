@@ -19,9 +19,9 @@ export const Welcome: Story = {
     await expect(within(document.body).getByRole('dialog')).toBeInTheDocument();
   },
 };
-export const SamplesCreated: Story = { args: { kind: 'samples' } };
-export const AutomaticProgress: Story = { args: { kind: 'running' } };
-export const DecisionNeeded: Story = { args: { kind: 'pending' } };
+export const RequestToSend: Story = { args: { kind: 'request' } };
+export const PlanMade: Story = { args: { kind: 'planned' } };
+export const DecisionNeeded: Story = { args: { kind: 'question' } };
 
 /** Mock screen 08: the same decision screen in the dark theme. */
 function DarkTheme({ children }: { children: ReactNode }) {
@@ -38,7 +38,7 @@ function DarkTheme({ children }: { children: ReactNode }) {
 }
 
 export const DecisionNeededDark: Story = {
-  args: { kind: 'pending' },
+  args: { kind: 'question' },
   decorators: [
     (Story) => (
       <DarkTheme>
@@ -47,5 +47,6 @@ export const DecisionNeededDark: Story = {
     ),
   ],
 };
-export const ResumedAfterAnswer: Story = { args: { kind: 'resumed' } };
+export const PlanStarted: Story = { args: { kind: 'started' } };
+export const CardsDone: Story = { args: { kind: 'done' } };
 export const Completed: Story = { args: { kind: 'complete' } };

@@ -46,7 +46,7 @@ flowchart LR
 
 ### 初回の案内
 
-案内は、`agboard serve`に対してと同じく、ページの中で動きます。2枚のサンプルカード、その手順、質問はフロントエンド（`web/src/app/onboarding/`）の中だけにあります。サンプルデータのサーバー（`mock-server/guide.ts`）が答えるのは、本物のサーバーにもある2つのルート、`GET /api/onboarding`と`POST /api/onboarding/seen`だけです。デモのボードにカードを書き込むことはありません。
+案内は、`agboard serve`に対してと同じく、ページの中で動きます。サンプルの依頼、計画、その手順、質問はフロントエンド（`web/src/app/onboarding/`）の中だけにあります。サンプルデータのサーバー（`mock-server/guide.ts`）が答えるのは、本物のサーバーにもある2つのルート、`GET /api/onboarding`と`POST /api/onboarding/seen`だけです。デモのボードにカードを書き込むことはありません。
 
 「見た」という状態はメモリにしかありません。新しいページは新しいサーバーなので、ページを開くたびに案内が始まり、**スキップ**や**完了して始める**はそのページでだけ案内を閉じます。画面での手順は[クイックスタート](../../guide/quickstart.md#before-you-start-the-first-run-guide)を参照してください。
 
@@ -93,7 +93,7 @@ pnpm --dir e2e test:demo
 
 このスイート（`e2e/playwright.demo.config.ts`と`e2e/demo/`）は、`docs/.vitepress/dist/`を`vitepress preview`でポート8446（または`AGBOARD_DEMO_E2E_PORT`）から配信し、Chromiumで`/agent-board/demo/`を開きます。ドキュメントサイトのスイートと同じく、ボードがページの中にあるので、Rustのビルドも`AGBOARD_HOME`も要りません。確かめる内容は次のとおりです。
 
-- ページを開くと案内が始まり、質問への回答を含めて、PC幅でもスマホ幅でも最後まで進む
+- ページを開くと案内が始まり、「AI に依頼」でのサンプルの依頼の送信と質問への回答を含めて、PC幅でもスマホ幅でも最後まで進む
 - 案内のあと、カードを別のレーンにドラッグで移動できる
 - 回答待ちのカードに回答し、残りの完了条件をチェックすると、自動でDoneに移る
 - Docsボタンとリモート接続がなく、再読み込みするとサンプルデータから始まる

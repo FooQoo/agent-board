@@ -1,110 +1,144 @@
-// The guide's two sample cards and the question on the second one. They exist only in the
-// browser: the cards are plain `TaskSummary` values with IDs no real task can have, and the
-// guide draws them over the board without ever writing them to it.
+// The guide's sample request, the plan the pretend agent makes from it, and the question it asks.
+// They exist only in the browser: the cards are plain `TaskSummary` values with IDs no real task
+// can have, and the guide draws them over the board without ever writing them to it.
 
-import type { Choice, TaskSummary } from '../../shared/api/contracts';
+import type { Choice, EpicRef, TaskSummary } from '../../shared/api/contracts';
 import type { GuidePhase } from './guideTiming';
 
 export type GuideLocale = 'en' | 'ja';
 
 /** The sample cards' IDs: real tasks count up from 1, so these never clash with a task. */
-export const FIRST_SAMPLE_ID = -1;
-export const SECOND_SAMPLE_ID = -2;
+export const SAMPLE_IDS = [-1, -2, -3] as const;
 const QUESTION_ID = 'guide-question';
 
-const TEXT: Record<GuideLocale, { titles: [string, string]; criteria: [string, string] }> = {
-  ja: {
-    titles: ['サンプル：使い方を確認する', 'サンプル：案内の見せ方を選ぶ'],
-    criteria: ['サンプルの進行を確認する', 'サンプルの回答を確認する'],
-  },
-  en: {
-    titles: ['Sample: follow a task', 'Sample: choose the guide style'],
-    criteria: ["Confirm the sample's progress", "Confirm the sample's answer"],
-  },
-};
+interface Text {
+  request: string;
+  epic: string;
+  titles: [string, string, string];
+  criteria: [[string, string], [string, string], [string, string]];
+  question: string;
+  choices: Choice[];
+}
 
-const QUESTION: Record<GuideLocale, { question: string; choices: Choice[] }> = {
+const TEXT: Record<GuideLocale, Text> = {
   ja: {
-    question: '案内の文章は、どちらが読みやすいですか？',
+    request:
+      '月次レポートを用意してください。今月の数値を集めて、要約を書き、チームに共有してほしいです。',
+    epic: '月次レポート',
+    titles: ['今月の数値を集める', '要約を書く', 'チームに共有する'],
+    criteria: [
+      ['数値が1つの表にまとまっている', '各数値の出典が書かれている'],
+      ['要約が1ページに収まっている', '主な変化に触れている'],
+      ['チームがレポートを受け取っている', 'リンクがチームのチャンネルに投稿されている'],
+    ],
+    question: '集計の対象は、どの期間にしますか？',
     choices: [
-      { id: 'brief', label: '短く、要点だけ' },
-      { id: 'detailed', label: '背景も含めて詳しく' },
+      { id: 'month', label: '今月だけ' },
+      { id: 'quarter', label: '直近3か月' },
     ],
   },
   en: {
-    question: 'Which explanation is easier to read?',
+    request:
+      "Prepare the monthly report: gather this month's numbers, write a summary, and share it with the team.",
+    epic: 'Monthly report',
+    titles: ["Gather this month's numbers", 'Write the summary', 'Share it with the team'],
+    criteria: [
+      ['The figures are collected in one sheet', 'Each figure has its source noted'],
+      ['The summary fits on one page', 'It covers the main changes'],
+      ['The team has the report', 'The link is posted in the team channel'],
+    ],
+    question: 'Which period should the figures cover?',
     choices: [
-      { id: 'brief', label: 'Keep it brief' },
-      { id: 'detailed', label: 'Include more context' },
+      { id: 'month', label: 'This month only' },
+      { id: 'quarter', label: 'The last three months' },
     ],
   },
 };
 
-/** The question the second sample asks: its text and its options. */
+/** The request the guide offers to send: it is what the pretend agent turns into a plan. */
+export function sampleRequest(locale: GuideLocale): string {
+  return TEXT[locale].request;
+}
+
+/** The question the pretend agent asks: its text and its options. */
 export function sampleQuestion(locale: GuideLocale) {
-  return { ...QUESTION[locale], title: TEXT[locale].titles[1] };
+  const { question, choices, titles } = TEXT[locale];
+  return { question, choices, title: titles[0] };
 }
 
-/** The lane the step is about: the first card's lane, then the second card's. */
-export function focusOrdinal(phase: GuidePhase): 1 | 2 {
-  return phase === 'samples' || phase === 'first-running' || phase === 'first-done' ? 1 : 2;
+/** The lane the step is about; `null` while the request is still being written. */
+export function focusColumn(phase: GuidePhase): 'todo' | 'doing' | 'done' | null {
+  switch (phase) {
+    case 'request':
+      return null;
+    case 'planned':
+    case 'question':
+      return 'todo';
+    case 'started':
+      return 'doing';
+    case 'done':
+      return 'done';
+  }
 }
 
-/** The two sample cards as `phase` shows them, in the order the guide frames them. */
+/** The sample cards as `phase` shows them, in the order the guide frames them. */
 export function sampleCards(locale: GuideLocale, phase: GuidePhase, at: string): TaskSummary[] {
   const text = TEXT[locale];
-  const base = (id: number, ordinal: 0 | 1, met = false): TaskSummary => ({
-    id,
-    title: text.titles[ordinal],
+  const epic: EpicRef = { id: 'SAMPLE-1', name: text.epic, color: '#6d5bd0' };
+  const card = (index: 0 | 1 | 2, met: [boolean, boolean]): TaskSummary => ({
+    id: SAMPLE_IDS[index],
+    title: text.titles[index],
     assignee: 'ai',
     taskStatus: 'todo',
     taskStatusChangedAt: at,
-    position: 1,
+    position: index + 1,
     agentStatus: 'idle',
     agentStatusChangedAt: at,
     pendingReason: null,
     pendingRequestId: null,
     pendingChoices: [],
     openQuestionIds: [],
-    epic: null,
+    epic,
     createdAt: at,
     updatedAt: at,
     draft: null,
-    acceptance: [{ id: 'AC-1', text: text.criteria[ordinal], done: met }],
+    acceptance: text.criteria[index].map((condition, position) => ({
+      id: `AC-${position + 1}`,
+      text: condition,
+      done: met[position] ?? false,
+    })),
   });
-  const first = base(FIRST_SAMPLE_ID, 0);
-  const second = base(SECOND_SAMPLE_ID, 1);
-  const done = (card: TaskSummary): TaskSummary => ({
-    ...base(card.id, card.id === FIRST_SAMPLE_ID ? 0 : 1, true),
-    taskStatus: 'done',
-  });
-  const doing = (card: TaskSummary, agentStatus: 'running' | 'pending'): TaskSummary => ({
-    ...card,
-    taskStatus: 'doing',
-    agentStatus,
+  const draft = (index: 0 | 1 | 2): TaskSummary => ({
+    ...card(index, [false, false]),
+    draft: 'ai',
   });
   switch (phase) {
-    case 'samples':
-      return [first, second];
-    case 'first-running':
-      return [doing(first, 'running'), second];
-    case 'first-done':
-      return [done(first), second];
-    case 'question': {
-      const { question, choices } = QUESTION[locale];
+    case 'request':
+      return [];
+    case 'planned':
+      return [draft(0), draft(1), draft(2)];
+    case 'question':
       return [
-        done(first),
         {
-          ...doing(second, 'pending'),
-          pendingReason: question,
+          ...draft(0),
+          agentStatus: 'pending',
+          pendingReason: text.question,
           pendingRequestId: QUESTION_ID,
-          pendingChoices: choices,
+          pendingChoices: text.choices,
         },
+        draft(1),
+        draft(2),
       ];
-    }
-    case 'second-running':
-      return [done(first), doing(second, 'running')];
-    case 'second-done':
-      return [done(first), done(second)];
+    case 'started':
+      return [
+        { ...card(0, [true, false]), taskStatus: 'doing', agentStatus: 'running' },
+        card(1, [false, false]),
+        card(2, [false, false]),
+      ];
+    case 'done':
+      return [0, 1, 2].map((index) => ({
+        ...card(index as 0 | 1 | 2, [true, true]),
+        taskStatus: 'done' as const,
+      }));
   }
 }

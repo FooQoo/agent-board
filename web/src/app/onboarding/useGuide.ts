@@ -1,4 +1,4 @@
-// The guide's controller. The guide runs in the browser: its two sample cards are local values
+// The guide's controller. The guide runs in the browser: its sample cards are local values
 // that the steps change, and the server only learns whether the guide has been seen. The view
 // parts take only props; the timers and the one request live here.
 
@@ -13,10 +13,8 @@ import { useTutorialReplay } from './useTutorialReplay';
 
 /** The next step from each step the user moves on with the explanation's button. */
 const NEXT: Partial<Record<GuidePhase, GuidePhase>> = {
-  samples: 'first-running',
-  'first-running': 'first-done',
-  'first-done': 'question',
-  'second-running': 'second-done',
+  planned: 'question',
+  started: 'done',
 };
 
 /**
@@ -32,7 +30,7 @@ export function useGuide({
   eligible: boolean;
 }): GuideController {
   const [screen, setScreen] = useState<GuideScreen>({ kind: 'hidden' });
-  const [phase, setPhase] = useState<GuidePhase>('samples');
+  const [phase, setPhase] = useState<GuidePhase>('request');
   const [ready, setReady] = useState(false);
   const [locale, setLocale] = useState<GuideLocale>('en');
   // Set when the guide was offered, not asked for: only an offered guide records how it ended.
@@ -45,7 +43,7 @@ export function useGuide({
   const show = useCallback((fromOffer: boolean) => {
     offered.current = fromOffer;
     setLocale(i18n.resolvedLanguage === 'ja' ? 'ja' : 'en');
-    setPhase('samples');
+    setPhase('request');
     startedAt.current = new Date().toISOString();
     setScreen({ kind: 'welcome' });
   }, []);
@@ -78,25 +76,33 @@ export function useGuide({
   // A running card stays on screen for at least RUNNING_MIN_MS before its step can move on.
   useEffect(() => {
     setReady(false);
-    if (phase !== 'first-running' && phase !== 'second-running') return undefined;
+    if (phase !== 'started') return undefined;
     const timer = window.setTimeout(() => setReady(true), RUNNING_MIN_MS);
     return () => window.clearTimeout(timer);
   }, [phase]);
 
   const move = useCallback((to: GuidePhase) => {
     setPhase(to);
-    setScreen({ kind: to === 'second-done' ? 'complete' : 'step' });
+    setScreen({ kind: 'step' });
   }, []);
 
   // The explanation's button. A running card's step is enabled only once the card has been on
   // screen long enough.
   const next = useCallback(() => {
+    if (phase === 'done') {
+      setScreen({ kind: 'complete' });
+      return;
+    }
     const to = NEXT[phase];
-    if (to && (ready || (phase !== 'first-running' && phase !== 'second-running'))) move(to);
+    if (to && (ready || phase !== 'started')) move(to);
   }, [move, phase, ready]);
 
+  const sent = useCallback(() => {
+    if (phase === 'request') move('planned');
+  }, [move, phase]);
+
   const answered = useCallback(() => {
-    if (phase === 'question') move('second-running');
+    if (phase === 'question') move('started');
   }, [move, phase]);
 
   const start = useCallback(() => setScreen({ kind: 'step' }), []);
@@ -104,5 +110,18 @@ export function useGuide({
   const finish = useCallback(() => leave('completed'), [leave]);
   const samples = useMemo(() => sampleCards(locale, phase, startedAt.current), [locale, phase]);
 
-  return { screen, phase, samples, locale, ready, start, skip: exit, next, exit, finish, answered };
+  return {
+    screen,
+    phase,
+    samples,
+    locale,
+    ready,
+    start,
+    skip: exit,
+    next,
+    exit,
+    finish,
+    sent,
+    answered,
+  };
 }

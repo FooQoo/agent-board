@@ -33,8 +33,9 @@ export function OnboardingComplete({ onFinish }: OnboardingCompleteProps) {
           {t('onboarding.complete.body')}
         </DialogDescription>
         <ul className="onboarding-dialog__points">
-          <li>✓ {t('onboarding.complete.pointFlow')}</li>
+          <li>✓ {t('onboarding.complete.pointRequest')}</li>
           <li>✓ {t('onboarding.complete.pointDecision')}</li>
+          <li>✓ {t('onboarding.complete.pointFlow')}</li>
         </ul>
         <div className="onboarding-dialog__actions mt-5">
           <Button ref={finishRef} size="m" onClick={onFinish}>

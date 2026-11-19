@@ -4,7 +4,7 @@ import type { ProjectId } from '../../shared/api/contracts';
 import { i18n } from '../../shared/i18n';
 import '../../shared/i18n/onboarding-strings';
 import type { GuideState } from './api';
-import { FIRST_SAMPLE_ID, SECOND_SAMPLE_ID } from './guideSamples';
+import { SAMPLE_IDS } from './guideSamples';
 import { RUNNING_MIN_MS } from './guideTiming';
 
 const api = vi.hoisted(() => ({
@@ -117,47 +117,56 @@ describe('useGuide', () => {
     act(() => hook.result.current.start());
     const { result } = hook;
     expect(result.current.screen.kind).toBe('step');
-    expect(result.current.samples.map((card) => card.id)).toEqual([
-      FIRST_SAMPLE_ID,
-      SECOND_SAMPLE_ID,
-    ]);
-    expect(result.current.samples.every((card) => card.taskStatus === 'todo')).toBe(true);
+    // The request step has no cards yet, and Next does nothing until the request is sent.
+    expect(result.current.phase).toBe('request');
+    expect(result.current.samples).toEqual([]);
+    act(() => result.current.next());
+    expect(result.current.phase).toBe('request');
 
-    act(() => result.current.next());
-    expect(result.current.phase).toBe('first-running');
-    expect(cardOf(hook, FIRST_SAMPLE_ID)).toMatchObject({
-      taskStatus: 'doing',
-      agentStatus: 'running',
-    });
-    // The running card stays on screen for the minimum time first.
-    act(() => result.current.next());
-    expect(result.current.phase).toBe('first-running');
-    act(() => {
-      vi.advanceTimersByTime(RUNNING_MIN_MS);
-    });
-    expect(result.current.ready).toBe(true);
-    act(() => result.current.next());
-    expect(result.current.phase).toBe('first-done');
-    expect(cardOf(hook, FIRST_SAMPLE_ID)).toMatchObject({ taskStatus: 'done' });
+    act(() => result.current.sent());
+    expect(result.current.phase).toBe('planned');
+    expect(result.current.samples.map((card) => card.id)).toEqual([...SAMPLE_IDS]);
+    expect(
+      result.current.samples.every((card) => card.taskStatus === 'todo' && card.draft === 'ai'),
+    ).toBe(true);
+    expect(result.current.samples.every((card) => card.epic?.id === 'SAMPLE-1')).toBe(true);
+    expect(
+      result.current.samples.every(
+        (card) => Array.isArray(card.acceptance) && card.acceptance.length === 2,
+      ),
+    ).toBe(true);
 
     act(() => result.current.next());
     expect(result.current.phase).toBe('question');
-    expect(cardOf(hook, SECOND_SAMPLE_ID)).toMatchObject({
-      taskStatus: 'doing',
+    expect(cardOf(hook, SAMPLE_IDS[0])).toMatchObject({
+      taskStatus: 'todo',
       agentStatus: 'pending',
     });
-    expect(cardOf(hook, SECOND_SAMPLE_ID)?.pendingChoices).toHaveLength(2);
+    expect(cardOf(hook, SAMPLE_IDS[0])?.pendingChoices).toHaveLength(2);
     // The question waits for the answer: the explanation's button does nothing.
     act(() => result.current.next());
     expect(result.current.phase).toBe('question');
 
     act(() => result.current.answered());
-    expect(result.current.phase).toBe('second-running');
+    expect(result.current.phase).toBe('started');
+    expect(cardOf(hook, SAMPLE_IDS[0])).toMatchObject({
+      taskStatus: 'doing',
+      agentStatus: 'running',
+      draft: null,
+    });
+    // The running card stays on screen for the minimum time first.
+    act(() => result.current.next());
+    expect(result.current.phase).toBe('started');
     act(() => {
       vi.advanceTimersByTime(RUNNING_MIN_MS);
     });
+    expect(result.current.ready).toBe(true);
     act(() => result.current.next());
-    expect(result.current.phase).toBe('second-done');
+    expect(result.current.phase).toBe('done');
+    expect(result.current.samples.every((card) => card.taskStatus === 'done')).toBe(true);
+    expect(result.current.screen.kind).toBe('step');
+
+    act(() => result.current.next());
     expect(result.current.screen.kind).toBe('complete');
 
     act(() => result.current.finish());
@@ -168,7 +177,7 @@ describe('useGuide', () => {
 
   it('records a skip when an offered guide is ended during the run', async () => {
     const { result } = await started();
-    act(() => result.current.next());
+    act(() => result.current.sent());
     act(() => result.current.exit());
     expect(result.current.screen.kind).toBe('hidden');
     expect(api.markGuideSeen).toHaveBeenCalledWith('skipped');
@@ -199,7 +208,8 @@ describe('useGuide', () => {
     await i18n.changeLanguage('ja');
     try {
       const hook = await started();
-      expect(cardOf(hook, FIRST_SAMPLE_ID)?.title).toBe('サンプル：使い方を確認する');
+      act(() => hook.result.current.sent());
+      expect(cardOf(hook, SAMPLE_IDS[0])?.title).toBe('今月の数値を集める');
     } finally {
       await i18n.changeLanguage('en');
     }

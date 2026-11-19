@@ -2,218 +2,121 @@ import '../../shared/i18n/onboarding-strings';
 import { useTranslation } from 'react-i18next';
 import { DecisionAnswerButton } from '../../features/tasks/answer/DecisionAnswerButton';
 import { TaskCardView } from '../../features/tasks/card/TaskCard';
+import { EpicLabel } from '../../features/epics/label/EpicLabel';
+import type { EpicRef, TaskSummary } from '../../shared/api/contracts';
 import type { SpotlightRect } from '../../shared/ui/spotlight/Spotlight';
 import { OnboardingComplete } from '../../features/onboarding/ui/OnboardingComplete';
 import { OnboardingGuidePanel } from '../../features/onboarding/ui/OnboardingGuidePanel';
 import { OnboardingStage } from '../../features/onboarding/ui/OnboardingStage';
 import { OnboardingWelcome } from '../../features/onboarding/ui/OnboardingWelcome';
 import '../../features/onboarding/ui/onboarding.css';
-import { MockBoard, MockStageCards } from './MockBoard';
-import { doneSample, pendingSample, resumedSample, runningSample, samples } from './mock-data';
+import { focusColumn, sampleCards } from './guideSamples';
+import type { GuidePhase } from './guideTiming';
+import { CARD_PITCH, MockBoard, MockStageCards } from './MockBoard';
 
-export type ScreenKind = 'welcome' | 'samples' | 'running' | 'pending' | 'resumed' | 'complete';
+export type ScreenKind = 'welcome' | GuidePhase | 'complete';
 
 const noop = () => {};
+const AT = new Date(2026, 9, 22, 8, 15).toISOString();
 
-const TARGET_SAMPLES: SpotlightRect = { x: 30, y: 126, width: 268, height: 220 };
-const TARGET_RUNNING: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 };
-const TARGET_PENDING: SpotlightRect = { x: 326, y: 126, width: 268, height: 496 };
-const TARGET_RESUMED: SpotlightRect = { x: 326, y: 126, width: 268, height: 118 };
+/** The frame of each lane; its height follows the cards it holds. */
+const FRAME_X = { todo: 30, doing: 326, done: 622 } as const;
 
-/** The answer button of the pending card, as the board shows it. */
-function SampleAnswerButton() {
+const renderEpic = (epic: EpicRef) => (
+  <EpicLabel epic={epic} className="card__epic" stopPropagation onClick={noop} />
+);
+
+/** One sample card as the board draws it; a pending card carries the answer button. */
+function sampleCard(task: TaskSummary) {
   return (
-    <div className="card__answer">
-      <DecisionAnswerButton taskId={pendingSample.id} onClick={noop} />
-    </div>
+    <TaskCardView
+      key={task.id}
+      task={task}
+      selected={false}
+      showPendingReason={false}
+      renderEpic={renderEpic}
+      onSelect={noop}
+    >
+      {task.agentStatus === 'pending' && (
+        <div className="card__answer">
+          <DecisionAnswerButton taskId={task.id} onClick={noop} />
+        </div>
+      )}
+    </TaskCardView>
   );
 }
 
-/** One screen of the approved mock. The story picks the parts that the screen shows. */
+/** One screen of the mock, drawn from the same sample cards the guide uses. */
 export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
-  const { t } = useTranslation();
-  const total = 4;
-  const body = (key: 'samples' | 'running' | 'pending' | 'resumed') =>
-    t(`onboarding.steps.${key}.body`);
-  switch (kind) {
-    case 'welcome':
-      return (
-        <>
-          <MockBoard count={0} />
-          <OnboardingWelcome onStart={noop} onSkip={noop} />
-        </>
-      );
-    case 'samples':
-      return (
-        <>
-          <MockBoard
-            count={2}
-            todo={[
-              <TaskCardView key="a" task={samples.follow} selected={false} onSelect={noop} />,
-              <TaskCardView key="b" task={samples.style} selected={false} onSelect={noop} />,
-            ]}
-          />
-          <OnboardingStage
-            target={TARGET_SAMPLES}
-            onExit={noop}
-            renderTarget={
-              <MockStageCards
-                cards={[
-                  <TaskCardView key="a" task={samples.follow} selected={false} onSelect={noop} />,
-                  <TaskCardView key="b" task={samples.style} selected={false} onSelect={noop} />,
-                ]}
-              />
-            }
-            guide={
-              <OnboardingGuidePanel
-                index={1}
-                total={total}
-                title={t('onboarding.steps.samples.title')}
-                body={body('samples')}
-                hint={t('onboarding.guide.readFirst')}
-                actionLabel={t('onboarding.guide.watch')}
-                onAction={noop}
-                onExit={noop}
-              />
-            }
-          />
-        </>
-      );
-    case 'running':
-      return (
-        <>
-          <MockBoard
-            count={2}
-            todo={[<TaskCardView key="b" task={samples.style} selected={false} onSelect={noop} />]}
-            doing={[<TaskCardView key="a" task={runningSample} selected={false} onSelect={noop} />]}
-          />
-          <OnboardingStage
-            target={TARGET_RUNNING}
-            onExit={noop}
-            renderTarget={
-              <MockStageCards
-                cards={[
-                  <TaskCardView key="a" task={runningSample} selected={false} onSelect={noop} />,
-                ]}
-              />
-            }
-            guide={
-              <OnboardingGuidePanel
-                index={2}
-                total={total}
-                title={t('onboarding.steps.running.title')}
-                body={body('running')}
-                hint={t('onboarding.guide.readFirst')}
-                actionLabel={t('onboarding.guide.next')}
-                onAction={noop}
-                onExit={noop}
-              />
-            }
-          />
-        </>
-      );
-    case 'pending':
-      return (
-        <>
-          <MockBoard
-            count={2}
-            doing={[
-              <TaskCardView
-                key="p"
-                task={pendingSample}
-                selected={false}
-                showPendingReason={false}
-                onSelect={noop}
-              >
-                <SampleAnswerButton />
-              </TaskCardView>,
-            ]}
-            done={[<TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />]}
-          />
-          <OnboardingStage
-            target={TARGET_PENDING}
-            onExit={noop}
-            renderTarget={
-              <MockStageCards
-                cards={[
-                  <TaskCardView
-                    key="p"
-                    task={pendingSample}
-                    selected={false}
-                    showPendingReason={false}
-                    onSelect={noop}
-                  >
-                    <SampleAnswerButton />
-                  </TaskCardView>,
-                ]}
-              />
-            }
-            guide={
-              <OnboardingGuidePanel
-                index={3}
-                total={total}
-                title={t('onboarding.steps.pending.title')}
-                body={body('pending')}
-                hint={t('onboarding.guide.waitingHint')}
-                waitingBadge={t('onboarding.guide.waitingBadge')}
-                actionLabel={t('onboarding.guide.next')}
-                onAction={noop}
-                onExit={noop}
-              />
-            }
-          />
-        </>
-      );
-    case 'resumed':
-      return (
-        <>
-          <MockBoard
-            count={2}
-            doing={[<TaskCardView key="r" task={resumedSample} selected={false} onSelect={noop} />]}
-            done={[<TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />]}
-          />
-          <OnboardingStage
-            target={TARGET_RESUMED}
-            onExit={noop}
-            renderTarget={
-              <MockStageCards
-                cards={[
-                  <TaskCardView key="r" task={resumedSample} selected={false} onSelect={noop} />,
-                ]}
-              />
-            }
-            guide={
-              <OnboardingGuidePanel
-                index={4}
-                total={total}
-                title={t('onboarding.steps.resumed.title')}
-                body={body('resumed')}
-                hint={t('onboarding.guide.readFirst')}
-                actionLabel={t('onboarding.guide.next')}
-                onAction={noop}
-                onExit={noop}
-              />
-            }
-          />
-        </>
-      );
-    case 'complete':
-      return (
-        <>
-          <MockBoard
-            count={2}
-            done={[
-              <TaskCardView key="a" task={doneSample} selected={false} onSelect={noop} />,
-              <TaskCardView
-                key="b"
-                task={{ ...samples.style, taskStatus: 'done', agentStatus: 'idle' }}
-                selected={false}
-                onSelect={noop}
-              />,
-            ]}
-          />
-          <OnboardingComplete onFinish={noop} />
-        </>
-      );
+  const { t, i18n } = useTranslation();
+  if (kind === 'welcome') {
+    return (
+      <>
+        <MockBoard count={0} />
+        <OnboardingWelcome onStart={noop} onSkip={noop} />
+      </>
+    );
   }
+  const locale = i18n.language === 'ja' ? 'ja' : 'en';
+  const phase: GuidePhase = kind === 'complete' ? 'done' : kind;
+  const cards = sampleCards(locale, phase, AT);
+  const lanes = {
+    todo: cards.filter((card) => card.taskStatus === 'todo'),
+    doing: cards.filter((card) => card.taskStatus === 'doing'),
+    done: cards.filter((card) => card.taskStatus === 'done'),
+  };
+  const board = (
+    <MockBoard
+      count={cards.length}
+      todo={lanes.todo.map(sampleCard)}
+      doing={lanes.doing.map(sampleCard)}
+      done={lanes.done.map(sampleCard)}
+    />
+  );
+  if (kind === 'complete') {
+    return (
+      <>
+        {board}
+        <OnboardingComplete onFinish={noop} />
+      </>
+    );
+  }
+  const column = focusColumn(phase);
+  const framed = column ? lanes[column] : [];
+  const target: SpotlightRect | null = column
+    ? { x: FRAME_X[column], y: 126, width: 268, height: 18 + framed.length * CARD_PITCH }
+    : null;
+  const index = ['request', 'planned', 'question', 'started', 'done'].indexOf(phase) + 1;
+  const waiting = phase === 'question';
+  return (
+    <>
+      {board}
+      <OnboardingStage
+        target={target}
+        onExit={noop}
+        renderTarget={column ? <MockStageCards cards={framed.map(sampleCard)} /> : null}
+        guide={
+          <OnboardingGuidePanel
+            index={index}
+            total={5}
+            title={t(`onboarding.steps.${phase}.title`)}
+            body={t(`onboarding.steps.${phase}.body`)}
+            hint={t(
+              waiting
+                ? 'onboarding.guide.waitingHint'
+                : phase === 'request'
+                  ? 'onboarding.guide.requestHint'
+                  : 'onboarding.guide.readFirst',
+            )}
+            waitingBadge={waiting ? t('onboarding.guide.waitingBadge') : undefined}
+            actionLabel={t(
+              phase === 'request' ? 'onboarding.guide.write' : 'onboarding.guide.next',
+            )}
+            onAction={noop}
+            onExit={noop}
+          />
+        }
+      />
+    </>
+  );
 }

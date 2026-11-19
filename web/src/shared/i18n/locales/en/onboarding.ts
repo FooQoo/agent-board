@@ -3,10 +3,11 @@ export const onboardingEn = {
   onboarding: {
     welcome: {
       title: 'Try Agent Board',
-      body: 'Follow two sample tasks to see how AI makes progress and asks for your decisions.',
-      stepWatch: 'Watch a sample card move on its own',
-      stepAnswer: 'Answer a question from AI',
-      simulated: 'This guide simulates AI progress. No AI agent is needed.',
+      body: 'Send a request to the agent and watch it plan the work, ask you a question, and finish the cards.',
+      stepRequest: 'Send a request with Ask AI',
+      stepAnswer: "Answer the agent's question",
+      stepWatch: 'Watch the agent do the work',
+      simulated: 'This guide simulates the agent. No AI agent is needed.',
       skip: 'Skip',
       start: 'Start guide',
     },
@@ -14,50 +15,44 @@ export const onboardingEn = {
       step: 'Guide {{current}} / {{total}}',
       exit: 'End guide',
       next: 'Next',
-      watch: 'Watch it move',
+      write: 'Open Ask AI',
+      requestHint: 'Press Send request to continue.',
       readFirst: 'Read the note, then continue.',
       waitingHint: 'Waiting for your answer on the card',
       waitingBadge: 'Waiting for you',
     },
     steps: {
-      samples: {
-        title: 'Two sample cards are ready',
-        body: 'Start with the first card. When AI starts work, the card moves to In progress.',
+      request: {
+        title: 'Ask the agent with Ask AI',
+        body: 'You do not add tasks yourself. Describe what you want in Ask AI and the agent plans it. A sample request is ready for you.',
       },
-      running: {
-        title: 'AI is making progress',
-        body: 'Running means AI is working on this card. When the work ends, the card moves to Done.',
+      planned: {
+        title: 'The agent made a plan',
+        body: 'The request became an epic and cards in To do. The cards are AI drafts, and each has acceptance conditions that say when it is done.',
+      },
+      question: {
+        title: 'The agent needs your answer',
+        body: 'Before it starts, the agent asks a question. Choose an option and press Send answer.',
+      },
+      started: {
+        title: 'The agent started the plan',
+        body: 'The drafts became real cards and the first one moved to In progress. As the agent checks its acceptance conditions, you can follow the progress on the card.',
       },
       done: {
-        title: 'The first card is done',
-        body: 'Press Next, and AI asks you a question on the second card.',
-      },
-      pending: {
-        title: 'AI needs your decision',
-        body: 'Choose an option and press Send. When your answer arrives, AI resumes the work.',
-      },
-      resumed: {
-        title: 'Your answer arrived and AI resumed',
-        body: "Your answer stays in the card's history. When the second card's work ends, it moves to Done.",
+        title: 'The cards moved to Done',
+        body: 'When all the acceptance conditions of a card are checked, the card moves to Done by itself. You only had to ask and answer.',
       },
     },
     complete: {
       title: 'You have completed the guide',
-      body: 'Let AI do the work and decide when it needs you. Start your own work on this board.',
-      pointFlow: 'You saw how AI makes progress',
-      pointDecision: 'You answered a decision',
+      body: 'Ask AI, answer when the agent needs you, and let it do the rest. Send your first request on this board.',
+      pointRequest: 'You sent a request with Ask AI',
+      pointDecision: "You answered the agent's question",
+      pointFlow: 'You saw the agent plan and finish the work',
       finish: 'Finish and get started',
     },
     mock: {
-      emptyHint: 'Add your first task to get started.',
-    },
-    sample: {
-      label: 'Sample',
-      follow: 'Sample: follow a task',
-      guideStyle: 'Sample: choose the guide style',
-      question: 'Which explanation is easier to read?',
-      brief: 'Keep it brief',
-      detailed: 'Include more context',
+      emptyHint: 'Press Ask AI to send your first request.',
     },
   },
 };

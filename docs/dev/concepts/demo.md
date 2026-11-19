@@ -46,7 +46,7 @@ Images do not go through `fetch`. `demo/images.ts` watches the page and rewrites
 
 ### The first-run guide
 
-The guide runs in the page, as it does against `agboard serve`: its two sample cards, their steps, and the question are local to the front end (`web/src/app/onboarding/`). The sample-data server (`mock-server/guide.ts`) answers only the two routes the real server has: `GET /api/onboarding` and `POST /api/onboarding/seen`. It writes no card to the demo's board.
+The guide runs in the page, as it does against `agboard serve`: its sample request, the plan, the steps, and the question are local to the front end (`web/src/app/onboarding/`). The sample-data server (`mock-server/guide.ts`) answers only the two routes the real server has: `GET /api/onboarding` and `POST /api/onboarding/seen`. It writes no card to the demo's board.
 
 The seen state lives only in memory. A new page is a new server, so the guide starts again on every page load, and **Skip** or **Finish and get started** closes it for that page only. Its user-facing steps are described in the [quickstart](../../guide/quickstart.md#before-you-start-the-first-run-guide).
 
@@ -93,7 +93,7 @@ pnpm --dir e2e test:demo
 
 The suite (`e2e/playwright.demo.config.ts` and `e2e/demo/`) serves `docs/.vitepress/dist/` with `vitepress preview` on port 8446, or on `AGBOARD_DEMO_E2E_PORT`, and opens `/agent-board/demo/` in Chromium. Like the documentation site suite, it needs no Rust build and no `AGBOARD_HOME`, because the board lives in the page. It checks that:
 
-- the guide starts on page load and runs to the end, including answering its question, at desktop width and at phone width
+- the guide starts on page load and runs to the end, including sending its sample request in Ask AI and answering its question, at desktop width and at phone width
 - after the guide, a card can be dragged to another lane
 - answering a waiting card and checking its last acceptance conditions moves it to Done automatically
 - the Docs button and the remote connection are absent, and a reload starts again from the sample data

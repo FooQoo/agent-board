@@ -19,6 +19,8 @@ export interface GuideController {
   next(): void;
   exit(): void;
   finish(): void;
-  /** The sample question was answered: the second card resumes. */
+  /** The sample request was sent: the agent plans it. */
+  sent(): void;
+  /** The sample question was answered: the agent starts the plan. */
   answered(): void;
 }

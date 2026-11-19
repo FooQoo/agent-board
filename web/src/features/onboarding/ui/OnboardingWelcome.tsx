@@ -36,11 +36,15 @@ export function OnboardingWelcome({ onStart, onSkip }: OnboardingWelcomeProps) {
         <ol className="onboarding-dialog__points">
           <li>
             <span aria-hidden="true">1 </span>
-            {t('onboarding.welcome.stepWatch')}
+            {t('onboarding.welcome.stepRequest')}
           </li>
           <li>
             <span aria-hidden="true">2 </span>
             {t('onboarding.welcome.stepAnswer')}
+          </li>
+          <li>
+            <span aria-hidden="true">3 </span>
+            {t('onboarding.welcome.stepWatch')}
           </li>
         </ol>
         <div className="onboarding-dialog__actions mt-5">
