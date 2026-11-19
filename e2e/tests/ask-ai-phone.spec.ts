@@ -52,6 +52,8 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   await settle();
   const closed = await sheet.boundingBox();
 
+  // The keyboard opens for the focused field; a smaller visual viewport alone is no keyboard.
+  await field.focus();
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(336));
   await expect.poll(async () => (await send.boundingBox())?.y ?? 0).toBeLessThan(844 - 336);
   await settle();
