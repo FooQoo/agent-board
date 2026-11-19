@@ -220,9 +220,10 @@ export const Unreadable: Story = {
 export const TabHistory: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: /^History/ }));
-    expect(canvasElement.querySelector('.detail__viewport:not([hidden])')?.textContent).toContain(
-      'Created task in Todo.',
-    );
+    expect(
+      canvasElement.querySelector('.detail__viewport:not([hidden], [aria-hidden="true"])')
+        ?.textContent,
+    ).toContain('Created task in Todo.');
   },
 };
 
@@ -231,7 +232,9 @@ export const TabConditions: Story = {
   args: { task: sampleCard({ id: 7, acceptance: CONDITIONS }) },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Conditions' }));
-    const panel = canvasElement.querySelector('.detail__viewport:not([hidden])');
+    const panel = canvasElement.querySelector(
+      '.detail__viewport:not([hidden], [aria-hidden="true"])',
+    );
     expect(panel?.querySelectorAll('.acceptance-view__item').length).toBe(5);
     expect(panel?.textContent).toContain('3 / 5');
   },
@@ -246,9 +249,10 @@ export const TabEpicReady: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Epic' }));
     await waitFor(() =>
-      expect(canvasElement.querySelector('.detail__viewport:not([hidden])')?.textContent).toContain(
-        'A synthetic epic for Stories.',
-      ),
+      expect(
+        canvasElement.querySelector('.detail__viewport:not([hidden], [aria-hidden="true"])')
+          ?.textContent,
+      ).toContain('A synthetic epic for Stories.'),
     );
   },
 };
@@ -261,9 +265,10 @@ export const TabEpicLoading: Story = {
   },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Epic' }));
-    expect(canvasElement.querySelector('.detail__viewport:not([hidden])')?.textContent).toContain(
-      'Loading the epic…',
-    );
+    expect(
+      canvasElement.querySelector('.detail__viewport:not([hidden], [aria-hidden="true"])')
+        ?.textContent,
+    ).toContain('Loading the epic…');
   },
 };
 
@@ -287,7 +292,9 @@ export const TabEpicFailed: Story = {
 export const TabEpicNone: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Epic' }));
-    const notice = canvasElement.querySelector('.detail__viewport:not([hidden]) .detail__empty');
+    const notice = canvasElement.querySelector(
+      '.detail__viewport:not([hidden], [aria-hidden="true"]) .detail__empty',
+    );
     expect(notice?.textContent).toContain('This task belongs to no epic.');
     expect(notice && getComputedStyle(notice).fontSize).toBe('13px');
   },
