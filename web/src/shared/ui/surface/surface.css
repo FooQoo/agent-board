@@ -51,3 +51,12 @@
 .surface__body:focus {
   outline: none;
 }
+
+/* The title with a badge beside it; the badge wraps under the title when the title is long. */
+.surface__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}

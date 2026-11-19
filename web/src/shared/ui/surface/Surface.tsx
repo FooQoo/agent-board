@@ -14,6 +14,7 @@ export function Surface({
   title,
   closeLabel,
   identity,
+  badge,
   onClose,
   footer,
   className = '',
@@ -25,6 +26,8 @@ export function Surface({
   closeLabel: string;
   /** The small line above the title of a sheet. */
   identity?: ReactNode;
+  /** A small label beside the title, such as the public preview badge. */
+  badge?: ReactNode;
   onClose: () => void;
   footer?: ReactNode;
   className?: string;
@@ -39,6 +42,7 @@ export function Surface({
         onOpenChange={(open) => !open && onClose()}
         identity={identity ?? ''}
         title={title}
+        label={badge}
         closeLabel={closeLabel}
         className={`surface-sheet ${className}`.trim()}
         initialFocusSelector=".surface__body"
@@ -72,7 +76,14 @@ export function Surface({
         }}
       >
         <div className="modal__header">
-          <DialogTitle className="modal__title">{title}</DialogTitle>
+          {badge ? (
+            <div className="surface__heading">
+              <DialogTitle className="modal__title">{title}</DialogTitle>
+              {badge}
+            </div>
+          ) : (
+            <DialogTitle className="modal__title">{title}</DialogTitle>
+          )}
           <button type="button" className="modal__close" aria-label={closeLabel} onClick={onClose}>
             <XIcon aria-hidden="true" />
           </button>

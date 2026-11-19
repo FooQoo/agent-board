@@ -15,7 +15,9 @@
                 "tool heading",
                 "stop button",
                 "auto-start checked",
-                "guide link"
+                "guide link",
+                "public preview badge",
+                "notice with link to the stages page"
               ],
               "interaction": true
             },
@@ -86,7 +88,7 @@
             },
             {
               "id": "resident-residentview--japanese",
-              "states": ["japanese", "working on a task"],
+              "states": ["japanese", "working on a task", "public preview badge"],
               "interaction": true
             },
             {
@@ -96,7 +98,7 @@
             },
             {
               "id": "resident-residentview--sheet",
-              "states": ["bottom sheet", "phone width", "next start hint"],
+              "states": ["bottom sheet", "phone width", "next start hint", "public preview badge"],
               "interaction": true
             }
           ]
