@@ -15,7 +15,9 @@ use super::lines::{Line, MAX_LINE, for_each_line};
 use super::{DriverEvent, StartSpec};
 use crate::error::AgboardError;
 use crate::server::resident::cli;
-use crate::server::resident::process::{Exit, signal_group};
+use crate::server::resident::process::{
+    Exit, group_alive, kill_members, signal_group, wait_group_gone,
+};
 
 /// How long a session gets to end by itself after its input is closed, before SIGTERM.
 const INPUT_GRACE: Duration = Duration::from_millis(1500);
@@ -195,20 +197,29 @@ impl Proc {
         event
     }
 
-    /// Close the input, SIGTERM the group after a moment, SIGKILL after `grace`.
+    /// Close the input, SIGTERM the group after a moment, SIGKILL after `grace`. The child
+    /// leaving is not the end: a command it started can stay in the group (and ignore SIGTERM),
+    /// so the group is waited for as well.
     pub(super) fn stop(&self, grace: Duration) {
         if self.piped_stdin {
             self.stdin.lock().unwrap_or_else(|e| e.into_inner()).take();
-            if self.reaped.wait(INPUT_GRACE.min(grace)) {
+            if self.reaped.wait(INPUT_GRACE.min(grace)) && !group_alive(self.pid) {
                 return;
             }
         }
         signal_group(self.pid, false);
-        if self.reaped.wait(grace) {
+        let started = std::time::Instant::now();
+        let reaped = self.reaped.wait(grace);
+        if reaped && wait_group_gone(self.pid, grace.saturating_sub(started.elapsed())) {
             return;
         }
-        signal_group(self.pid, true);
-        self.reaped.wait(Duration::from_secs(2));
+        if reaped {
+            kill_members(self.pid);
+        } else {
+            signal_group(self.pid, true);
+            self.reaped.wait(Duration::from_secs(2));
+        }
+        wait_group_gone(self.pid, Duration::from_secs(2));
     }
 }
 

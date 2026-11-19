@@ -87,9 +87,9 @@ pub fn run_with_timeout(
     let mut child = command
         .spawn()
         .map_err(|error| format!("{shown} could not be started: {error}"))?;
+    let started = Instant::now();
     let stdout = reader(child.stdout.take());
     let stderr = reader(child.stderr.take());
-    let started = Instant::now();
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
@@ -106,10 +106,19 @@ pub fn run_with_timeout(
             }
         }
     };
+    // A command it started can keep a pipe open after it exited, so the output is collected
+    // within what is left of the limit too.
+    let left = limit.saturating_sub(started.elapsed());
+    let (Some(stdout), Some(stderr)) = (stdout.collect(left), stderr.collect(left)) else {
+        return Err(format!(
+            "{shown} left a process behind that kept its output open past {} seconds",
+            limit.as_secs().max(1)
+        ));
+    };
     Ok(CliOutput {
         ok: status.success(),
-        stdout: stdout.join().unwrap_or_default(),
-        stderr: stderr.join().unwrap_or_default(),
+        stdout,
+        stderr,
     })
 }
 
@@ -125,12 +134,59 @@ pub fn display(program: &Path, args: &[&str]) -> String {
         .join(" ")
 }
 
-fn reader(pipe: Option<impl Read + Send + 'static>) -> std::thread::JoinHandle<String> {
+/// The output of one pipe, read on its own thread until the pipe closes.
+struct Reader(std::sync::mpsc::Receiver<String>);
+
+impl Reader {
+    /// The text once the pipe closed, or `None` when it is still open after `limit`. The thread
+    /// is left to end by itself then.
+    fn collect(&self, limit: Duration) -> Option<String> {
+        self.0.recv_timeout(limit).ok()
+    }
+}
+
+fn reader(pipe: Option<impl Read + Send + 'static>) -> Reader {
+    let (sender, receiver) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let mut bytes = Vec::new();
         if let Some(mut pipe) = pipe {
             let _ = pipe.read_to_end(&mut bytes);
         }
-        String::from_utf8_lossy(&bytes).into_owned()
-    })
+        let _ = sender.send(String::from_utf8_lossy(&bytes).into_owned());
+    });
+    Reader(receiver)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    fn script(dir: &Path, body: &str) -> PathBuf {
+        let path = dir.join("fake");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+            .unwrap();
+        path
+    }
+
+    #[test]
+    fn output_is_captured_when_the_command_finishes() {
+        let dir = tempfile::tempdir().unwrap();
+        let program = script(dir.path(), "echo out; echo err >&2");
+        let output = run_with_timeout(&program, &[], None, Duration::from_secs(30)).unwrap();
+        assert!(output.ok);
+        assert_eq!(output.stdout.trim(), "out");
+        assert_eq!(output.stderr.trim(), "err");
+    }
+
+    #[test]
+    fn a_process_left_holding_the_output_cannot_outlast_the_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        // The command exits at once, but a background process keeps its output open.
+        let program = script(dir.path(), "sleep 20 &\nexit 0");
+        let started = Instant::now();
+        let error = run_with_timeout(&program, &[], None, Duration::from_secs(1)).unwrap_err();
+        assert!(error.contains("kept its output open"), "{error}");
+        assert!(started.elapsed() < Duration::from_secs(10));
+    }
 }

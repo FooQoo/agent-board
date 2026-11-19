@@ -33,7 +33,7 @@ fn starts(fx: &Fixture, name: &str) -> usize {
         .unwrap_or(0)
 }
 
-fn kill(pid: u32) {
+pub(super) fn kill(pid: u32) {
     // SAFETY: plain signal to the group of a child the test started (it leads its own group),
     // so the `sleep` it runs does not outlive the test.
     unsafe {

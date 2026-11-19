@@ -18,13 +18,14 @@ pub mod driver;
 mod health;
 mod process;
 mod push;
+mod serial;
 mod spawn;
 mod supervisor;
 mod watch;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -85,6 +86,15 @@ pub struct Launcher {
     timing: Timing,
     factory: DriverFactory,
     plans: Mutex<HashMap<Tool, Plan>>,
+    /// Serializes the operations that change which child runs: a launch (which runs slow CLI
+    /// checks), a stop and a shutdown. The live set is locked only briefly, so reading it (the
+    /// status of a session list) never waits for a launch. Taken before `live` and `plans`.
+    gate: Mutex<()>,
+    /// Counts the changes a person makes to what the board keeps running (a launch, a stop).
+    /// A plan carries the value it was made under, and a deferred start or restart is admitted
+    /// only while the value is still the one it was prepared under. Changed only with `plans`
+    /// held.
+    epoch: AtomicU64,
     autostart: AutoStartStore,
     closing: AtomicBool,
     /// The shared data folder of the boards, once the server has told the launcher.
@@ -150,6 +160,8 @@ impl Launcher {
             timing,
             factory,
             plans: Mutex::new(HashMap::new()),
+            gate: Mutex::new(()),
+            epoch: AtomicU64::new(0),
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
             board: Mutex::new(None),
@@ -232,7 +244,9 @@ impl Launcher {
     /// A stop clears what the supervisor keeps, so the session is not restarted and
     /// a restart that was waiting or a failure that was shown is cleared too.
     pub fn stop(&self) -> Result<bool, AgboardError> {
-        self.plans().clear();
+        // The gate keeps a launch that is already running from adding its plan after the clear.
+        let _gate = self.gate();
+        self.reset_plans();
         let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
             .lock()
             .values()
@@ -259,7 +273,8 @@ impl Launcher {
     /// Stop every launched session (the server is shutting down).
     pub fn shutdown(&self) {
         self.closing.store(true, Ordering::SeqCst);
-        self.plans().clear();
+        let _gate = self.gate();
+        self.reset_plans();
         let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
             .lock()
             .values()
