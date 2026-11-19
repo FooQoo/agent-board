@@ -169,9 +169,6 @@ pub(crate) fn run<F: Future<Output = ()>>(
         state.monitor.attach(&state);
         let files = state.shared.clone();
         state.resident.watch_board(&state.shared, &state.changed);
-        state.resident.start(move |project| {
-            resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
-        });
         let app = api::router(state.clone());
 
         // A command-line monitor must be up before the board announces itself;
@@ -187,6 +184,11 @@ pub(crate) fn run<F: Future<Output = ()>>(
                 )));
             }
         };
+
+        // Only now: a session started before this point would outlive a failed start.
+        state.resident.start(move |project| {
+            resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
+        });
 
         let pid = std::process::id();
         let auto = Arc::new(AtomicBool::new(launch.auto.is_some()));
