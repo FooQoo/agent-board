@@ -12,6 +12,9 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # Stacked pull requests target the branch below them, so review those too, not only main.
+    base_branches:
+      - "feature/.*"
   # A Major or Critical finding requests changes; once its threads are resolved, CodeRabbit
   # approves.
   auto_approvals:
