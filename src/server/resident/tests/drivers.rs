@@ -1,8 +1,8 @@
-//! The launcher driven through the [`AgentDriver`] trait: a scripted fake driver for the
+//! The launcher driven through the [`AgentDriver`] trait: a scripted `MockDriver` for the
 //! bookkeeping, and the real Claude driver against a fake `claude` for the stream-json exchange.
 
 use super::*;
-use crate::server::resident::driver::fake::{Call, Step, factory};
+use crate::server::resident::driver::mock::{Call, Step, factory};
 use crate::server::resident::driver::{
     DriverEvent, PermissionAnswer, PermissionKind, PermissionRequest, TurnOutcome,
     decide_permission,
@@ -19,7 +19,7 @@ fn started() -> Step {
     })
 }
 
-fn calls_of(calls: &crate::server::resident::driver::fake::Calls) -> Vec<Call> {
+fn calls_of(calls: &crate::server::resident::driver::mock::Calls) -> Vec<Call> {
     calls.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 

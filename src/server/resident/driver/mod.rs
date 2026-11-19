@@ -15,9 +15,9 @@ mod codex_inbound;
 mod codex_parse;
 #[cfg(test)]
 mod codex_tests;
-#[cfg(test)]
-pub(super) mod fake;
 mod lines;
+#[cfg(test)]
+pub(super) mod mock;
 mod proc;
 #[cfg(test)]
 mod tests;
