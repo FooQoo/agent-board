@@ -60,6 +60,11 @@ impl MonitorConnections {
         inner: &mut Inner,
         loaded: Result<Option<Secret>, VaultError>,
     ) {
+        // A save or delete since the read began made it obsolete: drop what it found.
+        if !inner.probing {
+            self.probed.notify_waiters();
+            return;
+        }
         inner.probing = false;
         let saved = matches!(loaded, Ok(Some(_)));
         if let Ok(Some(token)) = loaded
@@ -116,6 +121,7 @@ impl MonitorConnections {
             .map_err(|_| ForgetError::KeychainUnavailable)?;
         let mut inner = self.lock();
         inner.keychain_saved = Some(false);
+        inner.probing = false;
         if inner.token_source == Some(TokenSource::Keychain) {
             inner.token = None;
             inner.token_source = None;

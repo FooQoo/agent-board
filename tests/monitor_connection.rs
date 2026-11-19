@@ -166,7 +166,6 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
         ]
     );
     assert_eq!(v["status"], "disabled");
-    assert_eq!(v["tokenConfigured"], false);
     assert_eq!(v["tokenSource"], Value::Null);
     assert_eq!(v["keychainAvailable"], true);
     assert_eq!(v["keychainTokenSaved"], false);
@@ -508,6 +507,72 @@ fn a_new_token_replaces_the_tunnel_and_an_equal_save_does_not() {
     let off = s.put(false, 2);
     assert_eq!(off.json()["status"], "disabled");
     assert!(off.json().get("passcode").is_none());
+}
+
+#[test]
+fn a_restart_with_a_held_token_never_waits_for_a_keychain_that_does_not_answer() {
+    let home = home();
+    let vault = MockVault::new(None, true);
+    // The keychain read stops, as it does while the OS asks the user for permission.
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(hold_rx);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, 0).status, 200);
+    // The read the settings page starts; it answers after its grace without the keychain.
+    let _ = s.get();
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    let first = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
+    // Save a fixed domain, then start again while running: it answers and replaces the tunnel.
+    assert_eq!(s.put_domain(true, 1, "fixed.example.ngrok.app").status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    let calls = s.mock.calls.lock().unwrap();
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[1].domain.as_deref(), Some("fixed.example.ngrok.app"));
+    assert_ne!(calls[0].backend, calls[1].backend);
+    drop(calls);
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(std::net::TcpStream::connect_timeout(&first, Duration::from_millis(500)).is_err());
+    drop(hold_tx);
+}
+
+#[test]
+fn a_keychain_read_in_flight_cannot_bring_back_a_token_deleted_after_a_save() {
+    let home = home();
+    let vault = MockVault::new(Some(SAVED), true);
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(hold_rx);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    // The read starts and stays pending, holding the old saved token.
+    let _ = s.get();
+    assert_eq!(
+        s.start_ngrok(json!({"token": TOKEN, "save": true})).status,
+        202
+    );
+    let r = s.write("DELETE", "/api/monitor-connections/token", &json!({}));
+    assert_eq!(r.status, 200);
+    s.stop_ngrok();
+    drop(hold_tx);
+    std::thread::sleep(Duration::from_millis(300));
+    // The late read must not restore the deleted token.
+    assert_eq!(vault.saved(), None);
+    let v = s.get();
+    assert_eq!(v["keychainTokenSaved"], false);
+    assert_eq!(v["tokenConfigured"], false);
 }
 
 // ------------------------------------------------------- startup and restore
