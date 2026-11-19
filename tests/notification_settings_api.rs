@@ -71,7 +71,10 @@ fn an_invalid_body_is_refused_and_changes_nothing() {
     ] {
         let reply = put(&server, &body);
         assert_eq!(reply.status, 422, "{}", reply.body);
-        assert_eq!(reply.json()["code"], "invalid_notification_settings");
+        assert_eq!(
+            reply.json()["error"]["code"],
+            "invalid_notification_settings"
+        );
     }
     assert_eq!(
         server.get("/api/notification-settings").json()["revision"],
