@@ -59,6 +59,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   autostart.paused
   .internal/monitor-connection.json
   .internal/notification-settings.json
+  .internal/push-ledger.json
   .internal/preferences.json
   .internal/remote-devices.json
   .internal/resident-autostart.json
@@ -234,6 +235,7 @@ The ngrok remote connection keeps its non-secret settings in `<data-root>/.inter
 
 The file never holds the ngrok token, the phone passcode, a session, or a CSRF token. A token the user chooses to save lives in the PC's secure storage (the OS credential store) instead (service `agent-board`, account `ngrok-authtoken`). There is no `monitor/config.json`.
 
+
 ## Registered devices
 
 The phones and browsers that entered the passcode keep their registration in `<data-root>/.internal/remote-devices.json`. Like the settings file it belongs to the application: it is written only by the entrance and the PC dialog, replaced atomically with owner-only permissions, and not part of the shared area. It stays across a pause, a restart, and an update.
@@ -257,6 +259,53 @@ The phones and browsers that entered the passcode keep their registration in `<d
 - `tokenHash` is the only trace of the device token; the token itself is in the phone's cookie and nowhere else. `origin` is the public address the device was registered for; a cookie presented at another address does not match.
 - `label` is a short name from the browser's `User-Agent`, only to tell devices apart. `lastSeenAt` is updated when the device comes back without a session.
 - A file that cannot be read, or has another `formatVersion`, is treated as an empty list: no device is accepted until it is registered again, and the next change writes a new file. At most 32 devices are kept.
+
+## Web Push subscriptions
+
+The Web Push subscription of each registered device is kept in `<data-root>/.internal/push-subscriptions.json`, and the VAPID key pair that identifies this board to push services in `<data-root>/.internal/vapid-key.json`. Both belong to the application: written only by the entrance and the PC's device removal, replaced atomically with owner-only permissions, and not part of the shared area. They stay across a pause, a restart, and an update.
+
+```json
+{
+  "formatVersion": 1,
+  "subscriptions": [
+    {
+      "deviceId": "dev_0123456789abcdef",
+      "endpoint": "https://web.push.apple.com/...",
+      "p256dh": "<unpadded base64url, 65 bytes>",
+      "auth": "<unpadded base64url, 16 bytes>",
+      "createdAt": "2026-11-19T01:00:00Z"
+    }
+  ]
+}
+```
+
+`vapid-key.json` is `{"formatVersion": 1, "pkcs8": "<base64url PKCS#8 private key>"}`; the private key is never sent anywhere except as a signature. There is one subscription per device id. An unreadable subscription file is treated as empty, and a lost key file is replaced by a new key pair, which drops the subscriptions made for the old one.
+
+## Push delivery ledger
+
+What was sent to which device is kept in `<data-root>/.internal/push-ledger.json`, so a restart, or a second read of the same board data, never sends the same notification twice. Like the other internal files it is written only by the server, replaced atomically with owner-only permissions, and not part of the shared area.
+
+```json
+{
+  "formatVersion": 1,
+  "periodicAt": "2026-11-20T08:00:00Z",
+  "entries": [
+    {
+      "deviceId": "dev_0123456789abcdef",
+      "key": "result:2:0123456789abcdef0123456789abcdef:12",
+      "state": "sent",
+      "attempts": 1,
+      "at": "2026-11-20T08:30:00Z",
+      "retryAt": null
+    }
+  ]
+}
+```
+
+- `key` names one occurrence on the board: `result:<version>:<project>:<task>`, `question:<id>:…`, `state:<started|pending|done>:<time>:…`, or `history:<n>:…`. It is also the notification's `tag`.
+- `state` is `sent`, `pending` (the push service did not take it; `retryAt` says when to try again, and `payload` holds the title, body, link path and tag to send again), `skipped` (the remote connection was down), or `dropped` (refused, or given up after five tries).
+- `periodicAt` is when the last periodic status notification was made (`null` before the first), so a restart does not start the interval again. Periodic entries have the key `periodic:<unix seconds>`.
+- Finished entries are kept for 14 days and at most 2000. A file that cannot be read is an empty ledger, and a save that fails is ignored; the board never waits for it. Removing a device removes its entries.
 
 ## Phone notification settings
 

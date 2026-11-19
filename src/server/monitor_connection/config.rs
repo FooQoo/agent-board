@@ -102,7 +102,7 @@ impl ConfigStore {
     }
 }
 
-pub(super) fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_private_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let dir = path
         .parent()
         .ok_or_else(|| std::io::Error::other("no parent folder"))?;

@@ -11,8 +11,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 
 use super::idle::{Activity, IdleStop};
-use super::monitor_connection::config::ConfigStore;
-use super::monitor_connection::lifecycle::MonitorConnections;
+use super::monitor_connection::{config::ConfigStore, lifecycle::MonitorConnections};
 use super::{AppState, MonitorOptions, MonitorReady, api, assets, bind, change_feed, instance};
 use super::{STALE_TEMPORARY_AGE, notification_settings, preferences, resident, sessions};
 use crate::clock::format_utc;
@@ -167,6 +166,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
             ),
         });
         state.monitor.attach(&state);
+        super::push_delivery::start(&state, &data_dir, monitor.push_transport.clone());
         let files = state.shared.clone();
         state.resident.watch_board(&state.shared, &state.changed);
         let app = api::router(state.clone());

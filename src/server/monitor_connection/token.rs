@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::contracts::ConnectionStatus;
+use super::contracts::{ConnectionStatus, PublicOrigin};
 use super::keychain::VaultError;
 use super::lifecycle::{Inner, MonitorConnections, idle_status};
 use super::types::Settings;
@@ -97,6 +97,15 @@ impl MonitorConnections {
     /// it came from the keychain is forgotten too; the environment's token and
     /// one typed for this run stay. A running connection is not interrupted.
     /// The keychain is written without holding the lock, as it is read.
+    /// The public address while the entrance is up (the connection is ready), else `None`.
+    pub fn public_origin(&self) -> Option<PublicOrigin> {
+        let inner = self.lock();
+        if inner.status != ConnectionStatus::Ready {
+            return None;
+        }
+        PublicOrigin::parse(inner.url.as_deref()?).ok()
+    }
+
     pub async fn forget_token(self: &Arc<Self>) -> Result<Snapshot, ForgetError> {
         // A read still in flight would bring the token back after the delete.
         self.probed().await;

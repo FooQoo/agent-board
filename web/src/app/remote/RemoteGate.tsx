@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ConnectionStateView } from '../../pages/monitor/connection/ConnectionStateView';
 import { useMonitorConnection } from '../../pages/monitor/hooks/useMonitorConnection';
 import { csrfHeaders, readToken } from '../../shared/api/http';
+import { registerServiceWorker } from '../../features/push-notifications/subscribe';
 import { syncPreferences } from '../../shared/preferences';
 import { openRemoteSession, unlockRemote, usesRemoteSession } from './session';
 
@@ -26,6 +27,10 @@ export function RemoteGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (ready && usesRemoteSession())
       void syncPreferences({ url: '/api/preferences', token: readToken, headers: csrfHeaders });
+  }, [ready]);
+  // The worker lets a phone receive Web Push; the board never depends on it.
+  useEffect(() => {
+    if (ready && usesRemoteSession()) void registerServiceWorker();
   }, [ready]);
   if (state.status === 'ready') return <>{children}</>;
   if (state.status === 'checking') return null;
