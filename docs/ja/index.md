@@ -15,7 +15,7 @@ landing:
     primary: { text: はじめる, link: /ja/guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
-    videoLabel: デモ動画。エージェントがタスクに着手して質問し、タスクの回答欄から返答すると作業を再開して、完了まで進む
+    videoLabel: デモ動画。AI に依頼で頼むと、エージェントがタスクに分けて質問し、回答すると作業を進めて、完了まで進む
   problem:
     eyebrow: なぜ共有の作業場か
     title: いまは、任せても目が離せない。

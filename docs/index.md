@@ -15,7 +15,7 @@ landing:
     primary: { text: Get started, link: /guide/getting-started }
     secondary: { text: GitHub, link: https://github.com/FooQoo/agent-board }
     meta: macOS · Claude Code / Codex · MIT License
-    videoLabel: "Demo: the agent starts a task and asks a question, you answer on the task, and the agent resumes until the task is done"
+    videoLabel: "Demo: you send a request with Ask AI, the agent turns it into tasks and asks a question, you answer, and the agent works until the task is done"
   problem:
     eyebrow: Why a shared workspace
     title: Today, handing off means watching over it.
