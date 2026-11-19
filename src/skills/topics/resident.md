@@ -17,7 +17,7 @@ Run this wait, and nothing else, as the way to wait for work:
 agboard --project "<current project name>" wait --until task --idle-timeout 3600 --json
 ```
 
-- **Claude Code**: a long command in the foreground is stopped by the harness. Run the wait with the Bash tool's `run_in_background` option, end your turn, and continue when its completion notification arrives. Read the result from the notification's output.
+- **Claude Code**: a long command in the foreground is stopped by the harness. Run the wait with the Bash tool's `run_in_background` option, end your turn, and continue when its completion notification arrives. Read the result from the notification's output. A background command has its own time limit, so give it a `timeout` longer than the wait (3900000 milliseconds for 3600 seconds). If the harness stops the wait anyway, treat that like `idle_timeout` and wait again.
 - **Codex**: run the wait in the foreground. It blocks until it returns.
 
 Then handle the result:
