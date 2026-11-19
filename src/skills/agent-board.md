@@ -50,7 +50,7 @@ After context compaction, read a fresh progress table before any board-dependent
 
 ### Explicit listen mode
 
-Start the serial listener loop only when the user explicitly asks you to listen for tasks. Then run `agboard skills listening` and follow it. Never start it as part of the ordinary work loop; a `wait --until task` result is not approval to implement. The plugin's `wait` skill (`/agent-board:wait`) is the resident form of this loop: it restarts the wait after `idle_timeout`.
+Start the serial listener loop only when the user explicitly asks you to listen for tasks. Then run `agboard skills listening` and follow it. Never start it as part of the ordinary work loop; a `wait --until task` result is not approval to implement. A session the board launched, or one a person told to stay on the board, follows `agboard skills resident` instead: it never ends on `idle_timeout`. The plugin's `wait` skill (`/agent-board:wait`) uses the same procedure.
 
 ## 3. Find and edit the shared files
 

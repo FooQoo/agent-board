@@ -41,6 +41,7 @@ fn skills_prints_the_skill_body_without_frontmatter_and_writes_nothing() {
     for topic in [
         "file-format",
         "listening",
+        "resident",
         "task-template",
         "epic-template",
         "planning",
@@ -60,6 +61,7 @@ fn every_topic_prints_its_text() {
     for (topic, heading) in [
         ("file-format", "# TASK.md and EPIC.md format"),
         ("listening", "# Listen for tasks in one session"),
+        ("resident", "# Stay on the board as a resident session"),
         ("planning", "# Plan a request"),
         ("fixed-epic-bodies", "# Fixed bodies for BUG"),
         ("drafts", "# Drafts and archived tasks"),
@@ -88,6 +90,22 @@ fn every_topic_prints_its_text() {
         assert!(template.contains(heading), "{heading}");
     }
     assert!(template.contains("recommended, not required"));
+    let (_, resident, _) = skills(&["resident"]);
+    for needed in [
+        "AGBOARD_RESIDENT_ID",
+        "run_in_background",
+        "wait --until task --idle-timeout 3600",
+        "run the same wait again immediately",
+        "30 seconds",
+        "message ask",
+        "--no-wait",
+        "Stop only when the board stops the process",
+    ] {
+        assert!(
+            resident.contains(needed),
+            "the resident topic omits {needed}"
+        );
+    }
     let (_, bug, _) = skills(&["bug-epic-template"]);
     assert!(bug.contains("# Bug reports"));
 }
@@ -98,7 +116,12 @@ fn an_unknown_topic_exits_zero_and_lists_the_topics() {
     assert_eq!(code, 0);
     assert!(untouched);
     assert!(out.starts_with("# No topic named `nope`"));
-    for topic in ["file-format", "listening", "enhancement-epic-template"] {
+    for topic in [
+        "file-format",
+        "listening",
+        "resident",
+        "enhancement-epic-template",
+    ] {
         assert!(out.contains(&format!("`agboard skills {topic}`")), "{out}");
     }
     assert!(out.contains("upgrade agboard"));
