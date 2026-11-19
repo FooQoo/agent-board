@@ -8,7 +8,7 @@ import {
   type PushSupport,
   type PushView,
 } from './state';
-import { disablePush, enablePush } from './subscribe';
+import { disablePush, enablePush, hasBrowserSubscription } from './subscribe';
 
 export interface PushController {
   view: PushView;
@@ -36,7 +36,9 @@ export function usePushNotifications(): PushController {
   const refresh = useCallback(async () => {
     try {
       const next = await getPushStatus();
-      setStatus(next);
+      // A subscription kept on the PC is only useful while the browser still holds its own.
+      const held = next.subscribed === true ? await hasBrowserSubscription() : false;
+      setStatus({ ...next, subscribed: held });
       setPublicKey(next.publicKey ?? null);
     } catch {
       setStatus(null);
