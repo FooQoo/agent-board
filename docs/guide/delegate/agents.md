@@ -20,9 +20,11 @@ agboard setup
 2. **Plan.** It shows, for each agent, how the plugin will be installed or updated, every settings file it will change, whether the Codex hooks will be trusted, and any step you have to take yourself.
 3. **Confirmation.** It asks **Apply these changes?** When Codex is in the plan, the question also says that the Agent Board hooks will be marked as trusted in Codex. Press `y` to go on. Any other answer, Esc, or Ctrl+C changes nothing.
 
+4. **Remote access (optional).** After the plugin is installed, it asks whether to set up the ngrok connection for your phone now; the default is no. If you answer yes, it shows what is saved and asks for the fixed domain and the ngrok token, which you type hidden. Each question can be skipped. This is the same step as [`agboard setup remote`](../reference/cli#save-the-remote-access-settings), which you can also run later.
+
 After the run, start a new agent session to load the plugin. Then create or bind a project in your working folder (see [Install and start](../getting-started#create-or-bind-a-project)).
 
-Without a terminal, or with `--json`, `setup` asks nothing. Name the agent with `--agent codex`, `--agent claude`, or `--agent all`, and add `--yes` to agree in advance or `--dry-run` to see the plan. `--dry-run` installs, creates, and changes nothing.
+Without a terminal, or with `--json`, `setup` asks nothing. Name the agent with `--agent codex`, `--agent claude`, or `--agent all`, and add `--yes` to agree in advance or `--dry-run` to see the plan. `--dry-run` installs, creates, and changes nothing. The remote access step is skipped in these runs.
 
 ### What setup changes
 

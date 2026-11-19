@@ -1,6 +1,7 @@
 //! Parse, prepare the context, run the command, print, then call `after_commit`.
 
 mod prepare;
+mod remote;
 
 use std::ffi::OsString;
 use std::io::Write;
@@ -84,6 +85,9 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
     }
     // `setup` and `update` need no project and no store: they resolve the
     // data directory themselves and run before any board files are opened.
+    if let Some(code) = remote::run_remote_command(&cli, env) {
+        return code;
+    }
     let request = match &cli.command {
         Command::Setup(args) => Some(commands::setup::Request {
             mode: Mode::Setup,

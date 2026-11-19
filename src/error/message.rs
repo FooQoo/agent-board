@@ -121,6 +121,10 @@ impl AgboardError {
             AgboardError::RemoteUnavailable { .. } => {
                 "the ngrok connection is not available.".to_string()
             }
+            AgboardError::InvalidDomain => "the ngrok domain is not valid.".to_string(),
+            AgboardError::KeychainUnavailable { .. } => {
+                "secure storage on this computer is not available.".to_string()
+            }
             AgboardError::BrowserOpenFailed { .. } => "cannot open the browser.".to_string(),
             AgboardError::AgentCliMissing { tool } => {
                 format!("the {tool} command is not installed.")

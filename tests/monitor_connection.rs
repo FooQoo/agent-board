@@ -575,6 +575,63 @@ fn a_keychain_read_in_flight_cannot_bring_back_a_token_deleted_after_a_save() {
     assert_eq!(v["tokenConfigured"], false);
 }
 
+#[test]
+fn a_keychain_read_that_began_before_a_saving_start_cannot_clear_the_saved_flag() {
+    let home = home();
+    let vault = MockVault::new(None, true);
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(hold_rx);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    // The read starts, finds nothing, and stays pending.
+    let _ = s.get();
+    assert_eq!(
+        s.start_ngrok(json!({"token": TOKEN, "save": true})).status,
+        202
+    );
+    drop(hold_tx);
+    std::thread::sleep(Duration::from_millis(300));
+    // The late read must not say that no token is saved.
+    assert_eq!(vault.saved().as_deref(), Some(TOKEN));
+    assert_eq!(s.get()["keychainTokenSaved"], true);
+}
+
+#[test]
+fn a_retry_that_cannot_save_puts_back_the_token_an_earlier_pass_replaced() {
+    let home = home();
+    let vault = MockVault::new(Some(SAVED), true);
+    // The first save goes through; a settings change from the command line then moves the
+    // revision, so the start goes round again, and the second save fails.
+    vault.fail_second_save.store(true, Ordering::SeqCst);
+    let dir = home.path().to_path_buf();
+    *vault.after_first_save.lock().unwrap() = Some(Box::new(move || {
+        ConfigStore::new(&dir)
+            .save(&ConnectionConfig {
+                enabled: false,
+                revision: 1,
+                domain: None,
+            })
+            .unwrap();
+    }));
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            ..Opts::default()
+        },
+    );
+    let r = s.start_ngrok(json!({"token": TOKEN, "save": true}));
+    assert!(r.status >= 400, "{} {}", r.status, r.body);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
+    // What the keychain held before is back.
+    assert_eq!(vault.saved().as_deref(), Some(SAVED));
+}
+
 // ------------------------------------------------------- startup and restore
 
 #[test]
@@ -631,6 +688,63 @@ fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
     assert_eq!(s.start_ngrok(json!({})).status, 409);
     assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.get()["status"], "disabled");
+}
+
+#[test]
+fn settings_saved_from_the_command_line_show_in_a_running_board_without_a_reload() {
+    use agent_board::remote_settings::{Change, apply};
+    use agent_board::server::monitor_connection::keychain::NoKeychain;
+
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    let before = s.get();
+    assert_eq!(before["settings"]["enabled"], false);
+    assert_eq!(before["settings"]["domain"], Value::Null);
+    let saved = apply(
+        home.path(),
+        &NoKeychain,
+        Change {
+            domain: Some(Some("example.ngrok-free.dev".to_string())),
+            enabled: Some(true),
+            ..Change::default()
+        },
+    )
+    .unwrap();
+    let after = s.get();
+    assert_eq!(after["settings"]["domain"], "example.ngrok-free.dev");
+    assert_eq!(after["settings"]["enabled"], true);
+    assert_eq!(after["revision"], saved.revision);
+    // Saving does not start or replace a connection.
+    assert_ne!(after["status"], "ready");
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
+    // The board's own save then works on top of what the command line wrote.
+    assert_eq!(s.put(false, saved.revision).status, 200);
+    assert_eq!(s.get()["settings"]["enabled"], false);
+}
+
+#[test]
+fn a_stop_keeps_a_domain_saved_from_the_command_line_meanwhile() {
+    use agent_board::remote_settings::{Change, apply};
+    use agent_board::server::monitor_connection::keychain::NoKeychain;
+
+    let home = home();
+    let s = Server::start(home.path(), Opts::default());
+    assert_eq!(s.put(true, 0).status, 200);
+    apply(
+        home.path(),
+        &NoKeychain,
+        Change {
+            domain: Some(Some("example.ngrok-free.dev".to_string())),
+            ..Change::default()
+        },
+    )
+    .unwrap();
+    // No read in between: the stop must still see the newer file.
+    let stopped = s.stop_ngrok();
+    assert_eq!(stopped.status, 200);
+    let v = s.get();
+    assert_eq!(v["settings"]["domain"], "example.ngrok-free.dev");
+    assert_eq!(v["settings"]["enabled"], false);
 }
 
 #[test]

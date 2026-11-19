@@ -21,7 +21,8 @@ title: CLIリファレンス
 | 変更を待つ | `wait` |
 | プロジェクトとフォルダを管理する | `project`、`workspace` |
 | ボードをブラウザーで開く | `open` |
-| スマホ用のアドレスと合言葉を確認する | `remote` |
+| スマホ用のアドレスと合言葉を確認する、リモートアクセスの設定を見る | `show remote` |
+| リモートアクセスの設定（ドメイン、トークン）を保存する | `setup remote` |
 | サーバーとHookを動かす | `serve`、`stop`、`hook` |
 | Agent Boardプラグインを導入・更新する | `setup`、`update` |
 | 削除する（人だけ） | `rm`、`project rm`、`epic rm`、`init` |
@@ -207,7 +208,7 @@ macOSでは`open`、Linuxでは`xdg-open`を使います。ほかのプログラ
 
 | オプション | 意味 |
 | --- | --- |
-| `--monitor ngrok` | リモートアクセスの接続を始めます。指定できるのは`ngrok`だけです。環境変数`NGROK_AUTHTOKEN`が必要で、トークンを引数で渡すことはできません。開始のたびに同じアドレスにするには、ngrokアカウントが持つドメインをダイアログに入力するか、環境変数`AGBOARD_NGROK_DOMAIN`に設定します。[同じアドレスを使い続ける](../watch/remote-access#同じアドレスを使い続ける)を参照してください。 |
+| `--monitor ngrok` | リモートアクセスの接続を始めます。指定できるのは`ngrok`だけです。環境変数`NGROK_AUTHTOKEN`が必要で、トークンを引数で渡すことはできません。開始のたびに同じアドレスにするには、ngrokアカウントが持つドメインをダイアログに入力するか、環境変数`AGBOARD_NGROK_DOMAIN`に設定するか、[`agboard setup remote`](#save-the-remote-access-settings)でコマンドラインから保存します。[同じアドレスを使い続ける](../watch/remote-access#同じアドレスを使い続ける)を参照してください。 |
 
 スマホは、起動ごとに作る4桁の合言葉で守られます。サインイン用のオプションはありません。`--monitor`の不正な値、`NGROK_AUTHTOKEN`がないこと、未知のオプションは、終了コード2で終了します。接続を開始できなければ、`serve`は起動せず終了コード1で終了します。
 
@@ -226,11 +227,11 @@ agboard stop
 
 ### スマホ用のアドレスと合言葉を渡す
 
-ngrok接続が動いている間、`agboard remote`は接続の状態、公開アドレス、4桁の合言葉を表示します。接続ダイアログを開かなくても、エージェントからリンクを渡してもらえます。
+ngrok接続が動いている間、`--project`を付けた`agboard show remote`は、接続の状態、公開アドレス、4桁の合言葉を表示します。接続ダイアログを開かなくても、エージェントからリンクを渡してもらえます。
 
 ```sh
-agboard --project "My project" remote
-agboard --project "My project" remote --json
+agboard --project "My project" show remote
+agboard --project "My project" show remote --json
 ```
 
 ```text
@@ -238,13 +239,56 @@ ngrok: ready
 URL: https://….ngrok-free.app/?project=<id>
 Passcode: 4821
 Project: My project
+Enabled: yes
+Domain: example.ngrok-free.dev
+Token: saved in the keychain
 ```
 
-`--project`は必須で、アドレスはそのプロジェクトを開きます。指定しないときは何も表示せず、`invalid_argument`として終了コード2で終わります。`--json`では`{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`を出します。`entrance`はプロジェクトを含まないアドレスです。
+アドレスはそのプロジェクトを開きます。`--json`では`{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"},"enabled":true,"domain":"…","tokenSaved":true,"keychainAvailable":true}`を出します。`entrance`はプロジェクトを含まないアドレスで、末尾の4項目は、次に説明する保存済みの設定です。
 
-プラグインには、このためのスキル`remote`（Claude Codeでは`/agent-board:remote`）が含まれます。エージェントに「リモートアクセスのURL」や「スマホで開きたい」と頼むと、フォルダのプロジェクトに対して`agboard remote --json`を実行し、アドレスと合言葉を返します。サーバーやngrokは起動しません。
+プラグインには、このためのスキル`remote`（Claude Codeでは`/agent-board:remote`）が含まれます。エージェントに「リモートアクセスのURL」や「スマホで開きたい」と頼むと、フォルダのプロジェクトに対して`agboard --project "<名前>" show remote --json`を実行し、アドレスと合言葉を返します。サーバーやngrokは起動しません。
 
-`remote`は何も起動しません。サーバーが動いていないか、接続の準備ができていないときは、アドレスも合言葉も表示せず、理由を伝えて、`remote_unavailable`として終了コード1で終わります。存在しないプロジェクトは終了コード4です。
+`--project`を付けた`show remote`は何も起動しません。サーバーが動いていないか、接続の準備ができていないときは、アドレスも合言葉も表示せず、理由を伝えて、`remote_unavailable`として終了コード1で終わります。存在しないプロジェクトは終了コード4です。
+
+`--project`を付けない`show remote`は、保存済みのリモートアクセスの設定と接続の状態を表示し、接続が止まっていても失敗しません。
+
+```sh
+agboard show remote
+agboard show remote --json
+```
+
+```text
+Enabled: yes
+Domain: example.ngrok-free.dev
+Token: saved in the keychain
+Connection: ready at https://….ngrok-free.dev
+```
+
+リモートアクセスがオンかどうか、保存してある固定ドメイン（なければ、開始のたびにngrokがアドレスを選ぶこと）、トークンがキーチェーンに保存されているか、キーチェーンが使えるかを表示します。トークン自体は表示されず、`--project`がなければ合言葉も表示されません。`--json`では、`enabled`、`domain`、`tokenSaved`、`keychainAvailable`、`status`（サーバーが動いていなければ`no_server`、動いていれば`ready`、`disabled`、`failed`などの接続の状態）、`entrance`（接続が`ready`のときはそのアドレス、それ以外は`null`）を出します。`show <id>`は、これまでどおりタスクを表示します。`show`が、タスクIDの代わりに受け付ける語は`remote`だけです。
+
+### リモートアクセスの設定を保存する {#save-the-remote-access-settings}
+
+`agboard setup remote`は、ボードの接続ダイアログも保存しているngrokの設定、つまり接続をオンにするか、固定ドメイン、ngrokのトークンを保存します。設定はデータフォルダ全体のものなのでプロジェクトは不要で、サーバーが動いていてもいなくても使えます。動いているボードには、再読み込みしなくても変更が反映されます。
+
+```sh
+agboard setup remote
+agboard setup remote --domain example.ngrok-free.dev --enabled true
+agboard setup remote --clear-domain
+printf '%s' "$NGROK_AUTHTOKEN" | agboard setup remote --token-stdin
+```
+
+ターミナルでオプションなしの`agboard setup remote`を実行すると、保存済みの内容（ドメインと、トークンが保存されているかどうか。トークン自体は表示しません）を見せたうえで、ドメインとトークンを尋ねます。トークンは入力が表示されず、出力されることもありません。各質問は空のまま進めると飛ばせます。すでに保存してある値は、変えると答えたときだけ変更します。ターミナルがないときや`--json`を付けたときは何も尋ねず、終了コード`2`で終わるので、スクリプトが入力待ちで止まることはありません。
+
+次のオプションは、何も尋ねずに保存します。
+
+| オプション | 意味 |
+| --- | --- |
+| `--domain <host>` | ngrokアカウントが持つ固定ドメインを保存します。ホスト名だけを指定します。小文字にそろえ、`https://`、パス、ポートを含む値は`invalid_domain`として終了コード2で終わります。 |
+| `--clear-domain` | 保存してあるドメインを削除します。以後は開始のたびにngrokがアドレスを選びます。`--domain`とは同時に指定できません。 |
+| `--enabled true\|false` | 接続をオンにするかどうかを保存します。 |
+| `--token-stdin` | ngrokのトークンを標準入力から読み、OSのキーチェーンに保存します。ボードの**このPCにトークンを保存する**と同じ保管場所です。トークンを引数で渡すことはできません。キーチェーンが使えないときは何も保存せず、`keychain_unavailable`として終了コード1で終わります。 |
+
+保存しても、接続の開始、停止、置き換えはしません。すでに動いている接続はそのまま動き続け、保存した設定は次に接続を開始するときから使われます。コマンドもそのことを表示します。設定はボードと同じファイルに保存されるので、ボードとコマンドはいつも同じ値を見ます。`setup remote`は`--json`を受け付け、`--project`は指定できません。`setup`のオプションとは組み合わせられません。
 
 サーバーは合言葉をこのPCのローカルアドレスにだけ返すので、合言葉はコマンドを実行した人にだけ表示され、ngrokを通ることはありません。エージェントがチャットに貼り付けると、そのチャットを読める人は、接続が続く間ボードを開けます。使い終わったら接続を止めてください。[リモートアクセスのガイド](../watch/remote-access)を参照してください。
 
@@ -269,6 +313,7 @@ agboard update --yes
 | コマンド | 動作 | 終了コード |
 | --- | --- | --- |
 | `agboard setup` | データフォルダを作成し、設定するエージェントを尋ね、計画を表示します。`y`と答えると、プラグインを導入し、エージェントが共有フォルダを使えるようにし、CodexでAgent BoardのHookを信頼済みにします。プロジェクトは不要です。 | `0`は成功、変更なし、取り消し。`1`はエージェントの設定に失敗した、または設定できるエージェントがなかった。`2`はコマンドラインが不正、またはターミナルがないのに必要なオプションがない。 |
+| `agboard setup remote` | リモートアクセスの設定（ngrokのドメイン、オンかどうか、トークン）を保存します。プロジェクトは不要です。[リモートアクセスの設定を保存する](#save-the-remote-access-settings)を参照してください。 | `0`は成功。`1`はキーチェーンまたは設定ファイルを使えない。`2`はコマンドラインが不正、ドメインが不正、またはターミナルがないのにオプションがない。 |
 | `agboard update` | プラグインが導入されたすべてのエージェントで、プラグインをこの版にそろえ、新しいCodexのHookを信頼済みにします。先に計画を表示して確認します。更新後に必要なのは、自動更新ではできないとき（Codexのhookの信頼）か、プラグインを直したいときだけです。[プラグインを更新する](../delegate/agents#update-the-plugin)を参照してください。 | `0`は成功、更新なし、取り消し。`1`はエージェントの更新に失敗した。`2`はコマンドラインが不正、またはターミナルがないのに必要なオプションがない。 |
 
 `setup`がプラグインを入れ直すのは、プラグインがない、またはファイルが`agboard`の同梱のものと違うときだけです。`update`は常に入れ直します。
@@ -279,6 +324,8 @@ agboard update --yes
 - `--yes`は、CodexのHookの信頼も含めて、あらかじめ同意します。
 - `--dry-run`は計画を表示するだけで、何も導入、作成、変更しません。
 - `--json`は機械可読の出力を表示します。
+
+ターミナルでは、オプションなしの`agboard setup`は、プラグインを導入したあとにリモートアクセスの設定も勧めます。設定するかどうかを尋ね（既定は「いいえ」）、設定するときは`agboard setup remote`と同じ質問をします。飛ばせば、それ以上は尋ねません。ターミナルがないとき、`--json`、`--yes`、`--dry-run`を付けたときは勧めません。
 
 どちらもパイプを待ちません。ターミナルがないときや`--json`を付けたときは、`setup`には`--agent`が、両方に`--yes`か`--dry-run`が必要です。足りないと終了コード`2`で終わります。コマンドが`PATH`上にないエージェントは、理由を示して飛ばします。失敗の理由はエラー出力に出ます。変更する設定ファイルとそのバックアップは[データとバックアップ](../operations/data#共有フォルダをセットアップする)を参照してください。
 

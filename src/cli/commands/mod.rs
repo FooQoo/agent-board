@@ -18,6 +18,7 @@ pub mod rm;
 pub mod serve;
 pub mod serve_auto;
 pub mod setup;
+pub mod setup_remote;
 pub mod show;
 pub mod snapshot;
 pub mod start;

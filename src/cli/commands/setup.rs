@@ -96,7 +96,17 @@ pub fn run(request: &Request) -> Result<Finished, AgboardError> {
             }
         }
     }
-    Ok(Finished::Report(setup::execute(prepared)?))
+    let report = setup::execute(prepared)?;
+    // The optional ngrok step: only where a person is being asked things anyway.
+    if interactive
+        && request.mode == Mode::Setup
+        && !request.yes
+        && !request.dry_run
+        && let Ok(dir) = crate::paths::data_dir()
+    {
+        super::setup_remote::offer(&dir, &*crate::remote_settings::vault_from_process());
+    }
+    Ok(Finished::Report(report))
 }
 
 /// Asks which agents to set up, among those whose command is on `PATH`.
