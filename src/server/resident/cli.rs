@@ -307,11 +307,12 @@ mod tests {
     }
 
     #[test]
-    fn the_prompt_tells_the_session_to_wait_again_when_a_wait_ends() {
+    fn the_prompt_tells_the_session_not_to_wait_because_the_board_sends_work() {
         let text = prompt("demo");
         assert!(text.contains("\"demo\""));
         assert!(text.contains("agboard skills resident"));
-        assert!(text.contains("run the wait again immediately"));
+        assert!(text.contains("Do not run `agboard wait`"));
+        assert!(text.contains("end your turn"));
         assert!(text.contains("`message ask`"));
         assert!(text.contains("Stop only when the board stops you"));
     }

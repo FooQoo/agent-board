@@ -31,7 +31,9 @@ if [ "$n" = claude ]; then
   IFS= read -r first
   printf '%s\n' "$first" > "$d/$n.stdin.tmp"
   mv "$d/$n.stdin.tmp" "$d/$n.stdin"
+  if [ -f "$d/silent" ]; then exec sleep 60; fi
   echo '{"type":"system","subtype":"init","session_id":"fake-1","claude_code_version":"9.9.9"}'
+  if [ -f "$d/finish-turn" ]; then echo '{"type":"result","subtype":"success","is_error":false,"result":"ok"}'; fi
   if [ -f "$d/ask-permission" ]; then
     echo '{"type":"control_request","request_id":"req-1","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"/tmp/x","content":"hi"},"tool_use_id":"tool-1"}}'
     IFS= read -r answer
@@ -260,3 +262,4 @@ mod codex;
 mod drivers;
 mod health;
 mod lifecycle;
+mod push;

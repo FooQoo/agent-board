@@ -1,44 +1,24 @@
-//! Push mode: the server, not the session, watches the board. A board-launched session does not
-//! run `agboard wait`. When it is idle between two turns and the board has something for it, the
-//! pusher sends one instruction through [`AgentDriver::send_user_message`] and waits for the
-//! turn to end before it looks again.
-//!
-//! What is pushed, in the order `wait --until task` returns it:
-//!
-//! 1. answers to questions a board-launched session asked (`askedBy` on the question). Answers
-//!    to the questions of an external session are left to that session's own wait.
-//! 2. open requests. A request is read from the board right before it is sent, so one that a
-//!    session of another origin has already accepted is not sent.
-//! 3. the next ready task, which is Idle and so not being worked on by anyone.
-//!
-//! An item that is still on the board after the turn that was given it is pushed again only after
-//! a backoff, and at most [`Timing::push_max_attempts`] times in total, so a turn that keeps
-//! failing cannot loop. An item that gave up is listed in the health of the session.
+//! What to push now: the pure decision from a board snapshot and the log of earlier pushes.
 
 use std::collections::HashMap;
-use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, Utc};
-
-use super::driver::{AgentDriver, TurnOutcome};
-use super::supervisor::Timing;
+use super::super::supervisor::Timing;
 use crate::agent::task_wait;
 use crate::domain::ProjectId;
-use crate::file_store::FileStore;
 use crate::file_store::reader::ProjectSnapshot;
 use crate::progress::{ProgressAnswer, ProgressRequest, open_requests, unaccepted_answers};
 
 /// How often a push of one item may be repeated, and how long to wait between two of them.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct Policy {
+pub(in crate::server::resident) struct Policy {
     pub max_attempts: u32,
     pub backoff_base: Duration,
     pub backoff_max: Duration,
 }
 
 impl Policy {
-    pub(super) fn of(timing: &Timing) -> Policy {
+    pub(in crate::server::resident) fn of(timing: &Timing) -> Policy {
         Policy {
             max_attempts: timing.push_max_attempts,
             backoff_base: timing.push_backoff_base,
@@ -63,90 +43,9 @@ struct Attempt {
 pub(super) struct Log {
     attempts: HashMap<String, Attempt>,
     /// The items that were given up, as the health lists them.
-    stalled: Vec<(String, String)>,
+    pub(super) stalled: Vec<(String, String)>,
     /// How the last turn failed, if it did.
-    last_failure: Option<String>,
-}
-
-/// The state of one board-launched child that the pusher and the event pump share.
-pub(super) struct Push {
-    woken: Mutex<bool>,
-    wake: Condvar,
-    log: Mutex<Log>,
-    attached_at: Mutex<Option<DateTime<Utc>>>,
-    closed: Mutex<bool>,
-}
-
-impl Push {
-    pub(super) fn new() -> Push {
-        Push {
-            woken: Mutex::new(false),
-            wake: Condvar::new(),
-            log: Mutex::new(Log::default()),
-            attached_at: Mutex::new(None),
-            closed: Mutex::new(false),
-        }
-    }
-
-    /// Ask the pusher to look at the board now.
-    pub(super) fn nudge(&self) {
-        *self.woken.lock().unwrap_or_else(|e| e.into_inner()) = true;
-        self.wake.notify_all();
-    }
-
-    /// The child is gone: the pusher ends.
-    pub(super) fn close(&self) {
-        *self.closed.lock().unwrap_or_else(|e| e.into_inner()) = true;
-        self.nudge();
-    }
-
-    pub(super) fn is_closed(&self) -> bool {
-        *self.closed.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    /// Sleep until nudged, or for `poll`, whichever comes first.
-    pub(super) fn sleep(&self, poll: Duration) {
-        let woken = self.woken.lock().unwrap_or_else(|e| e.into_inner());
-        let (mut woken, _) = self
-            .wake
-            .wait_timeout_while(woken, poll, |woken| !*woken)
-            .unwrap_or_else(|e| e.into_inner());
-        *woken = false;
-    }
-
-    /// The first sign of life of the child: it has started and it speaks.
-    pub(super) fn attach(&self, at: DateTime<Utc>) {
-        self.attached_at
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get_or_insert(at);
-    }
-
-    pub(super) fn attached_at(&self) -> Option<DateTime<Utc>> {
-        *self.attached_at.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    /// A turn ended: remember how, and look at the board.
-    pub(super) fn turn_ended(&self, outcome: &TurnOutcome) {
-        let mut log = self.log.lock().unwrap_or_else(|e| e.into_inner());
-        log.last_failure = match outcome {
-            TurnOutcome::Failed { message } => Some(message.clone()),
-            TurnOutcome::Completed | TurnOutcome::Interrupted => None,
-        };
-        drop(log);
-        self.nudge();
-    }
-
-    /// The items the pusher gave up, each with a reason, in the order they were given up.
-    pub(super) fn stalled(&self) -> Vec<String> {
-        self.log
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .stalled
-            .iter()
-            .map(|(_, note)| note.clone())
-            .collect()
-    }
+    pub(super) last_failure: Option<String>,
 }
 
 /// One instruction for the session: what it is about, the keys of the items in it, and its text.
@@ -209,7 +108,7 @@ impl Log {
         now.saturating_duration_since(attempt.last) >= policy.delay(attempt.count)
     }
 
-    fn record(&mut self, keys: &[String], now: Instant) {
+    pub(super) fn record(&mut self, keys: &[String], now: Instant) {
         for key in keys {
             let attempt = self.attempts.entry(key.clone()).or_insert(Attempt {
                 count: 0,
@@ -302,47 +201,4 @@ fn wording(project_name: &str, work: &serde_json::Value) -> String {
          resident` describes under \"Work the board pushes\", then end your turn. Do not run \
          `agboard wait`.\n\n{work}"
     )
-}
-
-/// Look at the board once and push what is due. Returns whether something was sent.
-pub(super) fn push_once(
-    shared: &std::path::Path,
-    project: &ProjectId,
-    project_name: &str,
-    driver: &dyn AgentDriver,
-    push: &Push,
-    policy: &Policy,
-) -> bool {
-    // Never while a turn runs: the board waits for the end of the turn.
-    if !driver.is_idle() {
-        return false;
-    }
-    let Ok(snapshot) = FileStore::open(shared).board(project) else {
-        return false;
-    };
-    if !snapshot.problems.is_empty() {
-        return false;
-    }
-    let now = Instant::now();
-    let instruction = {
-        let mut log = push.log.lock().unwrap_or_else(|e| e.into_inner());
-        decide(
-            shared,
-            &snapshot,
-            project,
-            project_name,
-            &mut log,
-            policy,
-            now,
-        )
-    };
-    let Some(instruction) = instruction else {
-        return false;
-    };
-    // The book is kept before the send, so a send that fails still counts as an attempt.
-    push.log
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .record(&instruction.keys, now);
-    driver.send_user_message(&instruction.text).is_ok()
 }
