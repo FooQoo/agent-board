@@ -14,7 +14,7 @@ use super::idle::{Activity, IdleStop};
 use super::monitor_connection::config::ConfigStore;
 use super::monitor_connection::lifecycle::MonitorConnections;
 use super::{AppState, MonitorOptions, MonitorReady, api, assets, bind, change_feed, instance};
-use super::{STALE_TEMPORARY_AGE, preferences, resident, sessions};
+use super::{STALE_TEMPORARY_AGE, notification_settings, preferences, resident, sessions};
 use crate::clock::format_utc;
 use crate::docs::DocsLocale;
 use crate::error::AgboardError;
@@ -156,6 +156,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
                 monitor.env.clone(),
             ),
             preferences: preferences::PreferencesStore::new(&data_dir),
+            notification_settings: notification_settings::NotificationSettingsStore::new(&data_dir),
             preferences_changed,
             docs_changed,
             activity: activity.clone(),

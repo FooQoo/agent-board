@@ -10,6 +10,7 @@ mod guards;
 mod messages;
 mod monitor_connections;
 mod multipart;
+mod notification_settings;
 mod onboarding;
 mod pages;
 mod preferences;
@@ -45,6 +46,7 @@ use epics::*;
 use guards::{host_guard, no_referrer, write_guard};
 use messages::*;
 use monitor_connections::*;
+use notification_settings::*;
 use onboarding::*;
 use pages::*;
 use preferences::*;
@@ -268,6 +270,10 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route(
             "/api/preferences",
             get(get_preferences).put(put_preferences),
+        )
+        .route(
+            "/api/notification-settings",
+            get(get_notification_settings).put(put_notification_settings),
         )
 }
 
