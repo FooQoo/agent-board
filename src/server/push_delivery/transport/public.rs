@@ -30,22 +30,37 @@ fn public_v4(ip: Ipv4Addr) -> bool {
         || ip.is_broadcast()
         || ip.is_multicast()
         || ip.is_documentation()
+        // "This network" 0.0.0.0/8.
         || a == 0
+        // Shared address space 100.64.0.0/10.
         || (a == 100 && (64..128).contains(&b))
+        // IETF protocol assignments 192.0.0.0/24 and the 6to4 relay anycast 192.88.99.0/24.
         || (a == 192 && b == 0 && c == 0)
+        || (a == 192 && b == 88 && c == 99)
+        // Benchmarking 198.18.0.0/15.
         || (a == 198 && (b == 18 || b == 19))
+        // Reserved 240.0.0.0/4.
         || a >= 240)
 }
 
+/// Only global unicast `2000::/3` can be public; of it, the ranges that are not routed to the
+/// internet or that carry an IPv4 address (6to4, Teredo, NAT64) are refused.
 fn public_v6(ip: Ipv6Addr) -> bool {
-    let first = ip.segments()[0];
-    !(ip.is_unspecified()
-        || ip.is_loopback()
-        || ip.is_multicast()
-        || first & 0xfe00 == 0xfc00
-        || first & 0xffc0 == 0xfe80
-        || first == 0x2001 && ip.segments()[1] == 0x0db8
-        || first == 0x0064 && ip.segments()[1] == 0xff9b)
+    let s = ip.segments();
+    if s[0] & 0xe000 != 0x2000 {
+        // Unspecified, loopback, IPv4-compatible, unique local, link-local, site-local,
+        // multicast and every other range that is not global unicast.
+        return false;
+    }
+    // 6to4 `2002::/16` names the IPv4 address it relays to.
+    if s[0] == 0x2002 {
+        let v4 = Ipv4Addr::new((s[1] >> 8) as u8, s[1] as u8, (s[2] >> 8) as u8, s[2] as u8);
+        return public_v4(v4);
+    }
+    let ietf_protocol_assignments = s[0] == 0x2001 && s[1] < 0x0200;
+    let documentation = (s[0] == 0x2001 && s[1] == 0x0db8) || (s[0] == 0x3fff && s[1] < 0x1000);
+    // Segment routing SIDs `5f00::/16`.
+    !(ietf_protocol_assignments || documentation || s[0] == 0x5f00)
 }
 
 /// Resolves a host name and keeps only its public addresses.
@@ -79,6 +94,8 @@ mod tests {
             "17.253.0.1",
             "142.250.80.46",
             "2607:f8b0:4004::200e",
+            "2002:0808:0808::1",
+            "2a00:1450:4001::1",
         ] {
             assert!(is_public(ip(ok)), "{ok}");
         }
@@ -101,6 +118,28 @@ mod tests {
             "::ffff:127.0.0.1",
             "::ffff:10.1.2.3",
             "2001:db8::1",
+            "fec0::1",
+            "feff::1",
+            "3fff::1",
+            "64:ff9b::a00:1",
+            "64:ff9b::808:808",
+            "2001::1",
+            "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+            "2002:a00:1::1",
+            "2002:7f00:1::",
+            "2002:c0a8:101::1",
+            "::10.0.0.1",
+            "100::1",
+            "5f00::1",
+            "0.0.0.1",
+            "192.0.0.8",
+            "192.88.99.1",
+            "198.19.255.255",
+            "240.0.0.1",
+            "192.0.2.1",
+            "198.51.100.1",
+            "203.0.113.1",
+            "::ffff:192.168.0.1",
         ] {
             assert!(!is_public(ip(bad)), "{bad}");
         }

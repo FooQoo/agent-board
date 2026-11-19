@@ -79,6 +79,8 @@ impl HttpTransport {
         let client = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .redirect(reqwest::redirect::Policy::none())
+            // An environment proxy would resolve the host itself and bypass `PublicOnly`.
+            .no_proxy()
             .dns_resolver(Arc::new(public::PublicOnly))
             .build()
             .unwrap_or_default();
@@ -96,6 +98,7 @@ impl HttpTransport {
             client: reqwest::Client::builder()
                 .timeout(REQUEST_TIMEOUT)
                 .redirect(reqwest::redirect::Policy::none())
+                .no_proxy()
                 .build()
                 .unwrap_or_default(),
         }
