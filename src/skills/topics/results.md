@@ -11,11 +11,11 @@ As soon as the first thing the requester could look at is ready, record it as an
 - a document or analysis task: the first readable version or the headline finding
 
 ```sh
-agboard --project "<name>" result add <id> --summary "The first 30 seconds are viewable. The rest is still in progress." --link ./out/draft.mp4 --actor ai
+agboard --project "<name>" result add <id> --summary "The first 30 seconds are viewable. The rest is still in progress." --link https://drive.example.com/draft.mp4 --file draft-frame.png --actor ai
 agboard --project "<name>" result add <id> --summary "Top page on a phone width. Spacing is still being tuned." --file top.png --actor ai
 ```
 
-Write the summary so that it stands alone on a phone: what can be seen, and what is still missing. `--link` takes the URL or storage path of the main artifact, and `--file` an image the board shows. Recording a result changes no lane or run state and adds one history entry, so keep working; do not stop, wait for a reply, or ask whether the result is good enough. If no decision is needed, the next step is the next piece of work. Deliver again when the next viewable step is ready; each delivery gets the next version number, and repeating the same one is safe (`created: false`). The default key comes from the summary, the link text, and the image, not from the file a link points to: when you deliver a changed artifact under the same link and summary, pass a new `--key` (for example `draft-2`), and reuse that key when you retry the same delivery.
+Write the summary so that it stands alone on a phone: what can be seen, and what is still missing. `--file` takes an image the board shows on the phone. `--link` takes where the main artifact lives: the board stores the text and serves no file behind it, so a local path such as `./out/draft.mp4` opens only on this PC. When the requester should open the artifact from a phone, link an address they can reach, and otherwise attach a capture with `--file` and say in the summary where the full artifact is. Recording a result changes no lane or run state and adds one history entry, so keep working; do not stop, wait for a reply, or ask whether the result is good enough. If no decision is needed, the next step is the next piece of work. Deliver again when the next viewable step is ready; each delivery gets the next version number, and repeating the same one is safe (`created: false`). The default key comes from the summary, the link text, and the image, not from the file a link points to: when you deliver a changed artifact under the same link and summary, pass a new `--key` (for example `draft-2`), and reuse that key when you retry the same delivery.
 
 When the work is finished and verified, deliver the finished result with `--final`, then complete the conditions as usual (see the work loop in `agboard skills`). A final result does not move the task to Done by itself.
 
@@ -41,4 +41,4 @@ Contrast the two:
 | Two openings are both plausible and the choice changes the work | `result add` if it helps, then `message ask` with the choices and a recommendation | Pick silently, or put the question inside the result summary |
 | The work finished and is verified | `result add --final`, then the remaining completion conditions | Ending without a deliverable the requester can open |
 
-Keep the question out of the result summary: only `message ask` is tracked as pending, answered, or withdrawn, and shown as a decision on the board. Keep working on any independent part while a question is open.
+Keep the question out of the result summary: only `message ask` is tracked as pending, answered, or withdrawn, and shown as a decision on the board. How to wait for the answer follows section 7 of the main instructions.
