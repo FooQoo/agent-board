@@ -77,7 +77,16 @@ export function Drawer({
                 : event.currentTarget instanceof HTMLElement
                   ? event.currentTarget.querySelector<HTMLElement>(initialFocusSelector)
                   : null;
-            if (target === null) return;
+            if (target === null) {
+              // The sheet itself takes the focus, not the handle (the first control, which Radix would pick):
+              // WebKit matches :focus-visible for a focus() no key or tap came before, such as a notification
+              // opening the sheet, and the handle would then show a ring on open.
+              event.preventDefault();
+              if (event.currentTarget instanceof HTMLElement) {
+                event.currentTarget.focus({ preventScroll: true });
+              }
+              return;
+            }
             event.preventDefault();
             // On a touch screen a text field is not focused on open: it would raise the keyboard
             // over the sheet before the question is read. The sheet itself takes focus instead.
