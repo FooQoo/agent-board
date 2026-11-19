@@ -64,6 +64,8 @@ The command assigns the timestamp and applies AI write permissions; it needs no 
 
 Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`), optionally with an image (`--file`) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
 
+If an AI task has all its conditions met but no final result, `agboard progress` and the agent hook list it under `finalResultMissing` so the agent records one. This never blocks or delays automatic Done, and a Done task still accepts its first final result.
+
 ```sh
 agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
 agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai

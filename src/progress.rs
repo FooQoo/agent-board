@@ -4,12 +4,12 @@
 //! A task is listed when it is in Todo or Doing and its agent status is not Pending. Done and
 //! archived tasks are never listed; human-assigned tasks and drafts are, so the agent skips them.
 //!
-//! Open requests and the answers no agent accepted yet are always listed. With [`Include`]
-//! the caller also asks for the tasks waiting for a decision and the most recently completed
-//! tasks, in separate fields, so the default table is unchanged.
+//! Open requests, unaccepted answers, and tasks lacking a final result are always listed. With
+//! [`Include`] the caller also asks for tasks waiting for a decision and recently completed ones.
 
 mod answers;
 mod count;
+mod final_result;
 mod next;
 mod requests;
 mod text;
@@ -42,16 +42,15 @@ pub struct Progress {
     pub locale: Option<String>,
     /// Epics in ID order. An epic with no listed task is left out.
     pub epics: Vec<ProgressEpic>,
-    /// Listed tasks that belong to no epic, in ID order.
     pub unassigned: Vec<ProgressTask>,
-    /// Up to [`MAX_NEXT_TASKS`] ready AI tasks: Doing to resume, then Todo. Always present.
     pub next_tasks: Vec<NextTask>,
-    /// Requests no agent accepted and nobody withdrew, in ID order; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub requests: Vec<ProgressRequest>,
-    /// Answered questions whose answer no agent accepted, in ID order; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub answers: Vec<ProgressAnswer>,
+    /// AI tasks with all conditions met and no final result; left out when none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub final_result_missing: Vec<FinalResultMissing>,
     /// Tasks waiting for a decision, in ID order. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending: Option<Vec<ProgressTask>>,
@@ -73,6 +72,7 @@ pub struct Include {
 
 pub use answers::{ProgressAnswer, unaccepted_answers};
 pub use count::Count;
+pub use final_result::{FinalResultMissing, final_result_missing};
 pub use next::{MAX_NEXT_TASKS, NextReason, NextTask};
 pub use requests::{ProgressRequest, open_requests};
 
@@ -183,6 +183,7 @@ pub fn build_with(
             .collect(),
         requests: open_requests(snapshot),
         answers: unaccepted_answers(snapshot),
+        final_result_missing: final_result_missing(snapshot, &project_dir, fetched_at),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks

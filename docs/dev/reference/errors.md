@@ -16,7 +16,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
 | `human_only` | An agent withdraws a request. Only a person can. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
-| `task_is_done` | An AI change targets a Done task. | 1 | 409 |
+| `task_is_done` | An AI change targets a Done task. The first `result add --final` on a Done task with no final result is the one change allowed. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |
 | `invalid_state_for_column` | The run state is not valid in that lane (for example Running in Todo). | 1 | 422 |
 | `invalid_state_for_assignee` | A human task is given a run state other than Idle. | 2 | 422 |
