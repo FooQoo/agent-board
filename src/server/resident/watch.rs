@@ -1,4 +1,4 @@
-//! The supervisor thread: it starts due restarts, ends a child that never attaches, and launches
+//! The supervisor thread: it starts due restarts, ends a child that never starts, and launches
 //! the sessions whose auto-start is saved when the server starts.
 
 use std::path::PathBuf;
@@ -92,21 +92,18 @@ impl Launcher {
             for (tool, plan) in plans.iter_mut() {
                 match plan.state {
                     PlanState::Running => {
-                        // Once a child has attached, only its exit ends it: it closes its wait
-                        // while it works on a task, which can take far longer than any limit.
-                        if plan.attached.is_none() {
-                            if self.registry.has_board(*tool) {
-                                plan.attached = Some(now);
-                            } else if now.saturating_duration_since(plan.started)
+                        // Once a child has attached (its driver reported an event), only its
+                        // exit ends it: a turn on a task can take far longer than any limit.
+                        if plan.attached.is_none()
+                            && now.saturating_duration_since(plan.started)
                                 > self.timing.startup_allowance
-                            {
-                                plan.kill_reason = Some(format!(
-                                    "The {} session never waited on the board for {}, so the board ended it.",
-                                    tool.as_str(),
-                                    span(self.timing.startup_allowance)
-                                ));
-                                unhealthy.push(*tool);
-                            }
+                        {
+                            plan.kill_reason = Some(format!(
+                                "The {} session never started for {}, so the board ended it.",
+                                tool.as_str(),
+                                span(self.timing.startup_allowance)
+                            ));
+                            unhealthy.push(*tool);
                         }
                     }
                     PlanState::Restarting { due: at, .. } if now >= at => due.push(*tool),

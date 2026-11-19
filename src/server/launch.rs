@@ -168,6 +168,8 @@ pub(crate) fn run<F: Future<Output = ()>>(
         });
         state.monitor.attach(&state);
         let files = state.shared.clone();
+        state.resident.attach_board(&state.shared);
+        spawn_board_watch(&state);
         state.resident.start(move |project| {
             resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
         });
@@ -296,4 +298,19 @@ fn count_changes_as_use(state: &Arc<AppState>) {
 
 fn internal(reason: String) -> AgboardError {
     AgboardError::DatabaseError { reason }
+}
+
+/// Wake the session the board launched whenever the board changes, so that it is handed new
+/// work at once instead of at its next look.
+fn spawn_board_watch(state: &Arc<AppState>) {
+    let mut changes = state.changed.subscribe();
+    let resident = state.resident.clone();
+    tokio::spawn(async move {
+        loop {
+            match changes.recv().await {
+                Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => resident.nudge(),
+                Err(broadcast::error::RecvError::Closed) => return,
+            }
+        }
+    });
 }

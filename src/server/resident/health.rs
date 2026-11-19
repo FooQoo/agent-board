@@ -3,8 +3,12 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
+use std::sync::Arc;
+
 use super::Launcher;
 use super::autostart::AutoStart;
+use super::driver::AgentDriver;
+use super::push;
 use super::supervisor::PlanState;
 use crate::domain::ProjectId;
 use crate::server::sessions::Tool;
@@ -30,9 +34,11 @@ pub struct Health {
     pub model: Option<String>,
     /// Why the session is restarting or failed.
     pub reason: Option<String>,
-    /// Whether the session's wait is registered now. A running session that does not wait is
-    /// working on a task.
+    /// Whether the session is idle between two turns, so that the board can hand it work. A
+    /// running session that is not is working on something.
     pub waiting: bool,
+    /// Items the board pushed several times without the session handling them, and gave up on.
+    pub push_stalled: Vec<String>,
     /// Restarts since the last launch or stop by a person.
     pub restart_count: u32,
     #[serde(with = "crate::clock::serde_opt_utc")]
@@ -46,6 +52,16 @@ impl Launcher {
     /// The health of the one session slot. `tool` is `None` while nothing is launched.
     pub fn health(&self) -> Health {
         let auto_start = self.autostart.get();
+        // The live set is read before the plans: the launcher takes them in the other order.
+        let live: Option<(Tool, String, Arc<push::Push>, Arc<dyn AgentDriver>)> =
+            self.lock().iter().next().map(|(tool, live)| {
+                (
+                    *tool,
+                    live.launch_id.clone(),
+                    live.push.clone(),
+                    live.driver.clone(),
+                )
+            });
         let plans = self.plans();
         let Some((tool, plan)) = plans.iter().next() else {
             return Health {
@@ -55,6 +71,7 @@ impl Launcher {
                 model: None,
                 reason: None,
                 waiting: false,
+                push_stalled: Vec::new(),
                 restart_count: 0,
                 last_exit_at: None,
                 next_restart_at: None,
@@ -72,7 +89,16 @@ impl Launcher {
             project_id: Some(plan.project.clone()),
             model: plan.model.clone(),
             reason: plan.reason.clone(),
-            waiting: matches!(plan.state, PlanState::Running) && self.registry.has_board(*tool),
+            waiting: matches!(plan.state, PlanState::Running)
+                && plan.attached.is_some()
+                && live
+                    .as_ref()
+                    .is_some_and(|(_, id, _, driver)| *id == plan.launch_id && driver.is_idle()),
+            push_stalled: live
+                .as_ref()
+                .filter(|(_, id, _, _)| *id == plan.launch_id)
+                .map(|(_, _, push, _)| push.stalled())
+                .unwrap_or_default(),
             restart_count: plan.restarts,
             last_exit_at: plan.last_exit_at,
             next_restart_at,

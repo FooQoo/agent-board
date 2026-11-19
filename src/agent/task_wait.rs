@@ -186,18 +186,25 @@ fn ready(
 }
 
 fn select(snapshot: &ProjectSnapshot) -> Option<&TaskView> {
+    ready_tasks(snapshot).into_iter().next()
+}
+
+/// The tasks an agent may pick up, in table order: AI tasks in Todo or Doing that are Idle,
+/// not drafts, not archived.
+pub(crate) fn ready_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
     crate::progress::ordered_tasks(snapshot)
         .into_iter()
-        .find(|task| {
+        .filter(|task| {
             task.assignee == Assignee::Ai
                 && matches!(task.task_status, Column::Todo | Column::Doing)
                 && task.agent_status == RunState::Idle
                 && task.draft.is_none()
                 && task.archived_at.is_none()
         })
+        .collect()
 }
 
-fn render_task(
+pub(crate) fn render_task(
     shared: &Path,
     snapshot: &ProjectSnapshot,
     project_id: &ProjectId,

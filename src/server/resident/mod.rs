@@ -16,6 +16,7 @@ pub mod cli;
 pub mod driver;
 mod health;
 mod process;
+mod push;
 mod spawn;
 mod supervisor;
 mod watch;
@@ -29,9 +30,10 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
+use crate::clock::{Clock, SystemClock};
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
-use crate::server::sessions::{SessionRegistry, Tool};
+use crate::server::sessions::{Origin, SessionRegistry, SessionView, State, Tool};
 pub use autostart::{AutoStart, AutoStartStore};
 pub use cli::{Executables, ModelList, ModelOption};
 use driver::{AgentDriver, DriverFactory};
@@ -56,6 +58,7 @@ struct Live {
     started: Instant,
     exit: Arc<Exit>,
     driver: Arc<dyn AgentDriver>,
+    push: Arc<push::Push>,
 }
 
 /// A launched session as the status lists it. The process ID is for the server's own use and is
@@ -84,6 +87,8 @@ pub struct Launcher {
     plans: Mutex<HashMap<Tool, Plan>>,
     autostart: AutoStartStore,
     closing: AtomicBool,
+    /// The shared data folder of the boards, once the server has told the launcher.
+    board: Mutex<Option<PathBuf>>,
 }
 
 impl Launcher {
@@ -147,6 +152,7 @@ impl Launcher {
             plans: Mutex::new(HashMap::new()),
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
+            board: Mutex::new(None),
         })
     }
 
@@ -156,6 +162,54 @@ impl Launcher {
 
     fn plans(&self) -> MutexGuard<'_, HashMap<Tool, Plan>> {
         self.plans.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Tell the launcher where the boards are, so that it can push work to the session it
+    /// launched. Without it nothing is pushed.
+    pub fn attach_board(&self, shared: &Path) {
+        *self.board.lock().unwrap_or_else(|e| e.into_inner()) = Some(shared.to_path_buf());
+        self.nudge();
+    }
+
+    fn board_dir(&self) -> Option<PathBuf> {
+        self.board.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// The board changed: let the launched session look at it if it is idle.
+    pub fn nudge(&self) {
+        for live in self.lock().values() {
+            live.push.nudge();
+        }
+    }
+
+    /// The launched session of `project` as a listed session, once it reported its first event:
+    /// connected while it is idle (it waits for the board), counted in grace while it works.
+    pub fn board_session(&self, project: &ProjectId) -> Option<SessionView> {
+        let found = {
+            let live = self.lock();
+            live.iter()
+                .find(|(_, live)| &live.project == project)
+                .map(|(tool, live)| {
+                    (
+                        *tool,
+                        live.launch_id.clone(),
+                        live.push.clone(),
+                        live.driver.clone(),
+                    )
+                })
+        };
+        let (tool, launch_id, push, driver) = found?;
+        let connected_at = push.attached_at()?;
+        let now = SystemClock.now();
+        let idle = driver.is_idle();
+        Some(SessionView {
+            id: format!("resident:{launch_id}"),
+            tool,
+            origin: Origin::Board,
+            connected_at,
+            last_seen_at: now,
+            state: if idle { State::Connected } else { State::Grace },
+        })
     }
 
     fn is_closing(&self) -> bool {

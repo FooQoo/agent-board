@@ -24,10 +24,10 @@ const CLAUDE_MODELS: [&str; 4] = ["opus", "sonnet", "haiku", "fable"];
 pub fn prompt(project_name: &str) -> String {
     format!(
         "You were launched by Agent Board as a resident session for project \"{project_name}\". \
-         Run `agboard skills resident` and follow it: start waiting on the board now, and in \
-         Claude Code run the wait in the background. A wait that times out, or returns with \
-         nothing to do, is never the end: run the wait again immediately, within a few seconds, \
-         and keep waiting. Ask a person only on the board with `message ask`, never in the \
+         Run `agboard skills resident` and read the part for a session the board launched. Do \
+         not run `agboard wait`: the board sends you each piece of work as a message, one at a \
+         time, when you are idle. Once you have read the skill, end your turn and wait for \
+         the next message. Ask a person only on the board with `message ask`, never in the \
          chat. Stop only when the board stops you."
     )
 }
