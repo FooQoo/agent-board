@@ -1,7 +1,7 @@
 //! The ngrok monitor connection: command line, saved settings, the PC-only API
 //! and the start/stop supervision, over real HTTP on loopback.
 //!
-//! No test connects to ngrok: the endpoint is opened by a fake connector, so a
+//! No test connects to ngrok: the endpoint is opened by a mock connector, so a
 //! "ready" status here proves the supervision, not a real tunnel.
 
 #[path = "support/mobile_monitor.rs"]
@@ -214,7 +214,7 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
         "{}",
     );
     assert_eq!(bare.status, 403);
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
 }
 
 #[test]
@@ -286,7 +286,7 @@ fn a_failed_save_changes_nothing_and_starts_nothing() {
     assert_eq!(v["revision"], 1);
     assert_eq!(v["settings"]["enabled"], false);
     assert_eq!(v["status"], "disabled");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     assert!(!ConfigStore::new(home.path()).load().unwrap().enabled);
 }
 
@@ -308,10 +308,10 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
         s.start_ngrok(json!({"token": TOKEN, "extra": 1})).status,
         422
     );
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
 
     let (release, hold) = mpsc::channel();
-    *s.fake.hold.lock().unwrap() = Some(hold);
+    *s.mock.hold.lock().unwrap() = Some(hold);
     let r = s.start_ngrok(json!({"token": TOKEN}));
     assert_eq!(r.status, 202, "{}", r.body);
     assert!(!r.body.contains(TOKEN));
@@ -325,7 +325,7 @@ fn start_keeps_the_token_in_memory_and_guards_the_backend() {
     // While the tunnel's public address is not known the backend refuses everything,
     // even a request that names the address the tunnel will get.
     let backend = {
-        let calls = s.fake.calls.lock().unwrap();
+        let calls = s.mock.calls.lock().unwrap();
         let call = calls.last().unwrap();
         assert_eq!(call.token, TOKEN);
         backend_addr(call)
@@ -421,10 +421,10 @@ fn stopping_while_connecting_never_publishes_the_old_tunnel() {
     );
     assert_eq!(s.put(true, 0).status, 200);
     let (release, hold) = mpsc::channel();
-    *s.fake.hold.lock().unwrap() = Some(hold);
+    *s.mock.hold.lock().unwrap() = Some(hold);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("starting");
-    let backend = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    let backend = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
     assert_eq!(s.stop_ngrok().json()["status"], "disabled");
     let _ = release.send(());
     std::thread::sleep(Duration::from_millis(300));
@@ -445,7 +445,7 @@ fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
         },
     );
     assert_eq!(s.put(true, 0).status, 200);
-    *s.fake.fail.lock().unwrap() = true;
+    *s.mock.fail.lock().unwrap() = true;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     let v = s.wait_status("failed");
     assert_eq!(v["failure"], "connect_failed");
@@ -458,7 +458,7 @@ fn a_failed_start_is_reported_without_a_secret_and_can_be_retried() {
         request(s.local, "GET", "/api/projects", &[], "").status,
         200
     );
-    *s.fake.fail.lock().unwrap() = false;
+    *s.mock.fail.lock().unwrap() = false;
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     assert_eq!(s.wait_status("ready")["url"], PUBLIC);
 }
@@ -476,12 +476,12 @@ fn a_new_token_replaces_the_tunnel_and_an_equal_save_does_not() {
     assert_eq!(s.put(true, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
-    let first = backend_addr(s.fake.calls.lock().unwrap().last().unwrap());
+    let first = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
     // Saving what is already saved keeps the tunnel (and so the passcode).
     let before = s.passcode();
     assert_eq!(s.put(true, 1).status, 200);
     std::thread::sleep(Duration::from_millis(200));
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 1);
     assert_eq!(s.passcode(), before);
     // A start with a new token is a new tunnel.
     assert_eq!(
@@ -489,12 +489,12 @@ fn a_new_token_replaces_the_tunnel_and_an_equal_save_does_not() {
         202
     );
     let end = Instant::now() + Duration::from_secs(5);
-    while s.fake.opens.load(Ordering::SeqCst) < 2 {
+    while s.mock.opens.load(Ordering::SeqCst) < 2 {
         assert!(Instant::now() < end);
         std::thread::sleep(Duration::from_millis(20));
     }
     s.wait_status("ready");
-    let calls = s.fake.calls.lock().unwrap();
+    let calls = s.mock.calls.lock().unwrap();
     assert_ne!(calls[0].backend, calls[1].backend);
     assert_eq!(calls[1].token, "tok-NEW-9876543210");
     drop(calls);
@@ -522,7 +522,7 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
         let v = s.get();
         assert_eq!(v["status"], "needs_config");
         assert_eq!(v["revision"], 4);
-        assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+        assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     }
     let s = Server::start(
         home.path(),
@@ -553,7 +553,7 @@ fn an_unreadable_settings_file_keeps_the_pc_entrance_and_can_be_replaced() {
     let v = s.get();
     assert_eq!(v["status"], "failed");
     assert_eq!(v["failure"], "config_unreadable");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     assert_eq!(
         request(s.local, "GET", "/api/projects", &[], "").status,
         200
@@ -581,7 +581,7 @@ fn a_start_on_a_disabled_setting_saves_it_as_enabled_first() {
     assert_eq!(t.put(false, 0).status, 200);
     assert_eq!(t.start_ngrok(json!({})).status, 422);
     assert!(!ConfigStore::new(bare.path()).load().unwrap().enabled);
-    assert_eq!(t.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(t.mock.opens.load(Ordering::SeqCst), 0);
     drop(t);
     // With one, the start saves enabled under the next revision.
     let r = s.start_ngrok(json!({}));
@@ -644,13 +644,13 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_a_saved_off_setting(
 #[test]
 fn a_failed_explicit_start_ends_the_run_and_leaves_no_serve_file() {
     let home = home();
-    let fake = Arc::new(Fake::default());
-    *fake.fail.lock().unwrap() = true;
+    let mock = Arc::new(MockConnector::default());
+    *mock.fail.lock().unwrap() = true;
     let result = Server::try_start(
         home.path(),
         Opts {
             env_token: true,
-            fake,
+            mock,
             explicit: true,
             ..Opts::default()
         },
@@ -675,7 +675,7 @@ fn the_local_entrance_serves_no_pairing_or_device_routes() {
         let r = request(s.local, "GET", path, &[], "");
         assert!(matches!(r.status, 404 | 405), "{path} -> {}", r.status);
     }
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
 }
 
 // ------------------------------------------------- internal area and keychain
@@ -725,7 +725,7 @@ fn a_settings_file_written_for_the_google_sign_in_is_unreadable_and_can_be_repla
     let v = s.get();
     assert_eq!(v["status"], "failed");
     assert_eq!(v["failure"], "config_unreadable");
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     assert_eq!(s.put(true, 0).status, 200);
     assert_eq!(s.get()["failure"], Value::Null);
 }
@@ -733,7 +733,7 @@ fn a_settings_file_written_for_the_google_sign_in_is_unreadable_and_can_be_repla
 #[test]
 fn a_token_is_saved_to_the_keychain_only_when_asked() {
     let home = home();
-    let vault = FakeVault::new(None, true);
+    let vault = MockVault::new(None, true);
     let s = Server::start(
         home.path(),
         Opts {
@@ -769,7 +769,7 @@ fn a_token_is_saved_to_the_keychain_only_when_asked() {
 fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
     // keychain only
     let home1 = home();
-    let vault = FakeVault::new(Some(SAVED), true);
+    let vault = MockVault::new(Some(SAVED), true);
     let s = Server::start(
         home1.path(),
         Opts {
@@ -784,14 +784,14 @@ fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
     assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
-    assert_eq!(s.fake.calls.lock().unwrap()[0].token, SAVED);
+    assert_eq!(s.mock.calls.lock().unwrap()[0].token, SAVED);
     drop(s);
     // environment and keychain both: the environment is used
     let home2 = home();
     let s = Server::start(
         home2.path(),
         Opts {
-            vault: FakeVault::new(Some(SAVED), true),
+            vault: MockVault::new(Some(SAVED), true),
             env_token: true,
             ..Opts::default()
         },
@@ -802,7 +802,7 @@ fn a_saved_token_is_found_at_the_next_run_and_the_environment_wins() {
     assert_eq!(s.put(false, 0).status, 200);
     assert_eq!(s.start_ngrok(json!({})).status, 202);
     s.wait_status("ready");
-    assert_eq!(s.fake.calls.lock().unwrap()[0].token, TOKEN);
+    assert_eq!(s.mock.calls.lock().unwrap()[0].token, TOKEN);
 }
 
 #[test]
@@ -817,18 +817,18 @@ fn a_saved_token_restores_an_enabled_connection_at_startup() {
     let s = Server::start(
         home.path(),
         Opts {
-            vault: FakeVault::new(Some(SAVED), true),
+            vault: MockVault::new(Some(SAVED), true),
             ..Opts::default()
         },
     );
     s.wait_status("ready");
-    assert_eq!(s.fake.calls.lock().unwrap()[0].token, SAVED);
+    assert_eq!(s.mock.calls.lock().unwrap()[0].token, SAVED);
 }
 
 #[test]
 fn a_saved_token_can_be_deleted_and_is_then_forgotten() {
     let home = home();
-    let vault = FakeVault::new(Some(SAVED), true);
+    let vault = MockVault::new(Some(SAVED), true);
     let s = Server::start(
         home.path(),
         Opts {
@@ -862,7 +862,7 @@ fn deleting_keeps_the_environment_token() {
     let s = Server::start(
         home.path(),
         Opts {
-            vault: FakeVault::new(Some(SAVED), true),
+            vault: MockVault::new(Some(SAVED), true),
             env_token: true,
             ..Opts::default()
         },
@@ -876,7 +876,7 @@ fn deleting_keeps_the_environment_token() {
 #[test]
 fn without_a_keychain_saving_is_refused_with_a_fixed_code_and_nothing_starts() {
     let home = home();
-    let vault = FakeVault::new(None, false);
+    let vault = MockVault::new(None, false);
     let s = Server::start(
         home.path(),
         Opts {
@@ -891,7 +891,7 @@ fn without_a_keychain_saving_is_refused_with_a_fixed_code_and_nothing_starts() {
     assert_eq!(r.status, 409, "{}", r.body);
     assert_eq!(r.json()["error"]["code"], "keychain_unavailable");
     assert!(!r.body.contains(TOKEN));
-    assert_eq!(s.fake.opens.load(Ordering::SeqCst), 0);
+    assert_eq!(s.mock.opens.load(Ordering::SeqCst), 0);
     assert_eq!(s.get()["tokenConfigured"], false);
     assert_eq!(s.get()["revision"], 1);
     // entering the token each time still works
@@ -906,7 +906,7 @@ fn without_a_keychain_saving_is_refused_with_a_fixed_code_and_nothing_starts() {
 #[test]
 fn a_run_that_never_needs_a_token_does_not_read_the_keychain() {
     let home = home();
-    let vault = FakeVault::new(Some(SAVED), true);
+    let vault = MockVault::new(Some(SAVED), true);
     let s = Server::start(
         home.path(),
         Opts {

@@ -2,7 +2,7 @@
 //!
 //! Run only by `e2e/helpers/phone-entrance.mjs`, which starts this test with
 //! `--ignored`, reads the line that starts with `READY`, and sends commands on
-//! stdin. No test here reaches ngrok: a fake connector opens the "tunnel", so
+//! stdin. No test here reaches ngrok: a mock connector opens the "tunnel", so
 //! the Edge (adding the public Host, header removal) is not exercised. The READY line
 //! carries the passcode of the start, as the PC would show it.
 //!
@@ -30,7 +30,7 @@ use support::home;
 
 fn announce(s: &Server) {
     let passcode = s.passcode();
-    let calls = s.fake.calls.lock().unwrap();
+    let calls = s.mock.calls.lock().unwrap();
     let call = calls.last().unwrap();
     println!(
         "READY {}",
@@ -87,10 +87,10 @@ fn serve_the_phone_backend_until_told_to_quit() {
         match line.unwrap().trim() {
             "rotate" => {
                 // A new start is a new tunnel, which is a new passcode.
-                let before = s.fake.opens.load(std::sync::atomic::Ordering::SeqCst);
+                let before = s.mock.opens.load(std::sync::atomic::Ordering::SeqCst);
                 assert_eq!(s.start_ngrok(json!({})).status, 202);
                 let end = std::time::Instant::now() + std::time::Duration::from_secs(5);
-                while s.fake.opens.load(std::sync::atomic::Ordering::SeqCst) <= before {
+                while s.mock.opens.load(std::sync::atomic::Ordering::SeqCst) <= before {
                     assert!(std::time::Instant::now() < end);
                     std::thread::sleep(std::time::Duration::from_millis(20));
                 }
