@@ -70,6 +70,8 @@ pub struct QuestionView {
     pub tasks: Vec<i64>,
     pub choices: Vec<Choice>,
     pub recommended_choice_id: Option<String>,
+    /// The board-launched session that asked it, when one did.
+    pub asked_by: Option<String>,
     pub reply: Option<ReplyView>,
     pub status: QuestionStatus,
     /// The unarchived tasks whose `questions` name this question, in ID order.
@@ -105,6 +107,7 @@ impl QuestionView {
             tasks: question.tasks.clone(),
             choices: question.choices.clone(),
             recommended_choice_id: question.recommended.clone(),
+            asked_by: question.asked_by.clone(),
             status: if question.withdrawn_at.is_some() {
                 QuestionStatus::Withdrawn
             } else if question.reply.is_some() {

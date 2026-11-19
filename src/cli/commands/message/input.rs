@@ -64,6 +64,10 @@ pub(super) fn ask_input(
         })?;
     Ok(AskInput {
         actor,
+        // A board-launched session is told apart by the launch ID the launcher gave it.
+        asked_by: std::env::var("AGBOARD_RESIDENT_ID")
+            .ok()
+            .filter(|id| !id.is_empty()),
         tasks: tasks.to_vec(),
         questions: parsed
             .questions

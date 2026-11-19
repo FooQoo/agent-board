@@ -85,6 +85,7 @@ impl Fixture {
                 &self.project,
                 AskInput {
                     actor: Actor::Ai,
+                    asked_by: None,
                     questions: vec![AskQuestion {
                         body: body.into(),
                         choices: qa::choices(choices),
@@ -149,6 +150,7 @@ fn every_message_is_one_file_and_one_sequence_numbers_them() {
             &f.project,
             AskInput {
                 actor: Actor::Ai,
+                asked_by: None,
                 questions: vec![
                     AskQuestion {
                         body: "Keep the records?".into(),
@@ -685,6 +687,7 @@ fn a_refused_ask_writes_nothing_and_reserves_no_number() {
             &f.project,
             AskInput {
                 actor,
+                asked_by: None,
                 questions,
                 tasks,
             },
