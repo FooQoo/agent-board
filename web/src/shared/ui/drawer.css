@@ -25,3 +25,10 @@
     0 -8px 32px rgb(0 0 0 / 14%),
     0 var(--keyboard-inset, 0px) 0 0 var(--r-surface);
 }
+
+/* The sheet is a focus target for the script, not a control: no ring on it, however the browser matches
+   :focus-visible. The controls inside keep their rings for the keyboard. */
+.mobile-drawer[data-slot="drawer-popup"]:focus,
+.mobile-drawer[data-slot="drawer-popup"]:focus-visible {
+  outline: none;
+}
