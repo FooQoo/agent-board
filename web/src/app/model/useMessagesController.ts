@@ -1,5 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Message } from '../../shared/data/api/contracts';
+import { linkKey, type ResultLinkTarget } from '../../features/tasks/results/resultLink';
 import { firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import {
   type MessagesPanelController,
@@ -17,6 +18,7 @@ export interface MessagesController {
 export function useMessagesController(
   activeId: string | null,
   messages: readonly Message[] | null,
+  link: ResultLinkTarget | null = null,
 ): MessagesController {
   const panel = useMessagesPanel();
   const { open, close } = panel;
@@ -29,5 +31,18 @@ export function useMessagesController(
     },
     [open, messages],
   );
+  // A question link opens the list on that question once, when the project's messages list it. A
+  // question that is gone leaves the card the link selected.
+  const linked = useRef<string | null>(null);
+  useEffect(() => {
+    if (link === null || link.tab !== 'question' || messages === null) return;
+    if (link.projectId !== activeId) return;
+    const key = `${activeId}:${linkKey(link)}`;
+    if (linked.current === key) return;
+    const id = link.questionId ?? '';
+    if (!messages.some((message) => message.id === id)) return;
+    linked.current = key;
+    open({ tab: 'fromAi', openId: id });
+  }, [link, messages, activeId, open]);
   return { panel, openForTask };
 }

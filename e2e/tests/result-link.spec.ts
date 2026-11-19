@@ -97,6 +97,37 @@ test('closing the drawer takes the link out of the address, and a damaged link o
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('a history link opens the card on its History tab', async ({ page }) => {
+  await page.goto(`/?project=${alpha}&task=1&tab=history`);
+  const drawer = page.getByRole('dialog');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBeNull();
+  expect(new URL(page.url()).searchParams.get('task')).toBeNull();
+});
+
+test('a question link opens that question, and a question that is gone opens the card', async ({ page }) => {
+  const asked = agboardOk(
+    'Alpha',
+    ['message', 'ask', '--actor', 'ai', '--no-wait', '--task', '1', '--questions-json', JSON.stringify({ questions: [{ body: 'Which title should the notes use?' }] })],
+    home,
+  );
+  const id = /Q-\d+/.exec(`${asked.stdout}${asked.stderr}`)?.[0];
+  expect(id).toBeTruthy();
+  // The board lists a new question once its index has caught up; a link opened before that shows the
+  // card, so the first look is repeated until the question is there.
+  const dialog = page.getByRole('dialog');
+  await expect(async () => {
+    await page.goto(`/?project=${alpha}&task=1&question=${id}`);
+    await expect(dialog).toContainText('Which title should the notes use?', { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+
+  await page.goto(`/?project=${alpha}&task=1&question=Q-999`);
+  await expect(page.getByRole('dialog').getByRole('tab', { name: 'Results' })).toBeVisible();
+});
+
 // A script-focused container shows no frame. WebKit matches :focus-visible for a focus() call that no key or tap
 // came before, which is how a notification opens the drawer, so the sheet itself must not draw the global ring.
 for (const colorScheme of ['light', 'dark'] as const) {

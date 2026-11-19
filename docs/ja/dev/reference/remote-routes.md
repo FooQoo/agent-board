@@ -44,7 +44,18 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 - **消去。** ドロワーを閉じるか別のプロジェクトを選ぶと、アドレスから`task`と`result`が外れるので、再読み込みしても開き直しません。
 - **読み取り。** 成果タブは`GET …/tasks/{id}/results`（[Web API](./web-api.md)を参照）を読みます。SummaryとDetailのストリームは成果を運ばないためです。画像は`GET …/tasks/{id}/attachments/{attachmentId}`から表示します。どちらもsessionの内側にある、ボードの通常のルートです。
 
-**リンクの作り方。** `PublicOrigin::result_link(project_id, task_id, version)`（`src/server/monitor_connection/contracts/access.rs`）を使います。`https://<host>[:port]/?project=<id>&task=<n>&result=<version>`を返し、小文字16進32桁でないプロジェクトや、1未満のタスクまたは版には`None`を返します。Web側にも同じ規則の`resultLinkUrl`（`web/src/features/tasks/results/resultLink.ts`）があります。プッシュ通知は、このURLをクリック先に持たせます。
+### 履歴と質問のリンク
+
+通知は、タスクをその履歴タブや、タスクの質問の1件で開くこともできます。どちらも同じページにクエリを変えたもので、`RemoteGate`、Hostの検査、上の消去の規則はそのまま当てはまります。Service Workerは通知の`url`をそのまま開くので、クエリはページに届きます。
+
+| クエリ | 開くもの |
+| --- | --- |
+| `?project=<ProjectId>&task=<id>&tab=history` | タスクのドロワーを履歴タブで開きます（PCのボードではカードを選んで履歴タブ）。履歴の通知に使います。 |
+| `?project=<ProjectId>&task=<id>&question=<Q-n>` | メッセージの一覧をその質問で開きます（PCのボードもスマホも）。Summaryのメッセージにその質問がないとき（回答済み、取り下げ済み）は、代わりにカードを開きます。質問の通知に使います。 |
+
+クエリに`result`があるときは、`tab`と`question`より優先します。壊れた`result`、未知の`tab`の値、`Q-`と正の整数でない`question`は対象になりません。通常のボードを開きます。`useResultLink`は`tab`と`question`も読み、`task`や`result`と一緒に外します。
+
+**リンクの作り方。** `PublicOrigin::result_link(project_id, task_id, version)`（`src/server/monitor_connection/contracts/access.rs`）を使います。`https://<host>[:port]/?project=<id>&task=<n>&result=<version>`を返し、小文字16進32桁でないプロジェクトや、1未満のタスクまたは版には`None`を返します。Web側にも同じ規則の`resultLinkUrl`（`web/src/features/tasks/results/resultLink.ts`）があります。プッシュ通知は、このURLをクリック先に持たせます。ほかの2つ（`…&tab=history`、`…&question=<Q-n>`）は、同じ制限で`PublicOrigin::history_link(project_id, task_id)`と`PublicOrigin::question_link(project_id, task_id, question_id)`が作ります。`question_id`は`Q-`と正の整数でなければなりません。Web側には同じファイルに`historyLinkQuery`と`questionLinkQuery`があります。
 
 ## 旧モニターのアドレスは廃止
 

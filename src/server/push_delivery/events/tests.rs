@@ -121,6 +121,7 @@ fn a_new_open_question_and_a_new_history_entry_are_events() {
     let question = events.iter().find(|e| e.kind == Kind::Question).unwrap();
     assert_eq!(question.key, format!("question:q-2:{PROJECT}:7"));
     assert_eq!(question.detail, "Which one?");
+    assert_eq!(question.question_id.as_deref(), Some("q-2"));
     let history = events.iter().find(|e| e.kind == Kind::History).unwrap();
     assert_eq!(history.key, format!("history:1:{PROJECT}:7"));
     assert_eq!(history.detail, "Checked the layout");

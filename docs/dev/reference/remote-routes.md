@@ -44,7 +44,18 @@ A result link is the board's own page with the target in the query: `/?project=<
 - **Clearing.** Closing the drawer, or choosing another project, removes `task` and `result` from the address, so a reload does not open it again.
 - **Reading.** The Results tab reads `GET …/tasks/{id}/results` (see [Web API](./web-api.md)), because the Summary and Detail streams do not carry results, and shows an image from `GET …/tasks/{id}/attachments/{attachmentId}`. Both are ordinary board routes behind the session.
 
-**Building a link.** Use `PublicOrigin::result_link(project_id, task_id, version)` (`src/server/monitor_connection/contracts/access.rs`), which returns `https://<host>[:port]/?project=<id>&task=<n>&result=<version>`, or `None` for a project that is not 32 lowercase hex digits or a task or version below 1. The web side has the same rule in `resultLinkUrl` (`web/src/features/tasks/results/resultLink.ts`). A push notification should carry this URL as its click target.
+### History and question links
+
+A notification can also open a task on its History tab or on one of its questions. Both are the same page with a different query, and `RemoteGate`, the Host check, and the clearing rules above apply unchanged. The service worker opens the `url` of the notification as it is, so the query reaches the page.
+
+| Query | Opens |
+| --- | --- |
+| `?project=<ProjectId>&task=<id>&tab=history` | The task's drawer on the History tab (PC board: the card with its History tab). Used for a history notification. |
+| `?project=<ProjectId>&task=<id>&question=<Q-n>` | The list of messages on that question, on the PC board and the phone. When the Summary's messages do not list it (answered, withdrawn), the card opens instead. Used for a question notification. |
+
+A `result` in the query wins over `tab` and `question`. A damaged `result`, an unknown `tab` value, or a `question` that is not `Q-` and a positive number is no target and opens the plain board. `useResultLink` reads `tab` and `question` too, and removes them with `task` and `result`.
+
+**Building a link.** Use `PublicOrigin::result_link(project_id, task_id, version)` (`src/server/monitor_connection/contracts/access.rs`), which returns `https://<host>[:port]/?project=<id>&task=<n>&result=<version>`, or `None` for a project that is not 32 lowercase hex digits or a task or version below 1. The web side has the same rule in `resultLinkUrl` (`web/src/features/tasks/results/resultLink.ts`). A push notification should carry this URL as its click target. `PublicOrigin::history_link(project_id, task_id)` and `PublicOrigin::question_link(project_id, task_id, question_id)` build the other two (`…&tab=history`, `…&question=<Q-n>`) under the same limits; `question_id` must be `Q-` and a positive number. The web side has `historyLinkQuery` and `questionLinkQuery` in the same file.
 
 ## The old monitor addresses are gone
 
