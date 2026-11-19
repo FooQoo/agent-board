@@ -149,7 +149,7 @@ impl MonitorConnections {
 
     /// Save new settings. Nothing changes unless the save succeeds.
     pub fn update(self: &Arc<Self>, update: SettingsUpdate) -> Result<Snapshot, UpdateError> {
-        let (_file, mut inner) = self.write_guard();
+        let (_file, mut inner) = self.write_guard().map_err(|_| UpdateError::SaveFailed)?;
         if update.revision != inner.config.revision {
             return Err(UpdateError::Conflict);
         }
@@ -216,7 +216,7 @@ impl MonitorConnections {
                     .unwrap_or(Err(super::keychain::VaultError::Failed))
                     .map_err(|_| StartError::KeychainUnavailable)?;
             }
-            let held = self.write_guard();
+            let held = self.write_guard().map_err(|_| StartError::SaveFailed)?;
             attempts += 1;
             if held.1.config.revision == seen || attempts >= 3 {
                 break held;

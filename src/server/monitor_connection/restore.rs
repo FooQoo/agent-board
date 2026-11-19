@@ -30,25 +30,38 @@ impl MonitorConnections {
         let epoch = inner.probe_epoch;
         let this = self.clone();
         tokio::spawn(async move {
-            let loaded = this.read_keychain().await;
-            let mut inner = this.lock();
-            this.apply_probe(&mut inner, loaded, epoch);
-            if inner.run.is_some() || inner.failure.is_some() {
+            let mut epoch = epoch;
+            loop {
+                let loaded = this.read_keychain().await;
+                let mut inner = this.lock();
+                if !this.apply_probe(&mut inner, loaded, epoch) {
+                    // The saved settings changed during the read: read again, still starting.
+                    epoch = inner.probe_epoch;
+                    inner.probing = true;
+                    continue;
+                }
+                if inner.run.is_some() || inner.failure.is_some() {
+                    return;
+                }
+                if inner.generation == generation && inner.config.enabled {
+                    this.restore(&mut inner);
+                } else {
+                    inner.status = idle_status(&inner.config, inner.token.is_some());
+                }
                 return;
-            }
-            if inner.generation == generation && inner.config.enabled {
-                this.restore(&mut inner);
-            } else {
-                inner.status = idle_status(&inner.config, inner.token.is_some());
             }
         });
     }
 
     /// Stop the connection, forget any pending start, and save `enabled: false`.
     pub fn stop(self: &Arc<Self>) -> Snapshot {
-        let (_file, mut inner) = self.write_guard();
+        // Without the file lock the connection is still stopped, but nothing is saved.
+        let (file, mut inner) = match self.write_guard() {
+            Ok((file, inner)) => (Some(file), inner),
+            Err(_) => (None, self.lock()),
+        };
         self.teardown(&mut inner);
-        if inner.config.enabled {
+        if inner.config.enabled && file.is_some() {
             let mut next = inner.config.clone();
             next.enabled = false;
             next.revision += 1;

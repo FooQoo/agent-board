@@ -151,12 +151,15 @@ pub fn apply(
     change: Change,
 ) -> Result<Saved, AgboardError> {
     let store = ConfigStore::new(data_dir);
-    // Held from the read to the save, as the server holds it, so no change is lost.
-    let _lock = store.lock();
-    let current = store.load().unwrap_or_default();
+    // The keychain can stop to ask the user, so it is written before the lock is taken and read
+    // after it is released: the lock is held only for the read and the save of the file.
     if let Some(token) = &change.token {
         vault.save(token).map_err(|_| vault_error())?;
     }
+    let lock = store
+        .lock()
+        .map_err(|e| file_error(FileAction::Write, &e))?;
+    let current = store.load().unwrap_or_default();
     let next = ConnectionConfig {
         enabled: change.enabled.unwrap_or(current.enabled),
         revision: current.revision + 1,
@@ -168,6 +171,7 @@ pub fn apply(
     store
         .save(&next)
         .map_err(|e| file_error(FileAction::Write, &e))?;
+    drop(lock);
     Ok(saved_of(&next, vault))
 }
 

@@ -5,6 +5,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::config::ConfigError;
 use super::contracts::{ConnectionStatus, PublicOrigin};
 use super::keychain::VaultError;
 use super::lifecycle::{Inner, MonitorConnections, idle_status};
@@ -44,7 +45,7 @@ impl MonitorConnections {
         tokio::spawn(async move {
             let loaded = this.read_keychain().await;
             let mut inner = this.lock();
-            this.apply_probe(&mut inner, loaded, epoch);
+            let _ = this.apply_probe(&mut inner, loaded, epoch);
         });
     }
 
@@ -63,11 +64,11 @@ impl MonitorConnections {
         inner: &mut Inner,
         loaded: Result<Option<Secret>, VaultError>,
         epoch: u64,
-    ) {
+    ) -> bool {
         if epoch != inner.probe_epoch {
             // The saved settings changed while the keychain was read: another read is needed.
             self.probed.notify_waiters();
-            return;
+            return false;
         }
         inner.probing = false;
         let saved = matches!(loaded, Ok(Some(_)));
@@ -82,6 +83,7 @@ impl MonitorConnections {
         }
         inner.keychain_saved = Some(saved);
         self.probed.notify_waiters();
+        true
     }
 
     /// Wait until the keychain has been looked at, starting the read if nobody
@@ -117,9 +119,9 @@ impl MonitorConnections {
     /// brought up to date. Whoever changes the saved settings holds both until it has saved.
     pub(super) fn write_guard(
         &self,
-    ) -> (super::config::ConfigLock, std::sync::MutexGuard<'_, Inner>) {
-        let file = self.store.lock();
-        (file, self.synced())
+    ) -> Result<(super::config::ConfigLock, std::sync::MutexGuard<'_, Inner>), ConfigError> {
+        let file = self.store.lock()?;
+        Ok((file, self.synced()))
     }
 
     /// The file is read while the state is locked, so a read that is older than a save made here
@@ -170,7 +172,11 @@ impl MonitorConnections {
             .unwrap_or(Err(VaultError::Failed))
             .map_err(|_| ForgetError::KeychainUnavailable)?;
         let mut inner = self.lock();
+        // A read started while the token was being deleted may have seen it: drop that result.
+        inner.probe_epoch += 1;
+        inner.probing = false;
         inner.keychain_saved = Some(false);
+        self.probed.notify_waiters();
         if inner.token_source == Some(TokenSource::Keychain) {
             inner.token = None;
             inner.token_source = None;

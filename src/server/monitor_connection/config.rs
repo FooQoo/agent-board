@@ -59,28 +59,36 @@ impl ConfigStore {
             .unwrap_or(Path::new("."))
     }
 
-    /// Take the exclusive lock, waiting for the holder. Without a lock file that can be opened
-    /// (or off Unix) there is no lock, as there was none before.
-    pub fn lock(&self) -> ConfigLock {
-        let Some(dir) = self.path.parent() else {
-            return ConfigLock(None);
-        };
-        if create_private_dir(dir).is_err() {
-            return ConfigLock(None);
-        }
+    /// Take the exclusive lock, waiting for the holder (who keeps it only for a read and a
+    /// save). When the lock cannot be taken the caller must not write.
+    pub fn lock(&self) -> Result<ConfigLock, ConfigError> {
+        let io = |e: std::io::Error| ConfigError::Io(e.kind().to_string());
+        let dir = self
+            .path
+            .parent()
+            .ok_or_else(|| ConfigError::Io("no parent folder".to_string()))?;
+        create_private_dir(dir).map_err(io)?;
         let file = std::fs::OpenOptions::new()
             .create(true)
             .truncate(false)
             .write(true)
             .open(dir.join("monitor-connection.lock"))
-            .ok();
+            .map_err(io)?;
         #[cfg(unix)]
-        if let Some(file) = &file {
+        {
             use std::os::unix::io::AsRawFd;
-            // SAFETY: flock on a descriptor this function owns; it blocks until the lock is held.
-            unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) };
+            loop {
+                // SAFETY: flock on a descriptor this function owns.
+                if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
+                    break;
+                }
+                let error = std::io::Error::last_os_error();
+                if error.kind() != std::io::ErrorKind::Interrupted {
+                    return Err(io(error));
+                }
+            }
         }
-        ConfigLock(file)
+        Ok(ConfigLock(Some(file)))
     }
 
     pub fn new(data_dir: &Path) -> Self {
