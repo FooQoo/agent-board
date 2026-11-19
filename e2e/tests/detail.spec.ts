@@ -216,3 +216,19 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   expect(focusable).toHaveLength(6 + 3 + 8 + 1 + 1 + 4);
   expect(await page.locator('.grip').evaluateAll((elements) => elements.every((element) => (element as HTMLElement).tabIndex < 0))).toBe(true);
 });
+
+test('a clicked tab shows its whole page in the panel, not part of the one beside it', async ({ page }) => {
+  await task(page, 13).click();
+  const panel = details(page);
+  const strip = panel.locator('.detail__pages');
+  for (const name of ['Conditions', 'History', 'Description']) {
+    await panel.getByRole('tab', { name: new RegExp(`^${name}`) }).click();
+    const shown = panel.getByRole('tabpanel');
+    await expect
+      .poll(async () => {
+        const [a, b] = [await strip.boundingBox(), await shown.boundingBox()];
+        return a && b ? Math.round(Math.abs(a.x - b.x)) : -1;
+      })
+      .toBe(0);
+  }
+});

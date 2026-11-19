@@ -171,6 +171,13 @@ try {
       await page.getByRole('tab', { name: text.tab, exact: true }).click();
       await expect(page.getByRole('tabpanel', { name: text.tab, exact: true })).toBeVisible();
       await expect(page.getByRole('tab', { name: text.tab, exact: true })).toHaveAttribute('aria-selected', 'true');
+      // The tab pages slide in by script, which settle() does not see: wait until the page lines up with the strip.
+      const strip = page.locator('.detail__pages');
+      const shown = page.getByRole('tabpanel', { name: text.tab, exact: true });
+      await expect.poll(async () => {
+        const [a, b] = [await strip.boundingBox(), await shown.boundingBox()];
+        return a && b ? Math.round(Math.abs(a.x - b.x)) : -1;
+      }).toBe(0);
       await shot('card-detail', page, page);
 
       // board-dark: the whole board in the dark theme, in its own browser context.
