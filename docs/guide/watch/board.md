@@ -21,6 +21,7 @@ Select a task to open its details on the right. The tabs show:
 | --- | --- |
 | **Description** | The task's body. |
 | **Conditions** | The task's own acceptance conditions and its progress. |
+| **Results** | What an agent delivered for you to look at, newest first. See [Read a result](#read-a-result). |
 | **History** | What happened, newest first, each entry with its time and reason. |
 | **Epic** | The details of the epic the task belongs to, if any. |
 
@@ -37,6 +38,17 @@ You can check and uncheck a condition in the Conditions tab. The change shows at
 On a touch screen, swipe the panel sideways to move to the next or previous tab. The next tab follows your finger, as the tabs of a task do on a phone. A mouse does not drag the panel, so you can still select text with it. A swipe that starts on a button, a link, code, an image, or a table that scrolls sideways is left to that element.
 
 Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
+
+### Read a result {#read-a-result}
+
+When an agent delivers a result with `agboard result add` (see [Deliver a result](../reference/cli.md#deliver-a-result)), it appears in the **Results** tab. Results are listed newest first. Each one shows:
+
+- a badge, **In progress** or **Final**, with its version and the time it was delivered;
+- the summary;
+- the image, if there is one. Select it to see it larger;
+- the link or storage location of the main artifact, if there is one. It is shown as text only. Agent Board never opens it, because the artifact may exist only on the PC.
+
+A result is also readable on its own from an address that names the project, the task, and the version: `https://<host>/?project=<ProjectId>&task=<id>&result=<version>`. Opening it shows that task's details with the Results tab selected, and scrolls to the result and highlights it. This works on the phone through [remote access](./remote-access.md#open-a-result-from-a-link) and on the PC board, and it works even if another project was on the screen. If the task has no such version, the tab says so and lists the results it does have.
 
 ## Move a task
 

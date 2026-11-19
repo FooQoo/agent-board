@@ -24,6 +24,20 @@ export interface Attachment {
   createdAt: string;
 }
 
+/** A result an agent delivered to the requester: a summary, optionally an image and a link. */
+export interface TaskResult {
+  /** Counts up from 1 within the task; never changes or repeats. */
+  version: number;
+  key: string;
+  kind: 'progress' | 'final';
+  summary: string;
+  /** The ID of an image in the task's attachments. */
+  attachmentId?: string;
+  /** A URL or storage location of the main artifact; shown as text, never opened by the board. */
+  link?: string;
+  at: string;
+}
+
 /** The epic a card belongs to, as the board shows it. */
 export interface EpicRef {
   id: string;

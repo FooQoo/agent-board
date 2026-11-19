@@ -9,6 +9,7 @@ export const detailEn = {
     noDescription: 'No description.',
     tabDescription: 'Description',
     tabHistory: 'History',
+    tabResults: 'Results',
     tabEpic: 'Epic',
     tabAcceptance: 'Conditions',
     conditionsCard: 'Task',
@@ -28,6 +29,18 @@ export const detailEn = {
     saveError: 'Could not save. Try again.',
     pageOutOfDate:
       'This page is out of date. Reload it to get the current answer token, then try again.',
+  },
+  results: {
+    loading: 'Loading the results…',
+    failed: 'The results could not be read.',
+    retry: 'Try again',
+    empty: 'No results yet.',
+    versionMissing:
+      'Result {{version}} was not found. The results below are the ones this task has.',
+    kind: { progress: 'In progress', final: 'Final' },
+    version: 'Result {{version}}',
+    link: 'Link',
+    enlarge: 'Enlarge the image of result {{version}}',
   },
   draft: {
     label: 'Draft',

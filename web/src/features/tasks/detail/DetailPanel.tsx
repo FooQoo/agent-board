@@ -51,6 +51,8 @@ export interface DetailPanelProps {
   onRestore?: () => void;
   operationSaving?: boolean;
   restoreFailed?: boolean;
+  /** The result version a link points at: the panel opens its results tab on it. */
+  focusResultVersion?: number | null;
 }
 
 export function DetailPanel({
@@ -75,6 +77,7 @@ export function DetailPanel({
   epics,
   epicsFailed = false,
   onRetryEpics,
+  focusResultVersion = null,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (task === null || projectId === null) {
@@ -112,6 +115,7 @@ export function DetailPanel({
       epicsFailed={epicsFailed}
       onRetryEpics={onRetryEpics}
       attachmentUrl={attachmentUrl}
+      focusResultVersion={focusResultVersion}
     />
   );
 }
@@ -147,9 +151,16 @@ function DetailBody({
   epics,
   epicsFailed,
   onRetryEpics,
+  focusResultVersion = null,
 }: DetailBodyProps) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<DetailTab>('description');
+  const [tab, setTab] = useState<DetailTab>(
+    focusResultVersion === null ? 'description' : 'results',
+  );
+  // A link to another result of the same task opens the results tab again.
+  useEffect(() => {
+    if (focusResultVersion !== null) setTab('results');
+  }, [focusResultVersion]);
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const [draftSaving, setDraftSaving] = useState(false);
   const [draftFailed, setDraftFailed] = useState(false);
@@ -216,6 +227,7 @@ function DetailBody({
       tab={tab}
       onTabChange={setTab}
       swipeTabs
+      focusResultVersion={focusResultVersion}
       onClose={onClose}
       epics={epics}
       epicsFailed={epicsFailed}

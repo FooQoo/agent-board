@@ -89,7 +89,8 @@
 
 .detail__tablist {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, auto);
+  justify-content: space-between;
   flex: 1 1 auto;
   align-self: stretch;
   min-width: 0;
@@ -102,13 +103,13 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  gap: 6px;
+  gap: 4px;
   height: var(--btn-m-h);
-  padding: 8px 14px 6px;
+  padding: 8px 5px 6px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 19px;
   white-space: nowrap;
   color: var(--r-muted);

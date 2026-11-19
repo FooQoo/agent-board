@@ -23,6 +23,25 @@ The entrance serves the board's page and its API under the same paths as the loc
 
 A phone lists and switches projects the same way the PC does. `GET /api/projects` returns every project, and each project is read through `/api/projects/{projectId}/…` (Summary, Detail, events, and the rest of the [Web API](./web-api.md)). The page names the project in its address, `/?project=<ProjectId>`, and the board app reads it as it does on the PC. A project ID in a path selects what is read. It is not an access right: a session that passed the passcode reads every project on the PC.
 
+## Result links
+
+A result link is the board's own page with the target in the query: `/?project=<ProjectId>&task=<id>&result=<version>`.
+
+| Part | Rule |
+| --- | --- |
+| Path | `/`. The target is never in the path or in a hash, so the page shell, the unlock request, and the reload after it all keep it. |
+| `project` | A ProjectId, 32 lowercase hexadecimal digits. It selects the project exactly as `?project=` does. |
+| `task` | The task ID, a positive integer. |
+| `result` | The version of one of the task's results, a positive integer (see [Results](./files.md#results)). |
+
+- **Serving.** The page shell is served for any query: `GET /` ignores it, passes only the Host check, and carries no token or board data, so a result link needs no session to load.
+- **After the passcode.** `RemoteGate` shows the passcode screen in place and mounts the board afterwards. It never redirects, so the query is not lost, and there is no address to be sent to: the only target is the page itself. The board reads `task` and `result` from the query (`useResultLink`, `web/src/app/model/useResultLink.ts`).
+- **Opening.** The phone opens the task's drawer on the Results tab, and the PC board selects the card and its Results tab, once the Summary lists the task. The result is scrolled to and highlighted. A damaged value, a task the project does not list, or an archived task opens the plain board. A version the task does not have shows a notice above the list of the results it has.
+- **Clearing.** Closing the drawer, or choosing another project, removes `task` and `result` from the address, so a reload does not open it again.
+- **Reading.** The Results tab reads `GET …/tasks/{id}/results` (see [Web API](./web-api.md)), because the Summary and Detail streams do not carry results, and shows an image from `GET …/tasks/{id}/attachments/{attachmentId}`. Both are ordinary board routes behind the session.
+
+**Building a link.** Use `PublicOrigin::result_link(project_id, task_id, version)` (`src/server/monitor_connection/contracts/access.rs`), which returns `https://<host>[:port]/?project=<id>&task=<n>&result=<version>`, or `None` for a project that is not 32 lowercase hex digits or a task or version below 1. The web side has the same rule in `resultLinkUrl` (`web/src/features/tasks/results/resultLink.ts`). A push notification should carry this URL as its click target.
+
 ## The old monitor addresses are gone
 
 The earlier phone monitor had its own page, API, and assets under `/monitor/`. None of them is served any more.

@@ -67,6 +67,8 @@ export default function MobileBoard({
       onNotFound={stays}
       header={header}
       guideLink={guideLink}
+      resultLink={model.resultLink ?? null}
+      onResultLinkClose={model.clearResultLink}
       statusSlot={residentFooterSlot(activeId, { displayOnly: true })}
     />
   );

@@ -38,9 +38,15 @@ The Done lane has an **Archive all** button below its cards. It opens **Archive 
 
 ### Read a task
 
-Tapping a task opens a bottom drawer with **Body**, **Conditions**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](./board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
+Tapping a task opens a bottom drawer with **Body**, **Conditions**, **Results**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](./board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.
 
-![Remote access with a task drawer open on the Conditions tab, showing the four tabs](../../images/mobile.png){.screenshot--narrow}
+![Remote access with a task drawer open on the Conditions tab, showing the tabs](../../images/mobile.png){.screenshot--narrow}
+
+The **Results** tab lists what an agent delivered for you to look at, newest first, with each summary, image, and link text. See [Read a result](./board#read-a-result).
+
+### Open a result from a link {#open-a-result-from-a-link}
+
+A link to one result has the form `https://<host>/?project=<ProjectId>&task=<id>&result=<version>`, where `<host>` is the address of the connection. Opening it on the phone asks for the passcode first, if you have no live session, and keeps the whole address while it does. After the passcode, the board opens that project, then that task's drawer on the **Results** tab, scrolled to the result and highlighted. It does not matter which project was on the screen before. Closing the drawer takes the task and result out of the address, so the board stays where you left it. An address with a task or version that is not a positive number opens the plain board.
 
 Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the handle or header to dismiss the drawer. Opening a task reads its text, conditions, history, and epic once, so switching tabs does not wait for a read. If a read fails, use the retry button in that tab.
 

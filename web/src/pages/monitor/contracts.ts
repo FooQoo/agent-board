@@ -4,6 +4,7 @@ import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type { HeaderProps, HeaderSettings } from '../../shared/ui/app-header/Header';
 import type { MessagesApi } from '../../features/tasks/messages/model/messages';
+import type { ResultLinkTarget } from '../../features/tasks/results/resultLink';
 import type { Message } from '../../shared/data/api/contracts';
 
 export interface MonitorTask {
@@ -13,7 +14,7 @@ export interface MonitorTask {
 }
 
 export type MonitorSummary = { todo: number; doing: number; done: number } | null;
-export type MonitorDetailTab = 'description' | 'acceptance' | 'history' | 'epic';
+export type MonitorDetailTab = 'description' | 'acceptance' | 'results' | 'history' | 'epic';
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
 
 export interface MonitorFreshness {
@@ -69,6 +70,10 @@ export type MonitorHeaderProps = Pick<
 >;
 
 export interface MonitorViewProps {
+  /** The result a link points at: the drawer opens on it once its task is listed. */
+  resultLink?: ResultLinkTarget | null;
+  /** The drawer of the link's task was closed: the app takes the link out of the address. */
+  onResultLinkClose?: () => void;
   /** Where the language and theme are saved; without it they stay in this browser. */
   preferences?: PreferencesEndpoint;
   /** The header's settings dialog; without it, the plain one that saves through `preferences`. */
