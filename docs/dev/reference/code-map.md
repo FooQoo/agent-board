@@ -95,6 +95,7 @@ The main files and directories outside `src/` are:
 
 - `src/docs/`: paths, reads, and the README templates (`templates/README.en.md`, `templates/README.ja.md`).
 - `src/server/api/docs/`: the four routes on the board router.
+- `src/server/resident/`: the launcher of headless Claude Code and Codex sessions, and the only code that knows those CLIs (`cli.rs`: names, login check, models, arguments, environment scrubbing; `mod.rs`: spawn, reap, stop, shutdown). Its routes are in `src/server/api/sessions.rs`.
 - `src/server/sessions/`, `src/server/api/sessions.rs`, and `src/agent/session_identity.rs`: the in-memory registry of attached agent sessions, its read route, and how a waiting command names its session.
 - `src/file_store/project.rs`: creates `docs/` with a new project (`create_project_with_docs`) and fills it in at startup (`ensure_docs_dirs`).
 - `web/src/features/docs/`: the request client (`api/docsApi.ts`), the tree, the chosen file, and following changes on disk (`model/`), and the dialog (`ui/DocsDialogContainer.tsx`, `ui/shell/` for the frame and file list, `ui/document/` for the body pane, front matter, file viewer and MDX frame).

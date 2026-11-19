@@ -11,13 +11,13 @@
 //! of after the registry's grace period.
 
 pub mod cli;
+mod process;
 
 use std::collections::HashMap;
-use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -27,40 +27,12 @@ use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::server::sessions::{SessionRegistry, Tool};
 pub use cli::{Executables, ModelList, ModelOption};
+use process::{Exit, new_launch_id, open_log, terminate};
 
 /// How long a stopped child has to exit after SIGTERM before it gets SIGKILL.
 const STOP_GRACE: Duration = Duration::from_secs(5);
 /// The folder of the data area that holds the logs of launched sessions.
 const LOG_DIR: &str = "resident";
-
-/// Marks a finished child; set by the reaper after it has cleaned up.
-struct Exit {
-    done: Mutex<bool>,
-    changed: Condvar,
-}
-
-impl Exit {
-    fn new() -> Arc<Exit> {
-        Arc::new(Exit {
-            done: Mutex::new(false),
-            changed: Condvar::new(),
-        })
-    }
-
-    fn finish(&self) {
-        *self.done.lock().unwrap_or_else(|e| e.into_inner()) = true;
-        self.changed.notify_all();
-    }
-
-    fn wait(&self, limit: Duration) -> bool {
-        let guard = self.done.lock().unwrap_or_else(|e| e.into_inner());
-        let (guard, _) = self
-            .changed
-            .wait_timeout_while(guard, limit, |done| !*done)
-            .unwrap_or_else(|e| e.into_inner());
-        *guard
-    }
-}
 
 struct Live {
     launch_id: String,
@@ -294,56 +266,6 @@ impl Launcher {
             .collect();
         terminate(&targets, self.stop_grace);
     }
-}
-
-/// SIGTERM every group, wait for each to be reaped, SIGKILL what is left.
-fn terminate(targets: &[(u32, Arc<Exit>)], grace: Duration) {
-    for (pid, _) in targets {
-        signal_group(*pid, false);
-    }
-    let deadline = Instant::now() + grace;
-    for (pid, exit) in targets {
-        let left = deadline.saturating_duration_since(Instant::now());
-        if !exit.wait(left) {
-            signal_group(*pid, true);
-            exit.wait(Duration::from_secs(2));
-        }
-    }
-}
-
-#[cfg(unix)]
-fn signal_group(pid: u32, kill: bool) {
-    let signal = if kill { libc::SIGKILL } else { libc::SIGTERM };
-    // SAFETY: plain syscalls; the child was started as the leader of its own process group, so
-    // `-pid` names only that child and the commands it started.
-    unsafe {
-        libc::kill(-(pid as i32), signal);
-        libc::kill(pid as i32, signal);
-    }
-}
-
-#[cfg(not(unix))]
-fn signal_group(_pid: u32, _kill: bool) {}
-
-fn open_log(path: &Path) -> std::io::Result<std::fs::File> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    let mut options = OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    options.open(path)
-}
-
-/// A random launch ID: `resident-` and 16 hex digits.
-fn new_launch_id() -> Result<String, AgboardError> {
-    let mut bytes = [0u8; 8];
-    getrandom::fill(&mut bytes).map_err(|e| AgboardError::SessionLaunchFailed {
-        reason: format!("Cannot create a launch ID: {e}."),
-    })?;
-    let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
-    Ok(format!("resident-{hex}"))
 }
 
 #[cfg(all(test, unix))]

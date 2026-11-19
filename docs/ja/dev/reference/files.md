@@ -52,6 +52,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   bindings.json
   serve.json
   serve.log
+  resident/<tool>.log
   lifecycle.lock
   autostart.lock
   autostart.paused
@@ -71,6 +72,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
   `mode`は、コマンドが起動したサーバーなら`auto`、`serve`と`serve -d`なら`manual`です。この項目がないファイルは`manual`として読みます。`idleTimeoutSeconds`は自動のサーバーだけが持ちます。
 - `serve.log`は、`serve -d`かコマンドが裏で起動したサーバーの出力です（所有者のみ読み取り可、起動のたびに作り直し）。自動のサーバーは、別のポートを使った理由と止まったことをここに書きます。
+- `resident/<ツール>.log`（`claude-code.log`または`codex.log`）は、そのツールのためにボードが起動したセッションの標準出力と標準エラーです（所有者のみ読み取り可、起動のたびに作り直し）。エージェントが出力した内容を含みうるので、あなたのアカウントで動くエージェントのほかの出力と同じように扱ってください。[張り付くセッションの起動](../concepts/agents.md#張り付くセッションの起動)を参照してください。
 - `autostart.lock`は、同時にサーバーを起動しようとしたコマンドの順番を決めます。`autostart.paused`は`agboard stop`が残すファイルで、Hookがまたサーバーを起動しないようにします。待つコマンド、`serve`、`serve -d`がこれを消します。[サーバーと画面](../concepts/server-and-ui.md#serveの起動と停止)を参照してください。
 
 `docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログがこれを読みます（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。

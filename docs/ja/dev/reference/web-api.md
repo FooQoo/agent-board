@@ -37,7 +37,8 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
 | `GET /api/projects/{projectId}/archive` | 本文・全履歴・添付のメタデータを持つアーカイブ済みのタスクと、同じスナップショットの`epics`。各タスクの`epicId`は同じ応答の`epics`で解決する。エピックがないタスク、または存在しないエピックのタスクにはラベルを付けない。 |
 | `GET /api/projects/{projectId}/summary` | ボードの一覧に使うデータ。プロジェクト、`version`、タスク、エピック、problemsを返し、本文は含めない。[SummaryとDetail](#summaryとdetail)を参照。 |
-| `GET /api/projects/{projectId}/sessions` | プロジェクトに張り付いているエージェントセッションと、その数。[張り付いたセッション](#張り付いたセッション)を参照。キャッシュしません。 |
+| `GET /api/projects/{projectId}/sessions` | プロジェクトに張り付いているエージェントセッションとその数、およびボードが起動したセッション。[張り付いたセッション](#張り付いたセッション)を参照。キャッシュしません。 |
+| `GET …/sessions/models`、`POST …/sessions/launch`、`POST …/sessions/stop` | 画面を持たないClaude CodeとCodexのセッションを起動・停止する。ローカルのリスナーのみ。[セッションの起動](#セッションの起動)を参照。 |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | 1件のタスクの本文・完了条件・履歴をNDJSONのストリームで返す。アーカイブ済みのタスクも同じ方法で読む。 |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | 1件のエピックのドキュメントをNDJSONのストリームで返す。 |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | プロジェクトの`docs/`にある文書を読むだけのルート。フォルダのツリー、MarkdownかMDXのファイル1つ、画像、フォルダやファイルをコンピュータのアプリで開く操作。[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照。 |
@@ -149,7 +150,19 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `X-Agboard-Session-Tool` | `claude-code`、`codex`、`unknown`のいずれか。 |
 | `X-Agboard-Session-Origin` | `board`または`external`。 |
 
-起動の上限はルートではありません。ボードの起動処理（今後の変更で追加）は、セッションを起動する前に`SessionRegistry::check_board_launch(tool)`を呼びます。ボードが起動したセッションは、全プロジェクトを通してツールごとに1つまでです。`grace`中のボード起動セッションも数えます。外部のセッションには上限がなく、この上限の数にも入りません。`AGBOARD_SESSION_GRACE_MS`を設定すると、30秒の猶予をミリ秒で置き換えられます。テストが使います。
+起動の上限は`SessionRegistry::check_board_launch(tool)`が守ります。起動処理は、セッションを起動する前にこれを呼びます。ボードが起動したセッションは、全プロジェクトを通してツールごとに1つまでです。`grace`中のボード起動セッションも数えます。外部のセッションには上限がなく、この上限の数にも入りません。`AGBOARD_SESSION_GRACE_MS`を設定すると、30秒の猶予をミリ秒で置き換えられます。テストが使います。
+
+### セッションの起動
+
+このルートは、ボードが起動する、画面を持たないセッションを起動・停止します（[張り付くセッションの起動](../concepts/agents.md#張り付くセッションの起動)を参照）。**起動したセッションは、すべての権限を持ち、確認なしに動きます。** [ボードが起動するセッション](../concepts/security.md#ボードが起動するセッション)を参照してください。このルートは、[リモート接続](#リモート接続)のルートと同じく、ローカルのリスナーだけにあります。ngrokの入口は提供しません（404）。読み取りはローカルのページから行う必要があり、2つの書き込みはブラウザーの書き込みガードを通ります。形式が誤ったプロジェクトIDは422 `invalid_value`です。
+
+| API | 内容 |
+| --- | --- |
+| `GET /api/projects/{projectId}/sessions/models?tool=` | `tool`は`claude-code`か`codex`です（ほかの値は422 `invalid_value`）。`{"models": [{"id", "label"}], "reason": null}`を返します。一覧を読めないときは`{"models": [], "reason": "<理由>"}`で、モデルを指定しない起動ではツールの既定のモデルを使います。コマンドがないときは409 `agent_cli_missing`です。 |
+| `POST /api/projects/{projectId}/sessions/launch` | `{"tool": "claude-code" \| "codex", "model"?: string}`。`model`がない、空、または`"default"`のときは、ツールに任せます。プロジェクトの結び付いたフォルダでセッションを起動し、`{"launched": {"tool", "projectId", "model", "startedAt"}}`を返します。示していないモデルやモデル名でない値は422 `invalid_value`、存在しないプロジェクトは404 `project_not_found`、存在する結び付いたフォルダがないプロジェクトは409 `project_has_no_folder`、CLIがない・ログインしていないときは409 `agent_cli_missing`・`agent_cli_logged_out`、そのツールのセッションがすでに起動済みか、ボード起動として張り付いているときは理由付きの409 `session_launch_refused`、プロセスを起動できなかったときは500 `session_launch_failed`です。 |
+| `POST /api/projects/{projectId}/sessions/stop` | `{"tool": "claude-code" \| "codex"}`。そのツールの起動済みセッションを止めます。上限がプロジェクトではなくツールごとなので、止める対象はツールで指定します。呼び出しが返った時点で`{"stopped": true}`を返し、動いていなかったときは`{"stopped": false}`です。セッションは数えられなくなるので、すぐに新しく起動できます。 |
+
+`GET /api/projects/{projectId}/sessions`は、そのプロジェクトで起動処理がプロセスを持っているセッションを、`launched`として`[{"tool", "projectId", "model", "startedAt"}]`の形でも返します。プロセスIDは含みません。起動したセッションが`sessions`に（`origin: "board"`で）現れるのは、そのセッション自身の待機が張り付いてからです。
 
 ### リモート接続
 

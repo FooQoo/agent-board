@@ -173,6 +173,14 @@ To keep a session on the board without typing the command, invoke the plugin's `
 
 `idle_timeout` is a normal exit with code 0. It says only that no eligible task appeared for the full requested interval. A lost server connection, invalid board data, deleted project, or invalid command is an error; it must not be reported as an empty board. See the [CLI reference](../reference/cli#wait-for-changes-or-a-task) for the output and error codes.
 
+## Sessions the board starts {#sessions-the-board-starts}
+
+Instead of starting an agent yourself, the board can start a headless Claude Code or Codex session in a project's folder. The session sits on the board and waits for work, like one you started and left listening. The board starts at most one session per tool, and the session needs the `claude` or `codex` command on the `PATH` of the server and a login in that tool.
+
+> **Warning: a session the board starts runs with every permission and no prompts.** Claude Code runs in `bypassPermissions` mode and Codex runs with its sandbox and approvals turned off. Nobody is asked before a command runs. The session can do anything your user account can do, including reading and changing files outside the project, running any command, and using your network access and credentials. Start one only for work you would give to that agent in a terminal with all permissions, and stop it from the board when you are done. When the board server stops, it stops the sessions it started.
+
+Only the board on your own computer can start or stop these sessions. The phone connection cannot. The agent's output is written to `resident/<tool>.log` in the data folder.
+
 ## Drafts and errors
 
 A draft a person is writing (`draft: "human"`) is read-only for agents: `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
