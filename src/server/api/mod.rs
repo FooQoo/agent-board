@@ -86,6 +86,11 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             post(stop_ngrok),
         )
         .route("/api/monitor-connections/token", delete(delete_saved_token))
+        .route("/api/monitor-connections/devices", get(list_devices))
+        .route(
+            "/api/monitor-connections/devices/{device_id}",
+            delete(remove_device),
+        )
         .route("/api/notify", post(notify))
         .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
         .route(

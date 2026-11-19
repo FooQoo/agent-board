@@ -3,7 +3,7 @@
 
 use axum::http::{HeaderMap, HeaderName, header};
 
-use super::contracts::SESSION_COOKIE_NAME;
+use super::contracts::{DEVICE_COOKIE_NAME, SESSION_COOKIE_NAME};
 use crate::server::monitor_connection::contracts::{ContractError, PublicOrigin};
 
 /// The header a page sends its CSRF token in.
@@ -11,13 +11,22 @@ pub const CSRF_HEADER: &str = "x-agboard-csrf";
 
 /// The value of the session cookie, if there is exactly one.
 pub fn session_cookie(headers: &HeaderMap) -> Option<String> {
+    cookie_value(headers, SESSION_COOKIE_NAME)
+}
+
+/// The value of the device cookie, if there is exactly one.
+pub fn device_cookie(headers: &HeaderMap) -> Option<String> {
+    cookie_value(headers, DEVICE_COOKIE_NAME)
+}
+
+fn cookie_value(headers: &HeaderMap, cookie_name: &str) -> Option<String> {
     let mut found = None;
     for value in headers.get_all(header::COOKIE) {
         for pair in value.to_str().ok()?.split(';') {
             let Some((name, value)) = pair.trim().split_once('=') else {
                 continue;
             };
-            if name == SESSION_COOKIE_NAME {
+            if name == cookie_name {
                 if found.is_some() || value.is_empty() {
                     return None;
                 }

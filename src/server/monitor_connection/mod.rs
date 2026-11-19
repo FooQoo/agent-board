@@ -4,6 +4,7 @@
 mod backend;
 pub mod config;
 pub mod contracts;
+pub mod devices;
 mod entry;
 pub mod keychain;
 pub mod lifecycle;

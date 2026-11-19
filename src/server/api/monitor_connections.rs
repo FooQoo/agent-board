@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use axum::body::Bytes;
-use axum::extract::{Request, State};
+use axum::extract::{Path, Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use serde::Deserialize;
@@ -196,6 +196,42 @@ pub(super) async fn delete_saved_token(State(state): State<Arc<AppState>>) -> Re
     match state.monitor.forget_token().await {
         Ok(snapshot) => snapshot_response(StatusCode::OK, &snapshot),
         Err(ForgetError::KeychainUnavailable) => keychain_unavailable(),
+    }
+}
+
+/// The registered phones and browsers, the one seen last first. No token or digest is in it.
+pub(super) async fn list_devices(State(state): State<Arc<AppState>>, request: Request) -> Response {
+    if let Err(r) = local_read(request.headers(), state.port) {
+        return *r;
+    }
+    json_response(
+        StatusCode::OK,
+        &serde_json::json!({ "devices": state.monitor.devices() }),
+    )
+}
+
+/// Unregister a device: its sessions and open event streams end at once.
+pub(super) async fn remove_device(
+    State(state): State<Arc<AppState>>,
+    Path(device_id): Path<String>,
+) -> Response {
+    match state.monitor.remove_device(&device_id) {
+        Ok(true) => json_response(
+            StatusCode::OK,
+            &serde_json::json!({ "devices": state.monitor.devices() }),
+        ),
+        Ok(false) => error_response(
+            StatusCode::NOT_FOUND,
+            "device_not_found",
+            "that device is not registered.",
+            "Reload the list; it may have been removed already.",
+        ),
+        Err(_) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "save_failed",
+            "the device list could not be saved.",
+            "Nothing was changed.",
+        ),
     }
 }
 

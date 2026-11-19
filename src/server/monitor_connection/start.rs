@@ -64,47 +64,47 @@ impl MonitorConnections {
         let (tx, rx) = oneshot::channel();
         let this = self.clone();
         let opening = self.connector.open(request);
-        let opener =
-            tokio::spawn(async move {
-                let result = opening.await;
-                let mut inner = this.lock();
-                if inner.generation != generation {
-                    // Stopped or replaced while connecting: drop the tunnel.
-                    let _ = tx.send(Err(FailureCode::Internal));
-                    return;
-                }
-                match result {
-                    Ok(opened) => {
-                        let url = opened.public.origin().to_string();
-                        let sessions =
-                            Arc::new(SessionStore::new(system_clock(), SESSION_MAX_AGE_SECS));
-                        let unlock = Arc::new(UnlockGate::new(passcode.clone()));
-                        let app = external_app(&app, gate.clone());
-                        if let Some(run) = inner.run.as_mut() {
-                            // The refusing router hands the socket to the real one.
-                            run.backend.abort();
-                            run.backend = serve(&listener, app);
-                            run.tunnel = Some(opened.keep_alive);
-                        }
-                        *gate.write().unwrap_or_else(|e| e.into_inner()) = Some(
-                            BackendPolicy::new(opened.public, generation, sessions, unlock),
-                        );
-                        inner.status = ConnectionStatus::Ready;
-                        inner.url = Some(url.clone());
-                        inner.passcode = Some(passcode.clone());
-                        let _ = tx.send(Ok(MonitorReady { url, passcode }));
+        let opener = tokio::spawn(async move {
+            let result = opening.await;
+            let mut inner = this.lock();
+            if inner.generation != generation {
+                // Stopped or replaced while connecting: drop the tunnel.
+                let _ = tx.send(Err(FailureCode::Internal));
+                return;
+            }
+            match result {
+                Ok(opened) => {
+                    let url = opened.public.origin().to_string();
+                    let sessions =
+                        Arc::new(SessionStore::new(system_clock(), SESSION_MAX_AGE_SECS));
+                    let unlock = Arc::new(UnlockGate::new(passcode.clone()));
+                    let app = external_app(&app, gate.clone());
+                    if let Some(run) = inner.run.as_mut() {
+                        // The refusing router hands the socket to the real one.
+                        run.backend.abort();
+                        run.backend = serve(&listener, app);
+                        run.tunnel = Some(opened.keep_alive);
                     }
-                    Err(failure) => {
-                        if let Some(run) = inner.run.take() {
-                            run.close();
-                        }
-                        inner.status = ConnectionStatus::Failed;
-                        inner.failure = Some(failure.code);
-                        let _ = tx.send(Err(failure.code));
-                    }
+                    *gate.write().unwrap_or_else(|e| e.into_inner()) = Some(
+                        BackendPolicy::new(opened.public, generation, sessions, unlock)
+                            .with_devices(this.devices.clone()),
+                    );
+                    inner.status = ConnectionStatus::Ready;
+                    inner.url = Some(url.clone());
+                    inner.passcode = Some(passcode.clone());
+                    let _ = tx.send(Ok(MonitorReady { url, passcode }));
                 }
-            })
-            .abort_handle();
+                Err(failure) => {
+                    if let Some(run) = inner.run.take() {
+                        run.close();
+                    }
+                    inner.status = ConnectionStatus::Failed;
+                    inner.failure = Some(failure.code);
+                    let _ = tx.send(Err(failure.code));
+                }
+            }
+        })
+        .abort_handle();
         inner.run = Some(Run {
             gate: run_gate,
             backend: refuser,

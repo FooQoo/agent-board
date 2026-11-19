@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use super::config::{ConfigError, ConfigStore};
 use super::contracts::{ConnectionConfig, ConnectionStatus};
+use super::devices::DeviceStore;
 use super::keychain::TokenVault;
 use super::run::Run;
 pub use super::types::*;
@@ -35,6 +36,8 @@ pub(super) struct Inner {
 
 pub struct MonitorConnections {
     pub(super) store: ConfigStore,
+    /// The registered phones and browsers; kept across stops and starts.
+    pub(super) devices: Arc<DeviceStore>,
     pub(super) connector: Arc<dyn Connector>,
     pub(super) vault: Arc<dyn TokenVault>,
     /// The server's state, given once it exists; the monitor routes read it.
@@ -68,6 +71,7 @@ impl MonitorConnections {
             idle_status(&config, env.token.is_some())
         };
         Arc::new(Self {
+            devices: Arc::new(DeviceStore::open(store.data_dir())),
             store,
             connector,
             vault,
@@ -288,5 +292,29 @@ pub(super) fn failure_of(error: &StartError) -> FailureCode {
     match error {
         StartError::TokenRequired => FailureCode::ConfigInvalid,
         _ => FailureCode::Internal,
+    }
+}
+
+impl MonitorConnections {
+    /// The registered devices, the one seen last first.
+    pub fn devices(&self) -> Vec<super::devices::DeviceInfo> {
+        self.devices.list()
+    }
+
+    /// Unregister a device. Its sessions that are still valid end at once, and so do their open
+    /// event streams. `Ok(false)` when there is no such device.
+    pub fn remove_device(&self, id: &str) -> Result<bool, super::devices::SaveFailed> {
+        let removed = self.devices.remove(id)?;
+        if removed {
+            let policy = self
+                .lock()
+                .run
+                .as_ref()
+                .and_then(|run| run.gate.read().unwrap_or_else(|e| e.into_inner()).clone());
+            if let Some(policy) = policy {
+                policy.sessions.revoke_device(id);
+            }
+        }
+        Ok(removed)
     }
 }

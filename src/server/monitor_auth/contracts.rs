@@ -14,6 +14,13 @@ pub const SESSION_MAX_AGE_SECS: u64 = 12 * 60 * 60;
 /// board app and its API are served from `/`.
 pub const SESSION_COOKIE_NAME: &str = "agboard_ngrok_session";
 
+/// Name of the device cookie: the long-lived proof that a phone or browser was registered with
+/// the passcode. Only its digest is kept on the PC.
+pub const DEVICE_COOKIE_NAME: &str = "agboard_ngrok_device";
+
+/// How long the device cookie lasts, in seconds (400 days, the most a browser keeps).
+pub const DEVICE_COOKIE_MAX_AGE_SECS: u64 = 400 * 24 * 60 * 60;
+
 /// The attributes the session cookie must carry.
 pub const SESSION_COOKIE_ATTRIBUTES: &str = "Secure; HttpOnly; SameSite=Lax; Path=/";
 
@@ -55,6 +62,9 @@ pub struct AuthSession {
     pub epoch: u64,
     /// Unix seconds after which the session is no longer valid.
     pub expires_at: u64,
+    /// The registered device this session was opened for, if any. Removing the device ends it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
 }
 
 /// Why a session was refused.
@@ -88,6 +98,7 @@ impl AuthSession {
             origin: origin.to_string(),
             epoch,
             expires_at: now.saturating_add(ttl_secs.min(SESSION_MAX_AGE_SECS)),
+            device_id: None,
         }
     }
 
