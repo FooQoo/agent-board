@@ -48,20 +48,22 @@ pub struct Health {
     pub auto_start: Option<AutoStart>,
 }
 
+/// The live child of the slot: its tool, launch ID, push state, and driver.
+type LiveChild = (Tool, String, Arc<push::Push>, Arc<dyn AgentDriver>);
+
 impl Launcher {
     /// The health of the one session slot. `tool` is `None` while nothing is launched.
     pub fn health(&self) -> Health {
         let auto_start = self.autostart.get();
         // The live set is read before the plans: the launcher takes them in the other order.
-        let live: Option<(Tool, String, Arc<push::Push>, Arc<dyn AgentDriver>)> =
-            self.lock().iter().next().map(|(tool, live)| {
-                (
-                    *tool,
-                    live.launch_id.clone(),
-                    live.push.clone(),
-                    live.driver.clone(),
-                )
-            });
+        let live: Option<LiveChild> = self.lock().iter().next().map(|(tool, live)| {
+            (
+                *tool,
+                live.launch_id.clone(),
+                live.push.clone(),
+                live.driver.clone(),
+            )
+        });
         let plans = self.plans();
         let Some((tool, plan)) = plans.iter().next() else {
             return Health {

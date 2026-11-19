@@ -174,6 +174,7 @@ impl RequestView {
 /// Either kind of message, as `show` and `ls` print it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
+#[allow(clippy::large_enum_variant)] // a question carries its choices and reply; boxing would change every caller
 pub enum MessageView {
     Question(QuestionView),
     Request(RequestView),
