@@ -510,6 +510,41 @@ fn a_new_token_replaces_the_tunnel_and_an_equal_save_does_not() {
     assert!(off.json().get("passcode").is_none());
 }
 
+#[test]
+fn a_restart_with_a_held_token_never_waits_for_a_keychain_that_does_not_answer() {
+    let home = home();
+    let vault = MockVault::new(None, true);
+    // The keychain read stops, as it does while the OS asks the user for permission.
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+    *vault.hold.lock().unwrap() = Some(hold_rx);
+    let s = Server::start(
+        home.path(),
+        Opts {
+            vault: vault.clone(),
+            env_token: true,
+            ..Opts::default()
+        },
+    );
+    assert_eq!(s.put(true, 0).status, 200);
+    // The read the settings page starts; it answers after its grace without the keychain.
+    let _ = s.get();
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    let first = backend_addr(s.mock.calls.lock().unwrap().last().unwrap());
+    // Save a fixed domain, then start again while running: it answers and replaces the tunnel.
+    assert_eq!(s.put_domain(true, 1, "fixed.example.ngrok.app").status, 200);
+    assert_eq!(s.start_ngrok(json!({})).status, 202);
+    s.wait_status("ready");
+    let calls = s.mock.calls.lock().unwrap();
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[1].domain.as_deref(), Some("fixed.example.ngrok.app"));
+    assert_ne!(calls[0].backend, calls[1].backend);
+    drop(calls);
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(std::net::TcpStream::connect_timeout(&first, Duration::from_millis(500)).is_err());
+    drop(hold_tx);
+}
+
 // ------------------------------------------------------- startup and restore
 
 #[test]

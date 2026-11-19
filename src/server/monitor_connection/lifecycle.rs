@@ -106,7 +106,6 @@ impl MonitorConnections {
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
-
     /// Startup. When `explicit` (`--monitor ngrok`), start now and wait for the
     /// result so that a failure can end the process; otherwise restore a saved
     /// enabled setting in the background, or wait for the PC when no token is held.
@@ -196,7 +195,10 @@ impl MonitorConnections {
         if self.lock().failure == Some(FailureCode::ConfigUnreadable) {
             return Err(StartError::SettingsUnreadable);
         }
-        self.probed().await;
+        // With a token in hand a stuck keychain must not hold up the start.
+        if token.is_none() && self.lock().token.is_none() {
+            self.probed().await;
+        }
         if save && let Some(token) = &token {
             let vault = self.vault.clone();
             let token = token.clone();
@@ -232,7 +234,6 @@ impl MonitorConnections {
             self.store.save(&next).map_err(|_| StartError::SaveFailed)?;
             inner.config = next;
         }
-        // The receiver is dropped: the caller polls the status instead.
         drop(self.begin(&mut inner)?);
         Ok(self.snapshot_now(&inner))
     }
@@ -253,7 +254,7 @@ impl MonitorConnections {
         self.snapshot_now(&inner)
     }
 
-    /// Whether the connection is up or on its way up: the server is in use for as long as it is.
+    /// Whether the connection is up or on its way up (the server is in use).
     pub(crate) fn is_active(&self) -> bool {
         matches!(
             self.lock().status,
@@ -264,13 +265,12 @@ impl MonitorConnections {
         )
     }
 
-    /// Close everything without touching the saved settings (server exit, rollback).
+    /// Close everything, leaving the saved settings (server exit, rollback).
     pub fn shutdown(&self) {
         let mut inner = self.lock();
         self.teardown(&mut inner);
         inner.status = ConnectionStatus::Disabled;
     }
-
     pub(super) fn teardown(&self, inner: &mut Inner) {
         inner.generation += 1;
         if let Some(run) = inner.run.take() {
