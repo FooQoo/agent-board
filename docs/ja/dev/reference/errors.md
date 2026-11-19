@@ -16,7 +16,7 @@
 | `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
 | `human_only` | エージェントが依頼を取り下げようとした。これを行えるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |
-| `task_is_done` | DoneのタスクへのAIの変更。 | 1 | 409 |
+| `task_is_done` | DoneのタスクへのAIの変更。最終の成果がまだないDoneのタスクへの最初の`result add --final`だけは許可されます。 | 1 | 409 |
 | `acceptance_unmet` | 条件が未達成、またはfrontmatterが不正なタスクを、AIがDoneへ移そうとした。 | 2 | なし |
 | `invalid_state_for_column` | そのレーンで無効な稼働状態（例: TodoでRunning）。 | 1 | 422 |
 | `invalid_state_for_assignee` | 人のタスクにIdle以外の稼働状態を設定した。 | 2 | 422 |
