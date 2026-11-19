@@ -11,7 +11,7 @@ For these two epics, keep per-task plans, decisions, verification, and results i
    agboard --project "<name>" epic edit <EPIC-ID> --document-file <path>
    ```
 
-2. Create one task per task, assigned to `ai` or `human`, in the epic, with its task plan from the template in `agboard skills task-template` as the body:
+2. Create one task per task, assigned to `ai` or `human`, in the epic, with its task plan from the template in `agboard skills task-template` (with its recommended headings) as the body:
 
    ```sh
    agboard --project "<name>" add "<title>" --assignee ai --actor ai --epic <EPIC-ID> --desc-file <path>

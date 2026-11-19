@@ -15,7 +15,7 @@ title: Markdownファイルの形式
 
 ## TASK.md
 
-`TASK.md`は、2本の`---`の間にYAMLのfrontmatterがあり、そのあとに自由なMarkdownの本文が続きます。
+`TASK.md`は、2本の`---`の間にYAMLのfrontmatterがあり、そのあとに自由なMarkdownの本文が続きます。`agboard skills task-template`の雛形は、背景・やること・進め方・検証結果の見出しを推奨しますが、必須ではありません。
 
 ```markdown
 ---

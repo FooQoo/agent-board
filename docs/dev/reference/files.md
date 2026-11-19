@@ -11,7 +11,7 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `id` | Positive integer, unique on the board, equal to the folder name. |
 | `title` | 1 to 100 characters after trimming, one line. |
 | `description` | The whole `TASK.md`, frontmatter included. Only the body counts toward its 50,000-character limit. CRLF is normalized to LF. |
-| `body` | `description` without frontmatter: GitHub Flavored Markdown with no required headings. |
+| `body` | `description` without frontmatter: GitHub Flavored Markdown with no required headings. The task template recommends `Background`, `What to do`, `Approach`, and `Verification results` headings, but nothing validates them. |
 | `acceptance`, `acceptanceError` | The acceptance items from frontmatter (empty when invalid), and whether `acceptance` or the YAML syntax is invalid. |
 | `assignee` | `ai` or `human`. Set at creation and fixed afterwards. |
 | `epicId` | An EPIC-ID in the same project, or `null`. |

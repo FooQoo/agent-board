@@ -79,6 +79,15 @@ fn every_topic_prints_its_text() {
     }
     let (_, template, _) = skills(&["task-template"]);
     assert!(template.contains("acceptance:"));
+    for heading in [
+        "## Background",
+        "## What to do",
+        "## Approach",
+        "## Verification results",
+    ] {
+        assert!(template.contains(heading), "{heading}");
+    }
+    assert!(template.contains("recommended, not required"));
     let (_, bug, _) = skills(&["bug-epic-template"]);
     assert!(bug.contains("# Bug reports"));
 }
@@ -104,4 +113,17 @@ fn skills_works_without_a_data_directory() {
         .unwrap();
     assert_eq!(output.status.code(), Some(0));
     assert!(String::from_utf8_lossy(&output.stdout).starts_with("# Agent Board\n"));
+}
+
+#[test]
+fn the_task_template_still_parses_as_new_task_input() {
+    use agent_board::file_store::history::{ParseMode, parse_task};
+    let (_, template, _) = skills(&["task-template"]);
+    let block = template
+        .split("```markdown\n")
+        .nth(1)
+        .and_then(|rest| rest.split("\n```").next())
+        .expect("the template has a markdown block");
+    assert!(parse_task(block, ParseMode::NewInput).defects().is_empty());
+    assert!(block.contains("## Verification results"));
 }
