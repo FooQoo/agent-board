@@ -118,6 +118,44 @@ pub struct Attachment {
     pub created_at: DateTime<Utc>,
 }
 
+/// Whether a recorded result is an intermediate one or the final one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ResultKind {
+    /// A first or intermediate result delivered while the work goes on.
+    Progress,
+    /// The result of the finished work.
+    Final,
+}
+
+impl ResultKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Progress => "progress",
+            Self::Final => "final",
+        }
+    }
+}
+
+/// A result delivered to the requester: a short summary, optionally with an
+/// image (an attachment of the same task) and a link to the main artifact.
+/// `version` counts up from 1 within the task and never changes or repeats;
+/// `key` identifies the delivery, so a retry finds the entry it already made.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TaskResult {
+    pub version: u32,
+    pub key: String,
+    pub kind: ResultKind,
+    pub summary: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attachment_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+    #[serde(with = "crate::clock::serde_utc")]
+    pub at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttachmentInput {
     pub id: String,

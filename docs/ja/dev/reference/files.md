@@ -23,6 +23,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `requestAnswers` | 以前のAgent Boardが記録した回答。記録として残し、新しくは追加しません。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
 | `attachments` | 画像のID・名前・サイズ・MIME型・作成日時。 |
+| `results` | 依頼者に届けた成果。古いものから順に並び、ない場合は`[]`。[成果](#results)を参照。 |
 | `simpleRequest` | 過去の簡易依頼フォームが保存した任意のメタデータ`{requestId, payloadHash}`。新規タスクでは保存・利用しない。 |
 | `createdAt`・`updatedAt` | 作成日時と、取得時に`task.json`と`TASK.md`の更新日時の新しい方。 |
 | `agentStatusChangedAt`・`taskStatusChangedAt` | 稼働状態の最後の変更と、レーンの最後の実際の変更。本文の編集・進捗の記録・同じレーンへの操作では`taskStatusChangedAt`は変わらない。 |
@@ -106,6 +107,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 }
 ```
 
+- `results`は、成果が1件以上あるタスクにだけ書きます。成果の仕組みができる前のファイルはそのままで、`results: []`として読みます。形式バージョンは1のままです。
 - `requestAnswers`の各項目は`{requestId, actor, choiceId, choiceLabel, text, at}`です。`choiceId`と`choiceLabel`は両方`null`か両方設定、`text`は`null`か有効な回答で、選択と文の少なくとも一方があります。
 - 以前の版が書いた`pendingRequestId`と`pendingRequest`は、読むときに無視し、次の保存では書きません。
 - 過去の簡易依頼タスクには`simpleRequest`メタデータが残っている場合があります。互換性のため読み込みますが、新規タスクでは保存せず、再送の判定にも使いません。
@@ -121,6 +123,22 @@ history:
     reason: "Verified the setup guide links and recorded the result in the task body."
 ---
 ```
+
+### 成果 {#results}
+
+成果は、依頼者が見られるものとしてエージェントが`agboard result add`で届けるものです（[成果を届ける](../../guide/reference/cli.md#deliver-a-result)を参照）。成果は`TASK.md`ではなく`task.json`に保存します。クライアントが版を指定して読む構造化データだからです。`TASK.md`で時系列のテキストを持つのは、これまでどおり履歴だけです。`results`の各項目は次のとおりです。
+
+| フィールド | 意味 |
+| --- | --- |
+| `version` | タスクごとに1から始まり、1ずつ増える正の整数。変わることも繰り返されることもないので、タスク・成果・版の3つで1回の配信を指せます。 |
+| `key` | 再送のときに同じ配信かを見分ける値。エージェントが指定した`--key`（英数字と`.`、`_`、`:`、`-`で1〜64文字）、省略時は種別・要約・リンク・画像のバイト列から作る16進32桁。タスク内で一意です。 |
+| `kind` | 途中の成果は`progress`、完成したものは`final`。 |
+| `summary` | 1〜2,000文字の文章。 |
+| `attachmentId` | 任意。タスクの`attachments`にある画像のID。ファイルは添付画像のルートから読みます。成果が使っている画像は削除できません。 |
+| `link` | 任意。主な成果物のURLまたは保存場所。1行で1〜2,000文字。指定したまま保存し、Agent Boardが開くことはありません。 |
+| `at` | 成果を記録したUTC時刻。 |
+
+成果を記録しても、`taskStatus`と`agentStatus`は変わりません。プロジェクトのロックの下で、画像があれば先に書き、そのあと`task.json`と`TASK.md`を、履歴1件と一緒に保存します。保存に失敗したときは画像ファイルを消し、項目も残らないため、失敗した保存が届ける対象になることはありません。同じキーが同じ内容ですでにあるときは、何も書かず、既存の項目を返します。1つのタスクに残せる成果は100件までです。
 
 ## メッセージ
 
@@ -288,7 +306,7 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 
 ## タスクのJSONとスナップショット
 
-CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。`task.json`のメタデータに、`history`・`description`・`body`・`acceptance`・`acceptanceError`、表示用の`updatedAt`、`epic`（`{id, name, color}`または`null`）を加えたものです。読むときに導く項目は、`agentStatus`、`questionIds`（タスクの`questions`）・`questionsError`（そのfrontmatterが不正か）・`openQuestionIds`、そして`pendingRequestId`・`pendingReason`・`pendingChoices`です。最後の3つは、タスクが`pending`と表示される間、IDが最も小さい未回答の質問から取り、それ以外は`null`と空です。`pendingRequestId`にはその質問のID（`Q-12`など）が入り、ボードは回答するときにこのIDを送ります。`requestAnswers`が履歴に現れることはありません。
+CLI・Web API・Hookは、camelCaseの同じタスクの表現を使います。`task.json`のメタデータ（`results`を含み、常に配列として入ります）に、`history`・`description`・`body`・`acceptance`・`acceptanceError`、表示用の`updatedAt`、`epic`（`{id, name, color}`または`null`）を加えたものです。読むときに導く項目は、`agentStatus`、`questionIds`（タスクの`questions`）・`questionsError`（そのfrontmatterが不正か）・`openQuestionIds`、そして`pendingRequestId`・`pendingReason`・`pendingChoices`です。最後の3つは、タスクが`pending`と表示される間、IDが最も小さい未回答の質問から取り、それ以外は`null`と空です。`pendingRequestId`にはその質問のID（`Q-12`など）が入り、ボードは回答するときにこのIDを送ります。`requestAnswers`が履歴に現れることはありません。
 
 - スナップショットは、`project`・`version`・`cursor`・`epics`・`tasks`（それぞれ全履歴を持つ）・`problems`を一度の読み込みから返します。CLIのスナップショットは`nextTaskId`も含み、CLIのスナップショット・Hook・`wait`は`fetchedAt`を含みます。
 - プロジェクト一覧は`projects`（id・name・createdAt）と`catalogVersion`を返し、タスクは含みません。

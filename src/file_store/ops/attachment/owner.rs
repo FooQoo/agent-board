@@ -34,6 +34,18 @@ impl Loaded {
         }
     }
 
+    /// The version of the result that shows this image, when one does.
+    pub(super) fn result_using(&self, attachment_id: &str) -> Option<u32> {
+        match self {
+            Loaded::Task(task) => task
+                .results
+                .iter()
+                .find(|r| r.attachment_id.as_deref() == Some(attachment_id))
+                .map(|r| r.version),
+            Loaded::Epic(_) => None,
+        }
+    }
+
     pub(super) fn touch(&mut self, at: DateTime<Utc>) {
         match self {
             Loaded::Task(task) => task.updated_at = at,

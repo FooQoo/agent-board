@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::{Choice, HistoryRecord, RequestAnswer};
-use crate::domain::{Assignee, Attachment, AttachmentInput, Column, Draft, RunState};
+use crate::domain::{Assignee, Attachment, AttachmentInput, Column, Draft, RunState, TaskResult};
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::onboarding_model::OnboardingSample;
 use crate::file_store::validate::EpicId;
@@ -36,6 +36,9 @@ pub struct TaskFile {
     #[serde(with = "crate::clock::serde_utc")]
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
+    /// Results delivered to the requester, oldest first.
+    #[serde(default)]
+    pub results: Vec<TaskResult>,
     /// Legacy request metadata retained when reading existing task files.
     /// New simple requests do not write or use this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -100,6 +103,9 @@ pub struct TaskMetadata {
     #[serde(with = "crate::clock::serde_utc")]
     pub task_status_changed_at: DateTime<Utc>,
     pub attachments: Vec<Attachment>,
+    /// Absent from files written before results existed, and while there are none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub results: Vec<TaskResult>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub simple_request: Option<SimpleRequestMetadata>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -127,6 +133,7 @@ impl From<&TaskFile> for TaskMetadata {
             agent_status_changed_at: task.agent_status_changed_at,
             task_status_changed_at: task.task_status_changed_at,
             attachments: task.attachments.clone(),
+            results: task.results.clone(),
             simple_request: task.simple_request.clone(),
             onboarding_sample: task.onboarding_sample.clone(),
         }
@@ -158,6 +165,7 @@ impl TaskMetadata {
             agent_status_changed_at: self.agent_status_changed_at,
             task_status_changed_at: self.task_status_changed_at,
             attachments: self.attachments,
+            results: self.results,
             simple_request: self.simple_request,
             onboarding_sample: self.onboarding_sample,
             history,
@@ -208,6 +216,8 @@ pub struct TaskView {
     #[serde(with = "crate::clock::serde_opt_utc")]
     pub archived_at: Option<DateTime<Utc>>,
     pub attachments: Vec<Attachment>,
+    /// The results delivered to the requester, oldest first (`[]` when none).
+    pub results: Vec<TaskResult>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]

@@ -16,6 +16,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Record progress | `history add` |
 | Change a task's text | `edit` |
 | Attach images | `attachment` |
+| Deliver a result to the requester | `result add`, `result ls` |
 | Group and order tasks | `epic`, `progress` |
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
@@ -58,6 +59,18 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to a person's drafts, archived tasks, or Done tasks.
 
+### Deliver a result {#deliver-a-result}
+
+Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`), optionally with an image (`--file`) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
+
+```sh
+agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
+agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai
+agboard --project "My project" result add 1 --summary "Finished and checked" --final --actor ai
+agboard --project "My project" result ls 1
+```
+
+Each result gets the next version number of the task (1, 2, and so on). Recording one changes neither the column nor the run state, and adds one history entry. Repeating the same delivery is safe: the command finds the result it already recorded, reports `created: false`, and writes nothing. Without `--key` the delivery is recognized by its content (kind, summary, link, and the image's bytes); give `--key <key>` to name it yourself. Reusing a key for different content fails with `invalid_value`. The summary and the link are 1 to 2,000 characters, and a task keeps up to 100 results. An AI cannot record a result on a person's draft, an archived task, or a Done task, except that repeating a result that was already recorded succeeds.
 ### Finish a task
 
 To finish, record the verification in `TASK.md` and set each verified acceptance condition's `done` to `true`. The server moves eligible AI tasks to Done automatically (the hook and waiting commands start it when needed), so do not run `mv ... done --actor ai`. See the [Markdown file format](./file-format) for the rules. A Done task is read-only for agents; a user can reopen it when more work is needed.

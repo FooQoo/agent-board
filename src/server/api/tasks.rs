@@ -8,9 +8,10 @@ use axum::response::Response;
 use serde::Deserialize;
 
 use super::epics::whole_text;
-use crate::domain::{Actor, Assignee, ChangeContext, Column, Draft, NewTask, RunState};
+use crate::domain::{Actor, Assignee, ChangeContext, Changed, Column, Draft, NewTask, RunState};
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::AcceptanceItem;
+use crate::file_store::model::TaskView;
 use crate::file_store::validate::{self};
 use crate::server::AppState;
 use crate::server::request::ApiJson;
@@ -267,5 +268,21 @@ pub(super) fn person_draft(draft: Option<Draft>) -> Result<Option<Draft>, Agboar
             reason: "An AI draft is created by an agent. Use \"human\" or null.".into(),
         }),
         other => Ok(other),
+    }
+}
+
+/// A task as `{"task": ...}`, telling the browsers only if something changed.
+pub(super) fn changed_task_response(
+    state: &AppState,
+    result: Result<Changed<TaskView>, AgboardError>,
+) -> Response {
+    match result {
+        Ok(result) => {
+            if result.changed {
+                refresh_index(state);
+            }
+            json_response(StatusCode::OK, &serde_json::json!({"task": result.value}))
+        }
+        Err(error) => agboard_error_response(&error),
     }
 }
