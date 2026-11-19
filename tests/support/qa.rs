@@ -29,6 +29,7 @@ pub fn ask(
             project,
             AskInput {
                 actor: Actor::Ai,
+                asked_by: None,
                 questions: vec![AskQuestion {
                     body: body.into(),
                     choices: choices(options),
@@ -78,6 +79,7 @@ pub fn ask_choices(
             project,
             AskInput {
                 actor: Actor::Ai,
+                asked_by: None,
                 questions: vec![AskQuestion {
                     body: body.into(),
                     choices,

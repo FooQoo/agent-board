@@ -95,7 +95,7 @@ pub struct OpenFailure {
 
 pub type OpenFuture = Pin<Box<dyn Future<Output = Result<OpenedTunnel, OpenFailure>> + Send>>;
 
-/// Opens the public endpoint. The real one uses the ngrok SDK; tests use a fake
+/// Opens the public endpoint. The real one uses the ngrok SDK; tests use a mock
 /// so that nothing reaches the network.
 pub trait Connector: Send + Sync {
     fn open(&self, request: OpenRequest) -> OpenFuture;

@@ -1,4 +1,4 @@
-//! The supervisor thread: it starts due restarts, ends a child that never attaches, and launches
+//! The supervisor thread: it starts due restarts, ends a child that never starts, and launches
 //! the sessions whose auto-start is saved when the server starts.
 
 use std::path::PathBuf;
@@ -64,20 +64,42 @@ impl Launcher {
         let launcher = self.clone();
         std::thread::spawn(move || {
             if let Some(choice) = launcher.autostart.get() {
+                // Read before the project is resolved: a stop or a launch while it resolves
+                // cancels this start.
+                let epoch = launcher.epoch();
                 let tool = choice.tool;
                 let project = choice.project_id.clone();
                 let (name, folder) = match resolve(&project) {
                     Ok(found) => found,
                     Err(error) => {
                         let none = std::path::Path::new("");
-                        launcher.start_failed(tool, &project, &choice, "", none, &error);
+                        launcher.start_failed(
+                            epoch,
+                            tool,
+                            &project,
+                            choice.model.as_deref(),
+                            ("", none),
+                            &error,
+                        );
                         return;
                     }
                 };
-                if let Err(error) =
-                    launcher.launch(&project, &name, &folder, tool, choice.model.as_deref())
-                {
-                    launcher.start_failed(tool, &project, &choice, &name, &folder, &error);
+                if let Err(error) = launcher.launch_auto(
+                    epoch,
+                    &project,
+                    &name,
+                    &folder,
+                    tool,
+                    choice.model.as_deref(),
+                ) {
+                    launcher.start_failed(
+                        epoch,
+                        tool,
+                        &project,
+                        choice.model.as_deref(),
+                        (&name, &folder),
+                        &error,
+                    );
                 }
             }
         });
@@ -92,21 +114,18 @@ impl Launcher {
             for (tool, plan) in plans.iter_mut() {
                 match plan.state {
                     PlanState::Running => {
-                        // Once a child has attached, only its exit ends it: it closes its wait
-                        // while it works on a task, which can take far longer than any limit.
-                        if plan.attached.is_none() {
-                            if self.registry.has_board(*tool) {
-                                plan.attached = Some(now);
-                            } else if now.saturating_duration_since(plan.started)
+                        // Once a child has attached (its driver reported an event), only its
+                        // exit ends it: a turn on a task can take far longer than any limit.
+                        if plan.attached.is_none()
+                            && now.saturating_duration_since(plan.started)
                                 > self.timing.startup_allowance
-                            {
-                                plan.kill_reason = Some(format!(
-                                    "The {} session never waited on the board for {}, so the board ended it.",
-                                    tool.as_str(),
-                                    span(self.timing.startup_allowance)
-                                ));
-                                unhealthy.push(*tool);
-                            }
+                        {
+                            plan.kill_reason = Some(format!(
+                                "The {} session never started for {}, so the board ended it.",
+                                tool.as_str(),
+                                span(self.timing.startup_allowance)
+                            ));
+                            unhealthy.push(*tool);
                         }
                     }
                     PlanState::Restarting { due: at, .. } if now >= at => due.push(*tool),
@@ -130,6 +149,7 @@ impl Launcher {
                 .filter(|plan| matches!(plan.state, PlanState::Restarting { .. }))
                 .map(|plan| {
                     (
+                        plan.generation,
                         plan.project.clone(),
                         plan.project_name.clone(),
                         plan.folder.clone(),
@@ -137,7 +157,7 @@ impl Launcher {
                     )
                 })
         };
-        let Some((project, name, folder, model)) = target else {
+        let Some((generation, project, name, folder, model)) = target else {
             return;
         };
         let result: Result<Launched, AgboardError> = self.spawn_child(
@@ -146,7 +166,7 @@ impl Launcher {
             &folder,
             tool,
             model.as_deref(),
-            Spawn::Relaunch,
+            Spawn::Relaunch(generation),
         );
         if let Err(error) = result {
             let mut plans = self.plans();

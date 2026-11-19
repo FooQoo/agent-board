@@ -12,6 +12,14 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+  # A Major or Critical finding requests changes; once its threads are resolved, CodeRabbit
+  # approves.
+  auto_approvals:
+    enabled: true
+    min_blocking_severity: major
+  # Show a CodeRabbit status while the review runs, and fail it when the review errors out.
+  commit_status: true
+  fail_commit_status: true
   pre_merge_checks:
     docstrings:
       mode: "off"

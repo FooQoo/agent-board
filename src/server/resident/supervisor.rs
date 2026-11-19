@@ -8,12 +8,12 @@
 //! that a running child has attached.
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
 
 use super::Launcher;
-use super::autostart::AutoStart;
 use super::spawn::Spawn;
 use crate::clock::{Clock, SystemClock};
 use crate::domain::ProjectId;
@@ -32,8 +32,16 @@ pub struct Timing {
     pub max_failures: usize,
     /// A session that stayed up this long starts counting again from zero.
     pub window: Duration,
-    /// How long a new child has to attach (register a wait on the board) before it is unhealthy.
+    /// How long a new child has to attach (report its first event) before it is unhealthy.
     pub startup_allowance: Duration,
+    /// How often an idle board session looks at the board when nothing woke it.
+    pub push_poll: Duration,
+    /// The wait before an item that is still on the board is pushed a second time; each further
+    /// push doubles it.
+    pub push_backoff_base: Duration,
+    pub push_backoff_max: Duration,
+    /// An item is pushed this many times at most; after that it is listed as stalled.
+    pub push_max_attempts: u32,
 }
 
 impl Default for Timing {
@@ -45,6 +53,10 @@ impl Default for Timing {
             max_failures: 5,
             window: Duration::from_secs(10 * 60),
             startup_allowance: Duration::from_secs(3 * 60),
+            push_poll: Duration::from_secs(10),
+            push_backoff_base: Duration::from_secs(30),
+            push_backoff_max: Duration::from_secs(5 * 60),
+            push_max_attempts: 3,
         }
     }
 }
@@ -57,6 +69,9 @@ pub(super) enum PlanState {
 
 /// What the board keeps running for one tool.
 pub(super) struct Plan {
+    /// The epoch this plan was made under; a restart is admitted only for the plan it was
+    /// prepared from.
+    pub generation: u64,
     pub project: ProjectId,
     pub project_name: String,
     pub folder: PathBuf,
@@ -64,7 +79,7 @@ pub(super) struct Plan {
     pub state: PlanState,
     pub launch_id: String,
     pub started: Instant,
-    /// The last time the registry counted a board session of the tool, once there was one.
+    /// When the child first reported an event (it started and speaks), once it did.
     pub attached: Option<Instant>,
     pub failures: Vec<Instant>,
     pub restarts: u32,
@@ -76,6 +91,7 @@ pub(super) struct Plan {
 
 impl Plan {
     pub(super) fn new(
+        generation: u64,
         project: &ProjectId,
         project_name: &str,
         folder: &std::path::Path,
@@ -83,6 +99,7 @@ impl Plan {
         launch_id: &str,
     ) -> Plan {
         Plan {
+            generation,
             project: project.clone(),
             project_name: project_name.to_string(),
             folder: folder.to_path_buf(),
@@ -152,11 +169,11 @@ impl Launcher {
             .map(|(tool, _)| *tool)
     }
 
-    pub(super) fn restart_pending(&self, tool: Tool) -> bool {
-        matches!(
-            self.plans().get(&tool).map(|plan| &plan.state),
-            Some(PlanState::Restarting { .. })
-        )
+    /// Whether the plan of `tool` made under `generation` is waiting to restart.
+    pub(super) fn restart_pending(&self, tool: Tool, generation: u64) -> bool {
+        self.plans().get(&tool).is_some_and(|plan| {
+            plan.generation == generation && matches!(plan.state, PlanState::Restarting { .. })
+        })
     }
 
     /// Called under the live lock when a child has been started.
@@ -170,7 +187,7 @@ impl Launcher {
     ) {
         let mut plans = self.plans();
         match (kind, plans.get_mut(&tool)) {
-            (Spawn::Relaunch, Some(plan)) => {
+            (Spawn::Relaunch(_), Some(plan)) => {
                 plan.state = PlanState::Running;
                 plan.launch_id = launched.launch_id.clone();
                 plan.started = launched.started;
@@ -181,9 +198,11 @@ impl Launcher {
             _ => {
                 // A person's launch replaces whatever was kept, such as a shown failure.
                 plans.clear();
+                let generation = self.epoch.fetch_add(1, Ordering::SeqCst) + 1;
                 plans.insert(
                     tool,
                     Plan::new(
+                        generation,
                         &launched.project,
                         project_name,
                         folder,
@@ -192,6 +211,16 @@ impl Launcher {
                     ),
                 );
             }
+        }
+    }
+
+    /// The child `launch_id` reported its first event: it is attached.
+    pub(super) fn on_attached(&self, tool: Tool, launch_id: &str) {
+        if let Some(plan) = self.plans().get_mut(&tool)
+            && plan.launch_id == launch_id
+            && plan.attached.is_none()
+        {
+            plan.attached = Some(Instant::now());
         }
     }
 
@@ -216,19 +245,24 @@ impl Launcher {
         plan.fail(&self.timing, reason, true);
     }
 
-    /// A start that did not even produce a child (auto-start at server start).
+    /// A start that did not even produce a child (auto-start at server start). `epoch` is the one
+    /// the start was prepared under: when a stop or another launch came since, the failure is not
+    /// recorded, so it cannot replace what that one keeps.
     pub(super) fn start_failed(
         &self,
+        epoch: u64,
         tool: Tool,
         project: &ProjectId,
-        choice: &AutoStart,
-        name: &str,
-        folder: &std::path::Path,
+        model: Option<&str>,
+        (name, folder): (&str, &std::path::Path),
         error: &AgboardError,
     ) {
-        let mut plan = Plan::new(project, name, folder, choice.model.as_deref(), "");
+        let mut plan = Plan::new(epoch, project, name, folder, model, "");
         plan.fail(&self.timing, error.reason(), retryable(error));
         let mut plans = self.plans();
+        if self.epoch() != epoch {
+            return;
+        }
         plans.clear();
         plans.insert(tool, plan);
     }

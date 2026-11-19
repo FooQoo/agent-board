@@ -28,10 +28,10 @@ export const Badge: Story = {
 
 /** The sentence, with the word "documentation" linking to the feature's section in a new tab. */
 export const Notice: Story = {
-  args: { feature: 'mobileMonitor' },
+  args: { feature: 'resident' },
   play: async ({ canvasElement }) => {
     const link = within(canvasElement).getByRole('link', { name: 'documentation' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#remote-access`);
+    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#resident-sessions`);
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   },

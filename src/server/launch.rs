@@ -168,9 +168,7 @@ pub(crate) fn run<F: Future<Output = ()>>(
         });
         state.monitor.attach(&state);
         let files = state.shared.clone();
-        state.resident.start(move |project| {
-            resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
-        });
+        state.resident.watch_board(&state.shared, &state.changed);
         let app = api::router(state.clone());
 
         // A command-line monitor must be up before the board announces itself;
@@ -186,7 +184,9 @@ pub(crate) fn run<F: Future<Output = ()>>(
                 )));
             }
         };
-
+        state.resident.start(move |project| {
+            resident::resolve_project(&crate::file_store::FileStore::open(&files), project)
+        });
         let pid = std::process::id();
         let auto = Arc::new(AtomicBool::new(launch.auto.is_some()));
         if launch.auto.is_some() {

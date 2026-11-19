@@ -3,13 +3,14 @@ import type { Locale } from '@/shared/i18n';
 /**
  * The one list of features that are in public preview. A screen asks for its feature here; every
  * other feature is generally available and shows nothing. `anchor` is the heading of that feature
- * on the feature-stages documentation page. The `listen` entry has no screen of its own: it is
- * explained in the documentation only, and is listed so the list stays complete.
+ * on the feature-stages documentation page. The `requests` entry (questions and requests) has no
+ * screen of its own: it is explained in the documentation only, and is listed so the list stays
+ * complete.
  */
 export const PREVIEW_FEATURES = {
   docs: { anchor: 'docs' },
-  mobileMonitor: { anchor: 'remote-access' },
-  listen: { anchor: 'listen' },
+  resident: { anchor: 'resident-sessions' },
+  requests: { anchor: 'questions-and-requests' },
 } as const;
 
 export type PreviewFeature = keyof typeof PREVIEW_FEATURES;

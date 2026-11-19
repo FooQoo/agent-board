@@ -10,6 +10,10 @@ pub(super) fn fast() -> Timing {
         max_failures: 3,
         window: Duration::from_secs(30),
         startup_allowance: Duration::from_secs(30),
+        push_poll: Duration::from_millis(50),
+        push_backoff_base: Duration::from_millis(100),
+        push_backoff_max: Duration::from_millis(400),
+        push_max_attempts: 3,
     }
 }
 
@@ -29,22 +33,13 @@ fn starts(fx: &Fixture, name: &str) -> usize {
         .unwrap_or(0)
 }
 
-fn kill(pid: u32) {
+pub(super) fn kill(pid: u32) {
     // SAFETY: plain signal to the group of a child the test started (it leads its own group),
     // so the `sleep` it runs does not outlive the test.
     unsafe {
         libc::kill(-(pid as i32), libc::SIGKILL);
         libc::kill(pid as i32, libc::SIGKILL);
     }
-}
-
-fn attach(fx: &Fixture, tool: Tool) -> crate::server::sessions::SessionHold {
-    fx.registry.register(Attributes {
-        project: project(),
-        key: "resident:abc".into(),
-        tool,
-        origin: Origin::Board,
-    })
 }
 
 #[test]
@@ -136,7 +131,7 @@ fn a_stop_while_a_restart_is_waiting_cancels_it() {
 }
 
 #[test]
-fn a_child_that_never_waits_on_the_board_is_replaced() {
+fn a_child_that_never_starts_is_replaced() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture_timed(Timing {
         startup_allowance: Duration::from_millis(200),
@@ -145,12 +140,14 @@ fn a_child_that_never_waits_on_the_board_is_replaced() {
         ..fast()
     });
     fx.launcher.start(no_projects);
+    // The fake child reads its first instruction and then says nothing.
+    std::fs::write(fx.dir.path().join("silent"), "").unwrap();
     let first = fx.launch(Tool::ClaudeCode, None).unwrap();
     wait_until("the unhealthy child to be ended", || {
         state_of(&fx, Tool::ClaudeCode).state == HealthState::Restarting
     });
     let health = state_of(&fx, Tool::ClaudeCode);
-    assert!(health.reason.unwrap().contains("never waited"));
+    assert!(health.reason.unwrap().contains("never started"));
     assert!(!alive(first.pid));
     wait_until("the replacement", || starts(&fx, "claude") == 2);
     fx.launcher.shutdown();
@@ -160,32 +157,48 @@ fn a_child_that_never_waits_on_the_board_is_replaced() {
 fn an_attached_child_is_left_alone_even_while_it_works() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture_timed(Timing {
-        startup_allowance: Duration::from_secs(1),
+        startup_allowance: Duration::from_millis(500),
         ..fast()
     });
     fx.launcher.start(no_projects);
+    // The fake child reports a session (its first event) and then works on its first turn.
     fx.launch(Tool::ClaudeCode, None).unwrap();
-    let _hold = attach(&fx, Tool::ClaudeCode);
-    // Wait for the supervisor to see the attach, however slow the machine is.
     wait_until("the attach to be seen", || {
         fx.launcher
             .plans()
             .get(&Tool::ClaudeCode)
             .is_some_and(|plan| plan.attached.is_some())
     });
-    // Outlive the startup allowance with no wait registered.
-    std::thread::sleep(Duration::from_millis(1500));
-    assert_eq!(starts(&fx, "claude"), 1);
-    assert_eq!(state_of(&fx, Tool::ClaudeCode).state, HealthState::Running);
-    assert!(state_of(&fx, Tool::ClaudeCode).waiting);
-    // A session that works on a task has closed its wait; it is left alone however long it takes.
-    drop(_hold);
-    fx.registry.remove_board(Tool::ClaudeCode);
-    std::thread::sleep(Duration::from_millis(1500));
+    // Outlive the startup allowance; a turn on a task can take far longer than any limit.
+    std::thread::sleep(Duration::from_millis(1000));
     assert_eq!(starts(&fx, "claude"), 1);
     let health = state_of(&fx, Tool::ClaudeCode);
     assert_eq!(health.state, HealthState::Running);
-    assert!(!health.waiting);
+    assert!(!health.waiting, "a session in its turn is not waiting");
+    fx.launcher.shutdown();
+}
+
+#[test]
+fn a_session_between_turns_is_waiting_and_listed_as_connected() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture_timed(fast());
+    fx.launcher.start(no_projects);
+    std::fs::write(fx.dir.path().join("finish-turn"), "").unwrap();
+    fx.launch(Tool::ClaudeCode, None).unwrap();
+    wait_until("the session to be waiting", || {
+        state_of(&fx, Tool::ClaudeCode).waiting
+    });
+    let listed = fx.launcher.board_session(&project()).unwrap();
+    assert_eq!(listed.origin, Origin::Board);
+    assert_eq!(listed.tool, Tool::ClaudeCode);
+    assert_eq!(listed.state, crate::server::sessions::State::Connected);
+    // No wait ever registered: the registry knows nothing of it.
+    assert!(!fx.registry.has_board(Tool::ClaudeCode));
+    assert!(
+        fx.launcher
+            .board_session(&"f".repeat(32).parse().unwrap())
+            .is_none()
+    );
     fx.launcher.shutdown();
 }
 

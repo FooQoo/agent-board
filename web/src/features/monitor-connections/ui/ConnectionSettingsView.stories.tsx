@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
-import { FEATURE_STAGES_URL } from '@/shared/ui/preview-feature/feature-stage';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { ConnectionEntryRow } from './ConnectionEntryRow';
 import { NGROK_TOKEN_URL } from './ConnectionSteps';
@@ -56,9 +55,10 @@ export const NeedsConfig: Story = {
     ).toBeInTheDocument();
     const steps = view.getAllByRole('listitem');
     await expect(steps).toHaveLength(2);
-    // The public preview notice sits above the steps. The dialog keeps its design size, so the
-    // steps row, which fills what is left, is 24px shorter than the design's 280px.
-    await expect((steps[1] as HTMLElement).offsetHeight).toBe(256);
+    await expect((steps[1] as HTMLElement).offsetHeight).toBe(280);
+    // Remote access is generally available: no public preview badge, notice, or link.
+    await expect(view.queryByText('Public preview')).toBeNull();
+    await expect(view.queryByRole('link', { name: 'documentation' })).toBeNull();
     await expect(view.getByRole('heading', { name: 'Get a token' })).toBeInTheDocument();
     // Save and connect is about 146px wide (macOS system font), the same as Reconnect in the stopped
     // view. The width follows the text, and the system font differs between macOS and Linux, so only
@@ -190,11 +190,7 @@ export const Connected: Story = {
     // The setup, the domain and the old URL field are not part of the connected view.
     await expect(view.queryByLabelText('ngrok auth token')).toBeNull();
     await expect(view.queryByRole('textbox')).toBeNull();
-    // Once connected, the public preview badge stays and the notice before connecting is gone.
-    await expect(
-      view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
-    ).toBeGreaterThan(0);
-    await expect(view.queryByRole('link', { name: 'documentation' })).toBeNull();
+    await expect(view.queryByText('Public preview')).toBeNull();
     await userEvent.click(view.getByRole('button', { name: 'Reset token' }));
     await expect(args.onResetToken).toHaveBeenCalled();
     await userEvent.click(view.getByRole('button', { name: 'Stop connection' }));
@@ -288,33 +284,4 @@ export const ConnectedWithoutProjectJa: Story = {
   args: { status: 'ready', url: null, projectSelected: false, passcode: '4821', qr: null },
   globals: { locale: 'ja' },
   play: noProjectPlay('ja'),
-};
-
-/** Remote access is in public preview: the badge beside the heading, the notice under the description. */
-export const PublicPreview: Story = {
-  play: async () => {
-    const view = within(document.body);
-    await expect(
-      view.getAllByText('Public preview', { selector: '[data-slot="badge"]' }).length,
-    ).toBeGreaterThan(0);
-    const link = view.getByRole('link', { name: 'documentation' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.en}#remote-access`);
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-  },
-};
-
-/** The same notice in Japanese, in the dark theme, on a phone-width window. */
-export const PublicPreviewJapaneseDarkNarrow: Story = {
-  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
-  play: async () => {
-    const view = within(document.body);
-    await expect(
-      view.getAllByText('パブリックプレビュー', { selector: '[data-slot="badge"]' }).length,
-    ).toBeGreaterThan(0);
-    const link = view.getByRole('link', { name: 'ドキュメント' });
-    await expect(link).toHaveAttribute('href', `${FEATURE_STAGES_URL.ja}#remote-access`);
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-  },
 };

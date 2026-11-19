@@ -4,8 +4,6 @@ import { LockIcon, XIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
-import { PreviewBadge } from '@/shared/ui/preview-feature/PreviewBadge';
-import { PreviewNotice } from '@/shared/ui/preview-feature/PreviewNotice';
 import '../../../shared/styles/modal.css';
 import './connection.css';
 import { progressText } from './connectionProgress';
@@ -116,10 +114,7 @@ export function ConnectionSettingsView({
         }}
       >
         <div className="modal__header">
-          <div className="connection-dialog__heading">
-            <DialogTitle className="modal__title">{t('monitorConnection.title')}</DialogTitle>
-            <PreviewBadge feature="mobileMonitor" />
-          </div>
+          <DialogTitle className="modal__title">{t('monitorConnection.title')}</DialogTitle>
           <Button
             type="button"
             variant="outline"
@@ -145,9 +140,6 @@ export function ConnectionSettingsView({
               : t('monitorConnection.statusOff')}
         </p>
         {!stopped && <p className="connection-dialog__intro">{t('monitorConnection.intro')}</p>}
-        {/* The notice is for the decision to connect; once connected, the badge stays and the
-            QR code keeps the room the dialog's fixed size gives it. */}
-        {!connected && <PreviewNotice feature="mobileMonitor" />}
 
         {connected ? (
           <div className="connection-dialog__main">
