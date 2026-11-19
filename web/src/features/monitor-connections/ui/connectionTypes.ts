@@ -7,6 +7,8 @@ export interface ConnectionDraft {
   token: string;
   /** Keep the typed token in this PC's secure storage. Off unless the person turns it on. */
   save: boolean;
+  /** The ngrok domain that keeps the address the same; empty lets ngrok choose a new one each time. */
+  domain: string;
 }
 
 /** Where the token comes from and whether this PC can keep one. Never the token itself. */

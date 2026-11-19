@@ -77,7 +77,7 @@ A 4-digit passcode has only 10,000 possibilities, so it is weaker than signing i
 
 - Do not share the address or the QR code in public places.
 - Stop the connection when you are not using it.
-- The address is one that ngrok chooses at random. It is harder to find, though it is not a secret you can rely on.
+- Without a fixed domain, the address is one that ngrok chooses at random. It is harder to find, though it is not a secret you can rely on. With a fixed domain (see below) the address stays the same, so anyone who has seen it once can find it again; the passcode, which changes at every start, is what protects the board.
 
 Because ngrok adds nothing for Agent Board to check, the monitor checks two things itself: the request names exactly the public address, and the passcode. ngrok ends the HTTPS connection and can see the traffic, and anyone who manages your ngrok account can change how the address is served. The passcode does not protect against them.
 
@@ -141,6 +141,22 @@ When the connection was left on, it starts again the next time Agent Board start
 ## Check that ngrok keeps no traffic content
 
 ngrok's Traffic Inspector can keep request details if **Full Capture** is turned on for your account. Agent Board cannot turn it off for you. In the ngrok dashboard, open **Settings** → **Observability** and confirm that Full Capture is disabled. Do this before you use the monitor.
+
+## Keep the same address
+
+By default ngrok chooses a new address at every start, so a bookmark or a home-screen icon on the phone stops working after the connection restarts. To keep one address, give Agent Board a domain that your ngrok account owns, such as the free static dev domain shown on the ngrok dashboard under **Domains**. The **Remote connection** dialog has an **ngrok domain** field marked **Recommended**. It is optional, but without it the address changes every time the connection starts. Enter the domain, for example `name.ngrok-free.dev`, and choose **Save and connect**. The domain is saved on this PC, so you do not enter it again.
+
+The value is a bare host name, without a scheme, a path, or a port. When the connection starts, Agent Board asks ngrok for that domain, so the address is the same after you stop and start the connection and after the server restarts.
+
+As an alternative to the dialog, set the `AGBOARD_NGROK_DOMAIN` environment variable before the server starts:
+
+```sh
+export AGBOARD_NGROK_DOMAIN=<your domain, for example name.ngrok-free.dev>
+```
+
+If the variable is set, it is used instead of the saved domain. The dialog then shows it and the field cannot be edited. Opening the address still shows the passcode screen, and the passcode is new at every start. When you stop the connection, the address no longer reaches the board.
+
+If ngrok refuses the domain, for example because your account does not own it, the connection fails to start and the reason is written to the server log. If the field holds something that is not a plain host name, the dialog asks you to correct it. To go back to an address that ngrok chooses, clear the field.
 
 ## Start it from the command line
 

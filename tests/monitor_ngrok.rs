@@ -585,6 +585,7 @@ fn five_wrong_passcodes_in_a_row_stop_the_run_and_a_new_start_makes_a_new_passco
     assert_eq!(
         keys,
         [
+            "domainEnv",
             "failure",
             "keychainAvailable",
             "keychainTokenSaved",

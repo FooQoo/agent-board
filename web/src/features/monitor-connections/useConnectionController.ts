@@ -66,6 +66,8 @@ export function useConnectionController(open: boolean, projectId: string | null 
             return t('monitorConnectionPc.error.saveFailed');
           case 'token_required':
             return t('monitorConnectionPc.error.tokenRequired');
+          case 'invalid_domain':
+            return t('monitorConnectionPc.error.invalidDomain');
           case 'invalid_value':
             return t('monitorConnectionPc.error.invalid');
           case 'settings_unreadable':
@@ -103,6 +105,8 @@ export function useConnectionController(open: boolean, projectId: string | null 
         let next = await saveSettings({
           enabled: true,
           revision: snapshot.revision,
+          // The environment variable decides when it is set, so the field is not sent then.
+          ...(snapshot.domainEnv ? {} : { domain: draft.domain.trim() }),
         });
         setSnapshot(next);
         const running =
@@ -159,7 +163,11 @@ export function useConnectionController(open: boolean, projectId: string | null 
     }
   }, [messageOf]);
 
-  const draft = useMemo<ConnectionDraft>(() => ({ token: '', save: false }), []);
+  const savedDomain = snapshot?.settings.domain ?? '';
+  const draft = useMemo<ConnectionDraft>(
+    () => ({ token: '', save: false, domain: savedDomain }),
+    [savedDomain],
+  );
   const tokenInfo = useMemo<TokenInfo>(
     () => ({
       source: snapshot?.tokenSource ?? null,
@@ -196,6 +204,7 @@ export function useConnectionController(open: boolean, projectId: string | null 
     status: shown,
     draft,
     tokenInfo,
+    domainEnv: snapshot?.domainEnv ?? null,
     removeToken,
     url,
     projectSelected: isProjectIdValue(projectId),

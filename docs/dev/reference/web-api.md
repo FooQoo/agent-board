@@ -212,7 +212,7 @@ These routes exist only on the local listener (`127.0.0.1`); the ngrok entrance 
 | API | Contract |
 | --- | --- |
 | `GET /api/monitor-connections` | The current state, described below. Never holds a secret. |
-| `PUT /api/monitor-connections/settings/ngrok` | Saves `{enabled, revision}` and returns the state. `revision` must be the one last read. Unknown fields are 422 `invalid_value`; a stale revision is 409 `revision_conflict`; a failed save is 500 `save_failed` and changes nothing. Saving while the tunnel runs does not replace it; only a start does. |
+| `PUT /api/monitor-connections/settings/ngrok` | Saves `{enabled, revision, domain?}` and returns the state. `revision` must be the one last read. `domain` is optional: left out, the saved domain is kept; an empty string clears it; otherwise it must be a bare host name (no scheme, path, port, or wildcard) and is saved lower-cased, or the answer is 422 `invalid_domain`. Unknown fields are 422 `invalid_value`; a stale revision is 409 `revision_conflict`; a failed save is 500 `save_failed` and changes nothing. Saving while the tunnel runs does not replace it; only a start does. |
 | `POST /api/monitor-connections/transports/ngrok/start` | Starts the connection and answers 202 with the state (usually `starting`). The optional body is `{token, save}`. `token` is held in memory only; `save: true` also stores it in the PC's secure storage (the OS credential store) and needs a `token`. A disabled setting is saved as enabled first. A start while the tunnel runs replaces it and makes a new passcode. |
 | `POST /api/monitor-connections/transports/ngrok/stop` | Stops the connection, saves it as disabled, and answers 200 with the state. |
 | `DELETE /api/monitor-connections/token` | Removes the token saved in the secure storage and answers 200 with the state. Removing nothing is not an error. |
@@ -224,7 +224,8 @@ The state object has these fields:
 | `status` | `disabled`, `needs_config`, `starting`, `ready`, `reconnecting`, `failed`, or `stopping`. |
 | `url` | The public HTTPS address once `ready`; otherwise `null`. |
 | `revision` | The settings revision, for `PUT`. |
-| `settings` | `enabled`. |
+| `settings` | `enabled`, and `domain` (the saved ngrok domain, or `null`). |
+| `domainEnv` | The domain from `AGBOARD_NGROK_DOMAIN`, or `null`. When it is set, a start uses it instead of `settings.domain`. |
 | `tokenConfigured` | Whether a start would find a token. |
 | `tokenSource` | `env` (`NGROK_AUTHTOKEN`), `keychain` (the secure storage), `session` (typed for this run), or `null`. Never the value. |
 | `keychainAvailable` | Whether this PC has a secure storage (the OS credential store) that can hold a token. |

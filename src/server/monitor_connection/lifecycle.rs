@@ -40,6 +40,8 @@ pub struct MonitorConnections {
     /// The server's state, given once it exists; the monitor routes read it.
     pub(super) app: std::sync::OnceLock<std::sync::Weak<crate::server::AppState>>,
     pub(super) inner: Mutex<Inner>,
+    /// The ngrok domain the endpoint is requested on, from the environment.
+    pub(super) domain: Option<String>,
     /// Woken when a keychain read finishes, for those waiting on it.
     pub(super) probed: tokio::sync::Notify,
 }
@@ -70,6 +72,7 @@ impl MonitorConnections {
             connector,
             vault,
             app: std::sync::OnceLock::new(),
+            domain: env.domain.clone(),
             inner: Mutex::new(Inner {
                 config,
                 status,
@@ -142,6 +145,10 @@ impl MonitorConnections {
         let candidate = ConnectionConfig {
             enabled: update.enabled,
             revision: inner.config.revision + 1,
+            domain: match update.domain {
+                Some(domain) => domain,
+                None => inner.config.domain.clone(),
+            },
         };
         self.store
             .save(&candidate)
@@ -165,7 +172,8 @@ impl MonitorConnections {
         Ok(self.snapshot_now(&inner))
     }
 
-    /// Start the connection. `token`, if given, replaces the one held in memory.
+    /// Start the connection. The domain a run uses is `AGBOARD_NGROK_DOMAIN` when set, else the
+    /// saved one. `token`, if given, replaces the one held in memory.
     /// With `save`, that token is also put in the OS keychain; if the keychain
     /// cannot take it nothing is started and nothing is changed. A start is an
     /// explicit request to stay on, so a disabled setting is saved as enabled
@@ -211,6 +219,7 @@ impl MonitorConnections {
             let next = ConnectionConfig {
                 enabled: true,
                 revision: inner.config.revision + 1,
+                domain: inner.config.domain.clone(),
             };
             self.store.save(&next).map_err(|_| StartError::SaveFailed)?;
             inner.config = next;

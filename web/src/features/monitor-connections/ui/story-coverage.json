@@ -15,8 +15,20 @@
                 "token page link",
                 "token masked",
                 "connect action",
-                "design size"
+                "design size",
+                "domain field",
+                "recommended marker"
               ],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--with-domain",
+              "states": ["domain typed", "recommended domain"],
+              "interaction": true
+            },
+            {
+              "id": "monitor-connections-connectionsettingsview--domain-from-environment",
+              "states": ["domain from environment", "domain field read-only"],
               "interaction": true
             },
             {

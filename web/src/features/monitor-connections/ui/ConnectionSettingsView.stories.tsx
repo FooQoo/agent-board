@@ -12,7 +12,7 @@ import {
 
 /** The scheme is joined here so the source keeps no literal remote address. */
 const phoneUrl = `${'https'}://your-name.ngrok.app/monitor/`;
-const emptyDraft: ConnectionDraft = { token: '', save: false };
+const emptyDraft: ConnectionDraft = { token: '', save: false, domain: '' };
 
 /** A layout sample of a QR code: three finder squares and a few modules. It cannot be scanned. */
 const sampleQr: ConnectionQr = {
@@ -48,7 +48,7 @@ export const NeedsConfig: Story = {
     const view = within(document.body);
     const dialog = view.getByRole('dialog') as HTMLElement;
     // The design's size, and both steps with a divider as long as the 280px row.
-    await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 560]);
+    await expect([dialog.offsetWidth, dialog.offsetHeight]).toEqual([680, 700]);
     await expect(view.getByText('Not connected')).toBeInTheDocument();
     await expect(
       view.getByText('Open the board from your phone or tablet when you are away.'),
@@ -82,12 +82,45 @@ export const NeedsConfig: Story = {
       view.getByRole('checkbox', { name: 'Save the token on this PC' }),
     ).not.toBeChecked();
     await expect(view.getByTestId('token-note')).toHaveTextContent('used only while this app');
-    // No domain, no passcode note and no advanced settings.
-    await expect(view.queryByLabelText(/domain/i)).toBeNull();
+    // The domain is optional but recommended; there is no passcode note and no advanced settings.
+    await expect(view.getByLabelText('ngrok domain')).toHaveValue('');
+    await expect(view.getByText('Recommended')).toBeInTheDocument();
+    await expect(view.getByTestId('domain-note')).toHaveTextContent('address changes every time');
     await expect(view.queryByText(/Protected by a passcode/)).toBeNull();
     await userEvent.type(view.getByLabelText('ngrok auth token'), 'secret-token');
     await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
-    await expect(args.onConnect).toHaveBeenCalledWith({ token: 'secret-token', save: false });
+    await expect(args.onConnect).toHaveBeenCalledWith({
+      token: 'secret-token',
+      save: false,
+      domain: '',
+    });
+  },
+};
+
+/** The recommended domain is typed with the token and goes out with it, trimmed by the caller. */
+export const WithDomain: Story = {
+  play: async ({ args }) => {
+    const view = within(document.body);
+    await userEvent.type(view.getByLabelText('ngrok domain'), 'example.ngrok-free.dev');
+    await userEvent.type(view.getByLabelText('ngrok auth token'), 'secret-token');
+    await userEvent.click(view.getByRole('button', { name: 'Save and connect' }));
+    await expect(args.onConnect).toHaveBeenCalledWith({
+      token: 'secret-token',
+      save: false,
+      domain: 'example.ngrok-free.dev',
+    });
+  },
+};
+
+/** The environment variable names the domain: the field only shows it and cannot be edited. */
+export const DomainFromEnvironment: Story = {
+  args: { domainEnv: 'example.ngrok-free.dev' },
+  play: async () => {
+    const view = within(document.body);
+    const field = view.getByLabelText('ngrok domain');
+    await expect(field).toHaveValue('example.ngrok-free.dev');
+    await expect(field).toBeDisabled();
+    await expect(view.getByTestId('domain-note')).toHaveTextContent('AGBOARD_NGROK_DOMAIN');
   },
 };
 
@@ -117,7 +150,7 @@ export const Stopped: Story = {
     await expect(reconnect.offsetHeight).toBe(38);
     await expect(reconnect.offsetWidth).toBe(change.offsetWidth);
     await userEvent.click(reconnect);
-    await expect(args.onConnect).toHaveBeenCalledWith({ token: '', save: false });
+    await expect(args.onConnect).toHaveBeenCalledWith({ token: '', save: false, domain: '' });
   },
 };
 

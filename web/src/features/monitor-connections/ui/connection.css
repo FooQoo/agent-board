@@ -16,6 +16,11 @@
   box-shadow: 0 12px 32px rgb(15 23 42 / 20%);
 }
 
+/* The setup also holds the domain field, so it is taller than the connected and stopped views. */
+.modal.connection-dialog.connection-dialog--setup {
+  height: 700px;
+}
+
 .connection-dialog .modal__header {
   min-height: 36px;
 }
@@ -150,6 +155,17 @@
 
 .connection-dialog__field label {
   line-height: 16px;
+}
+
+.connection-dialog__domain {
+  margin-top: 16px;
+  gap: 6px;
+}
+
+.connection-dialog__domain-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .connection-dialog__save label {

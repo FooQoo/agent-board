@@ -153,6 +153,7 @@ fn get_returns_only_non_secret_state_and_only_to_the_local_page() {
     assert_eq!(
         keys,
         [
+            "domainEnv",
             "failure",
             "keychainAvailable",
             "keychainTokenSaved",
@@ -224,7 +225,10 @@ fn settings_use_revisions_validate_input_and_are_saved_privately() {
     let r = s.put(true, 0);
     assert_eq!(r.status, 200, "{}", r.body);
     assert_eq!(r.json()["revision"], 1);
-    assert_eq!(r.json()["settings"], json!({"enabled": true}));
+    assert_eq!(
+        r.json()["settings"],
+        json!({"enabled": true, "domain": null})
+    );
     assert_eq!(r.json()["status"], "needs_config");
     // a stale revision conflicts and changes nothing
     let r = s.put(false, 0);
@@ -247,7 +251,7 @@ fn settings_use_revisions_validate_input_and_are_saved_privately() {
         assert_eq!(r.status, 422, "{body}");
     }
     let settings = s.get()["settings"].clone();
-    assert_eq!(settings.as_object().unwrap().len(), 1);
+    assert_eq!(settings.as_object().unwrap().len(), 2);
     assert_eq!(s.get()["revision"], 2);
     let saved = ConfigStore::new(home.path()).load().unwrap();
     assert_eq!(saved.revision, 2);
@@ -515,6 +519,7 @@ fn a_saved_enabled_setting_is_restored_only_with_a_token() {
         .save(&ConnectionConfig {
             enabled: true,
             revision: 4,
+            domain: None,
         })
         .unwrap();
     {
@@ -610,6 +615,7 @@ fn an_explicit_start_announces_after_it_is_up_and_overrides_a_saved_off_setting(
         .save(&ConnectionConfig {
             enabled: false,
             revision: 2,
+            domain: None,
         })
         .unwrap();
     let s = Server::start(
@@ -812,6 +818,7 @@ fn a_saved_token_restores_an_enabled_connection_at_startup() {
         .save(&ConnectionConfig {
             enabled: true,
             revision: 1,
+            domain: None,
         })
         .unwrap();
     let s = Server::start(
