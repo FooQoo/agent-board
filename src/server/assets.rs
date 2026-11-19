@@ -17,6 +17,20 @@ pub const LOGO_WHITE_PNG: &[u8] = include_bytes!(concat!(
     "/web/dist/logo-white.png"
 ));
 
+/// The opaque Home Screen icons (white background). iOS fills a transparent icon with black.
+pub const HOME_ICON_180_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/web/dist/home-icon-180.png"
+));
+pub const HOME_ICON_192_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/web/dist/home-icon-192.png"
+));
+pub const HOME_ICON_512_PNG: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/web/dist/home-icon-512.png"
+));
+
 /// What the web build leaves in `index.html` for the server to fill in.
 pub const TOKEN_PLACEHOLDER: &str = "{{AGBOARD_TOKEN}}";
 
