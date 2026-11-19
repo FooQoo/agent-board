@@ -314,7 +314,7 @@ fn a_question_is_urgent_and_one_event_is_one_notification() {
     let message = phone.open(&sent[0]);
     assert_eq!(
         message["url"],
-        format!("{PUBLIC}/?project={project}&task=1")
+        format!("{PUBLIC}/?project={project}&task=1&question=Q-1")
     );
     assert!(message["tag"].as_str().unwrap().starts_with("question:"));
 }

@@ -116,10 +116,13 @@ test('a question link opens that question, and a question that is gone opens the
   );
   const id = /Q-\d+/.exec(`${asked.stdout}${asked.stderr}`)?.[0];
   expect(id).toBeTruthy();
-  await page.goto(`/?project=${alpha}&task=1&question=${id}`);
+  // The board lists a new question once its index has caught up; a link opened before that shows the
+  // card, so the first look is repeated until the question is there.
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Which title should the notes use?');
+  await expect(async () => {
+    await page.goto(`/?project=${alpha}&task=1&question=${id}`);
+    await expect(dialog).toContainText('Which title should the notes use?', { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
 
   await page.goto(`/?project=${alpha}&task=1&question=Q-999`);
   await expect(page.getByRole('dialog').getByRole('tab', { name: 'Results' })).toBeVisible();
