@@ -51,6 +51,7 @@ Inside `server`, routers depend on shared modules rather than on each other:
 | --- | --- |
 | `api/` | The board router (`router`, and `remote_router` for the ngrok entrance, without the local guards and local-only routes), its Host and write guards (`guards`), and its handlers grouped by route: pages, projects, tasks, task edits, a person's acceptance check (`task_acceptance`), multipart, archive, task images, epics, epic images, project docs (`docs/`: `tree`, `file_get`, `assets`, `open`), and the remote connection (`monitor_connections`). |
 | `monitor_connection/` | The ngrok remote connection: the supervisor and its states (`lifecycle`, `restore`, `start`, `run`), the saved settings (`config`), the token and its secure storage (`token`, `keychain`), the public-address contract and the ngrok endpoint, opened without a Traffic Policy (`contracts/`), the ngrok session (`backend`), and the entry checks that sit in front of the board (`router`, `entry`, with its `session` routes for the passcode unlock). |
+| `notification_settings/` | Which notifications the phone receives: `notification-settings.json` in the internal area (`NotificationSettingsStore`), the kinds, defaults, and intervals, and the `GET` and `PUT` handling of `/api/notification-settings`. |
 | `preferences/` | The saved language and color theme: `preferences.json` in the internal area (`PreferencesStore`), the `GET` and `PUT` handling of `/api/preferences`, and the change notice. |
 | `monitor_auth/` | The entrance's application sessions and CSRF tokens (`session`), the 4-digit passcode and its limit on wrong guesses (`passcode`), their header checks (`guard`), and constants such as the cookie name and 12-hour limit (`contracts`). |
 | `guard` | Host, Origin, Sec-Fetch-Site and token checks for local writes. |
@@ -69,6 +70,7 @@ The main files and directories outside `src/` are:
 - `src/domain/markdown_blocks.rs`: splits a body into top-level Markdown blocks for the Detail stream. It does no I/O.
 - `web/src/shared/data/`: the data layer. `api/` holds the contract types and the Detail parser, `core/` the framework-free cache, scheduler, and event connection, and `react/` the hooks the screens use. See [Reading and updating data](../concepts/server-and-ui.md#reading-and-updating-data).
 - `web/src/shared/markdown/`: the Markdown renderer. `MarkdownBlocks` draws the blocks of a body and virtualizes a large one (`VirtualMarkdown.tsx`).
+- `web/src/features/notification-settings/`: the "Phone notifications" section of the settings dialog, with its reads, saves, and the same kinds and defaults as the server.
 - `web/src/shared/preferences/`: the saved language and color theme on the web side: the reads and saves, the browser's first-paint copy, and the `preferences` event. See [Server and web UI](../concepts/server-and-ui.md).
 - `web/.storybook/`: Storybook configuration, synthetic fixtures, decorators, network guards, and support tests. UI Stories and coverage ledgers live beside the source they describe; see [Storybook setup and coverage](../getting-started/setup.md#storybook).
 - `tests/`: Rust integration and CLI tests.

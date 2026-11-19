@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { ConnectionEntryRow } from '../features/monitor-connections/ui/ConnectionEntryRow';
 import { ConnectionSettings } from '../features/monitor-connections/ui/ConnectionSettings';
+import { NotificationSettings } from '../features/notification-settings/ui/NotificationSettings';
 import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
@@ -41,23 +42,26 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
         restoreFocusRef={restoreFocusRef}
         preferencesEndpoint={boardPreferences}
         extra={
-          <div className="settings__entries">
-            <TutorialEntryRow
-              onStart={() => {
-                onOpenChange(false);
-                requestTutorial();
-              }}
-            />
-            {withConnection ? (
-              <ConnectionEntryRow
-                onOpen={() => {
+          <>
+            {boardPreferences ? <NotificationSettings /> : null}
+            <div className="settings__entries">
+              <TutorialEntryRow
+                onStart={() => {
                   onOpenChange(false);
-                  setConnectionOpen(true);
+                  requestTutorial();
                 }}
               />
-            ) : null}
-            <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
-          </div>
+              {withConnection ? (
+                <ConnectionEntryRow
+                  onOpen={() => {
+                    onOpenChange(false);
+                    setConnectionOpen(true);
+                  }}
+                />
+              ) : null}
+              <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
+            </div>
+          </>
         }
       />
       {withConnection ? (
