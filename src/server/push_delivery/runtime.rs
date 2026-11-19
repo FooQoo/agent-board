@@ -1,6 +1,6 @@
 //! The task that follows the change feed and hands each change to the dispatcher.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::sync::broadcast::error::TryRecvError;
 
 use super::deliver::{Context, Dispatcher, NowFn};
-use super::events::{ProjectFacts, diff, project_facts};
+use super::events::{Event, ProjectFacts, diff, project_facts};
 use super::ledger::Ledger;
 use super::message::Lang;
 use super::periodic::Schedule;
@@ -74,7 +74,46 @@ pub(crate) fn start(state: &Arc<AppState>, data_dir: &Path, transport: Arc<dyn P
     let known = baseline(state);
     let changes = state.changed.subscribe();
     let weak = Arc::downgrade(state);
+    tokio::spawn(retry_loop(weak.clone(), dispatcher.clone()));
     tokio::spawn(follow(weak, changes, known, dispatcher));
+}
+
+/// The projects a batch of changes touched, each with whether the entrance was up when its
+/// latest change was seen. A project seen while the entrance was down stays down for the batch.
+type Seen = BTreeMap<String, bool>;
+
+fn note(seen: &mut Seen, project: String, up: bool) {
+    let slot = seen.entry(project).or_insert(true);
+    *slot = *slot && up;
+}
+
+/// Split events by whether the entrance was up when their project changed.
+fn split_by_entrance(events: Vec<Event>, seen: &Seen) -> (Vec<Event>, Vec<Event>) {
+    events
+        .into_iter()
+        .partition(|e| seen.get(&e.project).copied().unwrap_or(false))
+}
+
+/// Looks at the failed sends and the periodic report on its own task, so a slow push service
+/// holds up neither the change feed nor the next pass: a pass ends before the next one starts.
+async fn retry_loop(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
+    let mut schedule = Schedule::new((dispatcher.now)(), dispatcher.ledger.periodic_at());
+    let mut retry = tokio::time::interval(RETRY_EVERY);
+    retry.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    retry.tick().await;
+    loop {
+        retry.tick().await;
+        let (ctx, facts) = {
+            let Some(state) = weak.upgrade() else { return };
+            (context(&state, true), baseline(&state))
+        };
+        if let Some(ctx) = ctx {
+            dispatcher.retry_due(&ctx).await;
+            dispatcher
+                .deliver_periodic(&ctx, &mut schedule, &facts)
+                .await;
+        }
+    }
 }
 
 async fn follow(
@@ -83,65 +122,91 @@ async fn follow(
     mut known: Known,
     dispatcher: Arc<Dispatcher>,
 ) {
-    let mut schedule = Schedule::new((dispatcher.now)(), dispatcher.ledger.periodic_at());
-    let mut retry = tokio::time::interval(RETRY_EVERY);
-    retry.tick().await;
+    let up_now = |weak: &Weak<AppState>| weak.upgrade().is_some_and(|s| entrance_up(&s));
     loop {
-        let mut projects = BTreeSet::new();
-        tokio::select! {
-            got = changes.recv() => match got {
-                Ok(change) => {
-                    projects.insert(change.set.project_id.to_string());
-                }
-                // Events were missed: look at every project again.
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                    projects.extend(known.keys().cloned());
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
-            },
-            _ = retry.tick() => {
-                let Some(state) = weak.upgrade() else { return };
-                if let Some(ctx) = context(&state, true) {
-                    dispatcher.retry_due(&ctx).await;
-                    dispatcher.deliver_periodic(&ctx, &mut schedule, &known).await;
-                }
-                continue;
+        let mut seen = Seen::new();
+        match changes.recv().await {
+            // Taken when the change is seen, before the settle wait and before any delivery:
+            // a change made while the entrance was down is never sent.
+            Ok(change) => note(&mut seen, change.set.project_id.to_string(), up_now(&weak)),
+            // Events were missed: look at every project again.
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                let up = up_now(&weak);
+                known.keys().for_each(|p| note(&mut seen, p.clone(), up));
             }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
         }
-        // Taken when the change is seen, before the settle wait and before any earlier delivery
-        // can hold this loop: a change made while the entrance was down is never sent.
-        let up_at_change = weak.upgrade().is_some_and(|s| entrance_up(&s));
         tokio::time::sleep(SETTLE).await;
         loop {
             match changes.try_recv() {
-                Ok(change) => {
-                    projects.insert(change.set.project_id.to_string());
+                Ok(change) => note(&mut seen, change.set.project_id.to_string(), up_now(&weak)),
+                Err(TryRecvError::Lagged(_)) => {
+                    let up = up_now(&weak);
+                    known.keys().for_each(|p| note(&mut seen, p.clone(), up));
                 }
-                Err(TryRecvError::Lagged(_)) => projects.extend(known.keys().cloned()),
                 Err(_) => break,
             }
         }
         let Some(state) = weak.upgrade() else { return };
         let mut events = Vec::new();
-        for project in projects {
-            match current(&state, &project) {
+        for project in seen.keys() {
+            match current(&state, project) {
                 Some(now) => {
                     if let Some(before) = known.insert(project.clone(), now.clone()) {
-                        events.extend(diff(&project, &before, &now));
+                        events.extend(diff(project, &before, &now));
                     }
                 }
                 None => {
-                    known.remove(&project);
+                    known.remove(project);
                 }
             }
         }
-        if events.is_empty() {
-            continue;
+        let (up, down) = split_by_entrance(events, &seen);
+        for (events, up_at_change) in [(up, true), (down, false)] {
+            if events.is_empty() {
+                continue;
+            }
+            if let Some(ctx) = context(&state, up_at_change) {
+                // Sent on its own task, so a slow push service never delays seeing the next change.
+                let dispatcher = dispatcher.clone();
+                tokio::spawn(async move { dispatcher.deliver(&ctx, events).await });
+            }
         }
-        if let Some(ctx) = context(&state, up_at_change) {
-            // Sent on its own task, so a slow push service never delays seeing the next change.
-            let dispatcher = dispatcher.clone();
-            tokio::spawn(async move { dispatcher.deliver(&ctx, events).await });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::server::push_delivery::events::Kind;
+
+    fn event(project: &str) -> Event {
+        Event {
+            project: project.into(),
+            task: 1,
+            title: String::new(),
+            kind: Kind::History,
+            key: project.into(),
+            version: None,
+            detail: String::new(),
         }
+    }
+
+    #[test]
+    fn each_project_keeps_the_entrance_state_of_its_own_change() {
+        let mut seen = Seen::new();
+        note(&mut seen, "a".into(), false);
+        note(&mut seen, "b".into(), true);
+        // A later change in the same project does not make an earlier offline one sendable.
+        note(&mut seen, "a".into(), true);
+        let (up, down) = split_by_entrance(vec![event("a"), event("b"), event("c")], &seen);
+        assert_eq!(
+            up.iter().map(|e| e.project.as_str()).collect::<Vec<_>>(),
+            ["b"]
+        );
+        assert_eq!(
+            down.iter().map(|e| e.project.as_str()).collect::<Vec<_>>(),
+            ["a", "c"]
+        );
     }
 }

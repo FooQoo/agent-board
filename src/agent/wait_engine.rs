@@ -30,6 +30,32 @@ pub(crate) trait WaitReader {
     fn session(&self) -> Option<SessionIdentity> {
         None
     }
+
+    /// Whether `snapshot` would end the wait but may be a read of a file that is being saved.
+    /// The engine then reads again after [`SETTLE`] and uses only that later read.
+    fn needs_settle(&self, _snapshot: &Self::Snapshot) -> bool {
+        false
+    }
+}
+
+/// How long a read that would end the wait is held back, so that an editor's in-place save
+/// (truncate, then write) cannot wake the wait with a half-written file. Longer than the
+/// server's 200 ms quiet period.
+const SETTLE: Duration = Duration::from_millis(250);
+
+/// Read once. A snapshot the reader marks as unsettled is read again after [`SETTLE`], never
+/// past the deadline, and the later read is the answer.
+async fn read_settled<R: WaitReader>(
+    reader: &R,
+    deadline: Option<tokio::time::Instant>,
+) -> Result<R::Snapshot, AgboardError> {
+    let snapshot = reader.read()?;
+    if !reader.needs_settle(&snapshot) {
+        return Ok(snapshot);
+    }
+    let pause = remaining(deadline).map_or(SETTLE, |left| left.min(SETTLE));
+    tokio::time::sleep(pause).await;
+    reader.read()
 }
 
 /// Result of applying a wait's purpose-specific predicate to a snapshot.
@@ -87,7 +113,7 @@ where
     R: WaitReader,
     F: FnMut(&R::Snapshot) -> Result<Evaluation<T>, AgboardError>,
 {
-    let first = reader.read()?;
+    let first = read_settled(reader, deadline).await?;
     if let Evaluation::Ready(value) = evaluate(&first)? {
         return Ok(WaitResult::Satisfied(value));
     }
@@ -148,7 +174,7 @@ where
             ready = true;
         }
         if ready && (event.event == "ready" || event.event == "changed") {
-            let snapshot = reader.read()?;
+            let snapshot = read_settled(reader, deadline).await?;
             if let Evaluation::Ready(value) = evaluate(&snapshot)? {
                 return Ok(WaitResult::Satisfied(value));
             }
@@ -209,5 +235,43 @@ mod tests {
 
         assert!(matches!(result, WaitResult::Satisfied(1)));
         assert_eq!(reader.0.load(Ordering::SeqCst), 2);
+    }
+
+    /// Scripted reads: the first is a torn read of a file being saved (version 1), every later
+    /// read is the unchanged content (version 0), which is the version the caller holds.
+    struct TornReader(AtomicUsize, ProjectId);
+
+    impl WaitReader for TornReader {
+        type Snapshot = usize;
+
+        fn read(&self) -> Result<Self::Snapshot, AgboardError> {
+            Ok(usize::from(self.0.fetch_add(1, Ordering::SeqCst) == 0))
+        }
+
+        fn project(&self) -> &ProjectId {
+            &self.1
+        }
+
+        fn needs_settle(&self, snapshot: &Self::Snapshot) -> bool {
+            *snapshot != 0
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_torn_read_that_restores_the_same_content_does_not_end_the_wait() {
+        let reader = TornReader(AtomicUsize::new(0), project());
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(250);
+        let result = wait_until(Path::new("/missing"), &reader, Some(deadline), |snapshot| {
+            if *snapshot != 0 {
+                Ok(Evaluation::Ready(*snapshot))
+            } else {
+                Ok(Evaluation::Continue)
+            }
+        })
+        .await
+        .unwrap();
+
+        // The settle read saw the restored content, so the wait went on to its deadline.
+        assert!(matches!(result, WaitResult::DeadlineReached(0)));
     }
 }
