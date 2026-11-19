@@ -163,7 +163,7 @@ fn the_wait_skill_keeps_listening_after_an_idle_timeout() {
     assert!(skill.starts_with("---\nname: wait\n"));
     for needed in [
         "allowed-tools: Bash(agboard *)",
-        "agboard skills listening",
+        "agboard skills resident",
         "idle_timeout",
         "3600",
         "board_unavailable",
