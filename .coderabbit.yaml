@@ -13,7 +13,7 @@ reviews:
     enabled: true
     drafts: false
   # A Major or Critical finding requests changes; once its threads are resolved, CodeRabbit
-  # approves. main has no branch protection, so this flags findings rather than blocking merges.
+  # approves.
   auto_approvals:
     enabled: true
     min_blocking_severity: major
