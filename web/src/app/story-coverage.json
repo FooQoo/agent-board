@@ -141,6 +141,21 @@
           ]
         }
       ]
+    },
+    {
+      "file": "app/residentSlot.tsx",
+      "exports": [
+        {
+          "name": "ResidentDialogHost",
+          "stories": [],
+          "exclusion": "Only picks whether ResidentHost exists for the project and the entrance; it draws nothing of its own."
+        },
+        {
+          "name": "ResidentSettingsRow",
+          "stories": [],
+          "exclusion": "Only picks whether the row exists and wires it to the dialog request; the PhoneSettings WithResidentEntry story draws the row."
+        }
+      ]
     }
   ]
 }

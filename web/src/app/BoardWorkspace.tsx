@@ -4,6 +4,7 @@ import { messagesApi } from '../features/tasks/messages/api';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
+import { residentFooterSlot } from './residentSlot';
 import { Board } from '../pages/board/ui/Board';
 import { ArchiveList } from '../pages/archive/ui/ArchiveList';
 import { EpicList } from '../pages/epics/ui/EpicList';
@@ -47,9 +48,12 @@ const renderEpicLabel = (epic: EpicRef) => <EpicBadge epic={epic} className="det
 export function BoardWorkspace({
   model,
   actions,
+  residentSessions = false,
 }: {
   model: AppControllerModel;
   actions: AppWorkspaceActions;
+  /** Show the resident-session footer indicator and dialog; they read the board's own API, which a Story has none of. */
+  residentSessions?: boolean;
 }) {
   const {
     session,
@@ -218,6 +222,7 @@ export function BoardWorkspace({
         ) : null}
       </div>
       <StatusBar
+        slot={residentSessions ? residentFooterSlot(known ? activeId : null) : undefined}
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
         taskCount={
           archiveVisible

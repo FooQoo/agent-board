@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { SAMPLE_PROJECT, sampleMessagesApi } from '../../features/tasks/messages/messageSamples';
 import type { Message } from '../../shared/data/api/contracts';
+import { health } from '../../features/resident-sessions/fixtures';
+import { ResidentIndicator } from '../../features/resident-sessions/ui/ResidentFooter';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { withMonitorFixtureData } from './fixture-provider';
 import { MonitorProject } from './MonitorProject';
@@ -18,7 +20,13 @@ const meta = {
 
 type Story = StoryObj<typeof meta>;
 
-function MonitorPageStory({ epicReadFails = false }: { epicReadFails?: boolean }) {
+function MonitorPageStory({
+  epicReadFails = false,
+  statusSlot,
+}: {
+  epicReadFails?: boolean;
+  statusSlot?: ReactNode;
+}) {
   const fixture = useMemo(() => {
     const value = createMonitorFixture();
     const first = value.tasks.get(1);
@@ -26,7 +34,9 @@ function MonitorPageStory({ epicReadFails = false }: { epicReadFails?: boolean }
     return value;
   }, []);
   const props = useMemo(() => createMonitorFixtureProps(fixture), [fixture]);
-  return withMonitorFixtureData(fixture, <MonitorView {...props} />, { failEpic: epicReadFails });
+  return withMonitorFixtureData(fixture, <MonitorView {...props} statusSlot={statusSlot} />, {
+    failEpic: epicReadFails,
+  });
 }
 
 /** The screen as the app builds it: the data layer reads the Summary, the list is drawn from it. */
@@ -101,6 +111,39 @@ export const DrawerTabs: Story = {
     await expect(await dialog.findByText('Created task in Todo.')).toBeInTheDocument();
     await userEvent.click(dialog.getByRole('tab', { name: 'Epic' }));
     await expect(await dialog.findByText('Epic body text')).toBeInTheDocument();
+  },
+};
+
+/**
+ * The status line at the bottom shows the resident session after the connection state: the tool, a
+ * short state word and a dot, display-only. At phone widths it takes the room of the fetch time.
+ */
+export const ResidentStatusLine: Story = {
+  args: {
+    statusSlot: (
+      <ResidentIndicator health={health({ state: 'running', tool: 'claude-code' })} withState />
+    ),
+  },
+  globals: { viewport: { value: 'mobile1' } },
+  play: async ({ canvasElement }) => {
+    const line = canvasElement.querySelector('.monitor-freshness');
+    await expect(line).not.toBeNull();
+    const indicator = within(line as HTMLElement).getByRole('img', {
+      name: 'Claude Code: Working on a task',
+    });
+    await expect(indicator).toHaveTextContent('Claude Code');
+    await expect(indicator).toHaveTextContent('working');
+    await expect(
+      within(line as HTMLElement).queryByRole('button', { name: /Claude Code/ }),
+    ).toBeNull();
+  },
+};
+
+/** Nothing launched and auto-start off: the status line shows only the connection state. */
+export const NoResidentStatus: Story = {
+  args: { statusSlot: <ResidentIndicator health={health({})} withState /> },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector('.resident-footer')).toBeNull();
   },
 };
 

@@ -1,5 +1,5 @@
 import type { HeaderSettings } from '../../shared/ui/app-header/Header';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProjectId } from '../../shared/api/contracts';
 import { httpStatusOf } from '../../shared/api/httpStatus';
 import { DataProvider, usePresentationHold, useSummary } from '../../shared/data/react';
@@ -55,6 +55,8 @@ export interface MonitorScreenProps extends MonitorEnvironment {
   header?: MonitorHeaderProps;
   /** The first-run guide's link to this screen, when the app runs the guide. */
   guideLink?: PhoneGuideLink;
+  /** A display-only indicator for the status line at the bottom. */
+  statusSlot?: ReactNode;
 }
 
 export interface MonitorProjectProps extends MonitorEnvironment {
@@ -109,6 +111,7 @@ export function MonitorScreen({
   stream,
   header,
   guideLink,
+  statusSlot,
   writes,
   settings,
 }: MonitorScreenProps) {
@@ -176,6 +179,7 @@ export function MonitorScreen({
     settings,
     header,
     guideLink,
+    statusSlot,
     freshness,
     onRefresh: () => void refresh(),
     refreshing: refreshing || summary.state === 'refreshing',

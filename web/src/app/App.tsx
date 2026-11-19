@@ -9,6 +9,7 @@ import { NARROW_VIEWPORT_QUERY, useNarrowViewport } from '../shared/lib/viewport
 import { preloadable } from '../shared/lib/lazy/preloadable';
 import { createPhoneGuideLink } from '../features/onboarding/model/phoneGuideLink';
 import { guideLayer } from './onboarding/lazyGuide';
+import { ResidentDialogHost } from './residentSlot';
 import { isProjectId } from './model/projectSession';
 
 /** The phone layout loads when the window is first narrow, so the PC board's first load stays as it was. */
@@ -65,7 +66,7 @@ function AppScreen({ initial }: AppProps) {
         </>
       ) : (
         <Suspense fallback={null}>
-          <boardWorkspace.Component model={model} actions={actions.workspace} />
+          <boardWorkspace.Component model={model} actions={actions.workspace} residentSessions />
         </Suspense>
       )}
       {/* One guide above the width switch: a change of width keeps the screen it is on. */}
@@ -84,6 +85,8 @@ function AppScreen({ initial }: AppProps) {
           phone={phone}
         />
       </Suspense>
+      {/* Above the width switch too: a dialog left open becomes a sheet when the window narrows. */}
+      <ResidentDialogHost projectId={known && isProjectId(activeId) ? activeId : null} />
       <AppDialogs
         model={model}
         onSubmit={actions.submitDialog}

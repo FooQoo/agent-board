@@ -26,6 +26,15 @@
                 "choosing it asks the guide to start"
               ],
               "interaction": true
+            },
+            {
+              "id": "app-mobile-phone-settings--with-resident-entry",
+              "states": [
+                "resident session row below the tutorial",
+                "one-line summary",
+                "choosing it closes the settings and asks for the dialog"
+              ],
+              "interaction": true
             }
           ]
         }

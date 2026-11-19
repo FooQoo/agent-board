@@ -9,6 +9,7 @@ import { editEn } from './locales/en/edit';
 import { messagesEn } from './locales/en/messages';
 import { monitorEn } from './locales/en/monitor';
 import { questionsEn } from './locales/en/questions';
+import { residentEn } from './locales/en/resident';
 import { commonJa } from './locales/ja/common';
 import { dataLayerConnectionJa } from './locales/ja/data-layer-connection';
 import { dataLayerDetailJa } from './locales/ja/data-layer-detail';
@@ -20,6 +21,7 @@ import { editJa } from './locales/ja/edit';
 import { messagesJa } from './locales/ja/messages';
 import { monitorJa } from './locales/ja/monitor';
 import { questionsJa } from './locales/ja/questions';
+import { residentJa } from './locales/ja/resident';
 
 // One namespace (`translation`), assembled from one file per area: shared, card details, editing, and monitor. The Docs dialog's text is registered by its own code (see docs-strings.ts).
 export const resources = {
@@ -32,6 +34,7 @@ export const resources = {
       ...messagesEn,
       ...monitorEn,
       ...questionsEn,
+      ...residentEn,
       ...dataLayerConnectionEn,
       ...dataLayerDetailEn,
       ...dataLayerMonitorEn,
@@ -48,6 +51,7 @@ export const resources = {
       ...messagesJa,
       ...monitorJa,
       ...questionsJa,
+      ...residentJa,
       ...dataLayerConnectionJa,
       ...dataLayerDetailJa,
       ...dataLayerMonitorJa,

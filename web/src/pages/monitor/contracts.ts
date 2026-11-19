@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ColumnName, Task, ProjectId } from '../../shared/api/contracts';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
@@ -83,6 +84,8 @@ export interface MonitorViewProps {
   onRefresh(): void;
   /** True while that request runs; the button waits. */
   refreshing?: boolean;
+  /** A display-only indicator in the status line after the connection state (the resident session). */
+  statusSlot?: ReactNode;
   /** The project on the screen, its open messages and the routes for the band; no band without them. */
   projectId?: ProjectId;
   messages?: readonly Message[];

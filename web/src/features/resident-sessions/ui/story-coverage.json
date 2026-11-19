@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "files": [
+    {
+      "file": "features/resident-sessions/ui/ResidentView.tsx",
+      "exports": [
+        {
+          "name": "ResidentView",
+          "stories": [
+            {
+              "id": "resident-residentview--working",
+              "states": [
+                "working on a task",
+                "tool heading",
+                "stop button",
+                "auto-start checked",
+                "guide link"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--waiting",
+              "states": ["waiting", "restart count"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--restarting",
+              "states": ["restarting", "retry countdown", "reason"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--next-start-hint",
+              "states": ["next start hint", "tool differs from running"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stopped",
+              "states": ["stopped", "nothing attached", "start button"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--failed",
+              "states": ["failed", "reason", "restart count", "restart button"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--cli-missing",
+              "states": ["cli not found", "server reason", "start disabled"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--not-logged-in",
+              "states": ["cli not logged in", "login command"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--models-unreadable",
+              "states": ["model list unreadable", "reason shown", "only default offered"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--starting",
+              "states": ["request in flight", "controls disabled", "starting label"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--launch-error",
+              "states": ["launch failed", "server reason shown"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--external-open",
+              "states": ["external sessions opened"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--model-menu",
+              "states": ["model menu", "default and api models"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--japanese",
+              "states": ["japanese", "working on a task"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--dark",
+              "states": ["dark theme", "failed"],
+              "interaction": false
+            },
+            {
+              "id": "resident-residentview--sheet",
+              "states": ["bottom sheet", "phone width", "next start hint"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentPanel.tsx",
+      "exports": [
+        {
+          "name": "ResidentPanel",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog by the ResidentView stories, which cover every state it shows."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/SessionCard.tsx",
+      "exports": [
+        {
+          "name": "SessionCard",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog by the ResidentView stories, which cover every state it shows."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/SessionFacts.tsx",
+      "exports": [
+        {
+          "name": "SessionFacts",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog by the ResidentView stories, which cover every state it shows."
+        },
+        {
+          "name": "CliProblemNote",
+          "stories": [],
+          "exclusion": "Drawn inside the card; the CliMissing and NotLoggedIn stories show it."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ModelPicker.tsx",
+      "exports": [
+        {
+          "name": "ModelPicker",
+          "stories": [],
+          "exclusion": "Drawn inside the card; the ModelMenu story opens its menu."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/StateBadge.tsx",
+      "exports": [
+        {
+          "name": "StateBadge",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog by the ResidentView stories, which cover every state it shows."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentNotice.tsx",
+      "exports": [
+        {
+          "name": "ResidentNotice",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog; the Working story checks its guide link."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ExternalSessions.tsx",
+      "exports": [
+        {
+          "name": "ExternalSessions",
+          "stories": [],
+          "exclusion": "Drawn inside the dialog; the ExternalOpen story opens it."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentDialog.tsx",
+      "exports": [
+        {
+          "name": "default",
+          "stories": [],
+          "exclusion": "Wires ResidentView to the local API, which Stories may not call; ResidentView shows what it draws."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentHost.tsx",
+      "exports": [
+        {
+          "name": "ResidentHost",
+          "stories": [],
+          "exclusion": "Only mounts ResidentDialog when asked; it draws nothing of its own."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentEntryRow.tsx",
+      "exports": [
+        {
+          "name": "ResidentEntryRow",
+          "stories": [
+            {
+              "id": "resident-residententryrow--working",
+              "states": ["working summary"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residententryrow--not-running",
+              "states": ["not running summary"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residententryrow--failed-with-external",
+              "states": ["failed summary", "external count"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residententryrow--loading",
+              "states": ["before the first read"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "ConnectedResidentEntryRow",
+          "stories": [],
+          "exclusion": "Reads the local API every five seconds, which Stories may not call; ResidentEntryRow shows the row."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentFooter.tsx",
+      "exports": [
+        {
+          "name": "ResidentIndicator",
+          "stories": [
+            {
+              "id": "resident-residentfooter--working",
+              "states": ["working", "button opens the dialog"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--waiting",
+              "states": ["waiting"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--restarting",
+              "states": ["restarting"],
+              "interaction": false
+            },
+            {
+              "id": "resident-residentfooter--failed",
+              "states": ["failed", "red"],
+              "interaction": false
+            },
+            {
+              "id": "resident-residentfooter--stopped",
+              "states": ["stopped with auto-start", "ring"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--hidden",
+              "states": ["nothing launched", "auto-start off", "hidden"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--remote",
+              "states": ["display only", "phone width", "no button"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "ConnectedResidentIndicator",
+          "stories": [],
+          "exclusion": "Reads the local API every five seconds, which Stories may not call; ResidentIndicator shows the indicator."
+        }
+      ]
+    }
+  ]
+}
