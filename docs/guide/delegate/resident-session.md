@@ -4,7 +4,7 @@ title: Resident session
 
 # Resident session
 
-A resident session is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, one at a time and only while it is idle, so you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
+A resident session is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, only while it is idle: the open requests together in one message, the answers together in one message, and tasks one at a time. So you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
 
 ::: info Public preview
 This feature is in public preview. Its behavior and specifications may change. See [Feature stages](../feature-stages#resident-sessions) for its current limitations.

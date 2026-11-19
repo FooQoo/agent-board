@@ -69,10 +69,10 @@ A resident session is a Claude Code or Codex session that Agent Board starts and
 
 ### Questions and requests {#questions-and-requests}
 
-An agent session you open yourself can keep itself on the board. `agboard wait --until task`, or the `wait` skill (`/agent-board:wait` in Claude Code), makes the session receive your requests, the answers to its questions, and tasks one after another.
+An agent session you open yourself can keep itself on the board. One `agboard wait --until task` returns one of your requests, the answers to its questions, or a task, or ends with `idle_timeout`. The `wait` skill (`/agent-board:wait` in Claude Code) runs it again and again, so the session receives them one after another.
 
 - **Supported range:** Claude Code and Codex, following the procedure in the agent skill. A person starts it in the agent's session.
-- **Limits:** a task is not reserved when it is returned, so two sessions can still pick the same task. Only requests and answers are protected: the first `message accept` wins, and another session that tries gets `request_accepted`. The session ends when you interrupt it or when an error stops it.
+- **Limits:** a task is not reserved when it is returned, so two sessions can still pick the same task. Only requests and answers are protected: the first `message accept` wins, and another session that tries gets `request_accepted` for a request and `answer_accepted` for an answer. The session ends when you interrupt it or when an error stops it.
 - **Guide:** [Listen for the next task](./delegate/agents#listen-for-the-next-task).
 
 ## Related

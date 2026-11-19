@@ -131,7 +131,13 @@ fn a_failing_auto_start_leaves_the_plan_of_a_launch_that_succeeded_meanwhile() {
 #[test]
 fn a_restart_prepared_for_a_stopped_plan_is_not_run_under_a_newer_one() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
-    let fx = fixture_timed(fast());
+    // A backoff that outlasts the test keeps each restart waiting, so the supervisor cannot
+    // relaunch the current plan before the checks below.
+    let fx = fixture_timed(Timing {
+        backoff_base: Duration::from_secs(60),
+        backoff_max: Duration::from_secs(60),
+        ..fast()
+    });
     let restarting = |fx: &Fixture, pid: u32| -> u64 {
         let generation = fx.launcher.plans()[&Tool::ClaudeCode].generation;
         super::health::kill(pid);
