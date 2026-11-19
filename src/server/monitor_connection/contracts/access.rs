@@ -55,6 +55,16 @@ impl PublicOrigin {
         ))
     }
 
+    /// The address that opens one project on the phone: `https://host[:port]/?project=<id>`.
+    /// `None` when the project is not 32 lowercase hex digits.
+    pub fn project_link(&self, project_id: &str) -> Option<String> {
+        let valid = project_id.len() == 32
+            && project_id
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+        valid.then(|| format!("{}/?project={project_id}", self.origin))
+    }
+
     /// The address that opens one task on the phone: `https://host[:port]/?project=<id>&task=<n>`.
     /// The task's detail shows its open questions and its history. `None` under the same limits as
     /// [`PublicOrigin::result_link`].

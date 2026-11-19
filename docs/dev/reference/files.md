@@ -288,6 +288,7 @@ What was sent to which device is kept in `<data-root>/.internal/push-ledger.json
 ```json
 {
   "formatVersion": 1,
+  "periodicAt": "2026-11-20T08:00:00Z",
   "entries": [
     {
       "deviceId": "dev_0123456789abcdef",
@@ -303,6 +304,7 @@ What was sent to which device is kept in `<data-root>/.internal/push-ledger.json
 
 - `key` names one occurrence on the board: `result:<version>:<project>:<task>`, `question:<id>:…`, `state:<started|pending|done>:<time>:…`, or `history:<n>:…`. It is also the notification's `tag`.
 - `state` is `sent`, `pending` (the push service did not take it; `retryAt` says when to try again, and `payload` holds the title, body, link path and tag to send again), `skipped` (the remote connection was down), or `dropped` (refused, or given up after five tries).
+- `periodicAt` is when the last periodic status notification was made (`null` before the first), so a restart does not start the interval again. Periodic entries have the key `periodic:<unix seconds>`.
 - Finished entries are kept for 14 days and at most 2000. A file that cannot be read is an empty ledger, and a save that fails is ignored; the board never waits for it. Removing a device removes its entries.
 
 ## Phone notification settings

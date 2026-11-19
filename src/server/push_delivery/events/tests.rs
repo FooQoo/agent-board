@@ -14,6 +14,7 @@ fn card(id: i64) -> Facts {
         question: None,
         results: Vec::new(),
         history: Vec::new(),
+        records: Vec::new(),
         status_changed_at: 1_000,
         run_changed_at: 1_000,
         updated_at: 1_000,

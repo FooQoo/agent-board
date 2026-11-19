@@ -134,7 +134,7 @@ The choice is saved on this PC, so every browser on this PC shows the same langu
 
 - **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
 - With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
-- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours.
+- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours. See [What you are notified about](./remote-access.md#notified-about) for what it says.
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 

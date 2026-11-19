@@ -9,14 +9,14 @@ use crate::server::push_delivery::events::Kind;
 use crate::server::push_delivery::transport::SendFuture;
 use crate::server::push_delivery::webpush::tests::Browser;
 
-const PROJECT: &str = "0123456789abcdef0123456789abcdef";
-const START: i64 = 1_800_000_000;
+pub(super) const PROJECT: &str = "0123456789abcdef0123456789abcdef";
+pub(super) const START: i64 = 1_800_000_000;
 
 /// Records what is posted and answers with the next scripted outcome (delivered when none is left).
 #[derive(Default)]
-struct Fake {
-    sent: Mutex<Vec<Request>>,
-    script: Mutex<Vec<Outcome>>,
+pub(super) struct Fake {
+    pub(super) sent: Mutex<Vec<Request>>,
+    pub(super) script: Mutex<Vec<Outcome>>,
 }
 
 impl PushTransport for Fake {
@@ -34,16 +34,16 @@ impl PushTransport for Fake {
     }
 }
 
-struct Rig {
-    fake: Arc<Fake>,
-    dispatcher: Dispatcher,
-    clock: Arc<Mutex<i64>>,
-    store: Arc<PushStore>,
-    browser: Option<Browser>,
-    subscription: Subscription,
+pub(super) struct Rig {
+    pub(super) fake: Arc<Fake>,
+    pub(super) dispatcher: Dispatcher,
+    pub(super) clock: Arc<Mutex<i64>>,
+    pub(super) store: Arc<PushStore>,
+    pub(super) browser: Option<Browser>,
+    pub(super) subscription: Subscription,
 }
 
-fn rig() -> Rig {
+pub(super) fn rig() -> Rig {
     let browser = Browser::new();
     let rng = SystemRandom::new();
     let mut _unused = [0u8; 1];
@@ -71,7 +71,7 @@ fn rig() -> Rig {
 }
 
 impl Rig {
-    fn ctx(&self, up: bool) -> Context {
+    pub(super) fn ctx(&self, up: bool) -> Context {
         Context {
             store: self.store.clone(),
             subscriptions: vec![self.subscription.clone()],
@@ -81,16 +81,16 @@ impl Rig {
         }
     }
 
-    fn sent(&self) -> Vec<Request> {
+    pub(super) fn sent(&self) -> Vec<Request> {
         self.fake.sent.lock().unwrap().clone()
     }
 
-    fn advance(&self, seconds: i64) {
+    pub(super) fn advance(&self, seconds: i64) {
         *self.clock.lock().unwrap() += seconds;
     }
 }
 
-fn event(kind: Kind, key: &str, version: Option<u32>) -> Event {
+pub(super) fn event(kind: Kind, key: &str, version: Option<u32>) -> Event {
     Event {
         project: PROJECT.to_string(),
         task: 12,
@@ -102,7 +102,7 @@ fn event(kind: Kind, key: &str, version: Option<u32>) -> Event {
     }
 }
 
-fn result_event(version: u32) -> Event {
+pub(super) fn result_event(version: u32) -> Event {
     event(
         Kind::Result(ResultKind::Progress),
         &format!("result:{version}"),

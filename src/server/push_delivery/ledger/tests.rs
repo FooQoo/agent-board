@@ -97,3 +97,14 @@ fn forgetting_a_device_removes_its_entries() {
     assert!(!ledger.has("dev_a", "k"));
     assert!(ledger.has("dev_b", "k"));
 }
+
+#[test]
+fn the_time_of_the_last_periodic_report_survives_a_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    let ledger = Ledger::open(dir.path());
+    assert_eq!(ledger.periodic_at(), None);
+    ledger.set_periodic_at(at(60));
+    ledger.record(entry("dev_a", "k", State::Sent, 0));
+    assert_eq!(Ledger::open(dir.path()).periodic_at(), Some(at(60)));
+    assert_eq!(Ledger::open(dir.path()).entries().len(), 1);
+}
