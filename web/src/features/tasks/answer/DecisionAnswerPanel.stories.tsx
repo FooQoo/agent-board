@@ -80,7 +80,7 @@ export const NoteOnly: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('textbox', { name: 'Note' })).toBeVisible();
     await expect(canvas.queryByRole('radio')).toBeNull();
-    await expect(canvas.queryByText('Choose an option. A note is optional.')).toBeNull();
+    await expect(canvas.queryByText('Choose an option or write a note.')).toBeNull();
   },
 };
 

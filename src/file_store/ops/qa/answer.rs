@@ -80,10 +80,13 @@ fn answered(
             choice_id: id.clone(),
         });
     }
-    if !question.choices.is_empty() && choice.is_none() {
+    if !question.choices.is_empty() && choice.is_none() && text.is_none() {
         return Err(AgboardError::InvalidValue {
             field: "choice".into(),
-            reason: format!("Choose one of the options of {}.", question.id),
+            reason: format!(
+                "Choose one of the options of {} or write a note.",
+                question.id
+            ),
         });
     }
     if question.choices.is_empty() && text.is_none() {

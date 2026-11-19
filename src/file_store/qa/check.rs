@@ -67,12 +67,13 @@ fn reply_defect(question: &Question) -> Option<Defect> {
         }
     } else {
         match &reply.choice {
-            None => {
+            None if reply.text.is_none() => {
                 return Some(defect(
                     "reply.choice",
-                    "A question with choices needs a choice.",
+                    "A question with choices needs a choice or a text.",
                 ));
             }
+            None => {}
             Some(id) if !question.choices.iter().any(|c| &c.id == id) => {
                 return Some(defect(
                     "reply.choice",

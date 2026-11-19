@@ -222,13 +222,18 @@ fn every_message_is_one_file_and_one_sequence_numbers_them() {
 }
 
 #[test]
-fn a_reply_needs_a_choice_exactly_when_the_question_has_choices() {
+fn a_reply_needs_a_choice_or_a_note_when_the_question_has_choices() {
     let f = fixture();
     let with = f.ask("Keep?", &[("keep", "Keep"), ("drop", "Drop")], &[]);
     let without = f.ask("Why?", &[], &[]);
+    let note_only = f.ask("Keep it?", &[("keep", "Keep"), ("drop", "Drop")], &[]);
 
     assert!(matches!(
-        f.answer(&with, None, Some("just words")),
+        f.answer(&with, None, None),
+        Err(AgboardError::InvalidValue { .. })
+    ));
+    assert!(matches!(
+        f.answer(&with, None, Some("   ")),
         Err(AgboardError::InvalidValue { .. })
     ));
     assert!(matches!(
@@ -262,6 +267,17 @@ fn a_reply_needs_a_choice_exactly_when_the_question_has_choices() {
     );
     f.answer(&without, None, Some("Because.")).unwrap();
     assert!(!f.file(&without).contains("choice:"));
+
+    // A note alone answers a question with choices; the reply has no choice.
+    let views = f
+        .answer(&note_only, None, Some("Neither; ask legal."))
+        .unwrap();
+    assert_eq!(views[0].status, QuestionStatus::Answered);
+    let reply = views[0].reply.as_ref().unwrap();
+    assert_eq!(reply.choice_id, None);
+    assert_eq!(reply.choice_label, None);
+    assert_eq!(reply.text.as_deref(), Some("Neither; ask legal."));
+    assert!(!f.file(&note_only).contains("choice:\n") && !f.file(&note_only).contains("  choice:"));
 }
 
 #[test]

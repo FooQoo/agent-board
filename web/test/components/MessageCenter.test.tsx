@@ -92,8 +92,9 @@ describe('messages model', () => {
     expect(firstQuestionOfTask(MESSAGES, 99)).toBeNull();
   });
 
-  it('requires a choice for a question with choices, and a note for one without', () => {
-    expect(canSendAnswer(CHOICES, null, 'a note only')).toBe(false);
+  it('takes a choice or a note for a question with choices, and a note for one without', () => {
+    expect(canSendAnswer(CHOICES, null, 'a note only')).toBe(true);
+    expect(canSendAnswer(CHOICES, null, '  ')).toBe(false);
     expect(canSendAnswer(CHOICES, 'keep', '')).toBe(true);
     expect(canSendAnswer([], null, '   ')).toBe(false);
     expect(canSendAnswer([], null, 'ok')).toBe(true);
@@ -132,8 +133,8 @@ describe('MessageCenter', () => {
     await user.click(await screen.findByRole('button', { name: /Title of Q-12/ }));
     const dialog = screen.getByRole('dialog');
     const send = await within(dialog).findByRole('button', { name: 'Send answer' });
-    await user.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'why');
     expect((send as HTMLButtonElement).disabled).toBe(true);
+    await user.type(await within(dialog).findByRole('textbox', { name: 'Note' }), 'why');
     await user.click(within(dialog).getByRole('radio', { name: 'Keep' }));
     await user.click(send);
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
@@ -141,6 +142,30 @@ describe('MessageCenter', () => {
       { questionId: 'Q-12', choiceId: 'keep', text: 'why' },
     ]);
     expect(await screen.findByRole('tab', { name: /AI's questions/ })).toBeTruthy();
+  });
+
+  it('sends a note alone for a question with choices, and not an empty answer', async () => {
+    const user = userEvent.setup();
+    const routes = api();
+    const onChanged = vi.fn();
+    render(<Harness routes={routes} onChanged={onChanged} />);
+    await user.click(screen.getByRole('button', { name: 'Questions & requests' }));
+    await user.click(await screen.findByRole('button', { name: /Title of Q-12/ }));
+    const dialog = screen.getByRole('dialog');
+    const send = (await within(dialog).findByRole('button', {
+      name: 'Send answer',
+    })) as HTMLButtonElement;
+    const note = await within(dialog).findByRole('textbox', { name: 'Note' });
+    await user.type(note, '   ');
+    expect(send.disabled).toBe(true);
+    await user.clear(note);
+    await user.type(note, 'None of these');
+    expect(send.disabled).toBe(false);
+    await user.click(send);
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(routes.answer).toHaveBeenCalledWith('p', [
+      { questionId: 'Q-12', text: 'None of these' },
+    ]);
   });
 
   it('says a question was changed elsewhere when the server answers 409', async () => {
