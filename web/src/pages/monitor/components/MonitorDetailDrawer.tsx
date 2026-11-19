@@ -14,6 +14,7 @@ export function MonitorDetailDrawer({
   onTabChange,
   resolvers,
   problems = [],
+  focusResultVersion = null,
 }: {
   item: MonitorTask | null;
   open: boolean;
@@ -22,6 +23,7 @@ export function MonitorDetailDrawer({
   onTabChange(tab: MonitorDetailTab): void;
   resolvers: MonitorReadResolvers;
   problems?: readonly (Problem & { projectId: string })[];
+  focusResultVersion?: number | null;
 }) {
   const { t } = useTranslation();
   if (!item) {
@@ -54,6 +56,7 @@ export function MonitorDetailDrawer({
         onTabChange={onTabChange}
         resolvers={resolvers}
         problems={problems}
+        focusResultVersion={focusResultVersion}
       />
     </Drawer>
   );

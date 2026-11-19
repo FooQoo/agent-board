@@ -10,6 +10,7 @@ mod guards;
 mod messages;
 mod monitor_connections;
 mod multipart;
+mod notification_settings;
 mod onboarding;
 mod pages;
 mod preferences;
@@ -42,7 +43,6 @@ use guards::{host_guard, no_referrer, write_guard};
 use messages::*;
 use onboarding::*;
 use pages::*;
-use preferences::*;
 use projects::*;
 use sessions::{launch_session, list_sessions, session_models, set_autostart, stop_session};
 use summary::summary;
@@ -250,10 +250,7 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
             get(get_docs_asset),
         )
         .route("/api/health", get(health))
-        .route(
-            "/api/preferences",
-            get(get_preferences).put(put_preferences),
-        )
+        .merge(preferences::routes())
 }
 
 /// A task ID from the URL; one that cannot be a task is `task_not_found`.

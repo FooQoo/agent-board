@@ -21,6 +21,7 @@ Select a task to open its details on the right. The tabs show:
 | --- | --- |
 | **Description** | The task's body. |
 | **Conditions** | The task's own acceptance conditions and its progress. |
+| **Results** | What an agent delivered for you to look at, newest first. See [Read a result](#read-a-result). |
 | **History** | What happened, newest first, each entry with its time and reason. |
 | **Epic** | The details of the epic the task belongs to, if any. |
 
@@ -37,6 +38,17 @@ You can check and uncheck a condition in the Conditions tab. The change shows at
 On a touch screen, swipe the panel sideways to move to the next or previous tab. The next tab follows your finger, as the tabs of a task do on a phone. A mouse does not drag the panel, so you can still select text with it. A swipe that starts on a button, a link, code, an image, or a table that scrolls sideways is left to that element.
 
 Each tab loads its text when you open it. The number on the **History** tab appears after the history has loaded.
+
+### Read a result {#read-a-result}
+
+When an agent delivers a result with `agboard result add` (see [Deliver a result](../reference/cli.md#deliver-a-result)), it appears in the **Results** tab. Results are listed newest first. Each one shows:
+
+- a badge, **In progress** or **Final**, with its version and the time it was delivered;
+- the summary;
+- the image, if there is one. Select it to see it larger;
+- the link or storage location of the main artifact, if there is one. It is shown as text only. Agent Board never opens it, because the artifact may exist only on the PC.
+
+A result is also readable on its own from an address that names the project, the task, and the version: `https://<host>/?project=<ProjectId>&task=<id>&result=<version>`. Opening it shows that task's details with the Results tab selected, and scrolls to the result and highlights it. This works on the phone through [remote access](./remote-access.md#open-a-result-from-a-link) and on the PC board, and it works even if another project was on the screen. If the task has no such version, the tab says so and lists the results it does have.
 
 ## Move a task
 
@@ -117,6 +129,12 @@ A decision is the exception. When an agent asks for a decision, or a decision is
 Open **Settings** to choose the language (English or Japanese) and one of 24 themes (12 colors, each in light and dark).
 
 The choice is saved on this PC, so every browser on this PC shows the same language and theme. Changes apply at once to the other open pages, including other browser windows and remote access, without a reload. The first start uses English and light blue; the board does not follow the browser or OS settings. Task text is not translated. CLI help, errors, and JSON values stay in English.
+
+**Phone notifications** chooses which notifications the board may send to your phone, and the same section is in the phone layout. The choices are saved on this PC, like the language and theme, and apply once notifications are delivered to your phone; changing them sends nothing by itself.
+
+- **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
+- With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
+- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours.
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 

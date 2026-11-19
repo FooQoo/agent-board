@@ -9,6 +9,7 @@ import {
   syncPreferences,
   type PreferencesEndpoint,
 } from '../../shared/preferences';
+import type { ResultLinkTarget } from '../../features/tasks/results/resultLink';
 import type { MessagesApi } from '../../features/tasks/messages/model/messages';
 import type { PhoneGuideLink } from '../../features/onboarding/model/phoneGuideLink';
 import type {
@@ -57,6 +58,10 @@ export interface MonitorScreenProps extends MonitorEnvironment {
   guideLink?: PhoneGuideLink;
   /** A display-only indicator for the status line at the bottom. */
   statusSlot?: ReactNode;
+  /** The result a link points at: the drawer opens on it once its task is listed. */
+  resultLink?: ResultLinkTarget | null;
+  /** The drawer of the link's task was closed: the app takes the link out of the address. */
+  onResultLinkClose?: () => void;
 }
 
 export interface MonitorProjectProps extends MonitorEnvironment {
@@ -114,6 +119,8 @@ export function MonitorScreen({
   statusSlot,
   writes,
   settings,
+  resultLink,
+  onResultLinkClose,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -180,6 +187,8 @@ export function MonitorScreen({
     header,
     guideLink,
     statusSlot,
+    resultLink,
+    onResultLinkClose,
     freshness,
     onRefresh: () => void refresh(),
     refreshing: refreshing || summary.state === 'refreshing',

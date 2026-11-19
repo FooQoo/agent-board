@@ -58,8 +58,9 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
-  .internal/remote-devices.json
+  .internal/notification-settings.json
   .internal/preferences.json
+  .internal/remote-devices.json
   .internal/resident-autostart.json
 ```
 
@@ -256,6 +257,33 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 - `tokenHash`が端末トークンの唯一の痕跡です。トークン自体はスマホのCookieにだけあり、ほかにはありません。`origin`は端末を登録した公開アドレスで、別のアドレスで示されたCookieは一致しません。
 - `label`は、端末を見分けるためだけの、ブラウザの`User-Agent`から作る短い名前です。`lastSeenAt`は、sessionなしで端末が戻ったときに更新します。
 - 読めないファイル、または`formatVersion`が違うファイルは、空の一覧として扱います。登録し直すまで端末は受け付けず、次の変更で新しいファイルを書きます。保持するのは最大32台です。
+
+## スマホの通知設定
+
+スマホに届ける通知の種類は、`<データ領域>/.internal/notification-settings.json`に保存されます。表示設定のファイルと同じくアプリのもので、`PUT /api/notification-settings`だけが書きます。`shared/`にはなく、所有者だけが読み書きできる権限（OSにある場合は`0600`）で原子的に置き換えます。
+
+```json
+{
+  "formatVersion": 1,
+  "revision": 4,
+  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
+  "stateChanges": { "started": true, "pending": true, "done": true },
+  "periodic": { "enabled": false, "intervalMinutes": 60 }
+}
+```
+
+| 項目 | 規則 |
+| --- | --- |
+| `formatVersion` | 常に`1`。ほかの値、未知の項目、足りない項目、壊れたファイルは既定値として読み、次の保存でファイルを置き換えます。 |
+| `revision` | 何も保存していないときは`0`で、保存のたびに1ずつ増えます。 |
+| `kinds` | 節目の通知を切り替える4つのスイッチ。`results`（成果の記録。途中のものも最終のものも）、`questions`（判断を待つ質問）、`stateChanges`（カードの状態変化）、`history`（履歴の追加）。既定は`results`と`questions`がオン、`stateChanges`と`history`がオフです。4つすべてをオフにすることもできます。 |
+| `stateChanges` | `kinds.stateChanges`がオンのとき、通知する状態変化。`started`（着手）、`pending`（回答待ち）、`done`（完了）。3つとも既定はオンなので、この種類をオンにすると、利用者が絞り込むまですべての変化を通知します。 |
+| `periodic.enabled` | 定期的な状況通知のオンとオフ。`kinds`とは独立しています。既定はオフです。 |
+| `periodic.intervalMinutes` | `30`・`60`・`120`・`240`のいずれか。既定は`60`です。 |
+
+保存は、送ったグループ（`kinds`・`stateChanges`・`periodic`）だけを変えます。送るグループは、すべての項目を持つ必要があります。後から保存した内容が優先され、競合の確認はありません。ファイルに秘密は含まれません。
+
+通知を送る側は、`src/server/notification_settings/`の`NotificationSettingsStore::load()`で保存済みの値を読みます。ファイルを使えないときは既定値を返します。`NotificationSettings::wants_state_change`は、ある状態変化が必要かどうかを答えます。間隔と既定値の定義は、このモジュールの`PERIODIC_INTERVALS`と`Default`だけです。保存してもイベントストリームには知らせません。設定ダイアログは、開くたびに値を読み直します。
 
 ## 表示設定
 

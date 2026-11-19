@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../.storybook/support/modal-docs';
+import { DEFAULT_NOTIFICATION_SETTINGS } from '../features/notification-settings/model';
 import { BoardSettings } from './BoardSettings';
 
 const meta = {
@@ -42,6 +43,14 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
     document.head.append(token);
     const original = window.fetch;
     window.fetch = (input, init) => {
+      if (String(input).startsWith('/api/notification-settings')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(DEFAULT_NOTIFICATION_SETTINGS), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }
       if (!String(input).startsWith('/api/monitor-connections')) return original(input, init);
       return Promise.resolve(
         new Response(
@@ -67,7 +76,8 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
   },
   play: async () => {
     const view = within(document.body);
-    await expect(view.getAllByRole('radio')).toHaveLength(26);
+    // 24 themes, 2 languages, and the 4 periodic intervals of the notification section.
+    await waitFor(() => expect(view.getAllByRole('radio')).toHaveLength(30));
     await expect(view.getAllByRole('dialog', { hidden: true })).toHaveLength(1);
     await userEvent.click(await view.findByRole('button', { name: 'Connection settings' }));
     // The settings dialog is gone and the connection dialog is the only one on the screen.
