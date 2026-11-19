@@ -8,12 +8,16 @@
 //! ([`ledger`]); failures are tried again later with a growing wait. The board itself never
 //! waits for any of this.
 //!
+//! Every configured interval, one more message says what the board's records show about the
+//! work in progress ([`periodic`]).
+//!
 //! Notifications carry links, so nothing is sent while the remote entrance is down.
 
 mod deliver;
 mod events;
 mod ledger;
 mod message;
+mod periodic;
 mod runtime;
 mod transport;
 mod webpush;

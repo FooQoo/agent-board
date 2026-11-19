@@ -12,6 +12,7 @@ use super::deliver::{Context, Dispatcher, NowFn};
 use super::events::{ProjectFacts, diff, project_facts};
 use super::ledger::Ledger;
 use super::message::Lang;
+use super::periodic::Schedule;
 use super::transport::PushTransport;
 use crate::domain::ProjectId;
 use crate::server::AppState;
@@ -75,6 +76,7 @@ async fn follow(
     mut known: Known,
     dispatcher: Dispatcher,
 ) {
+    let mut schedule = Schedule::new((dispatcher.now)(), dispatcher.ledger.periodic_at());
     let mut retry = tokio::time::interval(RETRY_EVERY);
     retry.tick().await;
     loop {
@@ -94,6 +96,7 @@ async fn follow(
                 let Some(state) = weak.upgrade() else { return };
                 if let Some(ctx) = context(&state) {
                     dispatcher.retry_due(&ctx).await;
+                    dispatcher.deliver_periodic(&ctx, &mut schedule, &known).await;
                 }
                 continue;
             }

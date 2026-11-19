@@ -7,15 +7,17 @@
 //! (links need it, so nothing is sent while the entrance is down), the saved settings, and the
 //! language.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use chrono::{DateTime, Duration, Utc};
 
-use super::events::{Event, choose};
+use super::events::{Event, ProjectFacts, choose};
 use super::ledger::{Entry, Ledger, State};
 use super::message::{Lang, Payload, payload_of};
+use super::periodic::{Schedule, report};
 use super::transport::{Outcome, PushTransport, Request, TTL_SECONDS, topic_of};
 use super::webpush;
 use crate::server::monitor_connection::contracts::PublicOrigin;
@@ -89,16 +91,55 @@ impl Dispatcher {
             };
             let sends = fresh
                 .into_iter()
-                .map(|sub| self.send(ctx, sub, origin, &keys, &payload, 0));
+                .map(|sub| self.send(ctx, sub, &winner.key, &keys, &payload, 0));
             futures_util::future::join_all(sends).await;
         }
     }
 
-    /// Try the failed sends whose time has come.
-    pub(super) async fn retry_due(&self, ctx: &Context) {
+    /// Send the periodic status notification when one is due: the setting is on and the interval
+    /// has passed since the last report (or since the start). The schedule moves on whether or not
+    /// there is anything to report or the entrance is up, so a report is never made late in a burst.
+    pub(super) async fn deliver_periodic(
+        &self,
+        ctx: &Context,
+        schedule: &mut Schedule,
+        known: &HashMap<String, ProjectFacts>,
+    ) {
+        let minutes = ctx.settings.periodic.interval_minutes;
+        let now = (self.now)();
+        if !ctx.settings.periodic.enabled || !schedule.due(now, minutes) {
+            return;
+        }
+        let since = schedule.since(minutes);
+        schedule.mark(now);
+        self.ledger.set_periodic_at(now);
+        let key = format!("periodic:{}", now.timestamp());
         let Some(origin) = &ctx.origin else {
+            for sub in &ctx.subscriptions {
+                self.ledger
+                    .record(self.entry(&sub.device_id, &key, State::Skipped, 0));
+            }
             return;
         };
+        let Some(mut payload) = report(known, since, ctx.lang, origin) else {
+            return;
+        };
+        // One tag for every periodic message replaces the last one on the device; the key
+        // makes this report its own ledger entry.
+        payload.tag = super::periodic::TAG.to_string();
+        let keys = [key.clone()];
+        let sends = ctx
+            .subscriptions
+            .iter()
+            .map(|sub| self.send(ctx, sub, &key, &keys, &payload, 0));
+        futures_util::future::join_all(sends).await;
+    }
+
+    /// Try the failed sends whose time has come.
+    pub(super) async fn retry_due(&self, ctx: &Context) {
+        if ctx.origin.is_none() {
+            return;
+        }
         for entry in self.ledger.due((self.now)()) {
             let sub = ctx
                 .subscriptions
@@ -106,8 +147,9 @@ impl Dispatcher {
                 .find(|s| s.device_id == entry.device_id);
             match (sub, entry.payload) {
                 (Some(sub), Some(payload)) => {
-                    let keys = [entry.key];
-                    self.send(ctx, sub, origin, &keys, &payload, entry.attempts)
+                    let keys = [entry.key.clone()];
+                    let tries = entry.attempts;
+                    self.send(ctx, sub, &entry.key, &keys, &payload, tries)
                         .await;
                 }
                 _ => {
@@ -123,11 +165,14 @@ impl Dispatcher {
         &self,
         ctx: &Context,
         sub: &Subscription,
-        origin: &PublicOrigin,
+        key: &str,
         keys: &[String],
         payload: &Payload,
         attempts: u32,
     ) {
+        let Some(origin) = &ctx.origin else {
+            return;
+        };
         let outcome = self.post(ctx, sub, origin, payload).await;
         let tries = attempts + 1;
         match outcome {
@@ -144,14 +189,14 @@ impl Dispatcher {
             }
             Outcome::Retry if tries < MAX_ATTEMPTS => {
                 let wait = BACKOFF_SECONDS[(tries as usize - 1).min(BACKOFF_SECONDS.len() - 1)];
-                let mut pending = self.entry(&sub.device_id, &payload.tag, State::Pending, tries);
+                let mut pending = self.entry(&sub.device_id, key, State::Pending, tries);
                 pending.retry_at = Some(pending.at + Duration::seconds(wait));
                 pending.payload = Some(payload.clone());
                 self.ledger.record(pending);
             }
             Outcome::Retry | Outcome::Rejected => {
                 self.ledger
-                    .record(self.entry(&sub.device_id, &payload.tag, State::Dropped, tries));
+                    .record(self.entry(&sub.device_id, key, State::Dropped, tries));
             }
         }
     }
@@ -188,5 +233,7 @@ impl Dispatcher {
     }
 }
 
+#[cfg(test)]
+mod periodic_tests;
 #[cfg(test)]
 mod tests;

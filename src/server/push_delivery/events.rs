@@ -29,10 +29,19 @@ pub(super) struct Facts {
     pub results: Vec<ResultFact>,
     /// The history reasons, oldest first.
     pub history: Vec<String>,
+    /// Every record on the card, a history entry or a result, oldest first.
+    pub records: Vec<Record>,
     /// When the card last changed column, run state, and anything, in Unix seconds.
     pub status_changed_at: i64,
     pub run_changed_at: i64,
     pub updated_at: i64,
+}
+
+/// One record on a card: when it was written (Unix seconds) and what it says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Record {
+    pub at: i64,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,10 +74,25 @@ pub(super) fn facts_of(task: &TaskView) -> Option<Facts> {
             })
             .collect(),
         history: task.history.iter().map(|h| h.reason.clone()).collect(),
+        records: records_of(task),
         status_changed_at: task.task_status_changed_at.timestamp(),
         run_changed_at: task.agent_status_changed_at.timestamp(),
         updated_at: task.updated_at.timestamp(),
     })
+}
+
+fn records_of(task: &TaskView) -> Vec<Record> {
+    let history = task.history.iter().map(|h| (h.at, &h.reason));
+    let results = task.results.iter().map(|r| (r.at, &r.summary));
+    let mut records: Vec<Record> = history
+        .chain(results)
+        .map(|(at, text)| Record {
+            at: at.timestamp(),
+            text: text.clone(),
+        })
+        .collect();
+    records.sort_by_key(|r| r.at);
+    records
 }
 
 /// The kinds of event, most important first: a decision that is waiting beats a result, a
