@@ -62,17 +62,16 @@ fn overlapping_streams_of_one_session_stay_one_session_until_both_close() {
 }
 
 #[test]
-fn board_sessions_are_limited_to_one_per_tool_and_external_ones_are_not() {
+fn board_sessions_are_limited_to_one_in_total_and_external_ones_are_not() {
     let registry = SessionRegistry::new(Duration::from_secs(30));
     let _e1 = registry.register(attrs("e1", Tool::Codex, Origin::External));
     let _e2 = registry.register(attrs("e2", Tool::Codex, Origin::External));
-    assert!(registry.check_board_launch(Tool::Codex).is_ok());
+    assert!(registry.check_board_launch().is_ok());
     let _board = registry.register(attrs("b", Tool::Codex, Origin::Board));
     assert_eq!(
-        registry.check_board_launch(Tool::Codex),
+        registry.check_board_launch(),
         Err(LaunchRefused { tool: Tool::Codex })
     );
-    assert!(registry.check_board_launch(Tool::ClaudeCode).is_ok());
 }
 
 #[test]

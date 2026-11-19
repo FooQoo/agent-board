@@ -6,6 +6,7 @@ import { SettingsDialog } from '../features/settings/ui/SettingsDialog';
 import { csrfHeaders, readToken } from '../shared/api/http';
 import { TutorialEntryRow } from './onboarding/TutorialEntryRow';
 import { requestTutorial } from './onboarding/tutorialRequest';
+import { ResidentSettingsRow } from './residentSlot';
 import type { PreferencesEndpoint } from '../shared/preferences';
 import type { SettingsSlotState } from '../shared/ui/app-header/Header';
 
@@ -18,7 +19,7 @@ const boardPreferences: PreferencesEndpoint | undefined =
 const phoneConnection = import.meta.env.MODE !== 'demo';
 
 /**
- * The settings dialog of the PC board and the remote connection dialog its entry row opens.
+ * The settings dialog of the PC board, the remote connection dialog and the resident-session dialog its entry rows open.
  * The two dialogs are siblings: the settings dialog closes before the connection dialog opens,
  * so only one of them is ever on the screen.
  */
@@ -49,6 +50,7 @@ export function BoardSettings({ open, onOpenChange, restoreFocusRef }: SettingsS
                 }}
               />
             ) : null}
+            <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
           </div>
         }
       />

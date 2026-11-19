@@ -118,10 +118,11 @@ The choice is saved on this PC, so every browser on this PC shows the same langu
 
 The width of the detail panel is not part of these settings. Each browser keeps its own width.
 
-Below the themes, two rows open other features. Each has an icon, a title, one line of description, and a button:
+Below the themes, three rows open other features. Each has an icon, a title, one line of description, and a button:
 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again, on the screen you are using.
 - **Remote connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [remote access guide](./remote-access).
+- **Resident session** with **Resident session settings** opens the dialog that starts and stops an agent session kept attached to the board; see [Resident session](../delegate/resident-session). While a session is launched, or auto-start is on, the footer also shows its tool and state, and clicking it opens the same dialog.
 
 ![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial and Remote connection rows](../../images/guide/settings.png){.screenshot}
 

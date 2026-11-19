@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | スキル`agent-board` | `src/skills/agent-board.md`と`src/skills/topics/`。`agboard skills`が出力する。プラグインの`SKILL.md`はそのコマンドを実行するだけ | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
 | スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
-| スキル`wait` | `plugins/agent-board/skills/wait/SKILL.md` | セッションをボードに張り付かせる。`agboard skills listening`に従い、タイムアウトの既定は3600秒で、`idle_timeout`のあとは待ち直す。 |
+| スキル`wait` | `plugins/agent-board/skills/wait/SKILL.md` | セッションをボードに張り付かせる。`agboard skills resident`に従い、タイムアウトの既定は3600秒で、`idle_timeout`のあとは待ち直す。 |
 | Hook |（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |
 | `wait` | `src/agent/wait.rs`、`src/agent/task_wait.rs` | プロジェクトが変わるか、次のタスクが用意できるまで待つ。 |
@@ -76,13 +76,31 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 
 一つのセッションで続けて作業する手順として、タスク情報の補完、計画の確認、回答待ち、直列処理、中断後の復帰をリッスン手順（`agboard skills listening`、元は`src/skills/topics/listening.md`）に定めています。未回答の質問は、回答されるか取り下げられるまでそのセッションを止めます。次のタスクへ飛ばず、待ち時間も対象なし時間として扱いません。
 
+ボードが起動したセッション、または人がボードに張り付くよう指示したセッション（常駐セッション）は、代わりに`agboard skills resident`（`src/skills/topics/resident.md`）に従います。同じ`wait --until task`を繰り返し、回答、依頼、タスクをリッスン手順と同じように処理しますが、`idle_timeout`では終わりません。レジストリは閉じたイベントストリームを30秒だけ数え続けるため、それより間が空くと別のセッションが起動しうるので、タイムアウトや対象なしで返った待機は数秒以内にやり直します。Claude Codeは、ハーネスが長いフォアグラウンドコマンドを止めるため、待機をバックグラウンドで実行します。Codexはフォアグラウンドで待ちます。ボードが起動したセッションは自動承認でヘッドレスに動くので、人への質問はボードの`message ask --no-wait`だけで行い、ほかの作業を続けます。回答は`answers`の結果として戻ります。起動したセッションへの最初の指示（`src/server/resident/cli.rs`の`prompt`）は、`agboard skills resident`を実行すること、タイムアウトのたびに待ち直すこと、質問はボードだけで行うこと、ボードに止められたときだけ止まることを伝えます。単体テストがプロンプトにこれらの語句を、スキルのテストがトピックにこれらの語句を保ちます。
+
 `wait --until task`は、どのセッションが待っているかもサーバーに伝えます。ボードに張り付いているセッションを数えるためです。イベントストリームのリクエストに、セッションのキー、ツール、起動元、プロジェクトのIDを`X-Agboard-Session*`ヘッダーで付けます（[張り付いたセッション](../reference/web-api.md#張り付いたセッション)を参照）。出力するJSONは変わりません。コマンドは自分の環境変数からこれらを読み、環境からはそれ以外を送りません。
 
 - 起動元: `AGBOARD_RESIDENT_ID`が設定されていれば（ボードの起動処理が設定します）`board`、なければ`external`です。
-- ツール: `CLAUDECODE`または`CLAUDE_CODE_SESSION_ID`があれば`claude-code`、`CODEX_THREAD_ID`、`CODEX_SANDBOX`、`CODEX_SANDBOX_NETWORK_DISABLED`のいずれかがあれば`codex`、どれもなければ`unknown`です。`CODEX_COMPANION_SESSION_ID`はClaude Codeのプラグインの変数でCodexのものではないため、使いません。
+- ツール: `AGBOARD_SESSION_TOOL`（`claude-code`または`codex`。ボードの起動処理が設定します）があれば、それが優先されます。なければ`CLAUDECODE`または`CLAUDE_CODE_SESSION_ID`があれば`claude-code`、`CODEX_THREAD_ID`、`CODEX_SANDBOX`、`CODEX_SANDBOX_NETWORK_DISABLED`のいずれかがあれば`codex`、どれもなければ`unknown`です。`CODEX_COMPANION_SESSION_ID`はClaude Codeのプラグインの変数でCodexのものではないため、使いません。
 - キー: `AGBOARD_RESIDENT_ID`、`CLAUDE_CODE_SESSION_ID`、`CODEX_THREAD_ID`のうち最初に設定されているもの、どれもなければ親プロセスIDです。送るキーは、接頭辞（`resident`、`claude`、`codex`、`ppid`）と、値のSHA-256の先頭16桁（16進数）で、値そのものは送りません。コマンドごとに新しいシェルを起動し、これらのどれも設定しないエージェントでは、親プロセスIDがコマンドごとに変わるため、短いセッションが何本も見えます。ボードはこれを隠しません。
 
 サーバーは、ストリームが開いている間と、閉じてから30秒の猶予の間、セッションを数えます。待機を繰り返すセッションは、1つのセッションのままです。登録はサーバーのメモリ（`src/server/sessions/`）にあり、保存しません。Codexの変数はCodexがコマンド向けに公開しているものですが、この変更を書いた時点では、動作中のCodexで確認していません。
+
+### 張り付くセッションの起動
+
+ボードのサーバーは、プロジェクトに結び付けたフォルダで、画面を持たないClaude CodeまたはCodexのセッションを起動できます。起動したセッションは、自分で起動したセッションと同じようにボードを待ちます。起動処理（`src/server/resident/`）は、これらのCLIに対するAgent Boardの唯一の依存先です。`claude`や`codex`の名前、フラグ、出力を知っているのはここだけです。ルートは[セッションの起動](../reference/web-api.md#セッションの起動)にあります。**起動したセッションは、無人で自動承認のまま動きます。** 先に[ボードが起動するセッション](./security.md#ボードが起動するセッション)を読んでください。
+
+起動処理がすること:
+
+- **確認。** CLIがサーバーの`PATH`にあり（なければ`agent_cli_missing`）、ログイン済みであること（`agent_cli_logged_out`）を確かめます。Claude Codeは`claude auth status`の`loggedIn`、Codexは`codex login status`が終了コード0で終わるかどうかです。これらの呼び出しとモデルの一覧は、リクエストが長く待たされないよう、それぞれ20秒を上限とします。ログインの確認が時間切れになると`session_launch_failed`です。`AGBOARD_CLAUDE_BIN`と`AGBOARD_CODEX_BIN`は、`PATH`を探す代わりに実行ファイルを指定します。テストはこれに偽のスクリプトを指定します。
+- **モデル。** Claude Codeにはモデルを一覧するコマンドがないので、固定の別名`opus`、`sonnet`、`haiku`、`fable`を示します。Codexは`codex debug models`で一覧し、`visibility`が`list`のモデルだけを示します。一覧を読めないとき（コマンドがない、失敗した、20秒を超えた、期待するJSONではない）は、`reason`付きの空の一覧を返し、モデルを指定しない起動ではツール自身の既定のモデルを使います。示していないモデルと、フラグに読めてしまう名前は、`invalid_value`で拒否します。
+- **承認。** Claude Codeは`--permission-mode auto --permission-prompts none`で動きます。レビュアーが各操作を確認し、確認が必要になる操作は、拒否されたツールの結果として返るので、人を待つことはありません。Codexは`--approve-for-me`（workspace-writeのサンドボックス、承認は自動レビュー）と`--add-dir <データ領域>`で動き、セッションの`agboard`の書き込みがサンドボックスに阻まれません。作業フォルダは`-C <プロジェクトのフォルダ>`です。これらのフラグを書いてあるのはここだけです。
+- **起動。** ツールやプロジェクトによらず、全体で1つです。この起動処理にすでに生きている子プロセスがあるとき（セッションの待機が登録される前の隙間を塞ぎます）、再起動が待っているとき、または、登録にどちらかのツールのボード起動のセッションが数えられているときは、枠を持っているツールを示す理由付きで`session_launch_refused`として拒否します。自分で起動した外部のセッションには上限がありません。子プロセスは、プロジェクトに結び付けたフォルダで標準入力なしに起動し、出力は`<データ領域>/resident/<ツール>.log`に書きます。最初の指示は、`agent-board`スキルを使ってボードを待つこと、待機が終わるたびにすぐ待ち直すことを伝えるので、止まるのはボードが止めたときだけです。
+- **環境。** 子プロセスには、サーバーの環境から`CLAUDECODE`、`CLAUDE_CODE_*`、`CODEX_*`、`AGBOARD_RESIDENT_ID`を除いたものを渡します。サーバー自身のエージェントのセッションが、子プロセスを別のツールに見せないためです。`CODEX_HOME`、`CODEX_API_KEY`、`CLAUDE_CODE_OAUTH_TOKEN`は、CLIの設定やサインインに使うので残します。そのうえで`AGBOARD_RESIDENT_ID`（ランダムな起動ID）、`AGBOARD_SESSION_TOOL`、`AGBOARD_SESSION_ORIGIN=board`を設定します。これにより、子プロセスの`wait --until task`が、起動元`board`と正しいツールを報告します。
+- **停止。** 子プロセスは、自分のプロセスグループの先頭です。停止はグループへSIGTERMを送り、5秒後にSIGKILLを送ったうえで、そのセッションの登録をすぐに外します。すでにいないセッションの30秒の猶予のために、次の起動が拒否されることはありません。子プロセスが自分で終了したときも同じで、すべての子プロセスをスレッドが待つので、ゾンビは残りません。サーバーが終了するときは、起動したすべての子プロセスを止めます。強制終了されたサーバーは、これを行えず、子プロセスが動いたまま残ります。
+- **健全性と再起動。** 人が起動すると、ボードはそのセッションを動かし続けます。誰も止めていない子プロセスが終了すると、監視が同じプロジェクト、ツール、モデルでもう一度起動します。待ち時間は2秒から始まり、失敗のたびに倍になります（上限は60秒）。10分以内に5回失敗すると再起動をやめ、健全性は理由付きの`failed`になり、人が起動し直すまでそのままです。10分動き続けたセッションは、数え直しになります。プロセスの起動に失敗したときも失敗として数えます。コマンドがない、ログインしていない、プロジェクトがなくなったときは、再試行しても直らないので、すぐに`failed`にします。人が止めると、その記録が消えるので、再起動にはならず、待っている再起動や表示中の失敗も消えます。
+- **不健全な子プロセス。** 生きていても一度も張り付かない子プロセスは入れ替えます。監視は1秒ごとに、登録にボード起動のセッションが数えられているか確認します（30秒の猶予にあるセッションも数えます）。新しい子プロセスが最初に張り付くまでの猶予は3分で、ボード起動の待機を一度も登録しなければ、停止と同じ方法で終了し、理由（`never waited`）を記録します。この終了も、ほかの終了と同じく失敗として数えます。一度張り付いた子プロセスは、プロセスの終了だけで終わりとみなします。セッションは、返ってきたタスクの作業中は待機を閉じ、タスクはどんな上限よりずっと長くかかることがあるので、待機がないことを終了の理由にはしません。健全性は`waiting`を返すので、画面は動作中のセッションを作業中として表示できます。
+- **自動起動。** サーバーと一緒に起動するセッションの選択は、ツール、プロジェクト、モデルの組で、最大1つです。[`.internal/resident-autostart.json`](../reference/files.md#セッションの自動起動)に保存します。サーバーが起動すると、バックグラウンドのスレッドがそれを起動します。そのため、CLIの確認より前にサーバーは待ち受けています。起動に失敗してもサーバーは止まらず、理由付きの`failed`として表示します。プロセスの起動の失敗は、クラッシュと同じように再試行します。自動起動を切っても、動いているセッションは止まりません。セッションのレスポンスには、そのセッションの[健全性](../reference/web-api.md#セッションの健全性)が入ります。
 
 ## 自動Done
 
@@ -140,7 +158,7 @@ Hookは、`FileStore::resolve_binding`でプロジェクトを解決します。
 
 ## バイナリから出すSkill
 
-`agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、状況に応じたトピックをいつ実行するかを示します。Claude Codeは`!`コマンドの出力を約30,000文字までしか取り込まず（超えるとプレビューに切り詰めます）、単体テストが本文と各トピックを28,000文字以下に保ちます。増えたときは、状況に応じた節をトピックへ移します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
+`agent-board` Skillの本文は、ビルド時に`agboard`へ埋め込むので、実行するバイナリと常に一致します。`agboard skills`は本文（`src/skills/agent-board.md`、frontmatterなし）を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`resident`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です（`src/skills/topics/`）。本文は、状況に応じたトピックをいつ実行するかを示します。Claude Codeは`!`コマンドの出力を約30,000文字までしか取り込まず（超えるとプレビューに切り詰めます）、単体テストが本文と各トピックを28,000文字以下に保ちます。増えたときは、状況に応じた節をトピックへ移します。トピックにない名前は、トピックの一覧を出力します。このコマンドは何も読み書きせず、ロックを取らず、サーバーを起動せず、ネットワークを使わず、常に終了コード0で終わります。データ領域を解決できなくても同じです。
 
 プラグインの`SKILL.md`は、`name`、`description`、`compatibility`を残し、`allowed-tools: Bash(agboard *)`を加え、本文は`` !`agboard skills` ``の1行です。Claude Codeは、Skillを呼び出すときにこの行をコマンドの出力に置き換えます。`allowed-tools`の規則により、このコマンドと、そのあとのエージェントの`agboard`コマンドは確認なしで実行できます。置き換えが働くのは単純なコマンドだけで、`$(...)`や複合コマンドは置き換わりません。コマンドの埋め込みがないエージェント（Codex）は、その次の文を読み、自分で`agboard skills`を実行します。`remote`と`wait`のSkillは、これまでどおりプラグイン内の静的なファイルです。プロジェクトの`.claude/skills/agent-board`はプラグインのSkillフォルダへのシンボリックリンクなので、このリポジトリ自身のClaude Codeのセッションも、同じ入口と`PATH`の`agboard`を使います。
 

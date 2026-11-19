@@ -194,7 +194,7 @@ fn unix_millis() -> u64 {
 
 /// Creates the folder (and missing parents) with owner-only access on unix.
 /// An existing folder keeps its mode.
-fn create_private_dir(dir: &Path) -> std::io::Result<()> {
+pub(crate) fn create_private_dir(dir: &Path) -> std::io::Result<()> {
     let mut builder = std::fs::DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]
@@ -220,7 +220,7 @@ fn remove_stale_temporaries(dir: &Path) {
 }
 
 /// Makes the rename durable. Errors are ignored; the file itself is synced.
-fn sync_dir(dir: &Path) {
+pub(crate) fn sync_dir(dir: &Path) {
     #[cfg(unix)]
     if let Ok(handle) = std::fs::File::open(dir) {
         let _ = handle.sync_all();
@@ -233,7 +233,7 @@ fn valid_theme(theme: &Theme) -> bool {
     MODES.contains(&theme.mode.as_str()) && ACCENTS.contains(&theme.accent.as_str())
 }
 
-fn write_owner_only(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_owner_only(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]

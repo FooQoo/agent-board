@@ -37,7 +37,8 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `POST …/tasks/archive-done` | `{ids: number[]}`; empty, duplicate, or invalid IDs are 422. Returns `{tasks, archivedCount}`. |
 | `GET /api/projects/{projectId}/archive` | Archived tasks with bodies, full history, and attachment metadata, plus `epics` from the same snapshot. Each task's `epicId` resolves against that list; a task without an epic, or one whose epic is missing, has no label. |
 | `GET /api/projects/{projectId}/summary` | The list data for the board: project, `version`, tasks, epics, and problems, without any body text. See [Summary and Detail](#summary-and-detail). |
-| `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts. See [Attached sessions](#attached-sessions). Never cached. |
+| `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts, plus the sessions the board launched. See [Attached sessions](#attached-sessions). Never cached. |
+| `GET …/sessions/models`, `POST …/sessions/launch`, `POST …/sessions/stop` | Launch and stop headless Claude Code and Codex sessions. Local listener only. See [Launching sessions](#launching-sessions). |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | One task's body, acceptance conditions, and history as an NDJSON stream. Archived tasks are read the same way. |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | One epic's document as an NDJSON stream. |
 | `GET /api/projects/{projectId}/docs/tree`<br>`GET /api/projects/{projectId}/docs/file`<br>`GET /api/projects/{projectId}/docs/assets`<br>`POST /api/projects/{projectId}/docs/open` | The project's documents in `docs/`, read-only: the folder tree, one Markdown or MDX file, an image, and opening the folder or a file in the computer's own app. See [Project docs](#project-docs). |
@@ -112,7 +113,7 @@ The server compares the parsed data before and after every reload, so a save tha
 
 ### Attached sessions
 
-`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values.
+`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values. The response also has `launched`; see [Launching sessions](#launching-sessions).
 
 ```json
 {
@@ -149,7 +150,55 @@ How a stream names its session: a command that waits for tasks sends four header
 | `X-Agboard-Session-Tool` | `claude-code`, `codex`, or `unknown`. |
 | `X-Agboard-Session-Origin` | `board` or `external`. |
 
-The limit on launching is not a route. The board's launcher (a later change) calls `SessionRegistry::check_board_launch(tool)` before it starts a session: board-launched sessions are limited to one per tool over all projects, a board-launched session in grace still counts, and external sessions are never limited or counted against that limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+The limit on launching is enforced by `SessionRegistry::check_board_launch()`, which the launcher calls before it starts a session: board-launched sessions are limited to one in total, over both tools and all projects. The refusal names the tool that holds the slot. A board-launched session in grace still counts, and external sessions are never limited or counted against the limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+
+### Launching sessions
+
+These routes start and stop the headless sessions the board launches (see [Launching resident sessions](../concepts/agents.md#launching-resident-sessions)). **A launched session runs unattended with automatic approval**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
+
+| API | Contract |
+| --- | --- |
+| `GET /api/projects/{projectId}/sessions/models?tool=` | `tool` is `claude-code` or `codex` (another value is 422 `invalid_value`). Returns `{"models": [{"id", "label"}], "reason": null}`. When the list cannot be read it is `{"models": [], "reason": "<why>"}`, and a launch without a model uses the tool's default. The command is not installed: 409 `agent_cli_missing`. |
+| `POST /api/projects/{projectId}/sessions/launch` | `{"tool": "claude-code" \| "codex", "model"?: string}`. A missing, empty, or `"default"` model leaves the choice to the tool. Starts the session in a bound folder of the project and returns `{"launched": {"tool", "projectId", "model", "startedAt"}}`. A model that is not offered, or that is not a model name: 422 `invalid_value`. An unknown project: 404 `project_not_found`; a project with no existing bound folder: 409 `project_has_no_folder`; the CLI missing or logged out: 409 `agent_cli_missing` or `agent_cli_logged_out`; a session of that tool already launched or attached by the board: 409 `session_launch_refused` with the reason; the process could not be started: 500 `session_launch_failed`. |
+| `PUT /api/projects/{projectId}/sessions/autostart` | `{"enabled": boolean, "tool"?: "claude-code" \| "codex", "model"?: string}`. Saves whether a session starts with the server, and which: this tool, in this project, with this model (a missing, empty, or `"default"` model leaves the choice to the tool). There is one choice in total; saving replaces it. `tool` is required when `enabled` is `true` (else 422 `invalid_value`, as for an unknown tool or a model that is a flag). It does not launch anything and does not stop a running session. Returns `{"autoStart": {"tool", "projectId", "model"}}`, or `{"autoStart": null}` when `enabled` is `false`. An unknown project: 404 `project_not_found`; no existing bound folder: 409 `project_has_no_folder`. The stored file is in [Shared files](./files.md#session-auto-start). |
+| `POST /api/projects/{projectId}/sessions/stop` | `{}`. Stops the launched session, which is one in total, so the request names no tool (a `tool` in the body is accepted and ignored). Returns `{"stopped": true}` when the call returns, or `{"stopped": false}` when none was running. It also clears a waiting restart or a shown failure. The session no longer counts, so a new launch is possible at once. |
+
+`GET /api/projects/{projectId}/sessions` also carries `launched`, the sessions of that project that the launcher holds a process for, as `[{"tool", "projectId", "model", "startedAt"}]`. It has no process ID. A launched session appears in `sessions` (with `origin: "board"`) only once its own wait has attached.
+
+#### Session health
+
+`GET /api/projects/{projectId}/sessions` also carries `health`, one object for the single session slot of the board. It belongs to the board, not the project, so `projectId` says which project the session is for. It has no paths or process IDs.
+
+```json
+"health": {
+  "tool": "claude-code",
+  "state": "restarting",
+  "projectId": "0123456789abcdef0123456789abcdef",
+  "model": "sonnet",
+  "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
+  "waiting": false,
+  "restartCount": 2,
+  "lastExitAt": "2026-11-19T03:00:00Z",
+  "nextRestartAt": "2026-11-19T03:00:04Z",
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
+}
+```
+
+When nothing is launched, it is `{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}` (with `autoStart` set when a choice is saved).
+
+| Field | Meaning |
+| --- | --- |
+| `tool` | The tool of the session the board keeps; `null` while `stopped`. |
+| `state` | `running`: the board keeps a session running, and its child exists. `restarting`: the child ended and a restart is waiting for `nextRestartAt`. `failed`: the board gave up, or could not start the session, and `reason` says why. `stopped`: nothing is kept running. |
+| `projectId`, `model` | What the board relaunches. `null` while `stopped`. |
+| `reason` | Why the session is `restarting` or `failed`; `null` otherwise. A crash loop ends in `failed` with a reason that says the board stopped restarting. |
+| `waiting` | `true` while the session's wait is registered on the board. A `running` session with `waiting: false` is working on a task, and is never ended for that. |
+| `restartCount` | The restarts since the last launch or stop by a person. |
+| `lastExitAt` | When the child last ended without a stop by a person; `null` if it never did. |
+| `nextRestartAt` | When the waiting restart starts; `null` unless `restarting`. |
+| `autoStart` | The saved auto-start choice, `{"tool", "projectId", "model"}`, or `null`. |
+
+The defaults behind this are in [Launching resident sessions](../concepts/agents.md#launching-resident-sessions). A person's launch from `failed` or `restarting` is accepted and starts over; a stop returns the tool to `stopped`.
 
 ### Remote connection
 

@@ -61,7 +61,11 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::InvalidStateForDraft { .. }
         | AgboardError::ProjectNameExists { .. }
         | AgboardError::EpicIdTaken { .. }
-        | AgboardError::EpicInUse { .. } => StatusCode::CONFLICT,
+        | AgboardError::EpicInUse { .. }
+        | AgboardError::AgentCliMissing { .. }
+        | AgboardError::AgentCliLoggedOut { .. }
+        | AgboardError::SessionLaunchRefused { .. }
+        | AgboardError::ProjectHasNoFolder { .. } => StatusCode::CONFLICT,
         AgboardError::TaskArchived { .. }
         | AgboardError::TaskNotArchived { .. }
         | AgboardError::ArchiveTargetsChanged => StatusCode::CONFLICT,

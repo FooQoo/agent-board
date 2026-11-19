@@ -22,6 +22,20 @@
               "id": "pages-monitor--band-ask-ai",
               "states": ["phone band", "Ask AI button"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor--resident-status-line",
+              "states": [
+                "resident session in the status line",
+                "display-only",
+                "tool and state word"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--no-resident-status",
+              "states": ["nothing launched", "no indicator"],
+              "interaction": true
             }
           ]
         }

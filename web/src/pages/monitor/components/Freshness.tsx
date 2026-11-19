@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   CircleAlertIcon,
   CircleCheckIcon,
@@ -25,6 +26,7 @@ export function Freshness({
   onRefresh,
   refreshing = false,
   compact = false,
+  slot,
 }: {
   state: MonitorFreshnessState;
   lastFetchedAt: string | null;
@@ -33,6 +35,8 @@ export function Freshness({
   /** A refresh the person asked for is running; the button waits for it. */
   refreshing?: boolean;
   compact?: boolean;
+  /** A display-only indicator after the message, such as the resident session's state. */
+  slot?: ReactNode;
 }) {
   const { t } = useTranslation();
   const message =
@@ -47,6 +51,7 @@ export function Freshness({
     >
       {icon[state]}
       <span className="monitor-freshness__message">{message}</span>
+      {slot}
       {lastFetchedAt && (
         <span className="monitor-freshness__time">
           {t('monitor.lastFetched', { time: formatShort(lastFetchedAt) })}

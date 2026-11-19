@@ -201,6 +201,26 @@ fn messages_and_reasons_follow_the_design_table() {
             "cannot open the browser.",
             "Cannot start xdg-open: No such file or directory (os error 2). Open http://127.0.0.1:7420/?project=0123456789abcdef0123456789abcdef in your browser yourself.",
         ),
+        (
+            "the claude command is not installed.",
+            "Install claude and make it available on the PATH of the server, then try again.",
+        ),
+        (
+            "codex is not logged in.",
+            "Log in to codex in a terminal, then try again.",
+        ),
+        (
+            "the session was not launched.",
+            "A board-launched claude-code session already exists.",
+        ),
+        (
+            "the session could not be started.",
+            "claude could not be started.",
+        ),
+        (
+            "the project has no bound folder.",
+            "Bind a folder to project demo with \"agboard project bind\" in that folder.",
+        ),
     ];
     let expected: Vec<(String, String)> = expected
         .into_iter()

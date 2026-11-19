@@ -137,6 +137,31 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/messages/ask/AskAiToolbar.tsx",
+      "exports": [
+        {
+          "name": "AskAiToolbar",
+          "stories": [
+            {
+              "id": "messages-askai--dialog-with-images",
+              "states": ["attached thumbnails", "send disabled until typed"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-send-failed",
+              "states": ["error line", "reason shown"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet",
+              "states": ["toolbar visible", "empty"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

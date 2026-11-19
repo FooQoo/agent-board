@@ -139,3 +139,27 @@ export const JapaneseReady: Story = {
     await expect(canvas.getByText(/^同期済み \d{2}:\d{2}$/)).toBeInTheDocument();
   },
 };
+
+/** An indicator in the slot sits between the count and the sync state. */
+export const WithSlot: Story = {
+  args: { slot: <span data-testid="slot">Claude Code</span> },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const bar = canvasElement.querySelector('.status-bar');
+    const children = [...(bar?.children ?? [])];
+    await expect(canvas.getByTestId('slot')).toBeInTheDocument();
+    await expect(children.map((child) => child.className)).toEqual([
+      'status-bar__count',
+      '',
+      'status-bar__sync',
+    ]);
+  },
+};
+
+/** A note replaces the whole bar, so the slot is not drawn. */
+export const NoteHidesSlot: Story = {
+  args: { note: 'notSynced', slot: <span data-testid="slot">Claude Code</span> },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryByTestId('slot')).toBeNull();
+  },
+};

@@ -52,11 +52,13 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   bindings.json
   serve.json
   serve.log
+  resident/<tool>.log
   lifecycle.lock
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
   .internal/preferences.json
+  .internal/resident-autostart.json
 ```
 
 - JSON is UTF-8, camelCase, two-space indented, with one trailing newline. Unknown fields are rejected.
@@ -71,6 +73,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
   `mode` is `auto` for a server a command started and `manual` for `serve` and `serve -d`; a file without it is read as `manual`. `idleTimeoutSeconds` is present only for an automatic server.
 - `serve.log` is the output of a server started in the background, by `serve -d` or by a command (owner-only, replaced at every start). An automatic server writes there why it took another port and when it stopped.
+- `resident/<tool>.log` (`claude-code.log` or `codex.log`) is the output of the session the board launched for that tool: its standard output and error (owner-only, replaced at every launch). It can hold what the agent printed, so treat it like any other output of an agent running with your account. See [Launching resident sessions](../concepts/agents.md#launching-resident-sessions).
 - `autostart.lock` orders commands that start the server at the same time. `autostart.paused` is left by `agboard stop` so that the hook does not start the server again; a command that waits, `serve`, or `serve -d` removes it. See [Server and web UI](../concepts/server-and-ui.md#starting-and-stopping-serve).
 
 `docs/` holds the project's own Markdown documents, which the Docs dialog reads (see [Project docs](#project-docs)).
@@ -232,6 +235,27 @@ The saved language and color theme live in `<data-root>/.internal/preferences.js
 | `theme.accent` | One of the 12 accents: `blue`, `sky`, `cyan`, `teal`, `green`, `lime`, `yellow`, `orange`, `red`, `pink`, `purple`, `gray`. The default is `blue`. |
 
 A save changes only the fields it sends; the others keep their saved values. The last save wins, and there is no conflict check. The preferences hold no secret, and the file never holds a token, a passcode, or a session.
+
+## Session auto-start
+
+The session the board launches when the server starts is saved in `<data-root>/.internal/resident-autostart.json`. The board launches one session in total, so there is at most one choice. The file belongs to the application: it is written only by `PUT /api/projects/{projectId}/sessions/autostart` on the local listener, never by hand. It is not in `shared/`. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+
+```json
+{
+  "formatVersion": 2,
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `formatVersion` | Always `2`. Any other value (including the earlier per-tool format `1`), an unknown field, or a malformed file reads as nothing to start. |
+| `autoStart` | The choice, or `null` for none. |
+| `autoStart.tool` | `claude-code` or `codex`. |
+| `autoStart.projectId` | The project whose bound folder the session starts in. |
+| `autoStart.model` | A model name, or `null` for the tool's own default. |
+
+The file holds no secret. A project that no longer exists, or has no bound folder, is not removed from the file: the start shows as `failed` with the reason, and the choice stays until it is turned off.
 
 ## Task JSON and snapshots
 

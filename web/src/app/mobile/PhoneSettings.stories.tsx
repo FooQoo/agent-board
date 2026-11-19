@@ -3,6 +3,12 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../.storybook/support/modal-docs';
 import { onTutorialRequest } from '../onboarding/tutorialRequest';
+import { snapshotOf } from '../../features/resident-sessions/fixtures';
+import { ResidentEntryRow } from '../../features/resident-sessions/ui/ResidentEntryRow';
+import {
+  requestResidentDialog,
+  onResidentDialogRequest,
+} from '../../features/resident-sessions/events';
 import { PhoneSettings } from './PhoneSettings';
 
 const meta = {
@@ -17,7 +23,7 @@ const meta = {
 export default meta;
 
 /** The header's side of the slot: a settings button, and the state that opens the dialog. */
-function Header(args: { open: boolean }) {
+function Header(args: { open: boolean; resident?: boolean }) {
   const [open, setOpen] = useState(args.open);
   const button = useRef<HTMLButtonElement>(null);
   return (
@@ -25,7 +31,22 @@ function Header(args: { open: boolean }) {
       <button type="button" ref={button} onClick={() => setOpen(true)}>
         Settings button
       </button>
-      <PhoneSettings open={open} onOpenChange={setOpen} restoreFocusRef={button} />
+      <PhoneSettings
+        open={open}
+        onOpenChange={setOpen}
+        restoreFocusRef={button}
+        residentRow={
+          args.resident ? (
+            <ResidentEntryRow
+              snapshot={snapshotOf({ state: 'failed', tool: 'codex' })}
+              onOpen={() => {
+                setOpen(false);
+                requestResidentDialog();
+              }}
+            />
+          ) : undefined
+        }
+      />
     </>
   );
 }
@@ -47,6 +68,33 @@ export const WithTutorialEntry: StoryObj<typeof meta> = {
     });
     try {
       await userEvent.click(start);
+      await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
+      expect(requested).toBe(1);
+    } finally {
+      stop();
+    }
+  },
+};
+
+/**
+ * The resident-session row below the tutorial, with a one-line summary. Choosing it closes the
+ * settings and asks for the dialog, which the board shows as a bottom sheet at this width.
+ */
+export const WithResidentEntry: StoryObj<typeof meta> = {
+  args: { open: true, onOpenChange: () => {}, restoreFocusRef: { current: null } },
+  render: (args) => <Header open={args.open} resident />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = await body.findByRole('dialog');
+    await expect(within(dialog).getByText('Codex · failed')).toBeVisible();
+    let requested = 0;
+    const stop = onResidentDialogRequest(() => {
+      requested += 1;
+    });
+    try {
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: 'Resident session settings' }),
+      );
       await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
       expect(requested).toBe(1);
     } finally {

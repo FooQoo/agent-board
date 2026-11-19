@@ -26,6 +26,7 @@ pub mod monitor_auth {
 }
 pub mod monitor_connection;
 mod request;
+pub mod resident;
 mod response;
 pub mod sessions;
 mod store;
@@ -83,6 +84,8 @@ pub(crate) struct AppState {
     pub activity: Arc<idle::Activity>,
     /// The agent sessions that wait on the board, counted while their streams are open.
     pub sessions: Arc<sessions::SessionRegistry>,
+    /// Starts and stops the headless sessions the board launches.
+    pub resident: Arc<resident::Launcher>,
 }
 
 pub fn is_serving(info: &crate::paths::ServeInfo) -> bool {

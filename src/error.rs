@@ -271,6 +271,26 @@ pub enum AgboardError {
         url: String,
         reason: String,
     },
+    /// The agent CLI the board would launch (`claude` or `codex`) is not installed.
+    AgentCliMissing {
+        tool: String,
+    },
+    /// The agent CLI is installed but not logged in.
+    AgentCliLoggedOut {
+        tool: String,
+    },
+    /// A board launch was refused: a board-launched session of the tool already exists.
+    SessionLaunchRefused {
+        reason: String,
+    },
+    /// The agent CLI could not be started.
+    SessionLaunchFailed {
+        reason: String,
+    },
+    /// The project has no bound folder to start the session in.
+    ProjectHasNoFolder {
+        project: String,
+    },
 }
 
 mod code;

@@ -16,6 +16,7 @@ pub const AGENT_BOARD: &str = include_str!("agent-board.md");
 pub const TOPICS: &[(&str, &str)] = &[
     ("file-format", include_str!("topics/file-format.md")),
     ("listening", include_str!("topics/listening.md")),
+    ("resident", include_str!("topics/resident.md")),
     ("planning", include_str!("topics/planning.md")),
     (
         "fixed-epic-bodies",

@@ -70,6 +70,16 @@
           "id": "shared-ui-statusbar--japanese-ready",
           "states": ["japanese", "synced"],
           "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--with-slot",
+          "states": ["slot between count and sync state"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-statusbar--note-hides-slot",
+          "states": ["note replaces the bar", "slot not drawn"],
+          "interaction": false
         }
       ]
     }

@@ -49,7 +49,7 @@ use onboarding::*;
 use pages::*;
 use preferences::*;
 use projects::*;
-use sessions::list_sessions;
+use sessions::{launch_session, list_sessions, session_models, set_autostart, stop_session};
 use summary::summary;
 use task_acceptance::*;
 use task_attachments::*;
@@ -87,7 +87,23 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         )
         .route("/api/monitor-connections/token", delete(delete_saved_token))
         .route("/api/notify", post(notify))
-        .route("/api/projects/{project_id}/docs/open", post(open_docs_path));
+        .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
+        .route(
+            "/api/projects/{project_id}/sessions/models",
+            get(session_models),
+        )
+        .route(
+            "/api/projects/{project_id}/sessions/launch",
+            post(launch_session),
+        )
+        .route(
+            "/api/projects/{project_id}/sessions/stop",
+            post(stop_session),
+        )
+        .route(
+            "/api/projects/{project_id}/sessions/autostart",
+            put(set_autostart),
+        );
     routes(get(index))
         .merge(local_only)
         .layer(middleware::from_fn_with_state(
@@ -101,7 +117,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
 /// The board router behind the ngrok entrance. The entrance has already checked the public Host,
 /// the session, the Origin and the CSRF token, so the local Host and token guards are not used
 /// here, and the page carries no token. Whatever acts on the PC itself (the connection settings,
-/// opening a docs path, the notify call of local agents) is not part of this router.
+/// opening a docs path, the notify call of local agents, and starting or stopping the sessions
+/// the board launches) is not part of this router.
 pub(crate) fn remote_router(state: Arc<AppState>) -> Router {
     routes(get(remote_index)).finish(state)
 }

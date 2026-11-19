@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { formatTime } from '../../lib/time/formatTime';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +10,8 @@ export interface StatusBarProps {
   lastSyncedAt: Date | null;
   /** A project state that replaces the count and the sync state with one line of text. */
   note?: 'boardLoading' | 'notSynced' | 'noProjects' | 'noSelection';
+  /** An optional indicator between the count and the sync state (not drawn when `note` is set). */
+  slot?: ReactNode;
 }
 
 type Tone = 'ok' | 'idle' | 'warn';
@@ -48,6 +51,7 @@ export function StatusBar(props: StatusBarProps) {
               : t('status.cardCount', { count: props.taskCount })
           : '–'}
       </span>
+      {props.slot}
       <span className="status-bar__sync" role="status">
         <span className="status-bar__dot" data-tone={sync.tone} aria-hidden="true" />
         <span>{sync.text}</span>

@@ -68,6 +68,11 @@ impl AgboardError {
             AgboardError::DocsOpenFailed { .. } => "docs_open_failed",
             AgboardError::RemoteUnavailable { .. } => "remote_unavailable",
             AgboardError::BrowserOpenFailed { .. } => "browser_open_failed",
+            AgboardError::AgentCliMissing { .. } => "agent_cli_missing",
+            AgboardError::AgentCliLoggedOut { .. } => "agent_cli_logged_out",
+            AgboardError::SessionLaunchRefused { .. } => "session_launch_refused",
+            AgboardError::SessionLaunchFailed { .. } => "session_launch_failed",
+            AgboardError::ProjectHasNoFolder { .. } => "project_has_no_folder",
         }
     }
 

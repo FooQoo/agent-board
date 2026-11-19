@@ -1,19 +1,29 @@
+import type { ReactNode } from 'react';
+import { parseAsString, useQueryState } from 'nuqs';
 import { SettingsDialog } from '../../features/settings/ui/SettingsDialog';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import type { SettingsSlotState } from '../../shared/ui/app-header/Header';
 import { TutorialEntryRow } from '../onboarding/TutorialEntryRow';
 import { requestTutorial } from '../onboarding/tutorialRequest';
+import { ResidentSettingsRow } from '../residentSlot';
 
 /**
  * The settings dialog of the board's phone screen: the language and theme, and the row that shows
- * the guide again, as on the PC board. The remote connection is set up on a PC, so it is not here.
+ * the guide again, and the resident-session row, as on the PC board. The remote connection is set up on a PC, so it is not here.
  */
 export function PhoneSettings({
   open,
   onOpenChange,
   restoreFocusRef,
   preferencesEndpoint,
-}: SettingsSlotState & { preferencesEndpoint?: PreferencesEndpoint }) {
+  residentRow,
+}: SettingsSlotState & {
+  preferencesEndpoint?: PreferencesEndpoint;
+  /** Replaces the row wired to the local API (for Stories, which may not call it). */
+  residentRow?: ReactNode;
+}) {
+  // The project the board shows, from the same `project` query the board reads.
+  const [projectId] = useQueryState('project', parseAsString);
   return (
     <SettingsDialog
       open={open}
@@ -28,6 +38,9 @@ export function PhoneSettings({
               requestTutorial();
             }}
           />
+          {residentRow ?? (
+            <ResidentSettingsRow projectId={projectId} onClose={() => onOpenChange(false)} />
+          )}
         </div>
       }
     />

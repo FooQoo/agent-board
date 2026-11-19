@@ -12,7 +12,7 @@ Invoking this skill is the user's explicit request to listen on the board. This 
 ## Steps
 
 1. Run `agboard skills` and follow it as the main procedure (project selection, work loop, asking, accepting requests and answers).
-2. Run `agboard skills listening` and follow that listening procedure, with these differences:
+2. Run `agboard skills resident` and follow that resident procedure (it builds on `agboard skills listening`), with these differences:
    - If the user gave no idle timeout, use 3600 seconds and do not ask.
    - When `wait --until task` returns `idle_timeout`, do not finish. Start the same wait again.
    - Stop only when the user interrupts or asks you to stop, or on an error the listening procedure says to stop on: `board_unavailable`, `local_network_denied`, `project_not_found`, or invalid arguments. Report the error and its recovery step.

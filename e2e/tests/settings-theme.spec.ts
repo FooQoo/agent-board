@@ -174,7 +174,7 @@ test('every one of the 24 themes applies at once, is saved, and survives a reloa
   await expectTheme(page, 'Light', 'Blue');
   // The settings button sits at the right end of the header.
   const header = page.getByRole('banner');
-  const settingsBox = (await header.getByRole('button', { name: 'Settings' }).boundingBox())!;
+  const settingsBox = (await header.getByRole('button', { name: 'Settings', exact: true }).boundingBox())!;
   const headerBox = (await header.boundingBox())!;
   expect(settingsBox.x + settingsBox.width).toBeGreaterThan(headerBox.x + headerBox.width - 40);
   const dialog = await openSettings(page);
@@ -210,7 +210,7 @@ test('every one of the 24 themes applies at once, is saved, and survives a reloa
   await expectTheme(page, 'Dark', 'Pink');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Settings' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeFocused();
   await expect(lane(page, 'Todo')).toBeVisible();
   await expectTheme(page, 'Dark', 'Pink');
 
@@ -224,7 +224,7 @@ test('every one of the 24 themes applies at once, is saved, and survives a reloa
   // The language changes at once, keeps the dialog and the theme, and is saved.
   await reopened.getByRole('radio', { name: '日本語' }).click();
   await expect(html(page)).toHaveAttribute('lang', 'ja');
-  const japanese = page.getByRole('dialog', { name: '設定' });
+  const japanese = page.getByRole('dialog', { name: '設定', exact: true });
   await expect(japanese).toBeVisible();
   await expect(japanese.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
   await expect(japanese.getByRole('radio', { name: 'ダーク・ピンク' })).toHaveAttribute('aria-checked', 'true');
@@ -232,7 +232,7 @@ test('every one of the 24 themes applies at once, is saved, and survives a reloa
   expect(await page.evaluate((key) => localStorage.getItem(key), LOCALE_KEY)).toBe('ja');
   await expectTheme(page, 'Dark', 'Pink');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: '設定' })).toBeFocused();
+  await expect(page.getByRole('button', { name: '設定', exact: true })).toBeFocused();
 
   await page.reload();
   await expect(synced(page)).toHaveText(/^同期済み/);
@@ -244,7 +244,7 @@ test('the Japanese names of all 24 themes follow the same order', async ({ page 
   await openFresh(page);
   const dialog = await openSettings(page);
   await dialog.getByRole('radio', { name: '日本語' }).click();
-  const japanese = page.getByRole('dialog', { name: '設定' });
+  const japanese = page.getByRole('dialog', { name: '設定', exact: true });
   const names = await japanese
     .getByRole('radiogroup', { name: 'カラーテーマ' })
     .getByRole('radio')
@@ -356,8 +356,8 @@ test.describe('a storage that fails', () => {
     expect(await storedTheme(page)).toBeNull();
     // The language is a different key and still saves.
     await dialog.getByRole('radio', { name: '日本語' }).click();
-    await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
-    await expect(page.getByRole('dialog', { name: '設定' }).getByRole('radio', { name: 'ダーク・パープル' })).toHaveAttribute(
+    await expect(page.getByRole('dialog', { name: '設定', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: '設定', exact: true }).getByRole('radio', { name: 'ダーク・パープル' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
@@ -385,7 +385,7 @@ test.describe('a storage that fails', () => {
     await expectTheme(page, 'Dark', 'Orange');
     await dialog.getByRole('radio', { name: '日本語' }).click();
     await expect(html(page)).toHaveAttribute('lang', 'ja');
-    const japanese = page.getByRole('dialog', { name: '設定' });
+    const japanese = page.getByRole('dialog', { name: '設定', exact: true });
     await expect(japanese.getByRole('radio', { name: 'ダーク・オレンジ' })).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -416,7 +416,7 @@ test('the settings stay available while the board loads and when it cannot load'
   await dialog.getByRole('radio', { name: 'Dark Teal' }).click();
   await expectTheme(page, 'Dark', 'Teal', false);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Settings' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeFocused();
 
   failing = true;
   release();
@@ -443,10 +443,10 @@ test('the settings stay available while the board loads and when it cannot load'
 
 test('the settings dialog takes the focus, keeps it inside, and gives it back', async ({ page }) => {
   await openFresh(page);
-  const settingsButton = page.getByRole('button', { name: 'Settings' });
+  const settingsButton = page.getByRole('button', { name: 'Settings', exact: true });
   await settingsButton.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
   await expect(dialog).toBeVisible();
   // The focus goes to the chosen language, and the board behind is not reachable.
   await expect(dialog.getByRole('radio', { name: 'English' })).toBeFocused();

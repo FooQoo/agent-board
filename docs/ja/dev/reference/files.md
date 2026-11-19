@@ -52,11 +52,13 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   bindings.json
   serve.json
   serve.log
+  resident/<tool>.log
   lifecycle.lock
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
   .internal/preferences.json
+  .internal/resident-autostart.json
 ```
 
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
@@ -71,6 +73,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
   `mode`は、コマンドが起動したサーバーなら`auto`、`serve`と`serve -d`なら`manual`です。この項目がないファイルは`manual`として読みます。`idleTimeoutSeconds`は自動のサーバーだけが持ちます。
 - `serve.log`は、`serve -d`かコマンドが裏で起動したサーバーの出力です（所有者のみ読み取り可、起動のたびに作り直し）。自動のサーバーは、別のポートを使った理由と止まったことをここに書きます。
+- `resident/<ツール>.log`（`claude-code.log`または`codex.log`）は、そのツールのためにボードが起動したセッションの標準出力と標準エラーです（所有者のみ読み取り可、起動のたびに作り直し）。エージェントが出力した内容を含みうるので、あなたのアカウントで動くエージェントのほかの出力と同じように扱ってください。[張り付くセッションの起動](../concepts/agents.md#張り付くセッションの起動)を参照してください。
 - `autostart.lock`は、同時にサーバーを起動しようとしたコマンドの順番を決めます。`autostart.paused`は`agboard stop`が残すファイルで、Hookがまたサーバーを起動しないようにします。待つコマンド、`serve`、`serve -d`がこれを消します。[サーバーと画面](../concepts/server-and-ui.md#serveの起動と停止)を参照してください。
 
 `docs/`には、プロジェクトのMarkdown文書を置きます。ドキュメントのダイアログがこれを読みます（[プロジェクトのドキュメント](#プロジェクトのドキュメント)を参照）。
@@ -232,6 +235,27 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 | `theme.accent` | 12色のいずれか: `blue`・`sky`・`cyan`・`teal`・`green`・`lime`・`yellow`・`orange`・`red`・`pink`・`purple`・`gray`。既定は`blue`。 |
 
 保存では、送った項目だけを変えます。ほかの項目は保存済みの値を保ちます。後から保存した内容が優先され、競合の確認はありません。このファイルには秘密の値を含みません。トークン、合言葉、sessionは入りません。
+
+## セッションの自動起動
+
+サーバーの起動時にボードが起動するセッションは、`<データ領域>/.internal/resident-autostart.json`に保存します。ボードが起動するセッションは全体で1つなので、選択は最大1つです。このファイルはアプリのもので、ローカルの入口の`PUT /api/projects/{projectId}/sessions/autostart`だけが書き込み、手で書くことはありません。`shared/`には置きません。置き換えは原子的で、所有者だけの権限（OSにあれば`0600`）です。
+
+```json
+{
+  "formatVersion": 2,
+  "autoStart": { "tool": "claude-code", "projectId": "0123456789abcdef0123456789abcdef", "model": "sonnet" }
+}
+```
+
+| 項目 | 規則 |
+| --- | --- |
+| `formatVersion` | 常に`2`です。ほかの値（ツールごとだった以前の形式`1`を含む）、未知の項目、壊れたファイルは、起動するものがないものとして読みます。 |
+| `autoStart` | 選択です。ないときは`null`です。 |
+| `autoStart.tool` | `claude-code`か`codex`です。 |
+| `autoStart.projectId` | セッションを、その結び付いたフォルダで起動するプロジェクトです。 |
+| `autoStart.model` | モデル名、またはツールの既定のモデルを使う`null`です。 |
+
+このファイルに秘密の値は含みません。プロジェクトがなくなった、または結び付いたフォルダがないときも、ファイルからは消しません。起動は理由付きの`failed`として表示され、選択は切るまで残ります。
 
 ## タスクのJSONとスナップショット
 
