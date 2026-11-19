@@ -15,6 +15,7 @@ use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 
 use super::super::super::FileStore;
+use super::super::super::layout;
 use super::super::super::model::{HistoryRecord, TaskView};
 use super::super::super::reader;
 use super::super::attachment::write_image;
@@ -160,7 +161,12 @@ impl FileStore {
                     .attachments
                     .iter()
                     .find(|a| &a.id == attachment_id)
-                    .is_some_and(|a| a.size == image.bytes.len() as i64),
+                    .and_then(|a| {
+                        let ext = layout::asset_extension(&a.media_type)?;
+                        let path = layout::task_asset_path(&project_dir, id, &a.id, ext).ok()?;
+                        fs::read(path).ok()
+                    })
+                    .is_some_and(|stored| Sha256::digest(&stored) == Sha256::digest(&image.bytes)),
                 _ => false,
             };
             if existing.kind != input.kind

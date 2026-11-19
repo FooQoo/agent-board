@@ -246,3 +246,57 @@ fn a_done_task_refuses_a_new_result_but_a_retry_still_succeeds() {
     );
     assert_eq!(code, "task_is_done");
 }
+
+#[test]
+fn same_key_and_size_but_different_image_bytes_is_a_conflict() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    // Two valid PNGs of the same length with different pixels.
+    let image = image::RgbaImage::from_pixel(1, 1, image::Rgba([1, 2, 3, 255]));
+    let other = image::RgbaImage::from_pixel(1, 1, image::Rgba([9, 8, 7, 255]));
+    let encode = |img: &image::RgbaImage| {
+        let mut out = Vec::new();
+        img.write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+            .unwrap();
+        out
+    };
+    let (a, b) = (encode(&image), encode(&other));
+    assert_eq!(a.len(), b.len());
+    assert_ne!(a, b);
+    let (fa, fb) = (home.path().join("a.png"), home.path().join("b.png"));
+    std::fs::write(&fa, &a).unwrap();
+    std::fs::write(&fb, &b).unwrap();
+    let args = |f: &PathBuf| {
+        vec![
+            "--summary".to_string(),
+            "S".into(),
+            "--key".into(),
+            "k1".into(),
+            "--file".into(),
+            f.to_str().unwrap().into(),
+        ]
+    };
+    let call = |f: &PathBuf| {
+        let owned = args(f);
+        let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
+        add(home.path(), "1", &refs)
+    };
+    let first = call(&fa);
+    assert_eq!(first["created"], true);
+    assert_eq!(call(&fa)["created"], false);
+    let owned = args(&fb);
+    let refs: Vec<&str> = owned.iter().map(String::as_str).collect();
+    let (_, code) = json_error(
+        home.path(),
+        &[
+            &["--project", "Demo", "result", "add", "1"][..],
+            &refs,
+            &["--actor", "ai"],
+        ]
+        .concat(),
+    );
+    assert_eq!(code, "invalid_value");
+    let task = &run(home.path(), &["show", "1"])["task"];
+    assert_eq!(task["results"].as_array().unwrap().len(), 1);
+    assert_eq!(task["attachments"].as_array().unwrap().len(), 1);
+}
