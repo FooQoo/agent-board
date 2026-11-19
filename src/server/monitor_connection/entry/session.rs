@@ -184,8 +184,14 @@ fn start_session(policy: &BackendPolicy, headers: &HeaderMap) -> Response {
 fn session_response(policy: &BackendPolicy, device: Option<String>) -> Option<Response> {
     let issued = policy
         .sessions
-        .issue_for(policy.origin.origin(), policy.epoch, device)
+        .issue_for(policy.origin.origin(), policy.epoch, device.clone())
         .ok()?;
+    // The device may have been removed between its check and this insert, after the removal
+    // already ended the sessions it knew of; such a session must not outlive it.
+    if device.is_some_and(|id| !policy.devices.contains(&id)) {
+        policy.sessions.revoke(&issued.secret);
+        return None;
+    }
     let mut response = json(
         StatusCode::OK,
         &session_body(policy, &issued.csrf, issued.expires_at),

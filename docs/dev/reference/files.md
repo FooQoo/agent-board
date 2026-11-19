@@ -58,10 +58,10 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
-  .internal/remote-devices.json
   .internal/notification-settings.json
   .internal/push-ledger.json
   .internal/preferences.json
+  .internal/remote-devices.json
   .internal/resident-autostart.json
 ```
 

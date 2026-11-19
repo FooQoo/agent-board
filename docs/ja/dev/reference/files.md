@@ -58,10 +58,10 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
   autostart.lock
   autostart.paused
   .internal/monitor-connection.json
-  .internal/remote-devices.json
   .internal/notification-settings.json
   .internal/push-ledger.json
   .internal/preferences.json
+  .internal/remote-devices.json
   .internal/resident-autostart.json
 ```
 

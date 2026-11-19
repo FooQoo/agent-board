@@ -114,7 +114,7 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 
 1. On the phone, open the URL or scan the QR code.
 2. The page shows **Enter the passcode**. Type the 4-digit passcode shown on the PC and choose **Connect**.
-3. The monitor opens, and this phone is now registered. The passcode is needed only this first time: when the 12-hour session ends, after you pause and resume the connection, or after the PC restarts, the phone opens the board again by itself. A phone that was never registered, or that you removed, is asked for the passcode.
+3. The monitor opens, and this phone is now registered. The passcode is needed only this first time: when the 12-hour session ends, after you pause and resume the connection, or after the PC restarts, the phone opens the board again by itself, as long as it reaches the same address. Registration belongs to the address: without an ngrok domain (see below), ngrok chooses a new address at every start, and a phone registered at the old address is asked for the passcode again. If the PC could not save the registration, the phone gets its session but is asked for the passcode next time. A phone that was never registered, or that you removed, is asked for the passcode.
 
 An address without a project opens the board, and you choose the project with the project switcher in the header. Links that ended in `/monitor/` in earlier versions are not served any more: they show a not-found answer. On the PC, open the remote connection settings and scan the current QR code again.
 
@@ -132,7 +132,7 @@ Knowing the address is not enough to read the board. A wrong passcode is refused
 
 ## Pause and resume
 
-Choose **Pause connection** in the dialog to stop public access. The dialog shows **Paused**, and the saved token and the registered phones stay on this PC. No phone can read the board or send answers while it is paused, registered or not, and the connection stays off the next time Agent Board starts. To resume with the saved token, choose **Resume**: registered phones come back without the passcode, and a new passcode is made for phones that are not registered yet. To use another token, choose **Change settings**, paste the token, and choose **Save and connect**.
+Choose **Pause connection** in the dialog to stop public access. The dialog shows **Paused**, and the saved token and the registered phones stay on this PC. No phone can read the board or send answers while it is paused, registered or not, and the connection stays off the next time Agent Board starts. To resume with the saved token, choose **Resume**: registered phones come back without the passcode if the address is the same as when they registered (always with an ngrok domain; without one, ngrok may choose a new address), and a new passcode is made for phones that are not registered yet. To use another token, choose **Change settings**, paste the token, and choose **Save and connect**.
 
 ## Registered phones
 
