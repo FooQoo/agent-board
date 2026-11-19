@@ -34,6 +34,12 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
   args: { open: true, onOpenChange: () => {}, restoreFocusRef: { current: null } },
   render: (args) => <Header open={args.open} />,
   beforeEach: () => {
+    // The page served on the PC carries its token; a page without one came through the entrance,
+    // which shows no connection entry.
+    const token = document.createElement('meta');
+    token.name = 'agboard-token';
+    token.content = 'story-token';
+    document.head.append(token);
     const original = window.fetch;
     window.fetch = (input, init) => {
       if (!String(input).startsWith('/api/monitor-connections')) return original(input, init);
@@ -56,6 +62,7 @@ export const WithConnectionEntry: StoryObj<typeof meta> = {
     };
     return () => {
       window.fetch = original;
+      token.remove();
     };
   },
   play: async () => {
