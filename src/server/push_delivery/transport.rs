@@ -6,15 +6,20 @@
 
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use sha2::{Digest, Sha256};
 
+use crate::server::monitor_connection::push::endpoint_ok;
+
 /// How long the push service keeps a message for a phone that is off: one day.
 pub(super) const TTL_SECONDS: u32 = 24 * 60 * 60;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+
+mod public;
 
 /// One POST to a push service.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,9 +61,11 @@ pub trait PushTransport: Send + Sync {
     fn send(&self, request: Request) -> SendFuture;
 }
 
-/// Posts with `reqwest` over TLS.
+/// Posts with `reqwest` over TLS. It connects only to public addresses: an endpoint that is not
+/// a public HTTPS host name is refused, and so is a host name that resolves to a private address.
 pub struct HttpTransport {
     client: reqwest::Client,
+    public_only: bool,
 }
 
 impl Default for HttpTransport {
@@ -72,9 +79,26 @@ impl HttpTransport {
         let client = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .redirect(reqwest::redirect::Policy::none())
+            .dns_resolver(Arc::new(public::PublicOnly))
             .build()
             .unwrap_or_default();
-        Self { client }
+        Self {
+            client,
+            public_only: true,
+        }
+    }
+
+    /// Posts to any address, as the tests that talk to a server on the loopback need.
+    #[cfg(test)]
+    fn unrestricted() -> Self {
+        Self {
+            public_only: false,
+            client: reqwest::Client::builder()
+                .timeout(REQUEST_TIMEOUT)
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .unwrap_or_default(),
+        }
     }
 }
 
@@ -90,7 +114,11 @@ pub(super) fn outcome_of(status: u16) -> Outcome {
 impl PushTransport for HttpTransport {
     fn send(&self, request: Request) -> SendFuture {
         let client = self.client.clone();
+        let refused = self.public_only && !endpoint_ok(&request.endpoint);
         Box::pin(async move {
+            if refused {
+                return Outcome::Rejected;
+            }
             let response = client
                 .post(&request.endpoint)
                 .header("Authorization", request.authorization)

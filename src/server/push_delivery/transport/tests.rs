@@ -94,7 +94,7 @@ fn request(endpoint: String) -> Request {
 #[tokio::test]
 async fn the_http_transport_posts_the_encrypted_body_with_the_push_headers() {
     let (url, seen) = fake_service("201 Created").await;
-    let outcome = HttpTransport::new().send(request(url)).await;
+    let outcome = HttpTransport::unrestricted().send(request(url)).await;
     assert_eq!(outcome, Outcome::Delivered);
     let (head, body) = seen.await.unwrap();
     let head = head.to_ascii_lowercase();
@@ -110,10 +110,13 @@ async fn the_http_transport_posts_the_encrypted_body_with_the_push_headers() {
 #[tokio::test]
 async fn the_http_transport_reports_a_gone_subscription_and_follows_no_redirect() {
     let (url, _seen) = fake_service("410 Gone").await;
-    assert_eq!(HttpTransport::new().send(request(url)).await, Outcome::Gone);
+    assert_eq!(
+        HttpTransport::unrestricted().send(request(url)).await,
+        Outcome::Gone
+    );
     let (url, _seen) = fake_service("302 Found").await;
     assert_eq!(
-        HttpTransport::new().send(request(url)).await,
+        HttpTransport::unrestricted().send(request(url)).await,
         Outcome::Rejected
     );
 }
@@ -124,7 +127,25 @@ async fn an_unreachable_service_is_tried_again_later() {
     let url = format!("http://{}/", listener.local_addr().unwrap());
     drop(listener);
     assert_eq!(
-        HttpTransport::new().send(request(url)).await,
+        HttpTransport::unrestricted().send(request(url)).await,
         Outcome::Retry
     );
+}
+
+#[tokio::test]
+async fn the_real_transport_refuses_an_endpoint_that_is_not_a_public_https_host() {
+    for endpoint in [
+        "http://push.example.com/x",
+        "https://127.0.0.1:9/x",
+        "https://localhost/x",
+        "https://10.0.0.5/x",
+    ] {
+        assert_eq!(
+            HttpTransport::new()
+                .send(request(endpoint.to_string()))
+                .await,
+            Outcome::Rejected,
+            "{endpoint}"
+        );
+    }
 }
