@@ -39,6 +39,7 @@ Always:
 Follow GitHub flow. `main` is always releasable, and every change reaches it through a pull request.
 
 - Start each change on its own branch cut from the latest `main`, named `feature/<topic>` whatever the kind of change.
+- Split a larger change, such as an epic or a task too big for one review, into task branches. Cut each from the feature branch and name it `task/<topic>`. When a task is done and its own verification passes, merge it into the feature branch with a merge commit, then delete the task branch and its worktree. Open one pull request from the feature branch to `main` once every task is in; task branches never target `main`.
 - Express the kind of change in the commit messages with [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`, `chore:`, and so on. Give the pull request title the same form.
 - Never push commits directly to `main`, including small fixes to tests, CI, or documentation.
 - Push the branch and open a pull request to `main`. Merge it after its CI passes. A job that was cancelled, or that failed for a known flaky reason unrelated to the change, can be re-run; do not merge over a real failure.
