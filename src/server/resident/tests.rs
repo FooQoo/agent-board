@@ -22,9 +22,9 @@ case "$1" in
   login) if [ -f "$d/logged-out" ]; then exit 1; fi; exit 0 ;;
   debug) cat "$d/models.json"; exit $?  ;;
 esac
+echo x >> "$d/$n.starts"
 { echo "ARGS: $*"; echo "PWD: $(pwd)"; env; } > "$d/$n.record.tmp"
 mv "$d/$n.record.tmp" "$d/$n.record"
-echo x >> "$d/$n.starts"
 if [ -f "$d/exit-now" ]; then exit 0; fi
 exec sleep 60
 "#;
@@ -260,5 +260,6 @@ fn a_board_session_the_registry_counts_refuses_a_launch() {
     fx.launcher.shutdown();
 }
 
+mod autostart;
 mod health;
 mod lifecycle;
