@@ -59,7 +59,12 @@ for (const screen of screens) {
         const button = dialog.getByRole('button', { name: submit, exact: true });
         await expect(button).toBeVisible();
         const limit = screen.height - screen.keyboard;
+        // A smaller visual viewport with no text field focused (a pinch zoom, a toolbar) is no keyboard:
+        // the dialog stays centered.
         await page.evaluate((height) => (window as unknown as Keyboard).setKeyboard(height), screen.keyboard);
+        await expect(page.locator('html')).not.toHaveAttribute('data-visual-keyboard', '');
+        // The keyboard opens for a focused text field.
+        await dialog.getByRole('textbox').first().focus();
         await expect(page.locator('html')).toHaveAttribute('data-visual-keyboard', '');
         if (process.env.AB_SHOTS) {
           await page.waitForTimeout(600);

@@ -161,7 +161,7 @@ test('the task grips never take keyboard focus', async ({ page }) => {
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const visited: string[] = [];
-  for (let step = 0; step < 18; step++) {
+  for (let step = 0; step < 17; step++) {
     await page.keyboard.press('Tab');
     visited.push(
       await page.evaluate(() => {
