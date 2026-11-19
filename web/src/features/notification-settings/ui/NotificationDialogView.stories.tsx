@@ -41,9 +41,9 @@ function EnableRow({ on }: { on: boolean }) {
 export const Desktop: Story = {
   play: async ({ args }) => {
     const dialog = await within(document.body).findByRole('dialog');
-    await expect(
-      within(dialog).getByRole('heading', { name: 'Phone notifications' }),
-    ).toBeVisible();
+    // The dialog fades in, so wait until it is visible rather than asserting at once.
+    const heading = within(dialog).getByRole('heading', { name: 'Phone notifications' });
+    await waitFor(() => expect(heading).toBeVisible());
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /^History additions/ }));
     await expect(args.onChange).toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
