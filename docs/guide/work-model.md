@@ -94,6 +94,28 @@ Some things are not enforced by Agent Board yet. They depend on the agent follow
 - **Your own tasks.** Tasks you own are recorded, not verified.
 - **Epics.** Agent Board does not track whether an epic is finished; its completion conditions are written in its body.
 
+## How it differs from AI-DLC and spec-driven development {#compare}
+
+AI-DLC and spec-driven development (SDD) answer a different question from the work model. They are methods: they say what to produce, and in which phases, before and while an agent writes code. Agent Board is a harness: it is the place where the work runs and is tracked, whatever method produced the plan.
+
+[AI-DLC](https://aws.amazon.com/blogs/devops/ai-driven-development-life-cycle/) (the AI-Driven Development Life Cycle, introduced by AWS) has the AI draft plans, code, and tests while people validate each step. Its workflow runs from inception, where requirements and units of work are agreed, through construction to operations, and AWS publishes it as [open-source workflow rules](https://github.com/awslabs/aidlc-workflows) for several coding agents. SDD writes a spec before the code and treats it as the source of truth for the person and the agent. [GitHub Spec Kit](https://github.com/github/spec-kit) walks from a constitution through specify, plan, and tasks to implement, and [Kiro](https://kiro.dev/docs/specs/) keeps `requirements.md`, `design.md`, and `tasks.md` for each feature. [Martin Fowler's overview](https://www.martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html) compares these tools and notes that SDD is not one fixed practice.
+
+Agent Board does not prescribe phases or documents. It adds what a method alone leaves to convention: one shared board that holds the plan, the progress, and the history, and rules that Agent Board itself enforces. The agent waits for an open question, a task finishes only when its acceptance conditions are met, and the history lets another session or agent continue. Because it works through a CLI, a Skill, and a hook, it is not tied to one agent; the plugin covers Claude Code and Codex.
+
+The approaches combine well. A spec written with Spec Kit or Kiro, or the phase plan of AI-DLC, can live in an epic, with each task of the plan as a task on the board and each acceptance criterion as an acceptance condition. The method decides what to build, and Agent Board carries the work through to Done.
+
+|  | Agent Board | AI-DLC | Spec-driven development |
+| --- | --- | --- | --- |
+| **What it is** | A harness: a local board and rules that the work runs on. | A development method with phases, centred on AI-drafted plans that people validate. | A practice of writing a spec before code, supported by tools such as Spec Kit and Kiro. |
+| **What it produces** | Epics, tasks, questions, acceptance conditions, and a history, as plain files. | Requirements, units of work, designs, code, and tests, phase by phase. | A spec, a plan, and a task list as Markdown files, often one set per feature. |
+| **Where plan, progress, and history live** | One shared board for the project, with a history in every task. | In the files and the session of the workflow in use. | The plan and task list live in spec files; progress depends on the tool. |
+| **How you step in** | You answer questions, or watch the board live and move cards, check conditions, or rewrite plans, from the browser or your phone. | You validate the AI's proposals at each phase. | You review and edit the spec files. |
+| **How done is judged** | Automatically: all acceptance conditions are done and no question is open. | By the validation of each step. | By the tasks and checklists in the spec; the tool does not verify them. |
+| **Resuming in another session or agent** | The task history records what was done and why, so a new session or agent continues from there. | Relies on the workflow's recorded state. | Relies on the spec files. |
+| **Tool dependence** | Any agent that can run the `agboard` command; the plugin covers Claude Code and Codex. | Rules for agents such as Claude Code, Kiro, and Codex CLI. | Depends on the tool, for example an IDE or a set of slash commands. |
+
+These columns describe each approach at its core, as its public documentation presents it. Teams adapt methods and tools, so check the sources above for the details. The strengths of Agent Board are in its column, the first after the labels: its guarantees are enforced rather than agreed, and the person and the agent see the same state as it changes.
+
 ## Next
 
 - [Quickstart](./quickstart): delegate a piece of work and see these rules at work.

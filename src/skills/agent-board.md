@@ -116,7 +116,7 @@ Until you accept, the answer stays in `answers` and the person sees it as waitin
 
 ### Plan a request: AI drafts, questions, then start them yourself
 
-When a request needs more than one task, run `agboard skills planning` before you register anything. It covers the plan of AI drafts, the questions that change it, and starting the drafts yourself.
+When a request needs more than one task, run `agboard skills planning` before you register anything. It covers the plan of AI drafts, the questions that change it, and starting the drafts yourself. A request that spans several areas, or contains work that can be verified separately, needs more than one task: read the topic before you create the first card. "Register it on the board" says how far to go, not how many cards; judge the number from the content of the request.
 
 ## 5. Lanes and run states
 
