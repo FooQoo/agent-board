@@ -120,6 +120,8 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 
 An address without a project opens the board, and you choose the project with the project switcher in the header. Links that ended in `/monitor/` in earlier versions are not served any more: they show a not-found answer. On the PC, open the remote connection settings and scan the current QR code again.
 
+In the Home Screen app, the screen uses the whole display and keeps its header and bottom bar clear of the status bar and the home indicator, so nothing is hidden behind them. In a Safari tab and on the PC the layout is unchanged.
+
 ## Use the whole board through the address
 
 The address from the QR code, for example `https://….ngrok.app/?project=…`, opens the board itself: the same board as on the PC, with the screen chosen by the window width (below 768px you get the monitor described above). It asks for the same 4-digit passcode, shows nothing of the board until the passcode is right, and then lets you do what you can do on the PC board, such as editing, moving, and deleting tasks, answering questions, and reading the project documents. The passcode lasts up to 12 hours and has the same limit of 5 wrong tries.

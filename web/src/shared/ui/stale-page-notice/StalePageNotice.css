@@ -1,6 +1,6 @@
 .stale-page {
   position: fixed;
-  top: env(safe-area-inset-top, 0px);
+  top: 0;
   right: 0;
   left: 0;
   z-index: 1000;
@@ -12,7 +12,8 @@
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding: 10px 16px;
+  padding: calc(10px + var(--safe-top)) max(16px, var(--safe-right)) 10px
+    max(16px, var(--safe-left));
   border-bottom: 1px solid var(--r-danger);
   background: var(--r-surface);
   color: var(--r-text);

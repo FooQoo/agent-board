@@ -7,8 +7,8 @@
   height: var(--stable-vh, 100svh);
   min-width: 0;
   min-height: 0;
-  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-    max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) max(6px, var(--safe-bottom))
+    max(8px, var(--safe-left));
   background: var(--r-bg);
   overflow: hidden;
 }
@@ -349,7 +349,7 @@
   width: 100%;
   max-width: none;
   height: min(calc(var(--stable-vh, 100svh) * 0.85), 720px);
-  max-height: calc(var(--stable-vh, 100svh) - env(safe-area-inset-top));
+  max-height: calc(var(--stable-vh, 100svh) - var(--safe-top));
   /* The only writer of the sheet's position besides the enter and exit keyframes: the drag hook sets
      the pull, and the keyframes start or end at it. */
   translate: 0 var(--drawer-drag-y, 0px);
@@ -386,7 +386,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 0 0 env(safe-area-inset-bottom);
+  padding: 0 0 var(--safe-bottom);
 }
 .mobile-drawer__overlay[data-slot="drawer-backdrop"] {
   position: fixed;
@@ -566,7 +566,7 @@
   min-height: 0;
   width: 100%;
   margin: 0;
-  padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 14px 16px calc(20px + var(--safe-bottom));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
