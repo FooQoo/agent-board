@@ -29,6 +29,26 @@ pub trait TokenVault: Send + Sync {
     fn delete(&self) -> Result<(), VaultError>;
 }
 
+/// What the keychain held before a token was replaced: `None` when that could not be read, so
+/// there is nothing to put back.
+pub type Previous = Option<Option<Secret>>;
+
+/// Save `token`, returning what was there before so a failed settings save can undo it.
+pub fn replace_token(vault: &dyn TokenVault, token: &Secret) -> Result<Previous, VaultError> {
+    let previous = vault.load().ok();
+    vault.save(token)?;
+    Ok(previous)
+}
+
+/// Put back what `replace_token` replaced. Best effort: a failure here changes nothing more.
+pub fn put_back(vault: &dyn TokenVault, previous: Previous) {
+    let _ = match previous {
+        Some(Some(token)) => vault.save(&token),
+        Some(None) => vault.delete(),
+        None => Ok(()),
+    };
+}
+
 /// The operating system's keychain: Keychain on macOS, Credential Manager on
 /// Windows, the Secret Service on Linux.
 pub struct OsKeychain;

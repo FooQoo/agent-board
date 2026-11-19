@@ -199,6 +199,7 @@ impl MonitorConnections {
         // Settings saved from the command line while the keychain is asked for are taken in, and
         // the keychain is then read again, so that a stale domain or token is never used or saved.
         let mut attempts = 0;
+        let mut previous = None;
         let (_file, mut inner) = loop {
             let seen = {
                 let inner = self.synced();
@@ -211,12 +212,25 @@ impl MonitorConnections {
             if save && let Some(token) = &token {
                 let vault = self.vault.clone();
                 let token = token.clone();
-                tokio::task::spawn_blocking(move || vault.save(&token))
-                    .await
-                    .unwrap_or(Err(super::keychain::VaultError::Failed))
-                    .map_err(|_| StartError::KeychainUnavailable)?;
+                let replaced = tokio::task::spawn_blocking(move || {
+                    super::keychain::replace_token(&*vault, &token)
+                })
+                .await
+                .unwrap_or(Err(super::keychain::VaultError::Failed))
+                .map_err(|_| StartError::KeychainUnavailable)?;
+                previous.get_or_insert(replaced);
             }
-            let held = self.write_guard().map_err(|_| StartError::SaveFailed)?;
+            let Ok(held) = self.write_guard() else {
+                // The token goes back so the keychain and the saved revision agree.
+                if let Some(previous) = previous {
+                    let vault = self.vault.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        super::keychain::put_back(&*vault, previous)
+                    })
+                    .await;
+                }
+                return Err(StartError::SaveFailed);
+            };
             attempts += 1;
             if held.1.config.revision == seen || attempts >= 3 {
                 break held;

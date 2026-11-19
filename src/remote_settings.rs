@@ -19,7 +19,9 @@ use serde_json::{Value, json};
 use crate::error::{AgboardError, FileAction};
 use crate::server::monitor_connection::config::{ConfigError, ConfigStore};
 use crate::server::monitor_connection::contracts::ConnectionConfig;
-use crate::server::monitor_connection::keychain::{NoKeychain, OsKeychain, TokenVault};
+use crate::server::monitor_connection::keychain::{
+    NoKeychain, OsKeychain, TokenVault, put_back, replace_token,
+};
 use crate::server::monitor_connection::lifecycle::{Secret, parse_domain, parse_token};
 
 /// The file, as the data area's users see it in messages.
@@ -153,12 +155,21 @@ pub fn apply(
     let store = ConfigStore::new(data_dir);
     // The keychain can stop to ask the user, so it is written before the lock is taken and read
     // after it is released: the lock is held only for the read and the save of the file.
-    if let Some(token) = &change.token {
-        vault.save(token).map_err(|_| vault_error())?;
-    }
+    let previous = match &change.token {
+        Some(token) => Some(replace_token(vault, token).map_err(|_| vault_error())?),
+        None => None,
+    };
+    // When the settings file cannot be saved the token goes back, so the keychain and the
+    // revision a running board follows never disagree.
+    let undo = |error: AgboardError| {
+        if let Some(previous) = previous.clone() {
+            put_back(vault, previous);
+        }
+        error
+    };
     let lock = store
         .lock()
-        .map_err(|e| file_error(FileAction::Write, &e))?;
+        .map_err(|e| undo(file_error(FileAction::Write, &e)))?;
     let current = store.load().unwrap_or_default();
     let next = ConnectionConfig {
         enabled: change.enabled.unwrap_or(current.enabled),
@@ -170,7 +181,7 @@ pub fn apply(
     };
     store
         .save(&next)
-        .map_err(|e| file_error(FileAction::Write, &e))?;
+        .map_err(|e| undo(file_error(FileAction::Write, &e)))?;
     drop(lock);
     Ok(saved_of(&next, vault))
 }
@@ -269,6 +280,26 @@ mod tests {
         let text = std::fs::read_to_string(dir.path().join(FILE)).unwrap();
         assert!(!text.contains("tok_secret"), "{text}");
         assert!(!format!("{saved:?}{}", saved.to_json()).contains("tok_secret"));
+    }
+
+    #[test]
+    fn a_failed_lock_puts_the_previous_token_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = MemoryVault::default();
+        vault.save(&token_of("tok_old_value_123").unwrap()).unwrap();
+        // A folder where the lock file belongs makes taking the lock fail.
+        let lock_dir = dir.path().join(".internal").join("monitor-connection.lock");
+        std::fs::create_dir_all(&lock_dir).unwrap();
+        let result = apply(
+            dir.path(),
+            &vault,
+            Change {
+                token: Some(token_of("tok_new_value_123").unwrap()),
+                ..Change::default()
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(vault.load().unwrap().unwrap().expose(), "tok_old_value_123");
     }
 
     #[test]
