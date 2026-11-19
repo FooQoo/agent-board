@@ -87,7 +87,7 @@ impl Fixture {
     /// The record the fake script wrote, once it has started.
     fn record(&self, name: &str) -> String {
         let path = self.dir.path().join(format!("{name}.record"));
-        let until = Instant::now() + Duration::from_secs(10);
+        let until = Instant::now() + DEADLINE;
         while Instant::now() < until {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 return text;
@@ -103,8 +103,11 @@ fn alive(pid: u32) -> bool {
     unsafe { libc::kill(pid as i32, 0) == 0 }
 }
 
+/// Every wait for a state polls until it holds, with a deadline far beyond a slow, busy machine.
+const DEADLINE: Duration = Duration::from_secs(60);
+
 fn wait_until(what: &str, mut ready: impl FnMut() -> bool) {
-    let until = Instant::now() + Duration::from_secs(10);
+    let until = Instant::now() + DEADLINE;
     while Instant::now() < until {
         if ready() {
             return;

@@ -34,8 +34,12 @@ fn starts(fx: &Fixture, name: &str) -> usize {
 }
 
 fn kill(pid: u32) {
-    // SAFETY: plain signal to a child the test started.
-    unsafe { libc::kill(pid as i32, libc::SIGKILL) };
+    // SAFETY: plain signal to the group of a child the test started (it leads its own group),
+    // so the `sleep` it runs does not outlive the test.
+    unsafe {
+        libc::kill(-(pid as i32), libc::SIGKILL);
+        libc::kill(pid as i32, libc::SIGKILL);
+    }
 }
 
 fn attach(fx: &Fixture, tool: Tool) -> crate::server::sessions::SessionHold {
@@ -160,20 +164,28 @@ fn a_child_that_never_waits_on_the_board_is_replaced() {
 fn an_attached_child_is_left_alone_even_while_it_works() {
     let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let fx = fixture_timed(Timing {
-        startup_allowance: Duration::from_millis(200),
+        startup_allowance: Duration::from_secs(1),
         ..fast()
     });
     fx.launcher.start(no_projects);
     fx.launch(Tool::ClaudeCode, None).unwrap();
     let _hold = attach(&fx, Tool::ClaudeCode);
-    std::thread::sleep(Duration::from_millis(700));
+    // Wait for the supervisor to see the attach, however slow the machine is.
+    wait_until("the attach to be seen", || {
+        fx.launcher
+            .plans()
+            .get(&Tool::ClaudeCode)
+            .is_some_and(|plan| plan.attached.is_some())
+    });
+    // Outlive the startup allowance with no wait registered.
+    std::thread::sleep(Duration::from_millis(1500));
     assert_eq!(starts(&fx, "claude"), 1);
     assert_eq!(state_of(&fx, Tool::ClaudeCode).state, HealthState::Running);
     assert!(state_of(&fx, Tool::ClaudeCode).waiting);
     // A session that works on a task has closed its wait; it is left alone however long it takes.
     drop(_hold);
     fx.registry.remove_board(Tool::ClaudeCode);
-    std::thread::sleep(Duration::from_millis(700));
+    std::thread::sleep(Duration::from_millis(1500));
     assert_eq!(starts(&fx, "claude"), 1);
     let health = state_of(&fx, Tool::ClaudeCode);
     assert_eq!(health.state, HealthState::Running);
