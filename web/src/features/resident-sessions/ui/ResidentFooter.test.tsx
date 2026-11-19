@@ -23,6 +23,28 @@ describe('ResidentIndicator', () => {
     expect(container.innerHTML).toBe('');
   });
 
+  it('warns about stalled items on the PC and names them for assistive tech', () => {
+    const stalled = health({
+      state: 'running',
+      tool: 'codex',
+      pushStalled: ['task 12 was pushed 3 times and is still not handled.'],
+    });
+    render(<ResidentIndicator health={stalled} onOpen={() => {}} />);
+    expect(screen.getByRole('button', { name: /could not be handled: Task #12/ })).toBeTruthy();
+    expect(screen.getByText('Some items could not be handled (1)')).toBeTruthy();
+  });
+
+  it('shows only the icon on the display-only view', () => {
+    const stalled = health({
+      state: 'running',
+      tool: 'codex',
+      pushStalled: ['task 12 was pushed 3 times and is still not handled.'],
+    });
+    render(<ResidentIndicator health={stalled} />);
+    expect(screen.queryByText(/could not be handled/)).toBeNull();
+    expect(screen.getByRole('img', { name: /Task #12/ })).toBeTruthy();
+  });
+
   it('is a button that opens the dialog when onOpen is given', () => {
     render(
       <ResidentIndicator health={health({ state: 'failed', tool: 'codex' })} onOpen={() => {}} />,

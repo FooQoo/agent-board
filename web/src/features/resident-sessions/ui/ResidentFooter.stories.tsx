@@ -71,6 +71,29 @@ export const Failed: Story = {
   args: { health: health({ state: 'failed', tool: 'codex' }) },
 };
 
+/** Stalled items on the PC: a warning with the count; the tooltip names the items. */
+export const Stalled: Story = {
+  args: {
+    health: health({
+      state: 'running',
+      waiting: true,
+      tool: 'claude-code',
+      pushStalled: [
+        'request Q-3 was pushed 3 times and is still not handled.',
+        'task 12 was pushed 3 times and is still not handled.',
+      ],
+    }),
+  },
+  play: async ({ args, canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', {
+      name: /Some items could not be handled: Request Q-3, Task #12/,
+    });
+    await expect(within(button).getByText('Some items could not be handled (2)')).toBeVisible();
+    await userEvent.click(button);
+    await expect(args.onOpen).toHaveBeenCalled();
+  },
+};
+
 /** Stopped with auto-start on: a ring and the generic label. */
 export const Stopped: Story = {
   args: {

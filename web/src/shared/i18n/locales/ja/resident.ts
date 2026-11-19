@@ -64,5 +64,14 @@ export const residentJa = {
     footerLabel: '常駐セッション',
     footerStopped: '常駐セッション: 停止中',
     footerState: '{{tool}}: {{state}}',
+    footerStalled: '処理できない項目があります ({{count}})',
+    stalledTitle: '処理できない項目があります',
+    stalledItem: {
+      request: '依頼 {{id}}',
+      answer: '{{id}} への回答',
+      task: 'タスク #{{id}}',
+    },
+    stalledHint:
+      'ボードは各項目を3回送って止めました。ボード上で自分で片付けるか、セッションを止めて起動し直してください。ボードから無くなった項目は、この一覧から消えます。',
   },
 } as const;

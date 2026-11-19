@@ -395,3 +395,50 @@ button.resident-footer {
     display: none;
   }
 }
+
+/* ---- Items the board gave up pushing: the notice's frame, with a list inside ---- */
+
+.resident-stalled {
+  border-color: var(--r-danger);
+}
+
+.resident-stalled__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.resident-stalled__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resident-stalled__list > li > span:first-child {
+  font-weight: 600;
+}
+
+.resident-stalled__reason {
+  display: block;
+  color: var(--r-text2);
+  overflow-wrap: anywhere;
+}
+
+.resident-stalled__hint {
+  margin: 0;
+}
+
+.resident-footer__stalled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--r-pend-tx);
+  white-space: nowrap;
+}
+
+.resident-footer__stalled > svg {
+  width: 14px;
+  height: 14px;
+}

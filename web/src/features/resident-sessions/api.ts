@@ -21,6 +21,8 @@ export interface SessionHealth {
   reason: string | null;
   /** True while the session's wait is registered; a running session with false is working on a task. */
   waiting: boolean;
+  /** Items the board gave up pushing, each as the server's sentence; see `parseStalled`. */
+  pushStalled: string[];
   restartCount: number;
   lastExitAt: string | null;
   nextRestartAt: string | null;

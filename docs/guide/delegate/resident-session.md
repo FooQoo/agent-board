@@ -39,7 +39,12 @@ The dialog also counts the sessions attached to the board, split into those the 
 
 ## When a session does not handle something {#not-handled}
 
-If the session ends its turn without handling an item, for example a request it did not accept, the board sends the item again after a short delay, up to three times. After that it stops sending that item so a failing turn cannot loop, and the other items keep going. Handle the item yourself, or stop and start the session. The board does not show this in the dialog yet; the `pushStalled` field of the sessions response lists such items.
+If the session ends its turn without handling an item, for example a request it did not accept, the board sends the item again after a short delay, up to three times. After that it stops sending that item so a failing turn cannot loop, and the other items keep going. Handle the item yourself on the board, or stop and start the session. An item leaves the list once it is no longer on the board.
+
+The board shows these items in two places:
+
+- The dialog has a **Some items could not be handled** notice with each item by name (for example **Request Q-3**, **Answer to Q-5**, or **Task #12**), the reason the last turn failed, and how to clear it.
+- On the PC, the footer indicator gets a warning with the number of items. Click it to open the dialog. The phone indicator shows only the warning icon, and its description names the items.
 
 ## Remote access {#remote-access}
 

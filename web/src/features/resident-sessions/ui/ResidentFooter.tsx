@@ -1,9 +1,11 @@
+import { TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SessionHealth } from '../api';
-import { deriveState, footerVisible, toolName } from '../state';
+import { deriveState, footerVisible, stalledItems, toolName } from '../state';
 import { FOOTER_POLL_MS, useResidentSession } from '../useResidentSession';
 import { requestResidentDialog } from '../events';
 import { useStateLabel } from './StateBadge';
+import { useStalledName } from './StalledNotice';
 import './resident.css';
 
 /**
@@ -24,17 +26,29 @@ export function ResidentIndicator({
 }) {
   const { t } = useTranslation();
   const label = useStateLabel();
+  const stalledName = useStalledName();
   if (!footerVisible(health)) return null;
   const state = deriveState(health);
   const name = health.tool ? toolName(health.tool) : t('resident.footerLabel');
-  const text =
+  const stalled = stalledItems(health);
+  const base =
     state === 'stopped'
       ? t('resident.footerStopped')
       : t('resident.footerState', { tool: name, state: label(state) });
+  const text =
+    stalled.length > 0
+      ? `${base}. ${t('resident.stalledTitle')}: ${stalled.map(stalledName).join(', ')}`
+      : base;
   const inner = (
     <>
       <span>{state === 'stopped' ? t('resident.footerLabel') : name}</span>
       {withState && <span className="resident-footer__state">{label(state, true)}</span>}
+      {stalled.length > 0 && (
+        <span className="resident-footer__stalled">
+          <TriangleAlertIcon aria-hidden="true" />
+          {onOpen && <span>{t('resident.footerStalled', { count: stalled.length })}</span>}
+        </span>
+      )}
       <span className="resident-footer__dot" aria-hidden="true" />
     </>
   );

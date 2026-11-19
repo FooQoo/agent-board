@@ -12,6 +12,7 @@ import {
   isForOtherProject,
   modelValue,
   secondsUntil,
+  stalledItems,
   startedAt,
 } from './state';
 
@@ -144,5 +145,22 @@ describe('secondsUntil', () => {
   it('is null without a usable time', () => {
     expect(secondsUntil(null, now)).toBeNull();
     expect(secondsUntil('soon', now)).toBeNull();
+  });
+});
+
+describe('stalledItems', () => {
+  it('splits the server sentence into the item and the last failure', () => {
+    const items = stalledItems(
+      health({
+        pushStalled: [
+          'request Q-3 was pushed 3 times and is still not handled (the last turn failed: boom).',
+          'task 12 was pushed 3 times and is still not handled.',
+          'something unexpected',
+        ],
+      }),
+    );
+    expect(items[0]).toMatchObject({ kind: 'request', id: 'Q-3', reason: 'boom' });
+    expect(items[1]).toMatchObject({ kind: 'task', id: '12', reason: null });
+    expect(items[2]).toMatchObject({ kind: null, id: null, text: 'something unexpected' });
   });
 });

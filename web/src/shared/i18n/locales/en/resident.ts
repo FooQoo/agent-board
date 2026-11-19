@@ -63,5 +63,14 @@ export const residentEn = {
     footerLabel: 'Resident session',
     footerStopped: 'Resident session: stopped',
     footerState: '{{tool}}: {{state}}',
+    footerStalled: 'Some items could not be handled ({{count}})',
+    stalledTitle: 'Some items could not be handled',
+    stalledItem: {
+      request: 'Request {{id}}',
+      answer: 'Answer to {{id}}',
+      task: 'Task #{{id}}',
+    },
+    stalledHint:
+      'The board tried each item three times and stopped. Finish it on the board yourself, or stop and start the session; an item leaves this list once it is no longer on the board.',
   },
 } as const;
