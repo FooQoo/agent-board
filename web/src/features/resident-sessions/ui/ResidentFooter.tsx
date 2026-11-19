@@ -1,7 +1,7 @@
 import { TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SessionHealth } from '../api';
-import { deriveState, footerVisible, stalledItems, toolName } from '../state';
+import { deriveState, footerVisible, toolName } from '../state';
 import { FOOTER_POLL_MS, useResidentSession } from '../useResidentSession';
 import { requestResidentDialog } from '../events';
 import { useStateLabel } from './StateBadge';
@@ -30,7 +30,7 @@ export function ResidentIndicator({
   if (!footerVisible(health)) return null;
   const state = deriveState(health);
   const name = health.tool ? toolName(health.tool) : t('resident.footerLabel');
-  const stalled = stalledItems(health);
+  const stalled = health.pushStalled;
   const base =
     state === 'stopped'
       ? t('resident.footerStopped')

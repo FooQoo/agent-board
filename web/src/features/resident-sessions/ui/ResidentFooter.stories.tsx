@@ -79,8 +79,8 @@ export const Stalled: Story = {
       waiting: true,
       tool: 'claude-code',
       pushStalled: [
-        'request Q-3 was pushed 3 times and is still not handled.',
-        'task 12 was pushed 3 times and is still not handled.',
+        { kind: 'request', id: 'Q-3', attempts: 3, lastError: null },
+        { kind: 'task', id: '12', attempts: 3, lastError: null },
       ],
     }),
   },

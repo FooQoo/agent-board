@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
+
 use super::super::supervisor::Timing;
 use crate::agent::task_wait;
 use crate::domain::ProjectId;
@@ -38,12 +40,34 @@ struct Attempt {
     last: Instant,
 }
 
+/// What kind of board item was pushed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StalledKind {
+    Request,
+    Answer,
+    Task,
+}
+
+/// An item the board pushed several times without the session handling it, and gave up on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stalled {
+    pub kind: StalledKind,
+    /// The request or question ID such as `Q-3`, or the task number as text.
+    pub id: String,
+    /// How many times the item was pushed.
+    pub attempts: u32,
+    /// How the last turn failed, if it did.
+    pub last_error: Option<String>,
+}
+
 /// What was pushed and how often, per item key (`answer:Q-3`, `request:Q-5`, `task:12`).
 #[derive(Default)]
 pub(super) struct Log {
     attempts: HashMap<String, Attempt>,
     /// The items that were given up, as the health lists them.
-    pub(super) stalled: Vec<(String, String)>,
+    pub(super) stalled: Vec<(String, Stalled)>,
     /// How the last turn failed, if it did.
     pub(super) last_failure: Option<String>,
 }
@@ -90,15 +114,17 @@ impl Log {
             return true;
         };
         if attempt.count >= policy.max_attempts {
-            let note = format!(
-                "{} was pushed {} times and is still not handled{}.",
-                key.replacen(':', " ", 1),
-                attempt.count,
-                self.last_failure
-                    .as_ref()
-                    .map(|why| format!(" (the last turn failed: {why})"))
-                    .unwrap_or_default()
-            );
+            let (kind, id) = key.split_once(':').unwrap_or(("task", key));
+            let note = Stalled {
+                kind: match kind {
+                    "request" => StalledKind::Request,
+                    "answer" => StalledKind::Answer,
+                    _ => StalledKind::Task,
+                },
+                id: id.to_string(),
+                attempts: attempt.count,
+                last_error: self.last_failure.clone(),
+            };
             match self.stalled.iter_mut().find(|(k, _)| k == key) {
                 Some(entry) => entry.1 = note,
                 None => self.stalled.push((key.to_string(), note)),

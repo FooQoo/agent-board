@@ -1,20 +1,19 @@
 import { TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SessionHealth } from '../api';
-import { stalledItems, type StalledItem } from '../state';
+import type { StalledItem } from '../api';
 
 /** The name of an item as a person reads it: "Request Q-3", "Answer to Q-5", "Task #12". */
 export function useStalledName() {
   const { t } = useTranslation();
-  return (item: StalledItem): string =>
-    item.kind && item.id ? t(`resident.stalledItem.${item.kind}`, { id: item.id }) : item.text;
+  return (item: StalledItem): string => t(`resident.stalledItem.${item.kind}`, { id: item.id });
 }
 
 /** Items the board pushed to the session several times and gave up on, with the way out. */
 export function StalledNotice({ health }: { health: SessionHealth }) {
   const { t } = useTranslation();
   const name = useStalledName();
-  const items = stalledItems(health);
+  const items = health.pushStalled;
   if (items.length === 0) return null;
   return (
     <section className="resident-notice resident-stalled" role="alert">
@@ -23,9 +22,9 @@ export function StalledNotice({ health }: { health: SessionHealth }) {
         <p className="resident-stalled__title">{t('resident.stalledTitle')}</p>
         <ul className="resident-stalled__list">
           {items.map((item) => (
-            <li key={item.text}>
+            <li key={`${item.kind}:${item.id}`}>
               <span>{name(item)}</span>
-              {item.reason && <span className="resident-stalled__reason">{item.reason}</span>}
+              {item.lastError && <span className="resident-stalled__reason">{item.lastError}</span>}
             </li>
           ))}
         </ul>

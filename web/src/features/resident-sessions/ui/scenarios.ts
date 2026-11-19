@@ -122,9 +122,14 @@ export const scenarios: Record<ScenarioId, ResidentPanelProps> = {
         projectId: PROJECT,
         model: 'sonnet',
         pushStalled: [
-          'request Q-3 was pushed 3 times and is still not handled (the last turn failed: The turn ended without an answer).',
-          'answer Q-5 was pushed 3 times and is still not handled.',
-          'task 12 was pushed 3 times and is still not handled (the last turn failed: rate limited).',
+          {
+            kind: 'request',
+            id: 'Q-3',
+            attempts: 3,
+            lastError: 'The turn ended without an answer',
+          },
+          { kind: 'answer', id: 'Q-5', attempts: 3, lastError: null },
+          { kind: 'task', id: '12', attempts: 3, lastError: 'rate limited' },
         ],
       },
       { ...launched('claude-code', 'sonnet') },

@@ -23,6 +23,7 @@ use chrono::{DateTime, Utc};
 mod decide;
 
 pub(super) use self::decide::Policy;
+pub use self::decide::Stalled;
 use self::decide::{Log, decide};
 use super::driver::{AgentDriver, TurnOutcome};
 use crate::domain::ProjectId;
@@ -98,7 +99,7 @@ impl Push {
     }
 
     /// The items the pusher gave up, each with a reason, in the order they were given up.
-    pub(super) fn stalled(&self) -> Vec<String> {
+    pub(super) fn stalled(&self) -> Vec<Stalled> {
         self.log
             .lock()
             .unwrap_or_else(|e| e.into_inner())

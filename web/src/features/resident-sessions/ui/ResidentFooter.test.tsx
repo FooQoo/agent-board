@@ -27,7 +27,7 @@ describe('ResidentIndicator', () => {
     const stalled = health({
       state: 'running',
       tool: 'codex',
-      pushStalled: ['task 12 was pushed 3 times and is still not handled.'],
+      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null }],
     });
     render(<ResidentIndicator health={stalled} onOpen={() => {}} />);
     expect(screen.getByRole('button', { name: /could not be handled: Task #12/ })).toBeTruthy();
@@ -38,7 +38,7 @@ describe('ResidentIndicator', () => {
     const stalled = health({
       state: 'running',
       tool: 'codex',
-      pushStalled: ['task 12 was pushed 3 times and is still not handled.'],
+      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null }],
     });
     render(<ResidentIndicator health={stalled} />);
     expect(screen.queryByText(/could not be handled/)).toBeNull();

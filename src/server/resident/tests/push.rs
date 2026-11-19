@@ -271,8 +271,10 @@ fn an_item_that_keeps_failing_is_pushed_a_few_times_then_listed_as_stalled() {
         !fx.launcher.health().push_stalled.is_empty()
     });
     let note = fx.launcher.health().push_stalled.remove(0);
-    assert!(note.contains(&format!("request {first}")), "{note}");
-    assert!(note.contains("3 times") && note.contains("boom"), "{note}");
+    assert_eq!(format!("{:?}", note.kind), "Request");
+    assert_eq!(note.id, first);
+    assert_eq!(note.attempts, 3);
+    assert_eq!(note.last_error.as_deref(), Some("boom"));
     // No fourth push, however long it waits.
     std::thread::sleep(Duration::from_millis(1200));
     assert_eq!(sent(&calls).len(), 3);

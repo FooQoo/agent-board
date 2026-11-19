@@ -92,27 +92,3 @@ export function startedAt(snapshot: SessionsSnapshot): string | null {
   );
   return found?.startedAt ?? null;
 }
-
-/** An item the board gave up pushing, read from the server's sentence. */
-export interface StalledItem {
-  /** What the item is; null when the sentence is not in the usual form, so `text` is shown as it is. */
-  kind: 'request' | 'answer' | 'task' | null;
-  /** The request or task ID, such as Q-3 or 12. */
-  id: string | null;
-  /** The failure of the last turn, when the sentence says one. */
-  reason: string | null;
-  text: string;
-}
-
-const STALLED =
-  /^(request|answer|task) (\S+) was pushed \d+ times and is still not handled(?: \(the last turn failed: ([\s\S]*)\))?\.$/;
-
-/** The items the board gave up pushing, each split into what it is and why the last turn failed. */
-export function stalledItems(health: SessionHealth): StalledItem[] {
-  return health.pushStalled.map((text) => {
-    const match = STALLED.exec(text);
-    if (!match) return { kind: null, id: null, reason: null, text };
-    const [, kind, id, reason] = match;
-    return { kind: kind as StalledItem['kind'], id: id ?? null, reason: reason ?? null, text };
-  });
-}
