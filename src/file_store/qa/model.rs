@@ -33,6 +33,8 @@ impl AnswerVia {
 pub struct Reply {
     pub choice: Option<String>,
     pub text: Option<String>,
+    /// Names of the images the person attached, stored under the question's `attachments/`.
+    pub images: Vec<String>,
     pub via: AnswerVia,
     pub at: DateTime<Utc>,
     /// When an agent took the reply in; `None` until then. Written once.

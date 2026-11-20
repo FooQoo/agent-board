@@ -165,7 +165,7 @@ pub fn build_with(
             .map(|task| task_of(task, &project_dir))
             .collect(),
         requests: open_requests(snapshot),
-        answers: unaccepted_answers(snapshot),
+        answers: unaccepted_answers(snapshot, shared),
         final_result_missing: final_result_missing(snapshot, &project_dir, fetched_at),
         epics_to_close: epic_close::epics_to_close(snapshot, &project_dir),
         reminders: Vec::new(),

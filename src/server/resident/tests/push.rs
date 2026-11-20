@@ -82,6 +82,7 @@ impl Board {
                     question_id: id.into(),
                     choice_id: None,
                     text: Some("Yes".into()),
+                    images: Vec::new(),
                 }],
                 crate::file_store::qa::AnswerVia::Cli,
                 Utc::now(),

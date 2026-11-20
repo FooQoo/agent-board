@@ -50,6 +50,29 @@ export async function postTask<T>(path: string, value: unknown): Promise<T> {
   return body as T;
 }
 
+/** Posts a multipart form and reads the JSON the server answers; a refusal throws the write failure. */
+export async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'X-Agboard-Language': i18n.resolvedLanguage === 'ja' ? 'ja' : 'en',
+    },
+    body: form,
+  });
+  const body = (await response.json()) as { error?: ApiError['error'] };
+  if (!response.ok) {
+    throw writeFailure(
+      body.error?.reason ?? `Request failed (${response.status})`,
+      response.status,
+      body.error?.code ?? null,
+      body.error?.message ?? null,
+      body,
+    );
+  }
+  return body as T;
+}
+
 export function multipartBody(
   meta: Record<string, unknown>,
   attachments: readonly EditorAttachment[],

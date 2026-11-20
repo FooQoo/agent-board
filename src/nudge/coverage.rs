@@ -187,6 +187,7 @@ fn field_names() -> Vec<String> {
         choice_label: None,
         text: None,
         answered_at: at,
+        image_paths: Vec::new(),
     });
     table.reminders = super::state_reminders(&table, at);
     table.epics_to_close.push(crate::progress::EpicToClose {

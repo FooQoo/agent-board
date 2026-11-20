@@ -50,6 +50,12 @@ pub struct ReplyView {
     pub choice_id: Option<String>,
     pub choice_label: Option<String>,
     pub text: Option<String>,
+    /// The names of the images attached to the answer, in `attachments/` of the question.
+    pub images: Vec<String>,
+    /// The absolute paths of those images. Only the CLI and the progress table fill it, so an
+    /// agent can open the files; the board never sees a machine path.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub image_paths: Vec<std::path::PathBuf>,
     pub via: AnswerVia,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
@@ -94,6 +100,8 @@ impl QuestionView {
                     .map(|c| c.label.clone())
             }),
             text: reply.text.clone(),
+            images: reply.images.clone(),
+            image_paths: Vec::new(),
             via: reply.via,
             at: reply.at,
             accepted_at: reply.accepted_at,
@@ -120,6 +128,16 @@ impl QuestionView {
             created_at: question.created_at,
             withdrawn_at: question.withdrawn_at,
         }
+    }
+
+    /// Fill the absolute paths of the reply's images, which live in `qa/<id>/attachments/` of
+    /// the project folder.
+    pub fn with_image_paths(mut self, project_dir: &std::path::Path) -> Self {
+        let dir = super::store::attachments_dir(&super::store::message_dir(project_dir, &self.id));
+        if let Some(reply) = &mut self.reply {
+            reply.image_paths = reply.images.iter().map(|name| dir.join(name)).collect();
+        }
+        self
     }
 
     pub fn number(&self) -> i64 {

@@ -241,6 +241,10 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
             post(message_answers),
         )
         .route(
+            "/api/projects/{project_id}/messages/answers/multipart",
+            post(message_answers_multipart),
+        )
+        .route(
             "/api/projects/{project_id}/messages/requests",
             post(message_send_request),
         )

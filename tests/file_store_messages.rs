@@ -114,6 +114,7 @@ impl Fixture {
                 question_id: id.into(),
                 choice_id: choice.map(str::to_string),
                 text: text.map(str::to_string),
+                images: Vec::new(),
             }],
             AnswerVia::Cli,
             Utc::now(),
@@ -317,11 +318,13 @@ fn a_reply_is_written_once_and_nothing_is_written_after_a_withdrawal() {
                 question_id: open.clone(),
                 choice_id: Some("yes".into()),
                 text: None,
+                images: Vec::new(),
             },
             AnswerItem {
                 question_id: answered.clone(),
                 choice_id: Some("drop".into()),
                 text: None,
+                images: Vec::new(),
             },
         ],
         AnswerVia::Ui,
@@ -458,6 +461,7 @@ fn an_answer_is_accepted_once_and_a_chat_answer_is_accepted_as_it_is_written() {
                 question_id: chat.clone(),
                 choice_id: None,
                 text: Some("Blue".into()),
+                images: Vec::new(),
             }],
             AnswerVia::Chat,
             Utc::now(),
@@ -546,6 +550,66 @@ fn a_request_keeps_its_images_next_to_it() {
     assert!(send("x", vec![image(".hidden.png", PNG)]).is_err());
     assert!(send("   ", vec![]).is_err());
     assert!(send(&"x".repeat(20_001), vec![]).is_err());
+}
+
+#[test]
+fn an_answer_keeps_its_images_with_the_question() {
+    let f = fixture();
+    let image = |name: &str, bytes: &[u8]| RequestImage {
+        name: name.into(),
+        bytes: bytes.to_vec(),
+    };
+    let answer = |id: &str, choice: Option<&str>, text: Option<&str>, images: Vec<RequestImage>| {
+        f.store.answer_questions(
+            &f.project,
+            vec![AnswerItem {
+                question_id: id.into(),
+                choice_id: choice.map(str::to_string),
+                text: text.map(str::to_string),
+                images,
+            }],
+            AnswerVia::Ui,
+            Utc::now(),
+        )
+    };
+    let task = f.task("Wait for a decision");
+    let choice = f.ask("Keep it?", &[("keep", "Keep"), ("drop", "Drop")], &[task]);
+    let words = f.ask("What next?", &[], &[]);
+
+    // A refused image writes nothing, and the question stays open.
+    assert!(answer(&choice, Some("keep"), None, vec![image("n.txt", b"hello")]).is_err());
+    assert!(
+        answer(
+            &choice,
+            Some("keep"),
+            None,
+            vec![image("a.png", PNG), image("a.png", PNG)]
+        )
+        .is_err()
+    );
+    let dir = f.project_dir().join("qa").join(&choice);
+    assert!(!dir.join("attachments").exists());
+    assert_eq!(f.store.question(&f.project, &choice).unwrap().reply, None);
+
+    let views = answer(&choice, Some("keep"), None, vec![image("shot.png", PNG)]).unwrap();
+    let reply = views[0].reply.as_ref().unwrap();
+    assert_eq!(reply.images, vec!["shot.png".to_string()]);
+    assert_eq!(fs::read(dir.join("attachments/shot.png")).unwrap(), PNG);
+    assert!(f.file(&choice).contains("images:\n  - shot.png"));
+    let shown = f.store.question(&f.project, &choice).unwrap();
+    assert_eq!(shown.reply.unwrap().images, vec!["shot.png".to_string()]);
+    let (media, bytes) = f
+        .store
+        .message_attachment(&f.project, &choice, "shot.png")
+        .unwrap();
+    assert_eq!((media.as_str(), bytes.as_slice()), ("image/png", PNG));
+
+    // A text-only answer takes images too, and the paths for agents point at the files.
+    let views = answer(&words, None, Some("Ship it"), vec![image("../a.png", PNG)]).unwrap();
+    let with_paths = views[0].clone().with_image_paths(&f.project_dir());
+    let paths = &with_paths.reply.unwrap().image_paths;
+    assert_eq!(paths.len(), 1);
+    assert!(paths[0].ends_with("qa/Q-2/attachments/a.png") && paths[0].is_file());
 }
 
 #[test]

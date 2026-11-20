@@ -95,6 +95,9 @@ fn describe_question(q: &QuestionView) -> String {
             reply.via.as_str(),
             answer_text(reply)
         ));
+        for path in &reply.image_paths {
+            text.push_str(&format!("Image: {}\n", path.display()));
+        }
         if let Some(at) = reply.accepted_at {
             text.push_str(&format!("Accepted at {}\n", crate::clock::format_utc(at)));
         }
@@ -113,12 +116,16 @@ fn describe_request(r: &RequestView) -> String {
 
 pub(super) fn show(ctx: &Context, args: &MessageShowArgs) -> Result<Printed, AgboardError> {
     let project = ctx.project_id()?;
+    let project_dir = crate::file_store::layout::project_dir(ctx.files.shared_dir(), project);
     Ok(match ctx.files.message(project, &args.id)? {
-        MessageView::Question(question) => Printed {
-            changed: false,
-            human: describe_question(&question),
-            json: json!({"question": question}),
-        },
+        MessageView::Question(question) => {
+            let question = question.with_image_paths(&project_dir);
+            Printed {
+                changed: false,
+                human: describe_question(&question),
+                json: json!({"question": question}),
+            }
+        }
         MessageView::Request(request) => Printed {
             changed: false,
             human: describe_request(&request),
