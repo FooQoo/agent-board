@@ -217,11 +217,7 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
         .collect();
     let mut ordered = Vec::new();
     for epic in epics {
-        let order: Vec<i64> = frontmatter::waves_of(&epic.document)
-            .unwrap_or_default()
-            .into_iter()
-            .flatten()
-            .collect();
+        let order = frontmatter::task_order(&epic.document);
         let mut tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
