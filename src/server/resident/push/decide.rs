@@ -38,6 +38,8 @@ impl Policy {
 struct Attempt {
     count: u32,
     last: Instant,
+    /// How the last turn that involved this item failed, if it did.
+    failure: Option<String>,
 }
 
 /// What kind of board item was pushed.
@@ -72,8 +74,8 @@ pub(super) struct Log {
     attempts: HashMap<String, Attempt>,
     /// The items that were given up, as the health lists them.
     pub(super) stalled: Vec<(String, Stalled)>,
-    /// How the last turn failed, if it did.
-    pub(super) last_failure: Option<String>,
+    /// The keys of the latest instruction, whose turn the next turn end belongs to.
+    in_flight: Vec<String>,
 }
 
 /// One instruction for the session: what it is about, the keys of the items in it, and its text.
@@ -129,8 +131,8 @@ impl Log {
                 },
                 id: id.to_string(),
                 attempts: attempt.count,
-                last_error: self.last_failure.clone(),
-                on_hold: self.last_failure.is_none(),
+                last_error: attempt.failure.clone(),
+                on_hold: attempt.failure.is_none(),
             };
             match self.stalled.iter_mut().find(|(k, _)| k == key) {
                 Some(entry) => entry.1 = note,
@@ -142,19 +144,32 @@ impl Log {
     }
 
     pub(super) fn record(&mut self, keys: &[String], now: Instant) {
+        self.in_flight = keys.to_vec();
         for key in keys {
             let attempt = self.attempts.entry(key.clone()).or_insert(Attempt {
                 count: 0,
                 last: now,
+                failure: None,
             });
             attempt.count += 1;
             attempt.last = now;
         }
     }
 
+    /// A turn ended: `failure` is its message when it failed. It is kept only for the items of
+    /// the latest instruction, so one item never shows the failure of a turn about another.
+    pub(super) fn turn_ended(&mut self, failure: Option<&str>) {
+        for key in &self.in_flight {
+            if let Some(attempt) = self.attempts.get_mut(key) {
+                attempt.failure = failure.map(str::to_string);
+            }
+        }
+    }
+
     /// Forget the items that are no longer on the board.
     fn retain_present(&mut self, present: &[String]) {
         self.attempts.retain(|key, _| present.contains(key));
+        self.in_flight.retain(|key| present.contains(key));
         self.stalled.retain(|(key, _)| present.contains(key));
     }
 }
@@ -237,4 +252,57 @@ fn wording(project_name: &str, work: &serde_json::Value) -> String {
          resident` describes under \"Work the board pushes\", then end your turn. Do not run \
          `agboard wait`.\n\n{work}"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn policy() -> Policy {
+        Policy {
+            max_attempts: 1,
+            backoff_base: Duration::ZERO,
+            backoff_max: Duration::ZERO,
+        }
+    }
+
+    #[test]
+    fn two_items_keep_their_own_failures() {
+        let mut log = Log::default();
+        let now = Instant::now();
+        let (a, b) = (task_key(1), task_key(2));
+        // Item 1's turn fails; item 2's turn then ends cleanly.
+        log.record(std::slice::from_ref(&a), now);
+        log.turn_ended(Some("boom"));
+        log.record(std::slice::from_ref(&b), now);
+        log.turn_ended(None);
+        assert!(!log.eligible(&a, &policy(), now));
+        assert!(!log.eligible(&b, &policy(), now));
+        let note = |key: &str| {
+            log.stalled
+                .iter()
+                .find(|(k, _)| k == key)
+                .unwrap()
+                .1
+                .clone()
+        };
+        assert_eq!(note(&a).last_error.as_deref(), Some("boom"));
+        assert!(!note(&a).on_hold);
+        assert_eq!(note(&b).last_error, None);
+        assert!(note(&b).on_hold);
+    }
+
+    #[test]
+    fn a_turn_end_touches_only_the_items_of_the_latest_instruction() {
+        let mut log = Log::default();
+        let now = Instant::now();
+        let (a, b) = (task_key(1), task_key(2));
+        log.record(std::slice::from_ref(&a), now);
+        log.turn_ended(Some("boom"));
+        log.record(std::slice::from_ref(&b), now);
+        log.turn_ended(Some("other"));
+        assert!(!log.eligible(&a, &policy(), now));
+        let note = &log.stalled.iter().find(|(k, _)| *k == a).unwrap().1;
+        assert_eq!(note.last_error.as_deref(), Some("boom"));
+    }
 }

@@ -1,6 +1,7 @@
 //! The launcher's view of the board: where the boards are, waking the pusher when one changes,
 //! and the launched session as the sessions list shows it.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -66,7 +67,8 @@ impl Launcher {
 
     fn record_handoff(&self, store: &FileStore, project: &ProjectId, id: i64, detail: &str) {
         if let Err(error) = store.record_agent_stopped(project, id, detail, SystemClock.now()) {
-            eprintln!(
+            let _ = writeln!(
+                std::io::stderr(),
                 "agboard: could not record that the resident agent stopped on task #{id}: {}",
                 error.reason()
             );
