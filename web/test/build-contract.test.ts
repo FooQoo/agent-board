@@ -77,15 +77,23 @@ describe('virtual Markdown list', () => {
     });
   }
 
-  it('bundles the virtual list library with the list and in no other chunk', () => {
+  it('bundles the virtual list library only with the virtual lists, or on its own', () => {
     const graph = JSON.parse(read('chunk-graph.json')) as {
       chunks: Record<string, { sources: string[]; packages: string[] }>;
     };
     const holders = Object.entries(graph.chunks)
       .filter(([, chunk]) => chunk.packages.includes('@tanstack/react-virtual'))
       .map(([name, chunk]) => ({ name, sources: chunk.sources }));
-    expect(holders).toHaveLength(1);
-    expect(holders[0]?.sources).toEqual(['src/shared/markdown/VirtualMarkdown.tsx']);
+    // The Markdown list loads on demand, and the phone's archive list shares the library with it, so
+    // the library may sit in a chunk of its own. No other module may pull it into a chunk.
+    const allowed = [
+      'src/shared/markdown/VirtualMarkdown.tsx',
+      'src/pages/monitor/components/ArchiveVirtualList.tsx',
+    ];
+    expect(holders.length).toBeGreaterThan(0);
+    for (const holder of holders) {
+      for (const source of holder.sources) expect(allowed).toContain(source);
+    }
   });
 });
 
