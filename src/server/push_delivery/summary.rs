@@ -150,8 +150,12 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         tick.tick().await;
         let mut schedule = Schedule::new((dispatcher.now)(), None);
-        // For the open window: the entrance state when it first became due, and the projects
-        // that already recorded it. Both are kept across retries and cleared when it closes.
+        // For the open window: when it ends, the entrance state when it first became due, and
+        // the projects that already recorded it. All are fixed when the window first becomes due,
+        // kept across retries, and cleared when it closes. Because the end is fixed, a retry
+        // writes the same window, never a shorter one, and the next window starts at that end,
+        // so a result is never left between two windows.
+        let mut open_to: Option<DateTime<Utc>> = None;
         let mut due_up: Option<bool> = None;
         let mut done: HashSet<ProjectId> = HashSet::new();
         loop {
@@ -162,6 +166,7 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
             if minutes == 0 {
                 // Off: counting starts again when it is switched on.
                 schedule.mark(now);
+                open_to = None;
                 due_up = None;
                 done.clear();
                 continue;
@@ -170,6 +175,7 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
                 continue;
             }
             let floor = schedule.since(minutes);
+            let to = *open_to.get_or_insert(now);
             // Read when the window first becomes due, not on each retry or after the write: a
             // notification that was due while the entrance was down is recorded, never sent
             // after it comes back.
@@ -183,7 +189,7 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
                 let mut recorded = Vec::new();
                 let mut written = Vec::new();
                 for (id, tasks) in &projects {
-                    match record(&store, id, tasks, floor, now) {
+                    match record(&store, id, tasks, floor, to) {
                         Ok(summary) => {
                             recorded.push(id.clone());
                             if let Some(s) = summary {
@@ -204,7 +210,8 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
             };
             done.extend(recorded);
             if !failed {
-                schedule.mark(now);
+                schedule.mark(to);
+                open_to = None;
                 due_up = None;
                 done.clear();
             }
