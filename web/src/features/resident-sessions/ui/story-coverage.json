@@ -100,6 +100,31 @@
               "id": "resident-residentview--sheet",
               "states": ["bottom sheet", "phone width", "next start hint", "public preview badge"],
               "interaction": true
+            },
+            {
+              "id": "resident-residentview--log-empty",
+              "states": ["log empty state", "settings unchanged"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--log-truncated",
+              "states": ["truncated note", "log tail"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--log-read-failed",
+              "states": ["quiet error line", "last tail kept"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--sheet-with-log",
+              "states": ["phone width", "log under settings"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--log-japanese",
+              "states": ["japanese", "log empty state"],
+              "interaction": true
             }
           ]
         }
@@ -302,6 +327,16 @@
           "name": "ConnectedResidentIndicator",
           "stories": [],
           "exclusion": "Reads the local API every five seconds, which Stories may not call; ResidentIndicator shows the indicator."
+        }
+      ]
+    },
+    {
+      "file": "features/resident-sessions/ui/ResidentLogPane.tsx",
+      "exports": [
+        {
+          "name": "ResidentLogPane",
+          "stories": [],
+          "exclusion": "Drawn inside ResidentView, whose log stories show its states."
         }
       ]
     }

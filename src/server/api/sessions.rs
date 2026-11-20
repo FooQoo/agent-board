@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ use crate::server::AppState;
 use crate::server::request::ApiJson;
 use crate::server::resident::{AutoStart, Health, Launched, resolve_project};
 use crate::server::response::{agboard_error_response, json_response};
-use crate::server::sessions::{SessionList, Tool};
+use crate::server::sessions::{Attributes, SessionList, Tool};
 use crate::server::store::{parse_project_id, with_files};
 
 #[derive(Serialize)]
@@ -57,6 +57,25 @@ pub(super) async fn list_sessions(
         }
         Err(error) => agboard_error_response(&error),
     }
+}
+
+/// An `agboard` command or hook of an agent session reached the board: count the session for the
+/// access window. The session names itself in the `X-Agboard-Session*` headers; the project is
+/// the one in the headers, which must match the path. A request that names no valid session, or a
+/// board-launched one, changes nothing. Always 204, so a command never has a reason to fail.
+pub(super) async fn touch_session(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+    headers: HeaderMap,
+) -> StatusCode {
+    if let (Ok(project_id), Some(named)) = (
+        parse_project_id(&raw_project),
+        Attributes::from_headers(&headers),
+    ) && named.project == project_id
+    {
+        state.sessions.touch(named);
+    }
+    StatusCode::NO_CONTENT
 }
 
 #[derive(Deserialize)]

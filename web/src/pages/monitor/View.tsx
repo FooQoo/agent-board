@@ -124,6 +124,15 @@ export function MonitorView(props: MonitorViewProps) {
     if (writes) setPending(next);
   };
   const closePending = () => setPending(null);
+  // The phone's bar stays tappable over a sheet, so a tap on it closes the sheets it is not opening.
+  // Leaving Ask goes through its discard question: `next` runs only once the Ask sheet has closed.
+  const leaveAsk = (next: () => void) =>
+    props.asking && props.onAskClose ? props.onAskClose(next) : next();
+  const closeSheets = ({ except }: { except?: 'messages' | 'ask' | 'archive' }) => {
+    if (except !== 'messages') panel.close();
+    if (except !== 'archive') closePending();
+    if (detail.open) closeDrawer(false);
+  };
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
@@ -257,13 +266,29 @@ export function MonitorView(props: MonitorViewProps) {
                 ? 'ask'
                 : null
         }
-        onMessages={() => panel.open({ tab: 'fromAi' })}
-        onAsk={() => props.onAsk?.()}
-        onArchive={() => ask({ kind: 'bulk' })}
-        onBoard={() => {
-          panel.close();
-          closePending();
+        // The bar stays in front of an open sheet: an item closes the other sheets, then opens its own.
+        onMessages={() =>
+          leaveAsk(() => {
+            closeSheets({ except: 'messages' });
+            panel.open({ tab: 'fromAi' });
+          })
+        }
+        onAsk={() => {
+          closeSheets({ except: 'ask' });
+          props.onAsk?.();
         }}
+        onArchive={() =>
+          leaveAsk(() => {
+            closeSheets({ except: 'archive' });
+            ask({ kind: 'bulk' });
+          })
+        }
+        onBoard={(then) =>
+          leaveAsk(() => {
+            closeSheets({});
+            then?.();
+          })
+        }
       />
     </main>
   );

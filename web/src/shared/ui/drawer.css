@@ -7,7 +7,14 @@
 
 /* Closed, the sheet rests at its own height, 56px (or the status bar) below the top of the screen. */
 .mobile-drawer.mobile-drawer--fit-keyboard[data-slot="drawer-popup"] {
-  height: min(calc(var(--stable-vh, 100svh) - max(56px, var(--safe-top) + 8px)), 720px);
+  height: min(
+    calc(
+      var(--stable-vh, 100svh) -
+      max(56px, var(--safe-top) + 8px) -
+      var(--phone-nav-height, 0px)
+    ),
+    720px
+  );
 }
 
 /* With the keyboard open the sheet is fixed by both edges to the visual viewport instead: its top just

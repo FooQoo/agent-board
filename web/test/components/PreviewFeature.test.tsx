@@ -5,7 +5,7 @@ import '../../src/shared/i18n/docs-strings';
 import { DocsDialogView } from '../../src/features/docs/ui/shell/DocsDialogView';
 import { ConnectionSettingsView } from '../../src/features/monitor-connections/ui/ConnectionSettingsView';
 import { ResidentView } from '../../src/features/resident-sessions/ui/ResidentView';
-import { scenarios } from '../../src/features/resident-sessions/ui/scenarios';
+import { logs, scenarios } from '../../src/features/resident-sessions/ui/scenarios';
 import { OnboardingWelcome } from '../../src/features/onboarding/ui/OnboardingWelcome';
 import { Header } from '../../src/shared/ui/app-header/Header';
 import {
@@ -62,7 +62,9 @@ const entries = {
       onClose={() => {}}
     />
   ),
-  resident: () => <ResidentView kind="dialog" onClose={() => {}} {...scenarios.working} />,
+  resident: () => (
+    <ResidentView kind="dialog" onClose={() => {}} log={logs.running} {...scenarios.working} />
+  ),
 } satisfies Partial<Record<PreviewFeature, () => React.ReactElement>>;
 
 const WORDS = {

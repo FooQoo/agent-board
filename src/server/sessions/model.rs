@@ -19,6 +19,10 @@ pub const SESSION_PROJECT_HEADER: &str = "x-agboard-session-project";
 /// How long a session whose stream closed stays in the count.
 pub const GRACE: Duration = Duration::from_secs(30);
 
+/// How long an external session counts after the last `agboard` command or hook of it reached
+/// the server.
+pub const ACCESS_WINDOW: Duration = Duration::from_secs(5 * 60);
+
 const MAX_KEY_LEN: usize = 64;
 
 /// The agent tool a session runs in.
@@ -80,7 +84,8 @@ impl Origin {
 #[serde(rename_all = "kebab-case")]
 pub enum State {
     Connected,
-    /// The stream closed; the session still counts until the grace period ends.
+    /// No stream is open; the session still counts until the grace period after its last stream,
+    /// or the access window after its last command, ends.
     Grace,
 }
 

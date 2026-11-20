@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Surface } from '@/shared/ui/surface/Surface';
 import { useNarrowViewport } from '@/shared/lib/viewport/useNarrowViewport';
 import { useResidentController } from '../useResidentController';
+import { useSessionLog } from '../useSessionLog';
 import { ResidentView } from './ResidentView';
 import './resident.css';
 
@@ -21,6 +22,8 @@ export default function ResidentDialog({
   const kind = narrow ? 'sheet' : 'dialog';
   const controller = useResidentController(projectId);
   const { snapshot, choice, models } = controller;
+  // The log of the tool that runs (or ran last), else of the chosen one; it follows the dialog's life.
+  const log = useSessionLog(projectId, snapshot?.health.tool ?? choice?.tool ?? 'claude-code');
   if (!snapshot || !choice) {
     return (
       <Surface
@@ -41,6 +44,7 @@ export default function ResidentDialog({
       kind={kind}
       onClose={onClose}
       snapshot={snapshot}
+      log={log}
       projectId={projectId}
       choice={choice}
       // A list that could not be read (or a missing CLI) leaves only the default model.
