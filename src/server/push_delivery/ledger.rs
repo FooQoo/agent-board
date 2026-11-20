@@ -55,16 +55,16 @@ pub(super) struct Entry {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct File {
     format_version: u32,
-    /// When the last periodic status notification was made.
-    #[serde(default, with = "crate::clock::serde_opt_utc")]
-    periodic_at: Option<DateTime<Utc>>,
+    /// Written by older builds for the removed periodic notification; read and dropped.
+    #[serde(default, skip_serializing)]
+    #[allow(dead_code)]
+    periodic_at: Option<serde_json::Value>,
     entries: Vec<Entry>,
 }
 
 pub(super) struct Ledger {
     path: Option<PathBuf>,
     entries: Mutex<Vec<Entry>>,
-    periodic_at: Mutex<Option<DateTime<Utc>>>,
 }
 
 impl Ledger {
@@ -76,7 +76,6 @@ impl Ledger {
             .filter(|f| f.format_version == FORMAT_VERSION);
         Self {
             path: Some(path),
-            periodic_at: Mutex::new(file.as_ref().and_then(|f| f.periodic_at)),
             entries: Mutex::new(file.map(|f| f.entries).unwrap_or_default()),
         }
     }
@@ -86,7 +85,6 @@ impl Ledger {
         Self {
             path: None,
             entries: Mutex::new(Vec::new()),
-            periodic_at: Mutex::new(None),
         }
     }
 
@@ -100,29 +98,13 @@ impl Ledger {
         };
         let file = File {
             format_version: FORMAT_VERSION,
-            periodic_at: self.periodic(),
+            periodic_at: None,
             entries: entries.to_vec(),
         };
         if let Ok(mut text) = serde_json::to_string_pretty(&file) {
             text.push('\n');
             let _ = write_private_atomic(path, text.as_bytes());
         }
-    }
-
-    fn periodic(&self) -> Option<DateTime<Utc>> {
-        *self.periodic_at.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    /// When the last periodic status notification was made, if one was.
-    pub(super) fn periodic_at(&self) -> Option<DateTime<Utc>> {
-        self.periodic()
-    }
-
-    /// Remember when a periodic status notification was made.
-    pub(super) fn set_periodic_at(&self, at: DateTime<Utc>) {
-        *self.periodic_at.lock().unwrap_or_else(|e| e.into_inner()) = Some(at);
-        let entries = self.lock();
-        self.save(&entries);
     }
 
     /// Whether this event has an entry for this device, whatever became of it.

@@ -295,11 +295,10 @@ fn a_question_is_urgent_and_one_event_is_one_notification() {
     let project = store.project_by_name("monitor").unwrap().id;
     let s = start(home.path());
     let mut phone = subscribed_phone(&s);
-    // Every kind and every transition is on, so one question matches several of them: it
-    // makes the card wait (a state change) and adds history.
+    // Every kind is on, so one question matches several of them: it also adds history.
     settings(
         &s,
-        json!({"kinds": {"results": true, "questions": true, "stateChanges": true, "history": true}}),
+        json!({"kinds": {"results": true, "questions": true, "history": true}}),
     );
     qa::ask(
         &store,
@@ -320,7 +319,7 @@ fn a_question_is_urgent_and_one_event_is_one_notification() {
 }
 
 #[test]
-fn kinds_that_are_off_and_unchosen_transitions_send_nothing() {
+fn kinds_that_are_off_send_nothing() {
     let home = home();
     let store = FileStore::open(&home.path().join("shared"));
     let project = store.project_by_name("monitor").unwrap().id;
@@ -328,10 +327,7 @@ fn kinds_that_are_off_and_unchosen_transitions_send_nothing() {
     let _phone = subscribed_phone(&s);
     settings(
         &s,
-        json!({
-            "kinds": {"results": false, "questions": false, "stateChanges": true, "history": false},
-            "stateChanges": {"started": false, "pending": false, "done": true},
-        }),
+        json!({"kinds": {"results": false, "questions": false, "history": false}}),
     );
     store
         .move_work_task(

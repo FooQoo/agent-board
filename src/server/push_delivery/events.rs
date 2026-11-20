@@ -3,24 +3,22 @@
 //!
 //! [`Facts`] is the part of a task that a notification can talk about. [`diff`] compares the
 //! facts of one task before and after a change and names every event in between: a result
-//! version that was not there, a question that is now open, a state the card moved into, a
+//! version that was not there, a question that is now open, a
 //! history entry that was added. Each event has a key that names the occurrence (not the time
 //! it was seen), so the same occurrence is the same key on every read, on every device, and
 //! after a restart.
 
 use std::collections::BTreeMap;
 
-use crate::domain::{Column, ResultKind, RunState};
+use crate::domain::ResultKind;
 use crate::file_store::model::TaskView;
-use crate::server::notification_settings::{NotificationSettings, StateChange};
+use crate::server::notification_settings::NotificationSettings;
 
 /// What a task shows to a notification: the facts that change while work goes on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Facts {
     pub id: i64,
     pub title: String,
-    pub status: Column,
-    pub run: RunState,
     /// The IDs of the questions that are open, lowest first.
     pub open_questions: Vec<String>,
     /// What the first open question asks.
@@ -29,19 +27,6 @@ pub(super) struct Facts {
     pub results: Vec<ResultFact>,
     /// The history reasons, oldest first.
     pub history: Vec<String>,
-    /// Every record on the card, a history entry or a result, oldest first.
-    pub records: Vec<Record>,
-    /// When the card last changed column, run state, and anything, in Unix seconds.
-    pub status_changed_at: i64,
-    pub run_changed_at: i64,
-    pub updated_at: i64,
-}
-
-/// One record on a card: when it was written (Unix seconds) and what it says.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Record {
-    pub at: i64,
-    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,8 +45,6 @@ pub(super) fn facts_of(task: &TaskView) -> Option<Facts> {
     Some(Facts {
         id: task.id,
         title: task.title.clone(),
-        status: task.task_status,
-        run: task.agent_status,
         open_questions: task.open_question_ids.clone(),
         question: task.pending_reason.clone(),
         results: task
@@ -74,34 +57,15 @@ pub(super) fn facts_of(task: &TaskView) -> Option<Facts> {
             })
             .collect(),
         history: task.history.iter().map(|h| h.reason.clone()).collect(),
-        records: records_of(task),
-        status_changed_at: task.task_status_changed_at.timestamp(),
-        run_changed_at: task.agent_status_changed_at.timestamp(),
-        updated_at: task.updated_at.timestamp(),
     })
 }
 
-fn records_of(task: &TaskView) -> Vec<Record> {
-    let history = task.history.iter().map(|h| (h.at, &h.reason));
-    let results = task.results.iter().map(|r| (r.at, &r.summary));
-    let mut records: Vec<Record> = history
-        .chain(results)
-        .map(|(at, text)| Record {
-            at: at.timestamp(),
-            text: text.clone(),
-        })
-        .collect();
-    records.sort_by_key(|r| r.at);
-    records
-}
-
-/// The kinds of event, most important first: a decision that is waiting beats a result, a
-/// result beats a state change, and a state change beats a history entry.
+/// The kinds of event, most important first: a decision that is waiting beats a result, and a
+/// result beats a history entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Kind {
     Question,
     Result(ResultKind),
-    State(StateChange),
     History,
 }
 
@@ -111,7 +75,6 @@ impl Kind {
         match self {
             Kind::Question => settings.kinds.questions,
             Kind::Result(_) => settings.kinds.results,
-            Kind::State(change) => settings.wants_state_change(change),
             Kind::History => settings.kinds.history,
         }
     }
@@ -120,10 +83,7 @@ impl Kind {
         match self {
             Kind::Question => 0,
             Kind::Result(_) => 1,
-            Kind::State(StateChange::Done) => 2,
-            Kind::State(StateChange::Pending) => 3,
-            Kind::State(StateChange::Started) => 4,
-            Kind::History => 5,
+            Kind::History => 2,
         }
     }
 }
@@ -189,30 +149,6 @@ pub(super) fn diff_task(project: &str, before: &Facts, now: &Facts) -> Vec<Event
             e.question_id = Some(id.clone());
             events.push(e);
         }
-    }
-    if before.status != Column::Done && now.status == Column::Done {
-        let key = format!("state:done:{}", now.status_changed_at);
-        events.push(event(project, now, Kind::State(StateChange::Done), key, ""));
-    }
-    if before.status != Column::Doing && now.status == Column::Doing {
-        let key = format!("state:started:{}", now.status_changed_at);
-        events.push(event(
-            project,
-            now,
-            Kind::State(StateChange::Started),
-            key,
-            "",
-        ));
-    }
-    if before.run != RunState::Pending && now.run == RunState::Pending {
-        let key = format!("state:pending:{}", now.updated_at);
-        events.push(event(
-            project,
-            now,
-            Kind::State(StateChange::Pending),
-            key,
-            "",
-        ));
     }
     if now.history.len() > before.history.len() {
         // One event for the entries added together; its key names the newest one.
