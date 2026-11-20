@@ -19,6 +19,7 @@ pub(crate) fn decide(
     stop_hook_active: bool,
     last_assistant_message: Option<&str>,
     transcript_path: Option<&str>,
+    turn_id: Option<&str>,
 ) -> Option<String> {
     if stop_hook_active {
         return None;
@@ -36,7 +37,7 @@ pub(crate) fn decide(
     }
     // Without a readable transcript the turn cannot be checked: do nothing.
     let transcript = read_tail(transcript_path?)?;
-    if turn_asked_on_board(&transcript) {
+    if turn_asked_on_board(&transcript, turn_id) {
         return None;
     }
     Some(serde_json::json!({"decision": "block", "reason": REASON}).to_string())
@@ -148,9 +149,17 @@ fn is_user_message(entry: &Value) -> bool {
             _ => false,
         };
     }
-    entry["type"] == "response_item"
-        && entry["payload"]["type"] == "message"
-        && entry["payload"]["role"] == "user"
+    // Codex records injected context as user messages, so a user message is
+    // no turn start there: its turns are found by `task_started`.
+    false
+}
+
+/// Whether the entry is Codex's `task_started` event for `turn_id` (any turn
+/// when `turn_id` is `None`).
+fn is_task_started(entry: &Value, turn_id: Option<&str>) -> bool {
+    entry["type"] == "event_msg"
+        && entry["payload"]["type"] == "task_started"
+        && turn_id.is_none_or(|id| entry["payload"]["turn_id"] == id)
 }
 
 /// The shell commands the entry ran, when it is a tool call.
@@ -181,11 +190,15 @@ fn commands(entry: &Value, out: &mut Vec<String>) {
 
 /// Whether, since the last real user message, a command ran
 /// `agboard ... message ask` or `... message answer`.
-pub(crate) fn turn_asked_on_board(transcript: &str) -> bool {
+pub(crate) fn turn_asked_on_board(transcript: &str, turn_id: Option<&str>) -> bool {
     let entries: Vec<Value> = lines(transcript).collect();
+    // Codex: after the `task_started` of this turn, else of the last one.
+    // Claude Code: after the last real user message.
     let start = entries
         .iter()
-        .rposition(is_user_message)
+        .rposition(|e| is_task_started(e, turn_id))
+        .or_else(|| entries.iter().rposition(|e| is_task_started(e, None)))
+        .or_else(|| entries.iter().rposition(is_user_message))
         .map_or(0, |i| i + 1);
     let mut found = Vec::new();
     for entry in &entries[start..] {
@@ -251,7 +264,7 @@ mod tests {
             assistant_text("Q?"),
         ]
         .join("\n");
-        assert!(turn_asked_on_board(&this_turn));
+        assert!(turn_asked_on_board(&this_turn, None));
         let earlier = [
             user("hi"),
             bash(ask),
@@ -260,20 +273,20 @@ mod tests {
             assistant_text("Q?"),
         ]
         .join("\n");
-        assert!(!turn_asked_on_board(&earlier));
+        assert!(!turn_asked_on_board(&earlier, None));
         let answer = [
             user("hi"),
             bash("/usr/bin/agboard message answer Q-1 --actor human --via chat"),
         ]
         .join("\n");
-        assert!(turn_asked_on_board(&answer));
+        assert!(turn_asked_on_board(&answer, None));
         let other = [
             user("hi"),
             bash("agboard message show Q-1"),
             bash("echo message ask"),
         ]
         .join("\n");
-        assert!(!turn_asked_on_board(&other));
+        assert!(!turn_asked_on_board(&other, None));
     }
 
     #[test]
@@ -286,21 +299,46 @@ mod tests {
             assistant_text("done?"),
         ]
         .join("\n");
-        assert!(turn_asked_on_board(&t));
+        assert!(turn_asked_on_board(&t, None));
         let read_only = [user("go"), tool_result("agboard message ask")].join("\n");
-        assert!(!turn_asked_on_board(&read_only));
+        assert!(!turn_asked_on_board(&read_only, None));
+    }
+
+    fn codex_line(kind: &str, payload: Value) -> String {
+        let mut p = payload;
+        p["type"] = kind.into();
+        let outer = if kind.starts_with("task_") {
+            "event_msg"
+        } else {
+            "response_item"
+        };
+        serde_json::json!({"timestamp":"t","ordinal":1,"type":outer,"payload":p}).to_string()
     }
 
     #[test]
-    fn codex_transcripts_are_understood() {
+    fn codex_rollouts_are_scanned_by_turn_id() {
+        let ask_js = r#"const r = await tools.exec_command({cmd: "agboard --project demo message ask --actor ai --json"}); text(r);"#;
         let t = [
-            r#"{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}}"#,
-            r#"{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"agboard message ask --actor ai\"}"}}"#,
-            r#"{"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Which one?"}]}}"#,
+            codex_line("task_started", serde_json::json!({"turn_id":"turn-1"})),
+            codex_line("custom_tool_call", serde_json::json!({"name":"exec","input":ask_js})),
+            codex_line("task_started", serde_json::json!({"turn_id":"turn-2"})),
+            // Injected context is a user message but starts no turn.
+            codex_line("message", serde_json::json!({"role":"user","content":[{"type":"input_text","text":"context"}]})),
+            codex_line("function_call", serde_json::json!({"name":"shell","arguments":"{\"command\":[\"ls\"]}"})),
+            codex_line("message", serde_json::json!({"role":"assistant","content":[{"type":"output_text","text":"Which one?"}]})),
         ]
         .join("\n");
-        assert!(turn_asked_on_board(&t));
+        // The ask belongs to turn 1, not to turn 2 or the last turn.
+        assert!(!turn_asked_on_board(&t, Some("turn-2")));
+        assert!(!turn_asked_on_board(&t, None));
+        assert!(turn_asked_on_board(&t, Some("turn-1")));
         assert_eq!(last_assistant_text(&t).as_deref(), Some("Which one?"));
+        let fc = [
+            codex_line("task_started", serde_json::json!({"turn_id":"turn-3"})),
+            codex_line("function_call", serde_json::json!({"name":"exec_command","arguments":"{\"cmd\":\"agboard message answer Q-1 --actor human --via chat\"}"})),
+        ]
+        .join("\n");
+        assert!(turn_asked_on_board(&fc, Some("turn-3")));
     }
 
     #[test]
@@ -313,17 +351,17 @@ mod tests {
         )
         .unwrap();
         let p = path.to_str().unwrap();
-        let out = decide(false, Some("May I proceed?"), Some(p)).unwrap();
+        let out = decide(false, Some("May I proceed?"), Some(p), None).unwrap();
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["decision"], "block");
         assert!(v["reason"].as_str().unwrap().contains("message ask"));
         // Already continued once, or no question, or no transcript: nothing.
-        assert!(decide(true, Some("May I proceed?"), Some(p)).is_none());
-        assert!(decide(false, Some("All done."), Some(p)).is_none());
-        assert!(decide(false, Some("May I proceed?"), None).is_none());
-        assert!(decide(false, Some("May I proceed?"), Some("/no/such/file")).is_none());
+        assert!(decide(true, Some("May I proceed?"), Some(p), None).is_none());
+        assert!(decide(false, Some("All done."), Some(p), None).is_none());
+        assert!(decide(false, Some("May I proceed?"), None, None).is_none());
+        assert!(decide(false, Some("May I proceed?"), Some("/no/such/file"), None).is_none());
         // The message comes from the transcript when the input has none.
-        assert!(decide(false, None, Some(p)).is_some());
+        assert!(decide(false, None, Some(p), None).is_some());
         // A board question in the turn lets it end.
         std::fs::write(
             &path,
@@ -335,6 +373,6 @@ mod tests {
             .join("\n"),
         )
         .unwrap();
-        assert!(decide(false, Some("May I proceed?"), Some(p)).is_none());
+        assert!(decide(false, Some("May I proceed?"), Some(p), None).is_none());
     }
 }

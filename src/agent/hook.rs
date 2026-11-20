@@ -102,6 +102,9 @@ struct HookInput {
     last_assistant_message: Option<String>,
     #[serde(default)]
     transcript_path: Option<String>,
+    /// Codex Stop only: the active turn.
+    #[serde(default)]
+    turn_id: Option<String>,
 }
 
 fn hook_output(
@@ -183,6 +186,7 @@ fn stop_output(shared: &Path, project: Option<&str>, input: &HookInput) -> Optio
         false,
         input.last_assistant_message.as_deref(),
         input.transcript_path.as_deref(),
+        input.turn_id.as_deref(),
     )
 }
 
