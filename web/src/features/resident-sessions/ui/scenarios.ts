@@ -176,3 +176,54 @@ export const scenarios: Record<ScenarioId, ResidentPanelProps> = {
     },
   },
 };
+
+const LOG_LINES = [
+  '[agboard] resident session started (claude-code)',
+  '> agboard wait',
+  'Request R-12 received: "Add a retry to the upload step"',
+  'Reading src/upload/client.ts',
+  'Editing src/upload/client.ts: wrap send() in a three-attempt retry with backoff',
+  'Running: cargo test upload::',
+  'test upload::retries_on_timeout ... ok',
+  'test upload::gives_up_after_three ... ok',
+  'agboard task note 14 "Retry added; tests pass"',
+  '> agboard wait',
+];
+
+/** The log pane's fixed reads for the stories: a running log, none yet, and one cut at its start. */
+export const logs = {
+  running: {
+    data: {
+      tool: 'claude-code' as const,
+      exists: true,
+      text: `${LOG_LINES.join('\n')}\n`,
+      truncated: false,
+      size: 640,
+    },
+    failed: false,
+  },
+  empty: {
+    data: { tool: 'claude-code' as const, exists: false, text: '', truncated: false, size: 0 },
+    failed: false,
+  },
+  truncated: {
+    data: {
+      tool: 'claude-code' as const,
+      exists: true,
+      text: `${[...LOG_LINES, ...LOG_LINES, ...LOG_LINES].join('\n')}\n`,
+      truncated: true,
+      size: 262144,
+    },
+    failed: false,
+  },
+  failed: {
+    data: {
+      tool: 'claude-code' as const,
+      exists: true,
+      text: `${LOG_LINES.join('\n')}\n`,
+      truncated: false,
+      size: 640,
+    },
+    failed: true,
+  },
+};

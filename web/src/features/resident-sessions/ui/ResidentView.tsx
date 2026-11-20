@@ -2,15 +2,22 @@ import { useTranslation } from 'react-i18next';
 import { PreviewBadge } from '@/shared/ui/preview-feature/PreviewBadge';
 import { Surface } from '@/shared/ui/surface/Surface';
 import type { ResidentPanelProps } from '../types';
+import type { LogState } from '../useSessionLog';
+import { ResidentLogPane } from './ResidentLogPane';
 import { ResidentPanel } from './ResidentPanel';
 import './resident.css';
 
-/** The dialog the settings row and the footer open: a modal on the PC, a bottom sheet in a narrow window. */
+/**
+ * The dialog the settings row and the footer open: a modal on the PC, a bottom sheet in a narrow
+ * window. It has two panes like the connection dialog: the settings and state on the left, the
+ * agent's log on the right (under the settings on a phone).
+ */
 export function ResidentView({
   kind,
   onClose,
+  log,
   ...panel
-}: ResidentPanelProps & { kind: 'dialog' | 'sheet'; onClose: () => void }) {
+}: ResidentPanelProps & { kind: 'dialog' | 'sheet'; onClose: () => void; log: LogState }) {
   const { t } = useTranslation();
   return (
     <Surface
@@ -21,7 +28,12 @@ export function ResidentView({
       onClose={onClose}
       className="resident-surface"
     >
-      <ResidentPanel {...panel} />
+      <div className="resident-split">
+        <div className="resident-split__main">
+          <ResidentPanel {...panel} />
+        </div>
+        <ResidentLogPane tool={panel.snapshot.health.tool ?? panel.choice.tool} log={log} />
+      </div>
     </Surface>
   );
 }
