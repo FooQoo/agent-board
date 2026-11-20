@@ -248,6 +248,26 @@ export const AnswerWithImage: Story = {
   },
 };
 
+/** On a phone the thumbnails are about 88px with a 44px remove target, and a tap opens the viewer. */
+export const AnswerImagesTappableOnPhone: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi', openId: 'Q-13' } },
+  parameters: phone,
+  globals: { locale: 'en', width: 'phone-375' },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'Messages' });
+    await within(dialog).findByRole('radio', { name: 'Email and password only' });
+    for (const name of ['one.png', 'two.png', 'three.png']) await attachAnswerImage(dialog, name);
+    const open = await within(dialog).findByRole('button', { name: 'Preview one.png' });
+    await expect(open.offsetWidth).toBeGreaterThanOrEqual(88);
+    await expect(open.offsetHeight).toBeGreaterThanOrEqual(88);
+    const remove = within(dialog).getByRole('button', { name: 'Remove one.png' });
+    await expect(remove.offsetWidth).toBeGreaterThanOrEqual(44);
+    await expect(remove.offsetHeight).toBeGreaterThanOrEqual(44);
+    await userEvent.click(open);
+    await page().findByRole('dialog', { name: 'one.png' });
+  },
+};
+
 /** A question without options takes a note and a picture, and the picture can be pasted. */
 export const AnswerTextWithPastedImage: Story = {
   args: {

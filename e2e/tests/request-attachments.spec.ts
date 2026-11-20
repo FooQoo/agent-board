@@ -68,7 +68,7 @@ test('images attach from the picker, a paste and a drop, and show as removable t
   }, png.toString('base64'));
   await expect(dialog.getByRole('button', { name: 'Remove dropped.png' })).toBeVisible();
 
-  const thumbs = dialog.locator('.ask-ai__thumb');
+  const thumbs = dialog.locator('.composer-thumb');
   await expect(thumbs).toHaveCount(3);
   const box = await thumbs.first().boundingBox();
   expect(box?.width).toBe(56);
