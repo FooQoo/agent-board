@@ -14,8 +14,8 @@
               "interaction": true
             },
             {
-              "id": "mocks-summary-desktop--unread-mixed",
-              "states": ["unread and read items", "unread count in tab"],
+              "id": "mocks-summary-desktop--list",
+              "states": ["list of summaries", "count in tab"],
               "interaction": true
             },
             {
@@ -29,18 +29,13 @@
               "interaction": true
             },
             {
-              "id": "mocks-summary-desktop--open-marks-read",
-              "states": ["opening marks read"],
-              "interaction": true
-            },
-            {
               "id": "mocks-summary-phone--empty",
               "states": ["no summaries", "bar badge questions only"],
               "interaction": true
             },
             {
-              "id": "mocks-summary-phone--unread-mixed",
-              "states": ["unread and read items"],
+              "id": "mocks-summary-phone--list",
+              "states": ["list of summaries"],
               "interaction": true
             },
             {

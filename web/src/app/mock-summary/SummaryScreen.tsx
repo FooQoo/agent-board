@@ -50,7 +50,7 @@ interface ItemProps {
 }
 
 /**
- * One summary. Tapping it marks it read and shows the trash button on its right. On a phone it is
+ * One summary. Tapping it shows the trash button on its right. On a phone it is
  * the board card's own swipe: `useCardGesture` slides it left and the trash tile grows from a dot,
  * drawn with the card's `swipe-card__*` styles. The gesture is always on for a summary (no hold
  * first), and while it is on `useSideSwipe` keeps the item's horizontal moves from reaching an
@@ -82,11 +82,7 @@ function SummaryItem({ summary, variant, revealed, onOpen, onReveal, onDelete }:
           onOpen();
         }}
       >
-        <span className="sm-dot" aria-hidden="true" />
         <span className="sm-item__window">{summary.window}</span>
-        <span className="sm-state" data-unread={summary.read ? undefined : ''}>
-          {summary.read ? m.read : m.unread}
-        </span>
       </button>
       <ResultList summary={summary} />
     </>
@@ -94,7 +90,6 @@ function SummaryItem({ summary, variant, revealed, onOpen, onReveal, onDelete }:
   const itemProps = {
     className: 'sm-item',
     'data-variant': variant,
-    'data-unread': summary.read ? undefined : '',
     'data-revealed': revealed || undefined,
   };
 
@@ -167,12 +162,12 @@ function Panel({ variant, set, revealedId }: SummaryScreenProps) {
   const [items, setItems] = useState(() => buildSummaries(set ?? 'mixed', ja));
   const [revealed, setRevealed] = useState<string | null>(revealedId ?? null);
   const [tab, setTab] = useState<Tab>('summary');
-  const unread = useMemo(() => items.filter((s) => !s.read).length, [items]);
+  const shown = useMemo(() => items.filter((s) => !s.dismissed), [items]);
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: 'fromAi', label: t('messages.list.tabFromAi'), count: OPEN_QUESTIONS },
     { id: 'fromYou', label: t('messages.list.tabFromYou'), count: 1 },
-    { id: 'summary', label: m.tab, count: unread },
+    { id: 'summary', label: m.tab, count: shown.length },
   ];
 
   return (
@@ -195,7 +190,6 @@ function Panel({ variant, set, revealedId }: SummaryScreenProps) {
                 type="button"
                 role="tab"
                 className="message-tabs__tab"
-                data-unread={item.id === 'summary' && item.count > 0 ? '' : undefined}
                 aria-selected={item.id === tab}
                 onClick={() => setTab(item.id)}
               >
@@ -206,25 +200,24 @@ function Panel({ variant, set, revealedId }: SummaryScreenProps) {
           </div>
           {tab !== 'summary' ? (
             <p className="message-list__empty">{m.otherTab}</p>
-          ) : items.length === 0 ? (
+          ) : shown.length === 0 ? (
             <Empty />
           ) : (
             <ul className="sm-list" aria-label={m.itemsLabel}>
-              {items.map((summary) => (
+              {shown.map((summary) => (
                 <SummaryItem
                   key={summary.id}
                   summary={summary}
                   variant={variant ?? 'desktop'}
                   revealed={revealed === summary.id}
                   onOpen={() => {
-                    setItems((all) =>
-                      all.map((s) => (s.id === summary.id ? { ...s, read: true } : s)),
-                    );
                     setRevealed((current) => (current === summary.id ? null : summary.id));
                   }}
                   onReveal={(open) => setRevealed(open ? summary.id : null)}
                   onDelete={() => {
-                    setItems((all) => all.filter((s) => s.id !== summary.id));
+                    setItems((all) =>
+                      all.map((s) => (s.id === summary.id ? { ...s, dismissed: true } : s)),
+                    );
                     setRevealed(null);
                   }}
                 />

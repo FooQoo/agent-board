@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { SummaryScreen } from './SummaryScreen';
 
 // The message center on a PC with a new "Summary" tab next to the questions and requests.
@@ -25,11 +25,11 @@ export const Empty: Story = {
   },
 };
 
-/** Two unread (tinted, dotted, badge) above two read; the unread count sits inside the Summary tab only. */
-export const UnreadMixed: Story = {
+/** Four summaries, all alike; the count in the Summary tab is the number not dismissed. */
+export const List: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement);
-    await expect(c.getAllByText(/^(未読|Unread)$/)).toHaveLength(2);
+    await expect(c.getAllByText(/^11\/\d\d /)).toHaveLength(4);
     await expect(c.getByText('#552')).toBeVisible();
   },
 };
@@ -47,15 +47,5 @@ export const TrashRevealed: Story = {
   args: { revealedId: 's1' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('button', { name: /削除|Delete/ })).toBeVisible();
-  },
-};
-
-/** Opening an unread item marks it read (the tab count drops) and shows the trash button. */
-export const OpenMarksRead: Story = {
-  play: async ({ canvasElement }) => {
-    const c = within(canvasElement);
-    const [first] = c.getAllByRole('button', { name: /09:00–10:00/ });
-    if (first) await userEvent.click(first);
-    await expect(c.getAllByText(/^(未読|Unread)$/)).toHaveLength(1);
   },
 };

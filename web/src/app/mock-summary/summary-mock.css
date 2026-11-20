@@ -113,16 +113,6 @@
   padding: 8px 16px 16px;
 }
 
-/* The unread count lives inside the tab, in the accent color. */
-.message-tabs__tab[data-unread] strong {
-  min-width: 18px;
-  padding: 1px 6px;
-  border-radius: 9px;
-  background: var(--r-accent);
-  color: var(--r-on-accent);
-  text-align: center;
-}
-
 /* ---- The list ---- */
 
 .sm-list {
@@ -178,11 +168,6 @@
   background: var(--r-surface);
 }
 
-.sm-item[data-unread] .sm-item__body {
-  border-color: color-mix(in srgb, var(--r-accent) 45%, var(--r-border));
-  background: var(--r-accent-soft);
-}
-
 .sm-item__head {
   display: flex;
   align-items: center;
@@ -202,40 +187,6 @@
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.sm-item:not([data-unread]) .sm-item__window {
-  color: var(--r-text2);
-  font-weight: 500;
-}
-
-.sm-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1px solid var(--r-border);
-}
-
-.sm-item[data-unread] .sm-dot {
-  border-color: var(--r-accent);
-  background: var(--r-accent);
-}
-
-.sm-state {
-  flex: none;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--r-lane);
-  color: var(--r-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.sm-state[data-unread] {
-  background: var(--r-accent);
-  color: var(--r-on-accent);
 }
 
 .sm-results {
@@ -266,10 +217,6 @@
 .sm-result__title {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.sm-item:not([data-unread]) .sm-result__title {
-  color: var(--r-text2);
 }
 
 /* ---- PC: the trash button shows on hover, on focus and when the item is opened ---- */

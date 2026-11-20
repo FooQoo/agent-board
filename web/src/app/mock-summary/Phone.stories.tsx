@@ -24,11 +24,11 @@ export const Empty: Story = {
   },
 };
 
-/** Unread items are tinted with a dot and a badge; the count is in the tab, not on the bar. */
-export const UnreadMixed: Story = {
+/** Four alike summaries; the count is in the tab, the bar badge stays questions-only. */
+export const List: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement);
-    await expect(c.getAllByText(/^(未読|Unread)$/)).toHaveLength(2);
+    await expect(c.getAllByText(/^11\/\d\d /)).toHaveLength(4);
     await expect(c.getByRole('navigation')).toBeVisible();
   },
 };
