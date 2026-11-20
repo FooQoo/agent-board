@@ -1,7 +1,7 @@
 import {
   ArchiveIcon,
   KanbanIcon,
-  MessageCircleQuestionIcon,
+  MessageCircleIcon,
   SettingsIcon,
   SparklesIcon,
   type LucideIcon,
@@ -70,7 +70,7 @@ export function PhoneNavBar({
     {
       id: 'messages',
       label: t('messages.title'),
-      icon: MessageCircleQuestionIcon,
+      icon: MessageCircleIcon,
       badge: questionCount,
       onPick: onMessages,
     },
