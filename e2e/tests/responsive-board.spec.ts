@@ -135,7 +135,7 @@ for (const [name, size] of [
       await expect.poll(() => openQuestionCount(page)).toBeGreaterThan(0);
       // Ask sits in the middle of the bar, and the list has no Ask entry of its own.
       await expect(askItem(page)).toBeVisible();
-      expect(await phoneBar(page).locator('.phone-nav').getByRole('button').evaluateAll((items) => items.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
+      expect(await phoneBar(page).getByRole('button').evaluateAll((items) => items.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
         'Board',
         'Messages',
         'Ask',

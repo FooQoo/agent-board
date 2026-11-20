@@ -19,15 +19,16 @@ export interface ArchiveListSheetProps extends ArchiveSheetData {
   /** Restores one task to the lane it was archived from; rejects when it could not. */
   onRestore: (taskId: number) => Promise<void>;
   onClose: () => void;
-  /** A story's still picture: the row that starts chosen, and whether its tile is open. */
-  initialArmed?: number | null;
-  initialRevealed?: boolean;
+  /** The project's name, which the cards show. */
+  projectName: string;
+  /** A story's still picture: the row whose Restore tile starts open. */
+  initialRevealed?: number | null;
 }
 
 /**
- * The phone's archive list: a bottom drawer with every archived task, newest first. A tap chooses a
- * row, a right swipe uncovers Restore, and pressing it returns the task to the lane and run state it
- * was archived with. A tap outside the chosen row lets it go.
+ * The phone's archive list: a bottom drawer with every archived task, newest first. Each row is the
+ * card the lanes use. A left swipe on a row uncovers Restore at once, and pressing it returns the
+ * task to the lane and run state it was archived with. A tap outside the open row closes it.
  */
 export function ArchiveListSheet({
   data,
@@ -36,27 +37,23 @@ export function ArchiveListSheet({
   onRetry,
   onRestore,
   onClose,
-  initialArmed = null,
-  initialRevealed = false,
+  projectName,
+  initialRevealed = null,
 }: ArchiveListSheetProps) {
   const { t } = useTranslation();
-  const [armed, setArmed] = useState<number | null>(initialArmed);
-  const [revealed, setRevealed] = useState(initialArmed !== null && initialRevealed);
+  const [revealed, setRevealed] = useState<number | null>(initialRevealed);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState(false);
   const tasks = data?.tasks ?? [];
 
   useEffect(() => {
-    if (armed === null) return;
+    if (revealed === null) return;
     const release = (event: PointerEvent) => {
-      if (!(event.target as Element).closest(`[data-archive-row="${armed}"]`)) {
-        setArmed(null);
-        setRevealed(false);
-      }
+      if (!(event.target as Element).closest(`[data-archive-row="${revealed}"]`)) setRevealed(null);
     };
     document.addEventListener('pointerdown', release, true);
     return () => document.removeEventListener('pointerdown', release, true);
-  }, [armed]);
+  }, [revealed]);
 
   const restore = async (id: number) => {
     if (busy !== null) return;
@@ -64,8 +61,7 @@ export function ArchiveListSheet({
     setError(false);
     try {
       await onRestore(id);
-      setArmed(null);
-      setRevealed(false);
+      setRevealed(null);
     } catch {
       setError(true);
     } finally {
@@ -109,19 +105,11 @@ export function ArchiveListSheet({
             <ArchiveSwipeRow
               key={task.id}
               task={task}
-              armed={armed === task.id}
-              revealed={armed === task.id && revealed}
+              projectId={data.project.id}
+              projectName={projectName}
+              revealed={revealed === task.id}
               busy={busy === task.id}
-              onArm={() => {
-                if (armed !== task.id) {
-                  setArmed(task.id);
-                  setRevealed(false);
-                }
-              }}
-              onRevealChange={(next) => {
-                setArmed(task.id);
-                setRevealed(next);
-              }}
+              onRevealChange={(next) => setRevealed(next ? task.id : null)}
               onRestore={() => void restore(task.id)}
             />
           ))}

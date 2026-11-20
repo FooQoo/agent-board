@@ -182,10 +182,15 @@ test('a horizontal swipe, even one that starts on a card, and the tabs switch be
   await expect(tab(page, 'Done 1', true)).toBeVisible();
   await expect(page.getByRole('article', { name: /Switch done/ })).toBeVisible();
 
-  // The done lane is the last: a swipe further left stays, and the heading is only the bulk button.
-  await swipeOver(page, swipeCard(page, 'Switch done'), -1);
-  await expect(tab(page, 'Done 1', true)).toBeVisible();
+  // The done lane is the last: a swipe further left stays on it and opens the bulk-archive drawer.
   await expect(page.getByRole('heading', { level: 2, name: /^Done/ })).toHaveCount(0);
+  await swipeOver(page, swipeCard(page, 'Switch done'), -1);
+  const bulk = page.getByRole('dialog', { name: 'Archive completed tasks' });
+  await expect(bulk).toBeVisible();
+  await bulk.getByRole('button', { name: 'Cancel' }).click();
+  await expect(bulk).toHaveCount(0);
+  await expect(tab(page, 'Done 1', true)).toBeVisible();
+  // The button after the last done card asks for the same drawer.
   await expect(page.getByRole('button', { name: 'Archive all' })).toBeEnabled();
 
   // Back to the right, across the cards, to the first lane.
@@ -341,7 +346,7 @@ test('swiping a chosen card back, or tapping outside it, closes its buttons with
 });
 
 // #450
-test('the done lane archives all its cards at once, and the button is disabled when the lane is empty', async ({ page }) => {
+test('the done lane archives all its cards at once, and the button is gone when the lane is empty', async ({ page }) => {
   await openPhone(page, 'Bulk');
   await tab(page, 'Done 3').tap();
   const bulk = page.getByRole('button', { name: 'Archive all' });
@@ -369,15 +374,15 @@ test('the done lane archives all its cards at once, and the button is disabled w
   await expect(tab(page, 'Done 0', true)).toBeVisible();
   await expect(tab(page, 'Todo 1')).toBeVisible();
   await expect(shown(page).getByRole('article')).toHaveCount(0);
-  await expect(bulk).toBeDisabled();
+  await expect(bulk).toHaveCount(0);
 });
 
 // #450
-test('the bulk archive button is disabled while the done lane is empty', async ({ page }) => {
+test('the bulk archive button is not offered while the done lane is empty', async ({ page }) => {
   await openPhone(page, 'Quiet');
   await tab(page, 'Done 0').tap();
   await expect(tab(page, 'Done 0', true)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Archive all' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Archive all' })).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -410,7 +415,7 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
   await openPhone(page, 'Switch');
   const bar = bottomBar(page);
   await expect(bar).toBeVisible();
-  const items = bar.locator('.phone-nav').getByRole('button');
+  const items = bar.getByRole('button');
   expect(await items.evaluateAll((all) => all.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
     'Board',
     'Messages',
@@ -418,21 +423,15 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
     'Archive',
     'Settings',
   ]);
-  // The bulk-archive button sits to the right of the dock, outside it.
-  const bulk = bar.getByRole('button', { name: 'Archive all' });
-  await expect(bar.locator('.phone-nav').getByRole('button', { name: 'Archive all' })).toHaveCount(0);
-  const dockBox = await bar.locator('.phone-nav').boundingBox();
-  const bulkBox = await bulk.boundingBox();
-  expect((bulkBox?.x ?? 0)).toBeGreaterThanOrEqual((dockBox?.x ?? 0) + (dockBox?.width ?? 0));
   // The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
   await expect(page.getByRole('region', { name: 'Messages' })).toHaveCount(0);
   await expect(page.locator('.header__settings')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
   await expect(bar.locator('.phone-nav__badge')).toHaveCount(0);
-  // Ask sits in the middle of the dock; the bulk-archive button beside it is not part of the dock.
   const ask = await items.nth(2).boundingBox();
-  if (!ask || !dockBox) throw new Error('the dock has no box');
-  expect(Math.abs(ask.x + ask.width / 2 - (dockBox.x + dockBox.width / 2))).toBeLessThanOrEqual(2);
+  const barBox = await bar.boundingBox();
+  if (!ask || !barBox) throw new Error('the bar has no box');
+  expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
 
   // On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
   await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
@@ -461,7 +460,7 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
 test('the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets', async ({ page }) => {
   await openPhone(page, 'Switch');
   // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
-  const bar = page.locator('.phone-nav-bar');
+  const bar = page.locator('.phone-nav');
   const item = (name: string) => bar.locator('button', { hasText: name });
   await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
   const messages = page.getByRole('dialog', { name: 'Messages' });
@@ -479,7 +478,7 @@ test('the bottom bar stays in front of an open sheet, the sheet runs behind it a
   expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
   expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
   // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
-  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav-bar') !== null, [
+  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
     barBox.x + barBox.width / 2,
     barBox.y + barBox.height / 2,
   ]);
@@ -493,7 +492,7 @@ test('the bottom bar stays in front of an open sheet, the sheet runs behind it a
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-test('Settings opens as a drawer, and Archive asks in a drawer that cancels without a change', async ({ page }) => {
+test('Settings opens as a drawer, Archive lists archived tasks in a drawer, and the bulk archive asks in a drawer that cancels without a change', async ({ page }) => {
   await openPhone(page, 'Switch');
   await bottomBar(page).getByRole('button', { name: 'Settings' }).tap();
   const settings = page.getByRole('dialog', { name: 'Settings' });
@@ -502,7 +501,15 @@ test('Settings opens as a drawer, and Archive asks in a drawer that cancels with
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 
-  await bottomBar(page).getByRole('button', { name: 'Archive all' }).tap();
+  await bottomBar(page).getByRole('button', { name: 'Archived tasks' }).tap();
+  const list = page.getByRole('dialog', { name: 'Archived tasks' });
+  await expect(list).toBeVisible();
+  await expect(list).toHaveAttribute('data-slot', 'drawer-popup');
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
+
+  await tab(page, 'Done 1').tap();
+  await page.getByRole('button', { name: 'Archive all' }).tap();
   const drawer = page.getByRole('dialog', { name: 'Archive completed tasks' });
   await expect(drawer).toBeVisible();
   await expect(drawer).toHaveAttribute('data-slot', 'drawer-popup');

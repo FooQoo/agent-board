@@ -259,7 +259,7 @@ export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
   ),
   play: async ({ canvasElement }) => {
     const root = document.documentElement;
-    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav-bar') as HTMLElement;
+    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement;
     await expect(getComputedStyle(nav).display).not.toBe('none');
     await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height')).not.toBe('0px');
     try {
@@ -297,7 +297,7 @@ export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
 
 /** The bar's Board item, found by class: an open sheet hides the page behind it from the accessibility tree. */
 const barItem = (canvasElement: HTMLElement, name: string) =>
-  within(canvasElement.querySelector<HTMLElement>('.phone-nav-bar') as HTMLElement).getByText(name);
+  within(canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement).getByText(name);
 
 /** With nothing typed, leaving the Ask sheet from the bar is one tap: no question, and the sheet is gone. */
 export const BarLeavesEmptyAsk: StoryObj<typeof ConnectedProjectStory> = {
@@ -453,7 +453,7 @@ export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
     const style = getComputedStyle(shell as HTMLElement);
     await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59 + 8);
     // The floating dock keeps its own margin above the home indicator.
-    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav-bar');
+    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav');
     await expect(nav).not.toBeNull();
     await expect(
       Number.parseFloat(getComputedStyle(nav as HTMLElement).marginBottom),

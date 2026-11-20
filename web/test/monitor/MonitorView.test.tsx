@@ -252,8 +252,6 @@ describe('monitor messages in the bottom bar', () => {
       'Ask',
       'Archive',
       'Settings',
-      // The bulk-archive button beside the dock has no label.
-      '',
     ]);
     await userEvent.click(within(bar()).getByRole('button', { name: 'Ask AI' }));
     expect(onAsk).toHaveBeenCalledTimes(1);
@@ -266,12 +264,12 @@ describe('monitor messages in the bottom bar', () => {
     expect(screen.getAllByRole('button', { name: 'Ask AI' })).toHaveLength(1);
   });
 
-  it('opens settings from the bar, and dims Archive while there is nothing to archive', async () => {
+  it('opens settings from the bar, and dims Archive while the archive cannot be read', async () => {
     const user = userEvent.setup();
     render(<Connected />);
-    // Without writes (and with no done card to move) the archive item cannot be tapped.
+    // Without writes the archive list cannot be opened, so the item cannot be tapped.
     expect(
-      (within(bar()).getByRole('button', { name: 'Archive all' }) as HTMLButtonElement).disabled,
+      (within(bar()).getByRole('button', { name: 'Archived tasks' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     await user.click(within(bar()).getByRole('button', { name: 'Settings' }));
     expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeTruthy();
