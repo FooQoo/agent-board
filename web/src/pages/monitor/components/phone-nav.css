@@ -10,15 +10,23 @@
   --phone-nav-height: calc(48px + 2 * 4px + 2 * 1px + max(10px, var(--safe-bottom)));
 }
 
-.phone-nav {
+.phone-nav-bar {
   /* A modal sheet turns pointer events off outside itself; the bar must stay tappable. */
   pointer-events: auto;
-  display: grid;
+  display: flex;
   flex: none;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 4px;
   /* The shell pads its sides by at least 8px; the dock sits 4px further in and floats above the home indicator. */
   margin: 0 4px max(10px, var(--safe-bottom));
+}
+
+.phone-nav {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   padding: 4px;
   border: 1px solid var(--r-border);
   border-radius: 16px;
@@ -29,7 +37,7 @@
 }
 
 /* While a sheet is mounted (open or closing) the bar rides above it and its backdrop (z-index 50 and 49). */
-body:has(.mobile-drawer) .phone-nav {
+body:has(.mobile-drawer) .phone-nav-bar {
   position: relative;
   z-index: 60;
 }
@@ -46,7 +54,7 @@ body:has(.mobile-drawer) .phone-nav {
   --phone-nav-height: 0px;
 }
 
-:root:is([data-visual-keyboard], [data-keyboard]) .phone-nav {
+:root:is([data-visual-keyboard], [data-keyboard]) .phone-nav-bar {
   display: none;
 }
 
@@ -60,7 +68,8 @@ body:has(.mobile-drawer) .phone-nav {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 0 2px;
+  /* No side padding: the labels (メッセージ, アーカイブ) need the room beside the bulk-archive button. */
+  padding: 0;
   border: 0;
   border-radius: 12px;
   background: transparent;
@@ -84,6 +93,47 @@ body:has(.mobile-drawer) .phone-nav {
 }
 
 .phone-nav__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The bulk-archive button: a round button beside the dock, as tall as the dock, in the dock's style. */
+.phone-nav__bulk {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  /* As tall as the dock (58px); narrower than tall, so the five dock items keep their room. */
+  /* biome-ignore lint/plugin: the bulk-archive button is a fixed-width tap target beside the dock */
+  width: 52px;
+  padding: 0;
+  border: 1px solid var(--r-border);
+  border-radius: 16px;
+  background: var(--r-surface);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 24px -8px rgb(0 0 0 / 0.18);
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.phone-nav__bulk svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.75;
+}
+
+.phone-nav__bulk:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -2px;
+}
+
+.phone-nav__bulk[data-selected="true"] {
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.phone-nav__bulk:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

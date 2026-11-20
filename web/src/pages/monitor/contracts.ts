@@ -61,6 +61,8 @@ export interface MonitorWrites {
   /** Puts a card before `beforeId` in its lane, or at the end when it is null. */
   archive(projectId: ProjectId, taskId: number): Promise<unknown>;
   archiveDone(projectId: ProjectId, ids: readonly number[]): Promise<unknown>;
+  /** Returns an archived task to the lane it was archived from. */
+  restore(projectId: ProjectId, taskId: number): Promise<unknown>;
 }
 
 /** The project switcher the header shows when the app lets the person change project. */

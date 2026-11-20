@@ -119,6 +119,13 @@ export const commonEn = {
     assignee: 'Assignee',
     error: 'Could not archive the tasks. Try again.',
     actions: 'Archived task actions',
+    listTitle: 'Archived tasks',
+    listHint: 'Tap a task, then swipe right to restore it.',
+    returnsTo: 'Returns to {{lane}}',
+    restoreTask: 'Restore #{{id}}',
+    restoreError: 'Could not restore the task. Try again.',
+    loading: 'Loading…',
+    retry: 'Retry',
     restore: 'Restore',
   },
   status: {

@@ -10,11 +10,11 @@ Remote access opens the board from another device when you are away from your de
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
-A bar at the bottom of the screen holds the main places, left to right: **Board**, **Messages**, **Ask**, **Archive**, and **Settings**. It stays clear of the home indicator. **Ask** is in the middle and a little stronger than the rest. Everything except **Board** opens a drawer that slides up over the board, and **Board** closes it.
+A bar at the bottom of the screen holds the main places, left to right: **Board**, **Messages**, **Ask**, **Archive**, and **Settings**. It stays clear of the home indicator. **Ask** is in the middle and a little stronger than the rest. Everything except **Board** opens a drawer that slides up over the board, and **Board** closes it. A round button to the right of the bar, outside it, archives all done tasks.
 
 - **Messages** opens the open messages in three tabs, **AI's questions**, **Your requests**, and **Summary**; pick a question to answer it there, with **Back to list** (or **Later**) and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)). The number on its icon counts the questions that wait for your answer, in the theme's accent color. It disappears when none wait.
 - **Ask** opens the request form (see [Ask AI](./editing#ask-ai)). It has no number.
-- **Archive** and **Settings** are described under [Archive all done tasks](#archive-all-done-tasks) and in [Open it on the phone](#open-it-on-the-phone).
+- **Archive** and **Settings** are described under [Review and restore archived tasks](#review-and-restore-archived-tasks) and in [Open it on the phone](#open-it-on-the-phone). The round button to the right of the bar archives every done task; see [Archive all done tasks](#archive-all-done-tasks).
 
 AI drafts show as ordinary cards in the Todo lane with a **Draft** badge, and the Todo tab counts them. The agent starts them itself once its questions are answered (see [Drafts](./board#drafts)).
 
@@ -36,13 +36,19 @@ Moving and archiving start from a task you have chosen, so a stray swipe does no
 
 Swipe the task back, or tap anywhere outside it, to close the buttons without a change. A swipe never deletes a task. Archived tasks can be restored, and permanent deletion is only available from the archive screen of a wider window, as on the PC.
 
+### Review and restore archived tasks
+
+**Archive** in the bottom bar opens **Archived tasks** as a drawer, newest first. Each row shows the task's ID, title, owner, the date it was archived, and the lane it returns to.
+
+To restore a task, tap its row to choose it, then swipe the row to the right. A **Restore** button appears on the left; press it and the task leaves the list and returns to the lane it was archived from, with its run state Idle, the state every archived task is stored with. It goes to the end of that lane. A tap outside the chosen row, or a tap on the open row, closes the button. If the restore fails, the row stays and the drawer says so.
+
 ### Archive all done tasks
 
-**Archive** in the bottom bar opens **Archive completed tasks** as a drawer, which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The item is dimmed while no task is done.
+The round button to the right of the bottom bar opens **Archive completed tasks** as a drawer, which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The button is dimmed while no task is done.
 
 ### Switch sheets from the bottom bar
 
-The bottom bar stays in front while a drawer is open, and the drawer's background continues to the bottom edge of the screen behind it. The drawer's content stops just above the bar, so nothing in it is hidden. Choose another item to replace the open drawer with that one, or choose **Board** to close it. A sheet opened from **Settings**, such as **Notifications** or the resident session, closes as well when you choose any item on the bar, so the screen you chose is the one you see. If the open drawer is the **Ask** form and you have typed text or attached an image, the bar asks before it discards them; choose to keep editing and the form stays open. While the on-screen keyboard is open, the bar is hidden, with or without a drawer, and the drawer sits on the keyboard with no empty strip above it. The bar returns when the keyboard closes.
+The bottom bar stays in front while a drawer is open, and the drawer's background continues to the bottom edge of the screen behind it. The drawer's content stops just above the bar, so nothing in it is hidden. Choose another item to replace the open drawer with that one, or choose **Board** to close it. A sheet opened from **Settings**, such as **Notifications** or the resident session, closes as well when you choose any item on the bar or the bulk-archive button, so the screen you chose is the one you see. If the open drawer is the **Ask** form and you have typed text or attached an image, the bar asks before it discards them; choose to keep editing and the form stays open. While the on-screen keyboard is open, the bar is hidden, with or without a drawer, and the drawer sits on the keyboard with no empty strip above it. The bar returns when the keyboard closes.
 
 ### Read a task
 

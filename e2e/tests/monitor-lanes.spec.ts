@@ -410,7 +410,7 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
   await openPhone(page, 'Switch');
   const bar = bottomBar(page);
   await expect(bar).toBeVisible();
-  const items = bar.getByRole('button');
+  const items = bar.locator('.phone-nav').getByRole('button');
   expect(await items.evaluateAll((all) => all.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
     'Board',
     'Messages',
@@ -418,15 +418,21 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
     'Archive',
     'Settings',
   ]);
+  // The bulk-archive button sits to the right of the dock, outside it.
+  const bulk = bar.getByRole('button', { name: 'Archive all' });
+  await expect(bar.locator('.phone-nav').getByRole('button', { name: 'Archive all' })).toHaveCount(0);
+  const dockBox = await bar.locator('.phone-nav').boundingBox();
+  const bulkBox = await bulk.boundingBox();
+  expect((bulkBox?.x ?? 0)).toBeGreaterThanOrEqual((dockBox?.x ?? 0) + (dockBox?.width ?? 0));
   // The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
   await expect(page.getByRole('region', { name: 'Messages' })).toHaveCount(0);
   await expect(page.locator('.header__settings')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
   await expect(bar.locator('.phone-nav__badge')).toHaveCount(0);
+  // Ask sits in the middle of the dock; the bulk-archive button beside it is not part of the dock.
   const ask = await items.nth(2).boundingBox();
-  const barBox = await bar.boundingBox();
-  if (!ask || !barBox) throw new Error('the bar has no box');
-  expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
+  if (!ask || !dockBox) throw new Error('the dock has no box');
+  expect(Math.abs(ask.x + ask.width / 2 - (dockBox.x + dockBox.width / 2))).toBeLessThanOrEqual(2);
 
   // On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
   await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
@@ -455,7 +461,7 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
 test('the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets', async ({ page }) => {
   await openPhone(page, 'Switch');
   // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
-  const bar = page.locator('.phone-nav');
+  const bar = page.locator('.phone-nav-bar');
   const item = (name: string) => bar.locator('button', { hasText: name });
   await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
   const messages = page.getByRole('dialog', { name: 'Messages' });
@@ -473,7 +479,7 @@ test('the bottom bar stays in front of an open sheet, the sheet runs behind it a
   expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
   expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
   // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
-  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
+  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav-bar') !== null, [
     barBox.x + barBox.width / 2,
     barBox.y + barBox.height / 2,
   ]);
