@@ -65,7 +65,10 @@
   width: 176px;
 }
 
-/* In a narrow dialog the button moves under the text, so the text keeps its width. */
+/*
+ * In a narrow dialog (the phone sheet) the button moves under the text, so the text keeps its
+ * width. It spans the whole row and is centered on it, not on the text column beside the icon.
+ */
 @container (max-width: 480px) {
   .settings-entry__grid {
     grid-template-columns: auto minmax(0, 1fr);
@@ -75,7 +78,7 @@
   }
 
   .settings-entry__action {
-    grid-column: 2;
-    justify-self: start;
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 }
