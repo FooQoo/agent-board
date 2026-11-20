@@ -40,6 +40,10 @@ Swipe the task back, or tap anywhere outside it, to close the buttons without a 
 
 **Archive** in the bottom bar opens **Archive completed tasks** as a drawer, which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The item is dimmed while no task is done.
 
+### Switch sheets from the bottom bar
+
+The bottom bar stays in front while a drawer is open, and the drawer stops just above it, so nothing in the drawer is hidden behind the bar. Choose another item to replace the open drawer with that one, or choose **Board** to close it. While the on-screen keyboard is open, the drawer sits on the keyboard and the bar is out of the way.
+
 ### Read a task
 
 Tapping a task opens a bottom drawer with **Body**, **Conditions**, **Results**, **History**, and **Epic** tabs. The drawer slides up from the bottom, follows a downward drag of its top area (the handle and header, not the close button), and closes when dismissed; each tab's content scrolls independently. The Conditions tab shows only the task's own conditions; epic reference conditions remain in the epic details. The Epic tab shows the epic details without repeating the label or title already shown in the drawer and body. The monitor can answer a pending question, check and uncheck a task's acceptance conditions in the Conditions tab (they work as on the board; see [The board](./board#read-a-task)), and change the language and color theme. Through the passcode you can also do what the PC board does, as described in [Use the whole board through the address](#use-the-whole-board-through-the-address). The connection settings stay on the PC.

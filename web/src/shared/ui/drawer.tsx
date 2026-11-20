@@ -73,6 +73,13 @@ export function Drawer({
           data-slot="drawer-popup"
           data-swipe-direction="down"
           aria-describedby={undefined}
+          onInteractOutside={(event) => {
+            // The phone's bottom bar stays in front of the sheet: a tap on it switches sheets (or closes
+            // them, for Board) through its own handlers, so it must not first dismiss this one.
+            if (event.target instanceof Element && event.target.closest('[data-phone-nav-bar]')) {
+              event.preventDefault();
+            }
+          }}
           onOpenAutoFocus={(event) => {
             const target =
               initialFocusSelector === undefined

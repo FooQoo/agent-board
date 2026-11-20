@@ -1,5 +1,5 @@
 import type { HeaderSettings } from '../../shared/ui/app-header/Header';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectId } from '../../shared/api/contracts';
 import { httpStatusOf } from '../../shared/api/httpStatus';
 import { DataProvider, usePresentationHold, useSummary } from '../../shared/data/react';
@@ -132,6 +132,7 @@ export function MonitorScreen({
   const [messagesOpen, setMessagesOpen] = useState(false);
   // The phone band's "Ask AI" sheet.
   const [asking, setAsking] = useState(false);
+  const askGuard = useRef<((after: () => void) => void) | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
@@ -186,6 +187,7 @@ export function MonitorScreen({
     // Answers are shown at once: the Summary is read again without waiting for the hold.
     onMessagesChanged: () => void summary.refresh(),
     onAsk: () => setAsking(true),
+    onAskClose: (then) => (askGuard.current ? askGuard.current(then) : then()),
     asking,
     readResolvers,
     preferences,
@@ -212,6 +214,7 @@ export function MonitorScreen({
       {asking && (
         <AskAiSheet
           projectId={projectId}
+          closeGuard={askGuard}
           onClose={() => setAsking(false)}
           onSent={() => void summary.refresh()}
         />
