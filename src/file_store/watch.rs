@@ -14,7 +14,6 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -27,6 +26,7 @@ use super::index::ProjectIndex;
 use super::projection::ChangeSink;
 use crate::domain::ProjectId;
 use crate::error::{AgboardError, FileAction};
+pub use classify::classify;
 pub use mode::{POLL_INTERVAL, WatchMode};
 
 /// How long a target waits for further events before it is reloaded.
@@ -80,38 +80,6 @@ impl Reloader {
 
     pub fn all(&self) {
         let _ = self.tx.send(Target::All);
-    }
-}
-
-/// The target of one path below `shared`, or `None` when the path is not
-/// canonical data: anything with a dot-prefixed name, `README.md` at the
-/// project root, and paths outside `projects/`.
-pub fn classify(shared: &Path, path: &Path) -> Option<Target> {
-    let rest = path.strip_prefix(shared).ok()?;
-    let parts: Vec<String> = rest
-        .components()
-        .map(|c| c.as_os_str().to_string_lossy().into_owned())
-        .collect();
-    if parts.iter().any(|part| part.starts_with('.')) {
-        return None;
-    }
-    match parts.as_slice() {
-        [name] if name == "workspace.json" || name == "projects" => Some(Target::All),
-        [projects, id] if projects == "projects" => {
-            ProjectId::from_str(id).ok().map(|_| Target::All)
-        }
-        // The Docs are the user's files: they are announced, not loaded as board data.
-        [projects, id, docs, ..] if projects == "projects" && docs == "docs" => {
-            ProjectId::from_str(id).ok().map(Target::Docs)
-        }
-        [projects, id, dir, ..] if projects == "projects" && dir == "notify" => {
-            ProjectId::from_str(id).ok().map(Target::Notify)
-        }
-        [projects, _, file] if projects == "projects" && file == "README.md" => None,
-        [projects, id, ..] if projects == "projects" => {
-            ProjectId::from_str(id).ok().map(Target::Project)
-        }
-        _ => None,
     }
 }
 
@@ -208,6 +176,7 @@ async fn reload_loop(
     docs: DocsSink,
 ) {
     let mut due: HashMap<Target, Instant> = HashMap::new();
+    let mut prints = prints::NotifyPrints::baseline(&root);
     loop {
         let next = due.values().min().copied();
         tokio::select! {
@@ -231,8 +200,17 @@ async fn reload_loop(
                     match target {
                         Target::Docs(id) => (docs.0)(Some(id.clone())),
                         // Lost events may have been in any project's Docs.
-                        Target::All => (docs.0)(None),
-                        Target::Notify(id) => changed.send(super::notify::summaries_changed(id)),
+                        Target::All => {
+                            (docs.0)(None);
+                            // Announce only the summary changes that no event announced yet.
+                            for id in prints.changed_since(&root) {
+                                changed.send(super::notify::summaries_changed(&id));
+                            }
+                        }
+                        Target::Notify(id) => {
+                            prints.seen(&root, id);
+                            changed.send(super::notify::summaries_changed(id));
+                        }
                         Target::Project(_) => {}
                     }
                 }
@@ -295,7 +273,9 @@ fn apply(root: &Path, index: &RwLock<ProjectIndex>, changed: &ChangeSink, ready:
     }
 }
 
+mod classify;
 mod mode;
+mod prints;
 
 #[cfg(test)]
 mod tests;
