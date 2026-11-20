@@ -3,7 +3,7 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Button } from '@/shared/ui/button';
-import { Lightbox } from '../lightbox/Lightbox';
+import { ImageLightbox } from '../lightbox/ImageLightbox';
 import type { EditorAttachment } from './attachmentTypes';
 import { formatAttachmentSize } from './attachmentTypes';
 import type { AttachmentNotice } from './useAttachmentState';
@@ -52,7 +52,7 @@ export function AttachmentPanel({
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [zoom, setZoom] = useState<EditorAttachment | null>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
   const zoomTrigger = useRef<HTMLElement | null>(null);
 
   const acceptFiles = (files: FileList | File[]) => {
@@ -88,7 +88,7 @@ export function AttachmentPanel({
   );
   const imageList = (
     <div className="editor-attachments__list">
-      {attachments.map((attachment) => (
+      {attachments.map((attachment, index) => (
         <AttachmentTile
           key={attachment.id}
           attachment={attachment}
@@ -97,7 +97,7 @@ export function AttachmentPanel({
           onInsert={onInsert ? () => onInsert(attachment) : undefined}
           onZoom={(trigger) => {
             zoomTrigger.current = trigger;
-            setZoom(attachment);
+            setZoom(index);
           }}
         />
       ))}
@@ -179,16 +179,16 @@ export function AttachmentPanel({
         </Button>
       </div>
       {zoom !== null && (
-        <Lightbox
-          label={zoom.name}
+        <ImageLightbox
+          images={attachments.map((item) => ({ src: item.url, alt: item.name }))}
+          startIndex={zoom}
+          label={(index) => attachments[index]?.name ?? ''}
           onClose={() => setZoom(null)}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             zoomTrigger.current?.focus();
           }}
-        >
-          <img src={zoom.url} alt={zoom.name} />
-        </Lightbox>
+        />
       )}
     </section>
   );

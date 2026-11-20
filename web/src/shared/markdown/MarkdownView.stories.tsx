@@ -198,6 +198,41 @@ export const ImageEnlarge: Story = {
   },
 };
 
+/** Escape, and a press on the backdrop, put the page back after a picture was enlarged. */
+export const ImageEnlargeClose: Story = {
+  args: { source: `![Sample chart](attachment:${KNOWN})` },
+  play: async ({ canvasElement }) => {
+    const open = () =>
+      userEvent.click(within(canvasElement).getByRole('button', { name: 'Enlarge Sample chart' }));
+    await open();
+    await within(document.body).findByRole('dialog', { name: 'Sample chart' });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.querySelector('[data-lightbox]')).toBeNull());
+    await open();
+    await within(document.body).findByRole('dialog', { name: 'Sample chart' });
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement;
+    await userEvent.pointer([
+      { target: overlay, coords: { clientX: 2, clientY: 2 } },
+      { keys: '[MouseLeft]', target: overlay, coords: { clientX: 2, clientY: 2 } },
+    ]);
+    await waitFor(() => expect(document.querySelector('[data-lightbox]')).toBeNull());
+  },
+};
+
+/** The enlarged view opens at the pressed picture and swipes across the pictures of the same text. */
+export const ImageEnlargeSwipe: Story = {
+  args: {
+    source: `![First](attachment:${KNOWN})\n\nBetween.\n\n![Second](attachment:${KNOWN})\n\n![Third](attachment:${KNOWN})`,
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Enlarge Second' }));
+    const dialog = await within(document.body).findByRole('dialog', { name: 'Second' });
+    await waitFor(() => expect(within(dialog).getByText('2 / 3')).toBeVisible());
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(within(dialog).getByText('3 / 3')).toBeVisible());
+  },
+};
+
 /**
  * A well-formed Mermaid block is drawn as a diagram. Its labels are SVG text: HTML inside
  * `foreignObject` kept a closed sheet and its whole document in memory.

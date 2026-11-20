@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownView } from '../../src/shared/markdown/MarkdownView';
 import { selectLocale } from '../../src/shared/i18n';
@@ -188,6 +188,30 @@ describe('MarkdownView diagrams and captures', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog.querySelector('img')?.getAttribute('src')).toBe('https://example.com/one.png');
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('opens at the tapped image and swipes across the images of the same text', () => {
+    view(
+      '![one](https://example.com/one.png)\n\nText between.\n\n![two](https://example.com/two.png)\n\n![three](https://example.com/three.png)',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Enlarge two' }));
+    const dialog = screen.getByRole('dialog', { name: 'two' });
+    expect([...dialog.querySelectorAll('img')].map((img) => img.getAttribute('src'))).toEqual([
+      'https://example.com/one.png',
+      'https://example.com/two.png',
+      'https://example.com/three.png',
+    ]);
+    expect(within(dialog).getByText('2 / 3')).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    expect(within(dialog).getByText('3 / 3')).toBeTruthy();
+  });
+
+  it('shows a lone image alone, with no position', () => {
+    view('![only](https://example.com/only.png)');
+    fireEvent.click(screen.getByRole('button', { name: 'Enlarge only' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelectorAll('img')).toHaveLength(1);
+    expect(within(dialog).queryByText(/\d \/ \d/)).toBeNull();
   });
 
   it('does not put a lone image in a row', () => {

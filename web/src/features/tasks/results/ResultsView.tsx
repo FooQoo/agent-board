@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImageOffIcon, LinkIcon, Maximize2Icon } from 'lucide-react';
-import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
+import { ImageLightbox } from '../../../shared/ui/lightbox/ImageLightbox';
 import { resultImageIds, type TaskResult } from '../../../shared/api/contracts';
 import { openableUrl } from './openableUrl';
 import { formatShort } from '../model/format';
@@ -182,100 +182,14 @@ function ResultImages({
         )}
       </div>
       {zoom !== null && (
-        <Lightbox label={label(zoom)} onClose={() => setZoom(null)}>
-          <ImageViewer
-            urls={ids.map(attachmentUrl)}
-            alt={result.summary}
-            index={zoom}
-            onIndexChange={setZoom}
-          />
-        </Lightbox>
+        <ImageLightbox
+          images={ids.map((id) => ({ src: attachmentUrl(id), alt: result.summary }))}
+          startIndex={zoom}
+          label={label}
+          onClose={() => setZoom(null)}
+        />
       )}
     </>
-  );
-}
-
-/**
- * The enlarged images of one result: a row of full-width slides that snaps to one slide at a time.
- * The browser's own scrolling does the work: a sideways swipe moves between slides, and each slide
- * scrolls up and down by itself when its image is taller than the viewer, so the two gestures
- * never compete. The left and right arrow keys step too.
- */
-function ImageViewer({
-  urls,
-  alt,
-  index,
-  onIndexChange,
-}: {
-  urls: string[];
-  alt: string;
-  index: number;
-  onIndexChange: (index: number) => void;
-}) {
-  const { t } = useTranslation();
-  const track = useRef<HTMLDivElement>(null);
-  const count = urls.length;
-  const scrollToIndex = useCallback((target: number, smooth: boolean) => {
-    const element = track.current;
-    if (!element || typeof element.scrollTo !== 'function') return;
-    element.scrollTo({
-      left: target * element.clientWidth,
-      behavior: smooth ? 'smooth' : 'auto',
-    });
-  }, []);
-  // Open at the tapped image, before the first paint.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first position is applied here
-  useLayoutEffect(() => {
-    scrollToIndex(index, false);
-    // Only the first position is applied here; later moves come from the person's own scrolling.
-  }, []);
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-      const target = Math.min(
-        count - 1,
-        Math.max(0, index + (event.key === 'ArrowRight' ? 1 : -1)),
-      );
-      if (target === index) return;
-      event.preventDefault();
-      onIndexChange(target);
-      scrollToIndex(target, true);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [count, index, onIndexChange, scrollToIndex]);
-  const onScroll = () => {
-    const element = track.current;
-    if (!element || element.clientWidth === 0) return;
-    const current = Math.round(element.scrollLeft / element.clientWidth);
-    if (current !== index && current >= 0 && current < count) onIndexChange(current);
-  };
-  return (
-    <div className="results__zoom">
-      <div className="results__viewer" ref={track} onScroll={onScroll} data-viewer>
-        {urls.map((url, slide) => (
-          <div
-            key={url}
-            className="results__slide"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={t('results.imagePosition', { index: slide + 1, count })}
-          >
-            <img
-              src={url}
-              alt={alt}
-              loading={Math.abs(slide - index) <= 1 ? 'eager' : 'lazy'}
-              draggable={false}
-            />
-          </div>
-        ))}
-      </div>
-      {count > 1 && (
-        <span className="results__position" aria-live="polite">
-          {t('results.imagePosition', { index: index + 1, count })}
-        </span>
-      )}
-    </div>
   );
 }
 
