@@ -13,6 +13,23 @@ pub(super) struct Parsed {
     pub events: Vec<DriverEvent>,
     /// A line to send back to the CLI at once (an error for a request this code cannot serve).
     pub reply: Option<Value>,
+    /// A subagent or background command that started or ended, when the line says so.
+    pub task: Option<TaskChange>,
+}
+
+/// A change in the work the session waits on: a subagent or a background command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum TaskChange {
+    Started {
+        id: String,
+        description: String,
+    },
+    Ended {
+        id: String,
+        /// `completed`, `failed`, or `stopped`.
+        status: String,
+        description: String,
+    },
 }
 
 /// The permission requests waiting for an answer, with the input each one carried: an allow
@@ -44,10 +61,13 @@ pub(super) fn parse_line(line: &str, pending: &mut Pending) -> Parsed {
                 session_id: text(&message, "session_id").map(str::to_string),
                 tool_version: text(&message, "claude_code_version").map(str::to_string),
             }),
-            other => parsed.events.push(DriverEvent::Activity {
-                kind: format!("system/{}", other.unwrap_or("")),
-                summary: String::new(),
-            }),
+            other => {
+                parsed.task = task_change(other, &message);
+                parsed.events.push(DriverEvent::Activity {
+                    kind: format!("system/{}", other.unwrap_or("")),
+                    summary: String::new(),
+                });
+            }
         },
         Some("assistant") => {
             let blocks = message
@@ -83,6 +103,29 @@ pub(super) fn parse_line(line: &str, pending: &mut Pending) -> Parsed {
         _ => parsed.events.push(DriverEvent::Unknown),
     }
     parsed
+}
+
+/// The task events of Claude Code: `task_started` when a subagent or a background command
+/// begins, `task_notification` (or a `task_updated` with a final status) when it ends.
+fn task_change(subtype: Option<&str>, message: &Value) -> Option<TaskChange> {
+    let id = text(message, "task_id")?.to_string();
+    let description = text(message, "description")
+        .or_else(|| text(message, "summary"))
+        .map(short)
+        .unwrap_or_default();
+    let ended = |status: &str| {
+        matches!(status, "completed" | "failed" | "stopped" | "killed").then(|| TaskChange::Ended {
+            id: id.clone(),
+            status: status.to_string(),
+            description: description.clone(),
+        })
+    };
+    match subtype? {
+        "task_started" => Some(TaskChange::Started { id, description }),
+        "task_notification" => ended(text(message, "status").unwrap_or("completed")),
+        "task_updated" => ended(message.pointer("/patch/status").and_then(Value::as_str)?),
+        _ => None,
+    }
 }
 
 fn outcome(message: &Value) -> TurnOutcome {

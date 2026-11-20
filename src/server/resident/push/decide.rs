@@ -60,6 +60,10 @@ pub struct Stalled {
     pub attempts: u32,
     /// How the last turn failed, if it did.
     pub last_error: Option<String>,
+    /// Whether the turns ended cleanly and the item was left as it was, so it is on hold rather
+    /// than failing: typically work that waits for a person. True exactly when `last_error` is
+    /// `None`.
+    pub on_hold: bool,
 }
 
 /// What was pushed and how often, per item key (`answer:Q-3`, `request:Q-5`, `task:12`).
@@ -126,6 +130,7 @@ impl Log {
                 id: id.to_string(),
                 attempts: attempt.count,
                 last_error: self.last_failure.clone(),
+                on_hold: self.last_failure.is_none(),
             };
             match self.stalled.iter_mut().find(|(k, _)| k == key) {
                 Some(entry) => entry.1 = note,

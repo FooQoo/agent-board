@@ -19,9 +19,19 @@ export function deriveState(health: SessionHealth): ResidentState {
   return health.state;
 }
 
+/** What a working session waits on (subagents, background commands); empty unless it is working. */
+export const waitingOn = (health: SessionHealth): string[] =>
+  deriveState(health) === 'working' ? health.backgroundTasks : [];
+
 /** The launcher holds a process, or a restart is waiting. */
 export const isActive = (state: ResidentState): boolean =>
   state === 'working' || state === 'waiting' || state === 'restarting';
+
+/**
+ * Stopping now would cut work short: the session is mid-turn (running with its wait not registered). A
+ * waiting session is idle, and a restarting or failed one has no process to interrupt.
+ */
+export const isBusy = (state: ResidentState): boolean => state === 'working';
 
 /** The footer shows the indicator once something was launched, or while auto-start is on. */
 export const footerVisible = (health: SessionHealth): boolean =>

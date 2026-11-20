@@ -5,6 +5,8 @@ use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, MutexGuard};
 
+use super::driver::AgentDriver;
+use super::process::{Exit, terminate};
 use super::spawn::Spawn;
 use super::{Launched, Launcher};
 use crate::domain::ProjectId;
@@ -19,6 +21,28 @@ impl Launcher {
     /// The current epoch; see the field.
     pub(super) fn epoch(&self) -> u64 {
         self.epoch.load(Ordering::SeqCst)
+    }
+
+    /// End the child of `tool` without clearing its plan (the supervisor ends an unhealthy one).
+    pub(super) fn kill(&self, tool: Tool, reason: &str) {
+        let target = self.lock().get(&tool).map(|live| {
+            self.log_stop_requested(tool, live, reason);
+            (live.driver.clone(), live.exit.clone())
+        });
+        if let Some(target) = target {
+            terminate(&[target], self.stop_grace);
+        }
+    }
+
+    /// The children to end, each noted in the server log with why.
+    pub(super) fn stop_targets(&self, reason: &str) -> Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> {
+        self.lock()
+            .iter()
+            .map(|(tool, live)| {
+                self.log_stop_requested(*tool, live, reason);
+                (live.driver.clone(), live.exit.clone())
+            })
+            .collect()
     }
 
     /// Forget every plan and end the epoch, so nothing prepared under it is admitted any more.

@@ -120,12 +120,13 @@ impl Launcher {
                             && now.saturating_duration_since(plan.started)
                                 > self.timing.startup_allowance
                         {
-                            plan.kill_reason = Some(format!(
+                            let reason = format!(
                                 "The {} session never started for {}, so the board ended it.",
                                 tool.as_str(),
                                 span(self.timing.startup_allowance)
-                            ));
-                            unhealthy.push(*tool);
+                            );
+                            plan.kill_reason = Some(reason.clone());
+                            unhealthy.push((*tool, reason));
                         }
                     }
                     PlanState::Restarting { due: at, .. } if now >= at => due.push(*tool),
@@ -133,8 +134,8 @@ impl Launcher {
                 }
             }
         }
-        for tool in unhealthy {
-            self.kill(tool);
+        for (tool, reason) in unhealthy {
+            self.kill(tool, &reason);
         }
         for tool in due {
             self.relaunch(tool);

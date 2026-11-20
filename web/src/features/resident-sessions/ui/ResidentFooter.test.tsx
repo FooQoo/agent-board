@@ -18,6 +18,32 @@ describe('ResidentIndicator', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('says a working session waits for subagents, and not an idle one', () => {
+    const tasks = ['Review the diff'];
+    const { rerender } = render(
+      <ResidentIndicator
+        health={health({ state: 'running', tool: 'claude-code', backgroundTasks: tasks })}
+        withState
+      />,
+    );
+    const indicator = screen.getByRole('img', {
+      name: 'Claude Code: Working (waiting for subagents)',
+    });
+    expect(indicator.textContent).toContain('working (subagents)');
+    rerender(
+      <ResidentIndicator
+        health={health({
+          state: 'running',
+          tool: 'claude-code',
+          waiting: true,
+          backgroundTasks: tasks,
+        })}
+        withState
+      />,
+    );
+    expect(screen.getByRole('img', { name: 'Claude Code: Waiting' })).toBeTruthy();
+  });
+
   it('draws nothing while nothing is launched and auto-start is off', () => {
     const { container } = render(<ResidentIndicator health={health({})} withState />);
     expect(container.innerHTML).toBe('');
@@ -27,18 +53,30 @@ describe('ResidentIndicator', () => {
     const stalled = health({
       state: 'running',
       tool: 'codex',
-      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null }],
+      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null, onHold: false }],
     });
     render(<ResidentIndicator health={stalled} onOpen={() => {}} />);
     expect(screen.getByRole('button', { name: /could not be handled: Task #12/ })).toBeTruthy();
     expect(screen.getByText('Some items could not be handled (1)')).toBeTruthy();
   });
 
+  it('shows items left on hold neutrally, not as a warning', () => {
+    const held = health({
+      state: 'running',
+      tool: 'codex',
+      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null, onHold: true }],
+    });
+    render(<ResidentIndicator health={held} onOpen={() => {}} />);
+    expect(screen.getByRole('button', { name: /On hold: Task #12/ })).toBeTruthy();
+    expect(screen.getByText('On hold (1)')).toBeTruthy();
+    expect(screen.queryByText(/could not be handled/)).toBeNull();
+  });
+
   it('shows only the icon on the display-only view', () => {
     const stalled = health({
       state: 'running',
       tool: 'codex',
-      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null }],
+      pushStalled: [{ kind: 'task', id: '12', attempts: 3, lastError: null, onHold: false }],
     });
     render(<ResidentIndicator health={stalled} />);
     expect(screen.queryByText(/could not be handled/)).toBeNull();

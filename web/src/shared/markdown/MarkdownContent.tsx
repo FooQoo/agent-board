@@ -4,6 +4,8 @@ import {
   isValidElement,
   memo,
   useContext,
+  useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -15,15 +17,16 @@ import remarkGfm from 'remark-gfm';
 import { imageUrlOf, safeLinkUrl } from './model';
 import {
   ChapterHeadingsContext,
+  ImageGroupContext,
   ImageSizesContext,
   RelativeImageContext,
   ResolverContext,
 } from './renderScope';
-import { Lightbox } from '../ui/lightbox/Lightbox';
+import { collectImages, type WrittenImage } from './collectImages';
+import { EnlargedImages } from './EnlargedImages';
 import { MermaidDiagram } from './MermaidDiagram';
 import './markdown.css';
 
-const REMARK_PLUGINS = [remarkGfm, remarkBreaks];
 /** Two or more images that follow each other without text form one row of small captures. */
 const CAPTURE_ROW_MIN = 2;
 
@@ -55,7 +58,7 @@ function ImagePlaceholder({ alt }: { alt: string }) {
  * An image: a picture that opens enlarged on a press, or the placeholder when it cannot be shown.
  * A failed load is remembered per URL, so a new reference is tried again.
  */
-function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+function MarkdownImage({ src, alt, order }: { src?: string; alt?: string; order?: number }) {
   const { t } = useTranslation();
   const resolve = useContext(ResolverContext);
   const resolveRelative = useContext(RelativeImageContext);
@@ -89,17 +92,26 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
       </button>
       {text !== '' && <span className="md__image-caption">{text}</span>}
       {enlarged && (
-        <Lightbox label={name} onClose={() => setEnlarged(false)}>
-          <img src={url} alt={text} referrerPolicy="no-referrer" />
-        </Lightbox>
+        <EnlargedImages
+          order={order}
+          own={{ src: url, alt: text, referrerPolicy: 'no-referrer' }}
+          onClose={() => setEnlarged(false)}
+        />
       )}
     </span>
   );
 }
 
 /** The `img` component of the Markdown renderer; the paragraph grouping recognizes its elements. */
-function MarkdownImageNode({ src, alt }: { src?: string; alt?: string }) {
-  return <MarkdownImage src={typeof src === 'string' ? src : undefined} alt={alt} />;
+function MarkdownImageNode(props: { src?: string; alt?: string; 'data-image-index'?: number }) {
+  const { src, alt } = props;
+  return (
+    <MarkdownImage
+      src={typeof src === 'string' ? src : undefined}
+      alt={alt}
+      order={props['data-image-index']}
+    />
+  );
 }
 
 /** A checklist box is a display only: it is disabled, out of the tab order and has no handler. */
@@ -199,13 +211,13 @@ const COMPONENTS: Components = {
  * here, not by the library. It is parsed again only when the text changes.
  */
 export const MarkdownContent = memo(function MarkdownContent({ source }: { source: string }) {
+  const images = useRef<WrittenImage[]>([]);
+  const plugins = useMemo(() => [remarkGfm, remarkBreaks, collectImages(images)], []);
   return (
-    <ReactMarkdown
-      remarkPlugins={REMARK_PLUGINS}
-      components={COMPONENTS}
-      urlTransform={(url) => url}
-    >
-      {source}
-    </ReactMarkdown>
+    <ImageGroupContext.Provider value={images}>
+      <ReactMarkdown remarkPlugins={plugins} components={COMPONENTS} urlTransform={(url) => url}>
+        {source}
+      </ReactMarkdown>
+    </ImageGroupContext.Provider>
   );
 });

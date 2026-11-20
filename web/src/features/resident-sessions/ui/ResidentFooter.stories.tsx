@@ -51,6 +51,24 @@ export const Working: Story = {
   },
 };
 
+/** Working while it waits for a subagent or a background command to end. */
+export const WaitingForSubagents: Story = {
+  args: {
+    health: health({
+      state: 'running',
+      tool: 'claude-code',
+      backgroundTasks: ['Review the diff'],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByRole('button', {
+        name: 'Claude Code: Working (waiting for subagents)',
+      }),
+    ).toBeVisible();
+  },
+};
+
 /** Waiting (running with its wait registered). */
 export const Waiting: Story = {
   args: { health: health({ state: 'running', waiting: true, tool: 'codex' }) },
@@ -79,8 +97,8 @@ export const Stalled: Story = {
       waiting: true,
       tool: 'claude-code',
       pushStalled: [
-        { kind: 'request', id: 'Q-3', attempts: 3, lastError: null },
-        { kind: 'task', id: '12', attempts: 3, lastError: null },
+        { kind: 'request', id: 'Q-3', attempts: 3, lastError: 'boom', onHold: false },
+        { kind: 'task', id: '12', attempts: 3, lastError: 'boom', onHold: false },
       ],
     }),
   },
@@ -91,6 +109,23 @@ export const Stalled: Story = {
     await expect(within(button).getByText('Some items could not be handled (2)')).toBeVisible();
     await userEvent.click(button);
     await expect(args.onOpen).toHaveBeenCalled();
+  },
+};
+
+/** Items the turns left unchanged (for example, waiting for a person): a neutral hold, not a warning. */
+export const OnHold: Story = {
+  args: {
+    health: health({
+      state: 'running',
+      waiting: true,
+      tool: 'claude-code',
+      pushStalled: [{ kind: 'task', id: '583', attempts: 3, lastError: null, onHold: true }],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: /On hold: Task #583/ });
+    await expect(within(button).getByText('On hold (1)')).toBeVisible();
+    await expect(within(button).queryByText(/could not be handled/)).toBeNull();
   },
 };
 

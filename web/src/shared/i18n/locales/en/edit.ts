@@ -10,6 +10,9 @@ export const editEn = {
     tooLong: 'Keep the request within {{max}} characters.',
     sendFailed: 'Could not send the request. Your text and images are kept. Try again.',
   },
+  lightbox: {
+    imagePosition: '{{index}} / {{count}}',
+  },
   dialog: {
     cardStatus: 'Move to',
     chooseStatus: 'Choose a status',

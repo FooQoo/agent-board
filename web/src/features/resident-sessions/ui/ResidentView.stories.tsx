@@ -45,6 +45,25 @@ export const Working: Story = {
   },
 };
 
+/** Working while it waits for subagents or background commands: the badge says so and the tasks are listed. */
+export const WaitingForSubagents: Story = {
+  args: scenarios.subagents,
+  play: async () => {
+    await expect(await page().findByText('Working (waiting for subagents)')).toBeInTheDocument();
+    await expect(page().getByText('Review the diff')).toBeInTheDocument();
+    await expect(page().getByText('pnpm test')).toBeInTheDocument();
+  },
+};
+
+/** A phone: the sheet shows the same state and the list of what it waits for. */
+export const WaitingForSubagentsPhone: Story = {
+  args: { ...scenarios.subagents, kind: 'sheet' },
+  globals: { viewport: { value: 'mobile1' } },
+  play: async () => {
+    await expect(await page().findByText('Working (waiting for subagents)')).toBeInTheDocument();
+  },
+};
+
 /** Waiting: running with its wait registered. Codex, one automatic restart behind it. */
 export const Waiting: Story = {
   args: scenarios.waiting,
@@ -201,6 +220,60 @@ export const Sheet: Story = {
     await waitFor(() =>
       expect(page().getByText('Public preview', { selector: '[data-slot="badge"]' })).toBeVisible(),
     );
+  },
+};
+
+/** Stop while mid-turn: the button asks first, naming what is lost; Stop anyway then stops. */
+export const StopAsksWhileWorking: Story = {
+  args: { onStop: fn() },
+  play: async ({ args }) => {
+    await userEvent.click(await page().findByRole('button', { name: 'Stop' }));
+    await expect(await page().findByText('Stop while it is working?')).toBeInTheDocument();
+    await expect(page().getByRole('button', { name: 'Keep running' })).toHaveFocus();
+    await expect(args.onStop).not.toHaveBeenCalled();
+    await userEvent.click(page().getByRole('button', { name: 'Stop anyway' }));
+    await expect(args.onStop).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** Keep running closes the question without stopping. */
+export const StopCancelled: Story = {
+  args: { onStop: fn() },
+  play: async ({ args }) => {
+    await userEvent.click(await page().findByRole('button', { name: 'Stop' }));
+    await userEvent.click(await page().findByRole('button', { name: 'Keep running' }));
+    await expect(page().queryByText('Stop while it is working?')).toBeNull();
+    await expect(args.onStop).not.toHaveBeenCalled();
+  },
+};
+
+/** An idle (waiting) session stops at once, with no question. */
+export const StopWhileWaiting: Story = {
+  args: { ...scenarios.waiting, onStop: fn() },
+  play: async ({ args }) => {
+    await userEvent.click(await page().findByRole('button', { name: 'Stop' }));
+    await expect(args.onStop).toHaveBeenCalledTimes(1);
+    await expect(page().queryByText('Stop while it is working?')).toBeNull();
+  },
+};
+
+/** The question on a phone, in Japanese. */
+export const StopAsksSheetJapanese: Story = {
+  args: { kind: 'sheet', onStop: fn() },
+  globals: { locale: 'ja', viewport: { value: 'mobile1' } },
+  play: async () => {
+    await userEvent.click(await page().findByRole('button', { name: '停止' }));
+    await expect(await page().findByText('作業中ですが停止しますか?')).toBeInTheDocument();
+    await expect(page().getByRole('button', { name: '停止する' })).toBeVisible();
+  },
+};
+
+/** The question in the dark theme. */
+export const StopAsksDark: Story = {
+  globals: { mode: 'dark' },
+  play: async () => {
+    await userEvent.click(await page().findByRole('button', { name: 'Stop' }));
+    await expect(await page().findByText('Stop while it is working?')).toBeInTheDocument();
   },
 };
 

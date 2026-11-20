@@ -182,7 +182,7 @@ Instead of starting an agent yourself, the board can start a headless Claude Cod
 
 > **Warning: nobody watches a session the board starts, and its approvals are automatic.** Claude Code runs in auto mode: a reviewer checks each action, and anything that would ask you is refused instead. Codex runs in its workspace-write sandbox with automatic review, and the board's data folder is added as writable so the agent can use `agboard`. Neither stops to ask you. Automatic review can approve actions you would not, and a mistaken instruction, for example one in a task or a web page the agent reads, can still do harm. Start sessions only in projects you trust, and stop one from the board when you are done. When the board server stops, it stops the sessions it started.
 
-Only the board on your own computer can start or stop these sessions. The phone connection cannot. The agent's output is written to `resident/<tool>.log` in the data folder.
+Only the board on your own computer can start or stop these sessions. The phone connection cannot. The agent's output is written to `resident/<tool>.log` in the data folder; each launch starts a new file, and the four before it stay as `<tool>.1.log` to `<tool>.4.log`. When the agent stops or exits, the server records the time and the reason in its standard error, which is `serve.log` in the data folder for a background server (`serve -d`) and the terminal for a foreground one; such as your stop, a restart, a model change, the server closing, or an unexpected exit.
 
 ## Drafts and errors
 

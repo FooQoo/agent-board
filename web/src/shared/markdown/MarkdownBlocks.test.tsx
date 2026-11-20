@@ -126,6 +126,32 @@ describe('MarkdownBlocks images', () => {
   });
 });
 
+describe('MarkdownBlocks enlarged images', () => {
+  const open = () => {
+    const view = render(
+      <MarkdownBlocks blocks={[{ id: 'i', kind: 'markdown', source: `![A chart](${CHART})` }]} />,
+    );
+    fireEvent.click(view.container.querySelector('.md__image-open') as HTMLElement);
+    return view;
+  };
+
+  it('opens the picture enlarged on a press and closes with Escape', async () => {
+    open();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.hasAttribute('data-lightbox')).toBe(true);
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe(CHART);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('closes with the close button', async () => {
+    open();
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(dialog.querySelector('.lightbox__close') as HTMLElement);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+});
+
 describe('MarkdownBlocks diagrams', () => {
   const diagram = (id: string, text = '```mermaid\ngraph TD\n  A-->B\n```'): MarkdownBlockData => ({
     id,

@@ -41,7 +41,6 @@ export const detailJa = {
     link: 'リンク',
     enlarge: '成果 {{version}} の画像を拡大',
     enlargeNth: '成果 {{version}} の画像 {{index}}/{{count}} を拡大',
-    imagePosition: '{{index}} / {{count}}',
   },
   draft: {
     label: '下書き',

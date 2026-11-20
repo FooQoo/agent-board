@@ -105,6 +105,11 @@ pub trait AgentDriver: Send + Sync {
     /// Whether the session is between turns. It is busy from the start until a turn ends, and
     /// while a turn runs; an ended session is not idle.
     fn is_idle(&self) -> bool;
+    /// What the session waits on besides its own turn: the descriptions of the subagents and
+    /// background commands that have started and not ended. Only Claude Code reports them.
+    fn background_tasks(&self) -> Vec<String> {
+        Vec::new()
+    }
     /// Block for the next event. After [`DriverEvent::Exited`] it returns `Exited` again.
     fn next_event(&self) -> DriverEvent;
     /// Hand the session a message at any time. While a turn runs the CLI queues it.

@@ -21,6 +21,8 @@ export interface StalledItem {
   attempts: number;
   /** How the last turn failed, when it did. */
   lastError: string | null;
+  /** True when the turns ended cleanly and left the item as it was: on hold, not failing. */
+  onHold: boolean;
 }
 
 export interface SessionHealth {
@@ -31,6 +33,8 @@ export interface SessionHealth {
   reason: string | null;
   /** True while the session's wait is registered; a running session with false is working on a task. */
   waiting: boolean;
+  /** What a working session waits on: the subagents and background commands that have not ended. */
+  backgroundTasks: string[];
   /** Items the board gave up pushing after several attempts. */
   pushStalled: StalledItem[];
   restartCount: number;

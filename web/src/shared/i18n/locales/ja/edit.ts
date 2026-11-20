@@ -10,6 +10,9 @@ export const editJa = {
     tooLong: '依頼は{{max}}文字以内にしてください。',
     sendFailed: '依頼を送れませんでした。入力と画像は残っています。もう一度お試しください。',
   },
+  lightbox: {
+    imagePosition: '{{index}} / {{count}}',
+  },
   dialog: {
     cardStatus: '移動先',
     chooseStatus: 'ステータスを選択',

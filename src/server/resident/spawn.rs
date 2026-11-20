@@ -139,6 +139,7 @@ impl Launcher {
             model: launched.model.clone(),
             started_at: launched.started_at,
         };
+        self.log_started(tool, &launch_id, launched.pid, model);
         let exit = launched.exit.clone();
         let push = launched.push.clone();
         {
@@ -167,7 +168,9 @@ impl Launcher {
         std::thread::spawn(move || {
             let reason = launcher.pump(tool, &launch_id, &project, driver.as_ref(), &push);
             // A session that dies in the middle of a turn leaves its task running too.
-            if launcher.is_current_plan(tool, &launch_id) {
+            let abnormal = launcher.is_current_plan(tool, &launch_id);
+            launcher.log_exited(tool, &launch_id, !abnormal, &reason);
+            if abnormal {
                 let detail = push.take_failure().unwrap_or_else(|| reason.clone());
                 launcher.hand_over(&project, &push.take_all_handed(), &detail);
             }
