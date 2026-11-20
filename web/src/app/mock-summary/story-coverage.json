@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-summary/SummaryScreen.tsx",
+      "exports": [
+        {
+          "name": "SummaryScreen",
+          "stories": [
+            {
+              "id": "mocks-summary-desktop--empty",
+              "states": ["no summaries"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-desktop--unread-mixed",
+              "states": ["unread and read items", "unread count in tab"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-desktop--long-list",
+              "states": ["many results in one window"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-desktop--trash-revealed",
+              "states": ["trash button shown"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-desktop--open-marks-read",
+              "states": ["opening marks read"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-phone--empty",
+              "states": ["no summaries", "bar badge questions only"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-phone--unread-mixed",
+              "states": ["unread and read items"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-phone--long-list",
+              "states": ["many results in one window"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summary-phone--swipe-revealed",
+              "states": ["swiped item with trash button"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

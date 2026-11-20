@@ -1,0 +1,345 @@
+/* Styles of the summary mock (Storybook only). Tokens come from the product's theme. */
+
+.sm-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--r-bg);
+  color: var(--r-text);
+}
+
+.sm-root--desktop {
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.sm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--r-text) 18%, transparent);
+}
+
+.sm-root--phone {
+  height: 100vh;
+  height: var(--stable-vh, 100svh);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--r-text) 14%, var(--r-bg));
+}
+
+.sm-phone-top {
+  flex: none;
+  height: 44px;
+}
+
+/* ---- The panel: a modal on a PC, a sheet above the bar on a phone ---- */
+
+.sm-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--r-border);
+  background: var(--r-surface);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 18%);
+}
+
+.sm-panel[data-variant="desktop"] {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 48px);
+  border-radius: 14px;
+}
+
+.sm-panel[data-variant="phone"] {
+  flex: 1 1 auto;
+  border-width: 1px 0 0;
+  border-radius: 16px 16px 0 0;
+}
+
+.sm-panel__head {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 6px;
+}
+
+.sm-panel[data-variant="phone"] .sm-panel__head {
+  justify-content: center;
+  padding-top: 18px;
+}
+
+.sm-panel__head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sm-grab {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--r-border);
+  transform: translateX(-50%);
+}
+
+.sm-close {
+  display: inline-flex;
+  min-width: 32px;
+  /* biome-ignore lint/plugin: the close button is a fixed 32px tap target */
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--r-text2);
+  cursor: pointer;
+}
+
+.sm-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sm-panel__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+}
+
+/* The unread count lives inside the tab, in the accent color. */
+.message-tabs__tab[data-unread] strong {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--r-accent);
+  color: var(--r-on-accent);
+  text-align: center;
+}
+
+/* ---- The list ---- */
+
+.sm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sm-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+/* The trash button sits behind the item, on the right. */
+.sm-item__trash {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  /* biome-ignore lint/plugin: the trash button is a fixed tap target as wide as the reveal */
+  min-width: 76px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: var(--r-danger);
+  color: var(--r-on-accent);
+  cursor: pointer;
+}
+
+.sm-item__trash svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sm-item__trash:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -3px;
+}
+
+.sm-item__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  touch-action: pan-y pinch-zoom;
+  transition: transform 160ms ease;
+}
+
+.sm-item[data-swiping] .sm-item__body {
+  transition: none;
+}
+
+.sm-item[data-unread] .sm-item__body {
+  border-color: color-mix(in srgb, var(--r-accent) 45%, var(--r-border));
+  background: var(--r-accent-soft);
+}
+
+.sm-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sm-item__window {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-item:not([data-unread]) .sm-item__window {
+  color: var(--r-text2);
+  font-weight: 500;
+}
+
+.sm-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--r-border);
+}
+
+.sm-item[data-unread] .sm-dot {
+  border-color: var(--r-accent);
+  background: var(--r-accent);
+}
+
+.sm-state {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--r-lane);
+  color: var(--r-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sm-state[data-unread] {
+  background: var(--r-accent);
+  color: var(--r-on-accent);
+}
+
+.sm-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sm-result {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sm-result__id {
+  flex: none;
+  min-width: 3.4em;
+  color: var(--r-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sm-result__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sm-item:not([data-unread]) .sm-result__title {
+  color: var(--r-text2);
+}
+
+/* ---- PC: the trash button shows on hover, on focus and when the item is opened ---- */
+
+.sm-item[data-variant="desktop"] .sm-item__trash {
+  display: none;
+}
+
+.sm-item[data-variant="desktop"]:hover .sm-item__trash,
+.sm-item[data-variant="desktop"]:focus-within .sm-item__trash,
+.sm-item[data-variant="desktop"][data-revealed] .sm-item__trash {
+  display: flex;
+}
+
+.sm-item[data-variant="desktop"]:hover .sm-item__body,
+.sm-item[data-variant="desktop"]:focus-within .sm-item__body,
+.sm-item[data-variant="desktop"][data-revealed] .sm-item__body {
+  margin-right: 76px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* ---- Empty ---- */
+
+.sm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.sm-empty__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sm-empty__body {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+}
+
+/* Three tabs share the width: tighter, and the label may wrap before the count does. */
+.sm-panel .message-tabs__tab {
+  padding-right: 4px;
+  padding-left: 4px;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.sm-panel[data-variant="phone"] .message-tabs__tab {
+  flex-wrap: wrap;
+}
+
+/* On a phone the trash button stays hidden until the item is opened or swiped, so it never peeks out at the item's corners. */
+.sm-list .sm-item[data-variant="phone"] .sm-item__trash {
+  visibility: hidden;
+  transition: visibility 0s 160ms;
+}
+.sm-item[data-variant="phone"][data-revealed] .sm-item__trash,
+.sm-item[data-variant="phone"][data-swiping] .sm-item__trash {
+  visibility: visible;
+  transition-delay: 0s;
+}
