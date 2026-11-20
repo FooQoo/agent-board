@@ -146,7 +146,7 @@ fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
     let skill = &full_skill();
     // A request is accepted first, then becomes a plan of AI drafts on the board before any question.
     assert!(
-        skill.contains("### Accept a request") && skill.contains("message accept"),
+        skill.contains("## Accept a request") && skill.contains("message accept"),
         "the Skill must teach accepting a request"
     );
     assert!(
