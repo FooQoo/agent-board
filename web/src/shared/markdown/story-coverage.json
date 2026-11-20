@@ -79,6 +79,16 @@
               "interaction": true
             },
             {
+              "id": "shared-markdown-markdownview--image-enlarge-close",
+              "states": ["closes with Escape", "closes with a backdrop press"],
+              "interaction": true
+            },
+            {
+              "id": "shared-markdown-markdownview--image-enlarge-swipe",
+              "states": ["image", "enlarged", "swipes across the images of the text"],
+              "interaction": true
+            },
+            {
               "id": "shared-markdown-markdownview--mermaid-valid",
               "states": ["mermaid", "drawn"],
               "interaction": false
@@ -238,6 +248,31 @@
           "name": "MarkdownContent",
           "stories": [],
           "exclusion": "The parsing core of MarkdownView and MarkdownBlocks; both have Stories that cover every Markdown element."
+        }
+      ]
+    },
+    {
+      "file": "shared/markdown/EnlargedImages.tsx",
+      "exports": [
+        {
+          "name": "EnlargedImages",
+          "stories": [
+            {
+              "id": "shared-markdown-markdownview--image-enlarge",
+              "states": ["single image", "no position"],
+              "interaction": true
+            },
+            {
+              "id": "shared-markdown-markdownview--image-enlarge-close",
+              "states": ["closes with Escape", "closes with a backdrop press"],
+              "interaction": true
+            },
+            {
+              "id": "shared-markdown-markdownview--image-enlarge-swipe",
+              "states": ["image", "enlarged", "swipes across the images of the text"],
+              "interaction": true
+            }
+          ]
         }
       ]
     }
