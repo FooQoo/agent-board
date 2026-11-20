@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ImageOffIcon, LinkIcon, Maximize2Icon } from 'lucide-react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ImageOffIcon,
+  LinkIcon,
+  Maximize2Icon,
+} from 'lucide-react';
 import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
-import type { TaskResult } from '../../../shared/api/contracts';
+import { resultImageIds, type TaskResult } from '../../../shared/api/contracts';
 import { openableUrl } from './openableUrl';
 import { formatShort } from '../model/format';
 import type { TaskResultsState } from './useTaskResults';
@@ -94,8 +100,6 @@ function ResultItem({
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLLIElement>(null);
-  const [zoom, setZoom] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView?.({ block: 'start' });
   }, [focused]);
@@ -120,28 +124,7 @@ function ResultItem({
         </time>
       </div>
       <p className="results__summary">{result.summary}</p>
-      {result.attachmentId !== undefined &&
-        (imageFailed ? (
-          <span className="results__missing">
-            <ImageOffIcon aria-hidden="true" />
-            {t('markdown.noImage')}
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="results__image"
-            aria-label={t('results.enlarge', { version: result.version })}
-            onClick={() => setZoom(true)}
-          >
-            <img
-              src={attachmentUrl(result.attachmentId)}
-              alt=""
-              loading="lazy"
-              onError={() => setImageFailed(true)}
-            />
-            <Maximize2Icon aria-hidden="true" />
-          </button>
-        ))}
+      <ResultImages result={result} attachmentUrl={attachmentUrl} />
       {result.link !== undefined && (
         <p className="results__link">
           <LinkIcon aria-hidden="true" />
@@ -149,15 +132,88 @@ function ResultItem({
           <ResultLinkText link={result.link} />
         </p>
       )}
-      {zoom && result.attachmentId !== undefined && (
-        <Lightbox
-          label={t('results.enlarge', { version: result.version })}
-          onClose={() => setZoom(false)}
-        >
-          <img src={attachmentUrl(result.attachmentId)} alt={result.summary} />
+    </li>
+  );
+}
+
+/**
+ * The images of one result. One image is shown large; several are a strip of thumbnails that
+ * scrolls sideways. Tapping any of them opens the enlarged view at that image, where the person can
+ * step to the others.
+ */
+function ResultImages({
+  result,
+  attachmentUrl,
+}: {
+  result: TaskResult;
+  attachmentUrl: (attachmentId: string) => string;
+}) {
+  const { t } = useTranslation();
+  const ids = resultImageIds(result);
+  const [zoom, setZoom] = useState<number | null>(null);
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
+  if (ids.length === 0) return null;
+  const many = ids.length > 1;
+  const markFailed = (id: string) => setFailed((previous) => new Set(previous).add(id));
+  const label = (index: number) =>
+    many
+      ? t('results.enlargeNth', { version: result.version, index: index + 1, count: ids.length })
+      : t('results.enlarge', { version: result.version });
+  const zoomId = zoom === null ? undefined : ids[zoom];
+  return (
+    <>
+      <div className={many ? 'results__strip' : undefined} data-image-count={ids.length}>
+        {ids.map((id, index) =>
+          failed.has(id) ? (
+            <span key={id} className="results__missing">
+              <ImageOffIcon aria-hidden="true" />
+              {t('markdown.noImage')}
+            </span>
+          ) : (
+            <button
+              key={id}
+              type="button"
+              className="results__image"
+              aria-label={label(index)}
+              onClick={() => setZoom(index)}
+            >
+              <img src={attachmentUrl(id)} alt="" loading="lazy" onError={() => markFailed(id)} />
+              <Maximize2Icon aria-hidden="true" />
+            </button>
+          ),
+        )}
+      </div>
+      {zoom !== null && zoomId !== undefined && (
+        <Lightbox label={label(zoom)} onClose={() => setZoom(null)}>
+          <div className="results__zoom">
+            <img src={attachmentUrl(zoomId)} alt={result.summary} />
+            {many && (
+              <div className="results__stepper">
+                <button
+                  type="button"
+                  aria-label={t('results.previousImage')}
+                  disabled={zoom === 0}
+                  onClick={() => setZoom(zoom - 1)}
+                >
+                  <ChevronLeftIcon aria-hidden="true" />
+                </button>
+                <span aria-live="polite">
+                  {t('results.imagePosition', { index: zoom + 1, count: ids.length })}
+                </span>
+                <button
+                  type="button"
+                  aria-label={t('results.nextImage')}
+                  disabled={zoom === ids.length - 1}
+                  onClick={() => setZoom(zoom + 1)}
+                >
+                  <ChevronRightIcon aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
         </Lightbox>
       )}
-    </li>
+    </>
   );
 }
 
