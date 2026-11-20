@@ -1,10 +1,10 @@
 ---
-title: Resident session
+title: Resident agent
 ---
 
-# Resident session
+# Resident agent
 
-A resident session is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, only while it is idle: the open requests together in one message, the answers together in one message, and tasks one at a time. So you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
+A resident agent is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, only while it is idle: the open requests together in one message, the answers together in one message, and tasks one at a time. So you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
 
 ::: info Public preview
 This feature is in public preview. Its behavior and specifications may change. See [Feature stages](../feature-stages#resident-sessions) for its current limitations.
@@ -16,12 +16,12 @@ A session the board starts runs without a person watching it, and it approves th
 
 ## Start and stop it {#start-and-stop}
 
-1. Open **Settings** and choose **Resident session settings**. The row shows a one-line summary, such as `Claude Code · working` or `Not running`, and `· External 1` when a session you started yourself is also attached.
+1. Open **Settings** and choose **Agent settings**. The row shows a one-line summary, such as `Claude Code · working` or `Not running`, and `· External 1` when a session you started yourself is also attached.
 2. Under **Tool**, choose **Claude Code** or **Codex**. The board starts one session in total, so a running session has to stop before the other tool can start.
 3. Under **Model**, keep **Default model** or choose one from the list. If the list cannot be read, the dialog says why and offers only the default.
 4. Choose **Start**. While the request runs, the controls are disabled and the button reads **Starting…**. Choose **Stop** to end the session, or **Restart** after a failure.
 
-![The resident session dialog with a waiting Claude Code session, the tool and model choices, and the external sessions list](../../images/guide/resident-session.png){.screenshot}
+![The resident agent dialog with a waiting Claude Code session, the tool and model choices, and the external sessions list](../../images/guide/resident-session.png){.screenshot}
 
 The tool and model you choose apply from the next start. While a session runs with another choice, the dialog shows `Next start: …`.
 
@@ -54,4 +54,4 @@ The board shows these items in two places:
 
 ## Remote access {#remote-access}
 
-Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone board shows the same indicator in its status line at the bottom, after the connection state, with the tool name, a short state word, and a dot. It is display-only there: it has no button, and it is hidden when nothing is launched and auto-start is off. On a narrow phone it takes the place of the time of the last update. Its **Settings** has the same **Resident session** row on a local page; the dialog opens as a bottom sheet.
+Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone board shows the same indicator in its status line at the bottom, after the connection state, with the tool name, a short state word, and a dot. It is display-only there: it has no button, and it is hidden when nothing is launched and auto-start is off. On a narrow phone it takes the place of the time of the last update. Its **Settings** has the same **Resident agent** row on a local page; the dialog opens as a bottom sheet.

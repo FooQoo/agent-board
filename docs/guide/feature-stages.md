@@ -26,7 +26,7 @@ Where you see it:
 | Feature | Where the notice appears |
 | --- | --- |
 | [Docs](#docs) | The heading of the Docs dialog shows a **Public preview** badge, with the notice and a link to this page below it. |
-| [Resident sessions](#resident-sessions) | The **Resident session** dialog in Settings shows a **Public preview** badge beside its heading, with the notice and a link to this page below the introduction. |
+| [Resident agents](#resident-sessions) | The **Resident agent** dialog in Settings shows a **Public preview** badge beside its heading, with the notice and a link to this page below the introduction. |
 | [Questions and requests](#questions-and-requests) | No screen. This page and the agent skill describe it. |
 
 Features that are GA show no notice.
@@ -59,13 +59,13 @@ The Docs dialog lets you browse and read the files in a project's `docs/` folder
 - **Limits:** a Markdown or MDX file can be up to 2 MiB, and an image up to 10 MiB.
 - **Guide:** [Project docs](./watch/docs).
 
-### Resident sessions {#resident-sessions}
+### Resident agents {#resident-sessions}
 
-A resident session is a Claude Code or Codex session that Agent Board starts and keeps attached to the board. The board sends it your requests, the answers to its questions, and ready tasks, one at a time.
+A resident agent is a Claude Code or Codex session that Agent Board starts and keeps attached to the board. The board sends it your requests, the answers to its questions, and ready tasks, one at a time.
 
 - **Supported range:** Claude Code and Codex on the computer that runs `agboard serve`. You start and stop the session from **Settings** on the PC; the phone connection cannot.
 - **Limits:** the session runs unattended and approves its actions automatically, so start it only in projects you trust. It depends on the `claude` stream-json interface and on `codex app-server`, which Codex marks as experimental, so it may change when those CLIs update. The board keeps one session at a time. An item that fails three times is skipped and shown in the dialog.
-- **Guide:** [Resident session](./delegate/resident-session).
+- **Guide:** [Resident agent](./delegate/resident-session).
 
 ### Questions and requests {#questions-and-requests}
 

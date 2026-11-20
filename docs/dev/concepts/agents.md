@@ -125,7 +125,7 @@ A person's request reaches an agent in three places: the `requests` array of the
 
 For one-session orchestration, the listener procedure (`agboard skills listening`, from `src/skills/topics/listening.md`) describes task enrichment, plan checks, waiting for answers, sequential work, and interruption recovery. An open question blocks that session until it is answered or withdrawn; listener mode does not skip it or treat its time as idle.
 
-A resident session follows `agboard skills resident` (`src/skills/topics/resident.md`) instead, and there are two kinds of it:
+A resident agent follows `agboard skills resident` (`src/skills/topics/resident.md`) instead, and there are two kinds of it:
 
 - **A session the board launched** works in push mode and never runs `wait`. The server watches the board and sends the session its work (see [Push mode](#push-mode)). The first instruction of a launched session (`prompt` in `src/server/resident/cli.rs`) tells it to run `agboard skills resident`, not to run `agboard wait`, to end its turn and wait for the board's messages, to ask only on the board, and to stop only when the board stops it. A unit test keeps those phrases in the prompt, and the skill tests keep the topic's.
 - **A session a person told to stay on the board** keeps the pull model. It repeats the same `wait --until task` and handles answers, requests, and tasks as the listener procedure does, but it never ends on `idle_timeout`: a wait that times out or returns nothing to do is run again within a few seconds, because the registry keeps a closed event stream counted for only 30 seconds and a longer gap could let a second session launch. Claude Code runs the wait in the background, since the harness stops a long foreground command; Codex waits in the foreground.
@@ -140,7 +140,7 @@ A session the board launched runs headless with automatic approval, so it asks a
 
 The server counts a session while its stream is open and for a 30-second grace period after it closes, so a session that loops between waits stays one session. The registry is in server memory (`src/server/sessions/`), not saved. The Codex variables are the ones Codex documents for its commands; they were not checked against a running Codex when this was written.
 
-### Launching resident sessions
+### Launching resident agents
 
 The board server can start a headless session of Claude Code or Codex in a project's bound folder, which then waits on the board like a session you started yourself. The launcher (`src/server/resident/`) is Agent Board's only dependency on those CLIs: nothing else names `claude` or `codex`, their flags, or their output. The routes are in [Launching sessions](../reference/web-api.md#launching-sessions). **A launched session runs unattended with automatic approval**; read [Sessions the board launches](./security.md#sessions-the-board-launches) first.
 

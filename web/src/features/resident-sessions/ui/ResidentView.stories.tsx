@@ -194,7 +194,7 @@ export const Sheet: Story = {
   args: { ...scenarios.nextStart, kind: 'sheet' },
   globals: { viewport: { value: 'mobile1' } },
   play: async () => {
-    await expect(await page().findByRole('dialog', { name: 'Resident session' })).toBeVisible();
+    await expect(await page().findByRole('dialog', { name: 'Resident agent' })).toBeVisible();
     // The dialog fades in, so the badge is hidden for the first frames.
     await waitFor(() =>
       expect(page().getByText('Public preview', { selector: '[data-slot="badge"]' })).toBeVisible(),

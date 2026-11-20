@@ -1,13 +1,13 @@
-// 常駐セッションのダイアログ、設定画面の行、フッターの表示。
+// 常駐エージェントのダイアログ、設定画面の行、フッターの表示。
 export const residentJa = {
   resident: {
-    entryTitle: '常駐セッション',
-    entryAction: '常駐セッションの設定',
+    entryTitle: '常駐エージェント',
+    entryAction: 'エージェントの設定',
     entryNone: '起動していません',
     entrySummary: '{{tool}} · {{state}}',
     entryExternal: ' · 外部 {{count}}',
     entryUnknown: '開いて状態を確認できます',
-    title: '常駐セッション',
+    title: '常駐エージェント',
     intro:
       'ボードに張り付いたまま待機し、依頼や質問への回答を受け取るセッションです。ボードが起動するのは 1 つだけです。',
     attachedNow: 'いまこのボードに張り付いているセッション: {{count}}',
@@ -61,8 +61,8 @@ export const residentJa = {
     externalSince: '{{time}} から接続',
     externalNone: '外部から接続しているセッションはありません。',
     externalTool: { 'claude-code': 'Claude Code', codex: 'Codex', unknown: '不明' },
-    footerLabel: '常駐セッション',
-    footerStopped: '常駐セッション: 停止中',
+    footerLabel: '常駐エージェント',
+    footerStopped: '常駐エージェント: 停止中',
     footerState: '{{tool}}: {{state}}',
     footerStalled: '処理できない項目があります ({{count}})',
     stalledTitle: '処理できない項目があります',
