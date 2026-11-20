@@ -105,7 +105,7 @@
             },
             {
               "id": "pages-monitor-components-monitorgallery--refreshing",
-              "states": ["refresh button waits while a refresh runs"],
+              "states": ["refreshing state while a pull refresh runs"],
               "interaction": false
             },
             {
@@ -412,6 +412,56 @@
             {
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["all gestures"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--pull-to-refresh",
+              "states": ["pulling a lane down"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--pull-ready",
+              "states": ["release to refresh"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--refreshing",
+              "states": ["refreshing indicator"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--pull-gesture",
+              "states": ["pull gesture refreshes on release"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--sideways-is-not-a-pull",
+              "states": ["sideways drag does not pull"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/PullIndicator.tsx",
+      "exports": [
+        {
+          "name": "PullIndicator",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--pull-to-refresh",
+              "states": ["pulling"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--pull-ready",
+              "states": ["ready to refresh"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--refreshing",
+              "states": ["refreshing"],
               "interaction": true
             }
           ]

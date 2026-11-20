@@ -8,7 +8,7 @@ import {
 } from '../../../features/tasks/messages/messageSamples';
 import { firstQuestionOfTask } from '../../../features/tasks/messages/model/messages';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask } from '../contracts';
 import type { LaneItems } from './MonitorLanes';
@@ -94,7 +94,10 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
   return { lanes, setLanes, messages, messagesApi, projectId: SAMPLE_PROJECT };
 }
 
-type ScreenArgs = Pick<MonitorLanesScreenProps, 'initialLane' | 'previewRevealed'> & {
+type ScreenArgs = Pick<
+  MonitorLanesScreenProps,
+  'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing'
+> & {
   /** Opens a confirmation: `archive` uses the card named by `pendingTask`. */
   pending?: 'archive' | 'bulk';
   pendingTask?: number;
@@ -435,5 +438,88 @@ export const SwipeSwitchesLane: Story = {
     await waitFor(() =>
       expect(tab(canvasElement, '進行中')).toHaveAttribute('aria-selected', 'true'),
     );
+  },
+};
+
+/** A finger on `target`, as a touch event. The lanes watch touch events for the pull. */
+function touch(
+  type: 'touchstart' | 'touchmove' | 'touchend',
+  target: Element,
+  x: number,
+  y: number,
+) {
+  const point = new Touch({ identifier: 1, target, clientX: x, clientY: y });
+  target.dispatchEvent(
+    new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: type === 'touchend' ? [] : [point],
+      changedTouches: [point],
+    }),
+  );
+}
+
+const scrollerOfLane = (canvasElement: HTMLElement, lane: string) =>
+  canvasElement.querySelector(`[data-lane="${lane}"] .monitor-lane__scroll`) as HTMLElement;
+
+/** Pulling the lane down from its top: the cards follow the finger and the hint reads "ひっぱって更新". */
+export const PullToRefresh: Story = {
+  args: { initialLane: 'todo', previewPull: 'pulling' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('ひっぱって更新')).toBeVisible();
+  },
+};
+
+/** Pulled far enough: the arrow turns over and a release will refresh. */
+export const PullReady: Story = {
+  args: { initialLane: 'todo', previewPull: 'ready' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('指をはなして更新')).toBeVisible();
+  },
+};
+
+/** Refreshing: a spinner above the cards. */
+export const Refreshing: Story = {
+  args: { initialLane: 'todo', previewPull: 'refreshing' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('更新中…')).toBeVisible();
+  },
+};
+
+/** A long pull from the top of the lane refreshes on release; a short one does not. */
+export const PullGesture: Story = {
+  args: { initialLane: 'todo', onRefresh: fn() },
+  play: async ({ canvasElement, args }) => {
+    const list = scrollerOfLane(canvasElement, 'todo');
+    const card = list.querySelector('[data-swipe-card]') as HTMLElement;
+    const y = card.getBoundingClientRect().top + 20;
+    touch('touchstart', card, 100, y);
+    touch('touchmove', card, 100, y + 30);
+    touch('touchmove', card, 100, y + 50);
+    touch('touchend', card, 100, y + 50);
+    await expect(args.onRefresh).not.toHaveBeenCalled();
+    touch('touchstart', card, 100, y);
+    touch('touchmove', card, 100, y + 40);
+    touch('touchmove', card, 100, y + 120);
+    await expect(await within(canvasElement).findByText('指をはなして更新')).toBeVisible();
+    touch('touchend', card, 100, y + 120);
+    await expect(args.onRefresh).toHaveBeenCalledOnce();
+  },
+};
+
+/** A sideways drag is left to the lane carousel and never pulls. */
+export const SidewaysIsNotAPull: Story = {
+  args: { initialLane: 'todo', onRefresh: fn() },
+  play: async ({ canvasElement, args }) => {
+    const card = scrollerOfLane(canvasElement, 'todo').querySelector(
+      '[data-swipe-card]',
+    ) as HTMLElement;
+    const y = card.getBoundingClientRect().top + 20;
+    touch('touchstart', card, 200, y);
+    touch('touchmove', card, 120, y + 10);
+    touch('touchmove', card, 40, y + 60);
+    touch('touchend', card, 40, y + 60);
+    await expect(args.onRefresh).not.toHaveBeenCalled();
+    await expect(canvasElement.querySelector('.monitor-pull')).toBeNull();
   },
 };

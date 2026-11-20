@@ -52,7 +52,7 @@ Two other forms open a task from a notification. `https://<host>/?project=<Proje
 
 Horizontal swipes move the tab content and underline together. Gestures inside the tab content stay within that area; drag the handle or header to dismiss the drawer. Opening a task reads its text, conditions, history, and epic once, so switching tabs does not wait for a read. If a read fails, use the retry button in that tab.
 
-The monitor updates itself when the PC saves a change. To read the latest data at once, choose the **Refresh** button in the header. The page keeps the last data it has while it reads again.
+The monitor updates itself when the PC saves a change. To read the latest data at once, pull the lane on screen down from its top. The cards follow your finger and the hint reads **Pull to refresh**; once you have pulled far enough it changes to **Release to refresh**, and lifting your finger then reads the data again while the lane shows **Updating…**. A short pull, a sideways swipe, and a lane that is scrolled down do nothing. The page keeps the last data it has while it reads again. The phone screen has no refresh button.
 
 The page and the data responses are never cached. The browser keeps the scripts and styles, so later visits download only the page and the data. The monitor has no offline snapshot cache or service worker.
 

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MonitorClientError } from '../../src/pages/monitor/session';
@@ -115,28 +115,40 @@ describe('MonitorProject', () => {
     expect(adapter.summaryCalls).toHaveLength(2);
   });
 
-  it('reads again at once when the refresh button is pressed, even while the drawer is open', async () => {
+  it('reads again at once when a lane is pulled down, even while the drawer is open', async () => {
     mount();
     await openAndLoad();
     const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTimeAsync(ms) });
     await user.click(screen.getByRole('button', { name: 't1' }));
     await tick();
-    const refresh = screen
-      .getAllByRole('button', { name: 'Refresh', hidden: true })
-      .find((button) => !button.closest('[role="dialog"]'));
-    expect(refresh).toBeTruthy();
-    // The drawer makes the page inert for the user, so ask through the DOM.
-    act(() => (refresh as HTMLButtonElement).click());
+    expect(screen.queryByRole('button', { name: 'Refresh', hidden: true })).toBeNull();
+    const list = document.querySelector('[data-lane="todo"] .monitor-lane__scroll') as HTMLElement;
+    // The drawer makes the page inert for the user, so pull through the DOM.
+    const finger = (type: 'touchStart' | 'touchMove' | 'touchEnd', y: number) => {
+      const point = { clientX: 100, clientY: y, identifier: 1, target: list };
+      act(() => {
+        fireEvent[type](list, {
+          touches: type === 'touchEnd' ? [] : [point],
+          changedTouches: [point],
+        });
+      });
+    };
+    finger('touchStart', 100);
+    finger('touchMove', 140);
+    finger('touchMove', 260);
+    expect(screen.getByText('Release to refresh', { selector: 'span' })).toBeTruthy();
+    finger('touchEnd', 260);
     await tick();
     expect(adapter.summaryCalls).toHaveLength(2);
-    expect((refresh as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Updating…', { selector: '.monitor-pull span' })).toBeTruthy();
     await act(async () => {
       adapter.summaryCalls[1]?.resolve(
         summaryOf([{ id: 1, document: 'd1', history: 'h1' }], 'sv2'),
       );
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(1000);
     });
-    expect((refresh as HTMLButtonElement).disabled).toBe(false);
+    await tick(1000);
+    expect(document.querySelector('.monitor-pull')).toBeNull();
   });
 
   it('does not read a Detail for a change to a card that was never opened', async () => {

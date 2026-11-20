@@ -2,7 +2,7 @@ export const monitorJa = {
   monitor: {
     allProjects: 'All Projects',
     project: 'Project',
-    refresh: '更新',
+    pull: { hint: 'ひっぱって更新', release: '指をはなして更新' },
     invalidSelection: '指定されたプロジェクトまたはタスクは現在表示できません。',
     summary: '作業の概要',
     cards: 'タスク',

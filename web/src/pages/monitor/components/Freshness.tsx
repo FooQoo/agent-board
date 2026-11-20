@@ -1,14 +1,7 @@
 import type { ReactNode } from 'react';
-import {
-  CircleAlertIcon,
-  CircleCheckIcon,
-  CircleOffIcon,
-  LoaderIcon,
-  RefreshCwIcon,
-} from 'lucide-react';
+import { CircleAlertIcon, CircleCheckIcon, CircleOffIcon, LoaderIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatShort } from '../../../features/tasks/model/format';
-import { Button } from '@/shared/ui/button';
 import type { MonitorFreshnessState } from '../contracts';
 
 const icon = {
@@ -23,17 +16,12 @@ export function Freshness({
   state,
   lastFetchedAt,
   problemCount,
-  onRefresh,
-  refreshing = false,
   compact = false,
   slot,
 }: {
   state: MonitorFreshnessState;
   lastFetchedAt: string | null;
   problemCount: number;
-  onRefresh(): void;
-  /** A refresh the person asked for is running; the button waits for it. */
-  refreshing?: boolean;
   compact?: boolean;
   /** A display-only indicator after the message, such as the resident session's state. */
   slot?: ReactNode;
@@ -56,20 +44,6 @@ export function Freshness({
         <span className="monitor-freshness__time">
           {t('monitor.lastFetched', { time: formatShort(lastFetchedAt) })}
         </span>
-      )}
-      {!compact && (
-        <Button
-          type="button"
-          variant="outline"
-          size="l"
-          iconOnly
-          className="monitor-refresh"
-          aria-label={t('monitor.refresh')}
-          disabled={refreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCwIcon aria-hidden="true" />
-        </Button>
       )}
     </div>
   );
