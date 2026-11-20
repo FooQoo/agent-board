@@ -443,7 +443,7 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
   await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
   const list = page.getByRole('dialog', { name: 'Messages' });
   await expect(list).toBeVisible();
-  await expect(list.getByRole('tab')).toHaveCount(2);
+  await expect(list.getByRole('tab')).toHaveCount(3);
   await expect(list.getByRole('button', { name: /Ask/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(list).toBeHidden();
