@@ -4,7 +4,7 @@ title: Resident agent
 
 # Resident agent
 
-A resident agent is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, only while it is idle: the open requests together in one message, the answers together in one message, and tasks one at a time. So you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session. You start and stop it from **Settings**.
+A resident agent is an agent session that Agent Board starts for you and keeps attached to the board. The board sends it your requests, the answers to its questions, and the tasks that are ready, only while it is idle: the open requests together in one message, the answers together in one message, and tasks one at a time. So you do not have to start an agent in a terminal first or keep a wait command running. A session you started yourself in a terminal is not affected: it keeps waiting on the board and is counted as an external session (see below). You start and stop it from **Settings**.
 
 ::: info Public preview
 This feature is in public preview. Its behavior and specifications may change. See [Feature stages](../feature-stages#resident-sessions) for its current limitations.
@@ -41,7 +41,7 @@ Turn on **Start automatically when Agent Board starts** to start the session eac
 | **Stopped** | Nothing is running. |
 | **Failed** | The board gave up, for example after the session ended repeatedly in a short time. The reason is shown. Fix the cause, then choose **Restart**. |
 
-The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows a dot followed by the tool, just left of the sync state, while a session is launched or auto-start is on; click it to open the dialog.
+The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. An external session is counted while it waits on the board, and also when it used the board in the last 5 minutes: any `agboard` command or hook of an ordinary Claude Code or Codex session counts, so a session that works on the board without waiting appears while it is active and drops out after 5 minutes without use. Only a session of an agent that exposes its own session ID (Claude Code and Codex do) is counted this way; a command run by hand in a plain terminal is not. The footer of the board shows a dot followed by the tool, just left of the sync state, while a session is launched or auto-start is on; click it to open the dialog.
 
 ## When a session does not handle something {#not-handled}
 
