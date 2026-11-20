@@ -36,6 +36,8 @@ pub(super) struct Push {
     log: Mutex<Log>,
     attached_at: Mutex<Option<DateTime<Utc>>>,
     closed: Mutex<bool>,
+    /// The tasks given to the session in the turn that has not ended yet.
+    handed: Mutex<Vec<i64>>,
 }
 
 impl Push {
@@ -46,6 +48,7 @@ impl Push {
             log: Mutex::new(Log::default()),
             attached_at: Mutex::new(None),
             closed: Mutex::new(false),
+            handed: Mutex::new(Vec::new()),
         }
     }
 
@@ -85,6 +88,11 @@ impl Push {
 
     pub(super) fn attached_at(&self) -> Option<DateTime<Utc>> {
         *self.attached_at.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Take the tasks handed in the current turn, so a failure is recorded for them only once.
+    pub(super) fn take_handed(&self) -> Vec<i64> {
+        std::mem::take(&mut *self.handed.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
     /// A turn ended: remember how, and look at the board.
@@ -150,5 +158,11 @@ pub(super) fn push_once(
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .record(&instruction.keys, now);
-    driver.send_user_message(&instruction.text).is_ok()
+    // Set before the send: a turn can end before the send returns.
+    *push.handed.lock().unwrap_or_else(|e| e.into_inner()) = instruction.tasks;
+    let sent = driver.send_user_message(&instruction.text).is_ok();
+    if !sent {
+        push.take_handed();
+    }
+    sent
 }

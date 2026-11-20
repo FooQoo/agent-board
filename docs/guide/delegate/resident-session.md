@@ -52,6 +52,10 @@ The board shows these items in two places:
 - The dialog has a **Some items could not be handled** notice with each item by name (for example **Request Q-3**, **Answer to Q-5**, or **Task #12**), the reason the last turn failed, and how to clear it.
 - On the PC, the footer indicator gets a warning with the number of items. Click it to open the dialog. The phone indicator shows only the warning icon, and its description names the items.
 
+## When the agent stops on an error {#stopped-on-error}
+
+If the agent's turn fails, or its process stops in the middle of a turn without you stopping it, a task it was working on would stay Running with nobody behind it. The board adds one history entry to each such task. The entry says that the resident agent stopped on an error, gives a short reason, and says that another agent needs to take the task over, and the board sets the task's agent back to Idle so that any agent can pick it up. The entry is written in the language of the task's text. A task that was still Idle, or that is no longer in Doing, is left alone, and stopping the agent yourself writes nothing.
+
 ## Remote access {#remote-access}
 
 Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone board shows the same indicator in its status line at the bottom, after the connection state, with the tool name, a short state word, and a dot. It is display-only there: it has no button, and it is hidden when nothing is launched and auto-start is off. On a narrow phone it takes the place of the time of the last update. Its **Settings** has the same **Resident session** row on a local page; the dialog opens as a bottom sheet.
