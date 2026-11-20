@@ -167,7 +167,7 @@ What this protects: the token and the files stay out of reach of a document's co
 
 ## Sessions the board launches
 
-The board can start a headless Claude Code or Codex session in a project's bound folder (see [Launching resident sessions](./agents.md#launching-resident-sessions)). **Nobody watches such a session, and its approvals are automatic.** Neither agent stops to ask you.
+The board can start a headless Claude Code or Codex session in a project's bound folder (see [Launching resident agents](./agents.md#launching-resident-agents)). **Nobody watches such a session, and its approvals are automatic.** Neither agent stops to ask you.
 
 - Claude Code is started in auto mode (`--permission-mode auto --permission-prompts none`). A reviewer checks each action, and an action that would have asked is refused and returned to the agent as a denied tool result; nothing waits for you.
 - Codex runs as `codex app-server`, and the session's thread is started with the workspace-write sandbox, `approvalPolicy` `on-request`, and `approvalsReviewer` `auto_review`: the sandbox stays on, and the approvals the sandbox raises go through automatic review. The board adds its own data area as writable (`sandbox_workspace_write.writable_roots`), so the session's `agboard` commands are not blocked by the sandbox before the review. The project folder is the working folder (`cwd`). The server loads your `~/.codex/config.toml` as well, so its MCP servers, hooks, and writable folders apply to the session.

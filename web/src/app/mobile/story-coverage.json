@@ -50,7 +50,7 @@
             {
               "id": "app-mobile-phone-settings--with-resident-entry",
               "states": [
-                "resident session row below the tutorial",
+                "resident agent row below the tutorial",
                 "one-line summary",
                 "choosing it closes the settings and asks for the dialog"
               ],
@@ -59,7 +59,7 @@
             {
               "id": "app-mobile-phone-settings--with-notification-entry",
               "states": [
-                "notifications row below the resident session row",
+                "notifications row below the resident agent row",
                 "settings list has no notification checkboxes",
                 "choosing it closes the settings and asks for the dialog"
               ],

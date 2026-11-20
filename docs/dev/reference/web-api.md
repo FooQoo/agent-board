@@ -158,7 +158,7 @@ The limit on launching is held by the launcher: it refuses a launch while it has
 
 ### Launching sessions
 
-These routes start and stop the headless sessions the board launches (see [Launching resident sessions](../concepts/agents.md#launching-resident-sessions)). **A launched session runs unattended with automatic approval**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
+These routes start and stop the headless sessions the board launches (see [Launching resident agents](../concepts/agents.md#launching-resident-agents)). **A launched session runs unattended with automatic approval**; see [Sessions the board launches](../concepts/security.md#sessions-the-board-launches). The routes exist only on the local listener, like the [remote connection](#remote-connection) routes: the ngrok entrance does not serve them (404), a read must come from the local page, and the two writes pass the browser write guard. A malformed project ID is 422 `invalid_value`.
 
 | API | Contract |
 | --- | --- |
@@ -205,7 +205,7 @@ When nothing is launched, it is `{"tool": null, "state": "stopped", "projectId":
 | `nextRestartAt` | When the waiting restart starts; `null` unless `restarting`. |
 | `autoStart` | The saved auto-start choice, `{"tool", "projectId", "model"}`, or `null`. |
 
-The defaults behind this are in [Launching resident sessions](../concepts/agents.md#launching-resident-sessions). A person's launch from `failed` or `restarting` is accepted and starts over; a stop returns the tool to `stopped`.
+The defaults behind this are in [Launching resident agents](../concepts/agents.md#launching-resident-agents). A person's launch from `failed` or `restarting` is accepted and starts over; a stop returns the tool to `stopped`.
 
 ### Remote connection
 

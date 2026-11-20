@@ -9,7 +9,7 @@ import { useStalledName } from './StalledNotice';
 import './resident.css';
 
 /**
- * The single indicator for the board footer: one dot for the one session. On the PC it is a button
+ * The single indicator for the board footer: one dot for the one session, before the tool name. On the PC it is a button
  * that opens the dialog; on the remote view it is display-only, because launching and stopping are
  * local-only. Hidden while nothing is launched and auto-start is off.
  */
@@ -41,6 +41,7 @@ export function ResidentIndicator({
       : base;
   const inner = (
     <>
+      <span className="resident-footer__dot" aria-hidden="true" />
       <span>{state === 'stopped' ? t('resident.footerLabel') : name}</span>
       {withState && <span className="resident-footer__state">{label(state, true)}</span>}
       {stalled.length > 0 && (
@@ -49,7 +50,6 @@ export function ResidentIndicator({
           {onOpen && <span>{t('resident.footerStalled', { count: stalled.length })}</span>}
         </span>
       )}
-      <span className="resident-footer__dot" aria-hidden="true" />
     </>
   );
   return onOpen ? (
