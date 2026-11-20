@@ -4,6 +4,7 @@
 //! keep in `serve.log`. Each line starts with the time (UTC), so a stop that looks like a crash
 //! from the outside can be told apart afterwards.
 
+use std::io::Write;
 use std::sync::Mutex;
 
 use super::{Launcher, Live};
@@ -27,7 +28,11 @@ impl Events {
     fn write(&self, line: &str) {
         match self.sink.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             Some(sink) => sink(line),
-            None => eprintln!("{line}"),
+            // A failed diagnostic write (a full log) must never stop a lifecycle step, which
+            // `eprintln!` would do by panicking.
+            None => {
+                let _ = writeln!(std::io::stderr(), "{line}");
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ export function useArchiveSheet(
   projectId: string,
   writes: MonitorWrites | undefined,
   onWritten?: () => void,
+  onRestored?: (taskId: number) => void,
 ): { archive?: ArchiveSheetData; onRestore?: (taskId: number) => Promise<void> } {
   const resource = useProjectResource(
     open && projectId ? (projectId as ProjectId) : null,
@@ -25,12 +26,13 @@ export function useArchiveSheet(
       if (!writes) return;
       try {
         await writes.restore(projectId, taskId);
+        onRestored?.(taskId);
       } finally {
         reload();
         onWritten?.();
       }
     },
-    [writes, projectId, reload, onWritten],
+    [writes, projectId, reload, onWritten, onRestored],
   );
   if (!writes) return {};
   return {
