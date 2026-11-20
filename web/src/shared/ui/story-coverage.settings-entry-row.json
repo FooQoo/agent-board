@@ -32,7 +32,17 @@
         },
         {
           "id": "shared-ui-settingsentryrow--narrow-dialog",
-          "states": ["phone-width dialog", "button under the text", "no sideways scroll"],
+          "states": [
+            "phone-width dialog",
+            "button under the text",
+            "button centered on the whole row",
+            "no sideways scroll"
+          ],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-settingsentryrow--narrow-dialog-japanese",
+          "states": ["phone-width dialog", "Japanese", "short label centered on the row"],
           "interaction": true
         }
       ]
