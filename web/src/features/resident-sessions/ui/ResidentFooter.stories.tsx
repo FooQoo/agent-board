@@ -101,7 +101,7 @@ export const Stopped: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getByRole('button', { name: 'Resident session: stopped' }),
+      within(canvasElement).getByRole('button', { name: 'Resident agent: stopped' }),
     ).toBeVisible();
   },
 };

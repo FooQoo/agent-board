@@ -47,7 +47,7 @@ impl WaitReader for Reader<'_> {
         &self.project_id
     }
 
-    /// A task wait keeps a resident session on the board, so it tells the server which one.
+    /// A task wait keeps a resident agent on the board, so it tells the server which one.
     fn session(&self) -> Option<SessionIdentity> {
         Some(SessionIdentity::from_env())
     }
@@ -190,7 +190,8 @@ fn select(snapshot: &ProjectSnapshot) -> Option<&TaskView> {
 }
 
 /// The tasks an agent may pick up, in table order: AI tasks in Todo or Doing that are Idle,
-/// not drafts, not archived.
+/// not drafts, not archived. A Todo task is held back while an earlier wave of its epic is
+/// not Done, as in the progress table's next tasks; Doing work is always resumable.
 pub(crate) fn ready_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
     crate::progress::ordered_tasks(snapshot)
         .into_iter()
@@ -200,6 +201,8 @@ pub(crate) fn ready_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
                 && task.agent_status == RunState::Idle
                 && task.draft.is_none()
                 && task.archived_at.is_none()
+                && (task.task_status != Column::Todo
+                    || !crate::progress::gated_by_waves(task, snapshot))
         })
         .collect()
 }

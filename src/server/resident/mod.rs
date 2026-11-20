@@ -1,4 +1,4 @@
-//! The headless agent sessions the board starts itself (resident sessions).
+//! The headless agent sessions the board starts itself (resident agents).
 //!
 //! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
 //! approval instead of prompts, and keeps its child process. It talks to the CLI only through an
@@ -16,6 +16,7 @@ mod board;
 pub mod cli;
 pub mod driver;
 mod health;
+mod log_tail;
 mod process;
 mod push;
 mod serial;
@@ -39,6 +40,7 @@ pub use autostart::{AutoStart, AutoStartStore};
 pub use cli::{Executables, ModelList, ModelOption};
 use driver::{AgentDriver, DriverFactory};
 pub use health::{Health, HealthState};
+pub use log_tail::LogTail;
 use process::{Exit, terminate};
 use spawn::Spawn;
 use supervisor::Plan;
@@ -190,6 +192,11 @@ impl Launcher {
         self.data_dir
             .join(LOG_DIR)
             .join(format!("{}.log", tool.as_str()))
+    }
+
+    /// The tail of the log of `tool`: at most 64 KiB, starting at a line boundary.
+    pub fn read_log(&self, tool: Tool) -> Result<LogTail, AgboardError> {
+        log_tail::read_tail(tool.as_str(), &self.log_path(tool))
     }
 
     /// The models to offer for `tool`; see [`Executables::models`].

@@ -89,7 +89,7 @@ export interface MonitorViewProps {
   onRefresh(): void;
   /** True while that request runs; the lanes show the refreshing indicator. */
   refreshing?: boolean;
-  /** A display-only indicator in the status line after the connection state (the resident session). */
+  /** A display-only indicator in the status line after the connection state (the resident agent). */
   statusSlot?: ReactNode;
   /** The project on the screen, its open messages and the routes for the band; no band without them. */
   projectId?: ProjectId;

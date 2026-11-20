@@ -23,7 +23,7 @@ const CLAUDE_MODELS: [&str; 4] = ["opus", "sonnet", "haiku", "fable"];
 /// The first instruction of a launched session. The detailed procedure lives in the skill.
 pub fn prompt(project_name: &str) -> String {
     format!(
-        "You were launched by Agent Board as a resident session for project \"{project_name}\". \
+        "You were launched by Agent Board as a resident agent for project \"{project_name}\". \
          Run `agboard skills resident` and read the part for a session the board launched. Do \
          not run `agboard wait`: the board sends you each piece of work as a message, one at a \
          time, when you are idle. Once you have read the skill, end your turn and wait for \

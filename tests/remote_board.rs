@@ -269,6 +269,7 @@ fn what_acts_on_the_pc_itself_is_not_served_through_the_entrance() {
         ("POST", "/api/notify".to_string()),
         ("POST", format!("{base}/docs/open")),
         ("GET", format!("{base}/sessions/models?tool=codex")),
+        ("GET", format!("{base}/sessions/log?tool=codex")),
         ("POST", format!("{base}/sessions/launch")),
         ("POST", format!("{base}/sessions/stop")),
     ] {

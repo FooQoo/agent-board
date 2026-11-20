@@ -352,7 +352,23 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
 
     let mut selected_ids = vec![selected["task"]["id"].as_i64().unwrap()];
     for completed_pick in [second, first, doing, beta] {
-        if completed_pick != doing {
+        if completed_pick == second {
+            // `first` is in the next wave, so it is offered only once this wave is Done.
+            success(
+                home.path(),
+                &[
+                    "--project",
+                    "Demo",
+                    "mv",
+                    &second.to_string(),
+                    "done",
+                    "--actor",
+                    "human",
+                    "--reason",
+                    "wave finished",
+                ],
+            );
+        } else if completed_pick != doing {
             success(
                 home.path(),
                 &[
@@ -368,20 +384,22 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
                 ],
             );
         }
-        success(
-            home.path(),
-            &[
-                "--project",
-                "Demo",
-                "state",
-                &completed_pick.to_string(),
-                "running",
-                "--actor",
-                "ai",
-                "--reason",
-                "starting the selected task",
-            ],
-        );
+        if completed_pick != second {
+            success(
+                home.path(),
+                &[
+                    "--project",
+                    "Demo",
+                    "state",
+                    &completed_pick.to_string(),
+                    "running",
+                    "--actor",
+                    "ai",
+                    "--reason",
+                    "starting the selected task",
+                ],
+            );
+        }
         let next = json(
             home.path(),
             &[
@@ -401,6 +419,77 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
         }
     }
     assert_eq!(selected_ids, vec![second, first, doing, beta, loose]);
+}
+
+#[test]
+fn task_wait_holds_back_a_todo_task_until_the_earlier_waves_are_done() {
+    let (home, _) = demo();
+    let _server = serve(home.path());
+    let first = add(home.path(), "Demo", "First wave", "ai", Some("ALPHA"));
+    let second = add(home.path(), "Demo", "Second wave", "ai", Some("ALPHA"));
+    success(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "epic",
+            "edit",
+            "ALPHA",
+            "--waves",
+            &first.to_string(),
+            &second.to_string(),
+        ],
+    );
+    let picked = |home: &Path| -> Value {
+        let (result, _) = output(wait(home, "Demo", "1"));
+        serde_json::from_slice(&result.stdout).unwrap()
+    };
+    // The first wave is open, so it is picked; the second is not.
+    assert_eq!(picked(home.path())["task"]["id"], first);
+    success(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &first.to_string(),
+            "doing",
+            "--actor",
+            "ai",
+            "--reason",
+            "Start",
+        ],
+    );
+    success(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "state",
+            &first.to_string(),
+            "running",
+            "--actor",
+            "ai",
+            "--reason",
+            "go",
+        ],
+    );
+    assert_eq!(picked(home.path())["kind"], "idle_timeout");
+    success(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "mv",
+            &first.to_string(),
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "ok",
+        ],
+    );
+    assert_eq!(picked(home.path())["task"]["id"], second);
 }
 
 #[test]

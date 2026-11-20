@@ -115,7 +115,7 @@ export const DrawerTabs: Story = {
 };
 
 /**
- * The status line at the bottom shows the resident session after the connection state: the tool, a
+ * The status line at the bottom shows the resident agent after the connection state: the tool, a
  * short state word and a dot, display-only. At phone widths it takes the room of the fetch time.
  */
 export const ResidentStatusLine: Story = {
