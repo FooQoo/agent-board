@@ -42,6 +42,11 @@
             "reopen at rest"
           ],
           "interaction": true
+        },
+        {
+          "id": "shared-ui-drawer--keyboard-open-extends-surface",
+          "states": ["keyboard open", "surface shadow below the sheet"],
+          "interaction": true
         }
       ]
     }
