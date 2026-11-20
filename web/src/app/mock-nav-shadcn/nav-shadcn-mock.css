@@ -1,0 +1,255 @@
+/* Mock only: a phone board with three shadcn-style bottom bars. Colors come from the theme tokens. */
+
+.nav-mock {
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  /* The monitor shell pads its sides; the bars take that back where they span the screen. */
+  padding: 0 8px;
+  background: var(--r-bg);
+  color: var(--r-text);
+}
+
+.nav-mock__head {
+  flex: none;
+  padding: 14px 4px 10px;
+}
+.nav-mock__project {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.nav-mock__tabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--r-lane);
+}
+.nav-mock__tab {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 7px;
+  color: var(--r-text2);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+.nav-mock__tab[data-selected="true"] {
+  background: var(--r-surface);
+  color: var(--r-text);
+}
+
+.nav-mock__list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0;
+  overflow: hidden;
+  list-style: none;
+}
+.nav-mock__card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  padding: 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+  font-size: 13px;
+}
+.nav-mock__id {
+  color: var(--r-muted);
+}
+.nav-mock__title {
+  font-weight: 500;
+}
+.nav-mock__tag {
+  grid-column: 2;
+  justify-self: start;
+  padding: 1px 8px;
+  border: 1px solid var(--r-border);
+  border-radius: 999px;
+  color: var(--r-text2);
+  font-size: 11px;
+}
+.nav-mock__tag[data-state="pending"] {
+  border-color: var(--r-pend-bd);
+  background: var(--r-pend-bg);
+  color: var(--r-pend-tx);
+}
+
+/* ---- Shared by the shadcn-style bars ---- */
+
+.snav {
+  /* The muted pill of the open item: the foreground color at 8% over the bar, as shadcn's accent. */
+  --snav-pill: color-mix(in srgb, var(--r-text) 9%, var(--r-surface));
+  display: grid;
+  flex: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  background: var(--r-surface);
+}
+
+.snav__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+}
+.snav__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.snav__item:focus-visible {
+  outline: 2px solid var(--r-text);
+  outline-offset: -2px;
+}
+.snav__icon {
+  position: relative;
+  display: inline-flex;
+}
+.snav__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.snav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.snav__item[data-selected="true"] {
+  --snav-ring: var(--snav-pill);
+  color: var(--r-text);
+}
+
+.snav__badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* ---- A: flat bar, top hairline, a soft pill behind the open item ---- */
+
+.snav--a {
+  margin: 0 -8px;
+  padding: 6px 8px max(6px, var(--safe-bottom));
+  border-top: 1px solid var(--r-border);
+}
+.snav--a .snav__item {
+  height: 52px;
+  margin: 0 2px;
+  border-radius: 8px;
+}
+.snav--a .snav__item[data-selected="true"] {
+  background: var(--snav-pill);
+}
+.snav--a .snav__item--ask {
+  color: var(--r-text);
+  font-weight: 600;
+}
+.snav--a .snav__item--ask .snav__icon svg {
+  width: 22px;
+  height: 22px;
+}
+.snav--a .snav__badge {
+  background: var(--r-danger);
+  color: var(--r-on-accent);
+  box-shadow: 0 0 0 2px var(--snav-ring, var(--r-surface));
+}
+
+/* ---- B: floating dock, inset from the edges, border and a soft shadow ---- */
+
+.snav--b {
+  margin: 0 4px max(10px, var(--safe-bottom));
+  padding: 4px;
+  border: 1px solid var(--r-border);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 24px -8px rgb(0 0 0 / 0.18);
+}
+.snav--b .snav__item {
+  height: 48px;
+  border-radius: 12px;
+}
+.snav--b .snav__item[data-selected="true"] {
+  background: var(--snav-pill);
+}
+.snav--b .snav__item--ask {
+  color: var(--r-text);
+  font-weight: 600;
+}
+.snav--b .snav__badge {
+  background: var(--r-text);
+  color: var(--r-surface);
+  box-shadow: 0 0 0 2px var(--snav-ring, var(--r-surface));
+}
+
+/* ---- C: icon-first; the open icon sits on a small pill, Ask is a foreground-colored circle ---- */
+
+.snav--c {
+  margin: 0 -8px;
+  padding: 6px 8px max(6px, var(--safe-bottom));
+  border-top: 1px solid var(--r-border);
+}
+.snav--c .snav__item {
+  height: 56px;
+  gap: 4px;
+  font-size: 11px;
+}
+.snav--c .snav__icon {
+  width: 44px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+.snav--c .snav__item[data-selected="true"] .snav__icon {
+  background: var(--snav-pill);
+}
+.snav--c .snav__badge {
+  top: -3px;
+  right: 3px;
+  background: var(--r-danger);
+  color: var(--r-on-accent);
+  box-shadow: 0 0 0 2px var(--snav-ring, var(--r-surface));
+}
+.snav--c .snav__item--ask {
+  gap: 2px;
+  color: var(--r-text);
+  font-weight: 600;
+}
+.snav--c .snav__item--ask .snav__icon {
+  width: 34px;
+  height: 34px;
+  margin-top: -6px;
+  background: var(--r-text);
+  color: var(--r-surface);
+  box-shadow: 0 0 0 4px var(--r-surface);
+}

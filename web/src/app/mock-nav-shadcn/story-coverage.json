@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-nav-shadcn/NavShadcnScreen.tsx",
+      "exports": [
+        {
+          "name": "NavShadcnScreen",
+          "stories": [
+            {
+              "id": "mocks-navshadcn-phone--current",
+              "states": ["product bar"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--variant-a",
+              "states": ["flat bar"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--variant-b",
+              "states": ["floating dock"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--variant-c",
+              "states": ["icon-first bar"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--badge-and-disabled",
+              "states": ["badge 9+", "archive disabled"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "ShadcnNavBar",
+          "stories": [
+            {
+              "id": "mocks-navshadcn-phone--variant-a",
+              "states": ["flat bar"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--variant-b",
+              "states": ["floating dock"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-navshadcn-phone--variant-c",
+              "states": ["icon-first bar"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
