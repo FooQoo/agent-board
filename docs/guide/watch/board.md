@@ -58,9 +58,9 @@ On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, an
 
 In a window narrower than 1024 px, **Docs**, **Epics**, and **Archive** in the header show only their icons, all at the same width, so the project name keeps its room.
 
-Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move.
+Drag a task to another column to move it. The move is made at once, with no confirmation, and the history records a reason generated from the move.
 
-If an agent or another browser moves the task while the dialog is open, the move is not made. The dialog shows the column the task is in now and says so, and the reason you typed stays. Confirm again to move it from there.
+If an agent or another browser moved the task after the board last showed it, the move is not made. The card goes back to the column it is in now, and a short notice names that column. Drag it again to move it from there.
 
 The columns mean:
 

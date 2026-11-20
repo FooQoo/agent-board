@@ -18,7 +18,7 @@ export interface SwipeableCardProps
   taskId: number;
   /** The lane the card is in; a swipe offers the lanes beside it. */
   lane: MonitorSection;
-  /** A lane tile was tapped; the parent opens the move dialog. */
+  /** A lane tile was tapped; the parent moves the card. */
   onMove: (target: MonitorSection) => void;
   /** The trash tile was tapped; the parent opens the archive confirmation. */
   onArchive: () => void;

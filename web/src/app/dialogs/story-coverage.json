@@ -14,11 +14,6 @@
               "interaction": false
             },
             {
-              "id": "task-dialogs-actiondialog--move",
-              "states": ["move action opens real MoveDialog"],
-              "interaction": false
-            },
-            {
               "id": "task-dialogs-actiondialog--edit",
               "states": ["edit action opens real EditDialog"],
               "interaction": false

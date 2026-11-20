@@ -184,10 +184,9 @@ export interface Board {
   problems: Problem[];
 }
 
-/** What a card dialog (ask, move, edit) is asked to do. */
+/** What a card dialog (ask, edit, epic) is asked to do. */
 export type DialogAction =
   | { kind: 'request' }
-  | { kind: 'move'; task: TaskSummary; target: ColumnName }
   | { kind: 'edit'; task: Task; archived?: boolean }
   | { kind: 'epic'; epic: Epic };
 

@@ -1,0 +1,19 @@
+.transient-notice {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  z-index: 1000;
+  box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  color: var(--r-text);
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: none;
+}
