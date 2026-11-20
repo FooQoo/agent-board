@@ -3,6 +3,8 @@
 //! `docs/dev/concepts/agents.md` (and its Japanese copy).
 
 use super::commands::{contains_sequence, ends_with_question, runs_agboard, tokens};
+use super::question_rules;
+use super::record_rules;
 use super::state_rules;
 use super::{Area, Call, Facts, Finding, Kind, Rule, Source, When};
 
@@ -15,6 +17,30 @@ pub const RULES: &[Rule] = &[
         when: When::TurnEnd,
         kind: Kind::Check,
         check: question,
+    },
+    Rule {
+        id: "question-images",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Check,
+        check: question_rules::question_images,
+    },
+    Rule {
+        id: "question-in-chat",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: question_rules::question_in_chat,
+    },
+    Rule {
+        id: "question-wait",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: question_rules::question_wait,
     },
     Rule {
         id: "final-result",
@@ -41,12 +67,28 @@ pub const RULES: &[Rule] = &[
         check: result_artifact,
     },
     Rule {
-        id: "result-history",
+        id: "history",
         area: Area::Record,
         source: Source::Turn,
         when: When::TurnEnd,
         kind: Kind::Check,
-        check: result_history,
+        check: record_rules::history,
+    },
+    Rule {
+        id: "conditions-after-merge",
+        area: Area::Acceptance,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Check,
+        check: record_rules::conditions_after_merge,
+    },
+    Rule {
+        id: "start-task",
+        area: Area::RunState,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: record_rules::start_task,
     },
     entry(
         "answer",
@@ -178,16 +220,6 @@ fn result_artifact(facts: &Facts) -> Vec<Finding> {
     )]
 }
 
-/// Work that deserves a result also deserves a history note.
-fn result_history(facts: &Facts) -> Vec<Finding> {
-    if result_pr(facts).is_empty() && result_artifact(facts).is_empty() {
-        return Vec::new();
-    }
-    vec![Finding::new(
-        "Record meaningful progress (commits, verification, decisions) with `agboard history add` if you have not.",
-    )]
-}
-
 /// A result is due: the turn recorded none while an AI task is running.
 fn result_expected(facts: &Facts) -> bool {
     !facts
@@ -197,11 +229,11 @@ fn result_expected(facts: &Facts) -> bool {
         && has_running_ai_task(facts)
 }
 
-fn is_pr_create(call: &Call) -> bool {
+pub(super) fn is_pr_create(call: &Call) -> bool {
     contains_sequence(&tokens(&call.command), &["gh", "pr", "create"])
 }
 
-fn has_running_ai_task(facts: &Facts) -> bool {
+pub(super) fn has_running_ai_task(facts: &Facts) -> bool {
     use crate::domain::{Assignee, Column, RunState};
     let Some(progress) = facts.progress else {
         return false;
@@ -228,15 +260,18 @@ fn is_image(path: &str) -> bool {
 
 /// A call that opened a pull request, pushed, or wrote an image.
 fn produced_viewable(call: &Call) -> bool {
+    let tokens = tokens(&call.command);
+    contains_sequence(&tokens, &["gh", "pr", "create"])
+        || contains_sequence(&tokens, &["git", "push"])
+        || produced_image(call)
+}
+
+/// A call that wrote an image or took a screenshot.
+pub(super) fn produced_image(call: &Call) -> bool {
     if is_image(&call.path) || call.name.ends_with("take_screenshot") {
         return true;
     }
     let tokens = tokens(&call.command);
-    if contains_sequence(&tokens, &["gh", "pr", "create"])
-        || contains_sequence(&tokens, &["git", "push"])
-    {
-        return true;
-    }
     // A command that writes an image: it names an image file and a way to
     // produce one. Reading or listing one does not count.
     let lower = call.command.to_ascii_lowercase();

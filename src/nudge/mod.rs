@@ -9,6 +9,8 @@
 //! `docs/dev/concepts/agents.md`.
 
 mod commands;
+mod question_rules;
+mod record_rules;
 mod rules;
 mod state_rules;
 mod turn;
@@ -16,11 +18,15 @@ mod turn;
 #[cfg(test)]
 mod cases;
 #[cfg(test)]
+mod cases_question;
+#[cfg(test)]
 mod cases_state;
 #[cfg(test)]
 mod commands_tests;
 #[cfg(test)]
 mod coverage;
+#[cfg(test)]
+mod record_cases;
 #[cfg(test)]
 pub mod test_support;
 #[cfg(test)]

@@ -29,13 +29,10 @@ const READ_ONLY: Cover = NoRule("read-only");
 /// subcommands is covered through them.
 pub const COMMANDS: &[(&str, Cover)] = &[
     ("add", NoRule("creates a Todo task; nothing to record yet")),
-    (
-        "attachment add",
-        NoRule("planned: #569 (images on a question)"),
-    ),
+    ("attachment add", Rules(&["question-images"])),
     ("attachment get", READ_ONLY),
     ("attachment ls", READ_ONLY),
-    ("edit", NoRule("planned: #570 (conditions)")),
+    ("edit", Rules(&["conditions-after-merge"])),
     (
         "epic add",
         NoRule("a person plans epics; nothing to forget"),
@@ -54,13 +51,21 @@ pub const COMMANDS: &[(&str, Cover)] = &[
         "epic start",
         NoRule("a person plans epics; nothing to forget"),
     ),
-    ("history add", Rules(&["result-history"])),
+    ("history add", Rules(&["history"])),
     ("hook", NoRule("the hook itself; it runs the rules")),
     ("init", NoRule("one-time board setup")),
     ("ls", READ_ONLY),
     ("message accept", Rules(&["answer", "request"])),
     ("message answer", Rules(&["question"])),
-    ("message ask", Rules(&["question"])),
+    (
+        "message ask",
+        Rules(&[
+            "question",
+            "question-images",
+            "question-in-chat",
+            "question-wait",
+        ]),
+    ),
     (
         "message link",
         NoRule("links a message to a task; nothing to forget"),
@@ -75,15 +80,12 @@ pub const COMMANDS: &[(&str, Cover)] = &[
         "message unlink",
         NoRule("unlinks a message from a task; nothing to forget"),
     ),
-    (
-        "message wait",
-        NoRule("planned: #569 (waiting after --no-wait)"),
-    ),
+    ("message wait", Rules(&["question-wait"])),
     (
         "message withdraw",
         NoRule("closes a question; nothing to forget"),
     ),
-    ("mv", NoRule("planned: #570/#571 (conditions, lane)")),
+    ("mv", Rules(&["history", "start-task"])),
     ("open", NoRule("opens the board in a browser")),
     ("progress", READ_ONLY),
     ("project bind", NoRule("project administration by a person")),
@@ -110,11 +112,11 @@ pub const COMMANDS: &[(&str, Cover)] = &[
     ("show remote", READ_ONLY),
     ("skills", READ_ONLY),
     ("snapshot", READ_ONLY),
-    ("start", Rules(&["draft-moved", "drafts"])),
+    ("start", Rules(&["start-task", "draft-moved", "drafts"])),
     ("state", Rules(&["stale-running"])),
     ("stop", NoRule("pauses the server by a person's choice")),
     ("update", NoRule("installation by a person")),
-    ("wait", NoRule("planned: #569 (the listener itself)")),
+    ("wait", NoRule("the listener itself; it waits by design")),
     ("workspace", NoRule("sets up the folder a person works in")),
 ];
 
