@@ -336,6 +336,7 @@ button.resident-footer {
 }
 
 .resident-footer__dot {
+  flex: none;
   width: 8px;
   height: 8px;
   border: 1.5px solid var(--r-muted);
