@@ -10,11 +10,15 @@ Remote access opens the board from another device when you are away from your de
 
 The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
-The **Messages** band sits above the lane tabs. It shows how many questions wait on you and how many of your requests no agent has picked up. **Questions & requests** slides up a sheet with the open messages in two tabs; pick a question to answer it there, with **Back to list** (or **Later**) and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)).
+A bar at the bottom of the screen holds the main places, left to right: **Board**, **Messages**, **Ask**, **Archive**, and **Settings**. It stays clear of the home indicator. **Ask** is in the middle and a little stronger than the rest. Everything except **Board** opens a drawer that slides up over the board, and **Board** closes it.
+
+- **Messages** opens the open messages in two tabs, **AI's questions** and **Your requests**; pick a question to answer it there, with **Back to list** (or **Later**) and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)). The number on its icon counts the questions that wait for your answer, in the theme's accent color. It disappears when none wait.
+- **Ask** opens the request form (see [Ask AI](./editing#ask-ai)). It has no number.
+- **Archive** and **Settings** are described under [Archive all done tasks](#archive-all-done-tasks) and in [Open it on the phone](#open-it-on-the-phone).
 
 AI drafts show as ordinary cards in the Todo lane with a **Draft** badge, and the Todo tab counts them. The agent starts them itself once its questions are answered (see [Drafts](./board#drafts)).
 
-![Remote access showing the Doing lane with its tab bar, the Messages band, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
+![Remote access showing the Doing lane with its tab bar, the bottom bar, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
 
 ### Switch lanes
 
@@ -34,7 +38,7 @@ Swipe the task back, or tap anywhere outside it, to close the buttons without a 
 
 ### Archive all done tasks
 
-The Done lane has an **Archive all** button below its cards. It opens **Archive completed tasks**, which lists every task that would be archived; choose **Archive** with the count to confirm. The button is disabled while the lane is empty.
+**Archive** in the bottom bar opens **Archive completed tasks** as a drawer, which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The item is dimmed while no task is done.
 
 ### Read a task
 
@@ -128,7 +132,7 @@ The address from the QR code, for example `https://….ngrok.app/?project=…`, 
 
 Two things stay on the PC even then: the **Remote connection** settings, and opening a project document in the PC's own application. A page opened through the address does not show **Remote connection** in **Settings**, even on a tablet wide enough for the PC layout. Anyone who has the address and the passcode can change your tasks, so keep both private.
 
-The monitor opens in the language and color theme saved on the PC. If you change them on the phone, from the settings in the monitor header, the new choice is saved on the PC too, so the board and every other browser or phone show it. A change made on the PC appears on an open monitor at once.
+The monitor opens in the language and color theme saved on the PC. If you change them on the phone, from **Settings** in the bottom bar, which opens as a drawer, the new choice is saved on the PC too, so the board and every other browser or phone show it. A change made on the PC appears on an open monitor at once.
 
 On ngrok's free plan, the first visit from a phone shows ngrok's warning page. Choose **Visit Site**, and the monitor opens. ngrok shows the warning to each visitor only once.
 

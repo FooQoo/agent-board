@@ -423,3 +423,70 @@ test('pulling a lane down from its top refreshes the board, a short pull does no
   await expect(page.locator('.monitor-pull')).toHaveCount(0);
   await expect(tab(page, 'Todo 1', true)).toBeVisible();
 });
+
+const bottomBar = (page: Page) => page.getByRole('navigation', { name: 'Main navigation' });
+
+test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in the middle, and clears the home indicator', async ({ page }) => {
+  await openPhone(page, 'Switch');
+  const bar = bottomBar(page);
+  await expect(bar).toBeVisible();
+  const items = bar.getByRole('button');
+  expect(await items.evaluateAll((all) => all.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
+    'Board',
+    'Messages',
+    'Ask',
+    'Archive',
+    'Settings',
+  ]);
+  // The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
+  await expect(page.getByRole('region', { name: 'Messages' })).toHaveCount(0);
+  await expect(page.locator('.header__settings')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
+  await expect(bar.locator('.phone-nav__badge')).toHaveCount(0);
+  const ask = await items.nth(2).boundingBox();
+  const barBox = await bar.boundingBox();
+  if (!ask || !barBox) throw new Error('the bar has no box');
+  expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
+
+  // On an iPhone with a home indicator the bar pads its bottom by the inset, so its items stay above it.
+  await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
+  const padding = await bar.evaluate((element) => parseFloat(getComputedStyle(element).paddingBottom));
+  expect(padding).toBeGreaterThanOrEqual(34);
+  const last = await items.nth(0).boundingBox();
+  const after = await bar.boundingBox();
+  if (!last || !after) throw new Error('the bar has no box');
+  expect(last.y + last.height).toBeLessThanOrEqual(after.y + after.height - 34 + 1);
+});
+
+test('Messages opens the messages drawer without an Ask entry, and Ask opens the request form directly', async ({ page }) => {
+  await openPhone(page, 'Switch');
+  await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
+  const list = page.getByRole('dialog', { name: 'Messages' });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('tab')).toHaveCount(2);
+  await expect(list.getByRole('button', { name: /Ask/ })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
+
+  await bottomBar(page).getByRole('button', { name: 'Ask AI' }).tap();
+  await expect(page.getByRole('dialog', { name: 'Ask AI' })).toBeVisible();
+});
+
+test('Settings opens as a drawer, and Archive asks in a drawer that cancels without a change', async ({ page }) => {
+  await openPhone(page, 'Switch');
+  await bottomBar(page).getByRole('button', { name: 'Settings' }).tap();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(settings).toBeVisible();
+  await expect(settings).toHaveAttribute('data-slot', 'drawer-popup');
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+
+  await bottomBar(page).getByRole('button', { name: 'Archive all' }).tap();
+  const drawer = page.getByRole('dialog', { name: 'Archive completed tasks' });
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toHaveAttribute('data-slot', 'drawer-popup');
+  await expect(drawer.getByRole('row')).toHaveCount(2);
+  await drawer.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(drawer).toBeHidden();
+  expect(show('Switch', 'Switch done').archivedAt).toBeNull();
+});

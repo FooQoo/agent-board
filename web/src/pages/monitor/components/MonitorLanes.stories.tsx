@@ -96,7 +96,7 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
 
 type ScreenArgs = Pick<
   MonitorLanesScreenProps,
-  'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing'
+  'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing' | 'onAsk'
 > & {
   /** Opens a confirmation: `archive` and `move` use the card named by `pendingTask`. */
   pending?: 'archive' | 'move' | 'bulk';
@@ -293,22 +293,24 @@ export const ArchiveConfirm: Story = {
   },
 };
 
-/** 完了 has まとめてアーカイブ below its cards, so the cards stay put whether or not it shows. */
+/** まとめてアーカイブ is the bar's アーカイブ item: the lane has no such button of its own. */
 export const DoneLane: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
-    const button = within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' });
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    const button = within(bar).getByRole('button', { name: 'まとめてアーカイブ' });
     await expect(button).toBeEnabled();
     await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
-    // Below the last card, so the cards keep their place.
-    const cards = canvasElement.querySelectorAll('[data-lane="done"] [data-swipe-card]');
-    await expect(button.getBoundingClientRect().top).toBeGreaterThanOrEqual(
-      (cards[cards.length - 1] as Element).getBoundingClientRect().bottom,
-    );
+    await expect(
+      within(canvasElement.querySelector('[data-lane="done"]') as HTMLElement).queryByRole(
+        'button',
+        { name: 'まとめてアーカイブ' },
+      ),
+    ).toBeNull();
   },
 };
 
-/** The bulk confirmation lists the completed cards, as the PC board does. */
+/** The bulk confirmation lists the completed cards in a bottom sheet. */
 export const BulkArchiveConfirm: Story = {
   args: { initialLane: 'done', pending: 'bulk' },
   play: async () => {
@@ -318,7 +320,19 @@ export const BulkArchiveConfirm: Story = {
   },
 };
 
-/** With nothing completed the button is disabled and the lane says so. */
+/** The bar's アーカイブ item opens that confirmation as a drawer. */
+export const ArchiveFromBar: Story = {
+  args: { initialLane: 'done' },
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await userEvent.click(within(bar).getByRole('button', { name: 'まとめてアーカイブ' }));
+    const sheet = await within(document.body).findByRole('dialog');
+    await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
+    await expect(within(sheet).getAllByRole('row')).toHaveLength(5);
+  },
+};
+
+/** With nothing completed the bar's アーカイブ item is disabled and the lane says so. */
 export const EmptyDoneLane: Story = {
   args: { initialLane: 'done', emptyDone: true },
   play: async ({ canvasElement }) => {
@@ -326,12 +340,59 @@ export const EmptyDoneLane: Story = {
       within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' }),
     ).toBeDisabled();
     await expect(within(canvasElement).getByText('完了した作業はありません。')).toBeVisible();
-    const empty = within(canvasElement).getByText('完了した作業はありません。');
-    await expect(
-      within(canvasElement)
-        .getByRole('button', { name: 'まとめてアーカイブ' })
-        .getBoundingClientRect().top,
-    ).toBeGreaterThanOrEqual(empty.getBoundingClientRect().bottom);
+  },
+};
+
+/** Five items in the bar, Ask in the middle; the count on メッセージ is the open questions. */
+export const BottomBar: Story = {
+  args: { initialLane: 'todo' },
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    const items = within(bar).getAllByRole('button');
+    await expect(items.map((item) => item.textContent?.replace(/^\d+/, ''))).toEqual([
+      'ボード',
+      'メッセージ',
+      '依頼',
+      'アーカイブ',
+      '設定',
+    ]);
+    await expect(items[2]).toHaveAccessibleName('AI に依頼');
+    await expect(within(bar).getByRole('button', { name: 'メッセージ 2' })).toBeVisible();
+    // Clear of the home indicator: the bar ends inside the window.
+    await expect(bar.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+  },
+};
+
+/** メッセージ opens the list of questions and requests, with no 依頼 entry inside. */
+export const MessagesFromBar: Story = {
+  args: { initialLane: 'todo' },
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await userEvent.click(within(bar).getByRole('button', { name: 'メッセージ 2' }));
+    const sheet = within(await within(document.body).findByRole('dialog', { name: 'メッセージ' }));
+    await expect(sheet.getAllByRole('tab')).toHaveLength(2);
+    await expect(sheet.queryByRole('button', { name: /依頼する|AI に依頼/ })).toBeNull();
+  },
+};
+
+/** 依頼 reaches the screen's callback, which opens the request form. */
+export const AskFromBar: Story = {
+  args: { initialLane: 'todo', onAsk: fn() },
+  play: async ({ canvasElement, args }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await userEvent.click(within(bar).getByRole('button', { name: 'AI に依頼' }));
+    await expect(args.onAsk).toHaveBeenCalledOnce();
+  },
+};
+
+/** 設定 opens the settings as a bottom sheet. */
+export const SettingsFromBar: Story = {
+  args: { initialLane: 'todo' },
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await userEvent.click(within(bar).getByRole('button', { name: '設定' }));
+    const sheet = await within(document.body).findByRole('dialog', { name: '設定' });
+    await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
   },
 };
 

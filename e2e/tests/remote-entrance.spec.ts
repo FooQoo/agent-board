@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, request as playwrightRequest, test } from '../helpers/fixtures';
 import { agboard, askArgs, decisionJson } from '../helpers/agboard';
-import { answerDialog, answerSend, fillAnswer, messageBand, openAnswer, openMessageList, send } from '../helpers/answer';
+import { answerDialog, answerSend, askItem, fillAnswer, messageBand, openAnswer, openMessageList, openQuestionCount, phoneBar, send } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
 import {
   createMonitorHome,
@@ -191,18 +191,17 @@ test('the phone answers a question from the sheet, and the answer reaches the sh
   expect(task.history.at(-1)?.reason).toContain('Reviewed on the phone.');
 });
 
-test('the phone band counts the open questions; a question picked in its list is answered from the sheet', async ({ page }) => {
+test('the phone bar counts the open questions; a question picked in its list is answered from the sheet', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
   await entrance.open(page, phoneUrl());
-  // The band is always there, and its first chip counts the open questions.
-  const band = messageBand(page);
-  await expect(band).toBeVisible();
-  const mine = band.getByRole('listitem').filter({ hasText: /^AI's questions/ });
-  const countOf = async () => Number(/AI's questions\s+(\d+)/.exec(await mine.innerText())?.[1] ?? NaN);
+  // The bottom bar is always there, and Messages carries the number of open questions.
+  await expect(phoneBar(page)).toBeVisible();
+  await expect(messageBand(page)).toHaveCount(0);
+  const countOf = () => openQuestionCount(page);
   await expect.poll(countOf).not.toBeNaN();
   const before = await countOf();
-  // The phone band carries the Ask AI button too.
-  await expect(band.getByRole('button', { name: 'Ask AI' })).toBeVisible();
+  // Ask sits in the middle of the bar.
+  await expect(askItem(page)).toBeVisible();
 
   const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);

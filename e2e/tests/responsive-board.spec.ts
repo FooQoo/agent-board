@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '../helpers/fixtures';
 import { agboardOk, askArgs, decisionJson, mainProject, projectId, resetBoard, type TaskJson } from '../helpers/agboard';
-import { answerButton, answerDialog, fillAnswer, messageBand, messageList, openAnswer, openListButton, openMessageList, send } from '../helpers/answer';
+import { answerButton, answerDialog, askItem, fillAnswer, messageBand, messageList, messagesItem, openAnswer, openListButton, openMessageList, openQuestionCount, phoneBar, send } from '../helpers/answer';
 import { closeMessages } from '../helpers/answer-flow';
 import { readBoardAfterReset, waitForSync } from '../helpers/ui';
 
@@ -81,24 +81,31 @@ async function listTop(page: Page): Promise<number> {
   return box.y;
 }
 
-test('the band is always there: with no message it shows counts of 0 and the list opens empty, at desktop and phone widths', async ({ page }) => {
+test('the band and the bar are always there: with no message the counts are 0 and the list opens empty, at desktop and phone widths', async ({ page }) => {
   withdrawOpenQuestions();
   for (const size of [DESKTOP, PHONE, DESKTOP]) {
     await page.setViewportSize(size);
-    await expect(band(page)).toBeVisible();
-    await expect(chip(page, /^AI's questions/)).toHaveText(/^AI's questions 0$/);
-    await expect(chip(page, /^Your requests/)).toHaveText(/^Your requests 0$/);
+    if (size === PHONE) {
+      // The phone screen has the bottom bar and no band; Messages has no number at 0.
+      await expect(phoneBar(page)).toBeVisible();
+      await expect(band(page)).toHaveCount(0);
+      await expect(messagesItem(page)).toHaveAttribute('aria-label', /^(Messages|メッセージ)$/);
+    } else {
+      await expect(band(page)).toBeVisible();
+      await expect(chip(page, /^AI's questions/)).toHaveText(/^AI's questions 0$/);
+      await expect(chip(page, /^Your requests/)).toHaveText(/^Your requests 0$/);
+    }
     await expect(openListButton(page)).toBeEnabled();
   }
   if ((await phoneTabs(page).count()) === 0) await page.setViewportSize(PHONE);
   await expect(phoneTabs(page)).toBeVisible();
-  await expect(band(page)).toBeVisible();
   const tabsBox = await phoneTabs(page).boundingBox();
-  const bandBox = await band(page).boundingBox();
-  if (!bandBox || !tabsBox) throw new Error('the band or the lane tabs have no box');
-  // The band sits above the lane tabs, and the lane's list follows them.
-  expect(tabsBox.y).toBeGreaterThanOrEqual(bandBox.y + bandBox.height - 1);
+  const barBox = await phoneBar(page).boundingBox();
+  if (!barBox || !tabsBox) throw new Error('the bar or the lane tabs have no box');
+  // The lane's list follows the tabs, and the bar ends the screen below them, inside the window.
   expect(await listTop(page)).toBeGreaterThanOrEqual(tabsBox.y + tabsBox.height - 1);
+  expect(barBox.y).toBeGreaterThan(tabsBox.y + tabsBox.height);
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual(PHONE.height);
 
   // An empty list opens, and closes without a change.
   const list = await openMessageList(page);
@@ -109,7 +116,7 @@ test('the band is always there: with no message it shows counts of 0 and the lis
 
   // A question that arrives is counted at once, and nothing opens by itself.
   agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
-  await expect(chip(page, /^AI's questions/)).toHaveText(/^AI's questions 1$/);
+  await expect.poll(() => openQuestionCount(page)).toBe(1);
   await expect(messageList(page)).toHaveCount(0);
   await page.setViewportSize(DESKTOP);
   await waitForSync(page);
@@ -119,26 +126,41 @@ for (const [name, size] of [
   ['desktop', DESKTOP],
   ['phone', PHONE],
 ] as const) {
-  test(`the band shows the counts at ${name} width, and Questions & requests opens and closes the list`, async ({ page }) => {
+  test(`the ${name === 'phone' ? 'bottom bar' : 'band'} shows the counts at ${name} width, and the list opens and closes`, async ({ page }) => {
     await page.setViewportSize(size);
-    await expect(band(page)).toBeVisible();
     // The fixture's open question and the proposed plan's question are counted.
-    await expect(chip(page, /^AI's questions/)).toContainText(/^AI's questions [1-9]/);
-    await expect(chip(page, /^Your requests/)).toHaveText(/^Your requests 0$/);
+    if (name === 'phone') {
+      await expect(phoneBar(page)).toBeVisible();
+      await expect(band(page)).toHaveCount(0);
+      await expect.poll(() => openQuestionCount(page)).toBeGreaterThan(0);
+      // Ask sits in the middle of the bar, and the list has no Ask entry of its own.
+      await expect(askItem(page)).toBeVisible();
+      expect(await phoneBar(page).getByRole('button').evaluateAll((items) => items.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
+        'Board',
+        'Messages',
+        'Ask',
+        'Archive',
+        'Settings',
+      ]);
+    } else {
+      await expect(band(page)).toBeVisible();
+      await expect(chip(page, /^AI's questions/)).toContainText(/^AI's questions [1-9]/);
+      await expect(chip(page, /^Your requests/)).toHaveText(/^Your requests 0$/);
+      await expect(band(page).getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
+    }
     await expect(messageList(page)).toHaveCount(0);
-    if (name === 'phone') await expect(band(page).getByRole('button', { name: 'Ask AI' })).toBeVisible();
-    else await expect(band(page).getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
 
     const list = await openMessageList(page);
     await expect(list.getByRole('tab', { name: /^AI's questions/ })).toBeVisible();
     await expect(list.getByRole('tab', { name: /^Your requests/ })).toBeVisible();
+    await expect(list.getByRole('button', { name: /^Ask/ })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(messageList(page)).toBeHidden();
 
     // A reload does not remember anything: the list starts closed again.
     await openMessageList(page);
     await page.reload();
-    await expect(band(page)).toBeVisible();
+    await expect(openListButton(page)).toBeVisible();
     await expect(messageList(page)).toHaveCount(0);
     await page.setViewportSize(DESKTOP);
     await waitForSync(page);
@@ -152,11 +174,12 @@ for (const [name, size] of [
   test(`a question picked in the list opens only that question at ${name} width, and Send answer answers it alone`, async ({ page }) => {
     await page.setViewportSize(size);
     // The fixture's #12 already waits on a question; #13 gets a second one.
-    const before = await chip(page, /^AI's questions/).innerText();
+    // The fixture's #12 already waits on a question: wait until the screen has read it.
+    await expect.poll(() => openQuestionCount(page)).toBeGreaterThan(0);
+    const before = await openQuestionCount(page);
     agboardOk(mainProject, ['--json', ...askArgs('13', decisionJson('Which way?'))]);
-    const countOf = (text: string) => Number(/AI's questions\s+(\d+)/.exec(text)?.[1] ?? NaN);
-    await expect.poll(async () => countOf(await chip(page, /^AI's questions/).innerText())).toBe(countOf(before) + 1);
-    const total = countOf(before) + 1;
+    await expect.poll(() => openQuestionCount(page)).toBe(before + 1);
+    const total = before + 1;
 
     const list = await openMessageList(page);
     await list.getByRole('button', { name: /Which way\?/ }).click();
@@ -171,10 +194,10 @@ for (const [name, size] of [
     await send(page);
     await closeMessages(page);
 
-    // Only #13 was answered; #12 still waits, and the band's count dropped by one.
+    // Only #13 was answered; #12 still waits, and the count dropped by one.
     expect(show(13)).toMatchObject({ agentStatus: 'idle', pendingRequestId: null });
     expect(show(12).agentStatus).toBe('pending');
-    await expect.poll(async () => countOf(await chip(page, /^AI's questions/).innerText())).toBe(total - 1);
+    await expect.poll(() => openQuestionCount(page)).toBe(total - 1);
     await expect(answerButton(page, 12)).toBeVisible();
     await page.setViewportSize(DESKTOP);
     await waitForSync(page);

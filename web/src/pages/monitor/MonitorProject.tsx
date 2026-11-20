@@ -181,6 +181,7 @@ export function MonitorScreen({
     // Answers are shown at once: the Summary is read again without waiting for the hold.
     onMessagesChanged: () => void summary.refresh(),
     onAsk: () => setAsking(true),
+    asking,
     readResolvers,
     preferences,
     settings,

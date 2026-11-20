@@ -19,13 +19,17 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor--band-ask-ai",
-              "states": ["phone band", "Ask AI button"],
+              "id": "pages-monitor--bar-ask-ai",
+              "states": ["bottom bar", "Ask item"],
               "interaction": true
             },
             {
               "id": "pages-monitor--standalone-safe-area",
-              "states": ["Home Screen app", "status bar inset", "home indicator inset"],
+              "states": [
+                "Home Screen app",
+                "status bar inset",
+                "bottom bar above the home indicator"
+              ],
               "interaction": true
             },
             {

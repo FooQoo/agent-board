@@ -60,3 +60,20 @@
   gap: 4px 10px;
   min-width: 0;
 }
+
+/* Settings and the bulk archive as sheets: the sections and the lines keep an even rhythm under the header. */
+.settings-sheet .surface__body,
+.bulk-archive__sheet .surface__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 14px;
+}
+
+.bulk-archive__sheet .surface__body {
+  gap: 12px;
+}
+
+.bulk-archive__sheet .bulk-archive__description {
+  font-size: 14px;
+}

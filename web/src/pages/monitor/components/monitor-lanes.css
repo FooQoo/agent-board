@@ -110,11 +110,6 @@
   min-width: 0;
   height: 100%;
 }
-.monitor-lane__bar {
-  display: flex;
-  flex: none;
-  justify-content: flex-end;
-}
 .monitor-lane__scroll {
   display: flex;
   flex: 1 1 auto;

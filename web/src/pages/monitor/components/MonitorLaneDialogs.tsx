@@ -59,6 +59,7 @@ export function MonitorLaneDialogs({
         projectName={projectName}
         targets={doneItems.map((item) => item.task)}
         saving={false}
+        kind="sheet"
         onConfirm={onBulkArchive}
         onCancel={onCancel}
       />

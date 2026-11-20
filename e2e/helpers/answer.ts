@@ -7,9 +7,36 @@ export const answerButton = (page: Page, id = 12): Locator =>
 /** The Messages band above the lanes (or under the phone screen's counts). */
 export const messageBand = (page: Page): Locator => page.getByRole('region', { name: /^(Messages|メッセージ)$/ });
 
-/** The band's button that opens the list of messages. */
+/** The phone screen's bottom bar. */
+export const phoneBar = (page: Page): Locator =>
+  page.getByRole('navigation', { name: /^(Main navigation|主なナビゲーション)$/ });
+
+/** The bar's Messages item; its number counts the open questions and is missing at 0. */
+export const messagesItem = (page: Page): Locator =>
+  phoneBar(page).getByRole('button', { name: /^(Messages|メッセージ)/ });
+
+/** The bar's Ask item (its name is "Ask AI"). */
+export const askItem = (page: Page): Locator => phoneBar(page).getByRole('button', { name: /^(Ask AI|AI に依頼)$/ });
+
+/** What opens the list of messages: the band's button on the board, the bar's Messages item on the phone screen. */
 export const openListButton = (page: Page): Locator =>
-  messageBand(page).getByRole('button', { name: /^(Questions & requests|質問・依頼を確認)$/ });
+  messageBand(page)
+    .getByRole('button', { name: /^(Questions & requests|質問・依頼を確認)$/ })
+    .or(messagesItem(page));
+
+/** The number of open questions the screen shows: the band's first count on the board, the bar's number on the phone screen. */
+export async function openQuestionCount(page: Page): Promise<number> {
+  // The layout follows the window width: below 768px the phone screen (the bar), otherwise the board (the band).
+  if ((page.viewportSize()?.width ?? 1280) < 768) {
+    await phoneBar(page).waitFor();
+    const label = (await messagesItem(page).getAttribute('aria-label')) ?? '';
+    return Number(/\s(\d+)\+?$/.exec(label)?.[1] ?? 0);
+  }
+  const chip = messageBand(page)
+    .getByRole('listitem')
+    .filter({ hasText: /^(AI's questions|AI の質問)/ });
+  return Number(/(\d+)\s*$/.exec(await chip.innerText())?.[1] ?? NaN);
+}
 
 /** The messages dialog: the list, a question or a request, or the plan review (a sheet on a phone). */
 export const answerDialog = (page: Page): Locator => page.getByRole('dialog');

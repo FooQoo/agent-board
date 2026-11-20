@@ -1,5 +1,5 @@
 import { agboardOk, listTasks, mainProject, resetBoard } from '../helpers/agboard';
-import { listRow, messageBand, openMessageList } from '../helpers/answer';
+import { listRow, messagesItem, openMessageList } from '../helpers/answer';
 import { expect, test } from '../helpers/fixtures';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 
@@ -61,7 +61,7 @@ test.beforeEach(async ({ page }) => {
     }),
   ]);
   await page.goto('/');
-  await expect(messageBand(page)).toBeVisible();
+  await expect(messagesItem(page)).toBeVisible();
 });
 
 test.afterEach(() => resetPreferences());

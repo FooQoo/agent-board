@@ -2,6 +2,7 @@ export const monitorEn = {
   monitor: {
     allProjects: 'All Projects',
     project: 'Project',
+    nav: { label: 'Main navigation', board: 'Board', ask: 'Ask' },
     pull: { hint: 'Pull to refresh', release: 'Release to refresh' },
     invalidSelection: 'That project or task is no longer available.',
     summary: 'Work summary',

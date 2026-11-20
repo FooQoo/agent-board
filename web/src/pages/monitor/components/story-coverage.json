@@ -178,23 +178,18 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorgallery--message-band",
-              "states": [
-                "band under the counts",
-                "questions counted",
-                "ask AI button",
-                "open the list"
-              ],
+              "id": "pages-monitor-components-monitorgallery--bottom-bar",
+              "states": ["bottom bar", "questions counted on Messages", "Ask in the middle"],
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorgallery--message-band-empty",
-              "states": ["empty band", "count 0"],
+              "id": "pages-monitor-components-monitorgallery--bottom-bar-no-questions",
+              "states": ["bottom bar", "no count on Messages"],
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorgallery--message-band-dark",
-              "states": ["band in dark mode"],
+              "id": "pages-monitor-components-monitorgallery--bottom-bar-dark",
+              "states": ["bottom bar in dark mode"],
               "interaction": false
             }
           ]
@@ -396,12 +391,12 @@
             },
             {
               "id": "pages-monitor-components-monitorlanes--done-lane",
-              "states": ["bulk archive in the done lane header"],
+              "states": ["bulk archive is the bar Archive item, not in the lane"],
               "interaction": true
             },
             {
               "id": "pages-monitor-components-monitorlanes--empty-done-lane",
-              "states": ["empty lane", "bulk archive disabled"],
+              "states": ["empty lane", "Archive item disabled"],
               "interaction": true
             },
             {
@@ -438,6 +433,11 @@
               "id": "pages-monitor-components-monitorlanes--sideways-is-not-a-pull",
               "states": ["sideways drag does not pull"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-from-bar",
+              "states": ["Archive item opens the confirmation as a drawer"],
+              "interaction": true
             }
           ]
         }
@@ -462,6 +462,66 @@
             {
               "id": "pages-monitor-components-monitorlanes--refreshing",
               "states": ["refreshing"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/PhoneNavBar.tsx",
+      "exports": [
+        {
+          "name": "PhoneNavBar",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--bottom-bar",
+              "states": [
+                "five items",
+                "Ask in the middle",
+                "count of open questions",
+                "clear of the home indicator"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--messages-from-bar",
+              "states": ["Messages drawer", "no Ask entry inside"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--ask-from-bar",
+              "states": ["Ask item"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--settings-from-bar",
+              "states": ["settings as a bottom sheet"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-from-bar",
+              "states": ["Archive item", "archive drawer"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--bottom-bar-no-questions",
+              "states": ["no count on Messages"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/PhoneNav.tsx",
+      "exports": [
+        {
+          "name": "PhoneNav",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--settings-from-bar",
+              "states": ["settings as a bottom sheet"],
               "interaction": true
             }
           ]

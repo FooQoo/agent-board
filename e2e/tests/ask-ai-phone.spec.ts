@@ -2,6 +2,7 @@ import { expect, test } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { resetPreferences } from '../helpers/preferences';
 import { requestField } from '../helpers/ask-ai';
+import { askItem } from '../helpers/answer';
 
 // An iPhone-sized touch screen. Chromium stands in for Safari here: see the note in the test.
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -32,8 +33,8 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
     };
   });
   await page.goto('/');
-  await expect(page.getByRole('region', { name: 'Messages' })).toBeVisible();
-  await page.getByRole('region', { name: 'Messages' }).getByRole('button', { name: 'Ask AI' }).click();
+  await expect(askItem(page)).toBeVisible();
+  await askItem(page).click();
   const sheet = page.getByRole('dialog', { name: 'Ask AI' });
   await expect(sheet).toBeVisible();
   const field = requestField(sheet);
@@ -95,7 +96,7 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
 test('closing the sheet with text asks first, and an empty sheet closes at once', async ({ page }) => {
   await page.goto('/');
   const open = async () => {
-    await page.getByRole('region', { name: 'Messages' }).getByRole('button', { name: 'Ask AI' }).click();
+    await askItem(page).click();
     const sheet = page.getByRole('dialog', { name: 'Ask AI' });
     await expect(sheet).toBeVisible();
     return sheet;

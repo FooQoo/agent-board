@@ -158,7 +158,9 @@ function Connected({
 const openButton = (card: HTMLElement) =>
   within(card).getByRole('button', { name: 'Answer the question' });
 const todoCard = () => screen.getByRole('article', { name: /Todo decision/ });
-const band = () => screen.getByRole('region', { name: 'Messages' });
+const bar = () => screen.getByRole('navigation', { name: 'Main navigation' });
+const messagesItem = (name: string | RegExp = /^Messages/) =>
+  within(bar()).getByRole('button', { name });
 
 describe('remote access lanes and task actions', () => {
   it('counts tasks once by taskStatus and keeps run state inline', () => {
@@ -226,33 +228,59 @@ describe('remote access lanes and task actions', () => {
   });
 });
 
-describe('monitor messages band and list', () => {
-  it('counts the questions and the requests in the band', () => {
+describe('monitor messages in the bottom bar', () => {
+  it('counts the open questions on Messages, and not the requests', () => {
     render(<Connected />);
-    expect(within(band()).getByText(/AI's questions/).textContent).toContain('2');
-    expect(within(band()).getByText(/Your requests/).textContent).toContain('1');
+    // Two questions and one request are open: only the questions are counted.
+    expect(messagesItem().getAttribute('aria-label')).toBe('Messages 2');
+    expect(messagesItem().textContent).toContain('2');
   });
 
-  it('keeps the band with a count of 0 when nothing is open', () => {
+  it('shows no count on Messages when nothing is open', () => {
     render(<Connected messages={[]} />);
-    expect(within(band()).getByText(/AI's questions/).textContent).toContain('0');
+    expect(messagesItem().getAttribute('aria-label')).toBe('Messages');
+    expect(messagesItem().querySelector('.phone-nav__badge')).toBeNull();
   });
 
-  it('shows "Ask AI" on the phone band only when the screen gives it', async () => {
+  it('opens "Ask AI" from the middle item of the bar', async () => {
     const onAsk = vi.fn();
-    const { unmount } = render(<Connected />);
-    expect(within(band()).queryByRole('button', { name: 'Ask AI' })).toBeNull();
-    unmount();
     render(<Connected onAsk={onAsk} />);
-    await userEvent.click(within(band()).getByRole('button', { name: 'Ask AI' }));
+    const items = within(bar()).getAllByRole('button');
+    expect(items.map((item) => item.textContent?.replace(/^\d+/, ''))).toEqual([
+      'Board',
+      'Messages',
+      'Ask',
+      'Archive',
+      'Settings',
+    ]);
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Ask AI' }));
     expect(onAsk).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the list as a sheet with the two tabs and never lists a closed message', async () => {
+  it('has no message band, no header settings button and no Ask AI button in the screen', () => {
+    const { container } = render(<Connected onAsk={vi.fn()} />);
+    expect(screen.queryByRole('region', { name: 'Messages' })).toBeNull();
+    expect(container.querySelector('.header__settings')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Ask AI' })).toHaveLength(1);
+  });
+
+  it('opens settings from the bar, and dims Archive while there is nothing to archive', async () => {
     const user = userEvent.setup();
     render(<Connected />);
-    await user.click(within(band()).getByRole('button', { name: 'Questions & requests' }));
+    // Without writes (and with no done card to move) the archive item cannot be tapped.
+    expect(
+      (within(bar()).getByRole('button', { name: 'Archive all' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await user.click(within(bar()).getByRole('button', { name: 'Settings' }));
+    expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeTruthy();
+  });
+
+  it('opens the list as a sheet with the two tabs, without an Ask AI entry, and never lists a closed message', async () => {
+    const user = userEvent.setup();
+    render(<Connected onAsk={vi.fn()} />);
+    await user.click(messagesItem());
     const sheet = await screen.findByRole('dialog', { name: 'Messages' });
+    expect(within(sheet).queryByRole('button', { name: /Ask/ })).toBeNull();
     expect(within(sheet).getAllByRole('tab')).toHaveLength(2);
     expect(within(sheet).getAllByRole('listitem')).toHaveLength(2);
     expect(within(sheet).getAllByText('Unanswered')).toHaveLength(2);
@@ -315,7 +343,7 @@ describe('monitor messages band and list', () => {
     const withdraw = vi.fn(async () => {});
     const onChanged = vi.fn();
     render(<Connected withdraw={withdraw} onChanged={onChanged} />);
-    await user.click(within(band()).getByRole('button', { name: 'Questions & requests' }));
+    await user.click(messagesItem());
     const sheet = await screen.findByRole('dialog');
     await user.click(within(sheet).getByRole('tab', { name: /Your requests/ }));
     await user.click(within(sheet).getByRole('button', { name: /Add a forgot-password link/ }));
