@@ -12,7 +12,7 @@ pub struct Case {
     pub scenario: Scenario,
 }
 
-fn case(rule: &'static str, name: &'static str, triggers: bool, scenario: Scenario) -> Case {
+pub fn case(rule: &'static str, name: &'static str, triggers: bool, scenario: Scenario) -> Case {
     Case {
         rule,
         name,
@@ -159,5 +159,6 @@ pub fn all() -> Vec<Case> {
             running("Done.", vec![call("cargo test")]),
         ),
     ]);
+    cases.extend(super::cases_state::all());
     cases
 }
