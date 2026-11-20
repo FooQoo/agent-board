@@ -38,6 +38,7 @@
 | テストが7420でサーバーを起動する | テストが`AGBOARD_AUTOSTART=0`を付けずに`agboard`を実行している。 | `AGBOARD_AUTOSTART=0`を付けます。自動起動そのものの試験では`AGBOARD_AUTOSTART_PORT=0`を付けます。 |
 | テストがブラウザーのウィンドウを開く | 自動起動を有効にしたまま、`AGBOARD_OPEN_BROWSER=0`を付けずに`agboard`を実行している。 | `AGBOARD_OPEN_BROWSER=0`を付けます。開く処理の試験では、代わりに`AGBOARD_BROWSER_OPENER`をアドレスを記録するスクリプトに向けます。 |
 | 自動のサーバーがボードを開かなかった | 待つ時間のうちにボードのページがつながった、または開く処理が無効になっている。 | `serve.log`を読みます。`Opened …`、理由つきの`Did not open …`、`Could not open …`のどれかが書かれています。[ボードを開く](./concepts/server-and-ui.md#opening-the-board)を参照。 |
+| 常駐エージェントが止まったが理由がわからない | 人の停止、再起動、モデルの変更、サーバーの終了、一度もつながらなかったセッションをボードが終わらせた、クラッシュのどれか。 | `serve.log`を読みます。起動・停止の要求・終了ごとに、時刻（UTC）、ツール、起動ID、理由が1行で残っています。`exited abnormally`はクラッシュで、`ended after a stop`は直前の`stop requested`の行に続きます。直近5回の起動分のエージェントの出力は`resident/<ツール>.log`と`resident/<ツール>.1.log`〜`.4.log`にあります。 |
 | `cursor_invalid` | cursorの形式が誤っている、または別のプロジェクトのもの。 | 同じプロジェクトの`snapshot`から新しい`cursor`を取ります。 |
 | `wait_timeout` | `wait --after`の任意の`--timeout`が経過しても変更がなかった。 | もう一度待ちます。 |
 | `message ask`や`message wait`が終了コード5で終わる | すべての質問に回答が付く前に`--timeout`が過ぎた。質問は未回答のまま残る。 | `message wait <question-id>`をもう一度実行します。 |

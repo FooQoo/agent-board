@@ -243,6 +243,13 @@ impl Launcher {
             .take()
             .unwrap_or_else(|| reason.to_string());
         plan.fail(&self.timing, reason, true);
+        let outcome = match &plan.state {
+            PlanState::Restarting { due_at, .. } => {
+                format!("restart planned for {}", crate::clock::format_utc(*due_at))
+            }
+            _ => "the board stopped restarting it".to_string(),
+        };
+        self.log_supervisor(tool, launch_id, &outcome);
     }
 
     /// A start that did not even produce a child (auto-start at server start). `epoch` is the one
