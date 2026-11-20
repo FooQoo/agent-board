@@ -1,112 +1,135 @@
-import { GripVerticalIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { PlusIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { DragDropProvider } from '@dnd-kit/react';
-import { isSortable, useSortable } from '@dnd-kit/react/sortable';
+import { DragDropProvider, useDroppable } from '@dnd-kit/react';
+import { isSortable } from '@dnd-kit/react/sortable';
 import type { TaskSummary } from '../../../shared/api/contracts';
+import { dropPlacement } from '../../../shared/lib/gesture/sortableDrag';
+import { WaveRow, WaveTasks } from './WaveRow';
+import {
+  NEW_WAVE_GROUP,
+  UNLISTED_GROUP,
+  moveTask,
+  moveWave,
+  targetOfGroup,
+  waveGroup,
+  waveStatuses,
+  type Waves,
+} from './waveModel';
+import type { ProgressTaskRenderer } from './progressTypes';
 
-/** What a row gives the caller to draw a task: the drag handle to place, and the row's actions. */
-export interface ProgressTaskRow {
-  /** The grip a person drags the row by; the caller puts it where it fits. */
-  grip: ReactNode;
-  disabled: boolean;
-  onOpen: () => void;
+export type { ProgressTaskRenderer, ProgressTaskRow } from './progressTypes';
+
+function NewWaveZone() {
+  const { t } = useTranslation();
+  const { ref, isDropTarget } = useDroppable({
+    id: `drop-${NEW_WAVE_GROUP}`,
+    accept: 'task',
+    data: { group: NEW_WAVE_GROUP },
+  });
+  return (
+    <div ref={ref} className="epic-wave__new" data-drop-target={isDropTarget ? 'true' : 'false'}>
+      <PlusIcon aria-hidden="true" focusable="false" />
+      {t('epic.waveNew')}
+    </div>
+  );
 }
 
-export type ProgressTaskRenderer = (task: TaskSummary, row: ProgressTaskRow) => ReactNode;
-
 /**
- * The progress table of an epic: its tasks in the order they are worked on. Dragging a row changes
- * only this order; it does not move the task between columns. The order is saved with the dialog.
+ * The order of an epic's tasks as waves, top to bottom. A wave's tasks run side by side; a wave
+ * starts when the waves above it are Done. Dragging changes only this order, not the task's column.
+ * Tasks no wave lists follow in a group of their own and are never held back. The new order is
+ * saved with the dialog.
  */
 export function EpicProgressList({
-  tasks,
+  waves,
+  unlisted,
   disabled,
-  onMove,
+  onChange,
   onOpenTask,
   renderTask,
 }: {
-  /** The tasks of this epic in their current order. */
-  tasks: readonly TaskSummary[];
+  /** The tasks of each wave, in order. No wave is empty. */
+  waves: readonly (readonly TaskSummary[])[];
+  /** The tasks of the epic that no wave lists. */
+  unlisted: readonly TaskSummary[];
   disabled: boolean;
-  /** The new order: the moved task goes from `from` to `to` in the list. */
-  onMove: (from: number, to: number) => void;
+  /** The waves after a drop, as task IDs. */
+  onChange: (waves: Waves) => void;
   onOpenTask: (taskId: number) => void;
-  /** Draws what a row shows for a task. The caller supplies it; the row keeps the drag handle. */
+  /** Draws what a card shows for a task. The caller supplies it; the card keeps the drag grip. */
   renderTask: ProgressTaskRenderer;
 }) {
   const { t } = useTranslation();
+  const ids: Waves = waves.map((wave) => wave.map((task) => task.id));
+  const statuses = waveStatuses(ids, waves.flat());
+  const empty = waves.length === 0 && unlisted.length === 0;
+  const change = (next: Waves) => {
+    if (JSON.stringify(next) !== JSON.stringify(ids)) onChange(next);
+  };
   return (
     <DragDropProvider
+      // A drop rearranges the lists, so the drag controller starts again from the new order.
+      key={JSON.stringify(ids)}
       onDragEnd={(event) => {
         if (event.canceled) return;
         const source = event.operation.source;
-        if (!source || !isSortable(source)) return;
-        const from = source.sortable.initialIndex;
-        const to = source.sortable.index;
-        if (from !== to) onMove(from, to);
+        if (!source) return;
+        if (source.data.kind === 'wave') {
+          if (isSortable(source)) {
+            change(moveWave(ids, source.sortable.initialIndex, source.sortable.index));
+          }
+          return;
+        }
+        const taskId: unknown = source.data.taskId;
+        const placement = dropPlacement(event.operation);
+        const target = placement && targetOfGroup(placement.group, placement.index);
+        if (typeof taskId !== 'number' || !placement || !target || placement.unchanged) return;
+        change(moveTask(ids, taskId, target));
       }}
     >
-      {tasks.length === 0 ? (
+      {empty ? (
         <p className="epic-progress__empty">{t('epic.progressEmpty')}</p>
       ) : (
         <>
           <p className="epic-progress__hint">{t('epic.progressReorder')}</p>
           <ol className="epic-progress__list" aria-label={t('epic.progressTitle')}>
-            {tasks.map((task, index) => (
-              <ProgressRow
-                key={task.id}
-                task={task}
+            {waves.map((wave, index) => (
+              <WaveRow
+                key={waveGroup(index)}
+                number={index + 1}
                 index={index}
+                group={waveGroup(index)}
+                tasks={wave}
+                status={statuses[index] ?? { kind: 'active' }}
                 disabled={disabled}
                 onOpenTask={onOpenTask}
                 renderTask={renderTask}
               />
             ))}
+            {unlisted.length > 0 && (
+              <li className="epic-wave epic-wave--unlisted" aria-label={t('epic.unlistedTitle')}>
+                <div className="epic-wave__head">
+                  <span className="epic-wave__title">{t('epic.unlistedTitle')}</span>
+                  <span className="epic-wave__status">{t('epic.unlistedHint')}</span>
+                </div>
+                <WaveTasks
+                  group={UNLISTED_GROUP}
+                  tasks={unlisted}
+                  disabled={disabled}
+                  onOpenTask={onOpenTask}
+                  renderTask={renderTask}
+                />
+              </li>
+            )}
+            {!disabled && (
+              <li className="epic-wave__new-item">
+                <NewWaveZone />
+              </li>
+            )}
           </ol>
           <p className="epic-progress__hint">{t('epic.progressSaveOrder')}</p>
         </>
       )}
     </DragDropProvider>
-  );
-}
-
-function ProgressRow({
-  task,
-  index,
-  disabled,
-  onOpenTask,
-  renderTask,
-}: {
-  task: TaskSummary;
-  index: number;
-  disabled: boolean;
-  onOpenTask: (taskId: number) => void;
-  renderTask: ProgressTaskRenderer;
-}) {
-  const { ref, handleRef, isDragging } = useSortable({ id: task.id, index, disabled });
-  return (
-    <li
-      ref={ref}
-      className={[
-        'epic-progress__row',
-        'card',
-        task.agentStatus === 'pending' && task.taskStatus !== 'done' ? 'card--pending' : '',
-        isDragging ? 'is-dragging' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      data-task-id={task.id}
-    >
-      {renderTask(task, {
-        grip: (
-          <span ref={handleRef} className="epic-progress__grip" aria-hidden="true">
-            <GripVerticalIcon focusable="false" />
-          </span>
-        ),
-        disabled,
-        onOpen: () => onOpenTask(task.id),
-      })}
-    </li>
   );
 }

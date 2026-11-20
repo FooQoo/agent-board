@@ -1,5 +1,5 @@
 import type { TaskSummary, Epic } from '../../../shared/api/contracts';
-import type { ProgressTaskRenderer } from './EpicProgressList';
+import type { ProgressTaskRenderer } from './progressTypes';
 import { EpicEditorView } from './EpicEditorView';
 import { useEpicEditor } from './useEpicEditor';
 import type { EpicApi } from './epicApi';

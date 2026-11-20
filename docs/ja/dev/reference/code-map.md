@@ -69,6 +69,8 @@
 - `web/`: Viteのアプリです。`web/src/`のソースは`app/`・`pages/`・`features/`・`shared/`に分けています（[Webコードの置き場所](../concepts/server-and-ui.md#webコードの置き場所)）。
 - `src/domain/markdown_blocks.rs`: 本文をトップレベルのMarkdownブロックに分けます。I/Oは行いません。
 - `web/src/shared/data/`: データ層です。`api/`は契約の型とDetailの解析、`core/`はReactに依存しないキャッシュ・スケジューラー・イベント接続、`react/`は画面が使うフックを置きます。[データの読み取りと更新](../concepts/server-and-ui.md#データの読み取りと更新)を参照してください。
+- `web/src/shared/lib/gesture/sortableDrag.ts`: カードをグループにまたがって並べ替える一覧（ボードのレーンと、エピック編集画面のウェーブ）が共有する、ドラッグ操作と落とし先の判定です。`cardSensors`（`cardActivationConstraints`と`GRIP_CLASS`を含む）は、カード全体をドラッグ対象にし、グリップへのタッチはすぐに、ほかへのタッチは短く押したままにしてからドラッグを始めるので、スワイプのスクロールは妨げられません。`dropPlacement`は、終わったドラッグを、グループ、そのグループのほかの項目の中での位置、動かなかったかどうかとして読みます。並べ替えの項目は`useSortable({ group })`で、落とし先の領域は`data.group`でグループを示します。
+- `web/src/features/epics/editor/`: エピックのダイアログです。`waveModel.ts`はウェーブの純粋な操作（`normalizeWaves`、`moveTask`、`moveWave`、`waveStatuses`）、`EpicProgressList.tsx`はドラッグの範囲と落としたときの処理、`WaveRow.tsx`は1つのウェーブ（見出し、ハンドル、カードの行）、`WaveTask.tsx`は1枚のカード、`useEpicEditor.ts`は`waves`を保存する編集の状態を持ちます。[作業順序を決める](../../guide/watch/epics.md)を参照してください。
 - `web/src/shared/markdown/`: Markdownの描画部です。`MarkdownBlocks`は本文のブロックを描き、大きい本文を仮想化します（`VirtualMarkdown.tsx`）。
 - `web/src/features/notification-settings/`: 設定ダイアログの「通知」の行と、それが開くダイアログ。読み取りと保存、およびサーバーと同じ種類と既定値を持ちます。
 - `web/src/shared/preferences/`: ブラウザ側の保存した言語とカラーテーマ。読み取りと保存、ブラウザの最初の描画用の控え、`preferences`イベントを扱います。[サーバーと画面](../concepts/server-and-ui.md)を参照してください。

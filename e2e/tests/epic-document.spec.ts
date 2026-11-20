@@ -273,7 +273,7 @@ test('the page shows the epic details with its cards in order and the Markdown i
   await expect(editor).toContainText('Alpha text.');
   const picture = editor.getByRole('img', { name: 'alpha picture' });
   await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-  const order = dialog.getByRole('list', { name: 'Progress' }).getByRole('listitem');
+  const order = dialog.getByRole('list', { name: 'Progress' }).locator('.epic-progress__row');
   await expect(order).toHaveCount(3);
   await expect(order.nth(0)).toContainText('#3');
   await expect(order.nth(0).getByRole('button', { name: 'Card 3' })).toBeVisible();
@@ -306,7 +306,7 @@ test('the page shows the epic details with its cards in order and the Markdown i
   await expect(dialog).toBeVisible();
   await expect(editor).toContainText('Alpha text. Edited in the page.');
   await expect.poll(() => editor.getByRole('img', { name: 'alpha picture' }).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-  const orderAgain = dialog.getByRole('list', { name: 'Progress' }).getByRole('listitem');
+  const orderAgain = dialog.getByRole('list', { name: 'Progress' }).locator('.epic-progress__row');
   await expect(orderAgain).toHaveCount(3);
   await expect(orderAgain.nth(0)).toContainText('#3');
   await expect(orderAgain.nth(1)).toContainText('#1');

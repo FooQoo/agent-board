@@ -15,12 +15,12 @@ import type { EpicApi, EpicSaveInput } from './epicApi';
 import {
   epicSnapshot,
   nameIsValid,
-  orderOf,
   snapshotOfEpic,
   storedOf,
   type EpicEditorPanel,
   type EpicSaveStep,
 } from './epicEditorModel';
+import { normalizeWaves, unlistedOf, type Waves } from './waveModel';
 import { useOverLimit } from '../../../shared/ui/editor/EditorBody';
 
 export function useEpicEditor({
@@ -54,9 +54,9 @@ export function useEpicEditor({
     name: epic.name,
     color: epic.color.toUpperCase(),
     document: normalizeNewlines(epic.wavesError ? epic.document : epic.body),
-    order: orderOf(epic.waves.flat(), members),
+    waves: normalizeWaves(epic.waves, members),
   }));
-  const [order, setOrder] = useState<number[]>(() => saved.order);
+  const [wavesState, setWaves] = useState<Waves>(() => saved.waves);
   const [panel, setPanel] = useState<EpicEditorPanel>('progress');
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
@@ -84,11 +84,19 @@ export function useEpicEditor({
   const imagesChanged = localAdded.length > 0 || removed.length > 0;
   const documentChanged = epicDocument !== saved.document;
   const detailsChanged = name.trim() !== saved.name || color.toUpperCase() !== saved.color;
-  const rowIds = orderOf(order, members);
-  const rows = rowIds
-    .map((id) => members.find((task) => task.id === id))
-    .filter((task): task is TaskSummary => task !== undefined);
-  const orderChanged = JSON.stringify(order) !== JSON.stringify(saved.order);
+  const waves = normalizeWaves(wavesState, members);
+  const byId = new Map(members.map((task) => [task.id, task]));
+  const waveRows = waves.map((wave) =>
+    wave.flatMap((id) => {
+      const task = byId.get(id);
+      return task ? [task] : [];
+    }),
+  );
+  const unlisted = unlistedOf(waves, members).flatMap((id) => {
+    const task = byId.get(id);
+    return task ? [task] : [];
+  });
+  const orderChanged = JSON.stringify(waves) !== JSON.stringify(saved.waves);
   const dirty = imagesChanged || documentChanged || detailsChanged || orderChanged;
   const overLimit = useOverLimit(epicDocument, EPIC_DOCUMENT_LIMIT);
   const validName = nameIsValid(name);
@@ -100,7 +108,7 @@ export function useEpicEditor({
     color,
     document: epicDocument,
     imageIds: attachmentState.attachments.map((attachment) => attachment.id),
-    order: rowIds,
+    waves,
   });
   const lock = usePreviewLock({
     draftAtOpen: wasDraft,
@@ -128,17 +136,17 @@ export function useEpicEditor({
     },
     apply: (latest) => {
       const text = normalizeNewlines(latest.wavesError ? latest.document : latest.body);
-      const latestOrder = orderOf(latest.waves.flat(), members);
+      const latestWaves = normalizeWaves(latest.waves, members);
       setSaved({
         name: latest.name,
         color: latest.color.toUpperCase(),
         document: text,
-        order: latestOrder,
+        waves: latestWaves,
       });
       setName(latest.name);
       setColor(latest.color.toUpperCase());
       setEpicDocument(text);
-      setOrder(latestOrder);
+      setWaves(latestWaves);
       setRemoved([]);
       setWhole(latest.wavesError);
       setWasDraft(latest.draft !== null);
@@ -177,10 +185,10 @@ export function useEpicEditor({
       }
       step = 'order';
       if (orderChanged) {
-        await api.saveWaves(rowIds.map((id) => [id]));
+        await api.saveWaves(waves);
         somethingSaved.current = true;
-        setSaved((current) => ({ ...current, order: rowIds }));
-        setOrder(rowIds);
+        setSaved((current) => ({ ...current, waves }));
+        setWaves(waves);
       }
       // The order is saved under its own lock, so the epic goes last: its request also ends
       // the draft the dialog entered.
@@ -212,14 +220,6 @@ export function useEpicEditor({
       );
     }
   };
-
-  const move = (from: number, to: number) =>
-    setOrder(() => {
-      const next = [...rowIds];
-      const [moved] = next.splice(from, 1);
-      if (moved !== undefined) next.splice(to, 0, moved);
-      return next;
-    });
 
   /** Takes back the draft the dialog entered (if any), then goes on; a saved dialog does not. */
   const leaveThen = async (next: () => void) => {
@@ -256,7 +256,9 @@ export function useEpicEditor({
     setColor,
     epicDocument,
     setEpicDocument,
-    rows,
+    waveRows,
+    unlisted,
+    changeWaves: setWaves,
     dirty,
     overLimit,
     valid,
@@ -278,7 +280,6 @@ export function useEpicEditor({
     requestOpenTask,
     discardAndOpenTask,
     close,
-    move,
     attachmentState,
     removeAttachment,
   };
