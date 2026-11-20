@@ -130,26 +130,57 @@ fn write_journal(path: &Path, journal: &BatchJournal) -> Result<(), AgboardError
 
 /// Save every change, or none of them. Each `old` must still match its file.
 pub fn save_batch_locked(project: &Path, changes: Vec<FileChange>) -> Result<(), AgboardError> {
-    recover_batches_locked(project)?;
+    save_batch_reporting(project, changes).map_err(|failure| failure.error)
+}
+
+/// Why a batch failed, and whether it had passed its commit point (the `Committed` journal was
+/// written) when it did. Recovery keeps a committed batch, so what it names must stay.
+#[derive(Debug)]
+pub struct BatchFailure {
+    pub error: AgboardError,
+    pub committed: bool,
+}
+
+impl BatchFailure {
+    /// A failure before the commit point.
+    pub fn before(error: AgboardError) -> Self {
+        Self {
+            error,
+            committed: false,
+        }
+    }
+
+    /// A failure after the commit point.
+    pub fn after(error: AgboardError) -> Self {
+        Self {
+            error,
+            committed: true,
+        }
+    }
+}
+
+/// `save_batch_locked`, telling the caller whether a failure came after the commit point.
+pub fn save_batch_reporting(project: &Path, changes: Vec<FileChange>) -> Result<(), BatchFailure> {
+    recover_batches_locked(project).map_err(BatchFailure::before)?;
     for change in &changes {
-        validate_target(project, &change.target)?;
-        if read_optional(project, &change.target)? != change.old {
-            return Err(write_error(
+        validate_target(project, &change.target).map_err(BatchFailure::before)?;
+        if read_optional(project, &change.target).map_err(BatchFailure::before)? != change.old {
+            return Err(BatchFailure::before(write_error(
                 &label(&change.target),
                 "The file changed before saving.",
-            ));
+            )));
         }
     }
     let changes: Vec<FileChange> = changes.into_iter().filter(|c| c.old != c.new).collect();
     if changes.is_empty() {
         return Ok(());
     }
-    reject_symlinks(project, Path::new(DIR))?;
+    reject_symlinks(project, Path::new(DIR)).map_err(BatchFailure::before)?;
     let dir = project.join(DIR);
-    fs::create_dir_all(&dir).map_err(|e| write_error(DIR, e))?;
+    fs::create_dir_all(&dir).map_err(|e| BatchFailure::before(write_error(DIR, e)))?;
     let path = dir.join(format!(
         "{}.json",
-        random_hex(16).map_err(|e| write_error(DIR, e))?
+        random_hex(16).map_err(|e| BatchFailure::before(write_error(DIR, e)))?
     ));
     let mut journal = BatchJournal {
         format_version: 1,
@@ -157,26 +188,32 @@ pub fn save_batch_locked(project: &Path, changes: Vec<FileChange>) -> Result<(),
         hashes: hashes(&changes),
         changes,
     };
-    write_journal(&path, &journal)?;
-    sync_dir(&dir).map_err(|e| write_error(DIR, e))?;
+    write_journal(&path, &journal).map_err(BatchFailure::before)?;
+    sync_dir(&dir).map_err(|e| BatchFailure::before(write_error(DIR, e)))?;
     let applied = journal
         .changes
         .iter()
         .try_for_each(|c| place(project, &c.target, c.new.as_deref()));
     if let Err(error) = applied {
         for change in journal.changes.iter().rev() {
-            place(project, &change.target, change.old.as_deref())?;
+            place(project, &change.target, change.old.as_deref()).map_err(BatchFailure::before)?;
         }
         let _ = fs::remove_file(&path);
-        return Err(error);
+        return Err(BatchFailure::before(error));
     }
     journal.phase = Phase::Committed;
     if let Err(error) = write_journal(&path, &journal) {
-        recover_batches_locked(project)?;
-        return Err(error);
+        recover_batches_locked(project).map_err(BatchFailure::before)?;
+        return Err(BatchFailure::before(error));
     }
-    fs::remove_file(&path).map_err(|e| write_error(DIR, e))?;
-    sync_dir(&dir).map_err(|e| write_error(DIR, e))
+    finish_committed(&path, &dir)
+}
+
+/// Remove the journal of a committed batch. The new files are durable already, so a failure
+/// here is reported as one that came after the commit point.
+fn finish_committed(journal: &Path, dir: &Path) -> Result<(), BatchFailure> {
+    fs::remove_file(journal).map_err(|e| BatchFailure::after(write_error(DIR, e)))?;
+    sync_dir(dir).map_err(|e| BatchFailure::after(write_error(DIR, e)))
 }
 
 /// Resolve the journals of interrupted batches: roll prepared ones back, keep committed ones.
@@ -315,5 +352,25 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let err = save_batch_locked(root.path(), vec![change("project.json", None, Some("x"))]);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn a_failure_reports_whether_the_commit_point_was_reached() {
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path();
+        fs::create_dir_all(project.join("tasks/1")).unwrap();
+        fs::write(project.join("tasks/1/TASK.md"), "old").unwrap();
+
+        // A stale old value fails before anything is journaled.
+        let failure = save_batch_reporting(
+            project,
+            vec![change("tasks/1/TASK.md", Some("stale"), Some("new"))],
+        )
+        .unwrap_err();
+        assert!(!failure.committed);
+
+        // Cleanup that fails after the journal was marked committed is past the commit point.
+        let failure = finish_committed(&project.join("missing.json"), project).unwrap_err();
+        assert!(failure.committed);
     }
 }
