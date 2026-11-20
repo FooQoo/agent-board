@@ -147,7 +147,7 @@ fn a_note_that_could_not_be_saved_is_kept_and_a_clean_turn_end_does_not_release_
     // A clean end of a child's turn only releases that child's handed tasks.
     let push = crate::server::resident::push::Push::new();
     push.add_handed(&[id]);
-    assert!(push.settle(false, true).is_empty());
+    assert!(push.settle(None, true).is_none());
     assert_eq!(fx.launcher.unrecorded.lock().unwrap().len(), 1);
     // Still failing: the entry stays, once.
     fx.launcher.retry_handoffs();

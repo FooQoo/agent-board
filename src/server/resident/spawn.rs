@@ -207,12 +207,14 @@ impl Launcher {
                     push.attach(SystemClock.now());
                     self.on_attached(tool, launch_id);
                     // A turn that a person's stop cut short is not an error to hand over.
-                    let failed = matches!(outcome, TurnOutcome::Failed { .. });
-                    let handed = push.settle(failed, driver.is_idle());
-                    if let TurnOutcome::Failed { message } = &outcome
+                    let failure = match &outcome {
+                        TurnOutcome::Failed { message } => Some(message.as_str()),
+                        _ => None,
+                    };
+                    if let Some((handed, detail)) = push.settle(failure, driver.is_idle())
                         && self.is_current_plan(tool, launch_id)
                     {
-                        self.hand_over(project, &handed, message);
+                        self.hand_over(project, &handed, &detail);
                     }
                     push.turn_ended(&outcome);
                 }

@@ -40,6 +40,9 @@ pub(super) struct Push {
     /// cannot be matched to sends (Claude Code also ends turns nobody sent, for example when a
     /// background command finishes), so this is a set, not a queue: see [`Push::settle`].
     handed: Mutex<Vec<i64>>,
+    /// The message of a failed turn end seen while another turn ran, kept until [`Push::settle`]
+    /// can hand the tasks over with it.
+    failure: Mutex<Option<String>>,
 }
 
 impl Push {
@@ -51,6 +54,7 @@ impl Push {
             attached_at: Mutex::new(None),
             closed: Mutex::new(false),
             handed: Mutex::new(Vec::new()),
+            failure: Mutex::new(None),
         }
     }
 
@@ -115,17 +119,23 @@ impl Push {
         std::mem::take(&mut *self.handed.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
-    /// A turn ended. Returns the tasks to hand over: the handed ones, when the turn failed and
-    /// the session is idle. Only an idle session is sure to work on nothing, so a turn end seen
-    /// while another turn runs (an autonomous end, or one the next push raced ahead of) neither
-    /// takes nor drops anything, and the tasks wait for a later end. An idle session that ended
-    /// a turn cleanly has finished what it was given, so those tasks are released without a note.
-    pub(super) fn settle(&self, failed: bool, idle: bool) -> Vec<i64> {
+    /// A turn ended; `failure` is its message when it failed. Returns the tasks to hand over and
+    /// the failure detail for their note: the handed ones, when a failure is known and the
+    /// session is idle. Only an idle session is sure to work on nothing, so a turn end seen while
+    /// another turn runs (an autonomous end, or one the next push raced ahead of) takes and drops
+    /// nothing. A failure seen then is kept (the first one wins) until the session is idle, even
+    /// if that end is a clean one. An idle session that ended a turn cleanly with no failure
+    /// pending has finished what it was given, so those tasks are released without a note.
+    pub(super) fn settle(&self, failure: Option<&str>, idle: bool) -> Option<(Vec<i64>, String)> {
+        let mut pending = self.failure.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(message) = failure {
+            pending.get_or_insert_with(|| message.to_string());
+        }
         if !idle {
-            return Vec::new();
+            return None;
         }
         let handed = self.take_all_handed();
-        if failed { handed } else { Vec::new() }
+        pending.take().map(|detail| (handed, detail))
     }
 
     /// A turn ended: remember how, and look at the board.
@@ -209,18 +219,35 @@ mod tests {
         let push = Push::new();
         push.add_handed(&[1]);
         // An autonomous failed end while the session works on task 1's turn.
-        assert!(push.settle(true, false).is_empty());
-        assert!(push.settle(false, false).is_empty());
+        assert!(push.settle(Some("boom"), false).is_none());
+        assert!(push.settle(None, false).is_none());
         // The turn really fails once the session is idle.
-        assert_eq!(push.settle(true, true), vec![1]);
-        assert!(push.settle(true, true).is_empty());
+        assert_eq!(
+            push.settle(Some("boom"), true),
+            Some((vec![1], "boom".into()))
+        );
+        assert!(
+            push.settle(Some("boom"), true)
+                .is_none_or(|(t, _)| t.is_empty())
+        );
+    }
+
+    #[test]
+    fn a_failure_seen_while_busy_is_applied_at_the_next_clean_idle_end() {
+        let push = Push::new();
+        push.add_handed(&[1]);
+        assert!(push.settle(Some("first"), false).is_none());
+        assert!(push.settle(Some("second"), false).is_none());
+        assert_eq!(push.settle(None, true), Some((vec![1], "first".into())));
+        push.add_handed(&[2]);
+        assert!(push.settle(None, true).is_none());
     }
 
     #[test]
     fn a_clean_end_of_an_idle_session_releases_the_tasks_without_a_note() {
         let push = Push::new();
         push.add_handed(&[1, 2]);
-        assert!(push.settle(false, true).is_empty());
+        assert!(push.settle(None, true).is_none());
         assert!(push.take_all_handed().is_empty());
     }
 
