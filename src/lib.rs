@@ -8,6 +8,7 @@ pub mod error;
 pub mod file_store;
 pub mod interact;
 pub mod lifecycle;
+pub mod nudge;
 pub mod paths;
 pub mod plugin_hash;
 pub mod progress;
