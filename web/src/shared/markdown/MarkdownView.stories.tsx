@@ -198,6 +198,20 @@ export const ImageEnlarge: Story = {
   },
 };
 
+/** The enlarged view opens at the pressed picture and swipes across the pictures of the same text. */
+export const ImageEnlargeSwipe: Story = {
+  args: {
+    source: `![First](attachment:${KNOWN})\n\nBetween.\n\n![Second](attachment:${KNOWN})\n\n![Third](attachment:${KNOWN})`,
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Enlarge Second' }));
+    const dialog = await within(document.body).findByRole('dialog', { name: 'Second' });
+    await waitFor(() => expect(within(dialog).getByText('2 / 3')).toBeVisible());
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(within(dialog).getByText('3 / 3')).toBeVisible());
+  },
+};
+
 /**
  * A well-formed Mermaid block is drawn as a diagram. Its labels are SVG text: HTML inside
  * `foreignObject` kept a closed sheet and its whole document in memory.

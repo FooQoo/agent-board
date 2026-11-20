@@ -88,7 +88,7 @@ describe('ResultsView', () => {
     render(<ResultsView state={{ status: 'ready', results: [many] }} attachmentUrl={url} />);
     fireEvent.click(screen.getByRole('button', { name: 'Enlarge image 1 of 3 of result 3' }));
     const viewer = document.querySelector('[data-viewer]') as HTMLElement;
-    expect(viewer.querySelectorAll('.results__slide')).toHaveLength(3);
+    expect(viewer.querySelectorAll('.lightbox__slide')).toHaveLength(3);
     expect(screen.getByText('1 / 3')).toBeTruthy();
     Object.defineProperty(viewer, 'clientWidth', { value: 300, configurable: true });
     viewer.scrollLeft = 600;

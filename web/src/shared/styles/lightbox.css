@@ -75,3 +75,60 @@
   max-height: 85vh;
   height: auto;
 }
+
+/*
+ * The enlarged view. The viewer is a row of slides, one viewer wide, that snaps to one slide at a
+ * time and scrolls sideways by itself; a slide scrolls up and down when its image is taller than
+ * the viewer. Each axis scrolls in its own box, so the browser settles a gesture on one axis and a
+ * vertical drag does not move the row. The images fit the width; a tall one scrolls.
+ */
+.lightbox__zoom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lightbox__viewer {
+  display: flex;
+  /* The lightbox content box: the screen less its margin and padding, up to the dialog's cap. */
+  width: min(calc(100vw - 48px), 1000px);
+  max-height: calc(var(--lightbox-height, 85vh) - 44px - 8px - 28px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.lightbox__viewer::-webkit-scrollbar {
+  display: none;
+}
+
+.lightbox__slide {
+  display: flex;
+  flex: 0 0 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.lightbox .lightbox__slide img {
+  flex: none;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  margin: auto;
+}
+
+.lightbox__position {
+  color: var(--r-text);
+  font-size: 13px;
+  line-height: 22px;
+}
