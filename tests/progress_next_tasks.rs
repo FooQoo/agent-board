@@ -203,6 +203,65 @@ fn waves(home: &Path, values: &[&str]) {
     agboard(home, &args);
 }
 
+fn done(home: &Path, id: i64) {
+    agboard(
+        home,
+        &[
+            "mv",
+            &id.to_string(),
+            "done",
+            "--actor",
+            "human",
+            "--reason",
+            "ok",
+        ],
+    );
+}
+
+#[test]
+fn a_wave_waits_for_the_waves_before_it_and_the_tasks_of_one_wave_are_listed_together() {
+    let home = board(&["ALPHA"]);
+    let first = ready(home.path(), Some("ALPHA"));
+    let second = ready(home.path(), Some("ALPHA"));
+    let third = ready(home.path(), Some("ALPHA"));
+    let fourth = ready(home.path(), Some("ALPHA"));
+    let (a, b, c, d) = (
+        first.to_string(),
+        second.to_string(),
+        third.to_string(),
+        fourth.to_string(),
+    );
+    waves(home.path(), &[&a, &format!("{b},{c}"), &d]);
+    let ids = |home: &Path| -> Vec<i64> { next(home).into_iter().map(|(id, _)| id).collect() };
+
+    assert_eq!(ids(home.path()), vec![first]);
+    done(home.path(), first);
+    assert_eq!(ids(home.path()), vec![second, third]);
+    done(home.path(), second);
+    // The wave is not finished while one of its tasks is open.
+    assert_eq!(ids(home.path()), vec![third]);
+    done(home.path(), third);
+    assert_eq!(ids(home.path()), vec![fourth]);
+}
+
+#[test]
+fn stalled_doing_work_is_resumed_even_when_its_wave_is_not_open_and_unlisted_tasks_are_not_gated() {
+    let home = board(&["ALPHA"]);
+    let first = ready(home.path(), Some("ALPHA"));
+    let second = ready(home.path(), Some("ALPHA"));
+    let unlisted = ready(home.path(), Some("ALPHA"));
+    waves(home.path(), &[&first.to_string(), &second.to_string()]);
+    doing(home.path(), second);
+    assert_eq!(
+        next(home.path()),
+        vec![
+            (second, "resume".to_string()),
+            (first, "next_in_epic".to_string()),
+            (unlisted, "next_in_epic".to_string()),
+        ]
+    );
+}
+
 #[test]
 fn saving_waves_leaves_no_empty_wave_and_drops_tasks_that_are_not_members() {
     let home = board(&["ALPHA"]);
@@ -220,4 +279,7 @@ fn saving_waves_leaves_no_empty_wave_and_drops_tasks_that_are_not_members() {
     assert!(stored.contains(&format!("- {second}\n")), "{stored}");
     assert!(!stored.contains(&o) && !stored.contains(&ghost), "{stored}");
     assert_eq!(table["epics"][0]["wavesError"], false);
+    // Only the first wave can start, and the order survives a reload.
+    let ids: Vec<i64> = next(home.path()).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, vec![first, outsider]);
 }

@@ -95,7 +95,7 @@ The server also checks existing tasks when it starts. Tasks that wait for an ans
 
 An `EPIC.md` holds the epic's details in free Markdown. Write the epic's reference completion conditions directly in the body as ordinary Markdown; they are not parsed as acceptance data, and an epic has no history.
 
-Its frontmatter may hold a `waves` list. Each item is one wave: a task ID, or task IDs joined by commas. The task IDs are distinct positive numbers. The waves set the order in the epic's progress panel and in the CLI progress table, independently of the board columns. Tasks of one wave can run in parallel:
+Its frontmatter may hold a `waves` list. Each item is one wave: a task ID, or task IDs joined by commas. The task IDs are distinct positive numbers. The waves set the order in the epic's progress panel and in the CLI progress table, independently of the board columns. Tasks of one wave can run in parallel, and a wave starts when every task of the earlier waves is Done:
 
 ```yaml
 waves:

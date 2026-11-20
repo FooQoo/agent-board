@@ -153,7 +153,7 @@ pub fn build_with(
         cursor: snapshot.cursor.clone(),
         locale: None,
         epics: groups,
-        next_tasks: next::next_tasks(&listed, &project_dir),
+        next_tasks: next::next_tasks(&listed, snapshot, &project_dir),
         unassigned: unassigned
             .into_iter()
             .map(|task| task_of(task, &project_dir))

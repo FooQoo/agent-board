@@ -40,7 +40,7 @@ Select an epic to read its name, details, and images in the details column besid
 
 ## Order the work
 
-An epic orders its tasks in waves. The tasks of one wave can run in parallel. Put tasks that depend on each other in later waves, and tasks that can run side by side in the same wave.
+An epic orders its tasks in waves. The tasks of one wave can run in parallel, and a wave starts only when every task of the waves before it is Done. Put tasks that depend on each other in later waves, and tasks that can run side by side in the same wave.
 
 Save the waves from the command line, one value per wave. A value is a task ID, or task IDs joined by commas:
 
@@ -57,8 +57,9 @@ waves:
 - 4
 ```
 
-The entries must be distinct positive task IDs across all waves, and only current members of the epic are kept. A wave that ends up empty is dropped. Unlisted members follow in ascending ID order. Pass `--waves ""` to clear the explicit order. The order is independent of where tasks sit on the board.
+The entries must be distinct positive task IDs across all waves, and only current members of the epic are kept. A wave that ends up empty is dropped. Unlisted members follow in ascending ID order, and a task that no wave lists is never held back. Pass `--waves ""` to clear the explicit order. The order is independent of where tasks sit on the board.
 
+The next-task list for agents holds back a Todo task while any task of an earlier wave is not Done. Archived tasks no longer count as unfinished. Stalled work in Doing is still offered to resume.
 
 ## Edit an epic in the browser
 
