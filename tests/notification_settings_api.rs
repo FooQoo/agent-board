@@ -21,7 +21,7 @@ fn nothing_saved_reads_as_the_defaults() {
     assert_eq!(
         reply.json(),
         json!({
-            "kinds": {"results": true, "questions": true, "history": false},
+            "kinds": {"results": true, "questions": false, "history": false},
             "revision": 0
         })
     );

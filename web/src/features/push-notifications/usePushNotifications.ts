@@ -12,6 +12,7 @@ import { disablePush, enablePush, hasBrowserSubscription } from './subscribe';
 
 export interface PushController {
   view: PushView;
+  permission: PushPermission;
   support: PushSupport;
   busy: boolean;
   /** The last turn-on or turn-off failed. */
@@ -73,6 +74,7 @@ export function usePushNotifications(): PushController {
 
   return {
     view: pushView(support, permission, status),
+    permission,
     support,
     busy,
     failed,

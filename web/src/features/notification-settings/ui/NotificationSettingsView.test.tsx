@@ -18,7 +18,7 @@ describe('NotificationSettingsView', () => {
     const on = (name: string) =>
       screen.getByRole('checkbox', { name: new RegExp(name) }).getAttribute('aria-checked');
     expect(on('^Results')).toBe('true');
-    expect(on('^Questions that need')).toBe('true');
+    expect(on('^Questions that need')).toBe('false');
     expect(on('^History additions')).toBe('false');
   });
 

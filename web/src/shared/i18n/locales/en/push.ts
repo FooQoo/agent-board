@@ -15,4 +15,10 @@ export const pushEn = {
     disable: 'Turn off',
     failed: 'Could not change the notification setting. Try again.',
   },
+  pushPrompt: {
+    title: 'Turn on notifications?',
+    body: 'Get a notification on this phone when a result is ready, even while the app is closed.',
+    note: 'You can choose what to be notified about, or turn it off, in Settings.',
+    later: 'Not now',
+  },
 };
