@@ -62,6 +62,9 @@ export interface MonitorScreenProps extends MonitorEnvironment {
   resultLink?: ResultLinkTarget | null;
   /** The drawer of the link's task was closed: the app takes the link out of the address. */
   onResultLinkClose?: () => void;
+  /** The address asks for the messages on the Summary tab; the app takes it out when the list closes. */
+  summaryLink?: boolean;
+  onSummaryLinkClose?: () => void;
 }
 
 export interface MonitorProjectProps extends MonitorEnvironment {
@@ -121,6 +124,8 @@ export function MonitorScreen({
   settings,
   resultLink,
   onResultLinkClose,
+  summaryLink,
+  onSummaryLinkClose,
 }: MonitorScreenProps) {
   const summary = useSummary(projectId);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -190,6 +195,8 @@ export function MonitorScreen({
     statusSlot,
     resultLink,
     onResultLinkClose,
+    summaryLink,
+    onSummaryLinkClose,
     freshness,
     onRefresh: () => void refresh(),
     refreshing,

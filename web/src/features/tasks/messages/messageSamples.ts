@@ -1,5 +1,5 @@
 import type { Message } from '@/shared/data/api/contracts';
-import type { MessageDetail, MessagesApi } from './model/messages';
+import type { MessageDetail, MessagesApi, PeriodicSummary } from './model/messages';
 
 /**
  * Sample messages for the Stories and the guide: the open messages of the approved mock, in both
@@ -206,4 +206,60 @@ export function sampleMessagesApi(language: string, over: Partial<MessagesApi> =
     withdraw: async () => undefined,
     ...over,
   };
+}
+
+const summaryTitles: Record<number, { ja: string; en: string }> = {
+  548: {
+    ja: '通知の許可ダイアログをやさしい文面にする',
+    en: 'Soften the wording of the notification permission dialog',
+  },
+  549: {
+    ja: 'プロジェクト切り替えの一覧を検索できるようにする',
+    en: 'Make the project switcher list searchable',
+  },
+  551: {
+    ja: '設定ダイアログのテーマ見本を見やすくする',
+    en: 'Make the theme swatches in the settings dialog easier to read',
+  },
+  552: {
+    ja: 'スマホのボードを引っ張って更新にする',
+    en: 'Make the phone board refresh by pulling down',
+  },
+  556: {
+    ja: '受け入れ条件の編集中に別の端末で更新があったときの警告を分かりやすくする',
+    en: 'Make the warning clearer when another device updates acceptance conditions while you are editing them',
+  },
+};
+
+/** Sample periodic summaries of the Stories, newest first: four windows, none dismissed. */
+export function sampleSummaries(language: string): PeriodicSummary[] {
+  const lang = language.startsWith('ja') ? 'ja' : 'en';
+  const results = (ids: number[]) =>
+    ids.map((taskId) => ({ taskId, title: summaryTitles[taskId]?.[lang] ?? '' }));
+  return [
+    {
+      id: 's-20261120T010000Z',
+      from: '2026-11-20T00:00:00Z',
+      to: '2026-11-20T01:00:00Z',
+      results: results([552, 556]),
+    },
+    {
+      id: 's-20261119T230000Z',
+      from: '2026-11-19T22:00:00Z',
+      to: '2026-11-19T23:00:00Z',
+      results: results([551]),
+    },
+    {
+      id: 's-20261119T080000Z',
+      from: '2026-11-19T07:00:00Z',
+      to: '2026-11-19T08:00:00Z',
+      results: results([549]),
+    },
+    {
+      id: 's-20261119T060000Z',
+      from: '2026-11-19T05:00:00Z',
+      to: '2026-11-19T06:00:00Z',
+      results: results([548]),
+    },
+  ];
 }

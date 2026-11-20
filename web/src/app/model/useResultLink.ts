@@ -26,6 +26,13 @@ export function useResultLink(
   const [resultParam, setResultParam] = useQueryState('result', parseAsString);
   const [tabParam, setTabParam] = useQueryState('tab', parseAsString);
   const [questionParam, setQuestionParam] = useQueryState('question', parseAsString);
+  // `?project=…&messages=summary` (the periodic summary notification) opens the messages on the Summary tab.
+  const [messagesParam, setMessagesParam] = useQueryState('messages', parseAsString);
+  const summaryLink = requested !== null && messagesParam === 'summary';
+  const clearSummaryLink = useCallback(
+    () => void setMessagesParam(null, { history: 'replace' }),
+    [setMessagesParam],
+  );
   const resultLink = useMemo(
     () =>
       parseResultTarget(
@@ -44,7 +51,8 @@ export function useResultLink(
     void setResultParam(null, { history: 'replace' });
     void setTabParam(null, { history: 'replace' });
     void setQuestionParam(null, { history: 'replace' });
-  }, [setTaskParam, setResultParam, setTabParam, setQuestionParam]);
+    void setMessagesParam(null, { history: 'replace' });
+  }, [setTaskParam, setResultParam, setTabParam, setQuestionParam, setMessagesParam]);
   const selectRequested = useCallback(
     (projectId: string | null, options?: { history?: 'push' | 'replace' }) => {
       clearResultLink();
@@ -52,7 +60,11 @@ export function useResultLink(
     },
     [setRequested, clearResultLink],
   );
-  return { resultLink, clearResultLink, selectRequested };
+  const summary = useMemo(
+    () => ({ requested: summaryLink, clear: clearSummaryLink }),
+    [summaryLink, clearSummaryLink],
+  );
+  return { resultLink, clearResultLink, selectRequested, summary };
 }
 
 /** On the PC board the link's task is selected once, so the person can choose another card afterwards. */

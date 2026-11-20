@@ -1,7 +1,7 @@
 // The data core as one object: the store, the gate, the scheduler and the connection, wired
 // together. A framework binding (React) needs only this and an adapter.
 import type { ProjectId } from '../../api/contracts';
-import type { DetailSection } from '../api/contracts';
+import type { ChangedEvent, DetailSection } from '../api/contracts';
 import { ChangeInvalidator } from './change-invalidator';
 import { type ConnectionState, EventConnection, type VisibilitySource } from './event-connection';
 import { PresentationGate } from './presentation-gate';
@@ -25,6 +25,7 @@ export class DataCore {
   readonly scheduler: RefreshScheduler;
   readonly connection: EventConnection;
   private readonly watched = new Map<ProjectId, number>();
+  private readonly changeListeners = new Set<(event: ChangedEvent | null) => void>();
   private started = false;
 
   constructor(options: DataCoreOptions) {
@@ -43,8 +44,14 @@ export class DataCore {
     this.connection = new EventConnection({
       adapter: options.adapter,
       visibility: options.visibility,
-      onChanged: (event) => this.scheduler.onChanged(event),
-      onReset: (reason) => this.scheduler.onReset(reason),
+      onChanged: (event) => {
+        this.scheduler.onChanged(event);
+        for (const listener of [...this.changeListeners]) listener(event);
+      },
+      onReset: (reason) => {
+        this.scheduler.onReset(reason);
+        for (const listener of [...this.changeListeners]) listener(null);
+      },
       onConnected: (reconnect) => this.scheduler.connected(reconnect),
       onReady: options.onReady,
       onPreferences: options.onPreferences,
@@ -54,6 +61,18 @@ export class DataCore {
         if (state === 'disconnected' || state === 'hidden') this.loadMissingSummaries();
       },
     });
+  }
+
+  /**
+   * Follows every change notification as it arrives, for data that is read by its own route and
+   * not through the Summary. The listener gets `null` when the cache can no longer be trusted (a
+   * missed event, a new connection), meaning "read it again". Returns the function that ends it.
+   */
+  subscribeChanges(listener: (event: ChangedEvent | null) => void): () => void {
+    this.changeListeners.add(listener);
+    return () => {
+      this.changeListeners.delete(listener);
+    };
   }
 
   /** Opens the connection. Summaries wanted before this wait for the subscription. */

@@ -1,11 +1,14 @@
 import type { Choice, ProjectId } from '@/shared/api/contracts';
 import type { Message } from '@/shared/data/api/contracts';
 
-/** The two tabs of the list: what the AI asks you, and what you asked the AI. */
-export type MessageTab = 'fromAi' | 'fromYou';
+/** The two tabs of messages: what the AI asks you, and what you asked the AI. */
+export type MessageKindTab = 'fromAi' | 'fromYou';
+
+/** The tabs of the list: the two kinds of messages, and the periodic summaries. */
+export type MessageTab = MessageKindTab | 'summary';
 
 /** Which tab a listed message belongs to. A message that is over is not listed at all. */
-export function tabOf(message: Message): MessageTab | null {
+export function tabOf(message: Message): MessageKindTab | null {
   if (message.turn === null) return null;
   return message.from === 'ai' ? 'fromAi' : 'fromYou';
 }
@@ -130,8 +133,75 @@ export interface AnswerItem {
   text?: string;
 }
 
+/** One result line of a periodic summary. */
+export interface SummaryResult {
+  taskId: number;
+  title: string;
+}
+
+/** One periodic summary, as `GET .../summaries` lists it. Dismissed ones are not listed. */
+export interface PeriodicSummary {
+  id: string;
+  /** The window, UTC RFC 3339. */
+  from: string;
+  to: string;
+  results: SummaryResult[];
+}
+
+/** Parses `GET .../summaries`: `{summaries: [...]}`; an entry that is not well formed is left out. */
+export function parseSummaries(value: unknown): PeriodicSummary[] {
+  const list = (value as { summaries?: unknown } | null)?.summaries;
+  if (!Array.isArray(list)) throw new TypeError('The summaries response is not valid.');
+  const out: PeriodicSummary[] = [];
+  for (const entry of list as Record<string, unknown>[]) {
+    if (
+      typeof entry?.id !== 'string' ||
+      typeof entry.from !== 'string' ||
+      typeof entry.to !== 'string' ||
+      !Array.isArray(entry.results)
+    )
+      continue;
+    if (entry.dismissed === true) continue;
+    out.push({
+      id: entry.id,
+      from: entry.from,
+      to: entry.to,
+      results: (entry.results as Record<string, unknown>[])
+        .filter((r) => typeof r?.taskId === 'number' && typeof r.title === 'string')
+        .map((r) => ({ taskId: r.taskId as number, title: r.title as string })),
+    });
+  }
+  return out;
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const dayOf = (d: Date) => `${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+const clockOf = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/**
+ * The window as a person reads it, in local time: `11/20 09:00–10:00`. A window that ends on
+ * another day names that day too: `11/20 23:30–11/21 00:00`. A time that cannot be read is shown
+ * as it was written.
+ */
+export function windowLabel(from: string, to: string): string {
+  const start = new Date(from);
+  const end = new Date(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return `${from}–${to}`;
+  const endText = dayOf(start) === dayOf(end) ? clockOf(end) : `${dayOf(end)} ${clockOf(end)}`;
+  return `${dayOf(start)} ${clockOf(start)}–${endText}`;
+}
+
+/** The routes of the Summary tab. A screen without them shows no such tab. */
+export interface SummariesApi {
+  list: (projectId: ProjectId) => Promise<PeriodicSummary[]>;
+  /** Sets the summary aside; the record stays on disk. Safe to repeat. */
+  dismiss: (projectId: ProjectId, summaryId: string) => Promise<unknown>;
+}
+
 /** The routes the list needs; the board and the monitor each give their own. */
 export interface MessagesApi {
+  /** The periodic summaries; without it the list has no Summary tab. */
+  summaries?: SummariesApi;
   read: (projectId: ProjectId, messageId: string) => Promise<MessageDetail>;
   answer: (projectId: ProjectId, answers: AnswerItem[]) => Promise<unknown>;
   withdraw: (projectId: ProjectId, messageId: string) => Promise<unknown>;

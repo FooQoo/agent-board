@@ -1,0 +1,184 @@
+/* ---- The Summary tab ---- */
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+/* The trash button sits behind the item, on the right. */
+.summary-item__trash {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  /* biome-ignore lint/plugin: the trash button is a fixed tap target as wide as the reveal */
+  min-width: 76px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: var(--r-danger);
+  color: var(--r-on-accent);
+  cursor: pointer;
+}
+
+.summary-item__trash svg {
+  width: 20px;
+  height: 20px;
+}
+
+.summary-item__trash:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: -3px;
+}
+
+.summary-item__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+}
+
+.summary-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-item__window {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-result {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summary-result__id {
+  flex: none;
+  min-width: 3.4em;
+  color: var(--r-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.summary-result__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---- PC: the trash button is always shown, on the left of each item ---- */
+
+.summary-item[data-variant="desktop"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow: visible;
+}
+
+.summary-item[data-variant="desktop"] .summary-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.summary-item[data-variant="desktop"] .summary-item__trash {
+  position: static;
+  flex: none;
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  color: var(--r-text2);
+}
+
+.summary-item[data-variant="desktop"] .summary-item__trash:hover {
+  border-color: var(--r-danger);
+  color: var(--r-danger);
+}
+
+/* ---- Empty ---- */
+
+.summary-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.summary-empty__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.summary-empty__body {
+  margin: 0;
+  color: var(--r-muted);
+  font-size: 13px;
+}
+
+/* Three tabs share the width: tighter, and the label may wrap before the count does. */
+.message-tabs[data-tabs="3"] .message-tabs__tab {
+  flex-wrap: wrap;
+  padding-right: 4px;
+  padding-left: 4px;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.message-tabs[data-tabs="3"][data-swipe]::before {
+  width: calc((100% - 14px) / 3);
+  transform: translateX(calc(var(--tab-progress, 0) * (200% + 8px)));
+}
+
+.summary-error {
+  margin: 0 0 8px;
+  color: var(--r-danger);
+  font-size: 13px;
+}
+
+/* The swipe wrapper takes the item's corners; the body fills it. */
+.summary-item .swipe-card {
+  border-radius: 10px;
+}

@@ -1,3 +1,5 @@
+@import "../../../shared/styles/swipe-card.css";
+
 /* The phone monitor's lane view: the tab bar, the sliding track, and a card that swipes. */
 
 .lane-tabs {
@@ -119,108 +121,6 @@
   padding-bottom: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.swipe-card {
-  position: relative;
-  flex: none;
-  border-radius: 7px;
-  overflow: hidden;
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-.swipe-card__body {
-  position: relative;
-  width: 100%;
-  transition:
-    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 120ms;
-}
-/* A card chosen by a hold: its sideways swipe opens its tiles. The ring sits inside the card, so
-   the lane's edges never cut it. */
-.swipe-card[data-armed] .swipe-card__body {
-  border-radius: 7px;
-  outline: 2px solid var(--r-accent);
-  outline-offset: -2px;
-}
-.swipe-card[data-dragging] .swipe-card__body {
-  transition: none;
-}
-.swipe-card__actions {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  overflow: hidden;
-  visibility: hidden;
-  transition: width 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.swipe-card[data-dragging] .swipe-card__actions {
-  transition: none;
-}
-.swipe-card__actions[data-side="left"] {
-  left: 0;
-}
-.swipe-card__actions[data-side="right"] {
-  right: 0;
-}
-.swipe-card__actions[data-revealed] {
-  visibility: visible;
-}
-/*
- * One action of the swipe, as phone lists draw them: a rounded tile apart from the card. It starts
- * as a small dot in the middle of the space the card has uncovered and grows into the tile as the
- * swipe goes on; its icon fades in during the second half.
- */
-.swipe-card__tile {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  /* The tile grows with the uncovered space, so the three always fit: a dot first, a tile at the end. */
-  width: calc(48px * var(--reveal, 0));
-  height: calc(48px * var(--reveal, 0));
-  min-width: 4px;
-  /* biome-ignore lint/plugin: the dot a tile starts from, before the swipe has room for it */
-  min-height: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: calc(50% - (50% - 14px) * var(--reveal, 0));
-  background: #e5e5ea;
-  color: #1c1c1e;
-  cursor: pointer;
-}
-.swipe-card__tile svg {
-  flex: none;
-  width: calc(22px * var(--reveal, 0));
-  height: calc(22px * var(--reveal, 0));
-  opacity: clamp(0, calc(var(--reveal, 0) * 2 - 0.6), 1);
-}
-.swipe-card__tile--archive {
-  background: #ff3b30;
-  color: #fff;
-}
-.dark .swipe-card__tile {
-  background: #3a3a3c;
-  color: #fff;
-}
-.dark .swipe-card__tile--archive {
-  background: #ff453a;
-}
-.swipe-card__tile:focus-visible {
-  outline: 2px solid var(--r-accent);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .swipe-card__body,
-  .swipe-card__actions {
-    transition: none;
-  }
 }
 
 /* Pull to refresh: the indicator above the cards of the lane on screen. */

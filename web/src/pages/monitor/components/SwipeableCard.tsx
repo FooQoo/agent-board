@@ -1,7 +1,7 @@
 import { Trash2Icon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type CardGestureOptions, useCardGesture } from '../hooks/useCardGesture';
+import { type CardGestureOptions, useCardGesture } from '@/shared/lib/gesture/useCardGesture';
 import { type MonitorSection, SECTION_ICONS } from './MonitorSectionHeader';
 import {
   actionsWidth,
