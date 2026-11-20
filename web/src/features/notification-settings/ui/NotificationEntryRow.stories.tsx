@@ -24,7 +24,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvasElement, args }) => {
     const view = within(canvasElement);
-    await expect(view.getByRole('heading', { name: 'Phone notifications' })).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Notifications' })).toBeVisible();
     await userEvent.click(view.getByRole('button', { name: 'Notification settings' }));
     await expect(args.onOpen).toHaveBeenCalledTimes(1);
   },

@@ -3,7 +3,7 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 import { DEFAULT_NOTIFICATION_SETTINGS, type NotificationSettings } from '../model';
 import { NotificationSettingsView } from './NotificationSettingsView';
 
-// The "Phone notifications" section as the settings dialog shows it, on the PC and the phone.
+// The "Notifications" section as the settings dialog shows it, on the PC and the phone.
 const meta = {
   title: 'Settings/NotificationSettingsView',
   component: NotificationSettingsView,

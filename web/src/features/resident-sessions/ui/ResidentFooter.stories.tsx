@@ -5,7 +5,7 @@ import { StatusBar } from '@/shared/ui/status-bar/StatusBar';
 import { health } from '../fixtures';
 import { ResidentIndicator } from './ResidentFooter';
 
-// The board footer with ONE indicator in the StatusBar slot between the count and the sync state:
+// The board footer with ONE indicator in the StatusBar slot, just left of the sync state:
 // a filled dot is running, a ring is stopped, red is failed. On the PC it is a button that opens the
 // dialog; on the remote view it is display-only. It is hidden while nothing is launched and
 // auto-start is off.

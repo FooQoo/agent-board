@@ -41,7 +41,7 @@ Turn on **Start automatically when Agent Board starts** to start the session eac
 | **Stopped** | Nothing is running. |
 | **Failed** | The board gave up, for example after the session ended repeatedly in a short time. The reason is shown. Fix the cause, then choose **Restart**. |
 
-The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows the tool and a dot while a session is launched or auto-start is on; click it to open the dialog.
+The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows the tool and a dot, just left of the sync state, while a session is launched or auto-start is on; click it to open the dialog.
 
 ## When a session does not handle something {#not-handled}
 

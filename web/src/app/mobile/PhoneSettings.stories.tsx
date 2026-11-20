@@ -120,7 +120,7 @@ export const WithResidentEntry: StoryObj<typeof meta> = {
 };
 
 /**
- * The phone notifications row below the resident-session row. Choosing it closes the settings and
+ * The notifications row below the resident-session row. Choosing it closes the settings and
  * asks for the dialog, which holds the notification choices and, on the Home Screen app, the
  * control that turns notifications on.
  */
