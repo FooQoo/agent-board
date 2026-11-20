@@ -1,11 +1,11 @@
-import { TriangleAlertIcon } from 'lucide-react';
+import { CirclePauseIcon, TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SessionHealth } from '../api';
 import { deriveState, footerVisible, toolName } from '../state';
 import { FOOTER_POLL_MS, useResidentSession } from '../useResidentSession';
 import { requestResidentDialog } from '../events';
 import { useStateLabel } from './StateBadge';
-import { useStalledName } from './StalledNotice';
+import { splitStalled, useStalledName } from './StalledNotice';
 import './resident.css';
 
 /**
@@ -30,24 +30,34 @@ export function ResidentIndicator({
   if (!footerVisible(health)) return null;
   const state = deriveState(health);
   const name = health.tool ? toolName(health.tool) : t('resident.footerLabel');
-  const stalled = health.pushStalled;
+  const { failed, onHold } = splitStalled(health);
   const base =
     state === 'stopped'
       ? t('resident.footerStopped')
       : t('resident.footerState', { tool: name, state: label(state) });
-  const text =
-    stalled.length > 0
-      ? `${base}. ${t('resident.stalledTitle')}: ${stalled.map(stalledName).join(', ')}`
-      : base;
+  const parts = [base];
+  if (failed.length > 0) {
+    parts.push(`${t('resident.stalledTitle')}: ${failed.map(stalledName).join(', ')}`);
+  }
+  if (onHold.length > 0) {
+    parts.push(`${t('resident.holdTitle')}: ${onHold.map(stalledName).join(', ')}`);
+  }
+  const text = parts.join('. ');
   const inner = (
     <>
       <span className="resident-footer__dot" aria-hidden="true" />
       <span>{state === 'stopped' ? t('resident.footerLabel') : name}</span>
       {withState && <span className="resident-footer__state">{label(state, true)}</span>}
-      {stalled.length > 0 && (
+      {failed.length > 0 && (
         <span className="resident-footer__stalled">
           <TriangleAlertIcon aria-hidden="true" />
-          {onOpen && <span>{t('resident.footerStalled', { count: stalled.length })}</span>}
+          {onOpen && <span>{t('resident.footerStalled', { count: failed.length })}</span>}
+        </span>
+      )}
+      {onHold.length > 0 && (
+        <span className="resident-footer__hold">
+          <CirclePauseIcon aria-hidden="true" />
+          {onOpen && <span>{t('resident.footerHold', { count: onHold.length })}</span>}
         </span>
       )}
     </>

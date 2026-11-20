@@ -19,6 +19,7 @@ Only a session the board launched follows this part.
    - `"kind":"requests"`: open requests. Read each with `message show <id>`, take it with `message accept <id> --actor ai`, and plan it as `agboard skills planning` describes. If `message accept` says another session already took it, drop it.
    - `"kind":"task"`: a ready task. Work it as `agboard skills listening` describes under "Process one returned task".
 3. The board never sends a message while you are working, so the next one arrives after your turn ends. A turn that ends with the item still open (for example a request you did not accept) is sent again after a delay, and the board gives up after three tries, so finish what you were given or say on the board why you cannot.
+   - If the item waits for a person (a check on a real device, a decision, a review), you cannot advance it, and leaving it Doing or Idle only makes the board send it again. Ask what you need with `message ask --no-wait --task <id> ...`, record that the task waits for the answer, and end your turn. A task with an open question is Pending, so the board stops sending it until the person answers.
 4. Ending your turn is how you stay attached. Do not run a wait, and do not poll the board.
 
 The board asks questions of people for you: use `message ask`, and the answer comes back to you as an `answers` message.

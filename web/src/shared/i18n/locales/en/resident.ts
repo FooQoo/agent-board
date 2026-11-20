@@ -64,6 +64,10 @@ export const residentEn = {
     footerStopped: 'Resident agent: stopped',
     footerState: '{{tool}}: {{state}}',
     footerStalled: 'Some items could not be handled ({{count}})',
+    footerHold: 'On hold ({{count}})',
+    holdTitle: 'On hold',
+    holdHint:
+      'The agent finished its turn on these and left them as they were, so they are probably waiting for something only a person can do, such as a check on a real device. The board handed each one over three times and stopped; this is not an error. Finish or answer them on the board, or ask the agent to put the task in Pending with a question. An item leaves this list once it is no longer on the board.',
     stalledTitle: 'Some items could not be handled',
     stalledItem: {
       request: 'Request {{id}}',
@@ -71,7 +75,7 @@ export const residentEn = {
       task: 'Task #{{id}}',
     },
     stalledHint:
-      'The board tried each item three times and stopped. Finish it on the board yourself, or stop and start the session; an item leaves this list once it is no longer on the board.',
+      'The last turn failed, and the board tried each item three times and stopped. Finish it on the board yourself, or stop and start the session; an item leaves this list once it is no longer on the board.',
     logTitle: 'Log',
     logEmpty: 'The log appears once the agent has started.',
     logTruncated: 'Only the end of the log is shown.',
