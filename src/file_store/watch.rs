@@ -41,6 +41,8 @@ pub enum Target {
     All,
     /// Something in one project's `docs/` folder; announced, never loaded.
     Docs(ProjectId),
+    /// Something in one project's `notify/` folder; announced, never loaded.
+    Notify(ProjectId),
 }
 
 /// Told that files in a project's Docs changed: `Some(project)`, or `None` when
@@ -101,6 +103,9 @@ pub fn classify(shared: &Path, path: &Path) -> Option<Target> {
         // The Docs are the user's files: they are announced, not loaded as board data.
         [projects, id, docs, ..] if projects == "projects" && docs == "docs" => {
             ProjectId::from_str(id).ok().map(Target::Docs)
+        }
+        [projects, id, dir, ..] if projects == "projects" && dir == "notify" => {
+            ProjectId::from_str(id).ok().map(Target::Notify)
         }
         [projects, _, file] if projects == "projects" && file == "README.md" => None,
         [projects, id, ..] if projects == "projects" => {
@@ -227,11 +232,14 @@ async fn reload_loop(
                         Target::Docs(id) => (docs.0)(Some(id.clone())),
                         // Lost events may have been in any project's Docs.
                         Target::All => (docs.0)(None),
+                        Target::Notify(id) => changed.send(super::notify::summaries_changed(id)),
                         Target::Project(_) => {}
                     }
                 }
-                let ready: Vec<Target> =
-                    ready.into_iter().filter(|target| !matches!(target, Target::Docs(_))).collect();
+                let ready: Vec<Target> = ready
+                    .into_iter()
+                    .filter(|target| !matches!(target, Target::Docs(_) | Target::Notify(_)))
+                    .collect();
                 if ready.is_empty() {
                     continue;
                 }

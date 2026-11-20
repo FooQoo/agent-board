@@ -15,6 +15,7 @@ mod events;
 mod ledger;
 mod message;
 mod runtime;
+mod summary;
 mod transport;
 mod webpush;
 

@@ -48,8 +48,9 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `GET /api/events` | SSE: `ready` after subscribing with the board's build ID (`{"build":"<16 hex>"}`), `changed` with the changed resources (see [Change events](#change-events)), `preferences` after a saved language or theme change (the same JSON as `GET /api/preferences`), a keep-alive comment every 15 seconds. |
 | `GET /api/preferences` | The saved language and color theme: `locale`, `theme` (`mode`, `accent`), and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Display preferences](#display-preferences). |
 | `PUT /api/preferences` | Saves the `locale`, `theme`, or both, from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Unknown fields and invalid values are 422 `invalid_preferences`; a failed write is 500 `preferences_unavailable`. A refused or failed save leaves the saved value unchanged. |
-| `GET /api/notification-settings` | Which notifications the phone receives: `kinds` and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
-| `PUT /api/notification-settings` | Saves the `kinds` group from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
+| `GET /api/projects/{projectId}/summaries`<br>`POST /api/projects/{projectId}/summaries/{summaryId}/dismiss` | The project's periodic summaries, newest first, and dismissing one. See [Periodic summaries](#periodic-summaries). |
+| `GET /api/notification-settings` | Which notifications the phone receives: `kinds`, `summary`, and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
+| `PUT /api/notification-settings` | Saves the `kinds` group, the `summary` group, or both from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
 | `GET /api/monitor-connections` and the routes under it | The ngrok remote connection. See [Remote connection](#remote-connection). |
@@ -259,16 +260,25 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 
 ```json
 {
-  "kinds": { "results": true, "questions": true, "history": false },
+  "kinds": { "results": true, "questions": true, "history": false, "summary": true },
+  "summary": { "intervalMinutes": 60 },
   "revision": 0
 }
 ```
 
-`PUT` takes a JSON body with `kinds`, which must carry all of its fields (`results`, `questions`, `history`). It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
+`PUT` takes a JSON body with `kinds`, `summary`, or both. `kinds` must carry all of its fields (`results`, `questions`, `history`; `summary` may be left out and then reads as on). `summary` carries `intervalMinutes`, one of `0` (off), `30`, `60`, `120`, or `240`; any other value is 422. It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
 
 The periodic status notification and the card state change notifications were removed. A page that is still open from an older version may send their old fields: `stateChanges` and `periodic` are accepted and ignored, and `kinds.stateChanges` is accepted and ignored too. A body that carries only those removed fields has nothing to save and is 422. `GET` never returns them.
 
 A malformed JSON body is 400. An empty body, an unknown field, or a missing field is 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. Nothing is saved on a refusal. There is no revision check: the last save wins.
+
+### Periodic summaries
+
+`GET /api/projects/{projectId}/summaries` returns `{"summaries": [...]}`, newest first (by the end of the window). Each entry is one line of the project's `notify/` files (see [Periodic summaries](./files.md#periodic-summaries)): `id`, `dismissed`, `from`, `to`, and `results` (`taskId`, `title`, `at`). Dismissed summaries are left out; `?dismissed=include` lists them too. The files are read on each request, so a hand edit shows at once. Never cached.
+
+`POST /api/projects/{projectId}/summaries/{summaryId}/dismiss` sets `dismissed` on the summary's line and returns `{"summary": {...}}`. It takes no body, is safe to repeat, and never removes the line. An unknown summary is 404 `message_not_found`, an unknown project 404 `project_not_found`, and a project ID that is not well formed 422 `invalid_value`. Both routes are on the board router, so the ngrok entrance serves them behind the session, and the write guards are those of every other change.
+
+A summary the server just recorded, a dismissal, and a hand edit of the files each send `changed` for the project's `messages` resource with the `summary` facet.
 
 ### Project docs
 

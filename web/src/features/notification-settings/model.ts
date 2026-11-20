@@ -5,11 +5,16 @@
  * server may still send are ignored.
  */
 
-export const KIND_KEYS = ['results', 'questions', 'history'] as const;
+export const KIND_KEYS = ['results', 'questions', 'history', 'summary'] as const;
 export type KindKey = (typeof KIND_KEYS)[number];
+
+/** The minutes between periodic summaries; 0 records none. */
+export const SUMMARY_INTERVALS = [0, 30, 60, 120, 240] as const;
+export type SummaryInterval = (typeof SUMMARY_INTERVALS)[number];
 
 export interface NotificationSettings {
   kinds: Record<KindKey, boolean>;
+  summary: { intervalMinutes: SummaryInterval };
   revision: number;
 }
 
@@ -17,7 +22,8 @@ export interface NotificationSettings {
 export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'revision'>>;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  kinds: { results: true, questions: false, history: false },
+  kinds: { results: true, questions: false, history: false, summary: true },
+  summary: { intervalMinutes: 60 },
   revision: 0,
 };
 
@@ -42,6 +48,9 @@ export function parseNotificationSettings(value: unknown): NotificationSettings 
   const kinds = flags(value.kinds, KIND_KEYS);
   const { revision } = value;
   if (!kinds) return null;
+  const interval = isRecord(value.summary) ? value.summary.intervalMinutes : undefined;
+  const intervalMinutes = SUMMARY_INTERVALS.find((minutes) => minutes === interval);
+  if (intervalMinutes === undefined) return null;
   if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 0) return null;
-  return { kinds, revision };
+  return { kinds, summary: { intervalMinutes }, revision };
 }

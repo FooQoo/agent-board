@@ -51,7 +51,7 @@
 | --- | --- |
 | `api/` | ボードのルーター（`router`と、ローカルのガードとローカル専用の経路を外したngrokの入口用の`remote_router`）、Hostのガードと書き込みのガード（`guards`）、ルートごとにまとめたハンドラ（ページ、プロジェクト、タスク、タスクの編集、人による完了条件のチェック（`task_acceptance`）、multipart、アーカイブ、タスクの画像、エピック、エピックの画像、プロジェクトのドキュメントの`docs/`（`tree`・`file_get`・`assets`・`open`）、リモート接続の`monitor_connections`）。 |
 | `monitor_connection/` | ngrokのリモート接続。監督役と状態（`lifecycle`・`restore`・`start`・`run`）、保存する設定（`config`。コマンドラインからの保存は`src/remote_settings.rs`を通ります）、トークンと安全な保管場所への保存（`token`・`keychain`）、公開アドレスの契約と、Traffic Policyなしで開くngrokのエンドポイント（`contracts/`）、ngrokのセッション（`backend`）、モニターの前段の入口の検査（`router`・`entry`と、合言葉のunlockを扱うその`session`の経路）。 |
-| `notification_settings/` | スマホに届ける通知の種類。内部領域の`notification-settings.json`（`NotificationSettingsStore`）、種類・既定値・間隔の定義、`/api/notification-settings`の`GET`・`PUT`の処理。 |
+| `notification_settings/` | スマホに届ける通知の種類。内部領域の`notification-settings.json`（`NotificationSettingsStore`）、種類・サマリーの間隔・既定値の定義、`/api/notification-settings`の`GET`・`PUT`の処理。 |
 | `preferences/` | 保存した言語とカラーテーマ。内部領域の`preferences.json`（`PreferencesStore`）、`/api/preferences`の`GET`・`PUT`の処理、変更の通知。 |
 | `monitor_auth/` | 入口のアプリsessionとCSRFトークン（`session`）、4桁の合言葉と間違いの回数の制限（`passcode`）、そのヘッダーの検査（`guard`）、Cookie名や12時間の上限などの定数（`contracts`）。 |
 | `guard` | ローカルの書き込みに対するHost・Origin・Sec-Fetch-Site・トークンの確認。 |
@@ -97,7 +97,7 @@
 
 - `src/docs/`: パス、読み込み、READMEの文面（`templates/README.en.md`・`templates/README.ja.md`）。
 - `src/server/api/docs/`: ボードのルーターにある4つのルート。
-- `src/server/push_delivery/`: ボードの変更のWeb Push配信（`events.rs`: 変更の前後でタスクが示す内容を比較し、タスクごとに通知を1件に選ぶ、`message.rs`: 文面とリンク、`webpush.rs`: RFC 8291の暗号化とRFC 8292の署名、`transport.rs`: `PushTransport`トレイトと`reqwest`による実装、`ledger.rs`: `.internal/push-ledger.json`、`deliver.rs`: 送信と再試行、`runtime.rs`: 変更フィードを追うタスク）。[Web Pushの配信](../concepts/notifications.md#web-pushの配信)を参照。
+- `src/server/push_delivery/`: ボードの変更のWeb Push配信（`events.rs`: 変更の前後でタスクが示す内容を比較し、タスクごとに通知を1件に選ぶ、`message.rs`: 文面とリンク、`webpush.rs`: RFC 8291の暗号化とRFC 8292の署名、`transport.rs`: `PushTransport`トレイトと`reqwest`による実装、`ledger.rs`: `.internal/push-ledger.json`、`deliver.rs`: 送信と再試行、`runtime.rs`: 変更フィードを追うタスク、`summary.rs`: 定期サマリーのスケジュールと通知）。サマリー自体は`src/file_store/notify.rs`が保存し、`src/server/api/summaries.rs`が提供します。[Web Pushの配信](../concepts/notifications.md#web-pushの配信)を参照。
 - `src/server/resident/`: 画面を持たないClaude CodeとCodexのセッションの起動処理です。これらのCLIを知っている唯一のコードです（`cli.rs`は名前、ログインの確認、モデル、引数、環境の除去、`mod.rs`は起動処理、停止、シャットダウン、`driver/`は`AgentDriver`トレイトとその出来事、`ClaudeDriver`（双方向のstream-json）、`CodexDriver`（`codex app-server`のJSON-RPC。やり取りは`codex_parse.rs`と`codex_inbound.rs`）、`spawn.rs`はドライバーを通したセッションの起動、出来事の読み取り、pusherの実行、`push/`はpushモード（`mod.rs`はpusherの状態とボードを1回見ること、`decide.rs`は何を送るかと再試行の方針）、`board.rs`はボードの場所、変更時のpusherの起こし方、セッション一覧に出る起動したセッション、`supervisor.rs`と`watch.rs`は再起動、不健全の確認、サーバー起動時の自動起動、`health.rs`はAPIが返す健全性、`autostart.rs`は`.internal/resident-autostart.json`）。ルートは`src/server/api/sessions.rs`にあります。
 - `src/server/sessions/`、`src/server/api/sessions.rs`、`src/agent/session_identity.rs`: 張り付いたエージェントセッションのメモリ上の登録、その読み取りルート、待機中のコマンドが自分のセッションを名乗る方法。
 - `src/file_store/project.rs`: 新しいプロジェクトと一緒に`docs/`を作る処理（`create_project_with_docs`）と、起動時に補う処理（`ensure_docs_dirs`）。

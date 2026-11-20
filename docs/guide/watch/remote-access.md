@@ -184,7 +184,7 @@ To turn them on later, open the settings, choose **Notification settings** on th
 
 ### Choose what is sent {#notified-about}
 
-**Notification settings** opens a dialog of its own, on the PC and in the phone layout; on a narrow screen it is a bottom sheet. The choices are saved on this PC, like the language and theme, and apply to the next notification. Changing them sends nothing by itself. Notifications are on by default, and at first only results are sent. All three kinds can be switched off one by one.
+**Notification settings** opens a dialog of its own, on the PC and in the phone layout; on a narrow screen it is a bottom sheet. The choices are saved on this PC, like the language and theme, and apply to the next notification. Changing them sends nothing by itself. Notifications are on by default, and at first results and the periodic summary are sent. Each of the four kinds can be switched off one by one. Below the kinds, **Summary interval** sets how often the board records a summary of the results (every 30 minutes, every hour, every 2 hours, every 4 hours, or off); the default is every hour. A window without results records and sends nothing.
 
 ![Phone notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
 

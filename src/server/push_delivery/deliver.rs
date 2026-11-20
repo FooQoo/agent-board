@@ -94,6 +94,37 @@ impl Dispatcher {
         }
     }
 
+    /// Send the notification of one recorded summary to every device that has not had it. The
+    /// ledger key is the summary's own, so a summary is never sent twice to a device.
+    pub(super) async fn deliver_summary(
+        &self,
+        ctx: &Context,
+        project: &str,
+        summary: &crate::file_store::notify::Summary,
+    ) {
+        let key = format!("summary:{project}:{}", summary.id);
+        let fresh: Vec<&Subscription> = ctx
+            .subscriptions
+            .iter()
+            .filter(|s| !self.ledger.has(&s.device_id, &key))
+            .collect();
+        let Some(origin) = &ctx.origin else {
+            for sub in fresh {
+                self.ledger
+                    .record(self.entry(&sub.device_id, &key, State::Skipped, 0));
+            }
+            return;
+        };
+        let Some(payload) = super::summary::payload_of(project, summary, ctx.lang, origin) else {
+            return;
+        };
+        let keys = [key.clone()];
+        let sends = fresh
+            .into_iter()
+            .map(|sub| self.send(ctx, sub, &key, &keys, &payload, 0));
+        futures_util::future::join_all(sends).await;
+    }
+
     /// Try the failed sends whose time has come.
     pub(super) async fn retry_due(&self, ctx: &Context) {
         if ctx.origin.is_none() {
