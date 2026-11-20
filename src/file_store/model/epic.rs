@@ -39,10 +39,10 @@ pub struct EpicView {
     pub document: String,
     /// EPIC.md without its frontmatter: the text after the closing line, or the whole file when there is no closing line.
     pub body: String,
-    /// The task order of the epic (EPIC.md `priority`); empty when none is stored.
-    pub priority: Vec<i64>,
-    /// The stored `priority` cannot be read; the order is then ignored.
-    pub priority_error: bool,
+    /// The task order of the epic as waves (EPIC.md `waves`); empty when none is stored.
+    pub waves: Vec<Vec<i64>>,
+    /// The stored `waves` cannot be read; the order is then ignored.
+    pub waves_error: bool,
     pub attachments: Vec<Attachment>,
     #[serde(with = "crate::clock::serde_utc")]
     pub created_at: DateTime<Utc>,

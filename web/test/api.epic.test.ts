@@ -39,14 +39,14 @@ describe('epic writes', () => {
     await api.save({
       name: 'File share',
       color: '#7C3AED',
-      document: '---\npriority: [1]\n---\n## Goal',
+      document: '---\nwaves: [1]\n---\n## Goal',
     });
     await api.save({ name: 'File share', color: '#7C3AED', body: '## Goal', draft: null });
     const [first, second] = fetchMock.mock.calls;
     expect(JSON.parse(String(first?.[1]?.body))).toEqual({
       name: 'File share',
       color: '#7C3AED',
-      document: '---\npriority: [1]\n---\n## Goal',
+      document: '---\nwaves: [1]\n---\n## Goal',
     });
     expect(JSON.parse(String(second?.[1]?.body))).toEqual({
       name: 'File share',

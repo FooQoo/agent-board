@@ -1,5 +1,5 @@
 //! The progress table: which tasks an agent can pick up, in what order, and
-//! how an epic's priority list is stored in its EPIC.md. Runs the real CLI on
+//! how an epic's waves list is stored in its EPIC.md. Runs the real CLI on
 //! a temporary data area.
 
 use std::fs;
@@ -105,33 +105,78 @@ fn document_path(home: &Path) -> PathBuf {
 }
 
 #[test]
-fn priority_is_read_and_written_in_the_frontmatter_without_touching_the_body_or_other_keys() {
-    let text = "---\nacceptance: []\nowner: team\npriority: [3, 1]\n---\n\nBody line\n";
-    assert_eq!(frontmatter::priority_of(text).unwrap(), vec![3, 1]);
-    assert!(frontmatter::priority_of("Plain body\n").unwrap().is_empty());
+fn waves_are_read_and_written_in_the_frontmatter_without_touching_the_body_or_other_keys() {
+    let text = "---\nacceptance: []\nowner: team\nwaves:\n- 3\n- 1, 2\n---\n\nBody line\n";
+    assert_eq!(
+        frontmatter::waves_of(text).unwrap(),
+        vec![vec![3], vec![1, 2]]
+    );
+    assert!(frontmatter::waves_of("Plain body\n").unwrap().is_empty());
+    // Quoted strings and unquoted commas read the same.
+    let quoted = "---\nwaves: [1, \"2,3\"]\n---\n";
+    assert_eq!(
+        frontmatter::waves_of(quoted).unwrap(),
+        vec![vec![1], vec![2, 3]]
+    );
+    // A flat list is one task per wave.
+    let flat = "---\nwaves: [3, 1, 2]\n---\n";
+    assert_eq!(
+        frontmatter::waves_of(flat).unwrap(),
+        vec![vec![3], vec![1], vec![2]]
+    );
+    // The flow style and the block style read the same.
+    let flow = "---\nwaves: [59, 60, 65, 61]\n---\n";
+    assert_eq!(
+        frontmatter::waves_of(flow).unwrap(),
+        vec![vec![59], vec![60], vec![65], vec![61]]
+    );
+    let block = "---\nwaves:\n  - 59\n  - 60\n  - 65\n  - 61\n---\n";
+    assert_eq!(
+        frontmatter::waves_of(block).unwrap(),
+        frontmatter::waves_of(flow).unwrap()
+    );
+    // Nested lists are not accepted.
+    assert!(frontmatter::waves_of("---\nwaves: [[1], [2]]\n---\n").is_err());
 
-    let written = frontmatter::compose_priority(text, &[1, 3]).unwrap();
+    let written = frontmatter::compose_waves(text, &[vec![1], vec![3, 2]]).unwrap();
     assert!(written.contains("owner: team"));
     assert!(written.ends_with("\n---\n\nBody line\n"));
-    assert_eq!(frontmatter::priority_of(&written).unwrap(), vec![1, 3]);
+    assert!(written.contains("3,2"));
+    assert_eq!(
+        frontmatter::waves_of(&written).unwrap(),
+        vec![vec![1], vec![3, 2]]
+    );
 
-    let cleared = frontmatter::compose_priority(&written, &[]).unwrap();
-    assert!(!cleared.contains("priority"));
+    let cleared = frontmatter::compose_waves(&written, &[]).unwrap();
+    assert!(!cleared.contains("waves"));
     assert!(cleared.contains("owner: team"));
 }
 
 #[test]
-fn a_priority_list_with_repeats_or_bad_entries_is_refused_and_a_stored_bad_one_is_reported() {
-    assert!(frontmatter::compose_priority("", &[2, 2]).is_err());
-    assert!(frontmatter::compose_priority("", &[0]).is_err());
-    assert!(frontmatter::compose_priority("", &[-4]).is_err());
-    assert!(frontmatter::priority_of("---\npriority: nope\n---\n").is_err());
-    assert!(frontmatter::priority_of("---\npriority: [1, \"x\"]\n---\n").is_err());
-    assert!(frontmatter::priority_of("---\npriority: [1, 1]\n---\n").is_err());
+fn a_priority_key_is_an_ordinary_unknown_key() {
+    let text = "---\npriority: [3, 1]\n---\n\nBody\n";
+    assert!(frontmatter::waves_of(text).unwrap().is_empty());
+    let written = frontmatter::compose_waves(text, &[vec![1]]).unwrap();
+    assert!(written.contains("priority") && written.contains("waves"));
 }
 
 #[test]
-fn the_progress_table_orders_epics_by_id_and_tasks_by_priority_then_creation() {
+fn a_waves_list_with_repeats_or_bad_entries_is_refused_and_a_stored_bad_one_is_reported() {
+    assert!(frontmatter::compose_waves("", &[vec![2, 2]]).is_err());
+    assert!(frontmatter::compose_waves("", &[vec![1], vec![1]]).is_err());
+    assert!(frontmatter::compose_waves("", &[vec![0]]).is_err());
+    assert!(frontmatter::compose_waves("", &[vec![-4]]).is_err());
+    // Empty waves are dropped on write.
+    let dropped = frontmatter::compose_waves("", &[vec![], vec![5]]).unwrap();
+    assert_eq!(frontmatter::waves_of(&dropped).unwrap(), vec![vec![5]]);
+    assert!(frontmatter::waves_of("---\nwaves: nope\n---\n").is_err());
+    assert!(frontmatter::waves_of("---\nwaves: [1, \"x\"]\n---\n").is_err());
+    assert!(frontmatter::waves_of("---\nwaves: [1, \"1,2\"]\n---\n").is_err());
+    assert!(frontmatter::waves_of("---\nwaves: [1, \"\"]\n---\n").is_err());
+}
+
+#[test]
+fn the_progress_table_orders_epics_by_id_and_tasks_by_waves_then_creation() {
     let home = demo();
     let first = add(home.path(), "first", Some("ALPHA"));
     let second = add(home.path(), "second", Some("ALPHA"));
@@ -145,8 +190,9 @@ fn the_progress_table_orders_epics_by_id_and_tasks_by_priority_then_creation() {
             "epic",
             "edit",
             "ALPHA",
-            "--priority",
-            &format!("{third},{first}"),
+            "--waves",
+            &third.to_string(),
+            &first.to_string(),
         ],
     ));
 
@@ -350,8 +396,10 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
             "epic",
             "edit",
             "ALPHA",
-            "--priority",
-            &format!("{gone},{kept},99"),
+            "--waves",
+            &gone.to_string(),
+            &kept.to_string(),
+            "99",
         ],
     ));
     ok(agboard(
@@ -369,7 +417,10 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
     assert!(stored.contains("Keep this text."));
     // 99 belongs to no task and is dropped on save. The task that left keeps its place
     // in the stored order, but the table no longer shows it.
-    assert_eq!(frontmatter::priority_of(&stored).unwrap(), vec![gone, kept]);
+    assert_eq!(
+        frontmatter::waves_of(&stored).unwrap(),
+        vec![vec![gone], vec![kept]]
+    );
     assert_eq!(epic_task_ids(&progress(home.path()), "ALPHA"), vec![kept]);
 
     let refused = agboard(
@@ -380,7 +431,7 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
             "epic",
             "edit",
             "ALPHA",
-            "--priority",
+            "--waves",
             "5,5",
             "--json",
         ],
@@ -390,7 +441,7 @@ fn epic_edit_stores_the_order_without_the_body_drops_tasks_that_left_and_refuses
     .get_output()
     .stderr
     .clone();
-    assert!(String::from_utf8(refused).unwrap().contains("priority"));
+    assert!(String::from_utf8(refused).unwrap().contains("waves"));
 }
 
 #[test]

@@ -19,7 +19,7 @@ agboard --project "My project" edit 1 --clear-epic
 ```
 
 - Epic IDs use letters, digits, and hyphens; lowercase input is turned into uppercase.
-- The details are free Markdown with optional `priority` frontmatter. Write reference completion conditions directly in the details; no heading is required.
+- The details are free Markdown with optional `waves` frontmatter. Write reference completion conditions directly in the details; no heading is required.
 - Use `--document-file` to set the whole `EPIC.md` text from a file, or `--document` to pass the text (use `-` to read standard input). The text includes frontmatter and can be up to 100,000 characters.
 - Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color.
 - A task belongs to at most one epic.
@@ -28,7 +28,7 @@ agboard --project "My project" edit 1 --clear-epic
 
 Every project starts with two epics, `BUG` (named Bug) and `ENHANCEMENT` (named Enhancement), so that bug reports and improvements have a place to go. A project that already exists gets them the next time the server starts. You can rename, recolor, and delete them. A deleted default epic is not created again.
 
-The agent skill treats these two IDs as ongoing classification epics with fixed bodies. `BUG` collects defects in existing behavior; `ENHANCEMENT` collects requests for new capabilities and improvements. Empty details are initialized once from the skill’s fixed template in the board’s language. Per-task plans, decisions, and verification stay in task bodies and history. Agents do not append progress or completion summaries to these epic bodies. They preserve a non-empty body unless you explicitly request replacing or changing it, and keep useful existing records in relevant task bodies before a replacement. Task priority can still be changed. This is a skill workflow; the browser editor remains available.
+The agent skill treats these two IDs as ongoing classification epics with fixed bodies. `BUG` collects defects in existing behavior; `ENHANCEMENT` collects requests for new capabilities and improvements. Empty details are initialized once from the skill’s fixed template in the board’s language. Per-task plans, decisions, and verification stay in task bodies and history. Agents do not append progress or completion summaries to these epic bodies. They preserve a non-empty body unless you explicitly request replacing or changing it, and keep useful existing records in relevant task bodies before a replacement. Task order can still be changed. This is a skill workflow; the browser editor remains available.
 
 ## Browse all epics
 
@@ -40,13 +40,25 @@ Select an epic to read its name, details, and images in the details column besid
 
 ## Order the work
 
-Save an epic's task order from the command line:
+An epic orders its tasks in waves. The tasks of one wave can run in parallel. Put tasks that depend on each other in later waves, and tasks that can run side by side in the same wave.
+
+Save the waves from the command line, one value per wave. A value is a task ID, or task IDs joined by commas:
 
 ```sh
-agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
+agboard --project "My project" epic edit LAUNCH --waves 3 1,2 4
 ```
 
-This writes `priority: [3, 1, 2]` in the epic's `EPIC.md`. The entries must be distinct positive task IDs, and only current members of the epic are kept. Unlisted members follow in ascending ID order. Pass `--priority ""` to clear the explicit order. The order is independent of where tasks sit on the board.
+This writes the following in the epic's `EPIC.md`: task 3 first, then tasks 1 and 2 together, then task 4.
+
+```yaml
+waves:
+- 3
+- 1,2
+- 4
+```
+
+The entries must be distinct positive task IDs across all waves, and only current members of the epic are kept. A wave that ends up empty is dropped. Unlisted members follow in ascending ID order. Pass `--waves ""` to clear the explicit order. The order is independent of where tasks sit on the board.
+
 
 ## Edit an epic in the browser
 
@@ -87,9 +99,9 @@ agboard progress --include-pending --include-done 5
 - `--include-done COUNT` adds a "Recently done" section with the most recently completed tasks, newest first. Only tasks of epics that still have Todo or Doing work are included, so finished epics and tasks without an epic stay out. Archived tasks are never included.
 - Without these options the output is the same as before. To give agents these sections, add the same options to the hook command, for example `agboard hook --agent claude --include-pending --include-done 5`.
 
-Epics appear in ID order. Within an epic, the `priority` list decides the order of its tasks, and tasks not listed follow in ascending ID order. Work without an epic is also sorted by ID. Epics with no listed tasks are left out.
+Epics appear in ID order. Within an epic, the `waves` list decides the order of its tasks, and tasks not listed follow in ascending ID order. Work without an epic is also sorted by ID. Epics with no listed tasks are left out.
 
 ## Next
 
 - [Working with agents](../delegate/agents): how agents use the table.
-- [Markdown file format](../reference/file-format): the `priority` list and the rest of `EPIC.md`.
+- [Markdown file format](../reference/file-format): the `waves` list and the rest of `EPIC.md`.

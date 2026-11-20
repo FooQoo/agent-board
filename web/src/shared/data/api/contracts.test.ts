@@ -42,8 +42,8 @@ describe('summary', () => {
       [false, '2026-10-22T09:45:32Z'],
       [true, '2026-10-22T09:58:00Z'],
     ]);
-    expect(summary.epics[0]?.priority).toEqual([303, 302]);
-    expect(summary.epics[0]?.priorityError).toBe(false);
+    expect(summary.epics[0]?.waves).toEqual([[303], [302]]);
+    expect(summary.epics[0]?.wavesError).toBe(false);
   });
 
   it('refuses a task or epic without the new fields, or with a wrong type', () => {
@@ -55,8 +55,8 @@ describe('summary', () => {
     for (const [pick, key] of [
       [task, 'acceptanceError'],
       [task, 'createdAt'],
-      [epic, 'priority'],
-      [epic, 'priorityError'],
+      [epic, 'waves'],
+      [epic, 'wavesError'],
     ] as const) {
       const copy = structuredClone(base);
       delete pick(copy)[key];
@@ -65,10 +65,11 @@ describe('summary', () => {
     for (const [pick, key, value] of [
       [task, 'acceptanceError', 'yes'],
       [task, 'createdAt', 5],
-      [epic, 'priority', [1.5]],
-      [epic, 'priority', [0]],
-      [epic, 'priority', '303'],
-      [epic, 'priorityError', 1],
+      [epic, 'waves', [303]],
+      [epic, 'waves', [[0]]],
+      [epic, 'waves', [[1.5]]],
+      [epic, 'waves', '303'],
+      [epic, 'wavesError', 1],
     ] as const) {
       const copy = structuredClone(base);
       pick(copy)[key] = value;

@@ -102,7 +102,7 @@ pub enum Command {
     Update(UpdateArgs),
     /// Show the project's shared folder and where its files are
     Workspace(WorkspaceArgs),
-    /// Show the tasks an agent can pick up, by epic in priority order
+    /// Show the tasks an agent can pick up, by epic in wave order
     #[command(
         after_help = "Examples:\n  agboard progress\n  agboard progress --json\n  agboard progress --include-pending --include-done 5\n  agboard --project \"My project\" progress --json"
     )]

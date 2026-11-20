@@ -12,7 +12,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
 | `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. The `reason` for a person's draft says to wait for the user to finalize it; for an AI draft it points to `agboard start`. | 1 | 409 |
-| `epic_is_draft` | A CLI `epic edit`, or `epic edit --priority`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
+| `epic_is_draft` | A CLI `epic edit`, or `epic edit --waves`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
 | `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
 | `human_only` | An agent withdraws a request. Only a person can. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |

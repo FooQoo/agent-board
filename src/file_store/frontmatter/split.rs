@@ -5,7 +5,7 @@ use serde_yaml_ng::{Mapping, Value};
 use crate::file_store::validate::Defect;
 
 /// A document's Markdown and metadata syntax. Epic completion conditions are
-/// ordinary body text; only `priority` is interpreted as document metadata.
+/// ordinary body text; only `waves` is interpreted as document metadata.
 pub struct ParsedDocument {
     pub body: String,
     pub defects: Vec<Defect>,

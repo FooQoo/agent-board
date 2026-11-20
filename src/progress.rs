@@ -1,4 +1,4 @@
-//! The progress table: the tasks an agent can pick up, grouped by epic in priority order.
+//! The progress table: the tasks an agent can pick up, grouped by epic in wave order.
 //! `agboard progress` and the agent hook print this same table.
 //!
 //! A task is listed when it is in Todo or Doing and its agent status is not Pending. Done and
@@ -105,7 +105,7 @@ pub fn build_with(
     epics.sort_by(|a, b| a.id.as_str().cmp(b.id.as_str()));
     let mut groups = Vec::new();
     for epic in epics {
-        let priority_error = frontmatter::priority_of(&epic.document).is_err();
+        let waves_error = frontmatter::waves_of(&epic.document).is_err();
         let tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
@@ -119,7 +119,7 @@ pub fn build_with(
             id: epic.id.as_str().to_string(),
             name: epic.name.clone(),
             document_path: layout::epic_document(&epic_dir),
-            priority_error,
+            waves_error,
             tasks: tasks
                 .into_iter()
                 .map(|task| task_of(task, &project_dir))
@@ -198,7 +198,7 @@ pub fn build_with(
 }
 
 /// Tasks in the same order shown by the progress table. Task selection uses
-/// this list too, so epic ordering, EPIC.md priority and the unassigned tail stay
+/// this list too, so epic ordering, EPIC.md waves and the unassigned tail stay
 /// one contract. This intentionally keeps progress' existing visibility
 /// rules; callers apply any narrower selection predicate afterwards.
 pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
@@ -211,13 +211,17 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
         .collect();
     let mut ordered = Vec::new();
     for epic in epics {
-        let priority = frontmatter::priority_of(&epic.document).unwrap_or_default();
+        let order: Vec<i64> = frontmatter::waves_of(&epic.document)
+            .unwrap_or_default()
+            .into_iter()
+            .flatten()
+            .collect();
         let mut tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
             .filter(|task| task.epic_id.as_deref() == Some(epic.id.as_str()))
             .collect();
-        tasks.sort_by_key(|task| (rank(&priority, task.id), task.id));
+        tasks.sort_by_key(|task| (rank(&order, task.id), task.id));
         ordered.extend(tasks);
     }
     let mut unassigned: Vec<&TaskView> = listed
@@ -251,10 +255,10 @@ fn is_waiting(task: &TaskView) -> bool {
         && !is_sample(task)
 }
 
-/// Position in the priority list; a task that is not listed comes after all
+/// Position in the flattened waves; a task that is not listed comes after all
 /// listed tasks.
-fn rank(priority: &[i64], id: i64) -> usize {
-    priority
+fn rank(order: &[i64], id: i64) -> usize {
+    order
         .iter()
         .position(|listed| *listed == id)
         .unwrap_or(usize::MAX)

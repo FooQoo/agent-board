@@ -156,11 +156,11 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
         changed |= result.changed;
         epic = Some(result.value);
     }
-    if let Some(text) = &args.priority {
-        let priority = parse_priority(text)?;
+    if let Some(values) = &args.waves {
+        let waves = parse_waves(values)?;
         let result = ctx
             .files
-            .set_epic_priority(project, &id, &priority, true, ctx.clock.now())?;
+            .set_epic_waves(project, &id, &waves, true, ctx.clock.now())?;
         changed |= result.changed;
         epic = Some(result.value);
     }
@@ -180,22 +180,25 @@ fn edit(ctx: &mut Context, args: &EpicEditArgs) -> Result<Outcome, AgboardError>
     })
 }
 
-/// The `--priority` list: task IDs separated by commas. Empty clears the order.
-fn parse_priority(text: &str) -> Result<Vec<i64>, AgboardError> {
-    let text = text.trim();
-    if text.is_empty() {
-        return Ok(Vec::new());
+/// The `--waves` values, one per wave: a task ID or task IDs joined by commas.
+/// Blank values are dropped, so a single empty value clears the order.
+fn parse_waves(values: &[String]) -> Result<Vec<Vec<i64>>, AgboardError> {
+    let invalid = || {
+        AgboardError::InvalidValue {
+        field: "waves".to_string(),
+        reason: "Give one value per wave, a task ID or task IDs joined by commas, for example --waves 24 25,26."
+            .to_string(),
     }
-    text.split(',')
-        .map(|part| {
-            part.trim()
-                .parse::<i64>()
-                .map_err(|_| AgboardError::InvalidValue {
-                    field: "priority".to_string(),
-                    reason: "Use task IDs separated by commas, for example 24,26,25.".to_string(),
-                })
-        })
-        .collect()
+    };
+    let mut waves = Vec::new();
+    for value in values.iter().filter(|value| !value.trim().is_empty()) {
+        let wave = value
+            .split(',')
+            .map(|part| part.trim().parse::<i64>().map_err(|_| invalid()))
+            .collect::<Result<Vec<i64>, AgboardError>>()?;
+        waves.push(wave);
+    }
+    Ok(waves)
 }
 
 /// Delete an epic after a person confirms it at a terminal. The epic must

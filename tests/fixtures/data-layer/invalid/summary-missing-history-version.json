@@ -90,11 +90,8 @@
       "detailVersions": {
         "document": "c0ffee00c0ffee00"
       },
-      "priority": [
-        303,
-        302
-      ],
-      "priorityError": false
+      "waves": [[303], [302]],
+      "wavesError": false
     }
   ],
   "problems": [

@@ -106,10 +106,10 @@ pub struct SummaryEpic {
     /// `#RRGGBB`.
     pub color: String,
     pub draft: Option<crate::domain::Draft>,
-    /// The IDs of the epic's tasks in the order the epic sets; empty when it sets none.
-    pub priority: Vec<i64>,
+    /// The epic's task order as waves of task IDs; empty when it sets none. The tasks of a wave can run in parallel.
+    pub waves: Vec<Vec<i64>>,
     /// The stored order cannot be read, so it is ignored.
-    pub priority_error: bool,
+    pub waves_error: bool,
     pub progress: SummaryEpicProgress,
     pub detail_versions: EpicDetailVersions,
 }

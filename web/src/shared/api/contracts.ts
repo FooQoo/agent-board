@@ -63,10 +63,10 @@ export interface Epic extends EpicRef {
   document: string;
   /** EPIC.md without its frontmatter. The whole file when the frontmatter has a defect. */
   body: string;
-  /** The card order of the epic (EPIC.md `priority`); empty when none is stored. */
-  priority: number[];
+  /** The task order of the epic as waves (EPIC.md `waves`); empty when none is stored. */
+  waves: number[][];
   /** The stored order cannot be read; it is then ignored. */
-  priorityError: boolean;
+  wavesError: boolean;
   attachments: Attachment[];
   createdAt: string;
   updatedAt: string;

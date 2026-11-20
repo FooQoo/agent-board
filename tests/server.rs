@@ -1870,8 +1870,8 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
     assert_eq!(epic["name"], "First epic");
     assert_eq!(epic["color"], "#3366CC");
     assert_eq!(epic["draft"], serde_json::Value::Null);
-    assert_eq!(epic["priority"], serde_json::json!([]));
-    assert_eq!(epic["priorityError"], false);
+    assert_eq!(epic["waves"], serde_json::json!([]));
+    assert_eq!(epic["wavesError"], false);
     let mut keys: Vec<&str> = epic
         .as_object()
         .unwrap()
@@ -1887,9 +1887,9 @@ fn the_summary_lists_each_epic_and_its_detail_has_the_document() {
             "draft",
             "id",
             "name",
-            "priority",
-            "priorityError",
-            "progress"
+            "progress",
+            "waves",
+            "wavesError"
         ]
     );
     // The document and the attachments are read from the epic's detail.

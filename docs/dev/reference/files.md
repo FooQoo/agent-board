@@ -85,7 +85,15 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 
 `project.json` holds `formatVersion`, `id`, `name`, `createdAt`, `nextTaskId`, `nextQuestionId`, and `defaultEpicsSeeded`. `nextQuestionId` is the number of the next question; a file without it is read as `1`. The last one is `true` once the project has been offered the default epics `BUG` and `ENHANCEMENT`; it is written once, so a default epic that was deleted is not created again. A file without it is read as `false`. `epic.json` holds `formatVersion`, `id`, `name`, `color`, `isDraft`, `attachments`, `createdAt`, and `updatedAt`.
 
-`EPIC.md` holds the epic's details in Markdown, frontmatter included. Its frontmatter may hold `priority`, the list of task IDs in work order. The API and `epic show --json` return the whole text as `document`, the text without frontmatter as `body`, and the parsed order as `priority`.
+`EPIC.md` holds the epic's details in Markdown, frontmatter included. Its frontmatter may hold `waves`, the task order as a YAML list in which each item is one wave: a task ID (`566`) or task IDs joined by commas (`569,570,571`). The tasks of one wave can run in parallel. The API and `epic show --json` return the whole text as `document`, the text without frontmatter as `body`, and the parsed order as `waves` (a list of task ID lists).
+
+```yaml
+waves:
+- 566
+- 572
+- 569,570,571
+```
+
 
 A `task.json` looks like this:
 

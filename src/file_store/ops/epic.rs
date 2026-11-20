@@ -50,7 +50,7 @@ fn read_document(shared: &Path, dir: &Path) -> Result<String, AgboardError> {
 
 fn view_of(file: EpicFile, document: String) -> EpicView {
     let parts = frontmatter::parse_document(&document);
-    let (priority, priority_error) = match frontmatter::priority_of(&document) {
+    let (waves, waves_error) = match frontmatter::waves_of(&document) {
         Ok(order) => (order, false),
         Err(_) => (Vec::new(), true),
     };
@@ -61,8 +61,8 @@ fn view_of(file: EpicFile, document: String) -> EpicView {
         draft: file.draft,
         document,
         body: parts.body,
-        priority,
-        priority_error,
+        waves,
+        waves_error,
         attachments: file.attachments,
         created_at: file.created_at,
         updated_at: file.updated_at,

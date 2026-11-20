@@ -184,21 +184,22 @@ impl FileStore {
         })
     }
 
-    /// Replace an epic's task order, the `priority` list of its EPIC.md. The
-    /// list is checked first (positive IDs, no repeats). IDs that no task of
-    /// the epic holds any more are dropped, so the stored order is the order of
-    /// the tasks that exist. Other frontmatter keys and the body stay. A list
-    /// that does not change writes nothing. With `refuse_if_draft`, a draft epic
+    /// Replace an epic's task order, the `waves` list of its EPIC.md. The
+    /// waves are checked first (positive
+    /// IDs, no repeats across waves). IDs that no task of the epic holds any
+    /// more are dropped, and so are the waves that become empty, so the stored
+    /// order is the order of the tasks that exist. Other frontmatter keys and
+    /// the body stay. A list that does not change writes nothing. With `refuse_if_draft`, a draft epic
     /// is refused with `epic_is_draft` before anything is written.
-    pub fn set_epic_priority(
+    pub fn set_epic_waves(
         &self,
         project: &ProjectId,
         id: &EpicId,
-        priority: &[i64],
+        waves: &[Vec<i64>],
         refuse_if_draft: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<EpicView>, AgboardError> {
-        frontmatter::validate_priority(priority).map_err(|d| AgboardError::InvalidValue {
+        frontmatter::validate_waves(waves).map_err(|d| AgboardError::InvalidValue {
             field: d.field,
             reason: d.reason,
         })?;
@@ -214,22 +215,26 @@ impl FileStore {
             .filter(|task| task.epic_id.as_deref() == Some(id.as_str()))
             .map(|task| task.id)
             .collect();
-        let kept: Vec<i64> = priority
+        let kept: Vec<Vec<i64>> = waves
             .iter()
-            .copied()
-            .filter(|task| members.contains(task))
+            .map(|wave| {
+                wave.iter()
+                    .copied()
+                    .filter(|task| members.contains(task))
+                    .collect::<Vec<i64>>()
+            })
+            .filter(|wave| !wave.is_empty())
             .collect();
 
         let current_document = read_document(shared, &dir)?;
         let document_label = layout::shared_label(shared, &layout::epic_document(&dir));
-        let next_document =
-            frontmatter::compose_priority(&current_document, &kept).map_err(|d| {
-                AgboardError::FileInvalid {
-                    file: document_label.clone(),
-                    field: d.field,
-                    reason: d.reason,
-                }
-            })?;
+        let next_document = frontmatter::compose_waves(&current_document, &kept).map_err(|d| {
+            AgboardError::FileInvalid {
+                file: document_label.clone(),
+                field: d.field,
+                reason: d.reason,
+            }
+        })?;
         let changed = next_document != current_document;
         if changed {
             validate::ensure_document_body(&next_document, &document_label)?;
