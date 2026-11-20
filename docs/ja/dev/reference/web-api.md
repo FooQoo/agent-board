@@ -20,7 +20,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | `draft`（必須）を設定する。`"human"`で人の下書きにし、`null`で確定し、`"ai"`で元のAIの下書きに戻す。AIの下書きを外せるのは開始（`agboard start`）だけで、AIの下書きへの`null`は409 `ai_draft_needs_start`、通常のタスクへの`"ai"`は422。`discard: true`（`null`と一緒の場合だけ）を付けると、確定せずに下書きを取り消し、履歴に`Discarded draft changes.`を残す。Runningのタスクは409 `invalid_state_for_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | `{"done": true\|false}`で、条件を1件、人として設定する。版は送らず、ロックの中で最新の`TASK.md`を変え、その選択を優先する。`{task, changed}`を返す。アーカイブ済みのタスクは409 `task_archived`、存在しない条件は422 `invalid_argument`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
-| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードの移動のダイアログは、いつも`fromStatus`を送る。 |
+| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードとスマホの画面は`reason`を送らず（サーバーが理由を生成します）、いつも`fromStatus`を送る。移動が拒否されたときは、カードはその列のままで、画面に短い通知を出す。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
 | `GET /api/projects/{projectId}/messages` | 質問と依頼をまとめて`{messages}`で、新しい順に返す。`status`は`open`（既定）・`closed`・`withdrawn`・`all`、`type`は`question`か`request`、`limit`は1〜500（既定50）。 |
 | `GET /api/projects/{projectId}/messages/{messageId}` | メッセージ1件を`{question}`または`{request}`で返す。質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`・`acceptedAt`、なければ`null`。`acceptedAt`はAIが回答を受け取るまで`null`）・`status`（`open`・`answered`・`withdrawn`）・`referencedBy`・`createdAt`・`withdrawnAt`を持つ。依頼は`id`・`type`・`from`・`to`・`body`・`status`（`open`・`accepted`・`withdrawn`）・`acceptedAt`・`withdrawnAt`・`createdAt`を持つ。未知のIDは404 `message_not_found`。 |
@@ -48,8 +48,8 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
-| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`stateChanges`・`periodic`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
-| `PUT /api/notification-settings` | JSONの本文で`kinds`・`stateChanges`・`periodic`のグループのいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
+| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
+| `PUT /api/notification-settings` | JSONの本文で`kinds`グループを保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 | `GET /api/monitor-connections`とその配下の経路 | ngrokのリモート接続。[リモート接続](#リモート接続)を参照。 |
@@ -259,16 +259,16 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 ```json
 {
-  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
-  "stateChanges": { "started": true, "pending": true, "done": true },
-  "periodic": { "enabled": false, "intervalMinutes": 60 },
+  "kinds": { "results": true, "questions": true, "history": false },
   "revision": 0
 }
 ```
 
-`PUT`は、`kinds`・`stateChanges`・`periodic`のいずれか、または複数を持つJSONの本文を取ります。送らなかったグループは保存済みの値のままです。送るグループはすべての項目を持つ必要があり、`periodic.intervalMinutes`は`30`・`60`・`120`・`240`のいずれかです。`GET`と同じ形を、`revision`を1増やして返します。書き込みの保護は`PUT /api/preferences`と同じです。
+`PUT`は、`kinds`を持つJSONの本文を取ります。`kinds`はすべての項目（`results`・`questions`・`history`）を持つ必要があります。`GET`と同じ形を、`revision`を1増やして返します。書き込みの保護は`PUT /api/preferences`と同じです。
 
-JSONとして読めない本文は400です。空の本文、未知の項目、足りない項目、用意されていない間隔は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`です。拒否した場合は何も保存しません。revisionの確認はなく、後から保存した内容が優先されます。
+定期的な状況通知とカードの状態変化の通知は廃止しました。古いバージョンのまま開いているページがそれらの項目を送ることがあるため、`stateChanges`と`periodic`、および`kinds.stateChanges`は、受け取っても無視します。廃止した項目だけを持つ本文は、保存するものがないので422です。`GET`はそれらを返しません。
+
+JSONとして読めない本文は400です。空の本文、未知の項目、足りない項目は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`です。拒否した場合は何も保存しません。revisionの確認はなく、後から保存した内容が優先されます。
 
 ### プロジェクトのドキュメント
 

@@ -37,6 +37,32 @@ describe('ResultsView', () => {
     expect(container.querySelector('img')?.getAttribute('src')).toBe(url('img-1'));
   });
 
+  it('shows every image of a result with several, and steps through them when enlarged', () => {
+    const many: TaskResult = {
+      version: 3,
+      key: 'c',
+      kind: 'final',
+      summary: 'Mock screens',
+      attachmentIds: ['s1', 's2', 's3'],
+      at: '2026-11-20T03:00:00Z',
+    };
+    const { container } = render(
+      <ResultsView state={{ status: 'ready', results: [many] }} attachmentUrl={url} />,
+    );
+    expect([...container.querySelectorAll('img')].map((img) => img.getAttribute('src'))).toEqual([
+      url('s1'),
+      url('s2'),
+      url('s3'),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Enlarge image 2 of 3 of result 3' }));
+    expect(screen.getByText('2 / 3')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+    expect(screen.getByText('3 / 3')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Next image' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
   it('shows a text-only result without an image', () => {
     const { container } = render(
       <ResultsView state={{ status: 'ready', results: results.slice(0, 1) }} attachmentUrl={url} />,

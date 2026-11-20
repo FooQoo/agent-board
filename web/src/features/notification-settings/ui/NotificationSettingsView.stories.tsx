@@ -23,31 +23,28 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const custom: NotificationSettings = {
-  kinds: { results: true, questions: true, stateChanges: true, history: true },
-  stateChanges: { started: false, pending: true, done: true },
-  periodic: { enabled: true, intervalMinutes: 120 },
+  kinds: { results: true, questions: false, history: true },
   revision: 7,
 };
 
-/** Results and questions on, the rest off; periodic off. */
+/** Results and questions on, history off. */
 export const Defaults: Story = {
   play: async ({ canvasElement, args }) => {
     const view = within(canvasElement);
     await expect(view.getByRole('checkbox', { name: /^Results/ })).toBeChecked();
-    await expect(view.getByRole('checkbox', { name: /^Card state changes/ })).not.toBeChecked();
-    await expect(view.getByRole('checkbox', { name: 'Started' })).toBeDisabled();
+    await expect(view.getByRole('checkbox', { name: /^History additions/ })).not.toBeChecked();
     await userEvent.click(view.getByRole('checkbox', { name: /^History additions/ }));
     await expect(args.onChange).toHaveBeenCalled();
   },
 };
 
-/** Every kind on, one state change dropped, and a two-hour periodic notification. */
+/** Questions off, results and history on. */
 export const CustomChoices: Story = {
   args: { state: { status: 'ready', settings: custom, saveFailed: false } },
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
-    await expect(view.getByRole('checkbox', { name: 'Started' })).not.toBeChecked();
-    await expect(view.getByRole('radio', { name: '2 hours' })).toBeChecked();
+    await expect(view.getByRole('checkbox', { name: /^Questions that need/ })).not.toBeChecked();
+    await expect(view.getByRole('checkbox', { name: /^History additions/ })).toBeChecked();
   },
 };
 
@@ -58,7 +55,7 @@ export const AllOff: Story = {
       status: 'ready',
       settings: {
         ...DEFAULT_NOTIFICATION_SETTINGS,
-        kinds: { results: false, questions: false, stateChanges: false, history: false },
+        kinds: { results: false, questions: false, history: false },
       },
       saveFailed: false,
     },

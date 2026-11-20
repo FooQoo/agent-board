@@ -20,7 +20,7 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `PUT /api/projects/{projectId}/tasks/{id}/draft` | Sets `draft` (required): `"human"` makes the task a person's draft, `null` finalizes it, and `"ai"` gives it back to the AI draft it was. An AI draft is cleared only by starting it (`agboard start`): `null` on it is 409 `ai_draft_needs_start`, and `"ai"` on a normal task is 422. With `discard: true` (only together with `null`) the draft is taken back without finalizing, and the history records `Discarded draft changes.`. A running task is 409 `invalid_state_for_draft`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | `{"done": true\|false}` sets one condition as a person, with no version: the latest `TASK.md` is changed under the lock and the choice wins. Answers `{task, changed}`. An archived task is 409 `task_archived`; an unknown condition is 422 `invalid_argument`. |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`. Unknown EPIC-ID is 404 `epic_not_found`. |
-| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`, optional `reason`, and optional `fromStatus`, the status the page showed when the user chose the move. With `fromStatus`, a task that is no longer in that status is 409 `task_status_changed` and nothing is written; the body adds `currentStatus`, the status the task has now, so the page can show it and the user can move again from there. The board's move dialog always sends `fromStatus`. |
+| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`, optional `reason`, and optional `fromStatus`, the status the page showed when the user chose the move. With `fromStatus`, a task that is no longer in that status is 409 `task_status_changed` and nothing is written; the body adds `currentStatus`, the status the task has now, so the page can show it and the user can move again from there. The board and the phone screen send no `reason`, so the server generates one, and always send `fromStatus`; a refused move leaves the card where it is and the screen shows a short notice. |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | Changes the run state within the state rules. The UI has no entry point for it. |
 | `GET /api/projects/{projectId}/messages` | Questions and requests together, as `{messages}`, newest first. `status` is `open` (the default), `closed`, `withdrawn`, or `all`; `type` is `question` or `request`; `limit` is 1 to 500 (default 50). |
 | `GET /api/projects/{projectId}/messages/{messageId}` | One message, as `{question}` or `{request}`. A question has `id`, `type`, `from`, `to`, `body`, `tasks`, `choices`, `recommendedChoiceId`, `reply` (`choiceId`, `choiceLabel`, `text`, `via`, `at`, `acceptedAt`, or `null`; `acceptedAt` is `null` until an agent takes the answer in), `status` (`open`, `answered`, `withdrawn`), `referencedBy`, `createdAt`, and `withdrawnAt`. A request has `id`, `type`, `from`, `to`, `body`, `status` (`open`, `accepted`, `withdrawn`), `acceptedAt`, `withdrawnAt`, and `createdAt`. An unknown ID is 404 `message_not_found`. |
@@ -48,8 +48,8 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `GET /api/events` | SSE: `ready` after subscribing with the board's build ID (`{"build":"<16 hex>"}`), `changed` with the changed resources (see [Change events](#change-events)), `preferences` after a saved language or theme change (the same JSON as `GET /api/preferences`), a keep-alive comment every 15 seconds. |
 | `GET /api/preferences` | The saved language and color theme: `locale`, `theme` (`mode`, `accent`), and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Display preferences](#display-preferences). |
 | `PUT /api/preferences` | Saves the `locale`, `theme`, or both, from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Unknown fields and invalid values are 422 `invalid_preferences`; a failed write is 500 `preferences_unavailable`. A refused or failed save leaves the saved value unchanged. |
-| `GET /api/notification-settings` | Which notifications the phone receives: `kinds`, `stateChanges`, `periodic`, and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
-| `PUT /api/notification-settings` | Saves any of the `kinds`, `stateChanges`, and `periodic` groups from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
+| `GET /api/notification-settings` | Which notifications the phone receives: `kinds` and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
+| `PUT /api/notification-settings` | Saves the `kinds` group from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
 | `GET /api/monitor-connections` and the routes under it | The ngrok remote connection. See [Remote connection](#remote-connection). |
@@ -259,16 +259,16 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 
 ```json
 {
-  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
-  "stateChanges": { "started": true, "pending": true, "done": true },
-  "periodic": { "enabled": false, "intervalMinutes": 60 },
+  "kinds": { "results": true, "questions": true, "history": false },
   "revision": 0
 }
 ```
 
-`PUT` takes a JSON body with `kinds`, `stateChanges`, `periodic`, or any of them. A group that is not sent keeps its saved value; a group that is sent must carry all of its fields, and `periodic.intervalMinutes` must be one of `30`, `60`, `120`, `240`. It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
+`PUT` takes a JSON body with `kinds`, which must carry all of its fields (`results`, `questions`, `history`). It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
 
-A malformed JSON body is 400. An empty body, an unknown field, a missing field, or an interval that is not offered is 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. Nothing is saved on a refusal. There is no revision check: the last save wins.
+The periodic status notification and the card state change notifications were removed. A page that is still open from an older version may send their old fields: `stateChanges` and `periodic` are accepted and ignored, and `kinds.stateChanges` is accepted and ignored too. A body that carries only those removed fields has nothing to save and is 422. `GET` never returns them.
+
+A malformed JSON body is 400. An empty body, an unknown field, or a missing field is 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. Nothing is saved on a refusal. There is no revision check: the last save wins.
 
 ### Project docs
 

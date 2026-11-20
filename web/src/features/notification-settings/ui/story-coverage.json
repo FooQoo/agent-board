@@ -10,17 +10,12 @@
           "stories": [
             {
               "id": "settings-notificationsettingsview--defaults",
-              "states": [
-                "results and questions on",
-                "state changes and history off",
-                "state picks disabled",
-                "periodic off"
-              ],
+              "states": ["results and questions on", "history off"],
               "interaction": true
             },
             {
               "id": "settings-notificationsettingsview--custom-choices",
-              "states": ["all kinds on", "one state change dropped", "two-hour interval"],
+              "states": ["questions off", "results and history on"],
               "interaction": true
             },
             {
