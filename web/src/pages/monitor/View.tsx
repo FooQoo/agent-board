@@ -26,6 +26,7 @@ import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
+import { useReportOpen } from './hooks/useReportOpen';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
@@ -97,11 +98,7 @@ export function MonitorView(props: MonitorViewProps) {
     detail.close(next);
     if (!next && resultLink != null) onResultLinkClose?.();
   };
-  const { onDetailOpenChange } = props;
-  useEffect(() => {
-    onDetailOpenChange?.(detail.open);
-    return () => onDetailOpenChange?.(false);
-  }, [detail.open, onDetailOpenChange]);
+  useReportOpen(detail.open, props.onDetailOpenChange);
   // `?messages=summary` opens the list on the Summary tab once; closing it ends the request.
   const { summaryLink, onSummaryLinkClose } = props;
   const summaryOpened = useRef(false);
@@ -117,12 +114,7 @@ export function MonitorView(props: MonitorViewProps) {
       onSummaryLinkClose?.();
     }
   }, [summaryLink, props.messagesApi, openPanel, panelClosed, onSummaryLinkClose]);
-  const { onMessagesOpenChange } = props;
-  const listOpen = panel.target !== null;
-  useEffect(() => {
-    onMessagesOpenChange?.(listOpen);
-    return () => onMessagesOpenChange?.(false);
-  }, [listOpen, onMessagesOpenChange]);
+  useReportOpen(panel.target !== null, props.onMessagesOpenChange);
   const { writes, onWritten } = props;
   // Without writes (the demo, sample data) a swipe asks nothing and changes nothing.
   const ask = (next: LanePending) => {
