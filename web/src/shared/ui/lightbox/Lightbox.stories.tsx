@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { SAMPLE_IMAGE_URL } from '../../../../.storybook/support/fixtures';
 import { Lightbox } from './Lightbox';
 
@@ -37,5 +37,25 @@ export const CloseCalls: Story = {
     const dialog = await within(document.body).findByRole('dialog', { name: 'Sample picture' });
     await userEvent.click(within(dialog).getByRole('button', { name: /close/i }));
     expect(args.onClose).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** Escape, and a press on the dim backdrop outside the picture, ask the owner to close too. */
+export const CloseByEscapeAndBackdrop: Story = {
+  render: (args) => (
+    <Lightbox {...args}>
+      <img src={SAMPLE_IMAGE_URL} alt="Synthetic sample" />
+    </Lightbox>
+  ),
+  play: async ({ args }) => {
+    await within(document.body).findByRole('dialog', { name: 'Sample picture' });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(1));
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement;
+    await userEvent.pointer([
+      { target: overlay, coords: { clientX: 2, clientY: 2 } },
+      { keys: '[MouseLeft]', target: overlay, coords: { clientX: 2, clientY: 2 } },
+    ]);
+    await waitFor(() => expect(args.onClose).toHaveBeenCalledTimes(2));
   },
 };

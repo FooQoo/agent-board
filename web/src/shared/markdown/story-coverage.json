@@ -79,6 +79,11 @@
               "interaction": true
             },
             {
+              "id": "shared-markdown-markdownview--image-enlarge-close",
+              "states": ["closes with Escape", "closes with a backdrop press"],
+              "interaction": true
+            },
+            {
               "id": "shared-markdown-markdownview--image-enlarge-swipe",
               "states": ["image", "enlarged", "swipes across the images of the text"],
               "interaction": true
@@ -255,6 +260,11 @@
             {
               "id": "shared-markdown-markdownview--image-enlarge",
               "states": ["single image", "no position"],
+              "interaction": true
+            },
+            {
+              "id": "shared-markdown-markdownview--image-enlarge-close",
+              "states": ["closes with Escape", "closes with a backdrop press"],
               "interaction": true
             },
             {
