@@ -7,6 +7,7 @@
 //! do not take the lock.
 
 mod agent;
+mod agent_stopped;
 
 mod attachment;
 mod completion;

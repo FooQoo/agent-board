@@ -101,6 +101,9 @@ pub struct Launcher {
     closing: AtomicBool,
     /// The shared data folder of the boards, once the server has told the launcher.
     board: Mutex<Option<PathBuf>>,
+    /// Handoff notes that could not be saved: project, task, and the failure detail. Kept here,
+    /// not on a child, so that they survive a child that exits, and retried by every pusher.
+    unrecorded: Mutex<Vec<(ProjectId, i64, String)>>,
 }
 
 impl Launcher {
@@ -167,6 +170,7 @@ impl Launcher {
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
             board: Mutex::new(None),
+            unrecorded: Mutex::new(Vec::new()),
         })
     }
 

@@ -39,6 +39,7 @@ Extra fields such as an ID, kind, actor, or transition are rejected.
 
 - Create, lane move, run-state change, question, answer, withdrawal, reference change, draft toggle, epic change, archive, restore, a person checking or unchecking a condition, and automatic Done append history automatically. If a move or a state change omits the reason, the product generates one from the operation and the current state.
 - Agents append work progress with `agboard --project NAME history add ID [--reason TEXT | --reason-file PATH]`. The product assigns the time and refuses AI appends to drafts, archived tasks, and Done tasks. A blank reason is generated from the current lane and run state.
+- The board itself appends one entry when the resident agent stops on an error while it holds a task, and returns the task to idle in the same save. See [Push mode](./agents.md#push-mode).
 - `agboard result add` records a result delivered to the requester and appends one entry that names the version and the first line of the summary. A retry of a result that already exists appends nothing. Results themselves are stored in `task.json`, not in history; see [Files](../reference/files.md#results).
 - Agents record concise entries at the start, meaningful progress, decisions, verification, interruptions, and resumptions, without asking for approval each time, and never duplicate an entry an operation already appended.
 - The UI shows time and content only, newest first, and draws each reason as Markdown, the same way as a task body. CLI `show` and snapshots return the full history.

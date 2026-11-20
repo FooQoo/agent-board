@@ -3,7 +3,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use super::driver::{AgentDriver, DriverEvent, PermissionRequest, StartSpec, decide_permission};
+use super::driver::{
+    AgentDriver, DriverEvent, PermissionRequest, StartSpec, TurnOutcome, decide_permission,
+};
 use super::process::{Exit, new_launch_id, open_log};
 use super::push::{self, Push};
 use super::{Launched, Launcher, Live, cli};
@@ -161,8 +163,14 @@ impl Launcher {
         });
 
         let launcher = self.clone();
+        let project = project.clone();
         std::thread::spawn(move || {
-            let reason = launcher.pump(tool, &launch_id, driver.as_ref(), &push);
+            let reason = launcher.pump(tool, &launch_id, &project, driver.as_ref(), &push);
+            // A session that dies in the middle of a turn leaves its task running too.
+            if launcher.is_current_plan(tool, &launch_id) {
+                let detail = push.take_failure().unwrap_or_else(|| reason.clone());
+                launcher.hand_over(&project, &push.take_all_handed(), &detail);
+            }
             push.close();
             launcher.forget(tool, &launch_id);
             launcher.on_exit(tool, &launch_id, &reason);
@@ -176,7 +184,14 @@ impl Launcher {
     /// Read the events of a session until it exits, and answer what it asks. This is the one
     /// channel through which a driver reaches the launcher. The first event shows the child is
     /// attached, and the end of a turn wakes the pusher. Returns why the session ended.
-    fn pump(&self, tool: Tool, launch_id: &str, driver: &dyn AgentDriver, push: &Push) -> String {
+    fn pump(
+        &self,
+        tool: Tool,
+        launch_id: &str,
+        project: &ProjectId,
+        driver: &dyn AgentDriver,
+        push: &Push,
+    ) -> String {
         loop {
             match driver.next_event() {
                 DriverEvent::Exited { code, signal } => return exit_reason(tool, code, signal),
@@ -192,6 +207,16 @@ impl Launcher {
                 DriverEvent::TurnEnded(outcome) => {
                     push.attach(SystemClock.now());
                     self.on_attached(tool, launch_id);
+                    // A turn that a person's stop cut short is not an error to hand over.
+                    let failure = match &outcome {
+                        TurnOutcome::Failed { message } => Some(message.as_str()),
+                        _ => None,
+                    };
+                    if let Some((handed, detail)) = push.settle(failure, driver.is_idle())
+                        && self.is_current_plan(tool, launch_id)
+                    {
+                        self.hand_over(project, &handed, &detail);
+                    }
                     push.turn_ended(&outcome);
                 }
                 DriverEvent::Activity { .. } | DriverEvent::Unknown => {}
@@ -221,6 +246,7 @@ impl Launcher {
             if !self.is_current(launch_id) {
                 break;
             }
+            self.retry_handoffs();
             push::push_once(&shared, project, project_name, driver, push, &policy);
         }
     }
