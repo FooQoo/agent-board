@@ -118,7 +118,8 @@ pub(super) fn payload_of(event: &Event, lang: Lang, origin: &PublicOrigin) -> Op
         (Kind::History, _) => origin.history_link(&event.project, event.task),
         _ => origin.task_link(&event.project, event.task),
     }?;
-    let detail = shorten(first_sentence(&event.detail), DETAIL_CHARS);
+    let plain = crate::domain::first_line_plain(&event.detail);
+    let detail = shorten(first_sentence(&plain), DETAIL_CHARS);
     let body = if detail.is_empty() {
         what_happened(event.kind, lang).to_string()
     } else {

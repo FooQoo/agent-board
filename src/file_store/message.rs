@@ -44,14 +44,12 @@ pub trait MessageSource {
     fn message(&self) -> Message;
 }
 
-/// The first non-empty line of a text without Markdown heading marks, up to 200 characters.
+/// The first non-empty line of a text as plain text, up to 200 characters: Markdown marks are removed.
 pub fn title_of(body: &str) -> String {
-    let line = body.lines().map(str::trim).find(|l| !l.is_empty());
-    let line = line
-        .unwrap_or_default()
-        .trim_start_matches('#')
-        .trim_start();
-    line.chars().take(200).collect()
+    crate::domain::first_line_plain(body)
+        .chars()
+        .take(200)
+        .collect()
 }
 
 pub struct Question<'a>(pub &'a QuestionView);

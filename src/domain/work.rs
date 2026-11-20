@@ -174,7 +174,7 @@ pub const MAX_RESULT_TITLE_CHARS: usize = 80;
 /// `…` when it was cut). A sentence ends at the first line break, at `。`, `！`
 /// or `？`, or at `.`, `!` or `?` followed by white space or the end.
 pub fn derive_result_title(summary: &str) -> String {
-    let line = summary.trim().lines().next().unwrap_or("").trim();
+    let line = crate::domain::first_line_plain(summary);
     let chars: Vec<char> = line.chars().collect();
     let mut end = chars.len();
     for (i, c) in chars.iter().enumerate() {
