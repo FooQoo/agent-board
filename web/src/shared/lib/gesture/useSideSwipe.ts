@@ -63,11 +63,15 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, options: SideSw
       return phase.current === 'slide' || !accepts || accepts(x - start.current.x);
     };
     const touch = (event: TouchEvent) => {
+      // No press, or one judged vertical (phase back to idle): the outer area, such as a pull to
+      // refresh, still needs these moves.
+      if (phase.current === 'idle') return;
       if (!active.current || !mine(event.touches[0]?.clientX ?? start.current.x)) return;
       event.stopPropagation();
       if (phase.current === 'slide' && event.cancelable) event.preventDefault();
     };
     const mouse = (event: MouseEvent) => {
+      if (phase.current === 'idle') return;
       if (active.current && mine(event.clientX)) event.stopPropagation();
     };
     element.addEventListener('touchmove', touch, { passive: false });
