@@ -6,6 +6,7 @@ import { resolveMessageImage } from '@/shared/api/messageAttachment';
 import { WriteError } from '@/shared/api/writeErrors';
 import type { Message } from '@/shared/data/api/contracts';
 import { Button } from '@/shared/ui/button';
+import { keepFocusOnPress } from '@/shared/ui/keepFocus';
 import { Surface } from '@/shared/ui/surface/Surface';
 import { DecisionAnswerFields } from '../answer/DecisionAnswerFields';
 import { DecisionQuestion } from '../answer/DecisionQuestion';
@@ -325,7 +326,12 @@ export function MessagesSurface({
               </Button>
             )}
             {answering && (
-              <Button type="button" disabled={!sendable} onClick={() => void send()}>
+              <Button
+                type="button"
+                disabled={!sendable}
+                onClick={() => void send()}
+                {...keepFocusOnPress}
+              >
                 {busy ? t('messages.detail.sending') : t('messages.detail.send')}
               </Button>
             )}
