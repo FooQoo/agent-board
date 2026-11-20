@@ -98,7 +98,7 @@ export const RowsInDialog: Story = {
   },
 };
 
-/** A phone-width dialog: the button moves under the text and the row does not scroll sideways. */
+/** A phone-width dialog: the button moves under the text, is centered on the row, and the row does not scroll sideways. */
 export const NarrowDialog: Story = {
   args: {
     icon: SmartphoneIcon,
@@ -107,15 +107,11 @@ export const NarrowDialog: Story = {
     action: 'Connection settings',
   },
   globals: { width: 'phone-375' },
+  // The meta decorator already draws the dialog; this one narrows the list to a phone sheet's width.
   decorators: [
     (Story) => (
-      <div
-        className="modal settings-dialog"
-        style={{ position: 'static', width: 343, margin: '16px auto' }}
-      >
-        <div className="settings__entries">
-          <Story />
-        </div>
+      <div style={{ width: 311, margin: '0 auto' }}>
+        <Story />
       </div>
     ),
   ],
@@ -131,5 +127,27 @@ export const NarrowDialog: Story = {
       dialog.getBoundingClientRect().right,
     );
     await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
+    // The button is centered on the whole row, not on the text column beside the icon.
+    const row = canvas.getByRole('region').getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    await expect(Math.abs(rect.left + rect.width / 2 - (row.left + row.width / 2))).toBeLessThan(1);
+  },
+};
+
+/** The tutorial row in Japanese at phone width: the short label is centered under the icon and text. */
+export const NarrowDialogJapanese: Story = {
+  args: {
+    title: 'チュートリアル',
+    body: 'サンプルで基本操作を体験できます。',
+    action: '試してみる',
+  },
+  globals: { locale: 'ja', width: 'phone-375' },
+  decorators: NarrowDialog.decorators,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', { name: '試してみる' });
+    const row = canvas.getByRole('region').getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    await expect(Math.abs(rect.left + rect.width / 2 - (row.left + row.width / 2))).toBeLessThan(1);
   },
 };
