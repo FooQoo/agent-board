@@ -63,6 +63,7 @@ impl Board {
                         choices: Vec::new(),
                         recommended_choice_id: None,
                         tasks: Vec::new(),
+                        images: Vec::new(),
                     }],
                     tasks: Vec::new(),
                 },

@@ -96,6 +96,7 @@ impl Fx {
                         choices: Vec::new(),
                         recommended_choice_id: None,
                         tasks: Vec::new(),
+                        images: Vec::new(),
                     }],
                     tasks: tasks.to_vec(),
                 },

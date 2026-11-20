@@ -270,6 +270,7 @@ fn the_conversion_runs_once_and_a_write_triggers_it_too() {
                     choices: Vec::new(),
                     recommended_choice_id: None,
                     tasks: vec![],
+                    images: Vec::new(),
                 }],
                 tasks: vec![id],
             },

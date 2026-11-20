@@ -206,6 +206,7 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
                     ],
                     recommended_choice_id: None,
                     tasks: Vec::new(),
+                    images: Vec::new(),
                 }],
                 tasks: vec![id],
             },
