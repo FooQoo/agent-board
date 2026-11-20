@@ -175,18 +175,23 @@ fn stop_output(shared: &Path, project: Option<&str>, input: &HookInput) -> Optio
         return None;
     }
     let store = FileStore::open(shared);
-    if let Some(name) = project {
-        let name = validate_project_name(name).ok()?;
-        store.project_by_name(&name).ok()?;
+    let meta = if let Some(name) = project {
+        store
+            .project_by_name(&validate_project_name(name).ok()?)
+            .ok()?
     } else {
         let cwd = hook_folder(input.cwd.as_ref()).ok()?;
-        store.resolve_binding(&cwd).ok()??;
-    }
-    super::stop::decide(
-        false,
-        input.last_assistant_message.as_deref(),
-        input.transcript_path.as_deref(),
-        input.turn_id.as_deref(),
+        store.resolve_binding(&cwd).ok()??.project
+    };
+    super::stop::run(
+        &super::stop::StopInput {
+            stop_hook_active: false,
+            last_assistant_message: input.last_assistant_message.as_deref(),
+            transcript_path: input.transcript_path.as_deref(),
+            turn_id: input.turn_id.as_deref(),
+        },
+        shared,
+        &meta.id,
     )
 }
 

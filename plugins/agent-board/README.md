@@ -75,7 +75,7 @@ Done tasks are read-only for agents and do not return to progress unless a user 
 - `SessionStart` (startup, resume, clear, compact): the first progress table and the table after compaction.
 - `PostToolUse`: a fresh progress table after each tool.
 - `PostToolUseFailure`: a fresh progress table after a failed tool.
-- `Stop`: blocks a turn once when it ends with a question that is not on the board (see the developer guide).
+- `Stop`: reminds the agent once at the end of a turn, with a list of rules: a question asked only in the chat, and a result that was not recorded (see the developer guide).
 
 Inspect `/hooks` and review the fixed command. The `agent-board` Skill does not register hooks itself.
 

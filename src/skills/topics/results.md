@@ -20,7 +20,7 @@ Give every result a short `--title` (at most 80 characters, one line): the headi
 
 When the work is finished and verified, deliver the finished result with `--final`, then complete the conditions as usual (see the work loop in `agboard skills`). A final result does not move the task to Done by itself.
 
-Automatic Done can complete a task before you write the final result. The progress table (and the hook) then lists it in `finalResultMissing` as `{id, title, taskPath}`, also while all its conditions are met but it is not yet Done. Record `result add <id> --final` for each listed task, with a PR link, a capture, or the verified outcome; `result add --final` is accepted on a Done task that has no final result, and the entry disappears afterwards. A Done task still refuses every other agent change, including a progress result. Do not stop other work for it.
+Automatic Done can complete a task before you write the final result. The progress table (and the hook) then lists it in `finalResultMissing` as `{id, title, taskPath}`, also while all its conditions are met but it is not yet Done. Record `result add <id> --final` for each listed task, with a PR link, a capture, or the verified outcome; `result add --final` is accepted on a Done task that has no final result, and the entry disappears afterwards. A Done task still refuses every other agent change, including a progress result. Do not stop other work for it. A turn-end (Stop) hook also reminds you, once, when the turn opened a pull request, pushed, or wrote an image and recorded no result while a task of yours is running, and when `finalResultMissing` is not empty; record the result, or end the turn again if nothing is viewable.
 
 ## A result needs no reply
 

@@ -208,7 +208,9 @@ fn the_skill_asks_on_the_board_and_in_the_chat() {
         "a chat answer must be written back to the board"
     );
     assert!(
-        skill.contains("asking permission to proceed") && skill.contains("re-read your reply"),
+        skill.contains("asking permission to proceed")
+            && skill.contains("re-read your reply")
+            && skill.contains("turn-end hook reminds you once"),
         "permission questions and the end-of-turn check must be named"
     );
     assert!(skill.contains("question_answered"));
