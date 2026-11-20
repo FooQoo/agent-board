@@ -101,7 +101,7 @@ A phone that added the board to its Home Screen can subscribe to Web Push, so th
 - **Ending a subscription.** The phone can turn it off (`DELETE /api/remote/push/subscription`). Unregistering the device on the PC deletes its subscription with it, and `MonitorConnections::push_subscriptions` also drops any whose device is gone (for example one pushed out by a full device list) before it returns the list. The files are on disk, so subscriptions survive a restart of the PC and a pause.
 - **For the sender.** `MonitorConnections::push_subscriptions()` returns the subscriptions to send to (`device_id`, `endpoint`, `p256dh`, `auth`, `created_at`), `push_store().vapid_signer()` returns the `ring` ECDSA P-256 key pair that signs the VAPID header, and `public_origin()` returns the public address while the connection is ready (and `None` otherwise, when nothing is sent). A push service that answers 404 or 410 for an endpoint means the phone dropped it, and the sender removes it with `push_store().unsubscribe_endpoint(device_id, endpoint)`, which keeps a replacement subscription the phone made while the request was in flight.
 
-The user-facing steps are in [Remote access](../../guide/watch/remote-access.md#get-notifications-on-an-iphone).
+The user-facing steps are in [Remote access](../../guide/watch/remote-access.md#notifications).
 
 ## The board app through the entrance
 

@@ -27,7 +27,7 @@ const custom: NotificationSettings = {
   revision: 7,
 };
 
-/** Results and questions on, history off. */
+/** Results on, questions and history off. */
 export const Defaults: Story = {
   play: async ({ canvasElement, args }) => {
     const view = within(canvasElement);

@@ -101,7 +101,7 @@ Edgeがアプリのために行うことはありません。エンドポイン�
 - **購読の終わり。** スマホ側でオフにできます（`DELETE /api/remote/push/subscription`）。PCで端末の登録を解除すると、その購読も一緒に削除します。`MonitorConnections::push_subscriptions`も、一覧を返す前に端末がなくなった購読（端末の一覧が満杯で押し出されたものなど）を破棄します。ファイルはディスクにあるので、PCの再起動や一時停止のあとも購読は残ります。
 - **送信側向け。** `MonitorConnections::push_subscriptions()`が送信先（`device_id`・`endpoint`・`p256dh`・`auth`・`created_at`）を返し、`push_store().vapid_signer()`がVAPIDヘッダーに署名する`ring`のECDSA P-256鍵ペアを返します。`public_origin()`は、接続がreadyの間だけ公開アドレスを返し、それ以外は`None`です（その間は何も送りません）。プッシュサービスがendpointに404か410を返したら、スマホが購読を取り消したということなので、送信側は`push_store().unsubscribe_endpoint(device_id, endpoint)`で削除します。送信中にスマホが購読を作り直していた場合、その新しい購読は残ります。
 
-利用者向けの手順は[リモートアクセス](../../guide/watch/remote-access.md#iphoneで通知を受け取る)にあります。
+利用者向けの手順は[リモートアクセス](../../guide/watch/remote-access.md#notifications)にあります。
 
 ## 入口から使うボードのアプリ
 

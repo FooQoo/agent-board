@@ -166,6 +166,7 @@ async fn a_kind_that_is_off_is_not_sent() {
 async fn one_event_with_several_kinds_is_one_notification_for_the_question() {
     let rig = rig();
     let mut ctx = rig.ctx(true);
+    ctx.settings.kinds.questions = true;
     ctx.settings.kinds.history = true;
     let events = vec![
         result_event(3),

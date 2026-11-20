@@ -145,12 +145,7 @@ The dialog has a language switch and a grid of themes: one row of 12 light color
 
 ### Phone notifications {#phone-notifications}
 
-**Notification settings** on the **Phone notifications** row opens a dialog of its own, on the PC and in the phone layout. On a narrow screen it opens as a bottom sheet. Closing it returns you to the board. The choices are saved on this PC, like the language and theme, and apply to the next notification; changing them sends nothing by itself. See [What you are notified about](./remote-access.md#notified-about).
-
-- **Results**, **Questions that need my decision**, and **History additions** are switched one by one. Results and questions are on at first; history additions are off. All three can be off.
-- In the Home Screen app on an iPhone, **Enable notifications** is at the top of this dialog; see [Get notifications on an iPhone](./remote-access.md#get-notifications-on-an-iphone).
-
-![Phone notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
+Choose which notifications the phone gets, turn them on or off, and read what each kind opens in [Notifications in the app](./remote-access.md#notifications).
 
 ![The board in a dark theme](../../images/guide/board-dark.png){.screenshot}
 
