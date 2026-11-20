@@ -138,13 +138,13 @@ Below the themes, four rows open other features. Each has an icon, a title, one 
 - **Tutorial** with **Try it** closes the dialog and shows the [first-run guide](#the-first-run-guide) again, on the screen you are using.
 - **Remote connection** with **Connection settings** opens the setup for checking the board from a phone with ngrok; see the [remote access guide](./remote-access).
 - **Resident session** with **Resident session settings** opens the dialog that starts and stops an agent session kept attached to the board; see [Resident session](../delegate/resident-session). While a session is launched, or auto-start is on, the footer also shows its tool and state just left of the sync state, and clicking it opens the same dialog.
-- **Phone notifications** with **Notification settings** opens the dialog that chooses what the board may tell your phone about; see [Phone notifications](#phone-notifications).
+- **Notifications** with **Notification settings** opens the dialog that chooses what the board may tell your phone about; see [Notifications](#phone-notifications).
 
-![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial, Remote connection, Resident session, and Phone notifications rows](../../images/guide/settings.png){.screenshot}
+![Settings dialog with the language switch, the light and dark color theme choices, and the Tutorial, Remote connection, Resident session, and Notifications rows](../../images/guide/settings.png){.screenshot}
 
 The dialog has a language switch and a grid of themes: one row of 12 light colors and one row of 12 dark colors. On a narrow window the button of each row moves under its description.
 
-### Phone notifications {#phone-notifications}
+### Notifications {#phone-notifications}
 
 Choose which notifications the phone gets, turn them on or off, and read what each kind opens in [Notifications in the app](./remote-access.md#notifications).
 

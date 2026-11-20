@@ -16,7 +16,7 @@ ngrokの入口の背後で配信する経路です。PCと同じアプリとAPI�
 | PUT `/api/remote/push/subscription` | sessionとCSRFトークンが必要。ブラウザの`PushSubscription.toJSON()`の本文（`endpoint`と`keys.p256dh`/`keys.auth`、JSONで4 KiBまで）を、sessionの端末のものとして保存し、古いものは置き換える。登録済みの端末がなければ409 `device_required`、公開`https`アドレスでないendpointや不正な鍵は400 `invalid_subscription`、ほかに400 `invalid_json`・413・415。`{"subscribed": true}`を返す。 |
 | DELETE `/api/remote/push/subscription` | sessionとCSRFトークンが必要。端末の購読を削除する（購読がなくても成功）。登録済みの端末がなければ409 `device_required`。 |
 | GET `/manifest.webmanifest`、`/sw.js` | sessionは不要。Webアプリのマニフェストと、ページがWeb Pushを受け取るためのService Worker。ローカルのリスナーでも提供する。 |
-| [Web API](./web-api.md)のそのほかの`/api/`の経路すべて | ボード自身の経路。SummaryとDetail、イベント（`/api/events`）、書き込み、プロジェクトのドキュメント、ガイド、表示設定、スマホの通知設定。読み取りには有効なsessionが必要。変更にはさらに、公開Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Csrf`のCSRFトークンが必要で、クライアントが送った`X-Agboard-Token`は取り除く。 |
+| [Web API](./web-api.md)のそのほかの`/api/`の経路すべて | ボード自身の経路。SummaryとDetail、イベント（`/api/events`）、書き込み、プロジェクトのドキュメント、ガイド、表示設定、通知設定。読み取りには有効なsessionが必要。変更にはさらに、公開Origin・`Sec-Fetch-Site: same-origin`・`X-Agboard-Csrf`のCSRFトークンが必要で、クライアントが送った`X-Agboard-Token`は取り除く。 |
 
 - sessionがないとき、ページの殻と上の静的ファイル、sessionの経路、unlockの経路以外はすべて401 `session_required`で、イベントのストリームも同じです。Cookieを設定するのは、正しい合言葉と、登録済みの端末のCookieだけです。
 - PC自身に作用する経路は、sessionがあっても入口には含めません。接続設定（`/api/monitor-connections`とその配下）、`POST /api/notify`、`POST /api/projects/{projectId}/docs/open`は、ここでは404です。
