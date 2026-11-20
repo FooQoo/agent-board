@@ -128,10 +128,9 @@ fn raw_digest(files: &[std::path::PathBuf]) -> String {
 }
 
 fn question_summary(question: &QuestionView) -> QuestionSummary {
-    let first = question.body.lines().next().unwrap_or_default();
     QuestionSummary {
         id: question.id.clone(),
-        title: first.chars().take(200).collect(),
+        title: crate::file_store::message::title_of(&question.body),
         recommended_choice_id: question.recommended_choice_id.clone(),
         referenced_by: question.referenced_by.clone(),
         created_at: crate::clock::format_utc(question.created_at),
