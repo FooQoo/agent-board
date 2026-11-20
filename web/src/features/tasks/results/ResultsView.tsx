@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ImageOffIcon,
-  LinkIcon,
-  Maximize2Icon,
-} from 'lucide-react';
+import { ImageOffIcon, LinkIcon, Maximize2Icon } from 'lucide-react';
 import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
 import { resultImageIds, type TaskResult } from '../../../shared/api/contracts';
 import { openableUrl } from './openableUrl';
@@ -140,7 +134,7 @@ function ResultItem({
 /**
  * The images of one result. One image is shown large; several are a strip of thumbnails that
  * scrolls sideways. Tapping any of them opens the enlarged view at that image, where the person can
- * step to the others.
+ * swipe to the others.
  */
 function ResultImages({
   result,
@@ -158,9 +152,12 @@ function ResultImages({
   const markFailed = (id: string) => setFailed((previous) => new Set(previous).add(id));
   const label = (index: number) =>
     many
-      ? t('results.enlargeNth', { version: result.version, index: index + 1, count: ids.length })
+      ? t('results.enlargeNth', {
+          version: result.version,
+          index: index + 1,
+          count: ids.length,
+        })
       : t('results.enlarge', { version: result.version });
-  const zoomId = zoom === null ? undefined : ids[zoom];
   return (
     <>
       <div className={many ? 'results__strip' : undefined} data-image-count={ids.length}>
@@ -184,37 +181,101 @@ function ResultImages({
           ),
         )}
       </div>
-      {zoom !== null && zoomId !== undefined && (
+      {zoom !== null && (
         <Lightbox label={label(zoom)} onClose={() => setZoom(null)}>
-          <div className="results__zoom">
-            <img src={attachmentUrl(zoomId)} alt={result.summary} />
-            {many && (
-              <div className="results__stepper">
-                <button
-                  type="button"
-                  aria-label={t('results.previousImage')}
-                  disabled={zoom === 0}
-                  onClick={() => setZoom(zoom - 1)}
-                >
-                  <ChevronLeftIcon aria-hidden="true" />
-                </button>
-                <span aria-live="polite">
-                  {t('results.imagePosition', { index: zoom + 1, count: ids.length })}
-                </span>
-                <button
-                  type="button"
-                  aria-label={t('results.nextImage')}
-                  disabled={zoom === ids.length - 1}
-                  onClick={() => setZoom(zoom + 1)}
-                >
-                  <ChevronRightIcon aria-hidden="true" />
-                </button>
-              </div>
-            )}
-          </div>
+          <ImageViewer
+            urls={ids.map(attachmentUrl)}
+            alt={result.summary}
+            index={zoom}
+            onIndexChange={setZoom}
+          />
         </Lightbox>
       )}
     </>
+  );
+}
+
+/**
+ * The enlarged images of one result: a row of full-width slides that snaps to one slide at a time.
+ * The browser's own scrolling does the work: a sideways swipe moves between slides, and each slide
+ * scrolls up and down by itself when its image is taller than the viewer, so the two gestures
+ * never compete. The left and right arrow keys step too.
+ */
+function ImageViewer({
+  urls,
+  alt,
+  index,
+  onIndexChange,
+}: {
+  urls: string[];
+  alt: string;
+  index: number;
+  onIndexChange: (index: number) => void;
+}) {
+  const { t } = useTranslation();
+  const track = useRef<HTMLDivElement>(null);
+  const count = urls.length;
+  const scrollToIndex = useCallback((target: number, smooth: boolean) => {
+    const element = track.current;
+    if (!element || typeof element.scrollTo !== 'function') return;
+    element.scrollTo({
+      left: target * element.clientWidth,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+  }, []);
+  // Open at the tapped image, before the first paint.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first position is applied here
+  useLayoutEffect(() => {
+    scrollToIndex(index, false);
+    // Only the first position is applied here; later moves come from the person's own scrolling.
+  }, []);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const target = Math.min(
+        count - 1,
+        Math.max(0, index + (event.key === 'ArrowRight' ? 1 : -1)),
+      );
+      if (target === index) return;
+      event.preventDefault();
+      onIndexChange(target);
+      scrollToIndex(target, true);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [count, index, onIndexChange, scrollToIndex]);
+  const onScroll = () => {
+    const element = track.current;
+    if (!element || element.clientWidth === 0) return;
+    const current = Math.round(element.scrollLeft / element.clientWidth);
+    if (current !== index && current >= 0 && current < count) onIndexChange(current);
+  };
+  return (
+    <div className="results__zoom">
+      <div className="results__viewer" ref={track} onScroll={onScroll} data-viewer>
+        {urls.map((url, slide) => (
+          <div
+            key={url}
+            className="results__slide"
+            role="group"
+            aria-roledescription="slide"
+            aria-label={t('results.imagePosition', { index: slide + 1, count })}
+          >
+            <img
+              src={url}
+              alt={alt}
+              loading={Math.abs(slide - index) <= 1 ? 'eager' : 'lazy'}
+              draggable={false}
+            />
+          </div>
+        ))}
+      </div>
+      {count > 1 && (
+        <span className="results__position" aria-live="polite">
+          {t('results.imagePosition', { index: index + 1, count })}
+        </span>
+      )}
+    </div>
   );
 }
 

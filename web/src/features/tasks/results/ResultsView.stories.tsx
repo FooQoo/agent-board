@@ -14,7 +14,10 @@ const IMAGE = `data:image/svg+xml,${encodeURIComponent(
  * the stories.
  */
 type Entry = Omit<TaskResult, 'title'> & { heading: string };
-const toResult = ({ heading, ...rest }: Entry): TaskResult => ({ ...rest, title: heading });
+const toResult = ({ heading, ...rest }: Entry): TaskResult => ({
+  ...rest,
+  title: heading,
+});
 
 const RESULTS: TaskResult[] = (
   [
@@ -64,7 +67,7 @@ const meta = {
   component: ResultsView,
   args: {
     state: { status: 'ready', results: RESULTS },
-    attachmentUrl: () => IMAGE,
+    attachmentUrl: (_id: string) => IMAGE,
     focusVersion: null,
     onRetry: fn(),
   },
@@ -149,7 +152,9 @@ export const MultipleImages: Story = {
   args: { state: { status: 'ready', results: [...RESULTS, MANY_IMAGES] } },
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
-    const thumbnails = view.getAllByRole('button', { name: /Enlarge image \d+ of 12/ });
+    const thumbnails = view.getAllByRole('button', {
+      name: /Enlarge image \d+ of 12/,
+    });
     await expect(thumbnails).toHaveLength(12);
     await userEvent.click(thumbnails[1] as HTMLElement);
     const dialog = await waitFor(() => {
@@ -158,8 +163,65 @@ export const MultipleImages: Story = {
       return found;
     });
     await expect(within(dialog).getByText('2 / 12')).toBeVisible();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Next image' }));
-    await expect(within(dialog).getByText('3 / 12')).toBeVisible();
+    // There are no arrow buttons: the arrow keys (and a swipe) move between images.
+    await expect(
+      within(dialog).queryByRole('button', { name: /(Next|Previous) image/ }),
+    ).toBeNull();
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(within(dialog).getByText('3 / 12')).toBeVisible());
+    await userEvent.keyboard('{ArrowLeft}');
+    await waitFor(() => expect(within(dialog).getByText('2 / 12')).toBeVisible());
+  },
+};
+
+/** A tall picture: a plain tall picture drawn as a data URI. */
+const TALL_IMAGE = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="1600"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbeafe"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs><rect width="360" height="1600" fill="url(#g)"/><rect x="30" y="40" width="300" height="60" fill="#0f172a"/><rect x="30" y="1480" width="300" height="60" fill="#f8fafc"/></svg>',
+)}`;
+
+/** Three images, the middle one tall. */
+const TALL_RESULT: TaskResult = toResult({
+  version: 5,
+  key: 'tall-capture',
+  kind: 'final',
+  heading: 'A tall capture',
+  summary: 'A full-page capture between two short ones.',
+  attachmentIds: ['short-1', 'tall-2', 'short-3'],
+  at: '2026-11-20T08:00:00Z',
+});
+
+/**
+ * On a phone-width window a tall image fits the width and scrolls up and down inside the viewer,
+ * which stays within the screen, and the arrow keys move to the next image. The enlarged view has no
+ * arrow buttons.
+ */
+export const TallImagePhone: Story = {
+  args: {
+    state: { status: 'ready', results: [TALL_RESULT] },
+    attachmentUrl: (id: string) => (id === 'tall-2' ? TALL_IMAGE : IMAGE),
+  },
+  globals: { width: 'phone-375' },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    await userEvent.click(view.getByRole('button', { name: /Enlarge image 2 of 3/ }));
+    const dialog = await waitFor(() => {
+      const found = within(document.body).getByRole('dialog');
+      expect(found).toBeVisible();
+      return found;
+    });
+    await expect(within(dialog).getByText('2 / 3')).toBeVisible();
+    await expect(
+      within(dialog).queryByRole('button', { name: /(Next|Previous) image/ }),
+    ).toBeNull();
+    // The dialog stays on the screen, and the tall slide scrolls inside it.
+    await waitFor(() =>
+      expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight),
+    );
+    const slide = within(dialog).getByRole('group', { name: '2 / 3' });
+    await expect(slide.scrollHeight).toBeGreaterThan(slide.clientHeight);
+    await expect(getComputedStyle(slide).overflowY).toBe('auto');
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(within(dialog).getByText('3 / 3')).toBeVisible());
   },
 };
 
@@ -169,7 +231,9 @@ export const MultipleImagesJapanesePhone: Story = {
   globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getAllByRole('button', { name: /の画像 \d+\/12 を拡大/ }),
+      within(canvasElement).getAllByRole('button', {
+        name: /の画像 \d+\/12 を拡大/,
+      }),
     ).toHaveLength(12);
   },
 };
