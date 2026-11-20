@@ -98,6 +98,10 @@ export function useDrawerDrag({
     popup.current?.removeAttribute('data-swiping');
   }, [open, reset, stop, popup]);
   useEffect(() => stop, [stop]);
+  // A sheet that stops being dismissible mid-drag drops the drag and returns to rest, so a refused dismissal cannot leave it offscreen.
+  useLayoutEffect(() => {
+    if (!dismissible) reset();
+  }, [dismissible, reset]);
 
   const settle = () => {
     const sheet = popup.current;
@@ -173,6 +177,7 @@ export function useDrawerDrag({
     const speed = moved / Math.max(1, event.timeStamp - current.startTime);
     const dismiss =
       !cancelled &&
+      dismissible &&
       (current.offset > current.height * DISMISS_SHARE ||
         (speed > FLICK_PX_PER_MS && moved > FLICK_MIN_PX));
     if (dismiss) {
