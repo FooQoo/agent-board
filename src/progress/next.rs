@@ -37,7 +37,7 @@ pub struct NextTask {
 /// A Todo task of an epic that orders its tasks in waves is held back while a task
 /// of an earlier wave is not Done. Archived tasks are ignored, tasks that no wave
 /// lists are never held back, and an unreadable order gates nothing.
-fn gated_by_waves(task: &TaskView, snapshot: &ProjectSnapshot) -> bool {
+pub(crate) fn gated_by_waves(task: &TaskView, snapshot: &ProjectSnapshot) -> bool {
     let Some(epic) = task
         .epic_id
         .as_deref()
