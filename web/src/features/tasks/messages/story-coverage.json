@@ -109,6 +109,11 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--answer-images-tappable-on-phone",
+              "states": ["phone", "88px thumbnails", "44px remove target", "tap opens viewer"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-question-with-image",
               "states": ["phone", "question body image", "no sideways scroll"],
               "interaction": true

@@ -1,7 +1,8 @@
-import { ImageIcon, SendIcon, XIcon } from 'lucide-react';
+import { ImageIcon, SendIcon } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { ComposerThumbs } from '@/shared/ui/editor/ComposerThumbs';
 import { keepFocusOnPress } from '@/shared/ui/keepFocus';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 
@@ -35,25 +36,13 @@ export function AskAiToolbar({
         </p>
       )}
       {images.length > 0 && (
-        <ul className="ask-ai__thumbs" aria-label={t('editor.attachmentsLabel')}>
-          {images.map((image) => (
-            <li key={image.id} className="ask-ai__thumb">
-              <img src={image.url} alt={image.name} />
-              <Button
-                type="button"
-                variant="outline"
-                size="s"
-                iconOnly
-                className="ask-ai__thumb-remove"
-                aria-label={t('askAi.removeImage', { name: image.name })}
-                disabled={saving}
-                onClick={() => onRemove(image.id)}
-              >
-                <XIcon aria-hidden="true" />
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <ComposerThumbs
+          attachments={images}
+          label={t('editor.attachmentsLabel')}
+          removeLabel={(name) => t('askAi.removeImage', { name })}
+          disabled={saving}
+          onRemove={onRemove}
+        />
       )}
       <div className="ask-ai__toolbar">
         {canAddImages ? (
