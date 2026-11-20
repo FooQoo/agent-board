@@ -51,6 +51,24 @@ export const Working: Story = {
   },
 };
 
+/** Working while it waits for a subagent or a background command to end. */
+export const WaitingForSubagents: Story = {
+  args: {
+    health: health({
+      state: 'running',
+      tool: 'claude-code',
+      backgroundTasks: ['Review the diff'],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByRole('button', {
+        name: 'Claude Code: Working (waiting for subagents)',
+      }),
+    ).toBeVisible();
+  },
+};
+
 /** Waiting (running with its wait registered). */
 export const Waiting: Story = {
   args: { health: health({ state: 'running', waiting: true, tool: 'codex' }) },

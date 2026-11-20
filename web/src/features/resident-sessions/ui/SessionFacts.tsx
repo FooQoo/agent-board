@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '@/shared/lib/time/formatTime';
 import type { SessionsSnapshot } from '../api';
-import { deriveState, isActive, modelValue, secondsUntil, startedAt, toolName } from '../state';
+import {
+  deriveState,
+  isActive,
+  modelValue,
+  secondsUntil,
+  startedAt,
+  toolName,
+  waitingOn,
+} from '../state';
 import type { CliProblem } from '../state';
 import { Button } from '@/shared/ui/button';
 
@@ -50,6 +58,18 @@ export function SessionFacts({ snapshot }: { snapshot: SessionsSnapshot }) {
       )}
       {isActive(state) && (
         <>
+          {waitingOn(health).length > 0 && (
+            <div className="resident-facts__row">
+              <dt>{t('resident.waitingOnTitle')}</dt>
+              <dd>
+                {waitingOn(health).map((task) => (
+                  <span className="resident-facts__sub" key={task}>
+                    {task}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
           <div className="resident-facts__row">
             <dd>
               {t('resident.modelInUse', {

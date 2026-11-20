@@ -73,7 +73,7 @@ export const lifecycleRoutes: Routes = (context, request) => {
     return archiveDone(context, found, input);
   }
 
-  if (rest === 'messages/answers') {
+  if (rest === 'messages/answers' || rest === 'messages/answers/multipart') {
     if (!request.token) return forbidden();
     if (!found) return projectNotFound();
     const input = parseBody(request.body);

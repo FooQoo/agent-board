@@ -56,6 +56,16 @@ pub fn question_defect(question: &Question) -> Option<Defect> {
     None
 }
 
+/// A plain file name that `attachments/` can hold.
+pub fn is_image_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 100
+        && !name.starts_with('.')
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+}
+
 fn reply_defect(question: &Question) -> Option<Defect> {
     let reply = question.reply.as_ref()?;
     if question.choices.is_empty() {
@@ -82,6 +92,15 @@ fn reply_defect(question: &Question) -> Option<Defect> {
             }
             Some(_) => {}
         }
+    }
+    if reply.images.len() > crate::domain::MAX_TASK_ATTACHMENTS {
+        return Some(defect("reply.images", "A reply has at most 20 images."));
+    }
+    if reply.images.iter().any(|name| !is_image_name(name)) {
+        return Some(defect(
+            "reply.images",
+            "Image names are 1 to 100 letters, digits, dots, underscores, or hyphens.",
+        ));
     }
     match &reply.text {
         Some(text) => {

@@ -23,8 +23,9 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードとスマホの画面は`reason`を送らず（サーバーが理由を生成します）、いつも`fromStatus`を送る。移動が拒否されたときは、カードはその列のままで、画面に短い通知を出す。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
 | `GET /api/projects/{projectId}/messages` | 質問と依頼をまとめて`{messages}`で、新しい順に返す。`status`は`open`（既定）・`closed`・`withdrawn`・`all`、`type`は`question`か`request`、`limit`は1〜500（既定50）。 |
-| `GET /api/projects/{projectId}/messages/{messageId}` | メッセージ1件を`{question}`または`{request}`で返す。質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`・`acceptedAt`、なければ`null`。`acceptedAt`はAIが回答を受け取るまで`null`）・`status`（`open`・`answered`・`withdrawn`）・`referencedBy`・`createdAt`・`withdrawnAt`を持つ。依頼は`id`・`type`・`from`・`to`・`body`・`status`（`open`・`accepted`・`withdrawn`）・`acceptedAt`・`withdrawnAt`・`createdAt`を持つ。未知のIDは404 `message_not_found`。 |
+| `GET /api/projects/{projectId}/messages/{messageId}` | メッセージ1件を`{question}`または`{request}`で返す。質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`images`（回答に添えた画像のファイル名で、質問の`attachments/`にある）・`via`・`at`・`acceptedAt`、なければ`null`。`acceptedAt`はAIが回答を受け取るまで`null`）・`status`（`open`・`answered`・`withdrawn`）・`referencedBy`・`createdAt`・`withdrawnAt`を持つ。依頼は`id`・`type`・`from`・`to`・`body`・`status`（`open`・`accepted`・`withdrawn`）・`acceptedAt`・`withdrawnAt`・`createdAt`を持つ。未知のIDは404 `message_not_found`。 |
 | `POST /api/projects/{projectId}/messages/answers` | `{answers: [{questionId, choiceId?, text?}]}`。未知のフィールドは拒否する。選択肢のある質問には`choiceId`か`text`（または両方）が必要で、`text`だけでも有効な回答になる（選択は`null`）。ない質問には`text`が必要。未知の選択肢は422 `choice_unknown`、依頼のIDは422 `message_type_mismatch`。回答はまとめて保存し、一部だけ保存することはない。すでに回答済み、または取り下げ済みの質問があれば何も保存せず、409で`error`、`questionAnswered`と`questionWithdrawn`（ID）、`questions`（記録済みの質問）を返す。未知の質問は404 `message_not_found`。成功すると`{questions}`を返す。 |
+| `POST /api/projects/{projectId}/messages/answers/multipart` | 画像つきで質問1件に答える。ボディは、`POST …/messages/answers`のJSONを入れた`metadata`パートと、`images.<questionId>`という名前の画像パートです。画像は`qa/<id>/attachments/<ファイル名>`に保存され、`reply.images`に並びます。画像は依頼の画像と同じ規則（PNG・JPEG・WebP・GIF、最大20件・50 MiB、重複しない平易な名前）で検査され、質問がすでに持つ名前は使えません。受け付けられない画像が1枚でもあれば何も保存しません。`metadata`にない質問の画像パートは拒否します。返り値と競合の扱いは同じ（`{questions}`）です。 |
 | `POST /api/projects/{projectId}/messages/requests` | AIへの依頼を送る。本文はmultipartで、`text`のパートと、任意の数の`images`のファイルパート。201で`{request}`を返す。 |
 | `GET /api/projects/{projectId}/messages/{messageId}/attachments/{name}` | 依頼に添えた画像を返します。依頼の本文は画像を `![alt](attachments/<name>)` と参照し、`<name>` はファイル名です。種類はファイルの内容から判定し（PNG、JPEG、WebP、GIF）、`Cache-Control: no-store` と `X-Content-Type-Options: nosniff` を付けます。ファイル名として単純でない名前（パス、`..`、先頭のドット）、存在しないファイル、画像でないファイル、シンボリックリンクは 404 `attachment_not_found`、存在しないメッセージは 404 `message_not_found` です。読み取り専用で、入口経由でも使えます。 |
 | `POST /api/projects/{projectId}/messages/{messageId}/withdraw` | 人が依頼を取り下げ、`{request}`を返す。質問は403 `ai_only`、受け付け済みの依頼は409 `message_closed`、すでに取り下げた依頼は409 `request_withdrawn`。依頼や回答の受け付けにエンドポイントはなく、CLIだけが行う。 |
@@ -183,6 +184,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
   "model": "sonnet",
   "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
   "waiting": false,
+  "backgroundTasks": [],
   "pushStalled": [],
   "restartCount": 2,
   "lastExitAt": "2026-11-19T03:00:00Z",
@@ -191,7 +193,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 }
 ```
 
-何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
+何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "backgroundTasks": [], "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
 
 | 項目 | 意味 |
 | --- | --- |
@@ -200,6 +202,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
 | `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
 | `waiting` | セッションが張り付いていて、2つのターンの合間にいて、ボードが仕事を渡せる間は`true`です。`running`で`waiting: false`のセッションは作業中で、そのことを理由に終了されることはありません。 |
+| `backgroundTasks` | 作業中のセッションが待っているものです。セッションが始めて、まだ終わっていないサブエージェントやバックグラウンドのコマンドの説明を、Claude Codeの`task_started`と`task_notification`のイベントから読みます。待機中のセッションとCodexでは空です。この配列に項目がある作業中のセッションを、ボードは「作業中（サブエージェント待ち）」と表示します。 |
 | `pushStalled` | ボードがセッションへ何度も押し込んだのに処理されず、あきらめた項目を、1件ずつ`{"kind", "id", "attempts", "lastError", "onHold"}`の形で並べます。`kind`は`request`、`answer`、`task`のいずれかで、`id`は依頼や質問のID（`Q-3`など）、またはテキストにしたタスク番号です。`attempts`は押し込んだ回数、`lastError`は直前に失敗したターンのメッセージで、なければ`null`です。`onHold`は、ターンがエラーなく終わったのに項目が変わらなかったとき（`lastError`が`null`）に真で、失敗ではなく「保留中」として表示されます。なければ空です。項目がボードから消えると一覧からも消えます。[pushモード](../concepts/agents.md#push-mode)を参照。 |
 | `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
 | `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |

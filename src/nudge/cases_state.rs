@@ -82,6 +82,7 @@ pub fn all() -> Vec<Case> {
                     choice_label: None,
                     text: None,
                     answered_at: at,
+                    image_paths: Vec::new(),
                 })
             }),
         ),

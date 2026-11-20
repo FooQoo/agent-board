@@ -138,9 +138,11 @@ describe('MessageCenter', () => {
     await user.click(within(dialog).getByRole('radio', { name: 'Keep' }));
     await user.click(send);
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
-    expect(routes.answer).toHaveBeenCalledWith('p', [
-      { questionId: 'Q-12', choiceId: 'keep', text: 'why' },
-    ]);
+    expect(routes.answer).toHaveBeenCalledWith(
+      'p',
+      [{ questionId: 'Q-12', choiceId: 'keep', text: 'why' }],
+      [],
+    );
     expect(await screen.findByRole('tab', { name: /AI's questions/ })).toBeTruthy();
   });
 
@@ -163,9 +165,11 @@ describe('MessageCenter', () => {
     expect(send.disabled).toBe(false);
     await user.click(send);
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
-    expect(routes.answer).toHaveBeenCalledWith('p', [
-      { questionId: 'Q-12', text: 'None of these' },
-    ]);
+    expect(routes.answer).toHaveBeenCalledWith(
+      'p',
+      [{ questionId: 'Q-12', text: 'None of these' }],
+      [],
+    );
   });
 
   it('says a question was changed elsewhere when the server answers 409', async () => {

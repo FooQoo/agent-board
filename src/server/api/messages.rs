@@ -11,7 +11,7 @@ use crate::server::AppState;
 use crate::server::messages::{
     AnswersInput, answer_questions, list_response, message_response, withdraw_message,
 };
-use crate::server::messages_send::send_request;
+use crate::server::messages_send::{answer_questions_multipart, send_request};
 use crate::server::request::ApiJson;
 use crate::server::response::{agboard_error_response, file_response};
 use crate::server::store::{parse_project_id, with_files};
@@ -41,6 +41,15 @@ pub(super) async fn message_answers(
     ApiJson(input): ApiJson<AnswersInput>,
 ) -> Response {
     answer_questions(headers, state, project, input).await
+}
+
+pub(super) async fn message_answers_multipart(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Path(project): Path<String>,
+    multipart: Result<Multipart, axum::extract::multipart::MultipartRejection>,
+) -> Response {
+    answer_questions_multipart(headers, state, project, multipart).await
 }
 
 pub(super) async fn message_withdraw(

@@ -171,6 +171,8 @@ recommended: keep
 askedBy: resident-3f9a1c0e5b7d2a46
 reply:
   choice: keep
+  images:
+    - screen.png
   via: ui
   at: 2026-11-14T02:41:10Z
   acceptedAt: 2026-11-14T02:50:00Z
@@ -208,7 +210,7 @@ Fields of a question:
 | `choices` | Optional. 2 to 10 items with an ID unique in the question (1 to 64 characters of `[A-Za-z0-9_-]`) and a label of 1 to 200 characters. Without choices, the question is answered with text. |
 | `recommended` | Optional. One choice ID. |
 | `askedBy` | Optional. The launch ID (`AGBOARD_RESIDENT_ID`) of the board-launched session that asked the question; `message ask` writes it when the variable is set. The board uses it to push the answer back to that session. A question an external session asks has none. |
-| `reply` | `null` until answered. `choice` is never set when the question has no choices, and with choices at least one of `choice` and `text` is set; `text` is 1 to 2,000 characters and required when there are no choices; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. `acceptedAt` is optional: absent or `null` until an agent takes the answer in, then when it did. |
+| `reply` | `null` until answered. `choice` is never set when the question has no choices, and with choices at least one of `choice` and `text` is set; `text` is 1 to 2,000 characters and required when there are no choices; `images` is optional (omitted when empty): up to 20 plain file names of the pictures the person attached, stored in the question's `attachments/` next to the pictures of the question itself; `via` is `ui`, `chat`, or `cli`; `at` is when it was recorded. `acceptedAt` is optional: absent or `null` until an agent takes the answer in, then when it did. |
 
 Fields of a request:
 

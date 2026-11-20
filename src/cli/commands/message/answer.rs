@@ -27,6 +27,7 @@ pub(super) fn run(ctx: &mut Context, env: &mut Env, args: &MessageAnswerArgs) ->
         question_id: args.id.clone(),
         choice_id: args.choice.clone(),
         text,
+        images: Vec::new(),
     };
     match ctx
         .files

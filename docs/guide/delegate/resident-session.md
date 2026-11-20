@@ -44,6 +44,7 @@ Turn on **Start automatically when Agent Board starts** to start the session eac
 | State | Meaning |
 | --- | --- |
 | **Working on a task** | The session runs and is busy with a turn, for example a task or a request you sent. |
+| **Working (waiting for subagents)** | The session is mid-turn and waits for a subagent or a background command it started to end. It is not stopped: the dialog lists what it waits for, and the log shows when each one started and ended. |
 | **Waiting** | The session runs and is idle. The board hands it the next request, answer, or task as soon as there is one. |
 | **Restarting** | The session ended and the board starts it again. The dialog shows the next try and how many times it restarted. |
 | **Stopped** | Nothing is running. |

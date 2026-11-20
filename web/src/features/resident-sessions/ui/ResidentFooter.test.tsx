@@ -18,6 +18,32 @@ describe('ResidentIndicator', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('says a working session waits for subagents, and not an idle one', () => {
+    const tasks = ['Review the diff'];
+    const { rerender } = render(
+      <ResidentIndicator
+        health={health({ state: 'running', tool: 'claude-code', backgroundTasks: tasks })}
+        withState
+      />,
+    );
+    const indicator = screen.getByRole('img', {
+      name: 'Claude Code: Working (waiting for subagents)',
+    });
+    expect(indicator.textContent).toContain('working (subagents)');
+    rerender(
+      <ResidentIndicator
+        health={health({
+          state: 'running',
+          tool: 'claude-code',
+          waiting: true,
+          backgroundTasks: tasks,
+        })}
+        withState
+      />,
+    );
+    expect(screen.getByRole('img', { name: 'Claude Code: Waiting' })).toBeTruthy();
+  });
+
   it('draws nothing while nothing is launched and auto-start is off', () => {
     const { container } = render(<ResidentIndicator health={health({})} withState />);
     expect(container.innerHTML).toBe('');

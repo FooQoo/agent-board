@@ -198,7 +198,7 @@ export function sampleMessagesApi(language: string, over: Partial<MessagesApi> =
           recommendedChoiceId: 'yes',
           status: 'answered',
           referencedBy: [21],
-          reply: { choiceLabel: s.q11a, text: s.q11Note, acceptedAt: null },
+          reply: { choiceLabel: s.q11a, text: s.q11Note, images: [], acceptedAt: null },
         };
       throw new Error(`No sample message ${id}.`);
     },

@@ -60,6 +60,7 @@ pub fn answer(
                 question_id: id.into(),
                 choice_id: choice.map(str::to_string),
                 text: text.map(str::to_string),
+                images: Vec::new(),
             }],
             AnswerVia::Cli,
             chrono::Utc::now(),

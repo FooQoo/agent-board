@@ -119,3 +119,49 @@ fn a_line_over_the_cap_is_skipped_and_the_next_one_is_read() {
     });
     assert_eq!(seen, ["short", "<long>", "next", "last"]);
 }
+
+#[test]
+fn subagent_and_background_task_events_are_read_as_task_changes() {
+    use super::claude_parse::TaskChange;
+    let task = |line: &str| parse_line(line, &mut Pending::new()).task;
+    assert_eq!(
+        task(
+            r#"{"type":"system","subtype":"task_started","task_id":"t1","description":"Review the diff","task_type":"local_agent"}"#
+        ),
+        Some(TaskChange::Started {
+            id: "t1".into(),
+            description: "Review the diff".into()
+        })
+    );
+    assert_eq!(
+        task(
+            r#"{"type":"system","subtype":"task_notification","task_id":"t1","status":"completed","summary":"Done"}"#
+        ),
+        Some(TaskChange::Ended {
+            id: "t1".into(),
+            status: "completed".into(),
+            description: "Done".into()
+        })
+    );
+    // A progress update, or a patch that is not final, changes nothing.
+    assert_eq!(
+        task(
+            r#"{"type":"system","subtype":"task_updated","task_id":"t1","patch":{"status":"running"}}"#
+        ),
+        None
+    );
+    assert_eq!(
+        task(r#"{"type":"system","subtype":"task_progress","task_id":"t1"}"#),
+        None
+    );
+    assert_eq!(
+        task(
+            r#"{"type":"system","subtype":"task_updated","task_id":"t1","patch":{"status":"killed"}}"#
+        ),
+        Some(TaskChange::Ended {
+            id: "t1".into(),
+            status: "killed".into(),
+            description: String::new()
+        })
+    );
+}

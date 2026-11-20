@@ -2,7 +2,7 @@ import { BotIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SettingsEntryRow } from '@/shared/ui/settings-entry-row';
 import type { SessionsSnapshot } from '../api';
-import { attachedCounts, deriveState, toolName } from '../state';
+import { attachedCounts, deriveState, toolName, waitingOn } from '../state';
 import { useResidentSession } from '../useResidentSession';
 import { useStateLabel } from './StateBadge';
 
@@ -13,6 +13,7 @@ export function entrySummaryParts(snapshot: SessionsSnapshot) {
   return {
     tool: health.tool && state !== 'stopped' ? toolName(health.tool) : null,
     state,
+    waitingOnTasks: waitingOn(health).length > 0,
     external: attachedCounts(snapshot).external,
   };
 }
@@ -29,10 +30,10 @@ export function ResidentEntryRow({
   const label = useStateLabel();
   let body = t('resident.entryUnknown');
   if (snapshot) {
-    const { tool, state, external } = entrySummaryParts(snapshot);
+    const { tool, state, waitingOnTasks, external } = entrySummaryParts(snapshot);
     body =
       (tool
-        ? t('resident.entrySummary', { tool, state: label(state, true) })
+        ? t('resident.entrySummary', { tool, state: label(state, true, waitingOnTasks) })
         : t('resident.entryNone')) +
       (external > 0 ? t('resident.entryExternal', { count: external }) : '');
   }

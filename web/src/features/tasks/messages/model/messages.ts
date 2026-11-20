@@ -1,5 +1,6 @@
 import type { Choice, ProjectId } from '@/shared/api/contracts';
 import type { Message } from '@/shared/data/api/contracts';
+import type { EditorAttachment } from '@/shared/ui/editor/attachmentTypes';
 
 /** The two tabs of messages: what the AI asks you, and what you asked the AI. */
 export type MessageKindTab = 'fromAi' | 'fromYou';
@@ -74,6 +75,8 @@ export type MessageStatus = 'open' | 'answered' | 'accepted' | 'withdrawn';
 export interface MessageReply {
   choiceLabel: string | null;
   text: string | null;
+  /** The names of the images attached to the answer, stored with the question as `attachments/<name>`. */
+  images: string[];
   /** When an AI took the answer in; null until then. */
   acceptedAt: string | null;
 }
@@ -96,7 +99,15 @@ function replyOf(value: unknown): MessageReply | null {
   if (typeof value !== 'object' || value === null) return null;
   const reply = value as Record<string, unknown>;
   const text = (key: string) => (typeof reply[key] === 'string' ? (reply[key] as string) : null);
-  return { choiceLabel: text('choiceLabel'), text: text('text'), acceptedAt: text('acceptedAt') };
+  const images = Array.isArray(reply.images)
+    ? (reply.images as unknown[]).filter((name): name is string => typeof name === 'string')
+    : [];
+  return {
+    choiceLabel: text('choiceLabel'),
+    text: text('text'),
+    images,
+    acceptedAt: text('acceptedAt'),
+  };
 }
 
 /** Parses a message as the route returns it: `{question}` or `{request}`. */
@@ -203,6 +214,11 @@ export interface MessagesApi {
   /** The periodic summaries; without it the list has no Summary tab. */
   summaries?: SummariesApi;
   read: (projectId: ProjectId, messageId: string) => Promise<MessageDetail>;
-  answer: (projectId: ProjectId, answers: AnswerItem[]) => Promise<unknown>;
+  /** `attachments` are the images added to the answer; they are sent with the one question answered. */
+  answer: (
+    projectId: ProjectId,
+    answers: AnswerItem[],
+    attachments?: readonly EditorAttachment[],
+  ) => Promise<unknown>;
   withdraw: (projectId: ProjectId, messageId: string) => Promise<unknown>;
 }

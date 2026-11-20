@@ -1,13 +1,24 @@
 import '@/shared/i18n/question-flow-strings';
-import { InfoIcon } from 'lucide-react';
-import { useId } from 'react';
+import { ImageIcon, InfoIcon, XIcon } from 'lucide-react';
+import { useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Task } from '@/shared/api/contracts';
+import { Button } from '@/shared/ui/button';
+import type { EditorAttachment } from '@/shared/ui/editor/attachmentTypes';
 import { Label } from '@/shared/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group';
 import { Textarea } from '@/shared/ui/textarea';
 import type { DecisionAnswerView } from './decisionAnswerView';
 import './decision-answer.css';
+
+/** The images added to an answer: picked, pasted, or dropped, shown as thumbnails to remove. */
+export interface DecisionAnswerImages {
+  attachments: readonly EditorAttachment[];
+  /** Why the last picture was refused, already worded; empty when nothing was. */
+  notice: string;
+  onFiles: (files: File[]) => void;
+  onRemove: (id: string) => void;
+}
 
 export interface DecisionAnswerFieldsProps {
   choices: Task['pendingChoices'];
@@ -15,6 +26,8 @@ export interface DecisionAnswerFieldsProps {
   onChoiceChange: (choiceId: string | null) => void;
   onTextChange: (text: string) => void;
   onClear: () => void;
+  /** Without it the answer takes no images. */
+  images?: DecisionAnswerImages;
 }
 
 /** The right side: the options and the note, with the notice above them and the clear link below. */
@@ -24,9 +37,11 @@ export function DecisionAnswerFields({
   onChoiceChange,
   onTextChange,
   onClear,
+  images,
 }: DecisionAnswerFieldsProps) {
   const { t } = useTranslation();
   const id = useId();
+  const picker = useRef<HTMLInputElement>(null);
   const noticeText =
     view.notice === 'changed'
       ? t('answer.changed')
@@ -82,7 +97,67 @@ export function DecisionAnswerFields({
         disabled={view.disabled}
         aria-invalid={view.tooLong}
         onChange={(event) => onTextChange(event.target.value)}
+        onPaste={(event) => {
+          if (!images) return;
+          const files = Array.from(event.clipboardData.files);
+          if (!files.some((file) => file.type.startsWith('image/'))) return;
+          event.preventDefault();
+          images.onFiles(files.filter((file) => file.type.startsWith('image/')));
+        }}
       />
+      {images && (
+        <div className="decision-answer__images">
+          <input
+            ref={picker}
+            className="decision-answer__picker"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={(event) => {
+              images.onFiles(Array.from(event.currentTarget.files ?? []));
+              event.currentTarget.value = '';
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="s"
+            disabled={view.disabled}
+            onClick={() => picker.current?.click()}
+          >
+            <ImageIcon aria-hidden="true" />
+            {t('answer.image')}
+          </Button>
+          {images.attachments.length > 0 && (
+            <ul className="decision-answer__thumbs" aria-label={t('answer.images')}>
+              {images.attachments.map((image) => (
+                <li key={image.id} className="decision-answer__thumb">
+                  <img src={image.url} alt={image.name} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="s"
+                    iconOnly
+                    className="decision-answer__thumb-remove"
+                    aria-label={t('answer.removeImage', { name: image.name })}
+                    disabled={view.disabled}
+                    onClick={() => images.onRemove(image.id)}
+                  >
+                    <XIcon aria-hidden="true" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {images.notice !== '' && (
+            <p className="decision-answer__image-notice" role="alert">
+              {images.notice}
+            </p>
+          )}
+        </div>
+      )}
       <div className="decision-answer__foot">
         {choices.length > 0 && <p className="decision-answer__guide">{t('answer.guide')}</p>}
         {view.hasInput && !view.disabled && (

@@ -16,6 +16,7 @@ import {
   isForOtherProject,
   modelValue,
   toolName,
+  waitingOn,
 } from '../state';
 import type { ResidentPanelProps, ResidentProblem } from '../types';
 import { ModelPicker } from './ModelPicker';
@@ -80,7 +81,7 @@ export function SessionCard(props: ResidentPanelProps) {
         <h3 className="resident-card__name" id={`${id}-name`}>
           {toolName(shown)}
         </h3>
-        <StateBadge state={state} />
+        <StateBadge state={state} waitingOnTasks={waitingOn(health).length > 0} />
       </div>
 
       {cliProblem !== null && !running ? (
