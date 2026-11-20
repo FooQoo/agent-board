@@ -31,6 +31,8 @@ export interface SessionHealth {
   reason: string | null;
   /** True while the session's wait is registered; a running session with false is working on a task. */
   waiting: boolean;
+  /** What a working session waits on: the subagents and background commands that have not ended. */
+  backgroundTasks: string[];
   /** Items the board gave up pushing after several attempts. */
   pushStalled: StalledItem[];
   restartCount: number;

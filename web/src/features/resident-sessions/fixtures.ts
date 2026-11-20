@@ -10,6 +10,7 @@ export const stoppedHealth: SessionHealth = {
   model: null,
   reason: null,
   waiting: false,
+  backgroundTasks: [],
   pushStalled: [],
   restartCount: 0,
   lastExitAt: null,

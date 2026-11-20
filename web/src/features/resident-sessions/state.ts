@@ -19,6 +19,10 @@ export function deriveState(health: SessionHealth): ResidentState {
   return health.state;
 }
 
+/** What a working session waits on (subagents, background commands); empty unless it is working. */
+export const waitingOn = (health: SessionHealth): string[] =>
+  deriveState(health) === 'working' ? health.backgroundTasks : [];
+
 /** The launcher holds a process, or a restart is waiting. */
 export const isActive = (state: ResidentState): boolean =>
   state === 'working' || state === 'waiting' || state === 'restarting';

@@ -183,6 +183,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
   "model": "sonnet",
   "reason": "The claude-code session exited (signal: 9 (SIGKILL)).",
   "waiting": false,
+  "backgroundTasks": [],
   "pushStalled": [],
   "restartCount": 2,
   "lastExitAt": "2026-11-19T03:00:00Z",
@@ -191,7 +192,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 }
 ```
 
-何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
+何も起動していないときは`{"tool": null, "state": "stopped", "projectId": null, "model": null, "reason": null, "waiting": false, "backgroundTasks": [], "pushStalled": [], "restartCount": 0, "lastExitAt": null, "nextRestartAt": null, "autoStart": null}`です（選択が保存されていれば`autoStart`が入ります）。
 
 | 項目 | 意味 |
 | --- | --- |
@@ -200,6 +201,7 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 | `projectId`、`model` | ボードが起動し直す対象です。`stopped`のときは`null`です。 |
 | `reason` | `restarting`または`failed`の理由です。それ以外は`null`です。クラッシュの繰り返しは、再起動をやめたと伝える理由付きの`failed`で終わります。 |
 | `waiting` | セッションが張り付いていて、2つのターンの合間にいて、ボードが仕事を渡せる間は`true`です。`running`で`waiting: false`のセッションは作業中で、そのことを理由に終了されることはありません。 |
+| `backgroundTasks` | 作業中のセッションが待っているものです。セッションが始めて、まだ終わっていないサブエージェントやバックグラウンドのコマンドの説明を、Claude Codeの`task_started`と`task_notification`のイベントから読みます。待機中のセッションとCodexでは空です。この配列に項目がある作業中のセッションを、ボードは「作業中（サブエージェント待ち）」と表示します。 |
 | `pushStalled` | ボードがセッションへ何度も押し込んだのに処理されず、あきらめた項目を、1件ずつ`{"kind", "id", "attempts", "lastError"}`の形で並べます。`kind`は`request`、`answer`、`task`のいずれかで、`id`は依頼や質問のID（`Q-3`など）、またはテキストにしたタスク番号です。`attempts`は押し込んだ回数、`lastError`は直前に失敗したターンのメッセージで、なければ`null`です。なければ空です。項目がボードから消えると一覧からも消えます。[pushモード](../concepts/agents.md#push-mode)を参照。 |
 | `restartCount` | 人が最後に起動または停止してからの再起動の回数です。 |
 | `lastExitAt` | 人が止めたのではなく、子プロセスが最後に終了した時刻です。一度もなければ`null`です。 |
