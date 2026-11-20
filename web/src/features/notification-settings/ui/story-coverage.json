@@ -10,7 +10,7 @@
           "stories": [
             {
               "id": "settings-notificationsettingsview--defaults",
-              "states": ["results and questions on", "history off"],
+              "states": ["results on", "questions off", "history off"],
               "interaction": true
             },
             {

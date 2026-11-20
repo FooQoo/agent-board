@@ -69,6 +69,38 @@ export function pushView(
   return status.subscribed === true && permission === 'granted' ? 'on' : 'off';
 }
 
+/**
+ * Whether to offer the turn-on prompt: only in the Home Screen app, while this device has neither
+ * granted nor refused the permission and holds no subscription, and only until the user has seen it.
+ */
+export function shouldPromptForPush(
+  support: PushSupport,
+  permission: PushPermission,
+  view: PushView,
+  dismissed: boolean,
+): boolean {
+  return support.standalone && permission === 'default' && view === 'off' && !dismissed;
+}
+
+const PROMPT_DISMISSED_KEY = 'agboard.pushPromptDismissed';
+
+/** Whether this device already saw the prompt. Blocked storage reads as seen, so it never nags. */
+export function readPromptDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(PROMPT_DISMISSED_KEY) !== null;
+  } catch {
+    return true;
+  }
+}
+
+export function rememberPromptDismissed(): void {
+  try {
+    window.localStorage.setItem(PROMPT_DISMISSED_KEY, '1');
+  } catch {
+    // The prompt may show again next time; the settings row still works.
+  }
+}
+
 /** The key as bytes, for `PushManager.subscribe` (it takes base64url text only as bytes). */
 export function keyBytes(base64Url: string): Uint8Array<ArrayBuffer> {
   const padded = base64Url.replace(/-/g, '+').replace(/_/g, '/');

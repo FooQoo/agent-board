@@ -69,7 +69,7 @@ impl Default for NotificationSettings {
         Self {
             kinds: Kinds {
                 results: true,
-                questions: true,
+                questions: false,
                 history: false,
             },
             revision: 0,

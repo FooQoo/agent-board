@@ -153,16 +153,19 @@ An iPhone can receive notifications from the board once the board is on its Home
 1. Open the board's address in Safari on the iPhone and enter the passcode, so that the phone is registered.
 2. Tap Share, choose **Add to Home Screen**, and add it.
 3. Open **Agent Board** from the Home Screen icon, not from Safari.
-4. Open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog and allow notifications when iOS asks.
+4. The first time the Home Screen app opens, a dialog asks **Turn on notifications?** Choose **Enable notifications** and allow notifications when iOS asks. Choose **Not now** to close it; the dialog is not shown again on this phone. It does not appear in a Safari tab, or once notifications are allowed or blocked.
+5. To turn them on later, open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog.
+
+![The Home Screen app asking to turn on notifications](../../images/guide/push-prompt.png){.screenshot--narrow}
 
 To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab that control only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
 
 ### What you are notified about {#notified-about}
 
-The board sends only what you chose in the **Phone notifications** dialog, which you open from [Settings](./board.md#phone-notifications). At first that is results and questions that need your decision:
+The board sends only what you chose in the **Phone notifications** dialog, which you open from [Settings](./board.md#phone-notifications). Notifications are on by default, and at first only results are sent. Questions that need your decision and history additions are off until you switch them on:
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
-- A **question** that needs your decision arrives with a high priority. Tap it to open that question, ready to answer.
+- A **question** that needs your decision arrives, once you switch it on, with a high priority. Tap it to open that question, ready to answer.
 - **History additions** arrive only when you switch them on. Tap one to open the card on its **History** tab.
 
 Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that a history entry was added. Tap the notification to read the whole text on the board.

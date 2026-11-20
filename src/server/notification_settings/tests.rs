@@ -13,8 +13,8 @@ fn a_missing_file_reads_as_the_defaults() {
     let tmp = tempfile::tempdir().unwrap();
     let loaded = store(tmp.path()).load();
     assert_eq!(loaded, NotificationSettings::default());
-    assert!(loaded.kinds.results && loaded.kinds.questions);
-    assert!(!loaded.kinds.history);
+    assert!(loaded.kinds.results);
+    assert!(!loaded.kinds.questions && !loaded.kinds.history);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn the_removed_state_change_groups_are_accepted_in_a_patch_and_ignored() {
     // An older page may still send the retired kind and the retired group beside the kinds.
     let saved = s
         .update(patch(serde_json::json!({
-            "kinds": {"results": true, "questions": true, "stateChanges": true, "history": false},
+            "kinds": {"results": true, "questions": false, "stateChanges": true, "history": false},
             "stateChanges": {"started": true, "pending": true, "done": true}
         })))
         .unwrap();
