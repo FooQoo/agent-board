@@ -41,7 +41,7 @@ Turn on **Start automatically when Agent Board starts** to start the session eac
 | **Stopped** | Nothing is running. |
 | **Failed** | The board gave up, for example after the session ended repeatedly in a short time. The reason is shown. Fix the cause, then choose **Restart**. |
 
-The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows the tool and a dot, just left of the sync state, while a session is launched or auto-start is on; click it to open the dialog.
+The dialog also counts the sessions attached to the board, split into those the board started and **External sessions** you started yourself. The footer of the board shows a dot followed by the tool, just left of the sync state, while a session is launched or auto-start is on; click it to open the dialog.
 
 ## When a session does not handle something {#not-handled}
 
@@ -54,4 +54,4 @@ The board shows these items in two places:
 
 ## Remote access {#remote-access}
 
-Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone board shows the same indicator in its status line at the bottom, after the connection state, with the tool name, a short state word, and a dot. It is display-only there: it has no button, and it is hidden when nothing is launched and auto-start is off. On a narrow phone it takes the place of the time of the last update. Its **Settings** has the same **Resident agent** row on a local page; the dialog opens as a bottom sheet.
+Starting, stopping, and the auto-start choice are available only on the PC. Through [remote access](../watch/remote-access) the footer indicator is display-only. The phone board shows the same indicator in its status line at the bottom, after the connection state, with a dot, the tool name, and a short state word. It is display-only there: it has no button, and it is hidden when nothing is launched and auto-start is off. On a narrow phone it takes the place of the time of the last update. Its **Settings** has the same **Resident agent** row on a local page; the dialog opens as a bottom sheet.
