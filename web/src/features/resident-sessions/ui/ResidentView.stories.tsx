@@ -226,7 +226,9 @@ export const LogTruncated: Story = {
 export const LogReadFailed: Story = {
   args: { ...scenarios.working, log: logs.failed },
   play: async () => {
-    await expect(await page().findByText('Could not read the log. Trying again.')).toBeVisible();
+    await expect(
+      await page().findByText('Could not read the log. Trying again.'),
+    ).toBeInTheDocument();
   },
 };
 

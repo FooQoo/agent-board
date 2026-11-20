@@ -506,15 +506,12 @@ button.resident-footer {
 
 .resident-log__note,
 .resident-log__empty,
-.resident-log__error {
-  margin: 0;
-}
-
 .resident-log__empty {
   font-size: 13px;
 }
 
 .resident-log__error {
+  margin: 0;
   color: var(--r-text2);
   font-size: 12px;
 }
