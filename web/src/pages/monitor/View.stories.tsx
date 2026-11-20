@@ -243,6 +243,48 @@ export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
   },
 };
 
+/**
+ * While the on-screen keyboard is open the bar is hidden and gives back its room, with or without a
+ * sheet, for both keyboard markers; when the keyboard closes the bar returns.
+ */
+export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
+  args: { onAsk: fn() },
+  globals: { locale: 'en', width: 'phone-390' },
+  render: (args) => (
+    <StandaloneInsets>
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
+    </StandaloneInsets>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = document.documentElement;
+    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement;
+    await expect(getComputedStyle(nav).display).not.toBe('none');
+    await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height')).not.toBe('0px');
+    try {
+      for (const marker of ['data-keyboard', 'data-visual-keyboard']) {
+        root.setAttribute(marker, '');
+        await expect(getComputedStyle(nav).display).toBe('none');
+        await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height').trim()).toBe(
+          '0px',
+        );
+        root.removeAttribute(marker);
+        await expect(getComputedStyle(nav).display).not.toBe('none');
+      }
+      // With a sheet open the sheet keeps no strip for the hidden bar.
+      await userEvent.click(within(canvasElement).getByRole('button', { name: /^Messages/ }));
+      const sheet = await body().findByRole('dialog', { name: 'Messages' });
+      root.setAttribute('data-keyboard', '');
+      await expect(getComputedStyle(nav).display).toBe('none');
+      await expect(Number.parseFloat(getComputedStyle(sheet).paddingBottom)).toBe(0);
+    } finally {
+      root.removeAttribute('data-keyboard');
+      root.removeAttribute('data-visual-keyboard');
+    }
+  },
+};
+
 /** The connected screen opens the Ask AI sheet from the bar. */
 export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,

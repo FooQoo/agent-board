@@ -39,9 +39,15 @@ body:has(.mobile-drawer) .phone-nav {
   padding-bottom: 0;
 }
 
-/* With the on-screen keyboard open the sheet sits on the keyboard and the bar stays behind it. */
-:root[data-visual-keyboard] body:has(.mobile-drawer) .phone-nav {
-  visibility: hidden;
+/* With the on-screen keyboard open, whether or not a sheet is open, the bar is gone and the room it took
+   is given back: --phone-nav-height reads 0px, so sheets and the page keep no strip for it. data-visual-keyboard
+   is a keyboard that covers the page (iOS Safari); data-keyboard is a browser that shrinks the viewport. */
+:root[data-phone-nav]:is([data-visual-keyboard], [data-keyboard]) {
+  --phone-nav-height: 0px;
+}
+
+:root:is([data-visual-keyboard], [data-keyboard]) .phone-nav {
+  display: none;
 }
 
 .phone-nav__item {
