@@ -44,6 +44,8 @@ Select a question in the list, or select **Answer the question** on its card to 
 
 A question with choices needs a choice, a note, or both: **Send answer** stays disabled until you do one of them, so you can answer with only a note when none of the options fits. A note added to a choice supplements it. A question without choices needs a note. The note takes up to 2,000 characters. Answers are sent one question at a time: there is no review step, and no answer is held on the page.
 
+To show the agent what you mean, add pictures to your answer, with or without a choice. Select **Image** under the note to pick PNG, JPEG, WebP, or GIF files, or paste a picture into the note. Each picture appears as a thumbnail that you can remove with its X button before you send. You can add up to 20 pictures and 50 MiB in all. The pictures are saved with the question, shown under your answer while it waits for the agent, and handed to the agent with the answer. A picture that cannot be accepted, such as a file that is not an image, stops the whole answer, and the question stays open.
+
 On a window narrower than 900 px, the question and the answer stack in one column.
 
 ![The answer dialog, with the question on the left and the options and note on the right](../../images/guide/question.png){.screenshot}

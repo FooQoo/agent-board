@@ -115,6 +115,7 @@ impl Fx {
                     question_id: id.into(),
                     choice_id: None,
                     text: Some("ok".into()),
+                    images: Vec::new(),
                 }],
                 AnswerVia::Cli,
                 at(minute),

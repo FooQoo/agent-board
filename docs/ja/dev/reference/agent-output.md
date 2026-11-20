@@ -50,7 +50,7 @@
 - 既定では、人の判断待ちでないTodoとDoingのタスクだけが載ります。タスクはエピックごとに`waves`の順で並び、エピックのないタスクは`unassigned`に入ります。
 - `nextTasks`は常に含まれ、今すぐ着手できるAI担当のタスクを最大3件並べます。各要素は`{ "id", "title", "epicId", "taskPath", "why" }`で、エピックのないタスクの`epicId`は`null`です。`why`は安定した値で、実行状態がIdleのDoingタスク（止まっている作業）は`resume`、実行状態がIdleのTodoタスクは`next_in_epic`です。Doingが先、次にTodoで、それぞれの中は進行表の順（エピックは表の順、エピック内は`waves`の順、エピックのないタスクは最後）です。下書き、PendingとRunningのタスク、人が担当のタスク、Doneやアーカイブのタスクも載らず、該当がなければ空配列です。同じエピックの前のウェーブに、アーカイブされておらずDoneでないタスクが残っている間は、そのTodoのタスクは載りません。同じウェーブのタスクはまとめて載ります。それ以外の依存関係は`EPIC.md`の文章で書かれ、評価されないため、エージェントは着手前にエピックの文書を読みます。
 - `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
-- 人が質問に回答し、まだどのエージェントも回答を受け取っていない（`reply`に`acceptedAt`がない）とき、表に`answers`配列がID順で加わります。各要素は`{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`で、`title`は依頼のタイトルと同じ規則、`tasks`はその質問を参照しているアーカイブされていないタスク、`choiceId`・`choiceLabel`・`text`は該当する部分がなければ`null`です。選択肢のある質問にメモだけで答えた場合は、`choiceId`と`choiceLabel`が`null`で`text`が設定されます。該当する回答がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で受け取ります。
+- 人が質問に回答し、まだどのエージェントも回答を受け取っていない（`reply`に`acceptedAt`がない）とき、表に`answers`配列がID順で加わります。各要素は`{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`に、人が添えた画像の絶対パス`imagePaths`（なければ省略）を加えた形で、`title`は依頼のタイトルと同じ規則、`tasks`はその質問を参照しているアーカイブされていないタスク、`choiceId`・`choiceLabel`・`text`は該当する部分がなければ`null`です。選択肢のある質問にメモだけで答えた場合は、`choiceId`と`choiceLabel`が`null`で`text`が設定されます。該当する回答がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で受け取ります。
 - 人からの依頼が未処理（受理も取り下げもされていない）のとき、表に`requests`配列がID順で加わります。各要素は`{"id":"Q-3","createdAt":"…","title":"…"}`で、`title`は依頼の最初の空でない行からMarkdownの記号（見出し・リスト・引用の記号、強調、コード、リンク）を除いたプレーンテキストの80文字までです（超える分は`…`で終わります）。未処理の依頼がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で依頼を引き受けます。
 - AIタスクに受け入れ条件が1件以上あり、そのすべてが完了していて、`--final`の成果がないとき、表に`finalResultMissing`配列がID順で加わります。最大5件で、各要素は`{"id":21,"title":"…","taskPath":"…/tasks/21/TASK.md"}`です。タスクがTodoまたはDoingにあるあいだと、レーンがDoneに変わってから24時間は一覧に残ります。エージェントが成果を書く前に自動Doneが起きても促せるようにするためです。下書き、人のタスク、アーカイブ済み、条件が不正なタスクは含みません。エージェントは各要素について`result add --final`を記録し、記録すると要素は消えます。何かを止めたり遅らせたりはしません。自動Doneは成果を待ちません。該当するタスクがなければフィールドはありません。
 - `epicsToClose`は、未アーカイブのタスクがすべて Done で、`EPIC.md`の本文に未チェックの`- [ ]`が残るエピック（`BUG`と`ENHANCEMENT`を除く）をID順に並べます。`[{"id":"SPEC-MIGRATION","name":"…","documentPath":"…/epics/SPEC-MIGRATION/EPIC.md"}]`の形で、該当がなければ出力されません。
@@ -174,7 +174,7 @@ taskの項目を省略した例です。
 | --- | --- | --- |
 | `registered` | `questions`（`id`）・`resumed` | 最初。`message wait`では`resumed`が`true`。`--no-wait`ではこの1行だけを書き、終了コード0で終わる。 |
 | `waiting` | `ids`・`elapsed`・`remaining`（期限なしなら`null`）・`answered`・`total` | `--heartbeat`秒ごと。タイマーから出し、ボードは読まない。 |
-| `answered` | `ids`・`answers`（`id`・`choiceId`・`choiceLabel`・`text`・`via`・`at`） | 最後。未回答の質問がなくなったとき。終了コード0。 |
+| `answered` | `ids`・`answers`（`id`・`choiceId`・`choiceLabel`・`text`・`images`・`imagePaths`・`via`・`at`） | 最後。未回答の質問がなくなったとき。終了コード0。 |
 | `timeout` | `ids`・`answered`・`total` | 最後。先に`--timeout`が過ぎたとき。質問は未回答のまま。終了コード5。 |
 | `withdrawn` | `ids`（取り下げられた質問）・`answers` | 最後。未回答の質問がなくなり、その中に取り下げられたものがあったとき。終了コード6。 |
 | `error` | `error`（`code`・`message`・`reason`） | 最後。`board_unavailable`などで待機に失敗したとき。 |
@@ -192,7 +192,7 @@ taskの項目を省略した例です。
 | `message accept` | 依頼なら`{request}`、回答済みの質問なら`{question}`。質問のテキスト出力は`Accepted the answer of Q-12.`です。 |
 | `message withdraw` | 取り下げたものに応じて`{question}`または`{request}`。 |
 
-質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`via`・`at`・`acceptedAt`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。`reply`の`acceptedAt`は常にあり、AIが回答を受け取るまでは`null`、受け取るとタイムスタンプです。`message show`は、受け取り済みの回答に`Accepted at …`の行を出します。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
+質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`images`・`imagePaths`・`via`・`at`・`acceptedAt`、なければ`null`）・`status`・`referencedBy`・`createdAt`・`withdrawnAt`を持ちます。`images`は人が回答に添えた画像のファイル名、`imagePaths`はその絶対パスで、エージェントはこれを開けます。`imagePaths`はCLIの出力と進捗の表にだけあり、ボードのルートには出ません。`message show`・`message ask`・`message wait`のテキスト出力は、画像ごとに`Image: <path>`の行を1つ出します。`reply`の`acceptedAt`は常にあり、AIが回答を受け取るまでは`null`、受け取るとタイムスタンプです。`message show`は、受け取り済みの回答に`Accepted at …`の行を出します。依頼は`id`・`type`・`from`・`to`・`body`・`status`・`acceptedAt`・`withdrawnAt`・`createdAt`を持ちます。状態の意味は[メッセージ](./files.md#メッセージ)を参照してください。
 
 `message ask`と`message wait`は、質問が回答または取り下げで終わって待機が終わったとき、返した回答を受け取ります。タイムアウトでは何も受け取りません。エージェントがチャットから人の代わりに記録した回答（`message answer --via chat`）は、受け付け済みで書かれます。したがって`message accept`が必要なのは、Hook・進行表・`wait --until task`で見た回答だけです。
 

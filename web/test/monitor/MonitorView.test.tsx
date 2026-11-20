@@ -306,9 +306,11 @@ describe('monitor messages in the bottom bar', () => {
     expect((send as HTMLButtonElement).disabled).toBe(false);
     await user.click(send);
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
-    expect(answer).toHaveBeenCalledWith(PROJECT_A.id, [
-      { questionId: 'Q-1', choiceId: 'yes', text: 'maybe' },
-    ]);
+    expect(answer).toHaveBeenCalledWith(
+      PROJECT_A.id,
+      [{ questionId: 'Q-1', choiceId: 'yes', text: 'maybe' }],
+      [],
+    );
   });
 
   it('keeps the input and says so after a failed send', async () => {

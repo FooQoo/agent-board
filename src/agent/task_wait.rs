@@ -156,7 +156,7 @@ fn ready(
     snapshot: &ProjectSnapshot,
     project_id: &ProjectId,
 ) -> Result<Option<String>, AgboardError> {
-    let answers = unaccepted_answers(snapshot);
+    let answers = unaccepted_answers(snapshot, shared);
     if !answers.is_empty() {
         return serde_json::to_string(&AnswersOutput {
             kind: "answers",

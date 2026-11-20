@@ -96,14 +96,14 @@ fn task_key(id: i64) -> String {
 /// Answers to questions that a board-launched session asked. At most one such session lives at
 /// a time, so a question with `askedBy` was asked by this session or by an earlier run of it,
 /// and either way this is the session to tell.
-fn answers_for_board(snapshot: &ProjectSnapshot) -> Vec<ProgressAnswer> {
+fn answers_for_board(snapshot: &ProjectSnapshot, shared: &std::path::Path) -> Vec<ProgressAnswer> {
     let board_asked = |id: &str| {
         snapshot
             .questions
             .iter()
             .any(|question| question.id == id && question.asked_by.is_some())
     };
-    unaccepted_answers(snapshot)
+    unaccepted_answers(snapshot, shared)
         .into_iter()
         .filter(|answer| board_asked(&answer.id))
         .collect()
@@ -164,7 +164,7 @@ pub(super) fn decide(
     policy: &Policy,
     now: Instant,
 ) -> Option<Instruction> {
-    let answers = answers_for_board(snapshot);
+    let answers = answers_for_board(snapshot, shared);
     let requests = open_requests(snapshot);
     let tasks = task_wait::ready_tasks(snapshot);
     let mut present: Vec<String> = answers.iter().map(|a| answer_key(&a.id)).collect();

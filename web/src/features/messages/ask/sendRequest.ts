@@ -3,40 +3,12 @@ import { authHeaders, projectPath } from '../../../shared/api/http';
 import { writeFailure } from '../../../shared/api/writeErrors';
 import { i18n } from '../../../shared/i18n';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
+import { storedImageName } from '../../../shared/ui/editor/storedImageName';
+
+export { storedImageName };
 
 /** The longest request the server keeps, in characters. */
 export const REQUEST_LIMIT = 20_000;
-
-const EXTENSIONS: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-};
-
-/**
- * The name the server stores an image under: plain ASCII (letters, digits, dot, underscore, hyphen),
- * at most 100 characters, ending with the extension of its type. A name already used gets a number.
- */
-export function storedImageName(
-  attachment: Pick<EditorAttachment, 'name' | 'mediaType'>,
-  taken: ReadonlySet<string>,
-): string {
-  const extension = EXTENSIONS[attachment.mediaType] ?? 'png';
-  const base = attachment.name.split(/[\\/]/).pop() ?? '';
-  const lower = base.toLowerCase();
-  const hasExtension =
-    lower.endsWith(`.${extension}`) || (extension === 'jpg' && lower.endsWith('.jpeg'));
-  const stem = (hasExtension ? base.slice(0, base.lastIndexOf('.')) : base)
-    .replace(/[^A-Za-z0-9._-]/g, '_')
-    .replace(/^\.+/, '_')
-    .slice(0, 80);
-  const plain = stem === '' ? 'image' : stem;
-  for (let n = 1; ; n += 1) {
-    const candidate = `${plain}${n === 1 ? '' : `-${n}`}.${extension}`;
-    if (!taken.has(candidate.toLowerCase())) return candidate;
-  }
-}
 
 /** The multipart body of a request: the `text` and one `images` part per picture. */
 export function buildRequestForm(text: string, attachments: readonly EditorAttachment[]): FormData {

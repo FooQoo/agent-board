@@ -21,6 +21,9 @@ pub const EXIT_WITHDRAWN: i32 = 6;
 struct Events<'a> {
     out: &'a mut dyn Write,
     json: bool,
+    /// The project folder, where the images of an answer are found. It is empty for the
+    /// events that print no answer.
+    project_dir: std::path::PathBuf,
 }
 
 fn ids_of(questions: &[Question]) -> Vec<&str> {
@@ -28,21 +31,27 @@ fn ids_of(questions: &[Question]) -> Vec<&str> {
 }
 
 /// The answers as the end events print them.
-fn answers_of(questions: &[Question]) -> (Vec<Value>, Vec<String>) {
+fn answers_of(questions: &[Question], project_dir: &std::path::Path) -> (Vec<Value>, Vec<String>) {
     let mut values = Vec::new();
     let mut lines = Vec::new();
     for question in questions {
-        let view = QuestionView::of(question, Vec::new());
+        let view = QuestionView::of(question, Vec::new()).with_image_paths(project_dir);
         let Some(reply) = &view.reply else { continue };
         values.push(json!({
             "id": view.id,
             "choiceId": reply.choice_id,
             "choiceLabel": reply.choice_label,
             "text": reply.text,
+            "images": reply.images,
+            "imagePaths": reply.image_paths,
             "via": reply.via,
             "at": crate::clock::format_utc(reply.at),
         }));
-        lines.push(format!("Answered {}: {}", view.id, answer_text(reply)));
+        let mut line = format!("Answered {}: {}", view.id, answer_text(reply));
+        for path in &reply.image_paths {
+            line.push_str(&format!("\nImage: {}", path.display()));
+        }
+        lines.push(line);
     }
     (values, lines)
 }
@@ -93,7 +102,7 @@ impl Events<'_> {
     fn end(&mut self, end: MessageWaitEnd) -> i32 {
         match end {
             MessageWaitEnd::Answered(questions) => {
-                let (answers, lines) = answers_of(&questions);
+                let (answers, lines) = answers_of(&questions, &self.project_dir);
                 self.line(
                     json!({"type": "answered", "ids": ids_of(&questions), "answers": answers}),
                     lines.join("\n"),
@@ -126,7 +135,7 @@ impl Events<'_> {
                     .filter(|q| q.state() == MessageState::Withdrawn)
                     .map(|q| q.id.as_str())
                     .collect();
-                let (answers, lines) = answers_of(&questions);
+                let (answers, lines) = answers_of(&questions, &self.project_dir);
                 let mut human = lines;
                 human.push(format!("Withdrawn: {}.", withdrawn.join(", ")));
                 self.line(
@@ -188,6 +197,7 @@ fn wait_and_print(
     let mut events = Events {
         out: &mut *env.stdout,
         json: ctx.json,
+        project_dir: crate::file_store::layout::project_dir(ctx.files.shared_dir(), &project),
     };
     let result = wait_for_questions(
         ctx.files.shared_dir(),
@@ -233,6 +243,7 @@ pub(super) fn ask(ctx: &mut Context, env: &mut Env, args: &MessageAskArgs) -> i3
     Events {
         out: &mut *env.stdout,
         json: ctx.json,
+        project_dir: std::path::PathBuf::new(),
     }
     .registered(&questions, false);
     // The page learns of the questions now, not after the answers.
@@ -262,6 +273,7 @@ pub(super) fn wait(ctx: &mut Context, env: &mut Env, args: &MessageWaitArgs) -> 
     Events {
         out: &mut *env.stdout,
         json: ctx.json,
+        project_dir: std::path::PathBuf::new(),
     }
     .registered(&questions, true);
     wait_and_print(ctx, env, &args.ids, timeout, args.heartbeat)

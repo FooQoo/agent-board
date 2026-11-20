@@ -226,6 +226,7 @@ fn pending_is_left_alone_then_answered_task_is_reconsidered() {
                 question_id: "Q-1".into(),
                 choice_id: Some("a".into()),
                 text: None,
+                images: Vec::new(),
             }],
             crate::file_store::qa::AnswerVia::Ui,
             at(5),
