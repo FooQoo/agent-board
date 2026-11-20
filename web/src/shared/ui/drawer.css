@@ -8,12 +8,8 @@
 /* Closed, the sheet rests at its own height, 56px (or the status bar) below the top of the screen. */
 .mobile-drawer.mobile-drawer--fit-keyboard[data-slot="drawer-popup"] {
   height: min(
-    calc(
-      var(--stable-vh, 100svh) -
-      max(56px, var(--safe-top) + 8px) -
-      var(--phone-nav-height, 0px)
-    ),
-    720px
+    calc(var(--stable-vh, 100svh) - max(56px, var(--safe-top) + 8px)),
+    calc(720px + var(--phone-nav-height, 0px))
   );
 }
 
@@ -25,6 +21,8 @@
   bottom: var(--keyboard-inset, 0px);
   height: auto;
   max-height: none;
+  /* The bar is hidden while the keyboard is open, so the sheet keeps no room for it. */
+  padding-bottom: 0;
   /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
      the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
      Safari draws its floating address pill and form bar, so the board never shows through there. */

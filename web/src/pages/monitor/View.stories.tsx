@@ -206,7 +206,8 @@ export const BarAskAi: StoryObj<typeof WiredPhoneStory> = {
 
 /**
  * A sheet opened from the bar stands on the bar: the bar is in front of the sheet and its backdrop and
- * stays tappable, the sheet's bottom edge is the bar's top, and Board closes the sheet.
+ * stays tappable, the sheet's surface runs to the bottom of the screen behind it while its content ends at
+ * the bar's top, and Board closes the sheet.
  */
 export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
   args: { onAsk: fn() },
@@ -225,8 +226,12 @@ export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
     // The sheet slides in: wait for it to rest before measuring.
     await new Promise((resolve) => setTimeout(resolve, 400));
     const navBox = nav.getBoundingClientRect();
-    await expect(sheet.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
-    await expect(sheet.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
+    await expect(
+      Math.abs(sheet.getBoundingClientRect().bottom - window.innerHeight),
+    ).toBeLessThanOrEqual(1);
+    const content = sheet.querySelector<HTMLElement>('.mobile-drawer__content') as HTMLElement;
+    await expect(content.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
+    await expect(content.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
     // The bar is what a tap on its middle reaches, above the sheet's backdrop, and it takes pointer events.
     const centre = [navBox.left + navBox.width / 2, navBox.top + navBox.height / 2] as const;
     await expect(nav.contains(document.elementFromPoint(...centre))).toBe(true);
@@ -235,6 +240,48 @@ export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
     // found by its hidden role; it is still on screen and tappable.
     await userEvent.click(within(nav).getByRole('button', { name: 'Board', hidden: true }));
     await waitFor(() => expect(body().queryByRole('dialog', { name: 'Messages' })).toBeNull());
+  },
+};
+
+/**
+ * While the on-screen keyboard is open the bar is hidden and gives back its room, with or without a
+ * sheet, for both keyboard markers; when the keyboard closes the bar returns.
+ */
+export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
+  args: { onAsk: fn() },
+  globals: { locale: 'en', width: 'phone-390' },
+  render: (args) => (
+    <StandaloneInsets>
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
+    </StandaloneInsets>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = document.documentElement;
+    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement;
+    await expect(getComputedStyle(nav).display).not.toBe('none');
+    await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height')).not.toBe('0px');
+    try {
+      for (const marker of ['data-keyboard', 'data-visual-keyboard']) {
+        root.setAttribute(marker, '');
+        await expect(getComputedStyle(nav).display).toBe('none');
+        await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height').trim()).toBe(
+          '0px',
+        );
+        root.removeAttribute(marker);
+        await expect(getComputedStyle(nav).display).not.toBe('none');
+      }
+      // With a sheet open the sheet keeps no strip for the hidden bar.
+      await userEvent.click(within(canvasElement).getByRole('button', { name: /^Messages/ }));
+      const sheet = await body().findByRole('dialog', { name: 'Messages' });
+      root.setAttribute('data-keyboard', '');
+      await expect(getComputedStyle(nav).display).toBe('none');
+      await expect(Number.parseFloat(getComputedStyle(sheet).paddingBottom)).toBe(0);
+    } finally {
+      root.removeAttribute('data-keyboard');
+      root.removeAttribute('data-visual-keyboard');
+    }
   },
 };
 
