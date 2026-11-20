@@ -1,0 +1,105 @@
+/* The phone screen's bottom bar. It spans the whole width and clears the home indicator. */
+
+.phone-nav {
+  display: grid;
+  flex: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  /* The shell pads its sides and its bottom; the bar takes that back so it reaches the screen edges. */
+  margin: 0 calc(-1 * max(8px, var(--safe-right))) 0 calc(-1 * max(8px, var(--safe-left)));
+  padding: 0 max(4px, var(--safe-right)) max(6px, var(--safe-bottom)) max(4px, var(--safe-left));
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.phone-nav__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  /* biome-ignore lint/plugin: a bar item is a fixed 48px tap target */
+  height: 48px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin: 4px 3px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--r-text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The open item: icon and label on a soft pill. */
+.phone-nav__item[data-selected="true"] {
+  --phone-nav-ring: var(--r-accent-soft);
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+}
+
+.phone-nav__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.phone-nav__icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.phone-nav__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.phone-nav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The middle item, Ask: a normal item with an accent icon and a heavier label, so it reads as the main action. */
+.phone-nav__item--ask {
+  color: var(--r-text);
+}
+.phone-nav__item--ask .phone-nav__icon {
+  color: var(--r-accent);
+}
+.phone-nav__item--ask .phone-nav__icon svg {
+  width: 26px;
+  height: 26px;
+}
+.phone-nav__item--ask .phone-nav__label {
+  font-weight: 700;
+}
+
+/* The count sits on the top-right corner of the icon, in the theme's accent color. */
+.phone-nav__badge {
+  position: absolute;
+  top: -8px;
+  right: -13px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  /* The ring takes the color of what is behind the icon, so the badge looks cut out of it. */
+  border: 2px solid var(--phone-nav-ring, var(--r-surface));
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: var(--r-accent);
+  color: var(--r-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+@supports (color: oklch(from red l c h)) {
+  .phone-nav__badge {
+    /* Black or white by the lightness of the chosen accent, so the number reads on every color theme. */
+    color: oklch(from var(--r-accent) clamp(0, (0.65 - l) * 1000, 1) 0 0);
+  }
+}

@@ -18,6 +18,7 @@ export function Surface({
   onClose,
   footer,
   className = '',
+  dismissible = true,
   children,
 }: {
   kind: 'dialog' | 'sheet';
@@ -31,6 +32,8 @@ export function Surface({
   onClose: () => void;
   footer?: ReactNode;
   className?: string;
+  /** A sheet that cannot be dragged away while a save blocks closing. */
+  dismissible?: boolean;
   children: ReactNode;
 }) {
   // Where the focus was when the dialog opened (the button that opened it).
@@ -47,6 +50,7 @@ export function Surface({
         className={`surface-sheet ${className}`.trim()}
         initialFocusSelector=".surface__body"
         fitKeyboard
+        dismissible={dismissible}
       >
         <div className="surface__body" tabIndex={-1}>
           {children}

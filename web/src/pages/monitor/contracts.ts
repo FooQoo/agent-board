@@ -97,8 +97,10 @@ export interface MonitorViewProps {
   messagesApi?: MessagesApi;
   /** An answer or a withdrawal was saved: the screen reads the project again without waiting. */
   onMessagesChanged?(): void;
-  /** The phone band's "Ask AI" button; the band shows none without it. */
+  /** The bar's Ask item opens "Ask AI"; the screen leaves it to this callback. */
   onAsk?(): void;
+  /** The Ask sheet is open, so the bar shows Ask as the open item. */
+  asking?: boolean;
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;

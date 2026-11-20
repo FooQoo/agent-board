@@ -13,10 +13,18 @@ export const settingsSlot: HeaderSettings = {
   preload: settingsDialog.preload,
 };
 
-/** The settings dialog that saves its choices through `endpoint`. */
-export function savingSettingsSlot(endpoint: PreferencesEndpoint): HeaderSettings {
+/** The settings as a bottom sheet, for the phone screen's bar. */
+export const sheetSettingsSlot: HeaderSettings = {
+  render: (state) => <settingsDialog.Component {...state} kind="sheet" />,
+  preload: settingsDialog.preload,
+};
+
+/** The settings dialog that saves its choices through `endpoint`; `sheet` makes it a bottom sheet. */
+export function savingSettingsSlot(endpoint: PreferencesEndpoint, kind?: 'sheet'): HeaderSettings {
   return {
-    render: (state) => <settingsDialog.Component {...state} preferencesEndpoint={endpoint} />,
+    render: (state) => (
+      <settingsDialog.Component {...state} preferencesEndpoint={endpoint} kind={kind} />
+    ),
     preload: settingsDialog.preload,
   };
 }

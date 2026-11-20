@@ -42,11 +42,14 @@ export function useDrawerDrag({
   onOpenChange,
   popup,
   overlay,
+  dismissible = true,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
   popup: RefObject<HTMLElement | null>;
   overlay: RefObject<HTMLElement | null>;
+  /** False while the sheet cannot be dismissed (a save is running): a drag would only leave it offset. */
+  dismissible?: boolean;
 }) {
   const drag = useRef<Drag | null>(null);
 
@@ -95,6 +98,10 @@ export function useDrawerDrag({
     popup.current?.removeAttribute('data-swiping');
   }, [open, reset, stop, popup]);
   useEffect(() => stop, [stop]);
+  // A sheet that stops being dismissible mid-drag drops the drag and returns to rest, so a refused dismissal cannot leave it offscreen.
+  useLayoutEffect(() => {
+    if (!dismissible) reset();
+  }, [dismissible, reset]);
 
   const settle = () => {
     const sheet = popup.current;
@@ -114,7 +121,7 @@ export function useDrawerDrag({
   };
 
   const start = (event: PointerEvent<HTMLElement>) => {
-    if (event.button !== 0 || event.isPrimary === false || drag.current) return;
+    if (!dismissible || event.button !== 0 || event.isPrimary === false || drag.current) return;
     // The close button keeps its own tap target inside the draggable top area.
     if (event.target instanceof Element && event.target.closest(NO_DRAG_SELECTOR)) return;
     try {
@@ -170,6 +177,7 @@ export function useDrawerDrag({
     const speed = moved / Math.max(1, event.timeStamp - current.startTime);
     const dismiss =
       !cancelled &&
+      dismissible &&
       (current.offset > current.height * DISMISS_SHARE ||
         (speed > FLICK_PX_PER_MS && moved > FLICK_MIN_PX));
     if (dismiss) {

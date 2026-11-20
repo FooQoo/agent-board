@@ -193,8 +193,8 @@ export const ConnectedProject: StoryObj<typeof ConnectedProjectStory> = {
 
 const body = () => within(document.body);
 
-/** The phone band's Ask AI button reaches the screen's callback. */
-export const BandAskAi: StoryObj<typeof WiredPhoneStory> = {
+/** The bar's Ask item reaches the screen's callback. */
+export const BarAskAi: StoryObj<typeof WiredPhoneStory> = {
   args: { onAsk: fn() },
   globals: { locale: 'en' },
   render: (args) => <WiredPhoneStory {...args} />,
@@ -204,7 +204,7 @@ export const BandAskAi: StoryObj<typeof WiredPhoneStory> = {
   },
 };
 
-/** The connected screen opens the Ask AI sheet from the band. */
+/** The connected screen opens the Ask AI sheet from the bar. */
 export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,
   globals: { locale: 'en' },
@@ -258,7 +258,7 @@ function StandaloneInsets({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the band ends above the indicator. */
+/** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the bottom bar ends above the indicator. */
 export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
   globals: { locale: 'en' },
   render: (args) => (
@@ -277,6 +277,13 @@ export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
     await expect(shell).not.toBeNull();
     const style = getComputedStyle(shell as HTMLElement);
     await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59);
-    await expect(Number.parseFloat(style.paddingBottom)).toBeGreaterThanOrEqual(34);
+    // The bottom bar pads itself above the home indicator.
+    const nav = canvasElement.querySelector<HTMLElement>('.phone-nav');
+    await expect(nav).not.toBeNull();
+    await expect(
+      Number.parseFloat(getComputedStyle(nav as HTMLElement).paddingBottom),
+    ).toBeGreaterThanOrEqual(34);
+    const bottom = (nav as HTMLElement).getBoundingClientRect().bottom;
+    await expect(bottom).toBeLessThanOrEqual(window.innerHeight);
   },
 };

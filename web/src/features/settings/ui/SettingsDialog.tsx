@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
+import { Surface } from '../../../shared/ui/surface/Surface';
+import { THEME_SWATCHES } from './themeSwatches';
 import { RadioGroup } from '@/shared/ui/radio-group';
 import '../../../shared/styles/modal.css';
 import {
@@ -29,56 +31,7 @@ import {
   type ThemeStorageProvider,
 } from '../../../shared/theme';
 
-/**
- * Colors of one theme swatch tile. The tile of a mode is drawn on that mode's page background
- * and shows the accent of that theme, so every swatch looks the same whichever theme is current.
- * The values mirror theme.css (--r-bg per mode, --r-accent per mode and accent); a unit test
- * keeps them in step.
- */
-export const THEME_SWATCHES: Record<string, { bg: string; accent: string }> = Object.fromEntries(
-  (
-    [
-      [
-        'light',
-        '#f6f7f9',
-        [
-          '#2563eb',
-          '#0284c7',
-          '#0891b2',
-          '#0d9488',
-          '#16a34a',
-          '#65a30d',
-          '#ca8a04',
-          '#ea580c',
-          '#dc2626',
-          '#db2777',
-          '#7c3aed',
-          '#475569',
-        ],
-      ],
-      [
-        'dark',
-        '#0f1318',
-        [
-          '#6b9aff',
-          '#4db5f0',
-          '#3cc9e0',
-          '#3dcbb8',
-          '#4cc97a',
-          '#a3d94a',
-          '#f0c531',
-          '#f59a52',
-          '#f47c7c',
-          '#f472b6',
-          '#a78bfa',
-          '#94a3b8',
-        ],
-      ],
-    ] as const
-  ).flatMap(([mode, bg, accents]) =>
-    ACCENTS.map((accent, index) => [`${mode}-${accent}`, { bg, accent: accents[index] ?? '' }]),
-  ),
-);
+export { THEME_SWATCHES };
 
 const LOCALES: readonly Locale[] = ['ja', 'en'];
 
@@ -116,6 +69,7 @@ export function SettingsDialog({
   themeStorageProvider,
   extra,
   preferencesEndpoint,
+  kind = 'dialog',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -128,6 +82,8 @@ export function SettingsDialog({
   extra?: ReactNode;
   /** Where the choice is saved. Without it the choice stays in the browser copy only. */
   preferencesEndpoint?: PreferencesEndpoint;
+  /** `sheet`: a bottom sheet for the phone. */
+  kind?: 'dialog' | 'sheet';
 }) {
   const { t, i18n } = useTranslation();
   const [theme, setTheme] = useState<Theme>(currentTheme);
@@ -184,6 +140,103 @@ export function SettingsDialog({
     save(result.persisted, { locale: next });
   };
 
+  const content = (
+    <>
+      <section className="settings__section settings__section--language">
+        <h3 className="settings__heading" id={languageId}>
+          {t('settings.language')}
+        </h3>
+        <RadioGroup
+          className="segmented"
+          data-language-group=""
+          aria-labelledby={languageId}
+          value={locale}
+          onValueChange={chooseLocale}
+        >
+          {LOCALES.map((value) => (
+            <RadioGroupPrimitive.Item
+              key={value}
+              value={value}
+              className="segmented__option"
+              onKeyDown={selectOnEnter}
+            >
+              {value === 'ja' ? t('language.japanese') : t('language.english')}
+            </RadioGroupPrimitive.Item>
+          ))}
+        </RadioGroup>
+      </section>
+
+      <section className="settings__section settings__section--theme">
+        <div className="settings__heading-row">
+          <h3 className="settings__heading" id={themeId}>
+            {t('settings.theme')}
+          </h3>
+          <span className="settings__current">{themeName(theme)}</span>
+        </div>
+        <RadioGroup
+          className="theme-rows"
+          aria-labelledby={themeId}
+          value={themeValue(theme)}
+          onValueChange={chooseTheme}
+        >
+          {MODES.map((mode) => (
+            <div className="theme-row" key={mode}>
+              <span className="theme-row__mode">{t(`settings.${mode}`)}</span>
+              <div className="theme-row__tiles">
+                {ACCENTS.map((accent) => {
+                  const value = themeValue({ mode, accent });
+                  const swatch = THEME_SWATCHES[value];
+                  return (
+                    <RadioGroupPrimitive.Item
+                      key={value}
+                      value={value}
+                      className="theme-tile"
+                      aria-label={themeName({ mode, accent })}
+                      title={themeName({ mode, accent })}
+                      style={
+                        {
+                          '--tile-bg': swatch?.bg,
+                          '--tile-accent': swatch?.accent,
+                        } as CSSProperties
+                      }
+                      onKeyDown={selectOnEnter}
+                    >
+                      <span className="theme-tile__dot" aria-hidden="true" />
+                      <CheckIcon className="theme-tile__check" aria-hidden="true" />
+                    </RadioGroupPrimitive.Item>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </RadioGroup>
+      </section>
+
+      {extra}
+
+      {saveError && (
+        <p className="modal__error" role="alert">
+          {t('dialog.saveFailed')}
+        </p>
+      )}
+      <p className="settings__note">{t('settings.note')}</p>
+    </>
+  );
+
+  if (kind === 'sheet') {
+    return open ? (
+      <Surface
+        kind="sheet"
+        title={t('settings.title')}
+        closeLabel={t('dialog.close')}
+        onClose={() => onOpenChange(false)}
+        className="settings-sheet"
+      >
+        {content}
+      </Surface>
+    ) : null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -215,84 +268,7 @@ export function SettingsDialog({
           </button>
         </div>
 
-        <section className="settings__section settings__section--language">
-          <h3 className="settings__heading" id={languageId}>
-            {t('settings.language')}
-          </h3>
-          <RadioGroup
-            className="segmented"
-            data-language-group=""
-            aria-labelledby={languageId}
-            value={locale}
-            onValueChange={chooseLocale}
-          >
-            {LOCALES.map((value) => (
-              <RadioGroupPrimitive.Item
-                key={value}
-                value={value}
-                className="segmented__option"
-                onKeyDown={selectOnEnter}
-              >
-                {value === 'ja' ? t('language.japanese') : t('language.english')}
-              </RadioGroupPrimitive.Item>
-            ))}
-          </RadioGroup>
-        </section>
-
-        <section className="settings__section settings__section--theme">
-          <div className="settings__heading-row">
-            <h3 className="settings__heading" id={themeId}>
-              {t('settings.theme')}
-            </h3>
-            <span className="settings__current">{themeName(theme)}</span>
-          </div>
-          <RadioGroup
-            className="theme-rows"
-            aria-labelledby={themeId}
-            value={themeValue(theme)}
-            onValueChange={chooseTheme}
-          >
-            {MODES.map((mode) => (
-              <div className="theme-row" key={mode}>
-                <span className="theme-row__mode">{t(`settings.${mode}`)}</span>
-                <div className="theme-row__tiles">
-                  {ACCENTS.map((accent) => {
-                    const value = themeValue({ mode, accent });
-                    const swatch = THEME_SWATCHES[value];
-                    return (
-                      <RadioGroupPrimitive.Item
-                        key={value}
-                        value={value}
-                        className="theme-tile"
-                        aria-label={themeName({ mode, accent })}
-                        title={themeName({ mode, accent })}
-                        style={
-                          {
-                            '--tile-bg': swatch?.bg,
-                            '--tile-accent': swatch?.accent,
-                          } as CSSProperties
-                        }
-                        onKeyDown={selectOnEnter}
-                      >
-                        <span className="theme-tile__dot" aria-hidden="true" />
-                        <CheckIcon className="theme-tile__check" aria-hidden="true" />
-                      </RadioGroupPrimitive.Item>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </RadioGroup>
-        </section>
-
-        {extra}
-
-        {saveError && (
-          <p className="modal__error" role="alert">
-            {t('dialog.saveFailed')}
-          </p>
-        )}
-        <p className="settings__note">{t('settings.note')}</p>
+        {content}
       </DialogContent>
     </Dialog>
   );

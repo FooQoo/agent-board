@@ -35,6 +35,7 @@ export function PhoneSettings({
       onOpenChange={onOpenChange}
       restoreFocusRef={restoreFocusRef}
       preferencesEndpoint={preferencesEndpoint}
+      kind="sheet"
       extra={
         <>
           <div className="settings__entries">

@@ -238,29 +238,34 @@ export const Answer: Story = {
   play: answerPlay('質問に回答する'),
 };
 
-/** The band of messages under the counts, with "AI に依頼" and "質問・依頼を確認". */
-export const MessageBand: Story = {
+/** The bottom bar: Board, Messages with the count of open questions, Ask in the middle, Archive and Settings. */
+export const BottomBar: Story = {
   args: { variant: 'band' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
-    await expect(within(band).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
-    await expect(within(band).getByRole('button', { name: '質問・依頼を確認' })).toBeVisible();
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await expect(within(bar).getAllByRole('button')).toHaveLength(5);
+    await expect(within(bar).getByRole('button', { name: 'メッセージ 2' })).toBeVisible();
+    await expect(within(bar).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
+    // The band that the bar replaced is gone.
+    await expect(within(canvasElement).queryByRole('region', { name: 'メッセージ' })).toBeNull();
   },
 };
 
-/** Nothing is open: the band stays with a count of 0. */
-export const MessageBandEmpty: Story = {
+/** Nothing is open: Messages shows no count. */
+export const BottomBarNoQuestions: Story = {
   args: { variant: 'band-empty' },
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
-    const band = within(canvasElement).getByRole('region', { name: 'メッセージ' });
-    await expect(within(band).getByText(/AI の質問/)).toHaveTextContent('0');
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    const messages = within(bar).getByRole('button', { name: 'メッセージ' });
+    await expect(messages).toBeVisible();
+    await expect(messages.querySelector('.phone-nav__badge')).toBeNull();
   },
 };
 
-/** The band in dark mode. */
-export const MessageBandDark: Story = {
+/** The bar in dark mode. */
+export const BottomBarDark: Story = {
   args: { variant: 'band' },
   globals: { ...mobileJapaneseLight, mode: 'dark' },
 };

@@ -1,8 +1,5 @@
-import { ArchiveIcon } from 'lucide-react';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/shared/ui/button';
-import { IconLabel } from '@/shared/ui/icon-label';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
 import { type PullState, REFRESHING_HEIGHT, usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -25,8 +22,6 @@ export interface MonitorLanesProps {
   onMove: (item: MonitorTaskModel, target: MonitorSection) => void;
   /** The archive button of a card was tapped: the screen asks for the archive confirmation. */
   onArchive: (item: MonitorTaskModel) => void;
-  /** 「まとめてアーカイブ」 of the done lane was tapped: the screen asks for the confirmation. */
-  onBulkArchive: () => void;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   onOpenAnswer?: (item: MonitorTaskModel) => void;
   id?: string;
@@ -56,7 +51,6 @@ export function MonitorLanes({
   onLaneChange,
   onMove,
   onArchive,
-  onBulkArchive,
   onOpenDetail,
   onOpenAnswer,
   id,
@@ -153,20 +147,6 @@ export function MonitorLanes({
                       />
                     </SwipeableCard>
                   ))
-                )}
-                {name === 'done' && (
-                  // Below the cards, so they stay where they are whether or not the button shows.
-                  <div className="monitor-lane__bar">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="l"
-                      disabled={items.length === 0}
-                      onClick={onBulkArchive}
-                    >
-                      <IconLabel icon={ArchiveIcon}>{t('monitor.lanes.bulkArchive')}</IconLabel>
-                    </Button>
-                  </div>
                 )}
               </div>
             </section>

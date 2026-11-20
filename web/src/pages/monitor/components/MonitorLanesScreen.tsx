@@ -1,12 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Header } from '../../../shared/ui/app-header/Header';
-import { settingsSlot } from '../../../features/settings/ui/settingsSlot';
-import { MessageCenter } from '../../../features/tasks/messages/MessageCenter';
-import { firstQuestionOfTask } from '../../../features/tasks/messages/model/messages';
+import { sheetSettingsSlot } from '../../../features/settings/ui/settingsSlot';
+import { MessagesSurface } from '../../../features/tasks/messages/MessagesSurface';
+import {
+  countMessages,
+  firstQuestionOfTask,
+} from '../../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../../features/tasks/messages/useMessagesPanel';
 import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorViewProps } from '../contracts';
 import { LaneTabs } from './LaneTabs';
+import { PhoneNav } from './PhoneNav';
 import { MonitorLaneDialogs, type LanePending } from './MonitorLaneDialogs';
 import { MonitorLanes, type LaneItems, type MonitorLanesProps } from './MonitorLanes';
 import type { MonitorSection } from './MonitorSectionHeader';
@@ -73,16 +77,16 @@ export function MonitorLanesScreen({
   const close = () => setPending(null);
   return (
     <main className="monitor-shell">
-      <Header {...header} settings={settingsSlot} settingsSize="l" />
-      {messagesApi && projectId && messages && (
-        <MessageCenter
+      <Header {...header} withSettings={false} />
+      {panel.target !== null && messagesApi && projectId && messages && (
+        <MessagesSurface
           projectId={projectId}
           messages={messages}
-          variant="phone"
-          panel={panel}
+          kind="sheet"
+          target={panel.target}
           api={messagesApi}
           onChanged={() => {}}
-          onAsk={onAsk}
+          onClose={panel.close}
         />
       )}
       <LaneTabs
@@ -104,7 +108,6 @@ export function MonitorLanesScreen({
         onLaneChange={setLane}
         onMove={(item, target) => void onMove(item, target)}
         onArchive={(item) => setPending({ kind: 'archive', item })}
-        onBulkArchive={() => setPending({ kind: 'bulk' })}
         onOpenDetail={onOpenDetail}
         onOpenAnswer={
           messagesApi
@@ -119,6 +122,19 @@ export function MonitorLanesScreen({
         previewPull={previewPull}
         onRefresh={onRefresh}
         refreshing={refreshing}
+      />
+      <PhoneNav
+        settings={sheetSettingsSlot}
+        questionCount={countMessages(messages ?? []).fromAi}
+        archiveDisabled={lanes.done.length === 0}
+        open={panel.target !== null ? 'messages' : pending?.kind === 'bulk' ? 'archive' : null}
+        onMessages={() => panel.open({ tab: 'fromAi' })}
+        onAsk={() => onAsk?.()}
+        onArchive={() => setPending({ kind: 'bulk' })}
+        onBoard={() => {
+          panel.close();
+          close();
+        }}
       />
       <MonitorLaneDialogs
         pending={pending}

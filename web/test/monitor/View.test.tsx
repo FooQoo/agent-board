@@ -81,10 +81,10 @@ describe('MonitorView', () => {
       ).disabled,
     ).toBe(false);
     expect(screen.queryByRole('dialog')).toBeNull();
-    // The Done lane's bulk archive is the only archive control in view; nothing deletes or edits.
+    // The bar's Archive item is the only archive control in view; nothing deletes or edits.
     expect(
       screen.getAllByRole('button', { name: /Archive|Delete|Edit/ }).map((b) => b.textContent),
-    ).toEqual(['Archive all']);
+    ).toEqual(['Archive']);
   });
 
   it('changes lane tab and run state labels with the locale', () => {

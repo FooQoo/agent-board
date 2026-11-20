@@ -1,16 +1,17 @@
 import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageCenter } from '../../features/tasks/messages/MessageCenter';
-import { firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
+import { MessagesSurface } from '../../features/tasks/messages/MessagesSurface';
+import { countMessages, firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
 import type { ColumnName, ProjectId } from '../../shared/api/contracts';
 import { TaskStatusChangedError } from '../../features/tasks/api/lifecycle';
 import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
-import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
+import { savingSettingsSlot, sheetSettingsSlot } from '../../features/settings/ui/settingsSlot';
 import type { MonitorTask, MonitorViewProps } from './contracts';
 import { LaneTabs } from './components/LaneTabs';
+import { PhoneNav } from './components/PhoneNav';
 import { MonitorLanes } from './components/MonitorLanes';
 import { type LanePending, MonitorLaneDialogs } from './components/MonitorLaneDialogs';
 import type { MonitorSection } from './components/MonitorSectionHeader';
@@ -37,7 +38,7 @@ export function MonitorView(props: MonitorViewProps) {
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences, settings: given } = props;
   const settings = useMemo(
-    () => given ?? (preferences ? savingSettingsSlot(preferences) : settingsSlot),
+    () => given ?? (preferences ? savingSettingsSlot(preferences, 'sheet') : sheetSettingsSlot),
     [given, preferences],
   );
   const lanesId = useId();
@@ -128,16 +129,16 @@ export function MonitorView(props: MonitorViewProps) {
   };
   return (
     <main className="monitor-shell">
-      <Header {...props.header} settings={settings} settingsSize="l" />
-      {props.messagesApi && props.projectId && props.messages && (
-        <MessageCenter
+      <Header {...props.header} withSettings={false} />
+      {panel.target !== null && props.messagesApi && props.projectId && props.messages && (
+        <MessagesSurface
           projectId={props.projectId}
           messages={props.messages}
-          variant="phone"
-          panel={panel}
+          kind="sheet"
+          target={panel.target}
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
-          onAsk={props.onAsk}
+          onClose={panel.close}
           resolveAttachment={resolveAttachment}
         />
       )}
@@ -160,7 +161,6 @@ export function MonitorView(props: MonitorViewProps) {
         onLaneChange={setLane}
         onMove={(item, target) => void moveNow(item, target)}
         onArchive={(item) => ask({ kind: 'archive', item })}
-        onBulkArchive={() => ask({ kind: 'bulk' })}
         onOpenDetail={(item, tab) => {
           detail.show(item, tab);
           props.onOpenDetail?.(item, tab);
@@ -228,6 +228,27 @@ export function MonitorView(props: MonitorViewProps) {
         lastFetchedAt={freshness.lastFetchedAt}
         problemCount={freshness.snapshotProblems.length}
         slot={props.statusSlot}
+      />
+      <PhoneNav
+        settings={settings}
+        questionCount={countMessages(props.messages ?? []).fromAi}
+        archiveDisabled={!writes || ordered.done.length === 0}
+        open={
+          panel.target !== null
+            ? 'messages'
+            : pending?.kind === 'bulk'
+              ? 'archive'
+              : props.asking
+                ? 'ask'
+                : null
+        }
+        onMessages={() => panel.open({ tab: 'fromAi' })}
+        onAsk={() => props.onAsk?.()}
+        onArchive={() => ask({ kind: 'bulk' })}
+        onBoard={() => {
+          panel.close();
+          closePending();
+        }}
       />
     </main>
   );

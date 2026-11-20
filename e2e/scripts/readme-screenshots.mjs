@@ -40,7 +40,7 @@ try {
       await page.goto(`${origin}/?project=${id}`);
       const task = page.getByRole('button', { name: /^#3(?!\d)/ });
       await task.click();
-      await expect(page.getByRole('tab')).toHaveCount(4);
+      await expect(page.getByRole('tab')).toHaveCount(5);
       // The waiting card shows only its answer button; the question is read in the answer dialog.
       const answerLabel = locale === 'ja' ? '質問に回答する' : 'Answer the question';
       await expect(page.locator('[data-decision-answer][data-task-id="3"]')).toHaveText(answerLabel);
@@ -122,7 +122,7 @@ try {
       await sheet.getByRole('button', { name: locale === 'ja' ? 'あとでやる' : 'Later', exact: true }).click();
       await expect(sheet).toHaveCount(0);
       await phone.getByRole('article', { name: /^#3(?!\d)/ }).getByRole('button', { name: text.titles[2], exact: true }).click();
-      await expect(phone.getByRole('tab')).toHaveCount(4);
+      await expect(phone.getByRole('tab')).toHaveCount(5);
       await phone.getByRole('tab', { name: text.tab, exact: true }).click();
       const panel = phone.getByRole('tabpanel', { name: text.tab, exact: true });
       await expect(panel).toBeVisible();

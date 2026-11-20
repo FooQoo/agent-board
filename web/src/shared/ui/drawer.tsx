@@ -22,6 +22,7 @@ export function Drawer({
   initialFocusSelector,
   className,
   fitKeyboard = false,
+  dismissible = true,
   children,
 }: {
   open: boolean;
@@ -39,12 +40,14 @@ export function Drawer({
   className?: string;
   /** Sizes the sheet to the visible area while the on-screen keyboard is open (see drawer.css). */
   fitKeyboard?: boolean;
+  /** False while a save blocks closing: the swipe-down drag is off, so the sheet is never left pulled down. */
+  dismissible?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const popup = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
-  const handle = useDrawerDrag({ open, onOpenChange, popup, overlay });
+  const handle = useDrawerDrag({ open, onOpenChange, popup, overlay, dismissible });
   // Focus goes back where it was when the sheet opened; the sheet has no trigger of its own.
   const returnFocus = useRef<HTMLElement | null>(null);
   const wasOpen = useRef(false);
