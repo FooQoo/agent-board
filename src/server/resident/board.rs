@@ -28,14 +28,10 @@ impl Launcher {
     /// The session stopped on an error with `tasks` in hand: each one it left running gets one
     /// history entry that another agent has to take it over, and goes back to idle. Nothing here
     /// can fail the session's own bookkeeping: a task that cannot be saved is reported on stderr
-    /// and kept for the next attempt.
-    pub(super) fn hand_over(
-        &self,
-        project: &ProjectId,
-        push: &super::push::Push,
-        tasks: &[i64],
-        detail: &str,
-    ) {
+    /// and kept, with its failure detail, in the launcher's retry list (see
+    /// [`Launcher::retry_handoffs`]). That list belongs to the launcher, not to the child, so it
+    /// outlives a child that exits, and a clean turn end never releases it.
+    pub(super) fn hand_over(&self, project: &ProjectId, tasks: &[i64], detail: &str) {
         if tasks.is_empty() || self.is_closing() {
             return;
         }
@@ -44,14 +40,39 @@ impl Launcher {
         };
         let store = FileStore::open(&shared);
         for id in tasks {
-            if let Err(error) = store.record_agent_stopped(project, *id, detail, SystemClock.now())
-            {
-                // Keep the task, so a later failure or exit tries it again.
-                eprintln!(
-                    "agboard: could not record that the resident agent stopped on task #{id}: {}",
-                    error.reason()
-                );
-                push.add_handed(&[*id]);
+            self.record_handoff(&store, project, *id, detail);
+        }
+    }
+
+    /// Try again the handoff notes that could not be saved. Idempotent: a task that is no longer
+    /// an AI task Running is left alone by the store, and is dropped from the list.
+    pub(super) fn retry_handoffs(&self) {
+        if self.is_closing() {
+            return;
+        }
+        let Some(shared) = self.board_dir() else {
+            return;
+        };
+        let pending =
+            std::mem::take(&mut *self.unrecorded.lock().unwrap_or_else(|e| e.into_inner()));
+        if pending.is_empty() {
+            return;
+        }
+        let store = FileStore::open(&shared);
+        for (project, id, detail) in pending {
+            self.record_handoff(&store, &project, id, &detail);
+        }
+    }
+
+    fn record_handoff(&self, store: &FileStore, project: &ProjectId, id: i64, detail: &str) {
+        if let Err(error) = store.record_agent_stopped(project, id, detail, SystemClock.now()) {
+            eprintln!(
+                "agboard: could not record that the resident agent stopped on task #{id}: {}",
+                error.reason()
+            );
+            let mut pending = self.unrecorded.lock().unwrap_or_else(|e| e.into_inner());
+            if !pending.iter().any(|(p, t, _)| p == project && *t == id) {
+                pending.push((project.clone(), id, detail.to_string()));
             }
         }
     }

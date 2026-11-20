@@ -168,7 +168,7 @@ impl Launcher {
             let reason = launcher.pump(tool, &launch_id, &project, driver.as_ref(), &push);
             // A session that dies in the middle of a turn leaves its task running too.
             if launcher.is_current_plan(tool, &launch_id) {
-                launcher.hand_over(&project, &push, &push.take_all_handed(), &reason);
+                launcher.hand_over(&project, &push.take_all_handed(), &reason);
             }
             push.close();
             launcher.forget(tool, &launch_id);
@@ -212,7 +212,7 @@ impl Launcher {
                     if let TurnOutcome::Failed { message } = &outcome
                         && self.is_current_plan(tool, launch_id)
                     {
-                        self.hand_over(project, push, &handed, message);
+                        self.hand_over(project, &handed, message);
                     }
                     push.turn_ended(&outcome);
                 }
@@ -243,6 +243,7 @@ impl Launcher {
             if !self.is_current(launch_id) {
                 break;
             }
+            self.retry_handoffs();
             push::push_once(&shared, project, project_name, driver, push, &policy);
         }
     }
