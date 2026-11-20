@@ -4,6 +4,8 @@
 
 use super::commands::{contains_sequence, ends_with_question, runs_agboard, tokens};
 use super::question_rules;
+use super::record_rules;
+use super::state_rules;
 use super::{Area, Call, Facts, Finding, Kind, Rule, Source, When};
 
 /// Every rule, in the order their reminders are listed.
@@ -65,14 +67,90 @@ pub const RULES: &[Rule] = &[
         check: result_artifact,
     },
     Rule {
-        id: "result-history",
+        id: "history",
         area: Area::Record,
         source: Source::Turn,
         when: When::TurnEnd,
         kind: Kind::Check,
-        check: result_history,
+        check: record_rules::history,
     },
+    Rule {
+        id: "conditions-after-merge",
+        area: Area::Acceptance,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Check,
+        check: record_rules::conditions_after_merge,
+    },
+    Rule {
+        id: "start-task",
+        area: Area::RunState,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: record_rules::start_task,
+    },
+    entry(
+        "answer",
+        Area::Question,
+        Kind::Definite,
+        state_rules::answer,
+    ),
+    entry(
+        "request",
+        Area::Question,
+        Kind::Definite,
+        state_rules::request,
+    ),
+    entry(
+        "conditions",
+        Area::Acceptance,
+        Kind::Check,
+        state_rules::conditions,
+    ),
+    entry(
+        "epic-close",
+        Area::Epic,
+        Kind::Definite,
+        state_rules::epic_close,
+    ),
+    entry(
+        "stale-running",
+        Area::RunState,
+        Kind::Check,
+        state_rules::stale_running,
+    ),
+    entry(
+        "next-task",
+        Area::RunState,
+        Kind::Check,
+        state_rules::next_task,
+    ),
+    entry(
+        "draft-moved",
+        Area::RunState,
+        Kind::Definite,
+        state_rules::draft_moved,
+    ),
+    entry("drafts", Area::RunState, Kind::Check, state_rules::drafts),
 ];
+
+/// A `State` rule shown in the progress table and the Stop checklist.
+const fn entry(
+    id: &'static str,
+    area: Area,
+    kind: Kind,
+    check: fn(&Facts) -> Vec<Finding>,
+) -> Rule {
+    Rule {
+        id,
+        area,
+        source: Source::State,
+        when: When::Both,
+        kind,
+        check,
+    }
+}
 
 /// The last reply is a question to the user and none was put on the board.
 fn question(facts: &Facts) -> Vec<Finding> {
@@ -142,16 +220,6 @@ fn result_artifact(facts: &Facts) -> Vec<Finding> {
     )]
 }
 
-/// Work that deserves a result also deserves a history note.
-fn result_history(facts: &Facts) -> Vec<Finding> {
-    if result_pr(facts).is_empty() && result_artifact(facts).is_empty() {
-        return Vec::new();
-    }
-    vec![Finding::new(
-        "Record meaningful progress (commits, verification, decisions) with `agboard history add` if you have not.",
-    )]
-}
-
 /// A result is due: the turn recorded none while an AI task is running.
 fn result_expected(facts: &Facts) -> bool {
     !facts
@@ -161,11 +229,11 @@ fn result_expected(facts: &Facts) -> bool {
         && has_running_ai_task(facts)
 }
 
-fn is_pr_create(call: &Call) -> bool {
+pub(super) fn is_pr_create(call: &Call) -> bool {
     contains_sequence(&tokens(&call.command), &["gh", "pr", "create"])
 }
 
-fn has_running_ai_task(facts: &Facts) -> bool {
+pub(super) fn has_running_ai_task(facts: &Facts) -> bool {
     use crate::domain::{Assignee, Column, RunState};
     let Some(progress) = facts.progress else {
         return false;

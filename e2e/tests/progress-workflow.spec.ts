@@ -79,7 +79,7 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     const tasks = JSON.parse(agboardOk(project, ['ls', '--json'], home).stdout).tasks as Array<{ id: number; title: string }>;
     const publish = tasks.find((task) => task.title === 'Publish release')!.id;
     const notes = tasks.find((task) => task.title === 'Prepare release notes')!.id;
-    agboardOk(project, ['epic', 'edit', 'RELEASE', '--priority', `${notes},${publish}`], home);
+    agboardOk(project, ['epic', 'edit', 'RELEASE', '--waves', `${notes}`, `${publish}`], home);
 
     const progress = run(['progress', '--json'], home, work);
     expect(progress.code, progress.stderr).toBe(0);
