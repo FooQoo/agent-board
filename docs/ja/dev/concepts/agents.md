@@ -62,7 +62,9 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
   - **`final-result`**（State、Both、Definite）。`finalResultMissing`にあるタスクごとに、そのタスクを示して`result add <id> --final`を求めます。
   - **`result-pr`**（Turn、TurnEnd、Definite）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中に`agboard ... result add`がなく、`gh pr create`があったとき。プルリクエストを作ったのに成果がありません。
   - **`result-artifact`**（Turn、TurnEnd、Check）。同じ条件で`gh pr create`がなく、`git push`か画像の書き出し（拡張子が`.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`の画像、またはスクリーンショット）があったとき。見せられるものなら`result add`で記録するよう求めます。
-  - **`result-history`**（Turn、TurnEnd、Check）。`result-pr`か`result-artifact`の引き金が引かれたとき、意味のある進捗を`agboard history add`で記録するよう求めます。
+  - **`history`**（Turn、TurnEnd、Check）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中にコミット、テスト実行（`cargo test`、`pnpm ... test`、`npm test`、`vitest`、`playwright test`など）、プッシュ、プルリクエストの作成のいずれかがあり、`agboard ... history add`、`state`、`mv`、`result add`のどれもなかったとき。意味のある進捗を`history add`で記録するよう求めます。
+  - **`conditions-after-merge`**（Turn、TurnEnd、Check）。ターン中に`gh pr merge`があり、Doingの AI タスクに未達の完了条件があるとき。該当するタスクごとに、マージで確認できたなら検証内容をタスク本文に記録して完了条件を済みにするよう求めます（プルリクエストとタスクは結び付いていないため、どのタスクかはエージェントが判断します）。
+  - **`start-task`**（Turn、TurnEnd、Definite）。ターン中にファイルを編集（パス付きのEditかWrite、`apply_patch`、`git commit`）し、DoingかつRunningのAIタスクがないとき。`/tmp`とAgent Boardのデータフォルダだけの編集は無視します。タスクの着手（`agboard mv <id> doing`、`agboard state <id> running`）か新規作成を求めます。
 
 #### ルールを足す
 

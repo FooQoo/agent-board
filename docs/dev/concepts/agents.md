@@ -62,7 +62,9 @@ The rules:
   - **`final-result`** (State, Both, Definite). A task listed in `finalResultMissing` gives a reminder naming it and asking for `result add <id> --final`.
   - **`result-pr`** (Turn, TurnEnd, Definite). The project has an AI task in Doing and Running, the turn ran no `agboard ... result add`, and it ran `gh pr create`: a pull request was opened with no result.
   - **`result-artifact`** (Turn, TurnEnd, Check). The same conditions with no `gh pr create`, but a `git push` or an image written (an image file with `.png`, `.jpg`, `.jpeg`, `.gif`, or `.webp`, or a screenshot): record it with `result add` if the requester can look at it.
-  - **`result-history`** (Turn, TurnEnd, Check). Whenever `result-pr` or `result-artifact` triggers, it asks for `agboard history add` for meaningful progress.
+  - **`history`** (Turn, TurnEnd, Check). The project has an AI task in Doing and Running, and the turn made a commit, ran tests (`cargo test`, `pnpm ... test`, `npm test`, `vitest`, `playwright test`, and the like), pushed, or opened a pull request, with no `agboard ... history add`, `state`, `mv`, or `result add`. It asks for meaningful progress to be recorded with `history add`.
+  - **`conditions-after-merge`** (Turn, TurnEnd, Check). The turn ran `gh pr merge` and an AI task in Doing has conditions that are not done. It names each such task and asks the agent to record the verification in the task body and set its conditions done once the merge verified the work (a pull request is not linked to a task, so the agent decides which).
+  - **`start-task`** (Turn, TurnEnd, Definite). The turn edited files (an Edit or Write call with a path, `apply_patch`, or `git commit`) and no AI task is in Doing and Running. Edits only under `/tmp` or the Agent Board data folder are ignored. It asks the agent to start the task (`agboard mv <id> doing`, `agboard state <id> running`) or create one.
 
 #### Add a rule
 
