@@ -10,14 +10,14 @@ use crate::file_store::{AskInput, AskQuestion, FileStore, SendRequestInput};
 use crate::server::resident::driver::mock::{Call, Calls, Step, factory_replying};
 use crate::server::resident::driver::{DriverEvent, TurnOutcome};
 
-struct Board {
+pub(super) struct Board {
     _root: TempDir,
     shared: std::path::PathBuf,
-    store: FileStore,
-    id: ProjectId,
+    pub(super) store: FileStore,
+    pub(super) id: ProjectId,
 }
 
-fn board() -> Board {
+pub(super) fn board() -> Board {
     let root = tempfile::tempdir().unwrap();
     let shared = root.path().join("shared");
     let store = FileStore::open(&shared);
@@ -89,7 +89,7 @@ impl Board {
             .unwrap();
     }
 
-    fn task(&self, title: &str, assignee: Assignee) -> i64 {
+    pub(super) fn task(&self, title: &str, assignee: Assignee) -> i64 {
         self.store
             .create_task(
                 &self.id,
@@ -106,7 +106,7 @@ impl Board {
             .id
     }
 
-    fn run(&self, id: i64) {
+    pub(super) fn run(&self, id: i64) {
         let ctx = || ChangeContext {
             actor: Actor::Ai,
             reason: "Start".into(),
@@ -120,7 +120,7 @@ impl Board {
     }
 }
 
-fn turn_ends() -> Vec<Step> {
+pub(super) fn turn_ends() -> Vec<Step> {
     vec![
         Step::Event(DriverEvent::Started {
             session_id: Some("s".into()),
@@ -132,7 +132,7 @@ fn turn_ends() -> Vec<Step> {
 
 /// A launcher over `board` whose session starts idle (its launch turn ends at once) and plays
 /// `reply` after each message.
-fn session(board: &Board, start: Vec<Step>, reply: Vec<Step>) -> (Fixture, Calls) {
+pub(super) fn session(board: &Board, start: Vec<Step>, reply: Vec<Step>) -> (Fixture, Calls) {
     let (factory, calls) = factory_replying(start, reply);
     let fx = fixture_with(fast(), factory);
     fx.launcher.attach_board(&board.shared);
@@ -143,7 +143,7 @@ fn session(board: &Board, start: Vec<Step>, reply: Vec<Step>) -> (Fixture, Calls
     (fx, calls)
 }
 
-fn sent(calls: &Calls) -> Vec<String> {
+pub(super) fn sent(calls: &Calls) -> Vec<String> {
     calls
         .lock()
         .unwrap_or_else(|e| e.into_inner())
@@ -155,7 +155,7 @@ fn sent(calls: &Calls) -> Vec<String> {
         .collect()
 }
 
-fn pause() {
+pub(super) fn pause() {
     std::thread::sleep(Duration::from_millis(400));
 }
 

@@ -59,7 +59,7 @@ waves:
 
 The entries must be distinct positive task IDs across all waves, and only current members of the epic are kept. A wave that ends up empty is dropped. Unlisted members follow in ascending ID order, and a task that no wave lists is never held back. Pass `--waves ""` to clear the explicit order. The order is independent of where tasks sit on the board.
 
-The next-task list for agents holds back a Todo task while any task of an earlier wave is not Done. Archived tasks no longer count as unfinished. Stalled work in Doing is still offered to resume.
+The next-task list for agents, `agboard wait --until task`, and the tasks the board hands to a resident session hold back a Todo task while any task of an earlier wave is not Done. Archived tasks no longer count as unfinished. Stalled work in Doing is still offered to resume.
 
 ## Edit an epic in the browser
 
