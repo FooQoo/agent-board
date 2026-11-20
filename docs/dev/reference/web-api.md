@@ -48,8 +48,8 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `GET /api/events` | SSE: `ready` after subscribing with the board's build ID (`{"build":"<16 hex>"}`), `changed` with the changed resources (see [Change events](#change-events)), `preferences` after a saved language or theme change (the same JSON as `GET /api/preferences`), a keep-alive comment every 15 seconds. |
 | `GET /api/preferences` | The saved language and color theme: `locale`, `theme` (`mode`, `accent`), and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Display preferences](#display-preferences). |
 | `PUT /api/preferences` | Saves the `locale`, `theme`, or both, from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Unknown fields and invalid values are 422 `invalid_preferences`; a failed write is 500 `preferences_unavailable`. A refused or failed save leaves the saved value unchanged. |
-| `GET /api/notification-settings` | Which notifications the phone receives: `kinds`, `stateChanges`, `periodic`, and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
-| `PUT /api/notification-settings` | Saves any of the `kinds`, `stateChanges`, and `periodic` groups from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
+| `GET /api/notification-settings` | Which notifications the phone receives: `kinds` and `revision`. A missing or unreadable file gives the defaults. Never cached. See [Phone notification settings](#phone-notification-settings). |
+| `PUT /api/notification-settings` | Saves the `kinds` group from the JSON body, and returns the same shape as `GET` with `revision` raised by one. Invalid bodies are 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. |
 | `POST /api/notify` | Asks every client to re-fetch. Changes no data and needs no token. 204. |
 | `GET /api/health` | `ok` and `pid`. |
 | `GET /api/monitor-connections` and the routes under it | The ngrok remote connection. See [Remote connection](#remote-connection). |
@@ -259,16 +259,16 @@ A malformed JSON body is 400, as for other writes. A body with neither field, a 
 
 ```json
 {
-  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
-  "stateChanges": { "started": true, "pending": true, "done": true },
-  "periodic": { "enabled": false, "intervalMinutes": 60 },
+  "kinds": { "results": true, "questions": true, "history": false },
   "revision": 0
 }
 ```
 
-`PUT` takes a JSON body with `kinds`, `stateChanges`, `periodic`, or any of them. A group that is not sent keeps its saved value; a group that is sent must carry all of its fields, and `periodic.intervalMinutes` must be one of `30`, `60`, `120`, `240`. It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
+`PUT` takes a JSON body with `kinds`, which must carry all of its fields (`results`, `questions`, `history`). It returns the same shape as `GET` with `revision` raised by one. The write guards are the same as for `PUT /api/preferences`.
 
-A malformed JSON body is 400. An empty body, an unknown field, a missing field, or an interval that is not offered is 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. Nothing is saved on a refusal. There is no revision check: the last save wins.
+The periodic status notification and the card state change notifications were removed. A page that is still open from an older version may send their old fields: `stateChanges` and `periodic` are accepted and ignored, and `kinds.stateChanges` is accepted and ignored too. A body that carries only those removed fields has nothing to save and is 422. `GET` never returns them.
+
+A malformed JSON body is 400. An empty body, an unknown field, or a missing field is 422 `invalid_notification_settings`; a failed write is 500 `notification_settings_unavailable`. Nothing is saved on a refusal. There is no revision check: the last save wins.
 
 ### Project docs
 

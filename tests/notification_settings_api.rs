@@ -21,9 +21,7 @@ fn nothing_saved_reads_as_the_defaults() {
     assert_eq!(
         reply.json(),
         json!({
-            "kinds": {"results": true, "questions": true, "stateChanges": false, "history": false},
-            "stateChanges": {"started": true, "pending": true, "done": true},
-            "periodic": {"enabled": false, "intervalMinutes": 60},
+            "kinds": {"results": true, "questions": true, "history": false},
             "revision": 0
         })
     );
@@ -44,6 +42,9 @@ fn a_save_is_read_back_and_kept_across_a_restart() {
         }),
     );
     assert_eq!(saved.status, 200, "{}", saved.body);
+    // The removed periodic and state-change groups are accepted from older pages, ignored, and never returned.
+    assert!(saved.json().get("periodic").is_none());
+    assert!(saved.json().get("stateChanges").is_none());
     assert_eq!(
         server.get("/api/notification-settings").json(),
         saved.json()
@@ -67,7 +68,8 @@ fn an_invalid_body_is_refused_and_changes_nothing() {
         json!({}),
         json!({"extra": true}),
         json!({"kinds": {"results": true}}),
-        json!({"periodic": {"enabled": true, "intervalMinutes": 45}}),
+        json!({"stateChanges": {"started": true, "pending": true, "done": true}}),
+        json!({"periodic": {"enabled": true, "intervalMinutes": 60}}),
     ] {
         let reply = put(&server, &body);
         assert_eq!(reply.status, 422, "{}", reply.body);
@@ -88,7 +90,8 @@ fn a_write_without_the_page_token_is_refused() {
     let home = tempfile::tempdir().unwrap();
     demo_project(home.path());
     let server = Running::start(home.path());
-    let body = json!({"periodic": {"enabled": true, "intervalMinutes": 30}}).to_string();
+    let body =
+        json!({"stateChanges": {"started": false, "pending": true, "done": true}}).to_string();
     let no_token = server.request(
         "PUT",
         "/api/notification-settings",
@@ -104,8 +107,8 @@ fn a_write_without_the_page_token_is_refused() {
     );
     assert_eq!(no_token.status, 403, "{}", no_token.body);
     assert_eq!(
-        server.get("/api/notification-settings").json()["periodic"]["enabled"],
-        false
+        server.get("/api/notification-settings").json()["revision"],
+        0
     );
     server.stop();
 }

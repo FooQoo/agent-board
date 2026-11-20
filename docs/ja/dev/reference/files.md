@@ -288,7 +288,6 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 ```json
 {
   "formatVersion": 1,
-  "periodicAt": "2026-11-20T08:00:00Z",
   "entries": [
     {
       "deviceId": "dev_0123456789abcdef",
@@ -302,9 +301,9 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 }
 ```
 
-- `key`はボード上の出来事1件を指します。`result:<版>:<プロジェクト>:<タスク>`、`question:<id>:…`、`state:<started|pending|done>:<時刻>:…`、`history:<n>:…`のいずれかで、通知の`tag`にもなります。
+- `key`はボード上の出来事1件を指します。`result:<版>:<プロジェクト>:<タスク>`、`question:<id>:…`、`history:<n>:…`のいずれかで、通知の`tag`にもなります。
 - `state`は`sent`、`pending`（プッシュサービスが受け付けなかった。`retryAt`が次に試す時刻で、`payload`に再送するタイトル・本文・リンクのパス・tagを保持）、`skipped`（リモート接続が止まっていた）、`dropped`（拒否された、または5回試して諦めた）のいずれかです。
-- `periodicAt`は、最後に定期的な状況通知を作った時刻です（最初の前は`null`）。再起動しても間隔を最初から数え直さないためのものです。定期通知のエントリーのキーは`periodic:<UNIX秒>`です。
+- 古いバージョンが書いたファイルには、`periodicAt`や、キーが`periodic:<UNIX秒>`または`state:<…>`のエントリーが残っていることがあります。この項目は読み込んだあとに捨て、次の保存では書きません。エントリーは、ほかのものと同じように期限で消えます。
 - 終わったエントリーは14日間、最大2000件まで保持します。読めないファイルは空の台帳として扱い、保存に失敗しても無視します。ボードがこのファイルを待つことはありません。端末を削除すると、その端末のエントリーも消えます。
 
 ## スマホの通知設定
@@ -315,9 +314,7 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 {
   "formatVersion": 1,
   "revision": 4,
-  "kinds": { "results": true, "questions": true, "stateChanges": false, "history": false },
-  "stateChanges": { "started": true, "pending": true, "done": true },
-  "periodic": { "enabled": false, "intervalMinutes": 60 }
+  "kinds": { "results": true, "questions": true, "history": false }
 }
 ```
 
@@ -325,14 +322,13 @@ ngrokのリモート接続は、秘密ではない設定を`<データ領域>/.i
 | --- | --- |
 | `formatVersion` | 常に`1`。ほかの値、未知の項目、足りない項目、壊れたファイルは既定値として読み、次の保存でファイルを置き換えます。 |
 | `revision` | 何も保存していないときは`0`で、保存のたびに1ずつ増えます。 |
-| `kinds` | 節目の通知を切り替える4つのスイッチ。`results`（成果の記録。途中のものも最終のものも）、`questions`（判断を待つ質問）、`stateChanges`（カードの状態変化）、`history`（履歴の追加）。既定は`results`と`questions`がオン、`stateChanges`と`history`がオフです。4つすべてをオフにすることもできます。 |
-| `stateChanges` | `kinds.stateChanges`がオンのとき、通知する状態変化。`started`（着手）、`pending`（回答待ち）、`done`（完了）。3つとも既定はオンなので、この種類をオンにすると、利用者が絞り込むまですべての変化を通知します。 |
-| `periodic.enabled` | 定期的な状況通知のオンとオフ。`kinds`とは独立しています。既定はオフです。 |
-| `periodic.intervalMinutes` | `30`・`60`・`120`・`240`のいずれか。既定は`60`です。 |
+| `kinds` | 節目の通知を切り替える3つのスイッチ。`results`（成果の記録。途中のものも最終のものも）、`questions`（判断を待つ質問）、`history`（履歴の追加）。既定は`results`と`questions`がオン、`history`がオフです。3つすべてをオフにすることもできます。 |
 
-保存は、送ったグループ（`kinds`・`stateChanges`・`periodic`）だけを変えます。送るグループは、すべての項目を持つ必要があります。後から保存した内容が優先され、競合の確認はありません。ファイルに秘密は含まれません。
+古いバージョンが書いたファイルには、廃止したカードの状態変化の通知と定期的な状況通知の名残として、`kinds.stateChanges`、`stateChanges`グループ、`periodic`グループが残っていることがあります。これらは読み込んだあとに捨て、次の保存では書きません。ファイルが無効になることもありません。
 
-通知を送る側は、`src/server/notification_settings/`の`NotificationSettingsStore::load()`で保存済みの値を読みます。ファイルを使えないときは既定値を返します。`NotificationSettings::wants_state_change`は、ある状態変化が必要かどうかを答えます。間隔と既定値の定義は、このモジュールの`PERIODIC_INTERVALS`と`Default`だけです。保存してもイベントストリームには知らせません。設定ダイアログは、開くたびに値を読み直します。
+保存では、`kinds`グループをすべての項目付きで送ります。後から保存した内容が優先され、競合の確認はありません。ファイルに秘密は含まれません。
+
+通知を送る側は、`src/server/notification_settings/`の`NotificationSettingsStore::load()`で保存済みの値を読みます。ファイルを使えないときは既定値を返します。既定値の定義は、このモジュールの`Default`だけです。保存してもイベントストリームには知らせません。設定ダイアログは、開くたびに値を読み直します。
 
 ## 表示設定
 

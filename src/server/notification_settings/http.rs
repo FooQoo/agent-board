@@ -4,7 +4,7 @@
 use axum::http::StatusCode;
 use axum::response::Response;
 
-use super::{NotificationSettingsStore, PERIODIC_INTERVALS, Patch, UpdateError};
+use super::{NotificationSettingsStore, Patch, UpdateError};
 use crate::server::response::{error_response, json_response};
 
 pub(crate) fn read(store: &NotificationSettingsStore) -> Response {
@@ -31,13 +31,10 @@ pub(crate) fn save(store: &NotificationSettingsStore, body: serde_json::Value) -
 }
 
 fn invalid() -> Response {
-    let intervals = PERIODIC_INTERVALS.map(|m| m.to_string()).join(", ");
     error_response(
         StatusCode::UNPROCESSABLE_ENTITY,
         "invalid_notification_settings",
         "notification settings are invalid.",
-        format!(
-            "Send at least one of kinds, stateChanges, and periodic, each with all of its fields; periodic.intervalMinutes is one of {intervals}."
-        ),
+        "Send kinds with all of its fields: results, questions, and history, each true or false.",
     )
 }

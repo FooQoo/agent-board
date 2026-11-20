@@ -2,8 +2,7 @@
 //! `<data_dir>/.internal/notification-settings.json`. The file is the app's own
 //! state, not a shared project file, so it is never in `shared/`.
 //!
-//! This module is the one definition of the kinds, their defaults, and the
-//! periodic intervals. The Web Push delivery side reads the saved value with
+//! This module is the one definition of the kinds and their defaults. The Web Push delivery side reads the saved value with
 //! [`NotificationSettingsStore::load`]. A missing, invalid, or unreadable file
 //! reads as the defaults. A save replaces the whole file in one step, and a
 //! failed save leaves the old file as it was.
@@ -22,44 +21,39 @@ const FORMAT_VERSION: u32 = 1;
 const INTERNAL_DIR: &str = ".internal";
 const FILE_NAME: &str = "notification-settings.json";
 
-/// The intervals of the periodic status notification, in minutes.
-pub(crate) const PERIODIC_INTERVALS: [u32; 4] = [30, 60, 120, 240];
-/// The interval a new file starts with.
-pub(crate) const DEFAULT_INTERVAL_MINUTES: u32 = 60;
-
-/// The four kinds of milestone notification. Each is switched on its own.
+/// The three kinds of milestone notification. Each is switched on its own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase", from = "KindsWire")]
 pub(crate) struct Kinds {
     /// A result (an intermediate draft or a final) was recorded on a task.
     pub results: bool,
     /// A question needs the user's decision.
     pub questions: bool,
-    /// A card changed state; `StateChanges` says which changes.
-    pub state_changes: bool,
     /// A history entry was added to a task.
     pub history: bool,
 }
 
-/// Which state changes count when the `state_changes` kind is on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// How [`Kinds`] is read. Older builds also saved a `stateChanges` kind for the removed card
+/// state change notifications; it is accepted and dropped.
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct StateChanges {
-    /// A card started (it moved to doing).
-    pub started: bool,
-    /// A card is waiting for an answer.
-    pub pending: bool,
-    /// A card became done.
-    pub done: bool,
+struct KindsWire {
+    results: bool,
+    questions: bool,
+    history: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    state_changes: Option<bool>,
 }
 
-/// The periodic status notification, separate from the milestone kinds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct Periodic {
-    pub enabled: bool,
-    /// One of [`PERIODIC_INTERVALS`].
-    pub interval_minutes: u32,
+impl From<KindsWire> for Kinds {
+    fn from(wire: KindsWire) -> Self {
+        Self {
+            results: wire.results,
+            questions: wire.questions,
+            history: wire.history,
+        }
+    }
 }
 
 /// The saved notification settings as the API carries them.
@@ -67,8 +61,6 @@ pub(crate) struct Periodic {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct NotificationSettings {
     pub kinds: Kinds,
-    pub state_changes: StateChanges,
-    pub periodic: Periodic,
     pub revision: u64,
 }
 
@@ -78,68 +70,48 @@ impl Default for NotificationSettings {
             kinds: Kinds {
                 results: true,
                 questions: true,
-                state_changes: false,
                 history: false,
-            },
-            state_changes: StateChanges {
-                started: true,
-                pending: true,
-                done: true,
-            },
-            periodic: Periodic {
-                enabled: false,
-                interval_minutes: DEFAULT_INTERVAL_MINUTES,
             },
             revision: 0,
         }
     }
 }
 
-impl NotificationSettings {
-    /// Whether a state change to `started`, `pending`, or `done` is wanted:
-    /// the state-changes kind is on and that change is picked.
-    pub(crate) fn wants_state_change(&self, change: StateChange) -> bool {
-        self.kinds.state_changes
-            && match change {
-                StateChange::Started => self.state_changes.started,
-                StateChange::Pending => self.state_changes.pending,
-                StateChange::Done => self.state_changes.done,
-            }
-    }
-}
-
-/// A card state change the delivery side may announce.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StateChange {
-    Started,
-    Pending,
-    Done,
-}
-
-/// What a save may change. A group that is not sent keeps its saved value; a
-/// group that is sent carries all of its fields.
+/// What a save may change: the kinds, with all of their fields.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Patch {
     pub kinds: Option<Kinds>,
-    pub state_changes: Option<StateChanges>,
-    pub periodic: Option<Periodic>,
+    /// The removed state-change and periodic groups. Older pages may still send them; they are
+    /// accepted and ignored, so they never count as a change to save.
+    #[serde(default)]
+    #[allow(dead_code)]
+    state_changes: Option<serde_json::Value>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    periodic: Option<serde_json::Value>,
 }
 
-/// The saved file, as written. Unknown keys make it invalid.
+/// The saved file, as written. Unknown keys make it invalid, except the removed `stateChanges`
+/// and `periodic` groups that older builds wrote: they are read and dropped, and the next save
+/// leaves them out.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct StoredFile {
     format_version: u32,
     revision: u64,
     kinds: Kinds,
-    state_changes: StateChanges,
-    periodic: Periodic,
+    #[serde(default, skip_serializing)]
+    #[allow(dead_code)]
+    state_changes: Option<serde_json::Value>,
+    #[serde(default, skip_serializing)]
+    #[allow(dead_code)]
+    periodic: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum UpdateError {
-    /// The patch is empty or names an interval that is not offered.
+    /// The patch has nothing to save.
     Invalid,
     /// The file could not be written. Nothing was changed.
     Unavailable,
@@ -171,12 +143,7 @@ impl NotificationSettingsStore {
     /// Applies the sent groups and saves the result as the next revision.
     pub(crate) fn update(&self, patch: Patch) -> Result<NotificationSettings, UpdateError> {
         let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
-        if patch.kinds.is_none() && patch.state_changes.is_none() && patch.periodic.is_none() {
-            return Err(UpdateError::Invalid);
-        }
-        if let Some(periodic) = &patch.periodic
-            && !PERIODIC_INTERVALS.contains(&periodic.interval_minutes)
-        {
+        if patch.kinds.is_none() {
             return Err(UpdateError::Invalid);
         }
         let saved = self.read_saved();
@@ -190,8 +157,6 @@ impl NotificationSettingsStore {
         let current = saved.unwrap_or_default();
         let next = NotificationSettings {
             kinds: patch.kinds.unwrap_or(current.kinds),
-            state_changes: patch.state_changes.unwrap_or(current.state_changes),
-            periodic: patch.periodic.unwrap_or(current.periodic),
             revision,
         };
         self.write_file(&next)?;
@@ -201,15 +166,11 @@ impl NotificationSettingsStore {
     fn read_saved(&self) -> Option<NotificationSettings> {
         let bytes = std::fs::read(&self.path).ok()?;
         let stored = serde_json::from_slice::<StoredFile>(&bytes).ok()?;
-        let valid = stored.format_version == FORMAT_VERSION
-            && PERIODIC_INTERVALS.contains(&stored.periodic.interval_minutes);
-        if !valid {
+        if stored.format_version != FORMAT_VERSION {
             return None;
         }
         Some(NotificationSettings {
             kinds: stored.kinds,
-            state_changes: stored.state_changes,
-            periodic: stored.periodic,
             revision: stored.revision,
         })
     }
@@ -221,8 +182,8 @@ impl NotificationSettingsStore {
             format_version: FORMAT_VERSION,
             revision: settings.revision,
             kinds: settings.kinds,
-            state_changes: settings.state_changes,
-            periodic: settings.periodic,
+            state_changes: None,
+            periodic: None,
         };
         let bytes = serde_json::to_vec_pretty(&stored).map_err(|_| UpdateError::Unavailable)?;
         let dir = self.path.parent().ok_or(UpdateError::Unavailable)?;
