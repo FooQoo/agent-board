@@ -5,6 +5,7 @@
 use super::commands::{contains_sequence, ends_with_question, runs_agboard, tokens};
 use super::question_rules;
 use super::record_rules;
+use super::state_rules;
 use super::{Area, Call, Facts, Finding, Kind, Rule, Source, When};
 
 /// Every rule, in the order their reminders are listed.
@@ -89,7 +90,67 @@ pub const RULES: &[Rule] = &[
         kind: Kind::Definite,
         check: record_rules::start_task,
     },
+    entry(
+        "answer",
+        Area::Question,
+        Kind::Definite,
+        state_rules::answer,
+    ),
+    entry(
+        "request",
+        Area::Question,
+        Kind::Definite,
+        state_rules::request,
+    ),
+    entry(
+        "conditions",
+        Area::Acceptance,
+        Kind::Check,
+        state_rules::conditions,
+    ),
+    entry(
+        "epic-close",
+        Area::Epic,
+        Kind::Definite,
+        state_rules::epic_close,
+    ),
+    entry(
+        "stale-running",
+        Area::RunState,
+        Kind::Check,
+        state_rules::stale_running,
+    ),
+    entry(
+        "next-task",
+        Area::RunState,
+        Kind::Check,
+        state_rules::next_task,
+    ),
+    entry(
+        "draft-moved",
+        Area::RunState,
+        Kind::Definite,
+        state_rules::draft_moved,
+    ),
+    entry("drafts", Area::RunState, Kind::Check, state_rules::drafts),
 ];
+
+/// A `State` rule shown in the progress table and the Stop checklist.
+const fn entry(
+    id: &'static str,
+    area: Area,
+    kind: Kind,
+    check: fn(&Facts) -> Vec<Finding>,
+) -> Rule {
+    Rule {
+        id,
+        area,
+        source: Source::State,
+        when: When::Both,
+        kind,
+        check,
+    }
+}
 
 /// The last reply is a question to the user and none was put on the board.
 fn question(facts: &Facts) -> Vec<Finding> {

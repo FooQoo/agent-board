@@ -47,15 +47,15 @@ pub const COMMANDS: &[(&str, Cover)] = &[
         NoRule("a person removes epics; nothing to forget"),
     ),
     ("epic show", READ_ONLY),
-    ("epic start", NoRule("planned: #571 (epic all done)")),
+    (
+        "epic start",
+        NoRule("a person plans epics; nothing to forget"),
+    ),
     ("history add", Rules(&["history"])),
     ("hook", NoRule("the hook itself; it runs the rules")),
     ("init", NoRule("one-time board setup")),
     ("ls", READ_ONLY),
-    (
-        "message accept",
-        NoRule("planned: #571 (unaccepted answers)"),
-    ),
+    ("message accept", Rules(&["answer", "request"])),
     ("message answer", Rules(&["question"])),
     (
         "message ask",
@@ -112,8 +112,8 @@ pub const COMMANDS: &[(&str, Cover)] = &[
     ("show remote", READ_ONLY),
     ("skills", READ_ONLY),
     ("snapshot", READ_ONLY),
-    ("start", Rules(&["start-task"])),
-    ("state", NoRule("planned: #571 (stale running task)")),
+    ("start", Rules(&["start-task", "draft-moved", "drafts"])),
+    ("state", Rules(&["stale-running"])),
     ("stop", NoRule("pauses the server by a person's choice")),
     ("update", NoRule("installation by a person")),
     ("wait", NoRule("the listener itself; it waits by design")),
@@ -122,28 +122,29 @@ pub const COMMANDS: &[(&str, Cover)] = &[
 
 /// Top-level fields of the progress JSON.
 pub const FIELDS: &[(&str, Cover)] = &[
-    ("answers", NoRule("planned: #571 (unaccepted answers)")),
+    ("answers", Rules(&["answer"])),
     ("cursor", NoRule("metadata")),
     ("done", NoRule("read-only list of recent Done tasks")),
     (
         "epics",
-        NoRule("planned: #571 (stale running task, epic all done)"),
+        Rules(&["conditions", "stale-running", "draft-moved", "drafts"]),
     ),
+    ("epicsToClose", Rules(&["epic-close"])),
     ("fetchedAt", NoRule("metadata")),
     ("finalResultMissing", Rules(&["final-result"])),
     ("locale", NoRule("metadata")),
-    (
-        "nextTasks",
-        NoRule("planned: #571 (next task with nothing running)"),
-    ),
+    ("nextTasks", Rules(&["next-task"])),
     (
         "pending",
         NoRule("read-only list of tasks waiting for a decision"),
     ),
     ("project", NoRule("metadata")),
     ("reminders", NoRule("the output of the state rules")),
-    ("requests", NoRule("planned: #571 (open requests)")),
-    ("unassigned", NoRule("planned: #571 (stale running task)")),
+    ("requests", Rules(&["request"])),
+    (
+        "unassigned",
+        Rules(&["conditions", "stale-running", "draft-moved", "drafts"]),
+    ),
     ("version", NoRule("metadata")),
 ];
 
@@ -188,6 +189,11 @@ fn field_names() -> Vec<String> {
         answered_at: at,
     });
     table.reminders = super::state_reminders(&table, at);
+    table.epics_to_close.push(crate::progress::EpicToClose {
+        id: "E".into(),
+        name: "E".into(),
+        document_path: "p".into(),
+    });
     table.pending = Some(Vec::new());
     table.done = Some(Vec::new());
     let mut names: Vec<String> = serde_json::to_value(&table)

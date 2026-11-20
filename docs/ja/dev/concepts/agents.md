@@ -63,6 +63,14 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
   - **`question-in-chat`**（Turn、TurnEnd、Definite）。ターン中に実際の`message ask`（`--help`ではない）を実行したのに、最後の返信に`Q-<n>`の参照がない場合です。質問をQ-idつきでチャットにも示すよう求めます。返信を読めないときは何も言いません。
   - **`question-wait`**（Turn、TurnEnd、Definite）。ターン中に`message ask ... --no-wait`を実行し、その後に`agboard message wait`がない場合です。`agboard message wait <Q-id>`をバックグラウンドで実行して回答を待つか、待たない理由を説明するよう求めます。
   - **`final-result`**（State、Both、Definite）。`finalResultMissing`にあるタスクごとに、そのタスクを示して`result add <id> --final`を求めます。
+  - **`answer`**（State、Both、Definite）。`answers`の各項目について、`message show`で読み、対応して、`message accept`を実行するよう求めます。
+  - **`request`**（State、Both、Definite）。`requests`の各項目について、`message show`で読み、`message accept`で受け付けて、計画するよう求めます。
+  - **`conditions`**（State、Both、Check）。Doingの AI タスクに`--final`の成果が記録されているのに、完了済みの完了条件が総数に満たない場合に、確認結果を記録して`TASK.md`の完了条件を完了にするよう求めます。
+  - **`epic-close`**（State、Both、Definite）。`epicsToClose`の各項目（`BUG`と`ENHANCEMENT`以外で、タスクが1つ以上あり、すべて Done で、`EPIC.md`の本文に未チェックの`- [ ]`が残るエピック）について、参照条件を確認して結果を記録するよう求めます。
+  - **`stale-running`**（State、Both、Check）。AI タスクが Running で、最新の履歴（履歴がなければ最後の実行状態の変更）が30分より前の場合に（`src/nudge/state_rules.rs`の`STALE_RUNNING_MINUTES`）、作業が止まっているなら`state`で idle に戻し、続いているなら`history add`で進捗を記録するよう求めます。
+  - **`next-task`**（State、Both、Check）。`nextTasks`が空でなく、Running の AI タスクがない場合に、先頭の次のタスクに着手するよう求めます。
+  - **`draft-moved`**（State、Both、Definite）。AI の下書きが Doing にある（人が移した）場合に、`start <id> --actor ai`で開始するよう求めます。
+  - **`drafts`**（State、Both、Check）。未回答の質問がない AI の下書き（質問がある下書きは待機中で一覧に出ません）ごとに、ID、題名、レーンを示して1件ずつ求めます。下書きは計画が固まっていないことを意味します。計画が固まっているなら開始し（順序はエピックの priority に、依存関係は`EPIC.md`に書き、待たせるために下書きのまま残さない）、固まっていないなら固めるための質問をします。
   - **`result-pr`**（Turn、TurnEnd、Definite）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中に`agboard ... result add`がなく、`gh pr create`があったとき。プルリクエストを作ったのに成果がありません。
   - **`result-artifact`**（Turn、TurnEnd、Check）。同じ条件で`gh pr create`がなく、`git push`か画像の書き出し（拡張子が`.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`の画像、またはスクリーンショット）があったとき。見せられるものなら`result add`で記録するよう求めます。
   - **`history`**（Turn、TurnEnd、Check）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中にコミット、テスト実行（`cargo test`、`pnpm ... test`、`npm test`、`vitest`、`playwright test`など）、プッシュ、プルリクエストの作成のいずれかがあり、`agboard ... history add`、`state`、`mv`、`result add`のどれもなかったとき。意味のある進捗を`history add`で記録するよう求めます。
