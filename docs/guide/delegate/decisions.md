@@ -129,6 +129,7 @@ cat question.json | agboard --project "My project" message ask --actor ai --task
 - `questions` takes 1 to 20 questions.
 - `body` is Markdown, 1 to 5,000 characters. It is drawn like a task body, so headings, lists, code, links, and images attached to the same task appear as they do in the body. Images from `http` or `https` addresses are shown too.
 - `choices` is optional and takes 2 to 10 options. Each `id` is 1 to 64 characters of letters, digits, `_`, or `-`, and each `label` is 1 to 200 characters. A question without choices is answered in words.
+- `images` is optional and lists image files (PNG, JPEG, WebP, or GIF; up to 20 files and 50 MiB in all) that the command saves with the question. Show each one in the `body` as `![description](attachments/<file name>)`. The picture appears in the question on the PC and on the phone, so the agent does not need to send a local link that the phone cannot open. An image that is not a picture of one of those types, a duplicate name, or an unreadable file makes the whole command fail and no question is saved.
 - `recommendedChoiceId` is optional and names the option the agent recommends.
 - `tasks` in a question, such as `"tasks": [421, 422]`, links that question only to those tasks.
 

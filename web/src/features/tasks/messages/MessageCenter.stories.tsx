@@ -256,6 +256,75 @@ export const RequestWithImage: Story = {
   },
 };
 
+const questionWithImageBody =
+  'どちらのレイアウトにしますか。\n\n![レイアウト案](attachments/layout.png)';
+
+/** An image attached to a question is read from the message's own route, as a request's is. */
+export const QuestionWithImage: Story = {
+  args: {
+    initial: { tab: 'fromAi', openId: 'Q-12' },
+    read: async (_projectId, id) => ({
+      id,
+      type: 'question',
+      body: questionWithImageBody,
+      choices: [
+        { id: 'a', label: 'A案' },
+        { id: 'b', label: 'B案' },
+      ],
+      recommendedChoiceId: null,
+      status: 'open',
+      referencedBy: [14],
+    }),
+  },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    const image = await waitFor(() => {
+      const found = dialog.querySelector('img.md__image-picture');
+      expect(found).not.toBeNull();
+      return found as HTMLImageElement;
+    });
+    await expect(image.getAttribute('src')).toBe(
+      `/api/projects/${SAMPLE_PROJECT}/messages/Q-12/attachments/layout.png`,
+    );
+  },
+};
+
+/** The phone: a question with an image keeps the picture inside the sheet. */
+export const PhoneQuestionWithImage: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'fromAi', openId: 'Q-12' },
+    read: async (_projectId, id) => ({
+      id,
+      type: 'question',
+      body: questionWithImageBody,
+      choices: [
+        { id: 'a', label: 'A案' },
+        { id: 'b', label: 'B案' },
+      ],
+      recommendedChoiceId: null,
+      status: 'open',
+      referencedBy: [14],
+    }),
+  },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const image = await waitFor(() => {
+      const found = sheet.querySelector('img.md__image-picture');
+      expect(found).not.toBeNull();
+      return found as HTMLImageElement;
+    });
+    await expect(image.getAttribute('src')).toBe(
+      `/api/projects/${SAMPLE_PROJECT}/messages/Q-12/attachments/layout.png`,
+    );
+    const body = sheet.querySelector('.surface__body');
+    if (!(body instanceof HTMLElement)) throw new Error('The sheet has no body.');
+    await expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth + 1);
+  },
+};
+
 /** English, dark: the list. */
 export const ListEnDark: Story = {
   args: { initial: { tab: 'fromAi' } },

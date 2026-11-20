@@ -264,7 +264,13 @@ export const BottomBarNoQuestions: Story = {
   },
 };
 
-/** The bar in dark mode. */
+/** The dock takes the selected theme color: yellow, a light accent that needs dark text on its badge. */
+export const BottomBarYellow: Story = {
+  args: { variant: 'band' },
+  globals: { ...mobileJapaneseLight, accent: 'yellow' },
+};
+
+/** The dock in dark mode. */
 export const BottomBarDark: Story = {
   args: { variant: 'band' },
   globals: { ...mobileJapaneseLight, mode: 'dark' },

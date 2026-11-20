@@ -84,6 +84,16 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--question-with-image",
+              "states": ["question body image", "resolved by the message route"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-question-with-image",
+              "states": ["phone", "question body image", "no sideways scroll"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--request-with-image",
               "states": ["request body image", "resolved by the message route"],
               "interaction": true
