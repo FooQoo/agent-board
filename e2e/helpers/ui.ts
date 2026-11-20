@@ -46,7 +46,7 @@ export async function waitForSync(page: Page): Promise<void> {
  * library animates the card back into place for a few hundred milliseconds. The card loses `card--dragging` as
  * the animation starts, but the drag only ends when it finishes. Until then the whole page is `user-select: none`,
  * any text selection is removed as soon as it is made, and the card still carries `data-dnd-dragging`. Text
- * typed into the move dialog during that time can be lost, so wait for the attribute to go.
+ * typed into a dialog during that time can be lost, so wait for the attribute to go.
  */
 export async function waitForDrop(page: Page): Promise<void> {
   await expect(page.locator('[data-dnd-dragging]')).toHaveCount(0);

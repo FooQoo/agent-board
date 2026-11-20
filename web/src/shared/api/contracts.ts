@@ -31,11 +31,20 @@ export interface TaskResult {
   key: string;
   kind: 'progress' | 'final';
   summary: string;
-  /** The ID of an image in the task's attachments. */
+  /** The ID of the image of a result that has exactly one; see `resultImageIds`. */
   attachmentId?: string;
+  /** The IDs of the images of a result that has several, in order. */
+  attachmentIds?: string[];
   /** A URL or storage location of the main artifact; shown as text, never opened by the board. */
   link?: string;
   at: string;
+}
+
+/** Every image of a result in order, whichever field holds them (older data has only `attachmentId`). */
+export function resultImageIds(result: TaskResult): string[] {
+  if (result.attachmentIds !== undefined && result.attachmentIds.length > 0)
+    return result.attachmentIds;
+  return result.attachmentId !== undefined ? [result.attachmentId] : [];
 }
 
 /** The epic a card belongs to, as the board shows it. */
@@ -184,10 +193,9 @@ export interface Board {
   problems: Problem[];
 }
 
-/** What a card dialog (ask, move, edit) is asked to do. */
+/** What a card dialog (ask, edit, epic) is asked to do. */
 export type DialogAction =
   | { kind: 'request' }
-  | { kind: 'move'; task: TaskSummary; target: ColumnName }
   | { kind: 'edit'; task: Task; archived?: boolean }
   | { kind: 'epic'; epic: Epic };
 

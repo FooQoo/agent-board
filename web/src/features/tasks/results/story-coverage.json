@@ -34,6 +34,16 @@
               "interaction": true
             },
             {
+              "id": "task-detail-resultsview--multiple-images",
+              "states": ["several images as a strip", "enlarged view steps between images"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--multiple-images-japanese-phone",
+              "states": ["several images", "japanese locale", "dark theme", "phone width"],
+              "interaction": true
+            },
+            {
               "id": "task-detail-resultsview--version-missing",
               "states": ["linked version not found"],
               "interaction": true

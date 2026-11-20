@@ -40,10 +40,9 @@ test('a finger on the grip drags a card to another lane at once', async ({ page 
     { x: g.x + g.width / 2, y: g.y + g.height / 2 },
     { x: target.x + 100, y: target.y + 100 },
   );
-  // A move from Todo to Doing asks for confirmation, which shows the drag reached the other lane.
-  const move = page.getByRole('dialog');
-  await expect(move).toContainText('Todo');
-  await expect(move).toContainText('Doing');
+  // The drag reaching the other lane moves the card at once, with no dialog.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16(?!\d)/ })).toBeVisible();
 });
 
 test('a card selects no text on a long press', async ({ page }) => {

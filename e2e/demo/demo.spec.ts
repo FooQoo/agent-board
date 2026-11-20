@@ -21,7 +21,7 @@ async function openDemo(page: Page): Promise<string[]> {
   return errors;
 }
 
-/** Moves a card with a real drag to another lane and confirms the move dialog. */
+/** Moves a card with a real drag to another lane. The move is made at once, with no dialog. */
 async function dragTaskTo(page: Page, id: number, to: 'Todo' | 'Doing' | 'Done'): Promise<void> {
   const source = await task(page, id).boundingBox();
   const target = await lane(page, to).boundingBox();
@@ -31,10 +31,7 @@ async function dragTaskTo(page: Page, id: number, to: 'Todo' | 'Doing' | 'Done')
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const dialog = page.getByRole('dialog', { name: 'Move task' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
 // The demo starts in the browser's language. These tests run in an English browser.

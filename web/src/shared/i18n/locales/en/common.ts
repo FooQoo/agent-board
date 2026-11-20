@@ -138,4 +138,9 @@ export const commonEn = {
     body: 'The server was restarted. Reload the page to keep working; anything typed here is lost when you reload.',
     reload: 'Reload page',
   },
+  moveNotice: {
+    statusChanged:
+      'This task was moved by another change, so it was not moved. It is now in {{status}}.',
+    failed: 'Could not move the task. It stays where it was.',
+  },
 } as const;

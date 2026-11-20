@@ -78,14 +78,14 @@ test('the Done lane reorders in the order it shows', async ({ page }) => {
   await expect.poll(() => ids(page, 'Done')).toEqual(expected);
 });
 
-test('dropping a task on another lane still asks for a reason and does not reorder', async ({
+test('dropping a task on another lane moves it to that lane and does not reorder', async ({
   page,
 }) => {
   const todo = await ids(page, 'Todo');
   const source = lane(page, 'Todo').locator('.card').first();
   const target = lane(page, 'Doing').locator('.card').first();
   await dragOnto(page, source, target, false);
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect.poll(() => ids(page, 'Todo')).toEqual(todo);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => ids(page, 'Todo')).toEqual(todo.slice(1));
+  await expect.poll(async () => (await ids(page, 'Doing')).includes(todo[0] as never)).toBe(true);
 });
