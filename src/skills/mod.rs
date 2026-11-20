@@ -14,6 +14,13 @@ pub const AGENT_BOARD: &str = include_str!("agent-board.md");
 
 /// The topics: name and text.
 pub const TOPICS: &[(&str, &str)] = &[
+    ("project", include_str!("topics/project.md")),
+    ("language", include_str!("topics/language.md")),
+    ("files", include_str!("topics/files.md")),
+    ("requests", include_str!("topics/requests.md")),
+    ("work-loop", include_str!("topics/work-loop.md")),
+    ("questions", include_str!("topics/questions.md")),
+    ("waiting", include_str!("topics/waiting.md")),
     ("file-format", include_str!("topics/file-format.md")),
     ("listening", include_str!("topics/listening.md")),
     ("resident", include_str!("topics/resident.md")),
