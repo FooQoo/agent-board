@@ -20,8 +20,13 @@ use super::super::super::model::{HistoryRecord, TaskView};
 use super::super::super::reader;
 use super::super::attachment::write_image;
 use super::super::{ensure_ai_task_not_done, lock_project, save_task, stamp};
+use super::result_text::{
+    clean_key, clean_link, clean_text, clean_title, content_key, excerpt, invalid,
+};
 use super::view;
-use crate::domain::{Attachment, AttachmentInput, Draft, ProjectId, ResultKind, TaskResult};
+use crate::domain::{
+    Attachment, AttachmentInput, Draft, ProjectId, ResultKind, TaskResult, derive_result_title,
+};
 use crate::error::AgboardError;
 
 /// The most results one task keeps.
@@ -37,6 +42,8 @@ pub const MAX_RESULT_IMAGES: usize = 20;
 #[derive(Debug, Clone)]
 pub struct ResultInput {
     pub kind: ResultKind,
+    /// The heading; `None` derives it from the first sentence of the summary.
+    pub title: Option<String>,
     pub summary: String,
     pub link: Option<String>,
     /// The images to attach in order, each with a new attachment ID.
@@ -56,90 +63,6 @@ pub struct RecordedResult {
     pub task: TaskView,
 }
 
-fn invalid(field: &str, reason: &str) -> AgboardError {
-    AgboardError::InvalidValue {
-        field: field.into(),
-        reason: reason.into(),
-    }
-}
-
-fn clean_text(field: &str, value: &str) -> Result<String, AgboardError> {
-    let text = value.replace("\r\n", "\n").replace('\r', "\n");
-    let text = text.trim();
-    let count = text.chars().count();
-    if count == 0 || count > MAX_RESULT_TEXT_CHARS {
-        return Err(invalid(
-            field,
-            &format!("A {field} must be 1 to {MAX_RESULT_TEXT_CHARS} characters."),
-        ));
-    }
-    Ok(text.to_owned())
-}
-
-fn clean_link(value: &str) -> Result<String, AgboardError> {
-    let link = clean_text("link", value)?;
-    if link.chars().any(char::is_control) {
-        return Err(invalid("link", "A link must be on one line."));
-    }
-    Ok(link)
-}
-
-fn clean_key(value: &str) -> Result<String, AgboardError> {
-    let key = value.trim();
-    let valid = !key.is_empty()
-        && key.chars().count() <= MAX_RESULT_KEY_CHARS
-        && key
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | ':' | '-'));
-    if !valid {
-        return Err(invalid(
-            "key",
-            "A key must be 1 to 64 characters of letters, digits, '.', '_', ':' and '-'.",
-        ));
-    }
-    Ok(key.to_owned())
-}
-
-/// 32 lowercase hex digits taken from the content of a delivery.
-fn content_key(
-    kind: ResultKind,
-    summary: &str,
-    link: Option<&str>,
-    images: &[AttachmentInput],
-) -> String {
-    let mut hash = Sha256::new();
-    hash.update(kind.as_str().as_bytes());
-    for part in [Some(summary), link] {
-        hash.update([0]);
-        hash.update(part.unwrap_or("").as_bytes());
-    }
-    // The separator before the image part is always written, so a result without
-    // images and a result with one image keep the keys they had before several
-    // images were allowed.
-    hash.update([0]);
-    for (index, image) in images.iter().enumerate() {
-        if index > 0 {
-            hash.update([0]);
-        }
-        hash.update(Sha256::digest(&image.bytes));
-    }
-    hash.finalize()[..16]
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
-}
-
-/// The first line of the summary, cut to a length a history entry can carry.
-fn excerpt(summary: &str) -> String {
-    let line = summary.lines().next().unwrap_or("").trim();
-    if line.chars().count() > 200 {
-        let cut: String = line.chars().take(199).collect();
-        format!("{cut}…")
-    } else {
-        line.to_owned()
-    }
-}
-
 impl FileStore {
     /// Record a result on a task, from the agent side (the CLI). A task that is
     /// archived, a draft, or Done refuses it, as for any agent change, except
@@ -154,6 +77,10 @@ impl FileStore {
     ) -> Result<RecordedResult, AgboardError> {
         let summary = clean_text("summary", &input.summary)?;
         let link = input.link.as_deref().map(clean_link).transpose()?;
+        let title = match input.title.as_deref() {
+            Some(title) => clean_title(title)?,
+            None => derive_result_title(&summary),
+        };
         if input.images.len() > MAX_RESULT_IMAGES {
             return Err(invalid(
                 "file",
@@ -192,6 +119,7 @@ impl FileStore {
             if existing.kind != input.kind
                 || existing.summary != summary
                 || existing.link != link
+                || existing.title != title
                 || !same_image
             {
                 return Err(invalid("key", "This key was used for a different result."));
@@ -256,6 +184,7 @@ impl FileStore {
             version,
             key,
             kind: input.kind,
+            title,
             summary,
             attachment_id: None,
             attachment_ids: Vec::new(),

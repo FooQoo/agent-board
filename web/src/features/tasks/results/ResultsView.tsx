@@ -16,7 +16,7 @@ import './results.css';
 
 /**
  * The results tab: what an agent delivered for the task, newest first. Each one shows its kind,
- * time, summary, image (tap to enlarge), and link. The link is text, because the artifact may exist
+ * time, title, summary, image (tap to enlarge), and link. The link is text, because the artifact may exist
  * only on the PC, unless it is an http(s) URL, which opens in a new tab. `focusVersion` is scrolled to and highlighted.
  */
 export function ResultsView({
@@ -123,6 +123,7 @@ function ResultItem({
           {formatShort(result.at)}
         </time>
       </div>
+      <h3 className="results__title">{result.title}</h3>
       <p className="results__summary">{result.summary}</p>
       <ResultImages result={result} attachmentUrl={attachmentUrl} />
       {result.link !== undefined && (

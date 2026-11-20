@@ -300,3 +300,85 @@ fn same_key_and_size_but_different_image_bytes_is_a_conflict() {
     assert_eq!(task["results"].as_array().unwrap().len(), 1);
     assert_eq!(task["attachments"].as_array().unwrap().len(), 1);
 }
+
+#[test]
+fn a_result_has_the_title_given_or_the_first_sentence_of_its_summary() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+
+    let given = add(
+        home.path(),
+        "1",
+        &["--title", "  First draft  ", "--summary", "Body. More."],
+    );
+    assert_eq!(given["result"]["title"], "First draft");
+
+    let derived = add(
+        home.path(),
+        "1",
+        &["--summary", "Top page is ready. Spacing is next."],
+    );
+    assert_eq!(derived["result"]["title"], "Top page is ready.");
+    let japanese = add(
+        home.path(),
+        "1",
+        &["--summary", "一覧画面ができました。次は詳細です。"],
+    );
+    assert_eq!(japanese["result"]["title"], "一覧画面ができました。");
+    let long = add(home.path(), "1", &["--summary", &"a".repeat(200)]);
+    let title = long["result"]["title"].as_str().unwrap();
+    assert_eq!(title.chars().count(), 80);
+    assert!(title.ends_with('…'));
+
+    // A retry with the same title finds the entry; another title is a different result.
+    let retry = add(
+        home.path(),
+        "1",
+        &["--title", "First draft", "--summary", "Body. More."],
+    );
+    assert_eq!(retry["created"], false);
+    let listed = run(home.path(), &["result", "ls", "1"]);
+    assert_eq!(listed["results"][0]["title"], "First draft");
+}
+
+#[test]
+fn a_title_over_80_characters_or_on_several_lines_is_refused() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    for title in ["a".repeat(81), "one\ntwo".to_string(), "   ".to_string()] {
+        let (_, code) = json_error(
+            home.path(),
+            &[
+                "--project",
+                "Demo",
+                "result",
+                "add",
+                "1",
+                "--summary",
+                "S",
+                "--title",
+                &title,
+                "--actor",
+                "ai",
+            ],
+        );
+        assert_eq!(code, "invalid_value");
+    }
+    assert_eq!(
+        run(home.path(), &["result", "ls", "1"])["results"],
+        serde_json::json!([])
+    );
+}
+
+#[test]
+fn a_result_stored_without_a_title_reads_with_the_first_sentence() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    add(home.path(), "1", &["--summary", "Old one. Details."]);
+    let path = task_json(home.path(), 1);
+    let mut value: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    value["results"][0].as_object_mut().unwrap().remove("title");
+    std::fs::write(&path, serde_json::to_string(&value).unwrap()).unwrap();
+    let listed = run(home.path(), &["result", "ls", "1"]);
+    assert_eq!(listed["results"][0]["title"], "Old one.");
+}

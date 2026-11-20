@@ -8,42 +8,56 @@ const IMAGE = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#dbeafe"/><rect x="40" y="40" width="560" height="60" fill="#3b82f6"/><rect x="40" y="130" width="360" height="30" fill="#93c5fd"/><rect x="40" y="180" width="440" height="30" fill="#93c5fd"/></svg>',
 )}`;
 
-const RESULTS: TaskResult[] = [
-  {
-    version: 1,
-    key: 'first',
-    kind: 'progress',
-    summary: 'The list screen is drawn; the detail screen is next.',
-    at: '2026-11-20T01:00:00Z',
-  },
-  {
-    version: 2,
-    key: 'second',
-    kind: 'progress',
-    summary: 'The detail screen matches the mock on a phone.',
-    attachmentId: 'capture-1',
-    at: '2026-11-20T03:30:00Z',
-  },
-  {
-    version: 3,
-    key: 'third',
-    kind: 'final',
-    summary: 'Both screens are done. The full report is on the PC.',
-    attachmentId: 'capture-2',
-    link: 'outputs/phone-report/index.html',
-    at: '2026-11-20T05:10:00Z',
-  },
-];
+/**
+ * A result as the stories write it: `heading` becomes the `title` of the result. The key is named
+ * differently because the story coverage check reads the first `title:` of the file as the title of
+ * the stories.
+ */
+type Entry = Omit<TaskResult, 'title'> & { heading: string };
+const toResult = ({ heading, ...rest }: Entry): TaskResult => ({ ...rest, title: heading });
+
+const RESULTS: TaskResult[] = (
+  [
+    {
+      version: 1,
+      key: 'first',
+      kind: 'progress',
+      heading: 'List screen drawn',
+      summary: 'The list screen is drawn; the detail screen is next.',
+      at: '2026-11-20T01:00:00Z',
+    },
+    {
+      version: 2,
+      key: 'second',
+      kind: 'progress',
+      heading: 'Detail screen on a phone',
+      summary: 'The detail screen matches the mock on a phone.',
+      attachmentId: 'capture-1',
+      at: '2026-11-20T03:30:00Z',
+    },
+    {
+      version: 3,
+      key: 'third',
+      kind: 'final',
+      heading: 'Both screens done',
+      summary: 'Both screens are done. The full report is on the PC.',
+      attachmentId: 'capture-2',
+      link: 'outputs/phone-report/index.html',
+      at: '2026-11-20T05:10:00Z',
+    },
+  ] satisfies Entry[]
+).map(toResult);
 
 /** A result with twelve screenshots, as an agent records a UI mock. */
-const MANY_IMAGES: TaskResult = {
+const MANY_IMAGES: TaskResult = toResult({
   version: 4,
   key: 'mock-screens',
   kind: 'final',
+  heading: 'All 12 mock screens',
   summary: 'All 12 screens of the mock, in the order a person walks through them.',
   attachmentIds: Array.from({ length: 12 }, (_, i) => `screen-${i + 1}`),
   at: '2026-11-20T07:00:00Z',
-};
+});
 
 const meta = {
   title: 'Task Detail/ResultsView',
@@ -66,6 +80,9 @@ export const Default: Story = {
     const items = view.getAllByRole('listitem');
     await expect(items).toHaveLength(3);
     await expect(items[0]).toHaveTextContent('Final');
+    await expect(
+      within(items[0] as HTMLElement).getByRole('heading', { level: 3 }),
+    ).toHaveTextContent('Both screens done');
     await expect(items[0]).toHaveTextContent('outputs/phone-report/index.html');
     await expect(items[2]).toHaveTextContent('In progress');
   },
@@ -81,6 +98,7 @@ export const UrlLink: Story = {
           version: 4,
           key: 'fourth',
           kind: 'final',
+          title: 'Pull request opened',
           summary: 'The pull request is open.',
           link: `${['https:', '', 'github.com'].join('/')}/FooQoo/agent-board/pull/123?diff=split&w=1#discussion_r1234567890123`,
           at: '2026-11-20T06:00:00Z',
@@ -153,6 +171,30 @@ export const MultipleImagesJapanesePhone: Story = {
     await expect(
       within(canvasElement).getAllByRole('button', { name: /の画像 \d+\/12 を拡大/ }),
     ).toHaveLength(12);
+  },
+};
+
+/** A title at the 80-character limit wraps in the heading on a phone-width window, in Japanese and dark. */
+export const LongTitlePhone: Story = {
+  args: {
+    state: {
+      status: 'ready',
+      results: [
+        {
+          version: 1,
+          key: 'long-title',
+          kind: 'progress',
+          title:
+            '一覧画面と詳細画面のスマホ表示を、モックと同じ余白と配色に合わせて仕上げた最初の版をお見せします。確認用です',
+          summary: '一覧画面と詳細画面の最初の版です。',
+          at: '2026-11-20T01:00:00Z',
+        },
+      ],
+    },
+  },
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole('heading', { level: 3 })).toBeVisible();
   },
 };
 

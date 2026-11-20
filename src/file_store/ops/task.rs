@@ -8,6 +8,7 @@ mod delete;
 mod draft;
 mod edit;
 mod result;
+mod result_text;
 
 pub use result::{MAX_RESULTS, RecordedResult, ResultInput};
 

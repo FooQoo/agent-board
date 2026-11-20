@@ -246,6 +246,7 @@ fn an_image_used_by_any_image_of_a_result_cannot_be_deleted() {
             &project,
             task,
             ResultInput {
+                title: None,
                 kind: ResultKind::Final,
                 summary: "S".into(),
                 link: None,

@@ -8,7 +8,7 @@ use super::enums::ActorArg;
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo result add 12 --summary \"First 30 seconds are ready\" --link ./out/draft.mp4 --actor ai\n  agboard --project demo result add 12 --summary \"Top page capture\" --file top.png --key top-v1 --actor ai\n  agboard --project demo result add 12 --summary \"Mock screens\" --file 01.png --file 02.png --file 03.png --actor ai\n  agboard --project demo result add 12 --summary \"Finished\" --final --actor ai\n  agboard --project demo result ls 12"
+    after_help = "Examples:\n  agboard --project demo result add 12 --title \"First draft\" --summary \"First 30 seconds are ready\" --link ./out/draft.mp4 --actor ai\n  agboard --project demo result add 12 --summary \"Top page capture\" --file top.png --key top-v1 --actor ai\n  agboard --project demo result add 12 --summary \"Mock screens\" --file 01.png --file 02.png --file 03.png --actor ai\n  agboard --project demo result add 12 --summary \"Finished\" --final --actor ai\n  agboard --project demo result ls 12"
 )]
 pub struct ResultArgs {
     #[command(subcommand)]
@@ -33,6 +33,9 @@ pub struct ResultLsArgs {
 pub struct ResultAddArgs {
     /// ID of the task
     pub task_id: i64,
+    /// Heading of the result (1 to 80 characters, one line); without it the first sentence of the summary is used
+    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    pub title: Option<String>,
     /// Short text that says what the requester can look at (1 to 2000 characters)
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub summary: String,

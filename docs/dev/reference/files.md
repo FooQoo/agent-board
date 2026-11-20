@@ -135,11 +135,12 @@ A result is something the requester can look at, delivered by an agent with `agb
 | `version` | A positive integer that starts at 1 for each task and grows by one. It never changes or repeats, so a task, a result, and its version name one delivery. |
 | `key` | Identifies the delivery for retries: the `--key` the agent gave (1 to 64 characters of letters, digits, `.`, `_`, `:`, `-`), or by default 32 hex digits derived from the kind, summary, link, and the image bytes in order. A key is unique within the task. |
 | `kind` | `progress` for an intermediate result, or `final`. |
+| `title` | The heading of the result, 1 to 80 characters on one line: the `--title` the agent gave, or for a result recorded without one, the first sentence of `summary` (up to the first line break, `。`, `！`, `？`, or `.`, `!`, `?` followed by white space or the end), cut to 80 characters with a final `…` when it was cut. It is always written for new results. A result stored before titles existed has no `title`; readers derive it from `summary` the same way, so the field is always present in the JSON the CLI, the web API, and the hook return. |
 | `summary` | 1 to 2,000 characters of text. |
 | `attachmentId` | Optional. The ID of the image of a result that has exactly one image, in the task's `attachments`; the file is read from the attachment route. A result with one image is written with this field so that older versions still read the file. |
 | `attachmentIds` | Optional. The IDs of the images of a result that has two or more, in the order the agent gave them, up to 20. Readers take the images from `attachmentIds` when it is present and otherwise from `attachmentId`, so data written with one image keeps working. An image a result uses by either field cannot be deleted. |
 | `link` | Optional. A URL or a storage location of the main artifact, 1 to 2,000 characters on one line. It is stored as given; Agent Board never opens it. |
-| `at` | UTC time the result was recorded. |
+| `at` | UTC time the result was recorded. Together with `title` it lets the server list the results recorded in a period without reading `summary`. |
 
 Recording a result changes neither `taskStatus` nor `agentStatus`. Under one project lock it writes the images (if any, in order), then saves `task.json` and `TASK.md` together with one history entry. If an image is refused or the save fails, the image files written so far are removed and no entry exists, so a failed save is never something to deliver. If the key already exists with the same content, nothing is written and the existing entry is returned. A task holds at most 100 results.
 
