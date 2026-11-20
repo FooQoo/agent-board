@@ -12,7 +12,12 @@ pub struct Case {
     pub scenario: Scenario,
 }
 
-fn case(rule: &'static str, name: &'static str, triggers: bool, scenario: Scenario) -> Case {
+pub(super) fn case(
+    rule: &'static str,
+    name: &'static str,
+    triggers: bool,
+    scenario: Scenario,
+) -> Case {
     Case {
         rule,
         name,
@@ -21,7 +26,7 @@ fn case(rule: &'static str, name: &'static str, triggers: bool, scenario: Scenar
     }
 }
 
-const ASK: &str = "agboard message ask --actor ai --questions-json '{}'";
+pub(super) const ASK: &str = "agboard message ask --actor ai --questions-json '{}'";
 const PR: &str = "gh pr create --title x --body y";
 
 fn running(message: &'static str, calls: Vec<super::Call>) -> Scenario {
@@ -138,26 +143,8 @@ pub fn all() -> Vec<Case> {
             ),
         ),
     ]);
-    // result-history
-    cases.extend([
-        case(
-            "result-history",
-            "a pull request and no result",
-            true,
-            running("Done.", vec![call(PR)]),
-        ),
-        case(
-            "result-history",
-            "a push and no result",
-            true,
-            running("Done.", vec![call("git push")]),
-        ),
-        case(
-            "result-history",
-            "a plain command",
-            false,
-            running("Done.", vec![call("cargo test")]),
-        ),
-    ]);
+    cases.extend(super::record_cases::all());
+    cases.extend(super::cases_question::all());
+    cases.extend(super::cases_state::all());
     cases
 }
