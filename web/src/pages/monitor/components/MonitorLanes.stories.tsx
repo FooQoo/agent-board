@@ -143,7 +143,13 @@ function useLaneFixture(
 
 type ScreenArgs = Pick<
   MonitorLanesScreenProps,
-  'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing' | 'onAsk'
+  | 'initialLane'
+  | 'previewRevealed'
+  | 'previewBulkDrag'
+  | 'previewPull'
+  | 'onRefresh'
+  | 'refreshing'
+  | 'onAsk'
 > & {
   /** Opens a confirmation: `archive` uses the card named by `pendingTask`. */
   pending?: 'archive' | 'bulk' | 'list' | 'list-revealed';
@@ -401,23 +407,71 @@ export const BulkArchiveConfirm: Story = {
   },
 };
 
-/** On the Done lane, a long swipe to the left past its end opens the bulk-archive confirmation as a drawer. */
+/** The Archive all tile the Done lane uncovers while it follows the finger. */
+function bulkTile(section: Element) {
+  const tile = section.querySelector('[data-bulk-tile]');
+  if (!tile) throw new Error('No Archive all tile.');
+  return tile;
+}
+
+/**
+ * The Done lane dragged to the left follows the finger and shows the Archive all tile, in the
+ * look of a card's archive tile. The tile is a picture only: it takes no press and is hidden from
+ * assistive technology, which have the button after the cards.
+ */
+export const BulkArchiveDragging: Story = {
+  args: { initialLane: 'done', previewBulkDrag: 64 },
+  play: async ({ canvasElement }) => {
+    const section = canvasElement.querySelector('.monitor-lane[data-lane="done"]') as HTMLElement;
+    const tile = bulkTile(section);
+    await expect(tile).toHaveAttribute('data-revealed');
+    await expect(tile).toHaveAttribute('aria-hidden', 'true');
+    await expect(tile.getBoundingClientRect().width).toBe(64);
+    await expect(within(document.body).queryByRole('dialog')).toBeNull();
+    await expect(
+      within(section).getAllByRole('button', { name: 'まとめてアーカイブ' }),
+    ).toHaveLength(1);
+  },
+};
+
+/**
+ * On the Done lane, a long swipe to the left makes the lane follow the finger and show the Archive
+ * all tile; lifting the finger springs it back and opens the bulk-archive confirmation as a drawer.
+ */
 export const BulkArchiveBySwipe: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
-    const lane = canvasElement.querySelector(
-      '.monitor-lane[data-lane="done"] .monitor-lane__scroll',
-    );
-    if (!lane) throw new Error('No Done lane.');
+    const section = canvasElement.querySelector('.monitor-lane[data-lane="done"]');
+    const lane = section?.querySelector('.monitor-lane__scroll');
+    if (!section || !lane) throw new Error('No Done lane.');
     const rect = lane.getBoundingClientRect();
     const y = rect.bottom - 24;
     press(lane, 'pointerdown', rect.right - 40, y);
     press(lane, 'pointermove', rect.right - 90, y);
     press(lane, 'pointermove', rect.right - 160, y);
+    await waitFor(() => expect(bulkTile(section)).toHaveAttribute('data-revealed'));
     press(lane, 'pointerup', rect.right - 160, y);
     const sheet = await within(document.body).findByRole('dialog');
     await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
     await expect(within(sheet).getAllByRole('row')).toHaveLength(5);
+    await waitFor(() => expect(bulkTile(section)).not.toHaveAttribute('data-revealed'));
+  },
+};
+
+/** A short drag on the Done lane springs back and asks nothing. */
+export const BulkArchiveShortSwipe: Story = {
+  args: { initialLane: 'done' },
+  play: async ({ canvasElement }) => {
+    const section = canvasElement.querySelector('.monitor-lane[data-lane="done"]');
+    const lane = section?.querySelector('.monitor-lane__scroll');
+    if (!section || !lane) throw new Error('No Done lane.');
+    const rect = lane.getBoundingClientRect();
+    const y = rect.bottom - 24;
+    press(lane, 'pointerdown', rect.right - 40, y);
+    press(lane, 'pointermove', rect.right - 70, y);
+    press(lane, 'pointerup', rect.right - 70, y);
+    await waitFor(() => expect(bulkTile(section)).not.toHaveAttribute('data-revealed'));
+    await expect(within(document.body).queryByRole('dialog')).toBeNull();
   },
 };
 
