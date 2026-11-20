@@ -49,9 +49,9 @@ pub(super) struct EpicPatchInput {
     document: Option<String>,
     #[serde(default)]
     body: Option<String>,
-    /// The task order of the epic. Replaces the stored order.
+    /// The task order of the epic as waves. Replaces the stored order.
     #[serde(default)]
-    priority: Option<Vec<i64>>,
+    waves: Option<Vec<Vec<i64>>>,
 }
 
 /// A `draft` that is present, `null` included, is `Some`; an absent one is `None`.
@@ -221,7 +221,14 @@ pub(super) async fn update_epic(
         Err(error) => return agboard_error_response(&error),
     };
     match with_files(&state, move |store| {
-        let priority = input.priority.clone();
+        let waves = input.waves;
+        // Refuse bad waves before anything is written, so a rejected request changes nothing.
+        if let Some(waves) = &waves {
+            frontmatter::validate_waves(waves).map_err(|d| AgboardError::InvalidValue {
+                field: d.field,
+                reason: d.reason,
+            })?;
+        }
         let document = if input.body.is_some() {
             if input.document.is_some() {
                 return Err(whole_or_parts());
@@ -245,8 +252,8 @@ pub(super) async fn update_epic(
         };
         let now = chrono::Utc::now();
         let mut result = store.update_epic(&project_id, &epic_id, update, now)?;
-        if let Some(order) = priority {
-            let ordered = store.set_epic_priority(&project_id, &epic_id, &order, false, now)?;
+        if let Some(order) = waves {
+            let ordered = store.set_epic_waves(&project_id, &epic_id, &order, false, now)?;
             result = Changed {
                 value: ordered.value,
                 changed: result.changed || ordered.changed,

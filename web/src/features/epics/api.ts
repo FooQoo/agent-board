@@ -60,8 +60,8 @@ export function updateEpic(
     draft?: Draft | null;
     document?: string;
     body?: string;
-    /** The card order of the epic: card IDs, first is first. */
-    priority?: number[];
+    /** The task order of the epic: one list of task IDs per wave, first wave first. */
+    waves?: number[][];
   },
 ) {
   return sendEpic('PATCH', `${projectPath(projectId)}/epics/${encodeURIComponent(epicId)}`, input);

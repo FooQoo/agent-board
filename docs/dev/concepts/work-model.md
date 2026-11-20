@@ -47,7 +47,7 @@ Each row is a path that lets the item through. The [guide](../../guide/work-mode
 | Running. | `Running` is stored as reported. Nothing expires it or checks that the agent is alive. | `set_agent_status` in `src/file_store/ops/agent.rs`. |
 | Automatic Done needs the server. | `auto_complete_project` runs from the file watcher and at the server's start, not from the CLI. A task that becomes eligible while no server runs waits until the next start. | `src/file_store/watch.rs`; `auto_complete_all` in `src/file_store/ops/completion.rs`. |
 | Your own tasks. | A person's task can only be Idle, and automatic Done skips it. Moving it to Done and checking its conditions are recorded, not verified: `ensure_acceptance_met` is called only for an agent's move. | `check_work_state` in `src/domain/mod.rs`; `move_task` in `src/file_store/ops/agent.rs`. |
-| Epics. | An epic has no managed acceptance conditions and no completion state. Its completion conditions are Markdown in `EPIC.md`. | [Tasks and states](./tasks-and-states.md#epics-and-priority). |
+| Epics. | An epic has no managed acceptance conditions and no completion state. Its completion conditions are Markdown in `EPIC.md`. | [Tasks and states](./tasks-and-states.md#epics-and-waves). |
 
 ## Where the agent's part is written down
 

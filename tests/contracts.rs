@@ -68,8 +68,8 @@ fn contracts_summary_example_round_trips() {
     assert!(!summary.tasks[0].acceptance_error);
     assert!(summary.tasks[1].acceptance_error);
     assert_eq!(summary.tasks[0].created_at, "2026-10-22T09:45:32Z");
-    assert_eq!(summary.epics[0].priority, vec![303, 302]);
-    assert!(!summary.epics[0].priority_error);
+    assert_eq!(summary.epics[0].waves, vec![vec![303], vec![302]]);
+    assert!(!summary.epics[0].waves_error);
 }
 
 #[test]

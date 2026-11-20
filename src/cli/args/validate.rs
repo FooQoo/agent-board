@@ -106,12 +106,12 @@ impl Cli {
                 command: EpicCommand::Edit(args),
             }) if args.name.is_none()
                 && args.color.is_none()
-                && args.priority.is_none()
+                && args.waves.is_none()
                 && args.document.document.is_none()
                 && args.document.document_file.is_none() =>
             {
                 Err(AgboardError::InvalidArgument {
-                    message: "nothing to change; give --name, --color, --priority, --document, or --document-file.".to_string(),
+                    message: "nothing to change; give --name, --color, --waves, --document, or --document-file.".to_string(),
                     command: Some("epic edit".to_string()),
                 })
             }

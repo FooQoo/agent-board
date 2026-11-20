@@ -132,8 +132,8 @@ export function createMonitorFixture(): MonitorFixture {
     name: 'Mobile work',
     color: '#4466aa',
     draft: null,
-    priority: [],
-    priorityError: false,
+    waves: [],
+    wavesError: false,
     progress: { todo: 1, doing: 0, done: 0, archived: 0, total: 1 },
     detailVersions: { document: 'e1' },
   };

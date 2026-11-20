@@ -36,7 +36,7 @@ This folder is one Agent Board project. Its state is kept in these files.\n\
 TASK.md frontmatter holds its `acceptance` completion conditions and `history` entries containing only `at` and a nonempty `reason`; new tasks accept an empty list and Agent Board adds a creation note.\n\
 Each condition is an item with `id` (AC-n), `text`, and `done` (true or false), for example:\n\
 `---`, `acceptance:`, `  - id: AC-1`, `    text: The list is returned as JSON`, `    done: false`, `---`.\n\
-The body after the frontmatter is free Markdown. EPIC.md uses only `priority` for managed metadata; write epic reference conditions directly in its body. Other keys in the frontmatter are kept. For tasks, the `history` list is written by Agent Board when operations occur; ordinary body and acceptance edits preserve it.\n\
+The body after the frontmatter is free Markdown. EPIC.md uses only `waves` (a list of lists of task IDs) for managed metadata; write epic reference conditions directly in its body. Other keys in the frontmatter are kept. For tasks, the `history` list is written by Agent Board when operations occur; ordinary body and acceptance edits preserve it.\n\
 Every JSON file uses `formatVersion: 1`. Files with any other version or with unknown fields are reported and are not migrated or read; Agent Board never converts or deletes them automatically.\n\
 Do not edit TASK.md of a task that is a draft.\n\
 Do not delete a task folder or an epic folder. Ask a person to delete a task or an epic with the `agboard` CLI.\n"

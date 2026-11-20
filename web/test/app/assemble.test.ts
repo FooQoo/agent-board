@@ -35,8 +35,8 @@ const summary: Summary = summaryOfBoard({
       draft: 'human',
       document: '',
       body: 'epic text',
-      priority: [],
-      priorityError: false,
+      waves: [],
+      wavesError: false,
       attachments: [],
       createdAt: '',
       updatedAt: '',
@@ -109,8 +109,8 @@ describe('what the Summary now keeps', () => {
         draft: null,
         document: '',
         body: '',
-        priority: [8, 3],
-        priorityError: true,
+        waves: [[8], [3]],
+        wavesError: true,
         attachments: [],
         createdAt: '',
         updatedAt: '',
@@ -128,9 +128,9 @@ describe('what the Summary now keeps', () => {
 
   it('gives the epic its task order and the order error, from the Summary', () => {
     const [epic] = toBoardView(rich).epics;
-    expect(epic?.priority).toEqual([8, 3]);
-    expect(epic?.priorityError).toBe(true);
-    expect(toBoardView(summary).epics[0]?.priority).toEqual([]);
+    expect(epic?.waves).toEqual([[8], [3]]);
+    expect(epic?.wavesError).toBe(true);
+    expect(toBoardView(summary).epics[0]?.waves).toEqual([]);
   });
 
   it('builds an editor task with its own creation time, not the last update', () => {

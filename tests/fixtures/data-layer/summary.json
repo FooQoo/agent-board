@@ -57,8 +57,8 @@
       "name": "Data layer",
       "color": "#3366CC",
       "draft": null,
-      "priority": [303, 302],
-      "priorityError": false,
+      "waves": [[303], [302]],
+      "wavesError": false,
       "progress": { "todo": 3, "doing": 2, "done": 1, "archived": 0, "total": 6 },
       "detailVersions": { "document": "c0ffee00c0ffee00" }
     }

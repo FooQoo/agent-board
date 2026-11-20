@@ -53,14 +53,14 @@ export function useEpicEditor({
   const [saved, setSaved] = useState(() => ({
     name: epic.name,
     color: epic.color.toUpperCase(),
-    document: normalizeNewlines(epic.priorityError ? epic.document : epic.body),
-    order: orderOf(epic.priority, members),
+    document: normalizeNewlines(epic.wavesError ? epic.document : epic.body),
+    order: orderOf(epic.waves.flat(), members),
   }));
   const [order, setOrder] = useState<number[]>(() => saved.order);
   const [panel, setPanel] = useState<EpicEditorPanel>('progress');
   const [name, setName] = useState(epic.name);
   const [color, setColor] = useState(epic.color.toUpperCase());
-  const [whole, setWhole] = useState(epic.priorityError);
+  const [whole, setWhole] = useState(epic.wavesError);
   /** The epic was a draft before the dialog entered one (so saving does not finalize it). */
   const [wasDraft, setWasDraft] = useState(epic.draft !== null);
   /** Changes when the dialog follows a new version: the editors start again from it. */
@@ -127,8 +127,8 @@ export function useEpicEditor({
       return snapshotOfEpic(latest, members) === snapshot ? null : latest;
     },
     apply: (latest) => {
-      const text = normalizeNewlines(latest.priorityError ? latest.document : latest.body);
-      const latestOrder = orderOf(latest.priority, members);
+      const text = normalizeNewlines(latest.wavesError ? latest.document : latest.body);
+      const latestOrder = orderOf(latest.waves.flat(), members);
       setSaved({
         name: latest.name,
         color: latest.color.toUpperCase(),
@@ -140,7 +140,7 @@ export function useEpicEditor({
       setEpicDocument(text);
       setOrder(latestOrder);
       setRemoved([]);
-      setWhole(latest.priorityError);
+      setWhole(latest.wavesError);
       setWasDraft(latest.draft !== null);
       attachmentState.reset(latest.attachments);
       setVersion((current) => current + 1);
@@ -177,7 +177,7 @@ export function useEpicEditor({
       }
       step = 'order';
       if (orderChanged) {
-        await api.savePriority(rowIds);
+        await api.saveWaves(rowIds.map((id) => [id]));
         somethingSaved.current = true;
         setSaved((current) => ({ ...current, order: rowIds }));
         setOrder(rowIds);

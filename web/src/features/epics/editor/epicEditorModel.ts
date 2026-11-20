@@ -15,9 +15,9 @@ export function nameIsValid(name: string): boolean {
 }
 
 /** The order of the tasks of an epic: the saved order first, then unlisted tasks by ID. */
-export function orderOf(priority: readonly number[], members: readonly TaskSummary[]): number[] {
+export function orderOf(order: readonly number[], members: readonly TaskSummary[]): number[] {
   const ids = new Set(members.map((task) => task.id));
-  const listed = priority.filter((id) => ids.has(id));
+  const listed = order.filter((id) => ids.has(id));
   const rest = members
     .map((task) => task.id)
     .filter((id) => !listed.includes(id))
@@ -58,8 +58,8 @@ export function snapshotOfEpic(epic: Epic, members: readonly TaskSummary[]): str
   return epicSnapshot({
     name: epic.name,
     color: epic.color,
-    document: epic.priorityError ? epic.document : epic.body,
+    document: epic.wavesError ? epic.document : epic.body,
     imageIds: epic.attachments.map((attachment) => attachment.id),
-    order: orderOf(epic.priority, members),
+    order: orderOf(epic.waves.flat(), members),
   });
 }

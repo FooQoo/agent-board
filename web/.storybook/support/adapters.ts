@@ -99,7 +99,7 @@ export function createFakeEpicApi(respond: (method: EpicApiMethod) => Promise<vo
     removeImage: (attachmentId) => write('removeImage')(attachmentId),
     savePlan: (input) => write('savePlan')(input),
     saveDetails: (details) => write('saveDetails')(details),
-    savePriority: (priority) => write('savePriority')(priority),
+    saveWaves: (waves) => write('saveWaves')(waves),
     remove: () => write('remove')(),
   };
   return { api, calls };

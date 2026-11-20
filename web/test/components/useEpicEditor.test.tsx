@@ -19,8 +19,8 @@ const EPIC: Epic = {
   draft: null,
   document: '## Goal\n\nShare.',
   body: '## Goal\n\nShare.',
-  priority: [],
-  priorityError: false,
+  waves: [],
+  wavesError: false,
   attachments: [
     {
       id: IMAGE,
@@ -43,7 +43,10 @@ function fakeApi(calls: string[]): EpicApi {
     addImages: vi.fn(async () => void calls.push('addImages')),
     removeImage: vi.fn(async () => void calls.push('removeImage')),
     save: vi.fn(async () => void calls.push('save')),
-    savePriority: vi.fn(async (ids: number[]) => void calls.push(`savePriority:${ids.join(',')}`)),
+    saveWaves: vi.fn(
+      async (waves: number[][]) =>
+        void calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`),
+    ),
     enterDraft: vi.fn(async () => {
       calls.push('enterDraft');
       return { ...EPIC, draft: 'human' as const };
@@ -77,7 +80,7 @@ describe('useEpicEditor save order', () => {
     act(() => result.current.setName('Renamed'));
     await waitFor(() => expect(result.current.canSave).toBe(true));
     await act(async () => result.current.run());
-    expect(calls).toEqual(['enterDraft', 'removeImage', 'savePriority:25,24', 'save']);
+    expect(calls).toEqual(['enterDraft', 'removeImage', 'saveWaves:25;24', 'save']);
     expect(api.save).toHaveBeenCalledWith({
       name: 'Renamed',
       color: '#7C3AED',
@@ -100,7 +103,7 @@ describe('useEpicEditor save order', () => {
     await act(async () => result.current.run());
     expect(result.current.error).toContain('Earlier changes were saved');
     await act(async () => result.current.run());
-    expect(calls).toEqual(['enterDraft', 'savePriority:25,24', 'save']);
+    expect(calls).toEqual(['enterDraft', 'saveWaves:25;24', 'save']);
   });
 
   it('finalizes with the last request alone when only the order changed', async () => {
@@ -110,6 +113,6 @@ describe('useEpicEditor save order', () => {
     act(() => result.current.move(0, 1));
     await waitFor(() => expect(result.current.canSave).toBe(true));
     await act(async () => result.current.run());
-    expect(calls).toEqual(['enterDraft', 'savePriority:25,24', 'save']);
+    expect(calls).toEqual(['enterDraft', 'saveWaves:25;24', 'save']);
   });
 });

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use common::{agboard, demo_project, json_ok};
 use serde_json::Value;
 
-const DOCUMENT: &str = "---\npriority:\n  - 3\n  - 1\nextra: kept\n---\n\n# Goal\r\n\nKeep ![shot](assets/0123456789abcdef0123456789abcdef.png) as is.\n\n日本語の本文。\n";
+const DOCUMENT: &str = "---\nwaves:\n  - 3\n  - 1\nextra: kept\n---\n\n# Goal\r\n\nKeep ![shot](assets/0123456789abcdef0123456789abcdef.png) as is.\n\n日本語の本文。\n";
 
 /// The project folder, found on disk.
 fn project_dir(home: &Path) -> PathBuf {
@@ -153,11 +153,11 @@ fn json_outputs_use_document_and_document_path() {
         .iter()
         .find(|epic| epic["id"] == "ALPHA")
         .unwrap();
-    assert_eq!(alpha["priority"], serde_json::json!([3, 1]));
+    assert_eq!(alpha["waves"], serde_json::json!([[3], [1]]));
 
     let snapshot = json_ok(home.path(), &["--project", "Demo", "snapshot", "--json"]);
     assert_eq!(snapshot["epics"][0]["document"], DOCUMENT);
-    assert_eq!(snapshot["epics"][0]["priority"], serde_json::json!([3, 1]));
+    assert_eq!(snapshot["epics"][0]["waves"], serde_json::json!([[3], [1]]));
 
     let table = json_ok(home.path(), &["--project", "Demo", "progress", "--json"]);
     let document_path = table["epics"][0]["documentPath"].as_str().unwrap();
@@ -232,7 +232,7 @@ fn the_api_serves_and_saves_the_document() {
     let shown = server.get(&one);
     assert_eq!(shown.status, 200, "{}", shown.body);
     assert_eq!(shown.json()["epic"]["document"], DOCUMENT);
-    assert_eq!(shown.json()["epic"]["priority"], serde_json::json!([3, 1]));
+    assert_eq!(shown.json()["epic"]["waves"], serde_json::json!([[3], [1]]));
 
     let patched = server.write("PATCH", &one, Some(r##"{"document":"# New\n"}"##));
     assert_eq!(patched.status, 200, "{}", patched.body);
@@ -241,5 +241,10 @@ fn the_api_serves_and_saves_the_document() {
         fs::read_to_string(epic_dir(home.path(), "ALPHA").join("EPIC.md")).unwrap(),
         "# New\n"
     );
+    // A PATCH with bad waves is refused as a whole: the name does not change either.
+    let name = server.get(&one).json()["epic"]["name"].clone();
+    let refused = server.write("PATCH", &one, Some(r##"{"name":"Changed","waves":[[0]]}"##));
+    assert_eq!(refused.status, 422, "{}", refused.body);
+    assert_eq!(server.get(&one).json()["epic"]["name"], name);
     server.stop();
 }

@@ -25,8 +25,8 @@ const EPIC: Epic = {
   draft: null,
   document: DOCUMENT,
   body: DOCUMENT,
-  priority: [],
-  priorityError: false,
+  waves: [],
+  wavesError: false,
   attachments: [
     {
       id: IMAGE,
@@ -76,8 +76,8 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     leaveDraft: vi.fn(async () => {
       calls.push('leaveDraft');
     }),
-    savePriority: vi.fn(async (priority: number[]) => {
-      calls.push(`savePriority:${priority.join(',')}`);
+    saveWaves: vi.fn(async (waves: number[][]) => {
+      calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`);
     }),
     remove: vi.fn(async () => {
       calls.push('remove');
@@ -253,7 +253,7 @@ describe('epic dialog layout', () => {
 describe('progress table', () => {
   it('lists the tasks of the epic in the saved order, the unlisted ones after them by ID', async () => {
     const { api } = fakeApi();
-    const epic = { ...EPIC, priority: [25, 24] };
+    const epic = { ...EPIC, waves: [[25], [24]] };
     await openEpic(api, { epic });
     const dialog = await screen.findByRole('dialog');
     expect(rowIds(dialog)).toEqual(['25', '24']);
@@ -398,9 +398,9 @@ describe('epic details document', () => {
   });
 
   it('saves the whole document as document when the stored order cannot be read', async () => {
-    const broken = '---\npriority: [\n---\n## Goal\n\nKeep.';
-    const changed = '---\npriority: [\n---\n## Goal\n\nChanged.';
-    const stored = { ...EPIC, document: broken, body: broken, priorityError: true };
+    const broken = '---\nwaves: [\n---\n## Goal\n\nKeep.';
+    const changed = '---\nwaves: [\n---\n## Goal\n\nChanged.';
+    const stored = { ...EPIC, document: broken, body: broken, wavesError: true };
     const { api } = fakeApi({
       enterDraft: vi.fn(async () => ({ ...stored, draft: 'human' as const })),
     });

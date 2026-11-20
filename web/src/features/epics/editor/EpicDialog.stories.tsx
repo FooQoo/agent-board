@@ -17,7 +17,7 @@ const epic = makeEpic({
   color: '#7c3aed',
   body: '## Goal\n\nKeep the board predictable.\n\n## Steps\n\nReview and ship.',
   document: '## Goal\n\nKeep the board predictable.\n\n## Steps\n\nReview and ship.',
-  priority: [12, 10],
+  waves: [[12], [10]],
   attachments: [
     {
       id: '0123456789abcdef0123456789abcdef',
@@ -67,7 +67,7 @@ meta.args = {
     addImages: fn(async () => {}),
     removeImage: fn(async () => {}),
     save: fn(async () => {}),
-    savePriority: fn(async () => {}),
+    saveWaves: fn(async () => {}),
     enterDraft: fn(async () => ({ ...epic, draft: 'human' as const })),
     leaveDraft: fn(async () => {}),
     remove: fn(async () => {}),
@@ -106,7 +106,7 @@ export const DetailsSaveRetry: Story = {
       addImages: fn(async () => {}),
       removeImage: fn(async () => {}),
       save: saveFailsOnce(),
-      savePriority: fn(async () => {}),
+      saveWaves: fn(async () => {}),
       enterDraft: fn(async () => ({ ...epic, draft: 'human' as const })),
       leaveDraft: fn(async () => {}),
       remove: fn(async () => {}),
