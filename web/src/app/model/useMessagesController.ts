@@ -18,8 +18,15 @@ export interface MessagesController {
 export function useMessagesController(
   activeId: string | null,
   messages: readonly Message[] | null,
-  link: ResultLinkTarget | null = null,
+  address: {
+    /** The result or question the address points at. */
+    resultLink: ResultLinkTarget | null;
+    /** The address asks for the Summary tab; `clear` takes the request out of it. */
+    summary: { requested: boolean; clear: () => void };
+  } | null = null,
 ): MessagesController {
+  const link = address?.resultLink ?? null;
+  const summary = address?.summary ?? null;
   const panel = useMessagesPanel();
   const { open, close } = panel;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the list is closed when the project changes.
@@ -44,5 +51,19 @@ export function useMessagesController(
     linked.current = key;
     open({ tab: 'fromAi', openId: id });
   }, [link, messages, activeId, open]);
+  // `?messages=summary` opens the list on the Summary tab once; closing the list ends the request.
+  const summaryOpened = useRef(false);
+  const summaryRequested = summary?.requested ?? false;
+  const clearSummary = summary?.clear;
+  useEffect(() => {
+    if (!summaryRequested || activeId === null) return;
+    if (!summaryOpened.current) {
+      summaryOpened.current = true;
+      open({ tab: 'summary' });
+    } else if (panel.target === null) {
+      summaryOpened.current = false;
+      clearSummary?.();
+    }
+  }, [summaryRequested, activeId, open, panel.target, clearSummary]);
   return { panel, openForTask };
 }

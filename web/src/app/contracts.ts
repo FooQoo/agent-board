@@ -88,6 +88,10 @@ export interface AppControllerModel {
   resultLink?: ResultLinkTarget | null;
   /** Takes the link out of the address, when its target has been shown and closed. */
   clearResultLink?: () => void;
+  /** The address asks for the messages on the Summary tab (`?messages=summary`). */
+  summaryLink?: boolean;
+  /** Takes that request out of the address, when the list was shown and closed. */
+  clearSummaryLink?: () => void;
   restoreFailure: { projectId: ProjectId; taskId: number } | null;
   setRestoreFailure: (value: { projectId: ProjectId; taskId: number } | null) => void;
   projectName: (projectId: ProjectId) => string | undefined;

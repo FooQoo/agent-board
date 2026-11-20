@@ -1,6 +1,6 @@
 import { type RefObject, useRef, useState } from 'react';
-import { useSideSwipe } from '@/shared/lib/gesture/useSideSwipe';
-import { type RevealSide, cardOffset, cardSettles, revealOffset } from '../model/lanes';
+import { useSideSwipe } from './useSideSwipe';
+import { cardOffset, cardSettles, type RevealSide, revealOffset } from './cardReveal';
 
 export interface CardGestureOptions {
   /** The side whose tiles are showing. The parent owns this, so it can close it from outside. */

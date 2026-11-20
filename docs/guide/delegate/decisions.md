@@ -19,7 +19,7 @@ Select a count to open the list on its tab: **AI's questions** opens the tab of 
 
 ## The list of messages
 
-**Questions & requests** opens the list of messages as a modal on the PC. It has two tabs, **AI's questions** and **Your requests**, each with its count. You can also swipe or drag the list sideways to switch between them; the selected tab follows the movement. Each row shows the kind (question or request), the direction, the ID, the time, and the first line, with its state on the right:
+**Questions & requests** opens the list of messages as a modal on the PC. It has three tabs, **AI's questions**, **Your requests**, and **Summary**, each with its count (see [Summary](#summary)). You can also swipe or drag the list sideways to switch between them; the selected tab follows the movement. Each row shows the kind (question or request), the direction, the ID, the time, and the first line, with its state on the right:
 
 | State | Meaning |
 | --- | --- |
@@ -64,11 +64,21 @@ The dialog keeps your choice and note and shows **It could not be sent. Try agai
 
 A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiting to be picked up** until an agent accepts it. Open it to read what you sent, with its images. While it waits, **Withdraw** takes it back, and the request leaves the list. Once an agent has accepted it, it leaves the list, and it can no longer be withdrawn.
 
+## Summary
+
+The **Summary** tab lists the periodic summaries the board records of the results in the project (see [Notification settings](../watch/remote-access) for the interval). Its count is the number of summaries you have not deleted. Nothing is marked read or unread, and the **Messages** count in the phone's bottom bar still counts questions only.
+
+Each item shows the window it covers in your local time, such as `11/20 09:00–10:00`, and one row for every result recorded in it: the task number and the result's title. Newest windows come first. A window without results has no item.
+
+To delete a summary from the list, press the trash button on the left of the item on the PC. On a phone, swipe the item to the left, or tap it, to show the trash tile on its right, then tap the tile. A sideways swipe that starts on an item moves that item and never switches the tab. A deleted summary disappears at once, and the board keeps its record on disk. If the board cannot delete it, the item comes back with a notice. The list also updates by itself when a new summary is recorded.
+
+The notification for a periodic summary opens the messages on this tab.
+
 ## Answer on your phone
 
-On remote access, a Pending task shows the same **Answer the question** button, and there is no band: **Messages** in the bottom bar opens the list as a sheet that slides up from the bottom, with the same two tabs. The number on its icon counts the open questions only, and it is hidden at 0. **Ask** in the middle of the bar opens the request form.
+On remote access, a Pending task shows the same **Answer the question** button, and there is no band: **Messages** in the bottom bar opens the list as a sheet that slides up from the bottom, with the same tabs. The number on its icon counts the open questions only, and it is hidden at 0. **Ask** in the middle of the bar opens the request form.
 
-The sheet works like the modal. The tabs and rows are the same, and you can swipe the list sideways to switch between **AI's questions** and **Your requests** in the same way; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, with the question, your answer, the options, and the note all starting at the same edge. The sheet scrolls while the buttons stay at the bottom, in reach of your thumb. When you opened the question from the list, the left button is **Back to list**, which returns to the list without sending anything; when you opened it from a task's card, it is **Later**, which closes the sheet. **Send answer** is on the right in both cases. While you type, the sheet grows to fill the screen from under the status bar down to the keyboard, with the buttons just above the keyboard and the question scrolling above them. It looks the same with the keyboard closed. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
+The sheet works like the modal. The tabs and rows are the same, and you can swipe the list sideways to switch between **AI's questions**, **Your requests**, and **Summary** in the same way; the selected tab follows your finger. Scrolling the list, tapping a row, and pulling the sheet down to close it work as before. An open question stacks the answer under the question, with the question, your answer, the options, and the note all starting at the same edge. The sheet scrolls while the buttons stay at the bottom, in reach of your thumb. When you opened the question from the list, the left button is **Back to list**, which returns to the list without sending anything; when you opened it from a task's card, it is **Later**, which closes the sheet. **Send answer** is on the right in both cases. While you type, the sheet grows to fill the screen from under the status bar down to the keyboard, with the buttons just above the keyboard and the question scrolling above them. It looks the same with the keyboard closed. Opened from a task's **Answer the question** button, the sheet opens at that task's first open question.
 
 ![Answer sheet on the phone with the question, choices, note, and the buttons at the bottom](../../images/mobile-question.png){.screenshot .screenshot--narrow}
 
