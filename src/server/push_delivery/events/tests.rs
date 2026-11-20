@@ -104,13 +104,16 @@ fn several_events_of_one_task_become_one_with_the_question_first() {
     now.history.push("Waiting".to_string());
     let events = diff_task(PROJECT, &before, &now);
     assert_eq!(events.len(), 3);
-    let all = settings(|s| s.kinds.history = true);
+    let all = settings(|s| {
+        s.kinds.questions = true;
+        s.kinds.history = true;
+    });
     let chosen = choose(events.clone(), &all);
     assert_eq!(chosen.len(), 1);
     assert_eq!(chosen[0].0.kind, Kind::Question);
     assert_eq!(chosen[0].1.len(), 3);
     // Without the question kind the result is the one that opens.
-    let no_questions = settings(|s| s.kinds.questions = false);
+    let no_questions = settings(|s| s.kinds.history = true);
     let chosen = choose(events, &no_questions);
     assert_eq!(chosen.len(), 1);
     assert_eq!(chosen[0].0.kind, Kind::Result(ResultKind::Progress));

@@ -322,7 +322,7 @@ Which notifications the phone receives are saved in `<data-root>/.internal/notif
 | --- | --- |
 | `formatVersion` | Always `1`. Any other value, an unknown field, a missing field, or a malformed file is read as the defaults, and the next save replaces the file. |
 | `revision` | `0` when nothing is saved, and goes up by one with each save. |
-| `kinds` | Three switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), and `history` (a history entry was added). The defaults are `results` and `questions` on, `history` off. All three off is allowed. |
+| `kinds` | Three switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), and `history` (a history entry was added). The defaults are `results` on, `questions` and `history` off. A saved file keeps its own choices; only a missing or unreadable file reads as these defaults. All three off is allowed. |
 
 A file written by an older version may also hold `kinds.stateChanges`, a `stateChanges` group, and a `periodic` group, from the removed card state change and periodic status notifications. They are read and dropped, and the next save leaves them out; they do not make the file invalid.
 
