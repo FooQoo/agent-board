@@ -52,7 +52,8 @@ impl Push {
             log: Mutex::new(Log::default()),
             attached_at: Mutex::new(None),
             closed: Mutex::new(false),
-            handed: Mutex::new(VecDeque::new()),
+            // The launch prompt starts the first turn, so its end owns the first entry (no tasks).
+            handed: Mutex::new(VecDeque::from([Vec::new()])),
         }
     }
 
@@ -193,8 +194,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_launch_turn_owns_the_first_entry_even_when_a_push_comes_before_its_end() {
+        let push = Push::new();
+        // The reader reported idle, so the pusher queued task 7 before the pump saw the end of
+        // the launch turn.
+        push.handed.lock().unwrap().push_back(vec![7]);
+        assert!(
+            push.take_handed().is_empty(),
+            "the launch turn has no tasks"
+        );
+        assert_eq!(push.take_handed(), vec![7]);
+    }
+
+    #[test]
     fn a_later_push_does_not_replace_the_tasks_of_an_earlier_turn() {
         let push = Push::new();
+        assert!(push.take_handed().is_empty());
         let mut handed = push.handed.lock().unwrap();
         handed.push_back(vec![1]);
         // The next push arrives before the pump handled the end of the first turn.
