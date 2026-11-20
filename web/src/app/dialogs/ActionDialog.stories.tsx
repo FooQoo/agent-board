@@ -30,7 +30,6 @@ const meta: Meta<typeof ActionDialog> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Request: Story = {};
-export const Move: Story = { args: { action: { kind: 'move', task, target: 'doing' } } };
 export const Edit: Story = { args: { action: { kind: 'edit', task } } };
 export const Epic: Story = {
   args: { action: { kind: 'epic', epic } },

@@ -1,12 +1,15 @@
-import { Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageCenter } from '../../features/tasks/messages/MessageCenter';
 import { firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
-import type { ProjectId } from '../../shared/api/contracts';
+import type { ColumnName, ProjectId } from '../../shared/api/contracts';
+import { TaskStatusChangedError } from '../../features/tasks/api/lifecycle';
+import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
 import { savingSettingsSlot, settingsSlot } from '../../features/settings/ui/settingsSlot';
-import type { MonitorViewProps } from './contracts';
+import type { MonitorTask, MonitorViewProps } from './contracts';
 import { LaneTabs } from './components/LaneTabs';
 import { MonitorLanes } from './components/MonitorLanes';
 import { type LanePending, MonitorLaneDialogs } from './components/MonitorLaneDialogs';
@@ -30,6 +33,7 @@ const detailDrawer = preloadable(() =>
 export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
+  const { t } = useTranslation();
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences, settings: given } = props;
   const settings = useMemo(
@@ -104,6 +108,24 @@ export function MonitorView(props: MonitorViewProps) {
     if (writes) setPending(next);
   };
   const closePending = () => setPending(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const dismissNotice = useCallback(() => setNotice(null), []);
+  // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
+  const moveNow = async (item: MonitorTask, target: ColumnName) => {
+    if (!writes) return;
+    try {
+      await writes.move(projectId, item.task.id, target, item.task.taskStatus);
+      overlay.move(item.task.id, target);
+    } catch (cause) {
+      setNotice(
+        cause instanceof TaskStatusChangedError
+          ? t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) })
+          : t('moveNotice.failed'),
+      );
+    } finally {
+      onWritten?.();
+    }
+  };
   return (
     <main className="monitor-shell">
       <Header {...props.header} settings={settings} settingsSize="l" />
@@ -136,7 +158,7 @@ export function MonitorView(props: MonitorViewProps) {
         lanes={ordered}
         lane={lane}
         onLaneChange={setLane}
-        onMove={(item, target) => ask({ kind: 'move', item, target })}
+        onMove={(item, target) => void moveNow(item, target)}
         onArchive={(item) => ask({ kind: 'archive', item })}
         onBulkArchive={() => ask({ kind: 'bulk' })}
         onOpenDetail={(item, tab) => {
@@ -155,6 +177,7 @@ export function MonitorView(props: MonitorViewProps) {
             : undefined
         }
       />
+      <TransientNotice message={notice} onDismiss={dismissNotice} />
       {writes && (
         <MonitorLaneDialogs
           pending={pending}
@@ -171,15 +194,6 @@ export function MonitorView(props: MonitorViewProps) {
             closePending();
             onWritten?.();
             return true;
-          }}
-          onMove={async (item, target, data) => {
-            try {
-              await writes.move(projectId, item.task.id, target, data.reason, data.fromStatus);
-              overlay.move(item.task.id, target);
-            } finally {
-              onWritten?.();
-            }
-            closePending();
           }}
           onBulkArchive={async () => {
             try {

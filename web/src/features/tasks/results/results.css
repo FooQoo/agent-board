@@ -159,3 +159,63 @@
   text-underline-offset: 2px;
   word-break: break-all;
 }
+
+/* Several images: a strip of thumbnails that scrolls sideways and snaps to each one. */
+.results__strip {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.results__strip .results__image {
+  flex: none;
+  width: 132px;
+  scroll-snap-align: start;
+}
+
+.results__strip .results__image img {
+  height: 96px;
+  max-height: none;
+}
+
+.results__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+  color: white;
+  font-size: 13px;
+}
+
+.results__stepper button {
+  display: inline-flex;
+  padding: 6px;
+  border: 1px solid rgb(255 255 255 / 40%);
+  border-radius: 999px;
+  background: rgb(15 23 42 / 65%);
+  color: inherit;
+}
+
+.results__stepper button:disabled {
+  opacity: 0.35;
+}
+
+.results__stepper svg {
+  width: 18px;
+  height: 18px;
+}
+
+.results__zoom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+}
+
+/* Leave room for the stepper below the picture so both fit a short viewport. */
+.lightbox .results__zoom img {
+  max-height: calc(85vh - 48px);
+}

@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 import { WriteError, editTask, editTaskMultipart, moveTask, reorderTask } from './api';
+import { TaskStatusChangedError } from '../features/tasks/api/lifecycle';
 import { sendMessageRequest } from '../features/messages/ask/sendRequest';
 import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
@@ -26,6 +27,9 @@ export function useAppActions(model: AppControllerModel) {
     viewMode,
   } = model;
 
+  const [moveNotice, setMoveNotice] = useState<string | null>(null);
+  const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
+
   const workspace: AppWorkspaceActions = {
     onSelectProject: (projectId) => {
       void setRequested(projectId, { history: 'push' });
@@ -47,8 +51,20 @@ export function useAppActions(model: AppControllerModel) {
         if (loaded) model.openDialog({ kind: 'epic', epic: loaded });
       });
     },
-    onMove: (task, column) =>
-      model.openDialog({ kind: 'move', task, target: column as ColumnName }),
+    // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
+    onMove: (task, column) => {
+      if (!isProjectId(activeId) || session.operation !== null) return;
+      const projectId = activeId;
+      void moveTask(projectId, task.id, column as ColumnName, task.taskStatus)
+        .catch((cause: unknown) => {
+          setMoveNotice(
+            cause instanceof TaskStatusChangedError
+              ? t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) })
+              : t('moveNotice.failed'),
+          );
+        })
+        .finally(() => refreshProject(projectId));
+    },
     onReorder: (task, beforeId) => {
       if (!isProjectId(activeId)) return;
       const projectId = activeId;
@@ -141,14 +157,6 @@ export function useAppActions(model: AppControllerModel) {
           text: data.requestText ?? '',
           attachments: data.attachments ?? [],
         });
-      } else if (dialog.kind === 'move') {
-        await moveTask(
-          projectId,
-          dialog.task.id,
-          dialog.target,
-          data.reason ?? '',
-          data.fromStatus,
-        );
       } else if (dialog.kind === 'edit') {
         if (data.attachments || data.removedAttachmentIds?.length)
           await editTaskMultipart(projectId, dialog.task.id, {
@@ -232,6 +240,8 @@ export function useAppActions(model: AppControllerModel) {
 
   return {
     workspace,
+    moveNotice,
+    dismissMoveNotice,
     submitDialog,
     confirmBulkArchive,
     cancelBulkArchive,

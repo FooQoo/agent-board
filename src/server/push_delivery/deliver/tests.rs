@@ -4,7 +4,6 @@ use ring::rand::{SecureRandom, SystemRandom};
 
 use super::*;
 use crate::domain::ResultKind;
-use crate::server::notification_settings::StateChange;
 use crate::server::push_delivery::events::Kind;
 use crate::server::push_delivery::transport::SendFuture;
 use crate::server::push_delivery::webpush::tests::Browser;
@@ -167,11 +166,9 @@ async fn a_kind_that_is_off_is_not_sent() {
 async fn one_event_with_several_kinds_is_one_notification_for_the_question() {
     let rig = rig();
     let mut ctx = rig.ctx(true);
-    ctx.settings.kinds.state_changes = true;
     ctx.settings.kinds.history = true;
     let events = vec![
         result_event(3),
-        event(Kind::State(StateChange::Pending), "state:pending:1", None),
         event(Kind::Question, "question:q-1", None),
         event(Kind::History, "history:2", None),
     ];

@@ -8,7 +8,7 @@ use super::enums::ActorArg;
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo result add 12 --summary \"First 30 seconds are ready\" --link ./out/draft.mp4 --actor ai\n  agboard --project demo result add 12 --summary \"Top page capture\" --file top.png --key top-v1 --actor ai\n  agboard --project demo result add 12 --summary \"Finished\" --final --actor ai\n  agboard --project demo result ls 12"
+    after_help = "Examples:\n  agboard --project demo result add 12 --summary \"First 30 seconds are ready\" --link ./out/draft.mp4 --actor ai\n  agboard --project demo result add 12 --summary \"Top page capture\" --file top.png --key top-v1 --actor ai\n  agboard --project demo result add 12 --summary \"Mock screens\" --file 01.png --file 02.png --file 03.png --actor ai\n  agboard --project demo result add 12 --summary \"Finished\" --final --actor ai\n  agboard --project demo result ls 12"
 )]
 pub struct ResultArgs {
     #[command(subcommand)]
@@ -36,9 +36,9 @@ pub struct ResultAddArgs {
     /// Short text that says what the requester can look at (1 to 2000 characters)
     #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
     pub summary: String,
-    /// Image of the result (PNG, JPEG, WebP, or GIF), stored as an attachment of the task
+    /// Image of the result (PNG, JPEG, WebP, or GIF), stored as an attachment of the task; repeat it to put several images (up to 20, in order) on one result
     #[arg(long, value_name = "PATH")]
-    pub file: Option<PathBuf>,
+    pub file: Vec<PathBuf>,
     /// Link or storage location of the main artifact
     #[arg(long, value_name = "URL_OR_PATH", allow_hyphen_values = true)]
     pub link: Option<String>,

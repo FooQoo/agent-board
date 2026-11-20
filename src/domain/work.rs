@@ -148,12 +148,41 @@ pub struct TaskResult {
     pub key: String,
     pub kind: ResultKind,
     pub summary: String,
+    /// The image of a result that has exactly one. Written for one image so
+    /// that the file stays readable by older versions; see `image_ids`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attachment_id: Option<String>,
+    /// The images of a result that has several, in the order they were given.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachment_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
+}
+
+impl TaskResult {
+    /// Every image of the result in order, whichever field holds them.
+    pub fn image_ids(&self) -> Vec<&str> {
+        if self.attachment_ids.is_empty() {
+            self.attachment_id.iter().map(String::as_str).collect()
+        } else {
+            self.attachment_ids.iter().map(String::as_str).collect()
+        }
+    }
+
+    /// The images as the fields store them: one image in `attachmentId`, two
+    /// or more in `attachmentIds`.
+    pub fn with_images(mut self, ids: Vec<String>) -> Self {
+        if ids.len() == 1 {
+            self.attachment_id = ids.into_iter().next();
+            self.attachment_ids = Vec::new();
+        } else {
+            self.attachment_id = None;
+            self.attachment_ids = ids;
+        }
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

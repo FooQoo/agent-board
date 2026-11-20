@@ -263,10 +263,16 @@ export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
   globals: { locale: 'en' },
   render: (args) => (
     <StandaloneInsets>
-      <WiredPhoneStory {...args} />
+      {/* The frame the app puts around the phone screen: it must not add the insets a second time. */}
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
     </StandaloneInsets>
   ),
   play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>('.app');
+    await expect(Number.parseFloat(getComputedStyle(frame as HTMLElement).paddingTop)).toBe(0);
+    await expect(Number.parseFloat(getComputedStyle(frame as HTMLElement).paddingBottom)).toBe(0);
     const shell = canvasElement.querySelector<HTMLElement>('.monitor-shell');
     await expect(shell).not.toBeNull();
     const style = getComputedStyle(shell as HTMLElement);

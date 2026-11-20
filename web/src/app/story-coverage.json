@@ -102,6 +102,11 @@
               "id": "app-board-workspace--message-band-dark",
               "states": ["band in dark mode"],
               "interaction": false
+            },
+            {
+              "id": "app-board-workspace--landscape-safe-area",
+              "states": ["wide frame clears the notch and home indicator"],
+              "interaction": true
             }
           ]
         }

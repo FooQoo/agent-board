@@ -98,13 +98,13 @@ type ScreenArgs = Pick<
   MonitorLanesScreenProps,
   'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing'
 > & {
-  /** Opens a confirmation: `archive` and `move` use the card named by `pendingTask`. */
-  pending?: 'archive' | 'move' | 'bulk';
+  /** Opens a confirmation: `archive` uses the card named by `pendingTask`. */
+  pending?: 'archive' | 'bulk';
   pendingTask?: number;
   emptyDone?: boolean;
 };
 
-/** The phone monitor's lane view over sample cards. Confirming a move or an archive changes them. */
+/** The phone monitor's lane view over sample cards. A move changes them at once; an archive changes them once confirmed. */
 function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) {
   const { lanes, setLanes, messages, messagesApi, projectId } = useLaneFixture({ emptyDone });
   const find = (id?: number) =>
@@ -116,9 +116,7 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
     pending === 'bulk'
       ? { kind: 'bulk' }
       : pending && target
-        ? pending === 'archive'
-          ? { kind: 'archive', item: target }
-          : { kind: 'move', item: target, target: 'doing' }
+        ? { kind: 'archive', item: target }
         : null;
   const without = (id: number) => ({
     todo: lanes.todo.filter((item) => item.task.id !== id),
@@ -263,7 +261,7 @@ export const DoingLane: Story = {
 
 /**
  * A card slid to the left shows three tiles: the two other lanes and アーカイブ. Each tile is at
- * least 44px, and a lane tile opens the move question.
+ * least 44px, and a lane tile moves the card at once, with no question.
  */
 export const ArchiveRevealed: Story = {
   args: { initialLane: 'todo', previewRevealed: 15 },
@@ -276,9 +274,13 @@ export const ArchiveRevealed: Story = {
       await expect(tile).toBeVisible();
       await expect(tile.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
+    const count = (name: string) =>
+      Number(/\d+/.exec(tab(canvasElement, name).textContent ?? '')?.[0]);
+    const doing = count('進行中');
     await userEvent.click(card.getByRole('button', { name: '#15 を進行中へ移動' }));
-    const dialog = within(await within(document.body).findByRole('dialog'));
-    await expect(dialog.getAllByText(/#15/).length).toBeGreaterThan(0);
+    // No dialog opens: the card moves at once, and the lane counts follow.
+    await expect(within(document.body).queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(count('進行中')).toBe(doing + 1));
   },
 };
 

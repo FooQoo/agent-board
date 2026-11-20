@@ -56,20 +56,20 @@ export class TaskStatusChangedError extends Error {
 const COLUMNS: readonly ColumnName[] = ['todo', 'doing', 'done'];
 
 /**
- * Moves a task. With `fromStatus` (the status the page showed), a task that has moved on since is
- * refused, nothing is written, and `TaskStatusChangedError` names its current status.
+ * Moves a task as a person. No reason is sent, so the server writes the history entry from the
+ * move. `fromStatus` is the status the page showed: a task that has moved on since is refused,
+ * nothing is written, and `TaskStatusChangedError` names its current status.
  */
 export async function moveTask(
   projectId: ProjectId,
   id: number,
   taskStatus: ColumnName,
-  reason: string,
-  fromStatus?: ColumnName,
+  fromStatus: ColumnName,
 ) {
   try {
     return await postTask<{ task: Task; changed: boolean }>(
       `${projectPath(projectId)}/tasks/${id}/move`,
-      fromStatus === undefined ? { taskStatus, reason } : { taskStatus, reason, fromStatus },
+      { taskStatus, fromStatus },
     );
   } catch (cause) {
     const current = (cause instanceof WriteError ? cause.body : null) as {

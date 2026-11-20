@@ -60,21 +60,14 @@ fn a_history_entry_links_to_the_history_tab_of_the_card() {
         history.path,
         format!("/?project={PROJECT}&task=12&tab=history")
     );
-    let state = payload_of(
-        &event(Kind::State(StateChange::Done), None, ""),
-        Lang::En,
-        &origin(),
-    )
-    .unwrap();
-    assert_eq!(state.path, format!("/?project={PROJECT}&task=12"));
 }
 
 #[test]
 fn the_wording_follows_the_language() {
-    let e = event(Kind::State(StateChange::Done), None, "");
+    let e = event(Kind::History, None, "");
     let ja = payload_of(&e, Lang::Ja, &origin()).unwrap();
     assert_eq!(ja.title, "Make the thing");
-    assert_eq!(ja.body, "カードが完了しました");
+    assert_eq!(ja.body, "履歴が追加されました");
     assert_eq!(Lang::from_locale("ja"), Lang::Ja);
     assert_eq!(Lang::from_locale("en"), Lang::En);
     assert_eq!(Lang::from_locale("fr"), Lang::En);
