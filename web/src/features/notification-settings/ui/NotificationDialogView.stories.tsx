@@ -7,7 +7,7 @@ import { SettingsEntryRow } from '@/shared/ui/settings-entry-row';
 import { DEFAULT_NOTIFICATION_SETTINGS } from '../model';
 import { NotificationDialogView } from './NotificationDialogView';
 
-// The dialog the "Phone notifications" row opens: a modal on the PC, a bottom sheet on a phone.
+// The dialog the "Notifications" row opens: a modal on the PC, a bottom sheet on a phone.
 const meta = {
   title: 'Settings/NotificationDialogView',
   component: NotificationDialogView,
@@ -42,7 +42,7 @@ export const Desktop: Story = {
   play: async ({ args }) => {
     const dialog = await within(document.body).findByRole('dialog');
     // The dialog fades in, so wait until it is visible rather than asserting at once.
-    const heading = within(dialog).getByRole('heading', { name: 'Phone notifications' });
+    const heading = within(dialog).getByRole('heading', { name: 'Notifications' });
     await waitFor(() => expect(heading).toBeVisible());
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /^History additions/ }));
     await expect(args.onChange).toHaveBeenCalled();

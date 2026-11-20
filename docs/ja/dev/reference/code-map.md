@@ -70,7 +70,7 @@
 - `src/domain/markdown_blocks.rs`: 本文をトップレベルのMarkdownブロックに分けます。I/Oは行いません。
 - `web/src/shared/data/`: データ層です。`api/`は契約の型とDetailの解析、`core/`はReactに依存しないキャッシュ・スケジューラー・イベント接続、`react/`は画面が使うフックを置きます。[データの読み取りと更新](../concepts/server-and-ui.md#データの読み取りと更新)を参照してください。
 - `web/src/shared/markdown/`: Markdownの描画部です。`MarkdownBlocks`は本文のブロックを描き、大きい本文を仮想化します（`VirtualMarkdown.tsx`）。
-- `web/src/features/notification-settings/`: 設定ダイアログの「スマホの通知」の行と、それが開くダイアログ。読み取りと保存、およびサーバーと同じ種類と既定値を持ちます。
+- `web/src/features/notification-settings/`: 設定ダイアログの「通知」の行と、それが開くダイアログ。読み取りと保存、およびサーバーと同じ種類と既定値を持ちます。
 - `web/src/shared/preferences/`: ブラウザ側の保存した言語とカラーテーマ。読み取りと保存、ブラウザの最初の描画用の控え、`preferences`イベントを扱います。[サーバーと画面](../concepts/server-and-ui.md)を参照してください。
 - `web/.storybook/`: Storybookの設定、架空のfixture、decorator、通信ガード、共通部分のテストを置きます。UIのStoryと対応台帳は、説明するソースの近くに置きます。詳しくは[Storybookのセットアップと台帳](../getting-started/setup.md#storybook)を参照してください。
 - `tests/`: Rustの結合テストとCLIのテストを置きます。

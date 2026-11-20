@@ -2,7 +2,7 @@ import { expect, test } from '../helpers/fixtures';
 import { mainProject, resetBoard } from '../helpers/agboard';
 import { readBoardAfterReset } from '../helpers/ui';
 
-// The "Phone notifications" row of the settings dialog opens a dialog of its own. The choices are
+// The "Notifications" row of the settings dialog opens a dialog of its own. The choices are
 // saved at once through the real server, and the settings list no longer holds them.
 
 test.beforeEach(async ({ page }) => {
@@ -21,7 +21,7 @@ test('the row opens the notification dialog, a choice is saved, and focus return
   await settings.getByRole('button', { name: 'Notification settings' }).click();
   await expect(settings).toHaveCount(0);
 
-  const dialog = page.getByRole('dialog', { name: 'Phone notifications' });
+  const dialog = page.getByRole('dialog', { name: 'Notifications' });
   await expect(dialog).toBeVisible();
   // The defaults: results only.
   await expect(dialog.getByRole('checkbox', { name: /^Results/ })).toBeChecked();
@@ -39,9 +39,9 @@ test('the row opens the notification dialog, a choice is saved, and focus return
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Notification settings' }).click();
   await expect(
-    page.getByRole('dialog', { name: 'Phone notifications' }).getByRole('checkbox', { name: /^History additions/ }),
+    page.getByRole('dialog', { name: 'Notifications' }).getByRole('checkbox', { name: /^History additions/ }),
   ).toBeChecked();
 
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Phone notifications' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Notifications' })).toHaveCount(0);
 });
