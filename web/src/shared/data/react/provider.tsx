@@ -41,3 +41,8 @@ export function useDataCore(): DataCore {
   if (!core) throw new Error('useDataCore needs a DataProvider above it');
   return core;
 }
+
+/** The core above, or null where there is no provider (a Story, a test of a single part). */
+export function useOptionalDataCore(): DataCore | null {
+  return useContext(Context);
+}

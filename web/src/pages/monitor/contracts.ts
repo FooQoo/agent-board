@@ -97,6 +97,10 @@ export interface MonitorViewProps {
   messagesApi?: MessagesApi;
   /** An answer or a withdrawal was saved: the screen reads the project again without waiting. */
   onMessagesChanged?(): void;
+  /** The address asks for the messages on the Summary tab: the list opens on it once. */
+  summaryLink?: boolean;
+  /** The list that opened for that request was closed. */
+  onSummaryLinkClose?(): void;
   /** The bar's Ask item opens "Ask AI"; the screen leaves it to this callback. */
   onAsk?(): void;
   /** The Ask sheet is open, so the bar shows Ask as the open item. */

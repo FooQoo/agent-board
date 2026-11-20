@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { MessageCenter } from '../features/tasks/messages/MessageCenter';
-import { messagesApi } from '../features/tasks/messages/api';
+import { messagesApi as productMessagesApi } from '../features/tasks/messages/api';
+import type { MessagesApi } from '../features/tasks/messages/model/messages';
 import { Header } from '../shared/ui/app-header/Header';
 import { ProjectSwitcher } from '../features/projects/switcher/ProjectSwitcher';
 import { boardSettingsSlot } from './boardSettingsSlot';
@@ -22,7 +23,7 @@ import type { AppControllerModel, AppWorkspaceActions } from './contracts';
  * The board's band of messages, with the list it opens.
  * The PC band has no Ask button: "Ask AI" is in the header.
  */
-function boardBand(model: AppControllerModel) {
+function boardBand(model: AppControllerModel, messagesApi: MessagesApi) {
   const { messages, activeId, boardData } = model;
   if (boardData === null || !isProjectId(activeId)) return null;
   return (
@@ -49,11 +50,14 @@ export function BoardWorkspace({
   model,
   actions,
   residentSessions = false,
+  messagesApi = productMessagesApi,
 }: {
   model: AppControllerModel;
   actions: AppWorkspaceActions;
   /** Show the resident-session footer indicator and dialog; they read the board's own API, which a Story has none of. */
   residentSessions?: boolean;
+  /** The messages and summaries API; a Story passes samples, as it has no product API. */
+  messagesApi?: MessagesApi;
 }) {
   const {
     session,
@@ -152,7 +156,7 @@ export function BoardWorkspace({
             layoutRef={attachLayoutRef}
             projectId={activeId as ProjectId}
             onAnswer={model.messages.openForTask}
-            band={boardBand(model)}
+            band={boardBand(model, messagesApi)}
             onOpenEpic={actions.onOpenEpic}
             onMove={actions.onMove}
             onReorder={actions.onReorder}

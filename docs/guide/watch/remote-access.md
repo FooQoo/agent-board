@@ -12,7 +12,7 @@ The monitor shows one project at a time. The address names it (`?project=`), and
 
 A bar at the bottom of the screen holds the main places, left to right: **Board**, **Messages**, **Ask**, **Archive**, and **Settings**. It stays clear of the home indicator. **Ask** is in the middle and a little stronger than the rest. Everything except **Board** opens a drawer that slides up over the board, and **Board** closes it.
 
-- **Messages** opens the open messages in two tabs, **AI's questions** and **Your requests**; pick a question to answer it there, with **Back to list** (or **Later**) and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)). The number on its icon counts the questions that wait for your answer, in the theme's accent color. It disappears when none wait.
+- **Messages** opens the open messages in three tabs, **AI's questions**, **Your requests**, and **Summary**; pick a question to answer it there, with **Back to list** (or **Later**) and **Send answer** pinned at the bottom (see [Decisions](../delegate/decisions#answer-on-your-phone)). The number on its icon counts the questions that wait for your answer, in the theme's accent color. It disappears when none wait.
 - **Ask** opens the request form (see [Ask AI](./editing#ask-ai)). It has no number.
 - **Archive** and **Settings** are described under [Archive all done tasks](#archive-all-done-tasks) and in [Open it on the phone](#open-it-on-the-phone).
 

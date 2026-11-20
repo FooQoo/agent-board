@@ -97,6 +97,21 @@ export function MonitorView(props: MonitorViewProps) {
     onDetailOpenChange?.(detail.open);
     return () => onDetailOpenChange?.(false);
   }, [detail.open, onDetailOpenChange]);
+  // `?messages=summary` opens the list on the Summary tab once; closing it ends the request.
+  const { summaryLink, onSummaryLinkClose } = props;
+  const summaryOpened = useRef(false);
+  const { open: openPanel } = panel;
+  const panelClosed = panel.target === null;
+  useEffect(() => {
+    if (!summaryLink || !props.messagesApi) return;
+    if (!summaryOpened.current) {
+      summaryOpened.current = true;
+      openPanel({ tab: 'summary' });
+    } else if (panelClosed) {
+      summaryOpened.current = false;
+      onSummaryLinkClose?.();
+    }
+  }, [summaryLink, props.messagesApi, openPanel, panelClosed, onSummaryLinkClose]);
   const { onMessagesOpenChange } = props;
   const listOpen = panel.target !== null;
   useEffect(() => {
