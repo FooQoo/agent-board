@@ -45,7 +45,7 @@ When an agent delivers a result with `agboard result add` (see [Deliver a result
 
 - a badge, **In progress** or **Final**, with its version and the time it was delivered;
 - the summary;
-- the image, if there is one. Select it to see it larger;
+- the images, if there are any. One image is shown large; several images are a row of thumbnails that scrolls sideways. Select one to see it larger, and use the arrows to step through the others;
 - the link or storage location of the main artifact, if there is one. When it is an `http:` or `https:` URL, such as a pull request, it is a link: tap or select it to open it in a new tab (on an iPhone Home Screen app, in Safari). Any other value, such as a file path or a `file:` address, is shown as text only, because the artifact may exist only on the PC.
 
 A result is also readable on its own from an address that names the project, the task, and the version: `https://<host>/?project=<ProjectId>&task=<id>&result=<version>`. Opening it shows that task's details with the Results tab selected, and scrolls to the result and highlights it. This works on the phone through [remote access](./remote-access.md#open-a-result-from-a-link) and on the PC board, and it works even if another project was on the screen. If the task has no such version, the tab says so and lists the results it does have.
@@ -58,9 +58,9 @@ On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, an
 
 In a window narrower than 1024 px, **Docs**, **Epics**, and **Archive** in the header show only their icons, all at the same width, so the project name keeps its room.
 
-Drag a task to another column and confirm the move. The reason field is optional; if you leave it empty, a reason is generated from the move.
+Drag a task to another column to move it. The move is made at once, with no confirmation, and the history records a reason generated from the move.
 
-If an agent or another browser moves the task while the dialog is open, the move is not made. The dialog shows the column the task is in now and says so, and the reason you typed stays. Confirm again to move it from there.
+If an agent or another browser moved the task after the board last showed it, the move is not made. The card goes back to the column it is in now, and a short notice names that column. Drag it again to move it from there.
 
 The columns mean:
 

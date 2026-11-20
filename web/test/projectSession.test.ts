@@ -16,7 +16,7 @@ function run(state: SessionState, ...actions: SessionAction[]): SessionState {
   return actions.reduce(sessionReducer, state);
 }
 
-const open = (operationId: number, projectId = A, kind: 'create' | 'move' = 'create') =>
+const open = (operationId: number, projectId = A, kind: 'create' | 'edit' = 'create') =>
   ({
     type: 'OPEN_OPERATION',
     operationId,
@@ -66,7 +66,7 @@ describe('sessionReducer: operations hold the switch', () => {
   });
 
   it('refuses to open a second operation while one is open', () => {
-    const state = run(initSession(A), open(1), open(2, A, 'move'));
+    const state = run(initSession(A), open(1), open(2, A, 'edit'));
     expect(state.operation?.id).toBe(1);
   });
 
@@ -135,7 +135,7 @@ describe('sessionReducer: operations hold the switch', () => {
       { type: 'ANSWER_LEASE_STARTED', key: keyA, projectId: A },
       { type: 'ANSWER_LEASE_STARTED', key: keyB, projectId: A },
       { type: 'URL_REQUESTED', projectId: B },
-      open(1, A, 'move'),
+      open(1, A, 'edit'),
       { type: 'OPERATION_FINISHED', operationId: 1 },
     );
     expect(held.activeProjectId).toBe(A);
@@ -159,7 +159,7 @@ describe('sessionReducer: operations hold the switch', () => {
       initSession(A),
       open(1),
       { type: 'OPERATION_FINISHED', operationId: 1 },
-      open(2, A, 'move'),
+      open(2, A, 'edit'),
       { type: 'URL_REQUESTED', projectId: B },
       { type: 'OPERATION_FINISHED', operationId: 1 },
       { type: 'OPERATION_CANCELLED', operationId: 1 },

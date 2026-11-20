@@ -65,50 +65,38 @@ test('agboard mv moves a task without reloading', async ({ page }) => {
   await notReloaded(page);
 });
 
-test('dragging a task opens the reason dialog before moving it', async ({ page }) => {
-  await dragToLane(page, 16, 'Doing');
-  const move = page.getByRole('dialog');
-  await expect(move).toContainText('Todo');
-  await expect(move).toContainText('Doing');
-  await move.getByLabel('Reason').fill('Move after reviewing the board.');
-  await expect(move.getByLabel('Reason')).toHaveValue('Move after reviewing the board.');
+test('dragging a task moves it at once, with no dialog and a generated reason', async ({ page }) => {
   const moveResponse = page.waitForResponse(
     (response) => response.url().endsWith('/tasks/16/move') && response.request().method() === 'POST',
   );
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  await dragToLane(page, 16, 'Doing');
   const response = await moveResponse;
   expect(response.status(), await response.text()).toBe(200);
-  await expect(move).toBeHidden();
+  expect(JSON.parse(response.request().postData() ?? '{}')).toEqual({ taskStatus: 'doing', fromStatus: 'todo' });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
   await task(page, 16).click();
   const detail = page.getByRole('complementary', { name: 'Task details' });
   await detail.getByRole('tab', { name: /^History/ }).click();
-  await expect(detail.getByRole('listitem').first()).toContainText('Move after reviewing the board.');
+  await expect(detail.getByRole('listitem').first()).toContainText('Moved task from Todo to Doing');
   await notReloaded(page);
 });
 
-test('a move after an external lane change is refused, shows the current status, and records the real transition', async ({ page }) => {
-  await dragToLane(page, 16, 'Doing');
-  const move = page.getByRole('dialog');
-  const reason = move.getByRole('textbox', { name: 'Reason (optional)' });
-  await expect(reason).toHaveValue('');
+test('a move after an external lane change is refused, the card returns to its lane, and a notice says so', async ({ page }) => {
   const before = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history.length;
-  agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
-  // The open dialog holds the stream's updates back, so it still shows the move from Todo. The server
-  // refuses a move from a status the task has left, writes nothing, and names where the task is now.
-  const submit = move.getByRole('button', { name: 'Move', exact: true });
-  await submit.click();
-  await expect(move.getByRole('alert')).toContainText('Another change moved this task to Done.');
-  await expect(move.getByRole('group', { name: 'Status change' })).toContainText('Done');
+  // The page still shows #16 in Todo when the CLI moves it to Done. The page's move starts from Todo, so
+  // the server refuses it, writes nothing, and names where the task is now.
+  await page.route('**/api/projects/*/tasks/16/move', async (route) => {
+    agboardOk(mainProject, ['mv', '16', 'done', '--actor', 'human']);
+    await route.continue();
+  });
+  await dragToLane(page, 16, 'Doing');
+  await expect(page.locator('.transient-notice')).toContainText('This task was moved by another change, so it was not moved. It is now in Done.');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(lane(page, 'Done').getByRole('button', { name: /^#16 / })).toBeVisible();
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toHaveCount(0);
   expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history).toHaveLength(before + 1);
-  // Confirming again moves the task from the status the dialog now shows.
-  await submit.click();
-  await expect(move).toHaveCount(0);
-  await expect(task(page, 16)).toHaveCount(1);
-  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 AI Idle Refine the empty board / })).toBeVisible();
-  const stored = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task;
-  expect(stored.history.at(-1)).toEqual({ at: expect.any(String), reason: 'User changed the status from Done to Doing.' });
   await notReloaded(page);
 });
 
@@ -151,7 +139,7 @@ test('an open task follows its move to another lane while its details stay open'
   await notReloaded(page);
 });
 
-test('a task for the user added from the CLI appears live and moves with a reason', async ({ page }) => {
+test('a task for the user added from the CLI appears live and moves with a generated reason', async ({ page }) => {
   agboardOk(mainProject, ['add', 'Review the release notes', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Check the wording with the release owner.')]);
 
   const userTask = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) });
@@ -170,14 +158,10 @@ test('a task for the user added from the CLI appears live and moves with a reaso
   await page.mouse.up();
   await waitForDrop(page);
 
-  const move = page.getByRole('dialog');
-  await expect(move).toContainText('Todo');
-  await expect(move).toContainText('Doing');
-  await move.getByLabel('Reason').fill('The user is starting review now.');
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) })).toBeVisible();
   await panel.getByRole('tab', { name: /^History/ }).click();
-  await expect(panel.getByRole('listitem').first()).toContainText('The user is starting review now.');
+  await expect(panel.getByRole('listitem').first()).toContainText('Moved task from Todo to Doing');
   await expect(panel.getByRole('listitem').first().getByRole('img')).toHaveCount(0);
 });
 
