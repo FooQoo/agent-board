@@ -7,6 +7,7 @@ import { useLaneOverscroll } from '../hooks/useLaneOverscroll';
 import { type PullState, REFRESHING_HEIGHT, usePullToRefresh } from '../hooks/usePullToRefresh';
 import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
+import { BulkArchiveTile } from './BulkArchiveTile';
 import { MonitorTask } from './MonitorTask';
 import { PullIndicator } from './PullIndicator';
 import { SwipeableCard } from './SwipeableCard';
@@ -28,7 +29,8 @@ export interface MonitorLanesProps {
   onOpenAnswer?: (item: MonitorTaskModel) => void;
   /**
    * Swiping left on the last lane (Done) past its end, or the button after its cards, asks to
-   * archive every done card; the screen opens the confirmation. Without it neither is offered.
+   * archive every done card; the screen opens the confirmation. While the swipe goes, the lane
+   * follows the finger and uncovers an Archive all tile. Without it neither is offered.
    */
   onBulkArchive?: () => void;
   id?: string;
@@ -36,6 +38,8 @@ export interface MonitorLanesProps {
   tabsRef?: RefObject<HTMLElement | null>;
   /** A story's still picture: this card has its left-swipe tiles showing. */
   previewRevealed?: number;
+  /** A story's still picture: the Done lane is dragged left this far (px), showing the tile. */
+  previewBulkDrag?: number;
   /** Pulling a lane down from its top refreshes; without this the lanes cannot be pulled. */
   onRefresh?: () => void;
   /** The refresh the person asked for is running. */
@@ -50,7 +54,7 @@ const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
  * The phone monitor's lanes: one lane on screen, the other two beside it in a carousel. Tabs and a
  * sideways swipe anywhere move it. A card held for a moment is chosen and shows a focus
  * ring; a later swipe on it slides it left to show the lane on the right and the archive, or right
- * to show the lane on the left. A swipe to the left past the Done lane asks for the bulk archive. Nothing here writes: every action is a callback.
+ * to show the lane on the left. A swipe to the left past the Done lane asks for the bulk archive, and the lane follows the finger to show an Archive all tile. Nothing here writes: every action is a callback.
  */
 export function MonitorLanes({
   lanes,
@@ -64,6 +68,7 @@ export function MonitorLanes({
   id,
   tabsRef,
   previewRevealed,
+  previewBulkDrag,
   onRefresh,
   refreshing,
   previewPull,
@@ -89,7 +94,9 @@ export function MonitorLanes({
   };
   const last = LANES[LANES.length - 1];
   const canBulk = onBulkArchive !== undefined && lanes.done.length > 0;
-  useLaneOverscroll(viewportRef, lane === last && canBulk, () => onBulkArchive?.());
+  const doneRef = useRef<HTMLElement | null>(null);
+  const bulk = useLaneOverscroll(doneRef, lane === last && canBulk, () => onBulkArchive?.());
+  const bulkOffset = previewBulkDrag === undefined ? bulk.offset : -previewBulkDrag;
   const pull = usePullToRefresh({ container: viewportRef, lane, onRefresh, refreshing });
   const shown =
     previewPull === undefined
@@ -115,16 +122,24 @@ export function MonitorLanes({
         {LANES.map((name) => {
           const items = lanes[name];
           const laneEmpty = items.length === 0;
+          const isLast = name === last;
           return (
             <section
               key={name}
+              ref={isLast ? doneRef : undefined}
+              {...(isLast ? bulk.handlers : {})}
+              onClickCapture={isLast ? bulk.onClickCapture : undefined}
               className="monitor-lane"
               role="tabpanel"
               aria-labelledby={`lane-tab-${name}`}
               data-lane={name}
               inert={name !== lane}
             >
-              <div className="monitor-lane__scroll">
+              <div
+                className="monitor-lane__scroll"
+                data-dragging={(isLast && bulk.dragging) || undefined}
+                style={isLast ? { transform: `translate3d(${bulkOffset}px, 0, 0)` } : undefined}
+              >
                 {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
                 {laneEmpty ? (
                   <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
@@ -171,6 +186,7 @@ export function MonitorLanes({
                   </button>
                 )}
               </div>
+              {isLast && canBulk && <BulkArchiveTile offset={bulkOffset} />}
             </section>
           );
         })}

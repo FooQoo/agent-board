@@ -505,8 +505,22 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-dragging",
+              "states": ["Done lane dragged left", "Archive all tile showing"],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor-components-monitorlanes--bulk-archive-by-swipe",
-              "states": ["swipe left past the Done lane", "bulk archive drawer"],
+              "states": [
+                "swipe left on the Done lane",
+                "tile follows the finger",
+                "bulk archive drawer"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-short-swipe",
+              "states": ["short swipe springs back"],
               "interaction": true
             },
             {

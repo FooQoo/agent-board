@@ -15,12 +15,17 @@ export interface SideSwipeOptions {
   /** The press is sliding: `dx` px sideways from where it began. */
   onSlide: (dx: number) => void;
   /**
-   * The slide ended: the distance and the speed (px/ms, negative to the left) at the end. It is
-   * `cancelled` when the browser took the press away.
+   * The slide ended: the distance and the speed (px/ms, negative to the left) at the end, and how
+   * far it also went up or down (`dy`). It is `cancelled` when the browser took the press away.
    */
-  onRelease: (dx: number, velocity: number, cancelled: boolean) => void;
+  onRelease: (dx: number, velocity: number, cancelled: boolean, dy: number) => void;
   /** Presses that start inside an element matching this selector are not read. */
   ignore?: string;
+  /**
+   * Whether a move of `dx` px sideways is this element's. A press that first moves where this says
+   * no is left to the outer swipe area, whose touch and mouse moves are then not held back.
+   */
+  accepts?: (dx: number) => boolean;
   disabled?: boolean;
 }
 
@@ -53,13 +58,17 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, options: SideSw
     const element = ref.current;
     if (!element) return;
     // React's touch handlers are passive, so these are added by hand.
+    const mine = (x: number) => {
+      const { accepts } = latest.current;
+      return phase.current === 'slide' || !accepts || accepts(x - start.current.x);
+    };
     const touch = (event: TouchEvent) => {
-      if (!active.current) return;
+      if (!active.current || !mine(event.touches[0]?.clientX ?? start.current.x)) return;
       event.stopPropagation();
       if (phase.current === 'slide' && event.cancelable) event.preventDefault();
     };
     const mouse = (event: MouseEvent) => {
-      if (active.current) event.stopPropagation();
+      if (active.current && mine(event.clientX)) event.stopPropagation();
     };
     element.addEventListener('touchmove', touch, { passive: false });
     element.addEventListener('mousemove', mouse);
@@ -74,7 +83,12 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, options: SideSw
     const was = phase.current;
     phase.current = 'idle';
     if (was === 'slide')
-      latest.current.onRelease(event.clientX - start.current.x, velocity.current, cancelled);
+      latest.current.onRelease(
+        event.clientX - start.current.x,
+        velocity.current,
+        cancelled,
+        event.clientY - start.current.y,
+      );
   };
 
   return {
@@ -123,6 +137,10 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, options: SideSw
           const axis = swipeAxis(dx, dy);
           if (axis === 'y') phase.current = 'idle';
           if (axis !== 'x') return;
+          if (latest.current.accepts && !latest.current.accepts(dx)) {
+            phase.current = 'idle';
+            return;
+          }
           phase.current = 'slide';
           moved.current = true;
           try {

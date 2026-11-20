@@ -44,7 +44,7 @@ To restore a task, swipe its card to the left. A **Restore** button appears on t
 
 ### Archive all done tasks
 
-On the Done lane, swipe left past the last lane to open **Archive completed tasks** as a drawer, which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The **Archive all** button after the last Done card does the same, for a keyboard or a screen reader. Neither appears while no task is done.
+On the Done lane, swipe left past the last lane to open **Archive completed tasks** as a drawer. While you swipe, the lane follows your finger and an Archive all icon appears on the right, as the buttons of a card do; swipe far enough and let go to open it, or let go sooner and the lane springs back. The drawer which lists every task in the Done lane that would be archived; choose **Archive** with the count to confirm. The **Archive all** button after the last Done card does the same, for a keyboard or a screen reader. Neither appears while no task is done.
 
 ### Switch sheets from the bottom bar
 

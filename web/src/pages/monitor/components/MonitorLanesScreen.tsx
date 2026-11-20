@@ -18,7 +18,10 @@ import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
 
 export interface MonitorLanesScreenProps
-  extends Pick<MonitorLanesProps, 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing'> {
+  extends Pick<
+    MonitorLanesProps,
+    'previewRevealed' | 'previewBulkDrag' | 'previewPull' | 'onRefresh' | 'refreshing'
+  > {
   lanes: LaneItems;
   projectName: string;
   /** The lane the screen opens on. After that the tabs and the swipes own it. */
@@ -66,6 +69,7 @@ export function MonitorLanesScreen({
   archive,
   onRestore,
   previewRevealed,
+  previewBulkDrag,
   previewPull,
   onRefresh,
   refreshing,
@@ -129,6 +133,7 @@ export function MonitorLanesScreen({
             : undefined
         }
         previewRevealed={previewRevealed}
+        previewBulkDrag={previewBulkDrag}
         previewPull={previewPull}
         onRefresh={onRefresh}
         refreshing={refreshing}
