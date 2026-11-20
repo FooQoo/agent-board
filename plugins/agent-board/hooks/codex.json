@@ -24,6 +24,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agboard hook --agent codex",
+            "timeout": 10,
+            "additionalContextLimit": 0
+          }
+        ]
+      }
     ]
   }
 }

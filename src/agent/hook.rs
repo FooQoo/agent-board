@@ -95,6 +95,8 @@ struct HookInput {
     hook_event_name: Option<serde_json::Value>,
     #[serde(default)]
     cwd: Option<serde_json::Value>,
+    #[serde(flatten)]
+    stop: super::stop::StopFields,
 }
 
 fn hook_output(
@@ -134,6 +136,9 @@ fn hook_output(
         .as_ref()
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    if event == "Stop" && matches!(agent, "claude" | "codex") {
+        return super::stop::run_hook(shared, project, input.cwd.as_ref(), &input.stop);
+    }
     let allowed = match agent {
         "claude" => matches!(event, "PostToolUse" | "PostToolUseFailure" | "SessionStart"),
         "codex" => matches!(event, "PostToolUse" | "SessionStart"),
@@ -176,6 +181,11 @@ pub fn with_session_notice(output: Option<String>, notice: Option<String>) -> Op
         .unwrap_or_default();
     specific["additionalContext"] = serde_json::Value::String(format!("{context}\n\n{notice}"));
     Some(value.to_string())
+}
+
+/// [`hook_folder`] for the Stop hook, which skips instead of reporting.
+pub(super) fn folder_or_none(cwd: Option<&serde_json::Value>) -> Option<PathBuf> {
+    hook_folder(cwd).ok()
 }
 
 /// The folder the hook runs for: a non-empty absolute `cwd` from the input, or
