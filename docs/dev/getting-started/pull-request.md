@@ -16,6 +16,7 @@ Before you change behavior, read the [developer reference](../index.md) for the 
 - Never commit machine-specific absolute paths to hooks, configuration, scripts, documentation, or generated artifacts, including personal home directories and local checkout paths.
 - Use repository-relative paths for project files and executables, `PATH` for installed commands, or environment variables resolved at runtime. Keep machine-specific overrides in ignored local files.
 - Before committing, inspect the staged diff for personal paths such as `/Users/` and `/home/`, and remove them. Check that changed hook commands work without depending on a particular user's directory layout.
+- When you add an `agboard` command or a top-level field of the progress table, decide whether it creates something an agent could forget. Add a nudge rule, or record `NoRule` with a reason, in `src/nudge/coverage.rs`; the tests fail until you do. See [When you add a feature](../concepts/agents.md#when-you-add-a-feature).
 
 ## UI changes
 

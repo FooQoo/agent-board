@@ -1,78 +1,15 @@
-//! The Stop hook: at the end of a turn, runs a list of rules that each give
-//! checklist items, and blocks the turn once, with the checklist, when there
-//! is any item.
-//!
-//! A rule is an id and a check (see [`rules`]); adding one is adding an entry
-//! to [`rules::RULES`]. Every failure means "do nothing": this hook must never
-//! fail a turn.
+//! The Stop hook: at the end of a turn, runs the rules of the nudge registry
+//! (`crate::nudge`) that apply at the turn end, and blocks the turn once, with
+//! the checklist, when any gives a reminder. Every failure means "do nothing":
+//! this hook must never fail a turn.
 
-mod rules;
-mod turn;
-
-use std::cell::OnceCell;
 use std::path::Path;
 
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{ProjectId, validate_project_name};
 use crate::file_store::FileStore;
-use crate::progress::{self, Include, Progress};
-
-pub(crate) use rules::{Item, Kind, RULES, Rule};
-pub(crate) use turn::{Call, Turn};
-
-/// What a rule can look at.
-pub(crate) struct Ctx<'a> {
-    /// The reply text from the Stop input, when it has one.
-    pub message: Option<&'a str>,
-    /// The turn as the transcript shows it. `None` when it cannot be read.
-    pub turn: Option<Turn>,
-    board: Option<(&'a FileStore, &'a ProjectId)>,
-    progress: OnceCell<Option<Progress>>,
-}
-
-impl<'a> Ctx<'a> {
-    pub(crate) fn new(
-        message: Option<&'a str>,
-        turn: Option<Turn>,
-        board: Option<(&'a FileStore, &'a ProjectId)>,
-    ) -> Self {
-        Ctx {
-            message,
-            turn,
-            board,
-            progress: OnceCell::new(),
-        }
-    }
-
-    /// The last reply: from the input, else from the transcript.
-    pub(crate) fn reply(&self) -> Option<&str> {
-        self.message
-            .filter(|text| !text.trim().is_empty())
-            .or_else(|| self.turn.as_ref()?.last_text.as_deref())
-    }
-
-    /// The tool calls of the turn, empty when it cannot be read.
-    pub(crate) fn calls(&self) -> &[Call] {
-        self.turn.as_ref().map_or(&[], |t| &t.calls)
-    }
-
-    /// The bound project's progress table, read once and only when a rule
-    /// asks for it. `None` when it cannot be read.
-    pub(crate) fn progress(&self) -> Option<&Progress> {
-        self.progress
-            .get_or_init(|| {
-                let (store, project) = self.board?;
-                let snapshot = store.board(project).ok()?;
-                Some(progress::build_with(
-                    &snapshot,
-                    store.shared_dir(),
-                    SystemClock.now(),
-                    Include::default(),
-                ))
-            })
-            .as_ref()
-    }
-}
+use crate::nudge::{self, Facts, Kind, RULES, Rule};
+use crate::progress::{self, Include};
 
 /// The fields of a Stop event's input the rules use.
 #[derive(serde::Deserialize, Default)]
@@ -121,20 +58,25 @@ pub(crate) fn run(input: &StopFields, shared: &Path, project: &ProjectId) -> Opt
     let turn = input
         .transcript_path
         .as_deref()
-        .and_then(|path| turn::read_turn(path, input.turn_id.as_deref()));
-    let ctx = Ctx::new(
-        input.last_assistant_message.as_deref(),
-        turn,
-        Some((&store, project)),
-    );
-    decide(&ctx, RULES)
+        .and_then(|path| nudge::read_turn(path, input.turn_id.as_deref()));
+    let now = SystemClock.now();
+    let progress = store.board(project).ok().map(|snapshot| {
+        progress::build_with(&snapshot, store.shared_dir(), now, Include::default())
+    });
+    let facts = Facts {
+        progress: progress.as_ref(),
+        turn: turn.as_ref(),
+        message: input.last_assistant_message.as_deref(),
+        now,
+    };
+    decide(&facts, RULES)
 }
 
-/// Runs every rule; one block with the checklist, or `None` when no rule
-/// has an item. Items the hook confirmed (`NG`) are listed apart from items
+/// Runs every rule shown at the turn end; one block with the checklist, or
+/// `None` when no rule has an item. Items the hook confirmed (`NG`) are listed apart from items
 /// the agent must judge (`[ ]`).
-pub(crate) fn decide(ctx: &Ctx, rules: &[Rule]) -> Option<String> {
-    let items: Vec<Item> = rules.iter().flat_map(|rule| (rule.check)(ctx)).collect();
+pub(crate) fn decide(facts: &Facts, rules: &[Rule]) -> Option<String> {
+    let items = nudge::turn_end_reminders(facts, rules);
     if items.is_empty() {
         return None;
     }
@@ -161,5 +103,3 @@ pub(crate) fn decide(ctx: &Ctx, rules: &[Rule]) -> Option<String> {
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod turn_tests;

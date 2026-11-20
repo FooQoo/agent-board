@@ -83,6 +83,7 @@
 
 - `src/setup/`: `mod.rs`（エージェントとオプション）、`prepare.rs`（読み取りだけの計画）、`execute.rs`（計画の実行）、`report.rs`（テキストとJSONの結果、終了コード）。`plan.rs`・`codex.rs`・`claude.rs`が設定の変更を求め、`apply.rs`と`apply/files.rs`がバックアップを取りながら書き込みます。`env.rs`はパスを解決し、`agent_cli.rs`はエージェントのコマンドを実行し、`plugin.rs`はマーケットプレイスからプラグインを導入し、`trust.rs`は`codex app-server`を通してCodexのhookを信頼します。
 - `src/cli/commands/setup.rs`: `agboard setup`と`agboard update`のオプション、エージェントの選択、確認の質問。`setup_remote.rs`は`agboard setup remote`と、`setup`の任意のリモートアクセスの手順、`remote.rs`は`agboard show remote`です。`src/cli/run/remote.rs`は、プロジェクトの保存領域が要らないときに、この二つを実行します。`src/remote_settings.rs`は、保存するngrok設定の、共有された検証と保存です。
+- `src/nudge/`: エージェントが忘れやすいことのリマインダー。`mod.rs`にルールの登録簿の型と2つの実行方法（進行表向けの`state_reminders`、Stopフック向けの`turn_end_reminders`）、`rules.rs`に`RULES`の一覧、`turn.rs`にClaude CodeとCodexのトランスクリプトの読み取り、`cases.rs`に全ルールのテストケース、`coverage.rs`に全コマンドと進行表のフィールドをルールに対応付ける表があります。Stopフック本体は`src/agent/stop/`です。[忘れごとのルール](../concepts/agents.md#nudge-rules)を参照してください。
 - `src/skills/`: `agboard skills`が出力する`agent-board`スキルの本文（`agent-board.md`、`topics/`）。
 - `src/plugin_hash.rs`、`src/setup/auto_update.rs`、`src/setup/auto_update/`: プラグインの内容のハッシュ（`build.rs`が計算）と、Hookの自動更新、そのロックと記録。`tests/plugin_auto_update.rs`と`tests/skills_command.rs`がテストします。
 - `tests/setup.rs`と`tests/setup_plugin.rs`: 偽のエージェントのコマンド（`tests/support/fake_agents.rs`）を相手にしたsetupとupdateのテスト。`tests/plugin_layout.rs`は、マーケットプレイスとプラグインのファイルと、その版を確かめます。
