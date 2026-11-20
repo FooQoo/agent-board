@@ -53,6 +53,22 @@ pub(super) async fn record_all(
     .ok()
 }
 
+/// Add the window that ends now for the projects that are not retrying an earlier one. A project
+/// that recovered from an earlier window continues from that window's end, not from the shared
+/// floor.
+pub(super) fn add_new_windows(
+    windows: &mut Vec<(ProjectId, Pending)>,
+    window: Pending,
+    projects: Vec<ProjectId>,
+    resume: &mut HashMap<ProjectId, DateTime<Utc>>,
+) {
+    let retrying: Vec<ProjectId> = windows.iter().map(|(id, _)| id.clone()).collect();
+    for id in projects.into_iter().filter(|id| !retrying.contains(id)) {
+        let floor = resume.remove(&id).unwrap_or(window.floor);
+        windows.push((id, Pending { floor, ..window }));
+    }
+}
+
 /// Follow the clock and record a summary each time a window ends. The task ends with the server.
 ///
 /// A window closes for every project when it ends. A project that cannot be read or written is
@@ -66,6 +82,7 @@ pub(in crate::server::push_delivery) fn start(weak: Weak<AppState>, dispatcher: 
         tick.tick().await;
         let mut schedule = Schedule::new((dispatcher.now)(), None);
         let mut pending: HashMap<ProjectId, Pending> = HashMap::new();
+        let mut resume: HashMap<ProjectId, DateTime<Utc>> = HashMap::new();
         loop {
             tick.tick().await;
             let Some(state) = weak.upgrade() else { return };
@@ -75,9 +92,11 @@ pub(in crate::server::push_delivery) fn start(weak: Weak<AppState>, dispatcher: 
                 // Off: counting starts again when it is switched on.
                 schedule.mark(now);
                 pending.clear();
+                resume.clear();
                 continue;
             }
             let mut windows: Vec<(ProjectId, Pending)> = pending.drain().collect();
+            let retried = windows.clone();
             if schedule.due(now, minutes) {
                 let window = Pending {
                     floor: schedule.since(minutes),
@@ -87,13 +106,7 @@ pub(in crate::server::push_delivery) fn start(weak: Weak<AppState>, dispatcher: 
                     // recorded, never sent after it comes back.
                     entrance_up: super::super::runtime::entrance_up(&state),
                 };
-                let retrying: Vec<ProjectId> = windows.iter().map(|(id, _)| id.clone()).collect();
-                windows.extend(
-                    project_ids(&state)
-                        .into_iter()
-                        .filter(|id| !retrying.contains(id))
-                        .map(|id| (id, window)),
-                );
+                add_new_windows(&mut windows, window, project_ids(&state), &mut resume);
                 schedule.mark(now);
             }
             if windows.is_empty() {
@@ -102,6 +115,13 @@ pub(in crate::server::push_delivery) fn start(weak: Weak<AppState>, dispatcher: 
             let Some((written, failed)) = record_all(state.shared.clone(), windows).await else {
                 continue;
             };
+            // A retry that recovered with nothing to write stores no summary, so its end is
+            // kept: the project's next window starts there, not at the later shared floor.
+            for (id, w) in &retried {
+                if !failed.iter().any(|(f, _)| f == id) {
+                    resume.insert(id.clone(), w.to);
+                }
+            }
             pending.extend(failed);
             for (project, summary, entrance_up) in &written {
                 let ctx = super::super::runtime::context(&state, *entrance_up)
