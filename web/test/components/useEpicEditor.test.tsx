@@ -43,7 +43,10 @@ function fakeApi(calls: string[]): EpicApi {
     addImages: vi.fn(async () => void calls.push('addImages')),
     removeImage: vi.fn(async () => void calls.push('removeImage')),
     save: vi.fn(async () => void calls.push('save')),
-    saveWaves: vi.fn(async (waves: number[][]) => void calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`)),
+    saveWaves: vi.fn(
+      async (waves: number[][]) =>
+        void calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`),
+    ),
     enterDraft: vi.fn(async () => {
       calls.push('enterDraft');
       return { ...EPIC, draft: 'human' as const };
