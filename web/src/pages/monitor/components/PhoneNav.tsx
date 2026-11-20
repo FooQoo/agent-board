@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { dismissSettingsSheets } from '../../../shared/lib/sheets/dismissSheets';
 import type { HeaderSettings } from '../../../shared/ui/app-header/Header';
 import { type PhoneNavItem, PhoneNavBar } from './PhoneNavBar';
 
@@ -45,23 +46,30 @@ export function PhoneNav({
         questionCount={questionCount}
         archiveDisabled={archiveDisabled}
         onBoard={() => {
+          dismissSettingsSheets();
           setSettingsOpen(false);
           onBoard();
         }}
-        // The bar stays in front of an open sheet, so each item first closes whatever is open.
+        // The bar stays in front of an open sheet, so each item first closes whatever is open, including the dialogs the settings opened.
         onMessages={() => {
+          dismissSettingsSheets();
           setSettingsOpen(false);
           onMessages();
         }}
         onAsk={() => {
+          dismissSettingsSheets();
           setSettingsOpen(false);
           onAsk();
         }}
         onArchive={() => {
+          dismissSettingsSheets();
           setSettingsOpen(false);
           onArchive();
         }}
-        onSettings={() => onBoard(() => setSettingsOpen(true))}
+        onSettings={() => {
+          dismissSettingsSheets();
+          onBoard(() => setSettingsOpen(true));
+        }}
       />
       <Suspense fallback={null}>
         {settings.render({ open: settingsOpen, onOpenChange: setSettingsOpen, restoreFocusRef })}
