@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ProjectId } from '../../../shared/api/contracts';
 import type { ArchiveSheetData } from '../components/ArchiveListSheet';
 import type { MonitorWrites } from '../contracts';
@@ -6,8 +6,9 @@ import { fetchArchive } from '../../../features/tasks/api/read';
 import { useProjectResource } from '../../../features/projects/model/useProjectResource';
 
 /**
- * What the phone's archive list needs: the archive is read only while the list is open, and again
- * after each restore. Without writes there is nothing to restore, so the list is not offered.
+ * What the phone's archive list needs: the archive is read once each time the list opens. A restored
+ * task leaves the list at once and the archive is not read again; closing the list forgets which
+ * tasks were restored, so the next opening reads fresh. Without writes there is nothing to restore, so the list is not offered.
  */
 export function useArchiveSheet(
   open: boolean,
@@ -21,23 +22,35 @@ export function useArchiveSheet(
     fetchArchive,
   );
   const { reload } = resource;
+  const [restored, setRestored] = useState<ReadonlySet<number>>(() => new Set());
+  useEffect(() => {
+    if (!open) setRestored((current) => (current.size === 0 ? current : new Set()));
+  }, [open]);
+  const source = resource.data;
+  const data = useMemo(
+    () =>
+      source && restored.size > 0
+        ? { ...source, tasks: source.tasks.filter((task) => !restored.has(task.id)) }
+        : source,
+    [source, restored],
+  );
   const restore = useCallback(
     async (taskId: number) => {
       if (!writes) return;
       try {
         await writes.restore(projectId, taskId);
+        setRestored((current) => new Set(current).add(taskId));
         onRestored?.(taskId);
       } finally {
-        reload();
         onWritten?.();
       }
     },
-    [writes, projectId, reload, onWritten, onRestored],
+    [writes, projectId, onWritten, onRestored],
   );
   if (!writes) return {};
   return {
     archive: {
-      data: resource.data,
+      data,
       status: resource.status,
       fetchFailed: resource.fetchFailed,
       onRetry: reload,
