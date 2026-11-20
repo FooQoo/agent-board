@@ -36,7 +36,7 @@ for (const phone of phones) {
 
         // The whole row, project name and sync status included, starts a gap below the bar.
         const box = await header.boundingBox();
-        expect(box?.y ?? 0).toBeGreaterThanOrEqual(phone.top + 8);
+        expect(box?.y ?? 0).toBeGreaterThanOrEqual(phone.top + 16);
         expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThan(phone.height);
 
         if (process.env.AB_SHOTS) {
