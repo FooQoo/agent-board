@@ -128,7 +128,7 @@ Whether the connection stays on is stored in Agent Board's internal area. You do
 
 An address without a project opens the board, and you choose the project with the project switcher in the header. Links that ended in `/monitor/` in earlier versions are not served any more: they show a not-found answer. On the PC, open the remote connection settings and scan the current QR code again.
 
-In the Home Screen app, the screen uses the whole display and keeps its header and bottom bar clear of the status bar and the home indicator, so nothing is hidden behind them: the header row, with the project name and the sync status, starts a small gap below the status bar or the Dynamic Island, and the page never scrolls out of place. On a wide screen of the Home Screen app, such as a landscape iPhone, the board keeps clear of the notch and the home indicator as well. In a Safari tab and on the PC the layout is unchanged.
+In the Home Screen app, the screen uses the whole display and keeps its header and bottom bar clear of the status bar and the home indicator, so nothing is hidden behind them: the header row, with the project name and the sync status, starts a small gap below the status bar or the Dynamic Island. On a wide screen of the Home Screen app, such as a landscape iPhone, the board keeps clear of the notch and the home indicator as well. In a Safari tab and on the PC the layout is unchanged.
 
 ## Use the whole board through the address
 

@@ -85,16 +85,7 @@ export function watchStableHeight(target: Window = window): () => void {
     }
     mark();
   };
-  // The board fills the window, so the page itself never scrolls. iOS can still move it, for example when
-  // a field takes the focus or a drag overshoots, and the header then slides up under the status bar.
-  // Put the page back at the top unless the keyboard is open, when the browser scrolls it on purpose.
-  const pinTop = () => {
-    const keyboard =
-      root.hasAttribute('data-keyboard') || root.hasAttribute('data-visual-keyboard');
-    if (!keyboard && (target.scrollY !== 0 || target.scrollX !== 0)) target.scrollTo(0, 0);
-  };
   update();
-  target.addEventListener('scroll', pinTop, { passive: true });
   // A closing keyboard grows the viewport again, which is always followed.
   target.addEventListener('resize', update);
   // The focus leaving a field ends the keyboard layout at once; the kept height waits for the resize.
@@ -102,7 +93,6 @@ export function watchStableHeight(target: Window = window): () => void {
   target.document.addEventListener('focusout', mark);
   return () => {
     target.removeEventListener('resize', update);
-    target.removeEventListener('scroll', pinTop);
     target.document.removeEventListener('focusin', mark);
     target.document.removeEventListener('focusout', mark);
   };

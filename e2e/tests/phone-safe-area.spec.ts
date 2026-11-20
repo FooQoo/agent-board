@@ -26,7 +26,7 @@ for (const phone of phones) {
       });
       test.afterEach(() => resetPreferences());
 
-      test('the header row stays below the status bar and the page does not scroll', async ({ page }) => {
+      test('the header row stays below the status bar', async ({ page }) => {
         await page.goto('/');
         const header = page.locator('.monitor-shell > .header');
         await expect(header).toBeVisible();
@@ -38,12 +38,6 @@ for (const phone of phones) {
         const box = await header.boundingBox();
         expect(box?.y ?? 0).toBeGreaterThanOrEqual(phone.top + 8);
         expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThan(phone.height);
-
-        // iOS can move the page, which would slide the header under the bar; it is put back at the top.
-        await page.evaluate(() => window.scrollTo(0, 60));
-        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-        const after = await header.boundingBox();
-        expect(after?.y ?? 0).toBeGreaterThanOrEqual(phone.top + 8);
 
         if (process.env.AB_SHOTS) {
           await page.screenshot({ path: `${process.env.AB_SHOTS}/safe-area-${phone.width}-${mode}.png` });

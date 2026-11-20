@@ -343,13 +343,12 @@ function iphoneViewport(name: string, width: number, height: number) {
   return { name, styles: { width: `${width}px`, height: `${height}px` }, type: 'mobile' as const };
 }
 
-/** Checks that the whole header row sits below the status bar, with a gap, and that the page does not scroll. */
+/** Checks that the whole header row sits below the status bar, with a gap,. */
 async function expectHeaderBelowStatusBar(canvasElement: HTMLElement, top: number) {
   const header = canvasElement.querySelector<HTMLElement>('.monitor-shell > .header');
   await expect(header).not.toBeNull();
   const rect = (header as HTMLElement).getBoundingClientRect();
   await expect(rect.top).toBeGreaterThanOrEqual(top + 8);
-  await expect(window.scrollY).toBe(0);
 }
 
 function standaloneAt(top: number, name: string): StoryObj<typeof WiredPhoneStory> {
