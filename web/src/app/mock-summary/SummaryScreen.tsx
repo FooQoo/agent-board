@@ -1,19 +1,22 @@
 import { Trash2Icon, XIcon } from 'lucide-react';
-import { type PointerEvent, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../features/tasks/messages/messages.css';
+import { useCardGesture } from '../../pages/monitor/hooks/useCardGesture';
+import {
+  actionsWidth,
+  type RevealSide,
+  revealOffset,
+  revealProgress,
+} from '../../pages/monitor/model/lanes';
 import { PhoneNavBar } from '../../pages/monitor/components/PhoneNavBar';
 import { buildSummaries, OPEN_QUESTIONS, type Summary, type SummarySet } from './data';
 import { useIsJa, useMockText } from './text';
+import '../../pages/monitor/components/monitor-lanes.css';
 import './summary-mock.css';
 
 type Variant = 'desktop' | 'phone';
 type Tab = 'fromAi' | 'fromYou' | 'summary';
-
-/** How far the item slides to show the trash button, in px. */
-const REVEAL = 76;
-/** A sideways move this long (px) decides between a swipe and a tap or a scroll. */
-const INTENT = 8;
 
 export interface SummaryScreenProps {
   variant: Variant;
@@ -47,86 +50,101 @@ interface ItemProps {
 }
 
 /**
- * One summary. Tapping it marks it read and shows the trash button on its right. On a phone a
- * sideways swipe slides it open the same way; on a PC the button also appears on hover or focus.
+ * One summary. Tapping it marks it read and shows the trash button on its right. On a phone it is
+ * the board card's own swipe: `useCardGesture` slides it left and the trash tile grows from a dot,
+ * drawn with the card's `swipe-card__*` styles. The gesture is always on for a summary (no hold
+ * first), and while it is on `useSideSwipe` keeps the item's horizontal moves from reaching an
+ * outer swipe area, so a swipe that starts on an item never switches the tab.
  */
 function SummaryItem({ summary, variant, revealed, onOpen, onReveal, onDelete }: ItemProps) {
   const m = useMockText();
-  const [drag, setDrag] = useState<number | null>(null);
-  const start = useRef<{ x: number; y: number; from: number; id: number } | null>(null);
-  const swiped = useRef(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const side: RevealSide | null = revealed ? 'right' : null;
+  const rightWidth = actionsWidth(1);
+  const { drag, consumesClick, handlers } = useCardGesture(ref, {
+    revealed: side,
+    onRevealChange: (next) => onReveal(next === 'right'),
+    armed: true,
+    onArm: () => {},
+    leftWidth: 0,
+    rightWidth,
+    disabled: variant !== 'phone',
+  });
+  const offset = drag ?? revealOffset(side, 0, rightWidth);
 
-  const down = (event: PointerEvent<HTMLDivElement>) => {
-    if (variant !== 'phone') return;
-    start.current = {
-      x: event.clientX,
-      y: event.clientY,
-      from: revealed ? -REVEAL : 0,
-      id: event.pointerId,
-    };
-    swiped.current = false;
-  };
-  const move = (event: PointerEvent<HTMLDivElement>) => {
-    const s = start.current;
-    if (!s) return;
-    const dx = event.clientX - s.x;
-    const dy = event.clientY - s.y;
-    if (!swiped.current) {
-      if (Math.abs(dx) < INTENT || Math.abs(dx) < Math.abs(dy)) return;
-      swiped.current = true;
-      event.currentTarget.setPointerCapture(s.id);
-    }
-    setDrag(Math.max(-REVEAL, Math.min(0, s.from + dx)));
-  };
-  const up = () => {
-    const s = start.current;
-    start.current = null;
-    if (!s || !swiped.current || drag === null) return;
-    onReveal(drag < -REVEAL / 2);
-    setDrag(null);
-  };
-
-  const shift = drag ?? (revealed ? -REVEAL : 0);
-  return (
-    <li
-      className="sm-item"
-      data-variant={variant}
-      data-unread={summary.read ? undefined : ''}
-      data-revealed={revealed || undefined}
-      data-swiping={drag !== null || undefined}
-    >
+  const content = (
+    <>
       <button
         type="button"
-        className="sm-item__trash"
-        aria-label={m.delete}
-        tabIndex={revealed || variant === 'desktop' ? 0 : -1}
-        onClick={onDelete}
+        className="sm-item__head"
+        onClick={() => {
+          if (consumesClick()) return;
+          onOpen();
+        }}
       >
-        <Trash2Icon aria-hidden="true" />
+        <span className="sm-dot" aria-hidden="true" />
+        <span className="sm-item__window">{summary.window}</span>
+        <span className="sm-state" data-unread={summary.read ? undefined : ''}>
+          {summary.read ? m.read : m.unread}
+        </span>
       </button>
-      <div
-        className="sm-item__body"
-        style={{ transform: variant === 'phone' ? `translateX(${shift}px)` : undefined }}
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-      >
-        <button
-          type="button"
-          className="sm-item__head"
-          onClick={() => {
-            if (swiped.current) return;
-            onOpen();
-          }}
-        >
-          <span className="sm-dot" aria-hidden="true" />
-          <span className="sm-item__window">{summary.window}</span>
-          <span className="sm-state" data-unread={summary.read ? undefined : ''}>
-            {summary.read ? m.read : m.unread}
-          </span>
+      <ResultList summary={summary} />
+    </>
+  );
+  const itemProps = {
+    className: 'sm-item',
+    'data-variant': variant,
+    'data-unread': summary.read ? undefined : '',
+    'data-revealed': revealed || undefined,
+  };
+
+  if (variant === 'desktop') {
+    return (
+      <li {...itemProps}>
+        <button type="button" className="sm-item__trash" aria-label={m.delete} onClick={onDelete}>
+          <Trash2Icon aria-hidden="true" />
         </button>
-        <ResultList summary={summary} />
+        <div className="sm-item__body">{content}</div>
+      </li>
+    );
+  }
+  return (
+    <li {...itemProps}>
+      <div
+        ref={ref}
+        className="swipe-card"
+        data-dragging={drag !== null || undefined}
+        {...handlers}
+      >
+        <div
+          className="swipe-card__actions"
+          data-side="right"
+          data-revealed={offset < 0 || undefined}
+          style={
+            {
+              width: `${offset < 0 ? Math.min(rightWidth, Math.abs(offset)) : 0}px`,
+              '--reveal': offset < 0 ? revealProgress(offset, rightWidth) : 0,
+            } as CSSProperties
+          }
+        >
+          <button
+            type="button"
+            data-swipe-action
+            className="swipe-card__tile swipe-card__tile--archive"
+            tabIndex={revealed ? 0 : -1}
+            aria-hidden={!revealed}
+            aria-label={m.delete}
+            onClick={onDelete}
+          >
+            <Trash2Icon aria-hidden="true" />
+          </button>
+        </div>
+        <div
+          className="swipe-card__body sm-item__body"
+          style={offset !== 0 ? { transform: `translateX(${offset}px)` } : undefined}
+        >
+          {content}
+        </div>
       </div>
     </li>
   );

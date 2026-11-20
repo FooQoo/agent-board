@@ -176,12 +176,6 @@
   border: 1px solid var(--r-border);
   border-radius: 10px;
   background: var(--r-surface);
-  touch-action: pan-y pinch-zoom;
-  transition: transform 160ms ease;
-}
-
-.sm-item[data-swiping] .sm-item__body {
-  transition: none;
 }
 
 .sm-item[data-unread] .sm-item__body {
@@ -333,13 +327,7 @@
   flex-wrap: wrap;
 }
 
-/* On a phone the trash button stays hidden until the item is opened or swiped, so it never peeks out at the item's corners. */
-.sm-list .sm-item[data-variant="phone"] .sm-item__trash {
-  visibility: hidden;
-  transition: visibility 0s 160ms;
-}
-.sm-item[data-variant="phone"][data-revealed] .sm-item__trash,
-.sm-item[data-variant="phone"][data-swiping] .sm-item__trash {
-  visibility: visible;
-  transition-delay: 0s;
+/* The swipe wrapper takes the item's corners; the body fills it. */
+.sm-item .swipe-card {
+  border-radius: 10px;
 }
