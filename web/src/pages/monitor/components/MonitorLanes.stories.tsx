@@ -437,6 +437,32 @@ export const ArchiveListEmpty: Story = {
   },
 };
 
+/** With only the keyboard: focus a card, press Enter to open 復元 and move focus to it, press it. */
+export const RestoreByKeyboard: Story = {
+  args: { initialLane: 'todo', pending: 'list' },
+  play: async ({ canvasElement }) => {
+    const sheet = await within(document.body).findByRole('dialog');
+    const card = sheet.querySelector<HTMLElement>('[data-archive-row="3"] .swipe-card');
+    if (!card) throw new Error('No card in row 3.');
+    card.focus();
+    await userEvent.keyboard('{Enter}');
+    const restore = within(sheet).getByRole('button', { name: '#3 を復元' });
+    await waitFor(() => expect(restore).toHaveFocus());
+    // The right arrow closes the tile and gives focus back to the card.
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(card).toHaveFocus());
+    await userEvent.keyboard('{ArrowLeft}');
+    await waitFor(() => expect(restore).toHaveFocus());
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(sheet.querySelector('[data-archive-row="3"]')).toBeNull());
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector('.monitor-lane[data-lane="todo"] [data-swipe-card="3"]'),
+      ).not.toBeNull(),
+    );
+  },
+};
+
 /** A row swiped left: the 復元 tile is open on its right. */
 export const ArchiveRowRevealed: Story = {
   args: { initialLane: 'todo', pending: 'list-revealed' },

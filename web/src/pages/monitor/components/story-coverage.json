@@ -623,6 +623,11 @@
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
               "states": ["swipe left", "Restore returns the task to its lane"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--restore-by-keyboard",
+              "states": ["Enter opens Restore", "right arrow closes it", "keyboard-only restore"],
+              "interaction": true
             }
           ]
         }
@@ -642,6 +647,11 @@
             {
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
               "states": ["swipe left", "Restore returns the task to its lane"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--restore-by-keyboard",
+              "states": ["Enter opens Restore", "right arrow closes it", "keyboard-only restore"],
               "interaction": true
             }
           ]

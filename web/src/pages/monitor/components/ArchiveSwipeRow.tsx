@@ -1,5 +1,5 @@
 import { RotateCcwIcon } from 'lucide-react';
-import { type CSSProperties, useRef } from 'react';
+import { type CSSProperties, type KeyboardEvent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { revealOffset, revealProgress } from '@/shared/lib/gesture/cardReveal';
 import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
@@ -42,6 +42,25 @@ export function ArchiveSwipeRow({
 }: ArchiveSwipeRowProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
+  const restoreRef = useRef<HTMLButtonElement>(null);
+  // A reveal asked for with the keyboard moves focus to Restore once its tile is on screen.
+  const focusRestore = useRef(false);
+  useEffect(() => {
+    if (revealed && focusRestore.current) restoreRef.current?.focus();
+    focusRestore.current = false;
+  }, [revealed]);
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target === ref.current && ['ArrowLeft', 'Enter', ' '].includes(event.key)) {
+      event.preventDefault();
+      focusRestore.current = true;
+      onRevealChange(true);
+    } else if (event.key === 'ArrowRight' && revealed) {
+      // Escape is left to the drawer, which it closes.
+      event.preventDefault();
+      onRevealChange(false);
+      ref.current?.focus();
+    }
+  };
   const side = revealed ? 'right' : null;
   const { drag, consumesClick, handlers } = useCardGesture(ref, {
     revealed: side,
@@ -60,6 +79,13 @@ export function ArchiveSwipeRow({
       <div
         ref={ref}
         className="swipe-card"
+        // Without a finger the card is the way in: focus it, then Enter or the left arrow opens Restore.
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: the card is the keyboard's way to Restore; it has key handling
+        tabIndex={0}
+        role="group"
+        aria-label={`#${task.id} ${task.title}`}
+        aria-keyshortcuts="ArrowLeft Enter"
+        onKeyDown={onKeyDown}
         data-swipe-card={task.id}
         data-revealed={revealed ? 'right' : undefined}
         data-dragging={drag !== null || undefined}
@@ -86,6 +112,7 @@ export function ArchiveSwipeRow({
           }
         >
           <button
+            ref={restoreRef}
             type="button"
             data-swipe-action
             className="swipe-card__tile"
