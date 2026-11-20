@@ -1,5 +1,6 @@
-//! The Stop hook: at the end of a turn, runs a list of reminder rules and
-//! blocks the turn once, with one reason, when any of them matches.
+//! The Stop hook: at the end of a turn, runs a list of rules that each give
+//! checklist items, and blocks the turn once, with the checklist, when there
+//! is any item.
 //!
 //! A rule is an id and a check (see [`rules`]); adding one is adding an entry
 //! to [`rules::RULES`]. Every failure means "do nothing": this hook must never
@@ -16,7 +17,7 @@ use crate::domain::ProjectId;
 use crate::file_store::FileStore;
 use crate::progress::{self, Include, Progress};
 
-pub(crate) use rules::{RULES, Rule};
+pub(crate) use rules::{Item, Kind, RULES, Rule};
 pub(crate) use turn::{Call, Turn};
 
 /// What a rule can look at.
@@ -94,19 +95,32 @@ pub(crate) fn run(input: &StopInput, shared: &Path, project: &ProjectId) -> Opti
     decide(&ctx, RULES)
 }
 
-/// Runs every rule; one block with every matched message, or `None`.
+/// Runs every rule; one block with the checklist, or `None` when no rule
+/// has an item. Items the hook confirmed (`NG`) are listed apart from items
+/// the agent must judge (`[ ]`).
 pub(crate) fn decide(ctx: &Ctx, rules: &[Rule]) -> Option<String> {
-    let matched: Vec<String> = rules
-        .iter()
-        .filter_map(|rule| (rule.check)(ctx).map(|m| format!("- [{}] {m}", rule.id)))
-        .collect();
-    if matched.is_empty() {
+    let items: Vec<Item> = rules.iter().flat_map(|rule| (rule.check)(ctx)).collect();
+    if items.is_empty() {
         return None;
     }
-    let reason = format!(
-        "Before you end your turn, deal with each of these Agent Board reminders:\n{}",
-        matched.join("\n")
+    let lines = |kind: Kind, mark: &str| -> Vec<String> {
+        items
+            .iter()
+            .filter(|i| i.kind == kind)
+            .map(|i| format!("- {mark}{}", i.text))
+            .collect()
+    };
+    let mut reason = String::from(
+        "Agent Board turn-end checklist. Items under 'Found' are confirmed by the hook; handle them. Items under 'Check' are triggered by this turn; handle those that apply and ignore the rest.",
     );
+    for (title, body) in [
+        ("Found:", lines(Kind::Definite, "NG: ")),
+        ("Check:", lines(Kind::Check, "[ ] ")),
+    ] {
+        if !body.is_empty() {
+            reason.push_str(&format!("\n\n{title}\n{}", body.join("\n")));
+        }
+    }
     Some(serde_json::json!({"decision": "block", "reason": reason}).to_string())
 }
 

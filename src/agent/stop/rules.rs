@@ -3,13 +3,47 @@
 
 use super::{Call, Ctx};
 
-/// One reminder: it matches when `check` returns a message for the agent.
-pub(crate) struct Rule {
-    pub id: &'static str,
-    pub check: fn(&Ctx) -> Option<String>,
+/// How sure the hook is about an item.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Kind {
+    /// A fact the hook verified that is a violation.
+    Definite,
+    /// A trigger fired; the agent decides whether it applies.
+    Check,
 }
 
-/// Every rule, in the order their messages are listed.
+/// One line of the checklist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Item {
+    pub kind: Kind,
+    pub text: String,
+}
+
+impl Item {
+    fn definite(text: impl Into<String>) -> Item {
+        Item {
+            kind: Kind::Definite,
+            text: text.into(),
+        }
+    }
+    fn check(text: impl Into<String>) -> Item {
+        Item {
+            kind: Kind::Check,
+            text: text.into(),
+        }
+    }
+}
+
+/// One rule: it gives the checklist items that apply to this turn, none when
+/// it does not trigger.
+pub(crate) struct Rule {
+    /// The rule's name, for tests and logs.
+    #[allow(dead_code)]
+    pub id: &'static str,
+    pub check: fn(&Ctx) -> Vec<Item>,
+}
+
+/// Every rule, in the order their items are listed.
 pub(crate) const RULES: &[Rule] = &[
     Rule {
         id: "question",
@@ -21,50 +55,67 @@ pub(crate) const RULES: &[Rule] = &[
     },
 ];
 
-/// The last reply is a question to the user that was not put on the board.
-fn question(ctx: &Ctx) -> Option<String> {
-    if !ends_with_question(ctx.reply()?) {
-        return None;
-    }
+/// The last reply is a question to the user and none was put on the board.
+fn question(ctx: &Ctx) -> Vec<Item> {
+    let Some(reply) = ctx.reply() else {
+        return Vec::new();
+    };
     // Without a readable transcript the turn cannot be checked.
-    ctx.turn.as_ref()?;
-    if ctx
-        .calls()
-        .iter()
-        .any(|c| runs_agboard(&c.command, &[&["message", "ask"], &["message", "answer"]]))
+    if !ends_with_question(reply)
+        || ctx.turn.is_none()
+        || ctx
+            .calls()
+            .iter()
+            .any(|c| runs_agboard(&c.command, &[&["message", "ask"], &["message", "answer"]]))
     {
-        return None;
+        return Vec::new();
     }
-    Some("Your reply ends with a question for the user, but it is not on the board. If it waits on the user's answer, put it on the board now with `agboard --project \"<name>\" message ask --actor ai ...` (and show it in the chat as plain text too, as the agent-board skill says). If nothing waits on the user, end your turn again without a question.".to_string())
+    vec![
+        Item::check(
+            "Does your question wait on the user's answer? If so, put it on the board with `agboard message ask` and show it in the chat too.",
+        ),
+        Item::check(
+            "Does it ask about something visual (a screen, a mock, a design)? Attach the images to the question.",
+        ),
+    ]
 }
 
-/// Something viewable was produced and no result was recorded, or a task is
-/// missing its final result.
-fn result(ctx: &Ctx) -> Option<String> {
-    let mut parts = Vec::new();
+/// Results the requester should see: a missing final result, or something
+/// viewable produced without a recorded result.
+fn result(ctx: &Ctx) -> Vec<Item> {
+    let mut items = Vec::new();
     if let Some(progress) = ctx.progress() {
-        let missing: Vec<String> = progress
-            .final_result_missing
-            .iter()
-            .map(|t| format!("#{}", t.id))
-            .collect();
-        if !missing.is_empty() {
-            parts.push(format!(
-                "All conditions are met but there is no final result for task {}. Record it with `agboard result add <id> --final ...` (run `agboard skills results`).",
-                missing.join(", ")
-            ));
+        for task in &progress.final_result_missing {
+            items.push(Item::definite(format!(
+                "Task #{id} has all conditions met but no final result: record `agboard result add {id} --final ...`.",
+                id = task.id
+            )));
         }
     }
     let calls = ctx.calls();
-    if calls.iter().any(produced_viewable)
-        && !calls
-            .iter()
-            .any(|c| runs_agboard(&c.command, &[&["result", "add"]]))
-        && has_running_ai_task(ctx)
-    {
-        parts.push("This turn produced something the requester can look at (a pull request, a push, or an image) but no result is recorded. Record it with `agboard result add <id> ...` on the running task (run `agboard skills results`), or end your turn again if nothing is viewable.".to_string());
+    let recorded = calls
+        .iter()
+        .any(|c| runs_agboard(&c.command, &[&["result", "add"]]));
+    let mut from_turn = false;
+    if !recorded && has_running_ai_task(ctx) {
+        if calls.iter().any(is_pr_create) {
+            items.push(Item::definite(
+                "You opened a pull request in this turn but recorded no result.",
+            ));
+            from_turn = true;
+        } else if calls.iter().any(produced_viewable) {
+            items.push(Item::check("You pushed or produced an image. If it is something the requester can look at, record it with `agboard result add`."));
+            from_turn = true;
+        }
     }
-    (!parts.is_empty()).then(|| parts.join(" "))
+    if from_turn {
+        items.push(Item::check("Record meaningful progress (commits, verification, decisions) with `agboard history add` if you have not."));
+    }
+    items
+}
+
+fn is_pr_create(call: &Call) -> bool {
+    contains_sequence(&tokens(&call.command), &["gh", "pr", "create"])
 }
 
 fn has_running_ai_task(ctx: &Ctx) -> bool {
