@@ -51,10 +51,12 @@ export interface DropPlacement {
  * board, the waves of an epic). A sortable item names its group in `useSortable({ group })`, and a
  * group's own drop area names it in `data.group`.
  *
- * When the library moved the item into another group while it was dragged (a caller that does not
- * stop `onDragOver`), that group and place are the answer. Otherwise the item is still in its own
- * group, and the target says where it was dropped: a card or the area of the same group is a
- * reorder, another group is a move to the end of it. Returns null when nothing sits under the drop.
+ * A drop on a group's own area (`data.group`) names the group, even when the library moved the item
+ * into a card's group on the way there. Otherwise, when the library moved the item into another
+ * group (a caller that does not stop `onDragOver`), that group and place are the answer. Otherwise the
+ * item is still in its own group, and the target says where it was dropped: a card of the same group
+ * is a reorder, a card of another group is a move to the end of it. Returns null when nothing sits
+ * under the drop.
  */
 export function dropPlacement(operation: {
   source: Draggable | null;
@@ -65,12 +67,28 @@ export function dropPlacement(operation: {
   const { initialIndex, index, initialGroup, group } = source.sortable;
   if (initialGroup === undefined || group === undefined) return null;
   const fromGroup = String(initialGroup);
-  if (String(group) !== fromGroup) {
-    return { fromGroup, group: String(group), index, unchanged: false };
+  const current = String(group);
+  // A drop area names its group in `data.group`. When the item is dropped on one, that group is the
+  // answer, even if the library had moved the item into a card's group on the way there.
+  const area = target && !isSortable(target) ? target.data?.group : undefined;
+  if (area !== undefined && typeof area !== 'object') {
+    const named = String(area);
+    if (named === current) {
+      return {
+        fromGroup,
+        group: current,
+        index,
+        unchanged: current === fromGroup && initialIndex === index,
+      };
+    }
+    return { fromGroup, group: named, index: null, unchanged: false };
+  }
+  if (current !== fromGroup) {
+    return { fromGroup, group: current, index, unchanged: false };
   }
   if (!target) return null;
-  const targetGroup = isSortable(target) ? target.sortable.group : target.data?.group;
-  if (targetGroup === undefined || typeof targetGroup === 'object') return null;
+  const targetGroup = isSortable(target) ? target.sortable.group : undefined;
+  if (targetGroup === undefined) return null;
   if (String(targetGroup) === fromGroup) {
     return { fromGroup, group: fromGroup, index, unchanged: initialIndex === index };
   }

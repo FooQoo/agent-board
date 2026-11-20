@@ -20,6 +20,7 @@ async function dragToNewWave(page: Page, dialog: Locator, title: string): Promis
   const card = task(dialog, title);
   const zone = dialog.locator('.epic-wave__new');
   await zone.scrollIntoViewIfNeeded();
+  await card.scrollIntoViewIfNeeded();
   const from = (await card.boundingBox())!;
   const to = (await zone.boundingBox())!;
   await page.mouse.move(from.x + 40, from.y + 20);

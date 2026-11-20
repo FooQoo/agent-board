@@ -92,6 +92,15 @@ describe('drop placement', () => {
     });
   });
 
+  it('lets a drop area win over a group the library moved the item into on the way', () => {
+    expect(dropPlacement({ source: sortableOf('b', 'a', 0, 1), target: area('new') })).toEqual({
+      fromGroup: 'a',
+      group: 'new',
+      index: null,
+      unchanged: false,
+    });
+  });
+
   it('returns null with nothing under the drop', () => {
     expect(dropPlacement({ source: sortableOf('a', 'a', 0, 0), target: null })).toBeNull();
   });
