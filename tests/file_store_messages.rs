@@ -613,6 +613,42 @@ fn an_answer_keeps_its_images_with_the_question() {
 }
 
 #[test]
+fn an_answer_image_named_like_a_held_one_is_renamed_not_replaced() {
+    let f = fixture();
+    let question = f.ask("What next?", &[], &[]);
+    let dir = f
+        .project_dir()
+        .join("qa")
+        .join(&question)
+        .join("attachments");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("image.png"), b"held").unwrap();
+    let image = |name: &str| RequestImage {
+        name: name.into(),
+        bytes: PNG.to_vec(),
+    };
+    let views = f
+        .store
+        .answer_questions(
+            &f.project,
+            vec![AnswerItem {
+                question_id: question.clone(),
+                choice_id: None,
+                text: Some("See these".into()),
+                images: vec![image("Image.png"), image("image-2.png")],
+            }],
+            AnswerVia::Ui,
+            Utc::now(),
+        )
+        .unwrap();
+    let names = views[0].reply.as_ref().unwrap().images.clone();
+    assert_eq!(names, vec!["Image-3.png".to_string(), "image-2.png".into()]);
+    assert_eq!(fs::read(dir.join("image.png")).unwrap(), b"held");
+    assert_eq!(fs::read(dir.join("Image-3.png")).unwrap(), PNG);
+    assert_eq!(fs::read(dir.join("image-2.png")).unwrap(), PNG);
+}
+
+#[test]
 fn a_task_waits_for_an_unanswered_question_and_for_nothing_else() {
     let f = fixture();
     let task = f.task("Import");

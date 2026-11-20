@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 
 use super::super::{lock_project, stamp};
-use super::answer_images::{existing_name, place_images, remove_placed};
+use super::answer_images::{free_names, place_images, remove_placed};
 use super::read::views_locked;
 use super::send::{RequestImage, checked_images};
 use super::{broken_file_error, message_change, referrers};
@@ -14,7 +14,7 @@ use crate::file_store::model::HistoryRecord;
 use crate::file_store::qa::{
     self, AnswerVia, Message, MessageState, QaIndex, Question, QuestionView, Reply,
 };
-use crate::file_store::transaction::save_batch_locked;
+use crate::file_store::transaction::{BatchFailure, save_batch_reporting};
 use crate::file_store::validate;
 
 /// One answer as a person gives it: a choice, a text, or both.
@@ -148,7 +148,7 @@ impl FileStore {
         let mut done = Vec::new();
         let mut withdrawn = Vec::new();
         let mut planned: Vec<(Question, Question)> = Vec::new();
-        for (item, files) in items.iter().zip(&staged) {
+        for (item, files) in items.iter().zip(staged.iter_mut()) {
             if planned.iter().any(|(old, _)| old.id == item.question_id) {
                 return Err(AgboardError::InvalidValue {
                     field: "answers".into(),
@@ -176,20 +176,10 @@ impl FileStore {
                 MessageState::Withdrawn => withdrawn.push(question.id.clone()),
                 MessageState::Open => {}
             }
-            let names = files.iter().map(|(name, _)| name.clone()).collect();
             let attachments = qa::attachments_dir(&qa::message_dir(&project_dir, &question.id));
-            for (name, _) in files {
-                // An answer never replaces an image the question already holds.
-                if existing_name(&attachments, name) {
-                    return Err(AgboardError::InvalidValue {
-                        field: "image".into(),
-                        reason: format!(
-                            "{} already has an image named {name}; rename the new one.",
-                            question.id
-                        ),
-                    });
-                }
-            }
+            // An answer never replaces an image the question already holds: a clash is renamed.
+            free_names(&attachments, files);
+            let names = files.iter().map(|(name, _)| name.clone()).collect();
             planned.push((question.clone(), answered(question, item, names, via, at)?));
         }
         if !done.is_empty() {
@@ -212,9 +202,13 @@ impl FileStore {
                     .filter(|q| ids.contains(&q.id))
                     .collect())
             }
-            Err(error) => {
-                remove_placed(&placed);
-                Err(error)
+            Err(failure) => {
+                // A batch past its commit point is kept by recovery, and its replies name the
+                // images, so only an uncommitted batch gives them up.
+                if !failure.committed {
+                    remove_placed(&placed);
+                }
+                Err(failure.error)
             }
         }
     }
@@ -227,22 +221,25 @@ impl FileStore {
         project_dir: &std::path::Path,
         planned: &[(Question, Question)],
         at: DateTime<Utc>,
-    ) -> Result<Vec<String>, AgboardError> {
+    ) -> Result<Vec<String>, BatchFailure> {
         let mut changes = Vec::new();
         for (_, next) in planned {
-            changes.push(message_change(
-                project_dir,
-                &Message::Question(next.clone()),
-                false,
-            )?);
+            changes.push(
+                message_change(project_dir, &Message::Question(next.clone()), false)
+                    .map_err(BatchFailure::before)?,
+            );
         }
 
         let ids: Vec<String> = planned.iter().map(|(q, _)| q.id.clone()).collect();
-        for mut referrer in referrers(shared, project, project_dir, &ids)? {
+        for mut referrer in
+            referrers(shared, project, project_dir, &ids).map_err(BatchFailure::before)?
+        {
             if referrer.task.archived_at.is_some() {
                 continue;
             }
-            let language = self.history_language(project, &referrer.task)?;
+            let language = self
+                .history_language(project, &referrer.task)
+                .map_err(BatchFailure::before)?;
             for (_, next) in planned {
                 if !referrer.questions.contains(&next.id) {
                     continue;
@@ -256,14 +253,17 @@ impl FileStore {
                 });
             }
             referrer.task.updated_at = at;
-            changes.extend(super::super::save::task_pair_changes(
-                shared,
-                project_dir,
-                &referrer.task,
-                Some(&referrer.text),
-            )?);
+            changes.extend(
+                super::super::save::task_pair_changes(
+                    shared,
+                    project_dir,
+                    &referrer.task,
+                    Some(&referrer.text),
+                )
+                .map_err(BatchFailure::before)?,
+            );
         }
-        save_batch_locked(project_dir, changes)?;
+        save_batch_reporting(project_dir, changes)?;
         Ok(ids)
     }
 }
