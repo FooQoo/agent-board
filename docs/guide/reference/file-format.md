@@ -104,7 +104,7 @@ waves:
 - 4
 ```
 
-An `EPIC.md` without frontmatter is entirely body text. Save the order from the CLI with `epic edit --waves` or by editing the file. Reordering tasks in the progress panel also saves the order, but it saves every task as a wave of its own and so removes any grouping of tasks into one wave; use the CLI or the file to keep grouped waves. Legacy `acceptance` keys in an `EPIC.md` are kept as opaque metadata and are not converted.
+An `EPIC.md` without frontmatter is entirely body text. Save the order from the CLI with `epic edit --waves` or by editing the file. The wave editor in the epic's progress panel saves it too (see [Epics](../watch/epics)). Legacy `acceptance` keys in an `EPIC.md` are kept as opaque metadata and are not converted.
 
 ## When a file is invalid
 
