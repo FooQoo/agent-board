@@ -1,10 +1,11 @@
 import '@/shared/i18n/question-flow-strings';
-import { ImageIcon, InfoIcon, XIcon } from 'lucide-react';
+import { ImageIcon, InfoIcon } from 'lucide-react';
 import { useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Task } from '@/shared/api/contracts';
 import { Button } from '@/shared/ui/button';
 import type { EditorAttachment } from '@/shared/ui/editor/attachmentTypes';
+import { ComposerThumbs } from '@/shared/ui/editor/ComposerThumbs';
 import { Label } from '@/shared/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group';
 import { Textarea } from '@/shared/ui/textarea';
@@ -131,25 +132,13 @@ export function DecisionAnswerFields({
             {t('answer.image')}
           </Button>
           {images.attachments.length > 0 && (
-            <ul className="decision-answer__thumbs" aria-label={t('answer.images')}>
-              {images.attachments.map((image) => (
-                <li key={image.id} className="decision-answer__thumb">
-                  <img src={image.url} alt={image.name} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="s"
-                    iconOnly
-                    className="decision-answer__thumb-remove"
-                    aria-label={t('answer.removeImage', { name: image.name })}
-                    disabled={view.disabled}
-                    onClick={() => images.onRemove(image.id)}
-                  >
-                    <XIcon aria-hidden="true" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            <ComposerThumbs
+              attachments={images.attachments}
+              label={t('answer.images')}
+              removeLabel={(name) => t('answer.removeImage', { name })}
+              disabled={view.disabled}
+              onRemove={images.onRemove}
+            />
           )}
           {images.notice !== '' && (
             <p className="decision-answer__image-notice" role="alert">
