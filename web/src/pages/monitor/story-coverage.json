@@ -33,6 +33,16 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor--standalone-iphone-dynamic-island",
+              "states": ["393x852", "59px status bar inset", "header below the bar"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--standalone-iphone-notch",
+              "states": ["390x844", "47px status bar inset", "header below the bar"],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor--resident-status-line",
               "states": [
                 "resident agent in the status line",

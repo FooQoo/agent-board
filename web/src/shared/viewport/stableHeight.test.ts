@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nextStableHeight, watchStableHeight } from './stableHeight';
 
 describe('nextStableHeight', () => {
@@ -35,6 +35,27 @@ describe('watchStableHeight', () => {
     // The focus leaves before the keyboard has finished closing: dialogs are centered again at once.
     field.blur();
     expect(root.hasAttribute('data-keyboard')).toBe(false);
+    stop();
+  });
+
+  it('puts a scrolled page back at the top unless the keyboard is open', () => {
+    const scrollTo = vi.fn();
+    const target = Object.assign(new EventTarget(), {
+      document,
+      innerWidth: 390,
+      innerHeight: 844,
+      scrollX: 0,
+      scrollY: 40,
+      scrollTo,
+    }) as unknown as Window;
+    const stop = watchStableHeight(target);
+    target.dispatchEvent(new Event('scroll'));
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    scrollTo.mockClear();
+    root.setAttribute('data-visual-keyboard', '');
+    target.dispatchEvent(new Event('scroll'));
+    expect(scrollTo).not.toHaveBeenCalled();
+    root.removeAttribute('data-visual-keyboard');
     stop();
   });
 });

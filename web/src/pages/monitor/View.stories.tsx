@@ -215,16 +215,16 @@ export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
 };
 
 /** Sets the safe-area variables of an iPhone with a Dynamic Island in portrait, which Storybook cannot report through env(). */
-function StandaloneInsets({ children }: { children: ReactNode }) {
+function StandaloneInsets({ children, top = 59 }: { children: ReactNode; top?: number }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--safe-top', '59px');
+    root.style.setProperty('--safe-top', `${top}px`);
     root.style.setProperty('--safe-bottom', '34px');
     return () => {
       root.style.removeProperty('--safe-top');
       root.style.removeProperty('--safe-bottom');
     };
-  }, []);
+  }, [top]);
   return (
     <>
       {children}
@@ -234,7 +234,7 @@ function StandaloneInsets({ children }: { children: ReactNode }) {
           position: 'fixed',
           left: 0,
           right: 0,
-          height: 59,
+          height: top,
           background: 'rgb(0 0 0 / 18%)',
           pointerEvents: 'none',
           zIndex: 2000,
@@ -258,6 +258,54 @@ function StandaloneInsets({ children }: { children: ReactNode }) {
   );
 }
 
+function iphoneViewport(name: string, width: number, height: number) {
+  return { name, styles: { width: `${width}px`, height: `${height}px` }, type: 'mobile' as const };
+}
+
+/** Checks that the whole header row sits below the status bar, with a gap, and that the page does not scroll. */
+async function expectHeaderBelowStatusBar(canvasElement: HTMLElement, top: number) {
+  const header = canvasElement.querySelector<HTMLElement>('.monitor-shell > .header');
+  await expect(header).not.toBeNull();
+  const rect = (header as HTMLElement).getBoundingClientRect();
+  await expect(rect.top).toBeGreaterThanOrEqual(top + 8);
+  await expect(window.scrollY).toBe(0);
+}
+
+function standaloneAt(top: number, name: string): StoryObj<typeof WiredPhoneStory> {
+  return {
+    name,
+    globals: { locale: 'en' },
+    render: (args) => (
+      <StandaloneInsets top={top}>
+        <div className="app" data-layout="mobile">
+          <WiredPhoneStory {...args} />
+        </div>
+      </StandaloneInsets>
+    ),
+    play: async ({ canvasElement }) => {
+      await expectHeaderBelowStatusBar(canvasElement, top);
+    },
+  };
+}
+
+/** A Dynamic Island iPhone (393 by 852, 59px status bar): the header row starts a gap below the bar. */
+export const StandaloneIphoneDynamicIsland: StoryObj<typeof WiredPhoneStory> = {
+  ...standaloneAt(59, 'Standalone iPhone 393x852'),
+  parameters: {
+    viewport: { options: { iphone15pro: iphoneViewport('iPhone 15 Pro', 393, 852) } },
+  },
+  globals: { locale: 'en', viewport: { value: 'iphone15pro' } },
+};
+
+/** A notched iPhone (390 by 844, 47px status bar). */
+export const StandaloneIphoneNotch: StoryObj<typeof WiredPhoneStory> = {
+  ...standaloneAt(47, 'Standalone iPhone 390x844'),
+  parameters: {
+    viewport: { options: { iphone14: iphoneViewport('iPhone 14', 390, 844) } },
+  },
+  globals: { locale: 'en', viewport: { value: 'iphone14' } },
+};
+
 /** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the bottom dock ends above the indicator. */
 export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
   globals: { locale: 'en' },
@@ -276,7 +324,7 @@ export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
     const shell = canvasElement.querySelector<HTMLElement>('.monitor-shell');
     await expect(shell).not.toBeNull();
     const style = getComputedStyle(shell as HTMLElement);
-    await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59);
+    await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59 + 8);
     // The floating dock keeps its own margin above the home indicator.
     const nav = canvasElement.querySelector<HTMLElement>('.phone-nav');
     await expect(nav).not.toBeNull();
