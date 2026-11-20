@@ -82,6 +82,7 @@ pub struct Include {
 pub use answers::{ProgressAnswer, unaccepted_answers};
 pub use count::Count;
 pub use final_result::{FinalResultMissing, final_result_missing};
+pub(crate) use next::gated_by_waves;
 pub use next::{MAX_NEXT_TASKS, NextReason, NextTask};
 pub use requests::{ProgressRequest, open_requests};
 pub use types::{EpicToClose, ProgressEpic, ProgressTask};
