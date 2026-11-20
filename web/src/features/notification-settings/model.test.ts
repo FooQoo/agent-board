@@ -8,12 +8,24 @@ describe('parseNotificationSettings', () => {
     );
   });
 
-  it('has the defaults results on, questions off, history off', () => {
-    const { kinds } = DEFAULT_NOTIFICATION_SETTINGS;
+  it('has the defaults results on, questions off, history off, summary on every hour', () => {
+    const { kinds, summary } = DEFAULT_NOTIFICATION_SETTINGS;
     expect(kinds).toEqual({
       results: true,
       questions: false,
       history: false,
+      summary: true,
+    });
+    expect(summary).toEqual({ intervalMinutes: 60 });
+  });
+
+  it('rejects an interval the server does not offer', () => {
+    const base = DEFAULT_NOTIFICATION_SETTINGS;
+    expect(parseNotificationSettings({ ...base, summary: { intervalMinutes: 45 } })).toBeNull();
+    expect(parseNotificationSettings({ ...base, summary: undefined })).toBeNull();
+    expect(parseNotificationSettings({ ...base, summary: { intervalMinutes: 0 } })).toEqual({
+      ...base,
+      summary: { intervalMinutes: 0 },
     });
   });
 

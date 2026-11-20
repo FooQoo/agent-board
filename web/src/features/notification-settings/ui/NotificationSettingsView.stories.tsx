@@ -23,7 +23,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const custom: NotificationSettings = {
-  kinds: { results: true, questions: false, history: true },
+  kinds: { results: true, questions: false, history: true, summary: true },
+  summary: { intervalMinutes: 120 },
   revision: 7,
 };
 
@@ -55,7 +56,8 @@ export const AllOff: Story = {
       status: 'ready',
       settings: {
         ...DEFAULT_NOTIFICATION_SETTINGS,
-        kinds: { results: false, questions: false, history: false },
+        kinds: { results: false, questions: false, history: false, summary: false },
+        summary: { intervalMinutes: 0 },
       },
       saveFailed: false,
     },

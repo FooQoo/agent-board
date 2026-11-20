@@ -47,6 +47,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
         epics/<EPIC-ID>/{epic.json, EPIC.md, assets/<attachment-id>.<ext>}
         tasks/<task-id>/{task.json, TASK.md, assets/<attachment-id>.<ext>}
         qa/Q-<n>/{QA.md, attachments/<name>}
+        notify/<YYYY-MM-DD>.ldjson
         .internal/write.lock
         .internal/transactions/<transaction-id>.json
         .internal/batches/<batch-id>.json
@@ -308,6 +309,25 @@ What was sent to which device is kept in `<data-root>/.internal/push-ledger.json
 - A file written by an older version may still hold `periodicAt` and entries with the keys `periodic:<unix seconds>` or `state:<…>`. The field is read and dropped, and the next save leaves it out; the entries age out like the others.
 - Finished entries are kept for 14 days and at most 2000. A file that cannot be read is an empty ledger, and a save that fails is ignored; the board never waits for it. Removing a device removes its entries.
 
+## Periodic summaries
+
+Every project keeps its periodic summaries in `shared/projects/<projectId>/notify/`, one file per day named `YYYY-MM-DD.ldjson`. The day is the day the window ends, in UTC. The server writes them by itself, with no model: at each interval set in the [notification settings](#phone-notification-settings) it lists the results recorded in the window across the project's tasks (not archived tasks, drafts, or the guide's sample card). A window with no results writes nothing.
+
+Each line is one JSON object:
+
+```json
+{"id":"s-20261102T110000Z","dismissed":false,"from":"2026-11-02T10:00:00Z","to":"2026-11-02T11:00:00Z","results":[{"taskId":3,"title":"Added the export button","at":"2026-11-02T10:12:00Z"}]}
+```
+
+| Field | Rule |
+| --- | --- |
+| `id` | `s-` and the end of the window as `YYYYMMDDTHHMMSSZ`, so a window written twice is stored once. |
+| `dismissed` | `false` when written, and optional: a line without it reads as `false`. The trash action in the UI sets it to `true`. |
+| `from`, `to` | The window, as UTC RFC 3339 with second precision. A result belongs to it when `from < at <= to`. The next window of a project starts where its newest stored summary ends, so a restart never reports a result twice. |
+| `results` | One entry per result recorded in the window, oldest first: `taskId`, the result's `title` (see [Results](#results)), and `at`, the time it was recorded. |
+
+The files are a permanent record: no line is ever removed, and dismissing a summary only sets `dismissed` on its line. A change takes the project's write lock, reads the file as it is now, changes only its line, and replaces the file atomically (a line that cannot be read is kept as it is). The list reads the files each time, so editing a file by hand is reflected: a hand-written line is listed when it has `id`, `from`, `to`, and `results`, and a line that cannot be read is skipped. The watcher treats the `notify/` folder like `docs/`: it is never loaded as board data and never changes the project's `version`, but any change in it sends `changed` with a `messages` resource (the project ID) and the `summary` facet, so a client reads the list again. The code is `src/file_store/notify.rs`; the schedule is `src/server/push_delivery/summary.rs`.
+
 ## Phone notification settings
 
 Which notifications the phone receives are saved in `<data-root>/.internal/notification-settings.json`. Like the preferences file, it belongs to the application: it is written only by `PUT /api/notification-settings`, is not in `shared/`, and is replaced atomically with owner-only permissions (`0600` where the OS has them).
@@ -316,19 +336,21 @@ Which notifications the phone receives are saved in `<data-root>/.internal/notif
 {
   "formatVersion": 1,
   "revision": 4,
-  "kinds": { "results": true, "questions": true, "history": false }
+  "kinds": { "results": true, "questions": true, "history": false, "summary": true },
+  "summary": { "intervalMinutes": 60 }
 }
 ```
 
 | Field | Rule |
 | --- | --- |
-| `formatVersion` | Always `1`. Any other value, an unknown field, a missing field, or a malformed file is read as the defaults, and the next save replaces the file. |
+| `formatVersion` | Always `1`. Any other value, an unknown field, a missing required field, or a malformed file is read as the defaults, and the next save replaces the file. |
 | `revision` | `0` when nothing is saved, and goes up by one with each save. |
-| `kinds` | Three switches for the milestone notifications: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), and `history` (a history entry was added). The defaults are `results` on, `questions` and `history` off. A saved file keeps its own choices; only a missing or unreadable file reads as these defaults. All three off is allowed. |
+| `kinds` | Four switches: `results` (a result was recorded, intermediate or final), `questions` (a decision request is waiting), `history` (a history entry was added), and `summary` (a periodic summary was recorded). The defaults are `results` and `summary` on, `questions` and `history` off. A saved file keeps its own choices; only a missing or unreadable file reads as these defaults. All off is allowed. A file saved before `summary` existed has no `kinds.summary`, and it reads as on. |
+| `summary.intervalMinutes` | How often the server records a [periodic summary](#periodic-summaries): `0` (off, nothing is recorded), `30`, `60`, `120`, or `240`. The default is `60`. A file saved before summaries existed has no `summary` group, and it reads as `60`; the file is not rewritten until the next save. Any other value makes the group read as the default. |
 
 A file written by an older version may also hold `kinds.stateChanges`, a `stateChanges` group, and a `periodic` group, from the removed card state change and periodic status notifications. They are read and dropped, and the next save leaves them out; they do not make the file invalid.
 
-A save sends the `kinds` group with all of its fields. The last save wins, and there is no conflict check. The file holds no secret.
+A save sends the `kinds` group with all of its fields, the `summary` group, or both. The last save wins, and there is no conflict check. The file holds no secret.
 
 The code that sends the notifications reads the saved value with `NotificationSettingsStore::load()` in `src/server/notification_settings/`, which returns the defaults when the file cannot be used. The module's `Default` is the single definition of the defaults. A save does not announce itself on the events stream: the settings dialog reads the value each time it opens.
 

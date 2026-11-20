@@ -146,7 +146,7 @@ These are returned by the `/api/notification-settings` route (see [Web API](./we
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_notification_settings` | The body is empty, has no `kinds` group, or has an unknown or missing field. Nothing is saved. | n/a | 422 |
+| `invalid_notification_settings` | The body is empty, has neither a `kinds` nor a `summary` group, or has an unknown or missing field, or `summary.intervalMinutes` is not 0, 30, 60, 120, or 240. Nothing is saved. | n/a | 422 |
 | `notification_settings_unavailable` | The settings file could not be written. The saved value is unchanged. | n/a | 500 |
 
 ## Exit codes

@@ -44,14 +44,14 @@ fn baseline(state: &AppState) -> Known {
 }
 
 /// Whether the remote entrance is up right now.
-fn entrance_up(state: &AppState) -> bool {
+pub(super) fn entrance_up(state: &AppState) -> bool {
     state.monitor.public_origin().is_some()
 }
 
 /// What delivery works with right now, or `None` when no device is subscribed. A change seen
 /// while the entrance was down (`up_at_change` is false) gets no address even when the entrance
 /// has come back since, so it is skipped rather than sent late.
-fn context(state: &AppState, up_at_change: bool) -> Option<Context> {
+pub(super) fn context(state: &AppState, up_at_change: bool) -> Option<Context> {
     let subscriptions = state.monitor.push_subscriptions();
     if subscriptions.is_empty() {
         return None;
@@ -74,6 +74,7 @@ pub(crate) fn start(state: &Arc<AppState>, data_dir: &Path, transport: Arc<dyn P
     let changes = state.changed.subscribe();
     let weak = Arc::downgrade(state);
     tokio::spawn(retry_loop(weak.clone(), dispatcher.clone()));
+    super::summary::start(weak.clone(), dispatcher.clone());
     tokio::spawn(follow(weak, changes, known, dispatcher));
 }
 

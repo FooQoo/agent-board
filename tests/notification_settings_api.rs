@@ -21,7 +21,8 @@ fn nothing_saved_reads_as_the_defaults() {
     assert_eq!(
         reply.json(),
         json!({
-            "kinds": {"results": true, "questions": false, "history": false},
+            "kinds": {"results": true, "questions": false, "history": false, "summary": true},
+            "summary": {"intervalMinutes": 60},
             "revision": 0
         })
     );
@@ -57,6 +58,65 @@ fn a_save_is_read_back_and_kept_across_a_restart() {
         saved.json()
     );
     restarted.stop();
+}
+
+#[test]
+fn a_saved_file_without_the_summary_fields_reads_with_their_defaults_and_is_not_rewritten() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let file = home
+        .path()
+        .join(".internal")
+        .join("notification-settings.json");
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let old = r#"{"formatVersion":1,"revision":7,"kinds":{"results":false,"questions":true,"history":false}}"#;
+    std::fs::write(&file, old).unwrap();
+    let server = Running::start(home.path());
+    assert_eq!(
+        server.get("/api/notification-settings").json(),
+        json!({
+            "kinds": {"results": false, "questions": true, "history": false, "summary": true},
+            "summary": {"intervalMinutes": 60},
+            "revision": 7
+        })
+    );
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), old);
+    server.stop();
+}
+
+#[test]
+fn the_summary_interval_is_saved_alone_and_only_from_the_allowed_values() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let server = Running::start(home.path());
+    for minutes in [0, 30, 60, 120, 240] {
+        let saved = put(&server, &json!({"summary": {"intervalMinutes": minutes}}));
+        assert_eq!(saved.status, 200, "{}", saved.body);
+        assert_eq!(saved.json()["summary"]["intervalMinutes"], minutes);
+        assert_eq!(saved.json()["kinds"]["summary"], true);
+    }
+    let revision = server.get("/api/notification-settings").json()["revision"].clone();
+    for body in [
+        json!({"summary": {"intervalMinutes": 45}}),
+        json!({"summary": {}}),
+        json!({"summary": {"intervalMinutes": 60, "extra": 1}}),
+    ] {
+        let reply = put(&server, &body);
+        assert_eq!(reply.status, 422, "{}", reply.body);
+    }
+    assert_eq!(
+        server.get("/api/notification-settings").json()["revision"],
+        revision
+    );
+    // The kind switches on its own and leaves the interval as it was.
+    let kinds = put(
+        &server,
+        &json!({"kinds": {"results": true, "questions": false, "history": false, "summary": false}}),
+    );
+    assert_eq!(kinds.status, 200, "{}", kinds.body);
+    assert_eq!(kinds.json()["kinds"]["summary"], false);
+    assert_eq!(kinds.json()["summary"]["intervalMinutes"], 240);
+    server.stop();
 }
 
 #[test]

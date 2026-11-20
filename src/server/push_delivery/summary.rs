@@ -1,0 +1,196 @@
+//! The periodic summary: every configured interval, the server records the results of each
+//! project's last window in its `notify/` folder (see `file_store::notify`) and, when the summary
+//! kind is on, tells the phones that a summary arrived.
+//!
+//! Nothing here reads a model: a summary is the list of results the board already holds. The
+//! interval counts from the last window, or from the start of the server when there has not been
+//! one, so a restart does not write one at once. A window that no result falls in writes nothing
+//! and sends nothing. The next window of a project begins where its newest stored summary ends,
+//! so a restart never reports a result twice.
+
+use std::sync::{Arc, Weak};
+use std::time::Duration;
+
+use chrono::{DateTime, Local, Utc};
+
+use super::deliver::{Context, Dispatcher};
+use super::message::{Lang, Payload, shorten};
+use crate::domain::ProjectId;
+use crate::file_store::FileStore;
+use crate::file_store::model::TaskView;
+use crate::file_store::notify::Summary;
+use crate::server::AppState;
+use crate::server::monitor_connection::contracts::PublicOrigin;
+
+/// How often the task checks whether a window is due.
+const CHECK_EVERY: Duration = Duration::from_secs(30);
+/// How many titles the message body lists; the rest are counted.
+const MAX_TITLES: usize = 3;
+const TITLE_CHARS: usize = 40;
+
+/// When the next window ends.
+pub(super) struct Schedule {
+    last: Option<DateTime<Utc>>,
+    started: DateTime<Utc>,
+}
+
+impl Schedule {
+    pub(super) fn new(started: DateTime<Utc>, last: Option<DateTime<Utc>>) -> Self {
+        Self { last, started }
+    }
+
+    fn interval(minutes: u32) -> chrono::Duration {
+        chrono::Duration::minutes(i64::from(minutes))
+    }
+
+    pub(super) fn due(&self, now: DateTime<Utc>, minutes: u32) -> bool {
+        now >= self.last.unwrap_or(self.started) + Self::interval(minutes)
+    }
+
+    /// The start of the window that ends now: the end of the last one, or, for the first, one
+    /// interval before the start of the server.
+    pub(super) fn since(&self, minutes: u32) -> DateTime<Utc> {
+        self.last.unwrap_or(self.started - Self::interval(minutes))
+    }
+
+    pub(super) fn mark(&mut self, now: DateTime<Utc>) {
+        self.last = Some(now);
+    }
+}
+
+/// Write the summary of the window ending at `to` for one project. The window starts at `floor`,
+/// or at the end of the newest stored summary when that is later. `None` when no result falls in
+/// it or the summary is already stored.
+pub(super) fn record(
+    store: &FileStore,
+    project: &ProjectId,
+    tasks: &[TaskView],
+    floor: DateTime<Utc>,
+    to: DateTime<Utc>,
+) -> Option<Summary> {
+    let from = store
+        .latest_summary_end(project)
+        .map_or(floor, |end| end.max(floor));
+    let summary = Summary::for_window(tasks, from, to)?;
+    store
+        .append_summary(project, &summary)
+        .ok()?
+        .then_some(summary)
+}
+
+fn clock(at: DateTime<Utc>) -> String {
+    at.with_timezone(&Local).format("%H:%M").to_string()
+}
+
+/// The message for a summary. `None` when the project id is not one the board makes.
+pub(super) fn payload_of(
+    project: &str,
+    summary: &Summary,
+    lang: Lang,
+    origin: &PublicOrigin,
+) -> Option<Payload> {
+    let link = format!("{}&messages=summary", origin.project_link(project)?);
+    let n = summary.results.len();
+    let mut titles: Vec<String> = summary
+        .results
+        .iter()
+        .take(MAX_TITLES)
+        .map(|r| shorten(&r.title, TITLE_CHARS))
+        .collect();
+    let more = n.saturating_sub(MAX_TITLES);
+    let window = format!("{}-{}", clock(summary.from), clock(summary.to));
+    let (title, body) = match lang {
+        Lang::Ja => {
+            if more > 0 {
+                titles.push(format!("ほか{more}件"));
+            }
+            (
+                format!("サマリー {window}"),
+                format!("成果が{n}件: {}", titles.join("、")),
+            )
+        }
+        Lang::En => {
+            if more > 0 {
+                titles.push(format!("and {more} more"));
+            }
+            (
+                format!("Summary {window}"),
+                format!(
+                    "{n} result{}: {}",
+                    if n == 1 { "" } else { "s" },
+                    titles.join("; ")
+                ),
+            )
+        }
+    };
+    Some(Payload {
+        title,
+        body,
+        path: link.strip_prefix(origin.origin())?.to_string(),
+        tag: format!("summary:{project}:{}", summary.id),
+        urgent: false,
+    })
+}
+
+/// What each project holds now: its id and the tasks of its last good read.
+fn snapshots(state: &AppState) -> Vec<(ProjectId, Vec<TaskView>)> {
+    let index = state.index.read().unwrap_or_else(|e| e.into_inner());
+    index
+        .entries()
+        .filter_map(|(id, entry)| Some((id.clone(), entry.last_good()?.tasks.clone())))
+        .collect()
+}
+
+/// Follow the clock and record a summary each time a window ends. The task ends with the server.
+pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(CHECK_EVERY);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        tick.tick().await;
+        let mut schedule = Schedule::new((dispatcher.now)(), None);
+        loop {
+            tick.tick().await;
+            let Some(state) = weak.upgrade() else { return };
+            let now = (dispatcher.now)();
+            let minutes = state.notification_settings.load().summary.interval_minutes;
+            if minutes == 0 {
+                // Off: counting starts again when it is switched on.
+                schedule.mark(now);
+                continue;
+            }
+            if !schedule.due(now, minutes) {
+                continue;
+            }
+            let floor = schedule.since(minutes);
+            schedule.mark(now);
+            let projects = snapshots(&state);
+            let shared = state.shared.clone();
+            let written = tokio::task::spawn_blocking(move || {
+                let store = FileStore::open(&shared);
+                projects
+                    .iter()
+                    .filter_map(|(id, tasks)| {
+                        record(&store, id, tasks, floor, now).map(|s| (id.to_string(), s))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .unwrap_or_default();
+            if written.is_empty() {
+                continue;
+            }
+            let ctx: Option<Context> =
+                super::runtime::context(&state, super::runtime::entrance_up(&state))
+                    .filter(|ctx| ctx.settings.kinds.summary);
+            drop(state);
+            if let Some(ctx) = ctx {
+                for (project, summary) in &written {
+                    dispatcher.deliver_summary(&ctx, project, summary).await;
+                }
+            }
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests;

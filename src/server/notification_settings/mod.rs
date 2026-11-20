@@ -2,7 +2,7 @@
 //! `<data_dir>/.internal/notification-settings.json`. The file is the app's own
 //! state, not a shared project file, so it is never in `shared/`.
 //!
-//! This module is the one definition of the kinds and their defaults. The Web Push delivery side reads the saved value with
+//! This module is the one definition of the kinds, the summary interval, and their defaults. The Web Push delivery side reads the saved value with
 //! [`NotificationSettingsStore::load`]. A missing, invalid, or unreadable file
 //! reads as the defaults. A save replaces the whole file in one step, and a
 //! failed save leaves the old file as it was.
@@ -21,7 +21,7 @@ const FORMAT_VERSION: u32 = 1;
 const INTERNAL_DIR: &str = ".internal";
 const FILE_NAME: &str = "notification-settings.json";
 
-/// The three kinds of milestone notification. Each is switched on its own.
+/// The kinds of notification. Each is switched on its own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", from = "KindsWire")]
 pub(crate) struct Kinds {
@@ -31,6 +31,8 @@ pub(crate) struct Kinds {
     pub questions: bool,
     /// A history entry was added to a task.
     pub history: bool,
+    /// A periodic summary of the results was recorded.
+    pub summary: bool,
 }
 
 /// How [`Kinds`] is read. Older builds also saved a `stateChanges` kind for the removed card
@@ -41,6 +43,9 @@ struct KindsWire {
     results: bool,
     questions: bool,
     history: bool,
+    /// Absent from files and pages that predate the summary kind: it reads as on.
+    #[serde(default)]
+    summary: Option<bool>,
     #[serde(default)]
     #[allow(dead_code)]
     state_changes: Option<bool>,
@@ -52,6 +57,35 @@ impl From<KindsWire> for Kinds {
             results: wire.results,
             questions: wire.questions,
             history: wire.history,
+            summary: wire.summary.unwrap_or(true),
+        }
+    }
+}
+
+/// The intervals, in minutes, at which the server records a summary. `0` is off: nothing is
+/// recorded.
+pub(crate) const SUMMARY_INTERVALS: [u32; 5] = [0, 30, 60, 120, 240];
+/// The interval of settings that do not say: every hour.
+pub(crate) const DEFAULT_SUMMARY_INTERVAL: u32 = 60;
+
+/// How often summaries are recorded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct SummarySettings {
+    /// One of [`SUMMARY_INTERVALS`]; `0` records no summary.
+    pub interval_minutes: u32,
+}
+
+impl SummarySettings {
+    fn valid(self) -> bool {
+        SUMMARY_INTERVALS.contains(&self.interval_minutes)
+    }
+}
+
+impl Default for SummarySettings {
+    fn default() -> Self {
+        Self {
+            interval_minutes: DEFAULT_SUMMARY_INTERVAL,
         }
     }
 }
@@ -61,6 +95,7 @@ impl From<KindsWire> for Kinds {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct NotificationSettings {
     pub kinds: Kinds,
+    pub summary: SummarySettings,
     pub revision: u64,
 }
 
@@ -71,7 +106,9 @@ impl Default for NotificationSettings {
                 results: true,
                 questions: false,
                 history: false,
+                summary: true,
             },
+            summary: SummarySettings::default(),
             revision: 0,
         }
     }
@@ -82,6 +119,7 @@ impl Default for NotificationSettings {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Patch {
     pub kinds: Option<Kinds>,
+    pub summary: Option<SummarySettings>,
     /// The removed state-change and periodic groups. Older pages may still send them; they are
     /// accepted and ignored, so they never count as a change to save.
     #[serde(default)]
@@ -101,6 +139,10 @@ struct StoredFile {
     format_version: u32,
     revision: u64,
     kinds: Kinds,
+    /// Absent from files saved before summaries existed: it reads as the default and the file is
+    /// left as it is until the next save.
+    #[serde(default)]
+    summary: Option<SummarySettings>,
     #[serde(default, skip_serializing)]
     #[allow(dead_code)]
     state_changes: Option<serde_json::Value>,
@@ -143,7 +185,9 @@ impl NotificationSettingsStore {
     /// Applies the sent groups and saves the result as the next revision.
     pub(crate) fn update(&self, patch: Patch) -> Result<NotificationSettings, UpdateError> {
         let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
-        if patch.kinds.is_none() {
+        if (patch.kinds.is_none() && patch.summary.is_none())
+            || patch.summary.is_some_and(|s| !s.valid())
+        {
             return Err(UpdateError::Invalid);
         }
         let saved = self.read_saved();
@@ -157,6 +201,7 @@ impl NotificationSettingsStore {
         let current = saved.unwrap_or_default();
         let next = NotificationSettings {
             kinds: patch.kinds.unwrap_or(current.kinds),
+            summary: patch.summary.unwrap_or(current.summary),
             revision,
         };
         self.write_file(&next)?;
@@ -171,6 +216,7 @@ impl NotificationSettingsStore {
         }
         Some(NotificationSettings {
             kinds: stored.kinds,
+            summary: stored.summary.filter(|s| s.valid()).unwrap_or_default(),
             revision: stored.revision,
         })
     }
@@ -182,6 +228,7 @@ impl NotificationSettingsStore {
             format_version: FORMAT_VERSION,
             revision: settings.revision,
             kinds: settings.kinds,
+            summary: Some(settings.summary),
             state_changes: None,
             periodic: None,
         };

@@ -35,6 +35,6 @@ fn invalid() -> Response {
         StatusCode::UNPROCESSABLE_ENTITY,
         "invalid_notification_settings",
         "notification settings are invalid.",
-        "Send kinds with all of its fields: results, questions, and history, each true or false.",
+        "Send kinds with all of its fields (results, questions, history, and summary, each true or false), summary.intervalMinutes (0, 30, 60, 120, or 240), or both.",
     )
 }
