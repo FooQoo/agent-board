@@ -9,7 +9,7 @@ import { StatusLabel } from '../status/StatusLabel';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
 import type { ProjectId } from '../../../shared/api/contracts';
-import { cardSensors } from './cardDrag';
+import { cardSensors } from '../../../shared/lib/gesture/sortableDrag';
 import './card-answer.css';
 
 export interface TaskCardProps {

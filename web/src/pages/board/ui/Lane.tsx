@@ -33,7 +33,10 @@ export function Lane({
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
   const more = useScrollCue(listRef, tasks);
-  const { ref, isDropTarget } = useDroppable({ id: `lane-${column}`, data: { column } });
+  const { ref, isDropTarget } = useDroppable({
+    id: `lane-${column}`,
+    data: { column, group: column },
+  });
   // The card draws no epic label of its own; the board puts the epic's label on it.
   const renderEpic = (epic: EpicRef) => (
     <EpicLabel
