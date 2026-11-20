@@ -16,6 +16,31 @@ pub(super) fn existing_name(attachments: &std::path::Path, name: &str) -> bool {
     })
 }
 
+/// Give each image a name the question does not hold yet: one that clashes with a file in
+/// `attachments/` (or, once renamed, with another image of the answer) gets `-2`, `-3`, and so
+/// on before its extension, so an answer never replaces an image the question already has.
+pub(super) fn free_names(attachments: &std::path::Path, files: &mut [(String, &Vec<u8>)]) {
+    for i in 0..files.len() {
+        if !existing_name(attachments, &files[i].0) {
+            continue;
+        }
+        let (stem, extension) = match files[i].0.rsplit_once('.') {
+            Some((stem, extension)) => (stem.to_owned(), format!(".{extension}")),
+            None => (files[i].0.clone(), String::new()),
+        };
+        let name = (2..)
+            .map(|n| format!("{stem}-{n}{extension}"))
+            .find(|candidate| {
+                !existing_name(attachments, candidate)
+                    && !files
+                        .iter()
+                        .any(|(other, _)| other.eq_ignore_ascii_case(candidate))
+            })
+            .expect("a free name");
+        files[i].0 = name;
+    }
+}
+
 /// Write the images of each answer into its question's `attachments/` folder. Each written
 /// path is pushed to `placed`, so a later failure can remove them.
 pub(super) fn place_images(
