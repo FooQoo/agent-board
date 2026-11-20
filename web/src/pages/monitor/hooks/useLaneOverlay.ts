@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MonitorSection } from '../components/MonitorSectionHeader';
 import { EMPTY_OVERLAY, type Lanes, applyOverlay, settleOverlay } from '../model/overlay';
 
@@ -13,8 +13,20 @@ export function useLaneOverlay(lanes: Lanes) {
     () => applyOverlay(lanes, overlay, new Date().toISOString()),
     [lanes, overlay],
   );
+  // A restored task must show again even if no applied read has dropped it from `hidden` yet.
+  const unhide = useCallback(
+    (id: number) =>
+      setOverlay((current) => {
+        if (!current.hidden.has(id)) return current;
+        const hidden = new Set(current.hidden);
+        hidden.delete(id);
+        return { ...current, hidden };
+      }),
+    [],
+  );
   return {
     lanes: shown,
+    unhide,
     move: (id: number, target: MonitorSection) =>
       setOverlay((current) => ({ ...current, moved: new Map(current.moved).set(id, target) })),
     hide: (ids: readonly number[]) =>
