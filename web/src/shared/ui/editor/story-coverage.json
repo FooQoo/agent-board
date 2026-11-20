@@ -9,13 +9,8 @@
           "name": "ComposerThumbs",
           "stories": [
             {
-              "id": "messages-askai--sheet-images-tappable",
-              "states": ["88px thumbnails", "44px remove target", "tap opens viewer"],
-              "interaction": true
-            },
-            {
-              "id": "task-messages-messagecenter--answer-images-tappable-on-phone",
-              "states": ["answer sheet", "88px thumbnails", "tap opens viewer"],
+              "id": "editor-composerthumbs--preview-and-remove",
+              "states": ["thumbnail row", "remove one picture", "tap opens viewer"],
               "interaction": true
             }
           ]
