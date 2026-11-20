@@ -76,6 +76,8 @@ pub(super) struct Log {
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Instruction {
     pub keys: Vec<String>,
+    /// The tasks in it, which the session may start.
+    pub tasks: Vec<i64>,
     pub text: String,
 }
 
@@ -178,6 +180,7 @@ pub(super) fn decide(
         let keys = answers.iter().map(|a| answer_key(&a.id)).collect();
         return Some(Instruction {
             keys,
+            tasks: Vec::new(),
             text: wording(
                 project_name,
                 &serde_json::json!({
@@ -197,6 +200,7 @@ pub(super) fn decide(
         let keys = requests.iter().map(|r| request_key(&r.id)).collect();
         return Some(Instruction {
             keys,
+            tasks: Vec::new(),
             text: wording(
                 project_name,
                 &serde_json::json!({
@@ -214,6 +218,7 @@ pub(super) fn decide(
     let rendered = task_wait::render_task(shared, snapshot, project, task).ok()?;
     Some(Instruction {
         keys: vec![task_key(task.id)],
+        tasks: vec![task.id],
         text: wording(
             project_name,
             &serde_json::from_str::<serde_json::Value>(&rendered).ok()?,

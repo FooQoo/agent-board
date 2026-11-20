@@ -12,7 +12,7 @@ use crate::server::resident::driver::{DriverEvent, TurnOutcome};
 
 pub(super) struct Board {
     _root: TempDir,
-    shared: std::path::PathBuf,
+    pub(super) shared: std::path::PathBuf,
     pub(super) store: FileStore,
     pub(super) id: ProjectId,
 }
@@ -31,7 +31,7 @@ pub(super) fn board() -> Board {
 }
 
 impl Board {
-    fn request(&self, text: &str) -> String {
+    pub(super) fn request(&self, text: &str) -> String {
         self.store
             .send_request(
                 &self.id,
