@@ -140,3 +140,53 @@ fn a_request_is_sent_with_images_and_withdrawn_by_a_person() {
     assert_eq!(server.get(&format!("/api/projects/{pid}/qa")).status, 404);
     server.stop();
 }
+
+#[test]
+fn an_answer_that_repeats_a_question_is_refused_before_anything_is_saved() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    ask(home.path());
+    let pid = project_id(home.path());
+    let server = Running::start(home.path());
+    let base = format!("/api/projects/{pid}/messages");
+
+    let boundary = "----agboard";
+    let metadata = json!({"answers": [
+        {"questionId": "Q-1", "choiceId": "a"},
+        {"questionId": "Q-1", "choiceId": "b"},
+    ]})
+    .to_string();
+    let body = multipart(
+        boundary,
+        &[("metadata", &metadata)],
+        &[("images.Q-1", "shot.png", PNG)],
+    );
+    let refused =
+        server.write_multipart("POST", &format!("{base}/answers/multipart"), body, boundary);
+    assert_eq!(refused.status, 422, "{}", refused.body);
+    assert_eq!(refused.code(), "invalid_value");
+    assert!(
+        refused.body.contains("Q-1 is answered twice."),
+        "{}",
+        refused.body
+    );
+    assert_eq!(
+        server.get(&format!("{base}/Q-1")).json()["question"]["status"],
+        "open"
+    );
+
+    // One answer with its image still goes through.
+    let metadata = json!({"answers": [{"questionId": "Q-1", "choiceId": "a"}]}).to_string();
+    let body = multipart(
+        boundary,
+        &[("metadata", &metadata)],
+        &[("images.Q-1", "shot.png", PNG)],
+    );
+    let sent = server.write_multipart("POST", &format!("{base}/answers/multipart"), body, boundary);
+    assert_eq!(sent.status, 200, "{}", sent.body);
+    assert_eq!(
+        sent.json()["questions"][0]["reply"]["images"],
+        json!(["shot.png"])
+    );
+    server.stop();
+}

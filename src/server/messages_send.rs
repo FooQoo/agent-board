@@ -138,6 +138,14 @@ pub(crate) async fn answer_questions_multipart(
     {
         return invalid_body("An image names a question that is not answered.");
     }
+    // Each answer is built with the images of its question, so a repeated ID would copy the
+    // uploaded bytes once per repeat. The store refuses it in the same words, but only later.
+    if let Some(repeated) = repeated_answer(&input.answers) {
+        return agboard_error_response(&AgboardError::InvalidValue {
+            field: "answers".into(),
+            reason: format!("{repeated} is answered twice."),
+        });
+    }
     let items = input
         .answers
         .into_iter()
@@ -156,4 +164,13 @@ pub(crate) async fn answer_questions_multipart(
         })
         .collect();
     record_answers(headers, state, raw_project, items).await
+}
+
+/// The first question ID that more than one answer names.
+fn repeated_answer(answers: &[super::messages::AnswerInputItem]) -> Option<&str> {
+    let mut seen = std::collections::HashSet::new();
+    answers
+        .iter()
+        .map(|a| a.question_id.as_str())
+        .find(|id| !seen.insert(*id))
 }

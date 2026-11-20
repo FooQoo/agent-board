@@ -244,7 +244,7 @@ export const BottomBar: Story = {
   globals: mobileJapaneseLight,
   play: async ({ canvasElement }) => {
     const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
-    await expect(within(bar).getAllByRole('button')).toHaveLength(6);
+    await expect(within(bar).getAllByRole('button')).toHaveLength(5);
     await expect(within(bar).getByRole('button', { name: 'メッセージ 2' })).toBeVisible();
     await expect(within(bar).getByRole('button', { name: 'AI に依頼' })).toBeVisible();
     // The band that the bar replaced is gone.
