@@ -51,11 +51,11 @@ fn templates_cover_the_documented_events() {
     claude_events.sort();
     assert_eq!(
         claude_events,
-        ["PostToolUse", "PostToolUseFailure", "SessionStart"]
+        ["PostToolUse", "PostToolUseFailure", "SessionStart", "Stop"]
     );
     let mut codex_events: Vec<String> = handlers(&codex()).into_iter().map(|h| h.0).collect();
     codex_events.sort();
-    assert_eq!(codex_events, ["PostToolUse", "SessionStart"]);
+    assert_eq!(codex_events, ["PostToolUse", "SessionStart", "Stop"]);
 }
 
 #[test]
@@ -206,6 +206,10 @@ fn the_skill_asks_on_the_board_and_in_the_chat() {
     assert!(
         skill.contains("message answer <Q-id> --actor human --via chat"),
         "a chat answer must be written back to the board"
+    );
+    assert!(
+        skill.contains("asking permission to proceed") && skill.contains("re-read your reply"),
+        "permission questions and the end-of-turn check must be named"
     );
     assert!(skill.contains("question_answered"));
     assert!(

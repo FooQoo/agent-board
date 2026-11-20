@@ -95,6 +95,13 @@ struct HookInput {
     hook_event_name: Option<serde_json::Value>,
     #[serde(default)]
     cwd: Option<serde_json::Value>,
+    /// Stop only: the turn was already continued by a Stop hook.
+    #[serde(default)]
+    stop_hook_active: Option<bool>,
+    #[serde(default)]
+    last_assistant_message: Option<String>,
+    #[serde(default)]
+    transcript_path: Option<String>,
 }
 
 fn hook_output(
@@ -134,6 +141,9 @@ fn hook_output(
         .as_ref()
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    if event == "Stop" && matches!(agent, "claude" | "codex") {
+        return stop_output(shared, project, &input);
+    }
     let allowed = match agent {
         "claude" => matches!(event, "PostToolUse" | "PostToolUseFailure" | "SessionStart"),
         "codex" => matches!(event, "PostToolUse" | "SessionStart"),
@@ -153,6 +163,27 @@ fn hook_output(
         Err(failure) => error_context(&failure),
     };
     Some(output(event, &context))
+}
+
+/// The Stop event: block the turn once when it ends with a question that is
+/// not on the board. A folder with no project, or any failure, says nothing.
+fn stop_output(shared: &Path, project: Option<&str>, input: &HookInput) -> Option<String> {
+    if input.stop_hook_active == Some(true) {
+        return None;
+    }
+    let store = FileStore::open(shared);
+    if let Some(name) = project {
+        let name = validate_project_name(name).ok()?;
+        store.project_by_name(&name).ok()?;
+    } else {
+        let cwd = hook_folder(input.cwd.as_ref()).ok()?;
+        store.resolve_binding(&cwd).ok()??;
+    }
+    super::stop::decide(
+        false,
+        input.last_assistant_message.as_deref(),
+        input.transcript_path.as_deref(),
+    )
 }
 
 /// Adds a SessionStart `notice` to the hook's `output`. With no output (an

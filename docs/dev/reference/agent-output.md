@@ -70,6 +70,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 - `additionalContext` is `AGBOARD_PROGRESS` followed by the table above, or `AGBOARD_ERROR` followed by a body with a `code` and a reason, and a reminder not to make board-dependent changes.
 - `AGBOARD_ERROR` codes: `bound_project_missing`, `project_not_found`, `board_unavailable`, `context_too_large`, `invalid_hook_input` (bad JSON, or a `cwd` that is not a string or not absolute), and `hook_cwd_unavailable` (the `cwd` does not exist or cannot be read). `folder_unbound` is no longer a hook output.
 - **Silent skip.** When the bindings are valid, the `cwd` is readable, and no binding matches, the hook writes nothing to stdout or stderr and exits 0, so a Global Hook does not disturb work in folders with no project. See [Hook skip and errors](../concepts/agents.md#hook-skip-and-errors).
+- **Stop.** On the Stop event the hook writes nothing, or once `{ "decision": "block", "reason": "..." }` when the turn ends with a question that is not on the board. See [Stop](../concepts/agents.md).
 - When it adds a table, the hook also starts the server in the background if none runs. Its output does not change, and failures are left in `serve.log`.
 - Limits: 256 KiB for the table, 10 seconds per run. The input is read whatever its size; only `hook_event_name` and `cwd` are used. Over the limit, the hook reports `context_too_large`; it never truncates and calls it a success.
 

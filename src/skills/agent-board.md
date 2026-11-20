@@ -179,7 +179,7 @@ After the start, call the user only when:
 
 Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later, and record the decision in history.
 
-Every question goes on the board with `message ask`, never only in chat. Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Each question is its own message (`Q-<n>`) and belongs to the project; `--task` makes the task refer to it, and the task shows as `pending` while any question it refers to is open. The command records the question in the task's history. Write the questions as JSON and pass them with `--questions-json`, inline or from standard input with `-`:
+Every question goes on the board with `message ask`, never only in chat. These are questions too: asking permission to proceed ("may I...?"), a question at the end of a progress report, and confirming an action that a subagent was denied. Before ending a turn, re-read your reply: if it still asks the user anything that waits on their answer, put it on the board now. A Stop hook blocks a turn once when its last line is a question and no `message ask` ran in that turn. Before asking, update the task plan if needed with the facts, impact, options, and recommendation. Each question is its own message (`Q-<n>`) and belongs to the project; `--task` makes the task refer to it, and the task shows as `pending` while any question it refers to is open. The command records the question in the task's history. Write the questions as JSON and pass them with `--questions-json`, inline or from standard input with `-`:
 
 ```json
 {

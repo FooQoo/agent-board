@@ -75,12 +75,13 @@ Done tasks are read-only for agents and do not return to progress unless a user 
 - `SessionStart` (startup, resume, clear, compact): the first progress table and the table after compaction.
 - `PostToolUse`: a fresh progress table after each tool.
 - `PostToolUseFailure`: a fresh progress table after a failed tool.
+- `Stop`: blocks a turn once when it ends with a question that is not on the board (see the developer guide).
 
 Inspect `/hooks` and review the fixed command. The `agent-board` Skill does not register hooks itself.
 
 ## Codex CLI and Codex App
 
-`hooks/codex.json` registers the fixed command for `SessionStart` (startup, resume, clear, compact) and `PostToolUse`. It sets `additionalContextLimit` to `0` so that the 256 KiB check done by `agboard` is the only limit.
+`hooks/codex.json` registers the fixed command for `SessionStart` (startup, resume, clear, compact) `PostToolUse`, and `Stop`. It sets `additionalContextLimit` to `0` so that the 256 KiB check done by `agboard` is the only limit.
 
 ## After renaming a project
 
