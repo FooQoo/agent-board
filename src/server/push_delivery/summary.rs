@@ -8,6 +8,7 @@
 //! and sends nothing. The next window of a project begins where its newest stored summary ends,
 //! so a restart never reports a result twice.
 
+use std::collections::HashSet;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
@@ -149,6 +150,10 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         tick.tick().await;
         let mut schedule = Schedule::new((dispatcher.now)(), None);
+        // For the open window: the entrance state when it first became due, and the projects
+        // that already recorded it. Both are kept across retries and cleared when it closes.
+        let mut due_up: Option<bool> = None;
+        let mut done: HashSet<ProjectId> = HashSet::new();
         loop {
             tick.tick().await;
             let Some(state) = weak.upgrade() else { return };
@@ -157,38 +162,51 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
             if minutes == 0 {
                 // Off: counting starts again when it is switched on.
                 schedule.mark(now);
+                due_up = None;
+                done.clear();
                 continue;
             }
             if !schedule.due(now, minutes) {
                 continue;
             }
             let floor = schedule.since(minutes);
-            // Whether the entrance is up is read now, not after the write: a notification that
-            // was due while it was down is recorded, never sent after it comes back.
-            let entrance_up = super::runtime::entrance_up(&state);
-            let projects = snapshots(&state);
+            // Read when the window first becomes due, not on each retry or after the write: a
+            // notification that was due while the entrance was down is recorded, never sent
+            // after it comes back.
+            let entrance_up = *due_up.get_or_insert_with(|| super::runtime::entrance_up(&state));
+            let mut projects = snapshots(&state);
+            projects.retain(|(id, _)| !done.contains(id));
             let shared = state.shared.clone();
             let written = tokio::task::spawn_blocking(move || {
                 let store = FileStore::open(&shared);
                 let mut failed = false;
+                let mut recorded = Vec::new();
                 let mut written = Vec::new();
                 for (id, tasks) in &projects {
                     match record(&store, id, tasks, floor, now) {
-                        Ok(Some(s)) => written.push((id.to_string(), s)),
-                        Ok(None) => {}
+                        Ok(summary) => {
+                            recorded.push(id.clone());
+                            if let Some(s) = summary {
+                                written.push((id.to_string(), s));
+                            }
+                        }
                         Err(()) => failed = true,
                     }
                 }
-                (written, failed)
+                (written, recorded, failed)
             })
             .await;
-            // A failed write leaves the window open: the next check tries it again, and a project
-            // that already has its summary starts after it, so nothing is reported twice.
-            let Ok((written, failed)) = written else {
+            // A failed write leaves the window open and the next check tries it again, but only
+            // for the projects that have not recorded it: one that has is not given a short
+            // window of its own.
+            let Ok((written, recorded, failed)) = written else {
                 continue;
             };
+            done.extend(recorded);
             if !failed {
                 schedule.mark(now);
+                due_up = None;
+                done.clear();
             }
             if written.is_empty() {
                 continue;
