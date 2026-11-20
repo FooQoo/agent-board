@@ -1,13 +1,13 @@
 // The resident-session dialog, its settings row, and the footer indicator.
 export const residentEn = {
   resident: {
-    entryTitle: 'Resident session',
-    entryAction: 'Resident session settings',
+    entryTitle: 'Resident agent',
+    entryAction: 'Agent settings',
     entryNone: 'Not running',
     entrySummary: '{{tool}} · {{state}}',
     entryExternal: ' · External {{count}}',
     entryUnknown: 'Open to see its state',
-    title: 'Resident session',
+    title: 'Resident agent',
     intro:
       'A session that stays attached to the board and waits for requests and answers to questions. The board launches only one.',
     attachedNow: 'Sessions attached to this board now: {{count}}',
@@ -60,8 +60,8 @@ export const residentEn = {
     externalSince: 'Connected since {{time}}',
     externalNone: 'No external session is connected.',
     externalTool: { 'claude-code': 'Claude Code', codex: 'Codex', unknown: 'Unknown' },
-    footerLabel: 'Resident session',
-    footerStopped: 'Resident session: stopped',
+    footerLabel: 'Resident agent',
+    footerStopped: 'Resident agent: stopped',
     footerState: '{{tool}}: {{state}}',
     footerStalled: 'Some items could not be handled ({{count}})',
     stalledTitle: 'Some items could not be handled',

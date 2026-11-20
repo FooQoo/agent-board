@@ -130,7 +130,7 @@ landing:
       - { title: Install, commands: [brew install fooqoo/tap/agboard] }
       - { title: Set up your agent and a project, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: Open the board, commands: [agboard serve] }
-    note: "Some features, such as Docs and resident sessions, are in public preview. See "
+    note: "Some features, such as Docs and resident agents, are in public preview. See "
     noteLinks:
       - { text: Feature stages, link: /guide/feature-stages }
     noteJoin: " and "

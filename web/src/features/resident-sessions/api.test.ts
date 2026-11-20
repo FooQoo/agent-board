@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ResidentRequestError,
   getModels,
+  getSessionLog,
   getSessions,
   launchSession,
   saveAutoStart,
@@ -36,6 +37,13 @@ describe('the reads', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       `/api/projects/${PROJECT}/sessions/models?tool=claude-code`,
     );
+  });
+
+  it('ask for the log of one tool', async () => {
+    const log = { tool: 'codex', exists: true, text: 'a\n', truncated: false, size: 2 };
+    const fetchMock = stubFetch(json(log));
+    await expect(getSessionLog(PROJECT, 'codex')).resolves.toEqual(log);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/projects/${PROJECT}/sessions/log?tool=codex`);
   });
 
   it('fail with the status and error code of the server', async () => {

@@ -115,7 +115,7 @@ brew upgrade fooqoo/tap/agboard
 
 ## 機能の提供段階
 
-Agent Boardには、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。ドキュメント、常駐セッション、質問と依頼はパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
+Agent Boardには、一般提供（GA）の機能と、パブリックプレビューの機能が混在しています。ドキュメント、常駐エージェント、質問と依頼はパブリックプレビューで、今後変わる可能性があります。GAは、何も変わらないことや、不具合がないことを約束するものではありません。詳しくは[機能の提供段階](https://fooqoo.github.io/agent-board/ja/guide/feature-stages)を参照してください。
 
 ## ライセンス
 

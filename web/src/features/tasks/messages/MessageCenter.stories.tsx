@@ -556,7 +556,7 @@ export const PhoneQuestionMarkdown: Story = {
 
 const TIME_WINDOW = /^\d\d\/\d\d \d\d:\d\d–/;
 
-/** The Summary tab on the PC: the count, the windows with `#id title`, and a trash button on the left of each. */
+/** The Summary tab on the PC: the count, the windows with `#id title`, and a trash button at the right end of each heading. */
 export const SummaryTabDesktop: Story = {
   args: { initial: { tab: 'summary' }, summaries: { dismiss: fn(async () => undefined) } },
   play: async ({ args }) => {

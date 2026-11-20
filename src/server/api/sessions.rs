@@ -1,5 +1,5 @@
 //! The agent sessions of a project: `GET /api/projects/{id}/sessions` lists the attached ones and
-//! the board-launched children; the launcher routes (`sessions/models`, `sessions/launch`,
+//! the board-launched children; the launcher routes (`sessions/models`, `sessions/log`, `sessions/launch`,
 //! `sessions/stop`) start and stop the headless sessions and are served on the local entrance only.
 
 use std::sync::Arc;
@@ -95,6 +95,38 @@ pub(super) async fn session_models(
     let result = blocking(move || launcher.models(query.tool)).await;
     match result {
         Ok(list) => json_response(StatusCode::OK, &list),
+        Err(error) => agboard_error_response(&error),
+    }
+}
+
+#[derive(Deserialize)]
+pub(super) struct LogQuery {
+    /// Read as text so that an unknown tool is 422 `invalid_value`, not a query rejection.
+    tool: String,
+}
+
+/// The tail of the log of the session of one tool. Local entrance only.
+pub(super) async fn session_log(
+    State(state): State<Arc<AppState>>,
+    Path(raw_project): Path<String>,
+    Query(query): Query<LogQuery>,
+) -> Response {
+    if let Err(error) = parse_project_id(&raw_project) {
+        return agboard_error_response(&error);
+    }
+    let tool = match query.tool.as_str() {
+        "claude-code" => Tool::ClaudeCode,
+        "codex" => Tool::Codex,
+        _ => {
+            return agboard_error_response(&AgboardError::InvalidValue {
+                field: "tool".to_string(),
+                reason: "tool must be claude-code or codex.".to_string(),
+            });
+        }
+    };
+    let launcher = state.resident.clone();
+    match blocking(move || launcher.read_log(tool)).await {
+        Ok(tail) => json_response(StatusCode::OK, &tail),
         Err(error) => agboard_error_response(&error),
     }
 }

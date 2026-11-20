@@ -144,6 +144,22 @@ export const getSessions = (projectId: ProjectId) =>
 export const getModels = (projectId: ProjectId, tool: SessionTool) =>
   read<ModelList>(`${sessionsPath(projectId)}/models?tool=${encodeURIComponent(tool)}`);
 
+/** The tail of a launched session's log (at most 64 KiB, starting at a line boundary). */
+export interface SessionLog {
+  tool: SessionTool;
+  /** False until a session of the tool has been launched; `text` is then empty. */
+  exists: boolean;
+  text: string;
+  /** True when the file is larger than the tail and its start was cut off. */
+  truncated: boolean;
+  /** The size of the whole file in bytes. */
+  size: number;
+}
+
+/** The log of the session a tool launched. Local only. */
+export const getSessionLog = (projectId: ProjectId, tool: SessionTool) =>
+  read<SessionLog>(`${sessionsPath(projectId)}/log?tool=${encodeURIComponent(tool)}`);
+
 /** Starts the session. An empty model leaves the choice to the tool. Local only. */
 export const launchSession = (projectId: ProjectId, tool: SessionTool, model: string) =>
   write<{ launched: LaunchedSession }>('POST', `${sessionsPath(projectId)}/launch`, {

@@ -46,7 +46,8 @@ use onboarding::*;
 use pages::*;
 use projects::*;
 use sessions::{
-    launch_session, list_sessions, session_models, set_autostart, stop_session, touch_session,
+    launch_session, list_sessions, session_log, session_models, set_autostart, stop_session,
+    touch_session,
 };
 use summaries::{dismiss_summary, list_summaries};
 use summary::summary;
@@ -81,6 +82,7 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
             "/api/projects/{project_id}/sessions/models",
             get(session_models),
         )
+        .route("/api/projects/{project_id}/sessions/log", get(session_log))
         .route(
             "/api/projects/{project_id}/sessions/launch",
             post(launch_session),

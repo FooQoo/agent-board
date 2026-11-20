@@ -6,7 +6,7 @@
 //! `codex app-server`.
 //!
 //! Only [`DriverEvent::Exited`] ends a session. A turn that ends is not the end: Claude Code wakes
-//! itself when a background command finishes, and a resident session waits on the board that way.
+//! itself when a background command finishes, and a resident agent waits on the board that way.
 
 pub(super) mod claude;
 mod claude_parse;
