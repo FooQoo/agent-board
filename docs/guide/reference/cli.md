@@ -113,7 +113,7 @@ agboard --project "My project" epic edit LAUNCH --waves 3 1,2
 
 `--document` and `--document-file` cannot be given together, and each accepts up to 100,000 characters.
 
-`--waves` sets the order of the epic's tasks. Give one value per wave, either a task ID or task IDs joined by commas. Tasks in one wave can run in parallel. The example above puts task 3 in the first wave and tasks 1 and 2 in the second. See [Order the work](../watch/epics#order-the-work).
+`--waves` sets the order of the epic's tasks. Give one value per wave, either a task ID or task IDs joined by commas. Tasks in one wave can run in parallel, and a wave starts when every task of the waves before it is Done. The example above puts task 3 in the first wave and tasks 1 and 2 in the second. See [Order the work](../watch/epics#order-the-work).
 
 Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until the draft is started:
 

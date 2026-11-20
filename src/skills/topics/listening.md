@@ -17,7 +17,7 @@ Use this procedure only when the user explicitly asks you to listen for work. It
 
 ## Process one returned task
 
-The command returns a single task as soon as any eligible task exists, including tasks created before listening began. Eligible tasks are AI-owned, in Todo or Doing, with `agentStatus: idle`, not drafts (neither a person's nor an AI's), and not archived. The order matches the progress table: epics sorted by ID, saved priority within each epic then task ID, then ungrouped tasks by ID. It does not prioritize creation time.
+The command returns a single task as soon as any eligible task exists, including tasks created before listening began. Eligible tasks are AI-owned, in Todo or Doing, with `agentStatus: idle`, not drafts (neither a person's nor an AI's), and not archived. The order matches the progress table: epics sorted by ID, saved waves within each epic then task ID, then ungrouped tasks by ID. It does not prioritize creation time.
 
 The output includes `projectId`, `cursor`, the task, `taskPath`, and `documentPath` (the epic's `EPIC.md` path; null without an epic). It does not change task state or reserve the task. Before acting:
 

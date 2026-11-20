@@ -11,7 +11,7 @@
 | `task_not_found` | タスクIDがプロジェクトにない。 | 3 | 404 |
 | `task_archived` | アーカイブ済みのタスクへの書き込み。 | 1 | 409 |
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
-| `epic_is_draft` | CLIの`epic edit`、または`epic edit --priority`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
+| `epic_is_draft` | CLIの`epic edit`、または`epic edit --waves`が人の下書きのエピックを対象にした。または、人の下書きのエピックを開始しようとした。 | 1 | 409 |
 | `task_is_draft` | AIの`edit`・`history add`が人の下書き（`human`）を対象にした。またはAIの`mv`・`state`が下書きを対象にした。`reason`は、人の下書きでは「ユーザーが確定するのを待つ」、AIの下書きでは`agboard start`を案内します。 | 1 | 409 |
 | `ai_draft_needs_start` | AIの下書きのタスクやエピックに、確定または`draft: null`を求めた。下書きを外せるのは開始だけ。 | 1 | 409 |
 | `human_only` | エージェントが依頼を取り下げようとした。これを行えるのは人だけ。 | 1 | 403 |

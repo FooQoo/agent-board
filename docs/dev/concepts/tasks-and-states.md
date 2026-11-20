@@ -58,6 +58,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 - A new project starts with the default epics `BUG` and `ENHANCEMENT`. They are ordinary epics: they can be edited and deleted. `defaultEpicsSeeded` in `project.json` is set once the project has been offered them, so a deleted default epic is not created again. `serve` offers them once to a project that does not have the flag yet.
 - Epics have no managed acceptance conditions. Reference conditions are ordinary Markdown in the body; the API rejects `acceptance` input for epics.
 - `waves` is a YAML list in the `EPIC.md` frontmatter in which every item is one wave: a task ID (`24`) or task IDs joined by commas (`26,25`; spaces after commas and quotes are accepted). Nested lists are not accepted. Duplicates across waves, non-positive IDs, empty items, and invalid types are errors. Writing drops empty waves. IDs that are no longer members are hidden and dropped on the next save, and a wave that becomes empty is dropped; unlisted members follow in creation order. Changing the waves does not count as editing a Done task. Lane positions never carry the order.
+- A wave starts only when every task of the earlier waves is Done. `nextTasks` holds back a Todo task while any non-archived task of an earlier wave of its epic is not Done; archived tasks are ignored, tasks that no wave lists are never held back, and an unreadable order gates nothing. Stalled Doing work is still offered as `resume`.
 
 ## Drafts
 

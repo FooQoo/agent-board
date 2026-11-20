@@ -7,6 +7,7 @@ use serde::Serialize;
 use crate::domain::{Assignee, Column, RunState};
 use crate::file_store::layout;
 use crate::file_store::model::TaskView;
+use crate::file_store::reader::ProjectSnapshot;
 
 /// How many tasks `nextTasks` holds at most.
 pub const MAX_NEXT_TASKS: usize = 3;
@@ -33,9 +34,36 @@ pub struct NextTask {
     pub why: NextReason,
 }
 
-/// Ready AI tasks, resume work before Todo work, each in table order. Dependencies
-/// between tasks are prose in EPIC.md and are not evaluated here.
-pub(super) fn next_tasks(listed: &[&TaskView], project_dir: &std::path::Path) -> Vec<NextTask> {
+/// A Todo task of an epic that orders its tasks in waves is held back while a task
+/// of an earlier wave is not Done. Archived tasks are ignored, tasks that no wave
+/// lists are never held back, and an unreadable order gates nothing.
+fn gated_by_waves(task: &TaskView, snapshot: &ProjectSnapshot) -> bool {
+    let Some(epic) = task
+        .epic_id
+        .as_deref()
+        .and_then(|id| snapshot.epics.iter().find(|epic| epic.id.as_str() == id))
+    else {
+        return false;
+    };
+    let Some(position) = epic.waves.iter().position(|wave| wave.contains(&task.id)) else {
+        return false;
+    };
+    let earlier: Vec<i64> = epic.waves[..position].iter().flatten().copied().collect();
+    snapshot.tasks.iter().any(|other| {
+        earlier.contains(&other.id)
+            && other.archived_at.is_none()
+            && other.task_status != Column::Done
+    })
+}
+
+/// Ready AI tasks, resume work before Todo work, each in table order. A Todo task
+/// waits for the earlier waves of its epic; other dependencies between tasks are
+/// prose in EPIC.md and are not evaluated here.
+pub(super) fn next_tasks(
+    listed: &[&TaskView],
+    snapshot: &ProjectSnapshot,
+    project_dir: &std::path::Path,
+) -> Vec<NextTask> {
     let ready = |task: &&&TaskView| {
         task.assignee == Assignee::Ai
             && task.agent_status == RunState::Idle
@@ -47,6 +75,7 @@ pub(super) fn next_tasks(listed: &[&TaskView], project_dir: &std::path::Path) ->
             .iter()
             .filter(ready)
             .filter(move |task| task.task_status == column)
+            .filter(move |task| column != Column::Todo || !gated_by_waves(task, snapshot))
             .map(move |task| (*task, why))
             .collect::<Vec<_>>()
     };

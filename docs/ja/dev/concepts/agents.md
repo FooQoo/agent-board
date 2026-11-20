@@ -22,7 +22,7 @@
 
 ## 進行表とHook
 
-進行表は、人の判断待ちではないTodoとDoingのタスクを、エピックごとに`waves`の順で並べた一覧です。各タスクのID・タイトル・担当・状態・完了条件の件数と、`EPIC.md`と`TASK.md`のパスを含み、本文や履歴は含みません。`nextTasks`（`src/progress.rs`の`next_tasks`）は、今すぐ着手できるAI担当のタスクを最大3件示し、実行中のタスクや人のタスクに紛れて準備の整った作業が見落とされないようにします。IdleのDoingタスク（`resume`）が先、次にIdleのTodoタスク（`next_in_epic`）で、順序は`ordered_tasks`に従います。依存関係は`EPIC.md`の文章で書かれるため評価しません。優先するタスクが判断待ちでも、後続のタスクは進められます。質問に回答があり、まだ完了していないタスクは一覧に戻ります。`pending`節の`question`は、IDが最も小さい未回答の質問の先頭200文字です。
+進行表は、人の判断待ちではないTodoとDoingのタスクを、エピックごとに`waves`の順で並べた一覧です。各タスクのID・タイトル・担当・状態・完了条件の件数と、`EPIC.md`と`TASK.md`のパスを含み、本文や履歴は含みません。`nextTasks`（`src/progress.rs`の`next_tasks`）は、今すぐ着手できるAI担当のタスクを最大3件示し、実行中のタスクや人のタスクに紛れて準備の整った作業が見落とされないようにします。IdleのDoingタスク（`resume`）が先、次にIdleのTodoタスク（`next_in_epic`）で、順序は`ordered_tasks`に従います。同じエピックの前のウェーブにDoneでないタスクが残っている間は、そのTodoのタスクを載せません（アーカイブしたタスクは無視し、`resume`は止めません）。それ以外の依存関係は`EPIC.md`の文章で書かれるため評価しません。優先するタスクが判断待ちでも、後続のタスクは進められます。質問に回答があり、まだ完了していないタスクは一覧に戻ります。`pending`節の`question`は、IDが最も小さい未回答の質問の先頭200文字です。
 
 `src/progress.rs`は、`Include`に応じて任意の`pending`節と`done`節を作ります。`agboard progress`と`agboard hook`が`--include-pending`と`--include-done`から`Include`を作ります。既定の`Include`は何も追加しないため、既定の表は変わりません。オプションは[エピックと進行表](../../guide/watch/epics.md#進行表を読む)を参照してください。
 
