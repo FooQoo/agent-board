@@ -227,3 +227,46 @@
     transition: none;
   }
 }
+
+/* Pull to refresh: the indicator above the cards of the lane on screen. */
+.monitor-pull {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--r-text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.monitor-pull svg {
+  width: 18px;
+  height: 18px;
+}
+.monitor-pull[data-state="ready"] {
+  color: var(--r-accent);
+}
+.monitor-pull__arrow {
+  transition: transform 150ms ease;
+}
+.monitor-pull[data-state="ready"] .monitor-pull__arrow {
+  transform: rotate(180deg);
+}
+.monitor-pull__spinner {
+  color: var(--r-accent);
+  animation: monitor-pull-spin 900ms linear infinite;
+}
+@keyframes monitor-pull-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .monitor-pull__arrow {
+    transition: none;
+  }
+  .monitor-pull__spinner {
+    animation: none;
+  }
+}

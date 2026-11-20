@@ -29,9 +29,6 @@
   gap: 8px;
   font-size: 14px;
 }
-.monitor-refresh {
-  flex: none;
-}
 .monitor-summary {
   display: grid;
   flex: none;

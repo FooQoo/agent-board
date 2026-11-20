@@ -85,9 +85,9 @@ export interface MonitorViewProps {
   doing: MonitorTask[];
   done: MonitorTask[];
   freshness: MonitorFreshness;
-  /** A person asked for fresh data: the screen asks the server now, without the presentation hold. */
+  /** A person pulled a lane down for fresh data: the screen asks the server now, without the presentation hold. */
   onRefresh(): void;
-  /** True while that request runs; the button waits. */
+  /** True while that request runs; the lanes show the refreshing indicator. */
   refreshing?: boolean;
   /** A display-only indicator in the status line after the connection state (the resident session). */
   statusSlot?: ReactNode;

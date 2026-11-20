@@ -27,7 +27,7 @@ describe('monitor contracts and view', () => {
     render(<MonitorView {...props} />);
     expect(screen.getByRole('heading', { name: 'Agent Board' })).toBeTruthy();
     expect(screen.getByRole('status').textContent).toContain('Loading monitor');
-    expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'All Projects' })).toBeNull();
     expect(screen.queryByRole('button', { name: /Delete|Edit|Answer/ })).toBeNull();
     // With nothing done there is nothing to archive: the Done lane's bulk archive is disabled.

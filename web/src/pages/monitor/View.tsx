@@ -143,6 +143,8 @@ export function MonitorView(props: MonitorViewProps) {
           detail.show(item, tab);
           props.onOpenDetail?.(item, tab);
         }}
+        onRefresh={props.onRefresh}
+        refreshing={props.refreshing}
         onOpenAnswer={
           props.messagesApi
             ? (item) =>
@@ -211,8 +213,6 @@ export function MonitorView(props: MonitorViewProps) {
         state={freshness.state}
         lastFetchedAt={freshness.lastFetchedAt}
         problemCount={freshness.snapshotProblems.length}
-        onRefresh={props.onRefresh}
-        refreshing={props.refreshing}
         slot={props.statusSlot}
       />
     </main>

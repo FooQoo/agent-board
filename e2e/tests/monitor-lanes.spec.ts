@@ -400,3 +400,26 @@ test('the bulk archive button is disabled while the done lane is empty', async (
   await expect(page.getByRole('button', { name: 'Archive all' })).toBeDisabled();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test('pulling a lane down from its top refreshes the board, a short pull does not, and no refresh button is left', async ({ page }) => {
+  await openPhone(page, 'Quiet');
+  await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
+  const summaries: string[] = [];
+  page.on('request', (request) => {
+    if (/\/api\/projects\/[^/]+\/summary/.test(request.url())) summaries.push(request.url());
+  });
+  const card = swipeCard(page, 'Quiet todo');
+  const b = await box(card);
+  const from = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+
+  // A short pull shows the hint at most and refreshes nothing.
+  await finger(page, from, { x: from.x, y: from.y + 40 });
+  await page.waitForTimeout(500);
+  expect(summaries).toHaveLength(0);
+
+  // A long pull releases into a refresh: the board asks for its Summary again.
+  await finger(page, from, { x: from.x, y: from.y + 140 });
+  await expect.poll(() => summaries.length).toBeGreaterThan(0);
+  await expect(page.locator('.monitor-pull')).toHaveCount(0);
+  await expect(tab(page, 'Todo 1', true)).toBeVisible();
+});

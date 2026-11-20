@@ -1,13 +1,15 @@
 import { ArchiveIcon } from 'lucide-react';
-import { type RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { IconLabel } from '@/shared/ui/icon-label';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
+import { type PullState, REFRESHING_HEIGHT, usePullToRefresh } from '../hooks/usePullToRefresh';
 import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { MonitorTask } from './MonitorTask';
+import { PullIndicator } from './PullIndicator';
 import { SwipeableCard } from './SwipeableCard';
 import './monitor-lanes.css';
 
@@ -32,6 +34,12 @@ export interface MonitorLanesProps {
   tabsRef?: RefObject<HTMLElement | null>;
   /** A story's still picture: this card has its left-swipe tiles showing. */
   previewRevealed?: number;
+  /** Pulling a lane down from its top refreshes; without this the lanes cannot be pulled. */
+  onRefresh?: () => void;
+  /** The refresh the person asked for is running. */
+  refreshing?: boolean;
+  /** A story's still picture: the lane on screen shows this pull state. */
+  previewPull?: Exclude<PullState, 'idle'>;
 }
 
 const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
@@ -54,6 +62,9 @@ export function MonitorLanes({
   id,
   tabsRef,
   previewRevealed,
+  onRefresh,
+  refreshing,
+  previewPull,
 }: MonitorLanesProps) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState<{ id: number; side: RevealSide } | null>(
@@ -68,7 +79,17 @@ export function MonitorLanes({
     setArmed(null);
     onLaneChange(next);
   };
-  const viewport = useLaneCarousel(lane, changeLane, tabsRef);
+  const carousel = useLaneCarousel(lane, changeLane, tabsRef);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const viewport = (node: HTMLDivElement | null) => {
+    viewportRef.current = node;
+    carousel(node);
+  };
+  const pull = usePullToRefresh({ container: viewportRef, lane, onRefresh, refreshing });
+  const shown =
+    previewPull === undefined
+      ? pull
+      : { state: previewPull, offset: previewPull === 'refreshing' ? REFRESHING_HEIGHT : 40 };
 
   // A tap anywhere outside the chosen card lets it go and closes its tiles.
   useEffect(() => {
@@ -99,6 +120,7 @@ export function MonitorLanes({
               inert={name !== lane}
             >
               <div className="monitor-lane__scroll">
+                {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
                 {laneEmpty ? (
                   <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
                 ) : (

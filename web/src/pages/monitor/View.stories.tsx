@@ -160,15 +160,33 @@ export const EpicReadFailure: Story = {
   },
 };
 
-/** The whole screen reads its Summary from the data layer; the manual refresh button asks again. */
+/** A finger on `target`, as a touch event. The lanes watch touch events for the pull. */
+function touch(type: 'touchstart' | 'touchmove' | 'touchend', target: Element, y: number) {
+  const point = new Touch({ identifier: 1, target, clientX: 100, clientY: y });
+  target.dispatchEvent(
+    new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: type === 'touchend' ? [] : [point],
+      changedTouches: [point],
+    }),
+  );
+}
+
+/** The whole screen reads its Summary from the data layer; pulling a lane down asks again, and no refresh button is left. */
 export const ConnectedProject: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Todo work item 1' })).toBeVisible();
-    const refresh = canvas.getByRole('button', { name: 'Refresh' });
-    await expect(refresh).toBeEnabled();
-    await userEvent.click(refresh);
+    const card = await canvas.findByRole('button', { name: 'Todo work item 1' });
+    await expect(card).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();
+    const y = card.getBoundingClientRect().top;
+    touch('touchstart', card, y);
+    touch('touchmove', card, y + 40);
+    touch('touchmove', card, y + 130);
+    await expect(await canvas.findByText('Release to refresh')).toBeVisible();
+    touch('touchend', card, y + 130);
     await expect(await canvas.findByRole('button', { name: 'Todo work item 1' })).toBeVisible();
   },
 };

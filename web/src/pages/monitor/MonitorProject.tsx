@@ -191,7 +191,7 @@ export function MonitorScreen({
     onResultLinkClose,
     freshness,
     onRefresh: () => void refresh(),
-    refreshing: refreshing || summary.state === 'refreshing',
+    refreshing,
     onDetailOpenChange: setDetailOpen,
     onMessagesOpenChange: setMessagesOpen,
     writes,
