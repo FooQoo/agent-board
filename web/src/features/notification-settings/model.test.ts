@@ -8,11 +8,11 @@ describe('parseNotificationSettings', () => {
     );
   });
 
-  it('has the defaults results on, questions on, history off', () => {
+  it('has the defaults results on, questions off, history off', () => {
     const { kinds } = DEFAULT_NOTIFICATION_SETTINGS;
     expect(kinds).toEqual({
       results: true,
-      questions: true,
+      questions: false,
       history: false,
     });
   });

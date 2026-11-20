@@ -79,7 +79,7 @@ landing:
         alt: The epic editor with the task progress panel and the Markdown details
       - image: mobile
         title: Check from anywhere
-        text: Away from your desk, open the board on your phone or tablet, watch the work, and answer the agent.
+        text: Away from your desk, open the board on your phone or tablet, watch the work, and answer the agent. Add it to the Home Screen and it works like an app, and notifications such as new results reach your phone.
         link: { text: Remote access, link: /guide/watch/remote-access }
         tabletAlt: "The same board opened on a tablet: the Todo, Doing, and Done lanes side by side, with a waiting task and its Answer the question button"
         alts:
