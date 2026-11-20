@@ -55,7 +55,7 @@ A result is also readable on its own from an address that names the project, the
 
 On a touch screen, press the grip at the left of the card's header and move your finger to drag at once. Pressing elsewhere on the card and holding for a moment also drags it, and a quick swipe scrolls the column instead.
 
-On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, and a dialog opens without raising the on-screen keyboard. Tap a field to start typing. On a tablet, the dialog then moves into the space above the keyboard and makes room for the field you are typing in: its margins and buttons get smaller, and panels you are not typing in, such as the editor's outline and attachments or the question beside your answer, fold away until the keyboard closes.
+On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, and a dialog opens without raising the on-screen keyboard. Tap a field to start typing. On a tablet, the dialog then moves into the space above the keyboard and makes room for the field you are typing in: its margins and buttons get smaller, and panels you are not typing in, such as the editor's outline and attachments or the question beside your answer, fold away until the keyboard closes. While the keyboard is open, a single tap on **Send request** or **Send answer** sends; the keyboard does not need to be closed first.
 
 In a window narrower than 1024 px, **Docs**, **Epics**, and **Archive** in the header show only their icons, all at the same width, so the project name keeps its room.
 
