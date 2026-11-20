@@ -25,7 +25,7 @@
  */
 @media (min-width: 768px) {
   .monitor-shell:has(> .connection-state) {
-    padding: 0 0 max(6px, env(safe-area-inset-bottom));
+    padding: 0 0 max(6px, var(--safe-bottom));
   }
   .monitor-shell:has(> .connection-state) > .header {
     height: 56px;

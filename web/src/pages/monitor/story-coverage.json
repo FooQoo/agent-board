@@ -24,6 +24,11 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor--standalone-safe-area",
+              "states": ["Home Screen app", "status bar inset", "home indicator inset"],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor--resident-status-line",
               "states": [
                 "resident session in the status line",

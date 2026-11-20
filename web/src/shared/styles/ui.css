@@ -233,9 +233,9 @@
    Safari); `data-keyboard` is a browser that shrinks the viewport instead (see stableHeight.ts).
    One rule for both, and the dialog's own fixed heights only act as its upper limit. */
 :root:is([data-visual-keyboard], [data-keyboard]) [data-slot="dialog-content"].top-\[50\%\] {
-  top: calc(var(--visual-top, 0px) + max(6px, env(safe-area-inset-top)));
+  top: calc(var(--visual-top, 0px) + max(6px, var(--safe-top)));
   translate: -50% 0;
-  max-height: calc(var(--visual-vh, 100svh) - max(6px, env(safe-area-inset-top)) - 6px);
+  max-height: calc(var(--visual-vh, 100svh) - max(6px, var(--safe-top)) - 6px);
 }
 
 /* The body gives up its minimum height there, so it can shrink and scroll. */

@@ -13,6 +13,17 @@
   box-sizing: border-box;
 }
 
+/* The areas the device keeps for itself: the status bar and the home indicator of a Home Screen app on a
+ * phone, and the notch edges when it is turned. The page asks for them with `viewport-fit=cover` in
+ * index.html; without it, and in a desktop or browser-tab view, they are 0. Every fixed or full-height
+ * surface reads these variables instead of env(), so a Storybook story can set them to simulate a phone. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
 /* The app fills the window and scrolls inside its lanes and panels, so the page itself never moves
  * up or down. On a touch screen, dragging the board would otherwise pull the whole page, and Safari
  * on iPad bounces it past its edges. Sideways scrolling stays possible for windows narrower than the layout. */
@@ -82,10 +93,17 @@ ol {
 /* ---- Frame: header, body, status bar ---- */
 
 .app {
+  box-sizing: border-box;
   display: grid;
   grid-template-rows: 56px minmax(0, 1fr) 40px;
   height: 100vh;
   height: var(--stable-vh, 100svh);
+}
+
+/* A wide screen in the Home Screen app (a landscape iPhone) keeps clear of the notch and the home indicator.
+   The phone screen applies the insets itself (see .monitor-shell), so only the wide layout is padded. */
+.app[data-layout="desktop"] {
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 
 .app__body {

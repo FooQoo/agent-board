@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useLayoutEffect, useMemo, useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { SAMPLE_PROJECT, sampleMessagesApi } from '../../features/tasks/messages/messageSamples';
 import type { Message } from '../../shared/data/api/contracts';
@@ -193,5 +193,72 @@ export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
     await expect(await body().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+  },
+};
+
+/** Sets the safe-area variables of an iPhone with a Dynamic Island in portrait, which Storybook cannot report through env(). */
+function StandaloneInsets({ children }: { children: ReactNode }) {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--safe-top', '59px');
+    root.style.setProperty('--safe-bottom', '34px');
+    return () => {
+      root.style.removeProperty('--safe-top');
+      root.style.removeProperty('--safe-bottom');
+    };
+  }, []);
+  return (
+    <>
+      {children}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          height: 59,
+          background: 'rgb(0 0 0 / 18%)',
+          pointerEvents: 'none',
+          zIndex: 2000,
+          top: 0,
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          height: 34,
+          background: 'rgb(0 0 0 / 18%)',
+          pointerEvents: 'none',
+          zIndex: 2000,
+          bottom: 0,
+        }}
+      />
+    </>
+  );
+}
+
+/** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the band ends above the indicator. */
+export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
+  globals: { locale: 'en' },
+  render: (args) => (
+    <StandaloneInsets>
+      {/* The frame the app puts around the phone screen: it must not add the insets a second time. */}
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
+    </StandaloneInsets>
+  ),
+  play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>('.app');
+    await expect(Number.parseFloat(getComputedStyle(frame as HTMLElement).paddingTop)).toBe(0);
+    await expect(Number.parseFloat(getComputedStyle(frame as HTMLElement).paddingBottom)).toBe(0);
+    const shell = canvasElement.querySelector<HTMLElement>('.monitor-shell');
+    await expect(shell).not.toBeNull();
+    const style = getComputedStyle(shell as HTMLElement);
+    await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59);
+    await expect(Number.parseFloat(style.paddingBottom)).toBeGreaterThanOrEqual(34);
   },
 };
