@@ -1,4 +1,4 @@
-//! The headless agent sessions the board starts itself (resident sessions).
+//! The headless agent sessions the board starts itself (resident agents).
 //!
 //! The launcher runs `claude` or `codex` in the folder of a project unattended, with automatic
 //! approval instead of prompts, and keeps its child process. It talks to the CLI only through an

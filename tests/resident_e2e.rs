@@ -1,4 +1,4 @@
-//! A resident session end to end, with a fake `claude` or `codex` that behaves as the resident skill
+//! A resident agent end to end, with a fake `claude` or `codex` that behaves as the resident skill
 //! tells a session the board launched to: it never runs `wait`, takes the message the board pushes
 //! when it is idle, acts on it with the real `agboard` commands, and ends the turn. The server runs on port 0
 //! in a temporary data directory; nothing here needs a real agent CLI.

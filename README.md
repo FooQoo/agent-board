@@ -115,7 +115,7 @@ The plugin updates itself: when a new agent session starts and the plugin differ
 
 ## Feature stages
 
-Agent Board mixes generally available (GA) features and features in public preview. Docs, resident sessions, and questions and requests are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
+Agent Board mixes generally available (GA) features and features in public preview. Docs, resident agents, and questions and requests are in public preview and may change. GA is not a promise that nothing changes or that nothing is broken. See [Feature stages](https://fooqoo.github.io/agent-board/guide/feature-stages).
 
 ## License
 

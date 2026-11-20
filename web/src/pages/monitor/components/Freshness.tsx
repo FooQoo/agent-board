@@ -23,7 +23,7 @@ export function Freshness({
   lastFetchedAt: string | null;
   problemCount: number;
   compact?: boolean;
-  /** A display-only indicator after the message, such as the resident session's state. */
+  /** A display-only indicator after the message, such as the resident agent's state. */
   slot?: ReactNode;
 }) {
   const { t } = useTranslation();
