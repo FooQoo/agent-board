@@ -168,6 +168,8 @@ impl AgboardError {
             }
             AgboardError::DocsOpenFailed { reason } => reason.clone(),
             AgboardError::RemoteUnavailable { reason } => reason.clone(),
+            AgboardError::InvalidDomain => "Give a host name only, such as example.ngrok-free.dev, without https://, a path, or a port.".to_string(),
+            AgboardError::KeychainUnavailable { reason } => reason.clone(),
             AgboardError::BrowserOpenFailed { url, reason } => {
                 format!("{reason} Open {url} in your browser yourself.")
             }

@@ -52,6 +52,7 @@ The JSON that agents receive. The pieces are explained in [Agent integration](..
 - With `--include-pending` and `--include-done COUNT` (on `progress` and `hook`), the table also has a `pending` array and a `done` array. `pending` holds Todo and Doing tasks waiting for a decision, in ID order, each with a `question`: the open question with the smallest ID, up to 200 characters. `done` holds the `COUNT` most recently completed tasks, newest first, limited to epics that still have a Todo or Doing task. Without the options neither field is present.
 - When a person's request is open (not accepted and not withdrawn), the table has a `requests` array in ID order. Each entry is `{"id":"Q-3","createdAt":"…","title":"…"}`: `title` is the first non-empty line of the request without heading marks, up to 80 characters (longer ones end with `…`). Without an open request the field is absent. An agent reads the whole text with `message show` and takes the request with `message accept`.
 - When a person has answered a question and no agent has taken the answer in (the reply has no `acceptedAt`), the table has an `answers` array in ID order. Each entry is `{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`: `title` follows the same rule as a request's title, `tasks` lists the unarchived tasks that refer to the question, and `choiceId`, `choiceLabel`, and `text` are `null` when the answer has no such part: a note-only answer to a question with choices has `choiceId` and `choiceLabel` `null` and `text` set. Without such an answer the field is absent. An agent reads the whole answer with `message show` and takes it in with `message accept`.
+- When an AI task has at least one acceptance condition, all of them done, and no `--final` result, the table has a `finalResultMissing` array in ID order, at most five entries: `{"id":21,"title":"…","taskPath":"…/tasks/21/TASK.md"}`. A task is listed while it is still in Todo or Doing, and for 24 hours after its lane changed to Done, which covers automatic Done happening before the agent writes the result. Drafts, human tasks, archived tasks, and tasks with invalid conditions are never listed. The agent records `result add --final` for each entry, and recording it removes the entry. Nothing is blocked or delayed: automatic Done does not wait for the result. Without such a task the field is absent.
 - There are no bodies and no history. Agents read the `documentPath` and `taskPath` files they need.
 - `cursor` is what `wait --after` takes.
 - `locale` is the language saved in the board's settings, a short hint for the language of the agent's replies. It is read from `<data-root>/.internal/preferences.json` without the server, and is present only when the saved language is not English (today, `"ja"`). It is absent for English, when no language is saved, and when the file is missing or invalid, so existing readers are unaffected. The text form of `agboard progress` does not show it.
@@ -118,15 +119,25 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 
 ## Remote
 
-`agboard remote --json` asks the running server for the ngrok connection and prints one object when it is `ready`:
+`agboard --project <name> show remote --json` asks the running server for the ngrok connection and prints one object when it is `ready`. The saved settings are in the same object:
 
 ```json
-{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"},"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":true,"keychainAvailable":true}
 ```
 
-`--project` is required: without it the command is `invalid_argument` (exit 2). `url` opens the board of the named project, and `entrance` is the address without a project. A named project that does not exist is `project_not_found`.
+`url` opens the board of the named project, and `entrance` is the address without a project. A named project that does not exist is `project_not_found`. `show <id>` still shows a task; `remote` is the one word that `show` takes in place of a task ID.
 
 Anything else prints nothing on standard output and exits 1 with `remote_unavailable`: no server is running, or the connection is not `ready`. The error carries no address and no passcode. The server answers this only on its local address, so the passcode reaches the person at this computer and never passes through the tunnel. See [Error codes](./errors.md#server-and-waiting).
+
+Without `--project`, `agboard show remote --json` never fails because the connection is down, and prints no passcode and no project address:
+
+```json
+{"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":false,"keychainAvailable":true,"status":"ready","entrance":"https://<name>.ngrok-free.dev"}
+```
+
+`status` is `no_server` when no server runs and `unknown` when the server did not answer; otherwise it is the state of the connection (`ready`, `disabled`, `starting`, `reconnecting`, `failed`, and so on). `entrance` is the address only while the connection is `ready`, else `null`. The ngrok token is never in the output; `tokenSaved` says whether the OS keychain holds one.
+
+`agboard setup remote --domain … --enabled … --token-stdin --json` prints the saved settings in the same four fields (`enabled`, `domain`, `tokenSaved`, `keychainAvailable`), with `saved: true` and a `note` that says the settings apply the next time the connection starts.
 
 ## message events
 

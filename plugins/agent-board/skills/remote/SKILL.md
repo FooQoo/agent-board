@@ -10,7 +10,7 @@ Hand the user the address and passcode that open the board on their phone. This 
 
 ## Steps
 
-1. Find the project of the current folder. `agboard remote` requires `--project`, so read the name from the progress table:
+1. Find the project of the current folder. `agboard show remote` needs `--project` to give an address, so read the name from the progress table:
 
    ```sh
    agboard progress --json
@@ -21,14 +21,14 @@ Hand the user the address and passcode that open the board on their phone. This 
 2. Run:
 
    ```sh
-   agboard --project "<name>" remote --json
+   agboard --project "<name>" show remote --json
    ```
 
 3. When `status` is `ready`, reply with the `url` and the `passcode` from the JSON, as is. Add one short warning: anyone who can read this chat can open the board while the connection is up, so stop the connection when done (from the board's Settings, or `agboard stop`).
 
 ## When it is not ready
 
-`remote` prints no address and no passcode and exits with code 1 (`remote_unavailable`) when there is nothing to hand out. Relay the reason in one or two sentences and give the matching next step:
+`show remote` prints no address and no passcode and exits with code 1 (`remote_unavailable`) when there is nothing to hand out. Relay the reason in one or two sentences and give the matching next step:
 
 - No server is running, or the connection is not `ready` (for example it is still starting, or its status shows a failure): ask the user to turn the connection on from the board's **Settings**, or to run `agboard serve --monitor ngrok` in their own terminal with `NGROK_AUTHTOKEN` already set in the environment. Then offer to run this skill again.
 - Ready but no public address or passcode yet: ask the user to wait a moment and try again, or restart the connection.

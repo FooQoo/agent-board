@@ -16,7 +16,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
 | `human_only` | An agent withdraws a request. Only a person can. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
-| `task_is_done` | An AI change targets a Done task. | 1 | 409 |
+| `task_is_done` | An AI change targets a Done task. The first `result add --final` on a Done task with no final result is the one change allowed. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |
 | `invalid_state_for_column` | The run state is not valid in that lane (for example Running in Todo). | 1 | 422 |
 | `invalid_state_for_assignee` | A human task is given a run state other than Idle. | 2 | 422 |
@@ -79,7 +79,9 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `port_in_use` | The port given to `serve` is taken. The reason names what holds it: another Agent Board server with a different data area (with its pid), or another program. An automatic server takes another port instead. | 1 | n/a |
 | `local_network_denied` | The OS or a sandbox refused to let `agboard` listen on or connect to `127.0.0.1` (`EACCES` or `EPERM`). In Codex, `agboard setup` allows `agboard` to run outside the sandbox. | 1 | n/a |
 | `board_unavailable` | A waiting `message ask`, `message wait`, `wait`, `open`, or the hook cannot reach the server: autostart is off (`AGBOARD_AUTOSTART=0`), the server could not start (the reason names `serve.log`), the server named in `serve.json` does not answer, or the connection failed. A waiting `message ask` checks the server before saving, so an unavailable server leaves no question; `--no-wait` needs no server. | 1 | n/a |
-| `remote_unavailable` | `remote` has no ready ngrok connection to report: no server is running, or the connection is not `ready` (disabled, starting, reconnecting, failed, and so on). The reason says which; when the connection failed, it names the failure code. Nothing is started, and no address or passcode is printed. | 1 | n/a |
+| `remote_unavailable` | `show remote` with `--project` has no ready ngrok connection to report: no server is running, or the connection is not `ready` (disabled, starting, reconnecting, failed, and so on). The reason says which; when the connection failed, it names the failure code. Nothing is started, and no address or passcode is printed. | 1 | n/a |
+| `invalid_domain` | `setup remote --domain` is not a bare host name: it has a scheme, a path, a port, a wildcard, or spaces. The board's settings API returns the same code with HTTP 422. Nothing is saved. | 2 | 422 |
+| `keychain_unavailable` | `setup remote --token-stdin` (or the token question of `setup`) cannot use the OS keychain. Nothing is saved, including the other options of the same command. The board's API returns the same code with HTTP 409. | 1 | 409 |
 | `browser_open_failed` | `open` could not start the program that opens the browser (`open`, `xdg-open`, or `AGBOARD_BROWSER_OPENER`). The reason names the address to open by hand. A browser that may not be opened (`AGBOARD_OPEN_BROWSER=0`, SSH, no display) is not an error. | 1 | n/a |
 | `agent_cli_missing` | The board cannot launch a session because `claude` or `codex` is not installed on the server's `PATH` (or `AGBOARD_CLAUDE_BIN` / `AGBOARD_CODEX_BIN` does not name a file). | 1 | 409 |
 | `agent_cli_logged_out` | The agent CLI is installed but not logged in (`claude auth status` reports `loggedIn` false, or `codex login status` fails). The reason says to log in in a terminal. | 1 | 409 |
