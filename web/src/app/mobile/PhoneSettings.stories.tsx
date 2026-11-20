@@ -108,9 +108,7 @@ export const WithResidentEntry: StoryObj<typeof meta> = {
       requested += 1;
     });
     try {
-      await userEvent.click(
-        within(dialog).getByRole('button', { name: 'Agent settings' }),
-      );
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Agent settings' }));
       await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
       expect(requested).toBe(1);
     } finally {
