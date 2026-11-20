@@ -3,6 +3,7 @@
 //! `docs/dev/concepts/agents.md` (and its Japanese copy).
 
 use super::commands::{contains_sequence, ends_with_question, runs_agboard, tokens};
+use super::question_rules;
 use super::record_rules;
 use super::{Area, Call, Facts, Finding, Kind, Rule, Source, When};
 
@@ -15,6 +16,30 @@ pub const RULES: &[Rule] = &[
         when: When::TurnEnd,
         kind: Kind::Check,
         check: question,
+    },
+    Rule {
+        id: "question-images",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Check,
+        check: question_rules::question_images,
+    },
+    Rule {
+        id: "question-in-chat",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: question_rules::question_in_chat,
+    },
+    Rule {
+        id: "question-wait",
+        area: Area::Question,
+        source: Source::Turn,
+        when: When::TurnEnd,
+        kind: Kind::Definite,
+        check: question_rules::question_wait,
     },
     Rule {
         id: "final-result",
@@ -174,15 +199,18 @@ fn is_image(path: &str) -> bool {
 
 /// A call that opened a pull request, pushed, or wrote an image.
 fn produced_viewable(call: &Call) -> bool {
+    let tokens = tokens(&call.command);
+    contains_sequence(&tokens, &["gh", "pr", "create"])
+        || contains_sequence(&tokens, &["git", "push"])
+        || produced_image(call)
+}
+
+/// A call that wrote an image or took a screenshot.
+pub(super) fn produced_image(call: &Call) -> bool {
     if is_image(&call.path) || call.name.ends_with("take_screenshot") {
         return true;
     }
     let tokens = tokens(&call.command);
-    if contains_sequence(&tokens, &["gh", "pr", "create"])
-        || contains_sequence(&tokens, &["git", "push"])
-    {
-        return true;
-    }
     // A command that writes an image: it names an image file and a way to
     // produce one. Reading or listing one does not count.
     let lower = call.command.to_ascii_lowercase();

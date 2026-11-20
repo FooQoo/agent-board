@@ -9,12 +9,15 @@
 //! `docs/dev/concepts/agents.md`.
 
 mod commands;
+mod question_rules;
 mod record_rules;
 mod rules;
 mod turn;
 
 #[cfg(test)]
 mod cases;
+#[cfg(test)]
+mod cases_question;
 #[cfg(test)]
 mod commands_tests;
 #[cfg(test)]

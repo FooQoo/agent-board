@@ -59,6 +59,9 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
 ルールは次のとおりです。
 
   - **`question`**（Turn、TurnEnd、Check）。返信の最後の空でない行が`?`か`？`で終わり（閉じ括弧、引用符、Markdownの強調は無視します）、ターン中に`agboard ... message ask`または`message answer`を実行したツール呼び出しがないときに引き金が引かれます。リマインダーを2つ出します。質問がユーザーの回答を待つものか（そうなら`message ask`でボードに出し、チャットにも示す）、見た目に関するものか（そうなら画像を添付する）です。
+  - **`question-images`**（Turn、TurnEnd、Check）。ターン中に画像を作り（`result-artifact`と同じ判定）、`agboard ... message ask`を実行したのに、質問に画像がない場合に引かれます。質問のJSONに`images`がなく、本文に`attachment:`の参照がなく、ターン中に`agboard attachment add`もありません。見た目に関する質問なら画像を添付するよう求めます。
+  - **`question-in-chat`**（Turn、TurnEnd、Definite）。ターン中に実際の`message ask`（`--help`ではない）を実行したのに、最後の返信に`Q-<n>`の参照がない場合です。質問をQ-idつきでチャットにも示すよう求めます。返信を読めないときは何も言いません。
+  - **`question-wait`**（Turn、TurnEnd、Definite）。ターン中に`message ask ... --no-wait`を実行し、その後に`agboard message wait`がない場合です。`agboard message wait <Q-id>`をバックグラウンドで実行して回答を待つか、待たない理由を説明するよう求めます。
   - **`final-result`**（State、Both、Definite）。`finalResultMissing`にあるタスクごとに、そのタスクを示して`result add <id> --final`を求めます。
   - **`result-pr`**（Turn、TurnEnd、Definite）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中に`agboard ... result add`がなく、`gh pr create`があったとき。プルリクエストを作ったのに成果がありません。
   - **`result-artifact`**（Turn、TurnEnd、Check）。同じ条件で`gh pr create`がなく、`git push`か画像の書き出し（拡張子が`.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`の画像、またはスクリーンショット）があったとき。見せられるものなら`result add`で記録するよう求めます。
