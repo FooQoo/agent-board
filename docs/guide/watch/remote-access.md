@@ -153,7 +153,7 @@ An iPhone can receive notifications from the board once the board is on its Home
 1. Open the board's address in Safari on the iPhone and enter the passcode, so that the phone is registered.
 2. Tap Share, choose **Add to Home Screen**, and add it.
 3. Open **Agent Board** from the Home Screen icon, not from Safari.
-4. The first time the Home Screen app opens, a sheet asks **Turn on notifications?** Choose **Enable notifications** and allow notifications when iOS asks. Choose **Not now** to close it; the sheet is not shown again on this phone. It does not appear in a Safari tab, or once notifications are allowed or blocked.
+4. The first time the Home Screen app opens, a dialog asks **Turn on notifications?** Choose **Enable notifications** and allow notifications when iOS asks. Choose **Not now** to close it; the dialog is not shown again on this phone. It does not appear in a Safari tab, or once notifications are allowed or blocked.
 5. To turn them on later, open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog.
 
 ![The Home Screen app asking to turn on notifications](../../images/guide/push-prompt.png){.screenshot--narrow}

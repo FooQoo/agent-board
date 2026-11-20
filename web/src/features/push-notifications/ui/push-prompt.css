@@ -31,12 +31,3 @@
   margin-top: 12px;
   color: var(--r-danger, currentColor);
 }
-
-/* A short question needs no full-height sheet: the sheet takes the height of its content. */
-.mobile-drawer.mobile-drawer--fit-keyboard.push-prompt[data-slot="drawer-popup"] {
-  height: auto;
-}
-
-.push-prompt .surface__body {
-  flex: none;
-}

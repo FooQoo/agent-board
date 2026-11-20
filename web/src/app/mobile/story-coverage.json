@@ -28,7 +28,7 @@
         {
           "name": "PushPromptHost",
           "stories": [],
-          "exclusion": "PushPromptHost only decides when to show the prompt (Home Screen app, permission undecided, not seen before) and wires it to the remote entrance's push routes; the sheet it renders has its own Stories and the decision has unit tests."
+          "exclusion": "PushPromptHost only decides when to show the prompt (Home Screen app, permission undecided, not seen before) and wires it to the remote entrance's push routes; the dialog it renders has its own Stories and the decision has unit tests."
         }
       ]
     },
