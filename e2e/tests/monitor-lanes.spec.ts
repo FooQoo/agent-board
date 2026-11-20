@@ -410,7 +410,7 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
   await openPhone(page, 'Switch');
   const bar = bottomBar(page);
   await expect(bar).toBeVisible();
-  const items = bar.getByRole('button');
+  const items = bar.locator('.phone-nav').getByRole('button');
   expect(await items.evaluateAll((all) => all.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
     'Board',
     'Messages',
@@ -418,6 +418,12 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
     'Archive',
     'Settings',
   ]);
+  // The bulk-archive button sits to the right of the dock, outside it.
+  const bulk = bar.getByRole('button', { name: 'Archive all' });
+  await expect(bar.locator('.phone-nav').getByRole('button', { name: 'Archive all' })).toHaveCount(0);
+  const dockBox = await bar.locator('.phone-nav').boundingBox();
+  const bulkBox = await bulk.boundingBox();
+  expect((bulkBox?.x ?? 0)).toBeGreaterThanOrEqual((dockBox?.x ?? 0) + (dockBox?.width ?? 0));
   // The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
   await expect(page.getByRole('region', { name: 'Messages' })).toHaveCount(0);
   await expect(page.locator('.header__settings')).toHaveCount(0);

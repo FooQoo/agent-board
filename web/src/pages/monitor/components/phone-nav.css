@@ -104,6 +104,7 @@ body:has(.mobile-drawer) .phone-nav-bar {
   align-items: center;
   justify-content: center;
   /* As tall as the dock (58px); narrower than tall, so the five dock items keep their room. */
+  /* biome-ignore lint/plugin: the bulk-archive button is a fixed-width tap target beside the dock */
   width: 52px;
   padding: 0;
   border: 1px solid var(--r-border);
