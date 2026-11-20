@@ -1,0 +1,97 @@
+/*
+ * The thumbnails of a composer. The sizes are variables: the compact ones suit a mouse, and the
+ * finger-sized ones apply in a phone sheet (`.mobile-drawer`) and on any touch screen. The row keeps
+ * room above and to the right of each picture, where the remove button's tap area sticks out.
+ */
+.composer-thumbs {
+  --thumb-size: 56px;
+  --thumb-gap: 8px;
+  --thumb-remove-hit: 28px;
+  --thumb-remove-icon: 12px;
+  display: flex;
+  gap: var(--thumb-gap);
+  margin: 0;
+  padding: calc(var(--thumb-remove-hit) / 2 - 4px) calc(var(--thumb-remove-hit) / 2 - 4px) 0 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+/* Phone width and touch screens: 88px pictures and a 44px remove tap area. */
+.mobile-drawer .composer-thumbs {
+  --thumb-size: 88px;
+  --thumb-gap: 12px;
+  --thumb-remove-hit: 44px;
+  --thumb-remove-icon: 14px;
+}
+
+@media (pointer: coarse) {
+  .composer-thumbs {
+    --thumb-size: 88px;
+    --thumb-gap: 12px;
+    --thumb-remove-hit: 44px;
+    --thumb-remove-icon: 14px;
+  }
+}
+
+.composer-thumb {
+  position: relative;
+  flex: none;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+}
+
+.composer-thumb__open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.composer-thumb__open img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+/* The tap area is the whole corner square; only the small round icon inside it is drawn. */
+.composer-thumb__remove {
+  position: absolute;
+  top: calc(var(--thumb-remove-hit) / -2 + 4px);
+  right: calc(var(--thumb-remove-hit) / -2 + 4px);
+  display: grid;
+  place-items: center;
+  width: var(--thumb-remove-hit);
+  height: var(--thumb-remove-hit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-text);
+  cursor: pointer;
+}
+
+.composer-thumb__remove svg {
+  box-sizing: content-box;
+  width: var(--thumb-remove-icon);
+  height: var(--thumb-remove-icon);
+  padding: 4px;
+  border: 1px solid var(--r-border);
+  border-radius: 50%;
+  background: var(--r-surface);
+}
+
+.composer-thumb__remove:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.composer-thumb__open:focus-visible,
+.composer-thumb__remove:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}

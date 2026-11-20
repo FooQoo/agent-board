@@ -427,44 +427,6 @@
   display: none;
 }
 
-.decision-answer__thumbs {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 8px 8px 0 0;
-  overflow-x: auto;
-  list-style: none;
-}
-
-.decision-answer__thumb {
-  position: relative;
-  flex: none;
-  width: 56px;
-  height: 56px;
-}
-
-.decision-answer__thumb img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.decision-answer__thumb-remove {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  border-radius: 50%;
-  background: var(--r-surface);
-}
-
-.decision-answer__thumbs .decision-answer__thumb-remove svg {
-  width: 12px;
-  height: 12px;
-}
-
 .decision-answer__image-notice {
   flex: 1 1 100%;
   margin: 0;

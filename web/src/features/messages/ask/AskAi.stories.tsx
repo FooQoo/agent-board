@@ -70,7 +70,7 @@ export const DialogWithImages: Story = {
   play: async () => {
     await page().findByRole('dialog', { name: 'Ask AI' });
     await attachImages();
-    await expect(page().getAllByRole('img')).toHaveLength(2);
+    await expect(page().getAllByRole('button', { name: /^Preview / })).toHaveLength(2);
   },
 };
 
@@ -162,6 +162,24 @@ export const SheetWithImages: Story = {
   play: async () => {
     await page().findByRole('dialog', { name: 'Ask AI' });
     await attachImages();
+  },
+};
+
+/** On a phone the thumbnails are about 88px with a 44px remove target, and a tap opens the viewer. */
+export const SheetImagesTappable: Story = {
+  ...PHONE,
+  args: { kind: 'sheet', initialText: DRAFT },
+  play: async () => {
+    await page().findByRole('dialog', { name: 'Ask AI' });
+    await attachImages();
+    const open = await page().findByRole('button', { name: 'Preview login.png' });
+    await expect(open.offsetWidth).toBeGreaterThanOrEqual(88);
+    await expect(open.offsetHeight).toBeGreaterThanOrEqual(88);
+    const remove = page().getByRole('button', { name: 'Remove login.png' });
+    await expect(remove.offsetWidth).toBeGreaterThanOrEqual(44);
+    await expect(remove.offsetHeight).toBeGreaterThanOrEqual(44);
+    await userEvent.click(open);
+    await page().findByRole('dialog', { name: 'login.png' });
   },
 };
 

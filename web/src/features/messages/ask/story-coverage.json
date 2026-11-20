@@ -59,6 +59,16 @@
               "interaction": true
             },
             {
+              "id": "messages-askai--sheet-images-tappable",
+              "states": [
+                "bottom sheet",
+                "88px thumbnails",
+                "44px remove target",
+                "tap opens viewer"
+              ],
+              "interaction": true
+            },
+            {
               "id": "messages-askai--sheet-required",
               "states": ["bottom sheet", "image only", "required message"],
               "interaction": true

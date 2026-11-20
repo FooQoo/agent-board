@@ -3,6 +3,21 @@
   "owner": "U13",
   "files": [
     {
+      "file": "shared/ui/editor/ComposerThumbs.tsx",
+      "exports": [
+        {
+          "name": "ComposerThumbs",
+          "stories": [
+            {
+              "id": "editor-composerthumbs--preview-and-remove",
+              "states": ["thumbnail row", "remove one picture", "tap opens viewer"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "shared/ui/editor/EditorBody.tsx",
       "exports": [
         {
