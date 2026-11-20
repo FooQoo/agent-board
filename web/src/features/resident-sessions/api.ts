@@ -21,6 +21,8 @@ export interface StalledItem {
   attempts: number;
   /** How the last turn failed, when it did. */
   lastError: string | null;
+  /** True when the turns ended cleanly and left the item as it was: on hold, not failing. */
+  onHold: boolean;
 }
 
 export interface SessionHealth {

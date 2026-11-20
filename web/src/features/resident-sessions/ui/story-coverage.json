@@ -43,7 +43,7 @@
             },
             {
               "id": "resident-residentview--stalled-items",
-              "states": ["stalled items", "item names", "last failure", "hint"],
+              "states": ["stalled items", "item names", "last failure", "hint", "on hold"],
               "interaction": true
             },
             {
@@ -134,6 +134,31 @@
             {
               "id": "resident-residentview--log-japanese",
               "states": ["japanese", "log empty state"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-while-working",
+              "states": ["stop asks while working", "keep running focused", "stop anyway"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-cancelled",
+              "states": ["keep running closes the question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-while-waiting",
+              "states": ["idle session stops without a question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-sheet-japanese",
+              "states": ["phone", "japanese", "stop question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-dark",
+              "states": ["dark theme", "stop question"],
               "interaction": true
             }
           ]
@@ -319,6 +344,11 @@
             {
               "id": "resident-residentfooter--stalled",
               "states": ["stalled items", "warning with count", "button opens the dialog"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--on-hold",
+              "states": ["on hold", "neutral, not a warning"],
               "interaction": true
             },
             {

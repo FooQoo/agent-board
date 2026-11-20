@@ -225,3 +225,73 @@ fn a_launch_of_the_other_tool_is_refused_while_a_restart_waits() {
     fx.launch(Tool::Codex, None).unwrap();
     fx.launcher.shutdown();
 }
+
+/// Collect the server log lines about the launcher.
+fn collect_events(fx: &Fixture) -> Arc<Mutex<Vec<String>>> {
+    let lines = Arc::new(Mutex::new(Vec::new()));
+    let sink = lines.clone();
+    fx.launcher.set_event_sink(Box::new(move |line| {
+        sink.lock().unwrap().push(line.to_string());
+    }));
+    lines
+}
+
+fn has_event(lines: &Arc<Mutex<Vec<String>>>, needle: &str) -> bool {
+    lines.lock().unwrap().iter().any(|l| l.contains(needle))
+}
+
+#[test]
+fn a_stop_by_a_person_is_written_to_the_server_log_with_its_reason_and_time() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture_timed(fast());
+    let events = collect_events(&fx);
+    fx.launch(Tool::ClaudeCode, Some("sonnet")).unwrap();
+    assert!(fx.launcher.stop().unwrap());
+    wait_until("the exit line", || has_event(&events, "ended after a stop"));
+    let lines = events.lock().unwrap().clone();
+    assert!(
+        lines.iter().all(|l| l.starts_with("agboard: 20")),
+        "{lines:?}"
+    );
+    assert!(lines.iter().any(|l| l.contains("started: pid")
+        && l.contains("claude-code")
+        && l.contains("model sonnet")));
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains("stop requested") && l.contains("a person asked to stop it"))
+    );
+    assert!(!lines.iter().any(|l| l.contains("abnormally")), "{lines:?}");
+    fx.launcher.shutdown();
+}
+
+#[test]
+fn a_server_shutdown_is_written_to_the_server_log() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture_timed(fast());
+    let events = collect_events(&fx);
+    fx.launch(Tool::ClaudeCode, None).unwrap();
+    fx.launcher.shutdown();
+    assert!(has_event(&events, "the server is shutting down"));
+    wait_until("the exit line", || has_event(&events, "ended after a stop"));
+}
+
+#[test]
+fn an_abnormal_exit_is_written_to_the_server_log_with_what_happens_next() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture_timed(fast());
+    let events = collect_events(&fx);
+    fx.launcher.start(no_projects);
+    let first = fx.launch(Tool::ClaudeCode, None).unwrap();
+    fx.record("claude");
+    kill(first.pid);
+    wait_until("the abnormal exit line", || {
+        has_event(&events, "exited abnormally")
+    });
+    wait_until("the restart line", || {
+        has_event(&events, "restart planned for")
+    });
+    assert!(has_event(&events, "signal: 9"));
+    assert!(!has_event(&events, "stop requested"));
+    fx.launcher.shutdown();
+}

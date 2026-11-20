@@ -15,6 +15,7 @@ mod autostart;
 mod board;
 pub mod cli;
 pub mod driver;
+mod events;
 mod health;
 mod log_tail;
 mod process;
@@ -99,6 +100,8 @@ pub struct Launcher {
     epoch: AtomicU64,
     autostart: AutoStartStore,
     closing: AtomicBool,
+    /// Where the server log lines about stops and exits go.
+    events: events::Events,
     /// The shared data folder of the boards, once the server has told the launcher.
     board: Mutex<Option<PathBuf>>,
     /// Handoff notes that could not be saved: project, task, and the failure detail. Kept here,
@@ -169,6 +172,7 @@ impl Launcher {
             epoch: AtomicU64::new(0),
             autostart: AutoStartStore::new(data_dir),
             closing: AtomicBool::new(false),
+            events: events::Events::new(),
             board: Mutex::new(None),
             unrecorded: Mutex::new(Vec::new()),
         })
@@ -191,7 +195,8 @@ impl Launcher {
         &self.autostart
     }
 
-    /// The log of the session of `tool`, replaced at every launch.
+    /// The log of the session of `tool`: the current launch. Earlier launches are kept as
+    /// `<tool>.1.log` (the previous one) to `<tool>.4.log`.
     pub fn log_path(&self, tool: Tool) -> PathBuf {
         self.data_dir
             .join(LOG_DIR)
@@ -255,14 +260,16 @@ impl Launcher {
     /// A stop clears what the supervisor keeps, so the session is not restarted and
     /// a restart that was waiting or a failure that was shown is cleared too.
     pub fn stop(&self) -> Result<bool, AgboardError> {
+        self.stop_because(
+            "a person asked to stop it (also what a restart or a model change does first)",
+        )
+    }
+
+    fn stop_because(&self, reason: &str) -> Result<bool, AgboardError> {
         // The gate keeps a launch that is already running from adding its plan after the clear.
         let _gate = self.gate();
         self.reset_plans();
-        let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
-            .lock()
-            .values()
-            .map(|live| (live.driver.clone(), live.exit.clone()))
-            .collect();
+        let targets = self.stop_targets(reason);
         if targets.is_empty() {
             return Ok(false);
         }
@@ -270,27 +277,12 @@ impl Launcher {
         Ok(true)
     }
 
-    /// End the child of `tool` without clearing its plan (the supervisor ends an unhealthy one).
-    fn kill(&self, tool: Tool) {
-        let target = self
-            .lock()
-            .get(&tool)
-            .map(|live| (live.driver.clone(), live.exit.clone()));
-        if let Some(target) = target {
-            terminate(&[target], self.stop_grace);
-        }
-    }
-
     /// Stop every launched session (the server is shutting down).
     pub fn shutdown(&self) {
         self.closing.store(true, Ordering::SeqCst);
         let _gate = self.gate();
         self.reset_plans();
-        let targets: Vec<(Arc<dyn AgentDriver>, Arc<Exit>)> = self
-            .lock()
-            .values()
-            .map(|live| (live.driver.clone(), live.exit.clone()))
-            .collect();
+        let targets = self.stop_targets("the server is shutting down");
         terminate(&targets, self.stop_grace);
     }
 }

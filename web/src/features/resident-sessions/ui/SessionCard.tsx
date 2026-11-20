@@ -1,7 +1,8 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { Button } from '@/shared/ui/button';
+import { ConfirmPanel } from '@/shared/ui/confirm-panel';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Label } from '@/shared/ui/label';
 import { RadioGroup } from '@/shared/ui/radio-group';
@@ -11,6 +12,7 @@ import {
   deriveState,
   differsFromRunning,
   isActive,
+  isBusy,
   isForOtherProject,
   modelValue,
   toolName,
@@ -46,6 +48,9 @@ export function SessionCard(props: ResidentPanelProps) {
   const { health } = snapshot;
   const state = deriveState(health);
   const running = isActive(state);
+  const [asking, setAsking] = useState(false);
+  // Asked only while the session is still mid-turn: if it goes idle meanwhile, the question lapses.
+  const confirmingStop = asking && isBusy(state) && pending === null;
   const busy = pending !== null || props.savingAuto;
   const blocked = cliProblem !== null && !running;
   const shown = running && health.tool ? health.tool : choice.tool;
@@ -149,13 +154,29 @@ export function SessionCard(props: ResidentPanelProps) {
             {t('resident.autoStart')}
           </Label>
         </div>
+        {confirmingStop && (
+          <ConfirmPanel
+            className="resident-controls__wide"
+            title={t('resident.stopBusyTitle')}
+            message={t('resident.stopBusyBody')}
+            confirmLabel={t('resident.stopBusyConfirm')}
+            cancelLabel={t('resident.stopBusyCancel')}
+            busy={false}
+            focusOnMount
+            onConfirm={() => {
+              setAsking(false);
+              props.onStop();
+            }}
+            onCancel={() => setAsking(false)}
+          />
+        )}
         <Button
           type="button"
           variant="outline"
           size="m"
           className="resident-controls__action"
           disabled={blocked || busy}
-          onClick={running ? props.onStop : props.onStart}
+          onClick={running ? (isBusy(state) ? () => setAsking(true) : props.onStop) : props.onStart}
         >
           {label}
         </Button>

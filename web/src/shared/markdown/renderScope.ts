@@ -1,4 +1,5 @@
-import { createContext } from 'react';
+import { createContext, type RefObject } from 'react';
+import type { WrittenImage } from './collectImages';
 import type { AttachmentResolver, RelativeImageResolver } from './model';
 
 /**
@@ -28,6 +29,9 @@ export const ResolverContext = createContext<AttachmentResolver | undefined>(und
 
 /** Turns an image source written relative to the text (`attachments/<name>`) into the URL to show. */
 export const RelativeImageContext = createContext<RelativeImageResolver | undefined>(undefined);
+
+/** The images of the text being drawn, in reading order: the enlarged view swipes across them. */
+export const ImageGroupContext = createContext<RefObject<WrittenImage[]> | undefined>(undefined);
 
 /** A second-level heading is drawn as a chapter title one level down, under a title that is already an H2. */
 export const ChapterHeadingsContext = createContext(false);
