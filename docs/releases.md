@@ -2,6 +2,32 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.6.1
+
+A release that fixes setting an epic's waves from the command line.
+
+### Changes
+
+None.
+
+### Fixes
+
+- **`agboard epic edit --waves` accepts options after the waves.** A command such as `agboard epic edit <EPIC-ID> --waves 24 25,26 --json` failed with "waves is invalid", even for a single wave, because the option after the waves was read as another wave. Agents following the skill's examples could not set an epic's order. Options can now follow `--waves` in any order, and `--waves ""` still clears the order.
+
+### Breaking changes
+
+None.
+
+### Required update steps
+
+Update the command:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+```
+
+Restart `agboard serve` after the upgrade. `agboard update` is not needed: this release changes no hook command, so the plugin updates itself at the first agent session after the upgrade.
+
 ## v1.6.0
 
 A release that brings the results of the work to your phone: agents deliver results you can look at while they keep working, the board notifies an iPhone, and the phone board gets a bottom bar, an archive list, and a redesigned layout.
