@@ -437,7 +437,7 @@ export const ArchiveListEmpty: Story = {
   },
 };
 
-/** A row swiped right: the 復元 tile is open on its left. */
+/** A row swiped left: the 復元 tile is open on its right. */
 export const ArchiveRowRevealed: Story = {
   args: { initialLane: 'todo', pending: 'list-revealed' },
   play: async () => {
@@ -448,7 +448,7 @@ export const ArchiveRowRevealed: Story = {
   },
 };
 
-/** Swipe a row right, press 復元: the task leaves the list and returns to the lane it came from. */
+/** Swipe a row left, press 復元: the task leaves the list and returns to the lane it came from. */
 export const RestoreBySwipe: Story = {
   args: { initialLane: 'todo', pending: 'list' },
   play: async ({ canvasElement }) => {
@@ -459,10 +459,10 @@ export const RestoreBySwipe: Story = {
     if (!card) throw new Error('No card in row 3.');
     const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
-    press(card, 'pointerdown', rect.left + 20, y);
-    press(card, 'pointermove', rect.left + 60, y);
-    press(card, 'pointermove', rect.left + 140, y);
-    press(card, 'pointerup', rect.left + 140, y);
+    press(card, 'pointerdown', rect.right - 20, y);
+    press(card, 'pointermove', rect.right - 60, y);
+    press(card, 'pointermove', rect.right - 140, y);
+    press(card, 'pointerup', rect.right - 140, y);
     await waitFor(() => expect(card).toHaveAttribute('data-revealed'));
     await userEvent.click(within(sheet).getByRole('button', { name: '#3 を復元' }));
     await waitFor(() => expect(sheet.querySelector('[data-archive-row="3"]')).toBeNull());

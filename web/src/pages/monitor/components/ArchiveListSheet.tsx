@@ -27,7 +27,7 @@ export interface ArchiveListSheetProps extends ArchiveSheetData {
 
 /**
  * The phone's archive list: a bottom drawer with every archived task, newest first. Each row is the
- * card the lanes use. A right swipe on a row uncovers Restore at once, and pressing it returns the
+ * card the lanes use. A left swipe on a row uncovers Restore at once, and pressing it returns the
  * task to the lane and run state it was archived with. A tap outside the open row closes it.
  */
 export function ArchiveListSheet({

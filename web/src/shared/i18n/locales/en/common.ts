@@ -120,7 +120,7 @@ export const commonEn = {
     error: 'Could not archive the tasks. Try again.',
     actions: 'Archived task actions',
     listTitle: 'Archived tasks',
-    listHint: 'Swipe a task right to restore it.',
+    listHint: 'Swipe a task left to restore it.',
     returnsTo: 'Returns to {{lane}}',
     archivedOn: 'Archived {{date}}',
     restoreTask: 'Restore #{{id}}',

@@ -621,7 +621,7 @@
             },
             {
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
-              "states": ["swipe right", "Restore returns the task to its lane"],
+              "states": ["swipe left", "Restore returns the task to its lane"],
               "interaction": true
             }
           ]
@@ -641,7 +641,7 @@
             },
             {
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
-              "states": ["swipe right", "Restore returns the task to its lane"],
+              "states": ["swipe left", "Restore returns the task to its lane"],
               "interaction": true
             }
           ]

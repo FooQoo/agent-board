@@ -120,7 +120,7 @@ export const commonJa = {
     actions: 'アーカイブ済みタスクの操作',
     restore: '復元',
     listTitle: 'アーカイブ済みタスク',
-    listHint: 'タスクを右へスワイプすると復元できます。',
+    listHint: 'タスクを左へスワイプすると復元できます。',
     returnsTo: '{{lane}}に戻ります',
     archivedOn: '{{date}}にアーカイブ',
     restoreTask: '#{{id}} を復元',

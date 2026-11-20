@@ -10,7 +10,7 @@ import { actionsWidth } from '../model/lanes';
 import { MonitorTask } from './MonitorTask';
 import './monitor-lanes.css';
 
-/** One Restore tile on the left, as wide as a lane card's tiles. */
+/** One Restore tile on the right, as wide as a lane card's tiles. */
 const RESTORE_WIDTH = actionsWidth(1);
 
 export interface ArchiveSwipeRowProps {
@@ -26,8 +26,8 @@ export interface ArchiveSwipeRowProps {
 }
 
 /**
- * One archived task, drawn with the card the lanes use. A swipe to the right uncovers the Restore
- * tile at once, with no choosing first (nothing else in the drawer moves sideways). A tap on an
+ * One archived task, drawn with the card the lanes use. A swipe to the left uncovers the Restore
+ * tile on the right at once, with no choosing first (nothing else in the drawer moves sideways). A tap on an
  * open row closes the tile; a tap on a closed one does nothing, since an archived task has no
  * detail to open. Under the card, the lane it returns to and the date it was archived.
  */
@@ -42,17 +42,17 @@ export function ArchiveSwipeRow({
 }: ArchiveSwipeRowProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const side = revealed ? 'left' : null;
+  const side = revealed ? 'right' : null;
   const { drag, consumesClick, handlers } = useCardGesture(ref, {
     revealed: side,
-    onRevealChange: (next) => onRevealChange(next === 'left'),
+    onRevealChange: (next) => onRevealChange(next === 'right'),
     armed: true,
     onArm: () => {},
-    leftWidth: RESTORE_WIDTH,
-    rightWidth: 0,
+    leftWidth: 0,
+    rightWidth: RESTORE_WIDTH,
   });
-  const offset = drag ?? revealOffset(side, RESTORE_WIDTH, 0);
-  const shown = offset > 0;
+  const offset = drag ?? revealOffset(side, 0, RESTORE_WIDTH);
+  const shown = offset < 0;
   // The card never reads more than a list card shows; an archived task is one of those.
   const item = { projectId, projectName, task } as MonitorTaskModel;
   return (
@@ -61,7 +61,7 @@ export function ArchiveSwipeRow({
         ref={ref}
         className="swipe-card"
         data-swipe-card={task.id}
-        data-revealed={revealed ? 'left' : undefined}
+        data-revealed={revealed ? 'right' : undefined}
         data-dragging={drag !== null || undefined}
         {...handlers}
         onClickCapture={(event) => {
@@ -76,11 +76,11 @@ export function ArchiveSwipeRow({
       >
         <div
           className="swipe-card__actions"
-          data-side="left"
+          data-side="right"
           data-revealed={shown || undefined}
           style={
             {
-              width: `${shown ? Math.min(RESTORE_WIDTH, offset) : 0}px`,
+              width: `${shown ? Math.min(RESTORE_WIDTH, Math.abs(offset)) : 0}px`,
               '--reveal': shown ? revealProgress(offset, RESTORE_WIDTH) : 0,
             } as CSSProperties
           }
