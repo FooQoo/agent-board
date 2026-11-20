@@ -97,14 +97,14 @@ While it connects, the dialog shows **Connecting to ngrok…** in place of the t
 
 The passcode is shown only while the connection is running. It is new every time the connection starts, so a stopped or failed connection has none.
 
-To give someone the address and passcode while the connection is up, run `agboard --project "<name>" remote`; it prints both on this PC only. See [Give the phone address and passcode](../reference/cli#give-the-phone-address-and-passcode). You can also ask your agent for the remote access URL; the plugin's `remote` skill (`/agent-board:remote` in Claude Code) runs the same command and replies with both, and it never starts the connection. Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
+To give someone the address and passcode while the connection is up, run `agboard --project "<name>" show remote`; it prints both on this PC only. See [Give the phone address and passcode](../reference/cli#give-the-phone-address-and-passcode). You can also ask your agent for the remote access URL; the plugin's `remote` skill (`/agent-board:remote` in Claude Code) runs the same command and replies with both, and it never starts the connection. Sharing the passcode in a chat gives everyone who reads that chat access to the board until you stop the connection.
 
 If ngrok cannot be reached, the dialog says so and gives the reason. Check the token and the internet connection, then choose **Save and connect** again. The board on the PC keeps working.
 
 ## Where the token is kept
 
 - A token you type is used only while Agent Board is running and is not saved.
-- To keep it, select **Save the token on this PC** before you connect. The token is stored in this PC's secure storage, the one your operating system provides. It is never written to the data folder.
+- To keep it, select **Save the token on this PC** before you connect, or pipe it to `agboard setup remote --token-stdin`. The token is stored in this PC's secure storage, the one your operating system provides. It is never written to the data folder.
 - If the `NGROK_AUTHTOKEN` environment variable is set, it takes priority over a saved token. The dialog then says it is using the environment variable, and you can leave the token field empty.
 - A saved token is shown as saved in this PC's secure storage. Choose **Delete the saved token** to remove it.
 - After Agent Board is updated or reinstalled, the operating system may ask whether Agent Board may use the saved token. The board keeps working while it asks. Once you answer, the dialog shows the saved token.
@@ -181,7 +181,13 @@ By default ngrok chooses a new address at every start, so a bookmark or a home-s
 
 The value is a bare host name, without a scheme, a path, or a port. When the connection starts, Agent Board asks ngrok for that domain, so the address is the same after you stop and start the connection and after the server restarts.
 
-As an alternative to the dialog, set the `AGBOARD_NGROK_DOMAIN` environment variable before the server starts:
+As alternatives to the dialog, save it from the command line, or set the `AGBOARD_NGROK_DOMAIN` environment variable before the server starts. This saves the domain, with or without a running server, and the board shows it without a reload:
+
+```sh
+agboard setup remote --domain <your domain, for example name.ngrok-free.dev>
+```
+
+Run `agboard setup remote` with no option on a terminal to be asked for the domain and the token instead; see [Save the remote access settings](../reference/cli#save-the-remote-access-settings). `agboard show remote` shows what is saved. Saving does not replace a connection that is already up; the new domain applies the next time the connection starts. The environment variable does the same for one server only:
 
 ```sh
 export AGBOARD_NGROK_DOMAIN=<your domain, for example name.ngrok-free.dev>

@@ -119,15 +119,25 @@ The timeout is required and ranges from 1 to 86,400 seconds. Connection, project
 
 ## Remote
 
-`agboard remote --json` asks the running server for the ngrok connection and prints one object when it is `ready`:
+`agboard --project <name> show remote --json` asks the running server for the ngrok connection and prints one object when it is `ready`. The saved settings are in the same object:
 
 ```json
-{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"},"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":true,"keychainAvailable":true}
 ```
 
-`--project` is required: without it the command is `invalid_argument` (exit 2). `url` opens the board of the named project, and `entrance` is the address without a project. A named project that does not exist is `project_not_found`.
+`url` opens the board of the named project, and `entrance` is the address without a project. A named project that does not exist is `project_not_found`. `show <id>` still shows a task; `remote` is the one word that `show` takes in place of a task ID.
 
 Anything else prints nothing on standard output and exits 1 with `remote_unavailable`: no server is running, or the connection is not `ready`. The error carries no address and no passcode. The server answers this only on its local address, so the passcode reaches the person at this computer and never passes through the tunnel. See [Error codes](./errors.md#server-and-waiting).
+
+Without `--project`, `agboard show remote --json` never fails because the connection is down, and prints no passcode and no project address:
+
+```json
+{"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":false,"keychainAvailable":true,"status":"ready","entrance":"https://<name>.ngrok-free.dev"}
+```
+
+`status` is `no_server` when no server runs and `unknown` when the server did not answer; otherwise it is the state of the connection (`ready`, `disabled`, `starting`, `reconnecting`, `failed`, and so on). `entrance` is the address only while the connection is `ready`, else `null`. The ngrok token is never in the output; `tokenSaved` says whether the OS keychain holds one.
+
+`agboard setup remote --domain … --enabled … --token-stdin --json` prints the saved settings in the same four fields (`enabled`, `domain`, `tokenSaved`, `keychainAvailable`), with `saved: true` and a `note` that says the settings apply the next time the connection starts.
 
 ## message events
 

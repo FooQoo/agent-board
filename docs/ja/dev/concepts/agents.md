@@ -7,7 +7,7 @@
 | 部分 | 場所 | 役割 |
 | --- | --- | --- |
 | スキル`agent-board` | `src/skills/agent-board.md`と`src/skills/topics/`。`agboard skills`が出力する。プラグインの`SKILL.md`はそのコマンドを実行するだけ | 判断。作業の選び方、進捗の報告、質問の出し方、下書きとDoneのタスクの扱い。 |
-| スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
+| スキル`remote` | `plugins/agent-board/skills/remote/SKILL.md` | `agboard --project "<名前>" show remote --json`のスマホ用アドレスと合言葉をユーザーに渡す。何も起動しない。 |
 | スキル`wait` | `plugins/agent-board/skills/wait/SKILL.md` | セッションをボードに張り付かせる。`agboard skills resident`に従い、タイムアウトの既定は3600秒で、`idle_timeout`のあとは待ち直す。 |
 | Hook |（`src/agent/hook.rs`） | 取得と整形。ツールの呼び出しの後に、現在の進行表をエージェントのコンテキストに添える。 |
 | 進行表 | `src/progress.rs` | 進められるタスクの一覧。`agboard progress`とHookが共有する。 |

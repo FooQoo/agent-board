@@ -215,7 +215,7 @@ Back up a project by copying `shared/projects/<project-id>/`; restore it by stop
 
 ## Monitor connection settings
 
-The ngrok remote connection keeps its non-secret settings in `<data-root>/.internal/monitor-connection.json`. The file belongs to the application: it is written only by the PC settings screen and `serve`, not by hand, and it is not part of the shared area, so it is not backed up with a project. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
+The ngrok remote connection keeps its non-secret settings in `<data-root>/.internal/monitor-connection.json`. The file belongs to the application: it is written by the PC settings screen, by `serve`, and by [`agboard setup remote`](../../guide/reference/cli.md#save-the-remote-access-settings), not by hand, and it is not part of the shared area, so it is not backed up with a project. It is replaced atomically with owner-only permissions (`0600` where the OS has them).
 
 ```json
 {
@@ -229,7 +229,7 @@ The ngrok remote connection keeps its non-secret settings in `<data-root>/.inter
 | Field | Rule |
 | --- | --- |
 | `formatVersion` | Always `1`. Any other value, an unknown field, or a malformed file makes the settings unreadable (`config_unreadable`); the PC entrance keeps working and saving new settings replaces the file. |
-| `revision` | Increases with each save. The settings API uses it to detect a change made on another screen. |
+| `revision` | Increases with each save, including a save from the command line that only changes the token. The settings API uses it to detect a change made on another screen, and a running server uses it to notice a change made by the command line. |
 | `enabled` | Whether the connection starts again with the next `serve`. A stop saves `false`. |
 | `domain` | Optional. The ngrok domain the endpoint is requested on, a bare lower-case host name, so the public address is the same at every start. Left out when none is saved. A saved value that is not a bare host name is ignored when read. `AGBOARD_NGROK_DOMAIN`, when set, is used instead of it and is never written to the file. |
 

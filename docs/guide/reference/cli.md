@@ -21,7 +21,8 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Wait for a change | `wait` |
 | Manage projects and folders | `project`, `workspace` |
 | Open the board in the browser | `open` |
-| Get the phone address and passcode | `remote` |
+| Get the phone address and passcode, or see the remote access settings | `show remote` |
+| Save the remote access settings (domain, token) | `setup remote` |
 | Run the server and the hook | `serve`, `stop`, `hook` |
 | Install and update the Agent Board plugin | `setup`, `update` |
 | Delete things (people only) | `rm`, `project rm`, `epic rm`, `init` |
@@ -205,7 +206,7 @@ Start it yourself to keep it running, to choose the port, or to connect a phone 
 
 | Option | Meaning |
 | --- | --- |
-| `--monitor ngrok` | Starts the remote access connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. To keep the same address at every start, enter a domain your ngrok account owns in the dialog, or set `AGBOARD_NGROK_DOMAIN`; see [Keep the same address](../watch/remote-access#keep-the-same-address). |
+| `--monitor ngrok` | Starts the remote access connection. `ngrok` is the only mode. Needs `NGROK_AUTHTOKEN` in the environment; the token is never passed as an argument. To keep the same address at every start, enter a domain your ngrok account owns in the dialog, or set `AGBOARD_NGROK_DOMAIN`, or save it from the command line with [`agboard setup remote`](#save-the-remote-access-settings); see [Keep the same address](../watch/remote-access#keep-the-same-address). |
 
 The phone is guarded by a 4-digit passcode that is made for each start; there is no sign-in option. An invalid `--monitor` value, a missing `NGROK_AUTHTOKEN`, or an unknown option exits with code 2. If the connection cannot start, `serve` exits with code 1 and does not start.
 
@@ -224,11 +225,11 @@ agboard stop
 
 ### Give the phone address and passcode
 
-While the ngrok connection is up, `agboard remote` prints its state, the public address, and the 4-digit passcode, so that an agent can hand you a link without you opening the connection dialog:
+While the ngrok connection is up, `agboard show remote` with `--project` prints its state, the public address, and the 4-digit passcode, so that an agent can hand you a link without you opening the connection dialog:
 
 ```sh
-agboard --project "My project" remote
-agboard --project "My project" remote --json
+agboard --project "My project" show remote
+agboard --project "My project" show remote --json
 ```
 
 ```text
@@ -236,13 +237,56 @@ ngrok: ready
 URL: https://….ngrok-free.app/?project=<id>
 Passcode: 4821
 Project: My project
+Enabled: yes
+Domain: example.ngrok-free.dev
+Token: saved in the keychain
 ```
 
-`--project` is required, and the address opens that project. Without it, `remote` prints nothing and exits with code 2 as `invalid_argument`. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"}}`; `entrance` is the address without a project.
+The address opens that project. With `--json` it prints `{"status":"ready","url":"…","entrance":"…","passcode":"…","project":{"id":"…","name":"…"},"enabled":true,"domain":"…","tokenSaved":true,"keychainAvailable":true}`; `entrance` is the address without a project. The last four fields are the saved settings below.
 
-The plugin ships the skill `remote` (`/agent-board:remote` in Claude Code) for this: ask your agent for the remote access URL or the phone link, and it runs `agboard remote --json` for the project of the folder and replies with the address and passcode. It never starts the server or ngrok.
+The plugin ships the skill `remote` (`/agent-board:remote` in Claude Code) for this: ask your agent for the remote access URL or the phone link, and it runs `agboard --project "<name>" show remote --json` for the project of the folder and replies with the address and passcode. It never starts the server or ngrok.
 
-`remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
+With `--project`, `show remote` starts nothing. When no server is running, or the connection is not ready, it prints no address and no passcode, says why, and exits with code 1 as `remote_unavailable`. A project that does not exist exits with code 4.
+
+Without `--project`, `show remote` shows the saved remote access settings and the state of the connection, and never fails because the connection is down:
+
+```sh
+agboard show remote
+agboard show remote --json
+```
+
+```text
+Enabled: yes
+Domain: example.ngrok-free.dev
+Token: saved in the keychain
+Connection: ready at https://….ngrok-free.dev
+```
+
+It shows whether remote access is turned on, the saved fixed domain (or that ngrok chooses an address at each start), whether a token is saved in the keychain, and whether the keychain is available. The token itself is never shown, and no passcode is printed without `--project`. With `--json` it prints `enabled`, `domain`, `tokenSaved`, `keychainAvailable`, `status` (`no_server` when no server is running, otherwise the state of the connection such as `ready`, `disabled`, or `failed`), and `entrance` (the address while the connection is ready, else `null`). `show <id>` still shows a task; `remote` is the only word that is not a task ID.
+
+### Save the remote access settings {#save-the-remote-access-settings}
+
+`agboard setup remote` saves the ngrok settings that the board's connection dialog also keeps: whether the connection is on, the fixed domain, and the ngrok token. It needs no project, because the settings belong to the whole data folder, and it works whether or not a server is running. A running board shows the change without a reload.
+
+```sh
+agboard setup remote
+agboard setup remote --domain example.ngrok-free.dev --enabled true
+agboard setup remote --clear-domain
+printf '%s' "$NGROK_AUTHTOKEN" | agboard setup remote --token-stdin
+```
+
+On a terminal, `agboard setup remote` with no option shows what is saved (the domain, and whether a token is saved, never the token) and asks for the domain and the token. The token is typed hidden and is never printed. Each question can be skipped by leaving it empty, and a value that is already saved is changed only when you say so. Without a terminal, or with `--json`, it asks nothing and exits with `2`, so a script never waits for input.
+
+The options save without any question:
+
+| Option | Meaning |
+| --- | --- |
+| `--domain <host>` | Saves a fixed ngrok domain your account owns. It must be a bare host name; it is lower-cased, and a value with `https://`, a path, or a port exits with code 2 as `invalid_domain`. |
+| `--clear-domain` | Removes the saved domain, so ngrok chooses an address at each start. Cannot be combined with `--domain`. |
+| `--enabled true\|false` | Saves whether the connection is turned on. |
+| `--token-stdin` | Reads the ngrok token from standard input and saves it in the operating system's keychain, the same place the board's **Save the token on this PC** uses. The token is never accepted as an argument. Without a usable keychain nothing is saved and the command exits with code 1 as `keychain_unavailable`. |
+
+Saving does not start, stop, or replace a connection. A connection that is already up keeps running as it is, and the saved settings apply the next time the connection starts; the command says so. The settings are saved in the same file as the board's own, so the board and the command always show the same values. `setup remote` accepts `--json` and takes no `--project`; it cannot be combined with the options of `setup`.
 
 The server gives the passcode only to the local address of your PC, so it is printed to the person running the command and never travels through ngrok. If an agent pastes it into a chat, everyone who can read that chat can open the board for as long as the connection is up. Stop the connection when you are done; see the [remote access guide](../watch/remote-access).
 
@@ -267,6 +311,7 @@ agboard update --yes
 | Command | What it does | Exit codes |
 | --- | --- | --- |
 | `agboard setup` | Creates the data folder, asks which agents to set up, shows the plan, and after you answer `y` installs the plugin, lets the agents use the shared folder, and trusts the Agent Board hooks in Codex. Needs no project. | `0` success, nothing to change, or a cancel. `1` an agent failed, or no agent could be set up. `2` bad command line, or missing options without a terminal. |
+| `agboard setup remote` | Saves the remote access settings: the ngrok domain, whether it is on, and the token. Needs no project. See [Save the remote access settings](#save-the-remote-access-settings). | `0` success. `1` the keychain or the settings file cannot be used. `2` bad command line, an invalid domain, or no option without a terminal. |
 | `agboard update` | Moves the plugin of every agent that has it to this version and trusts the new Codex hooks. Shows the plan and asks first. Needed after an upgrade only when the automatic update cannot do it (Codex hook trust) or to repair the plugin; see [Update the plugin](../delegate/agents#update-the-plugin). | `0` success, nothing to update, or a cancel. `1` an agent failed. `2` bad command line, or missing options without a terminal. |
 
 `setup` installs the plugin again only when it is missing or its files differ from the ones your `agboard` ships; `update` always reinstalls it.
@@ -277,6 +322,8 @@ Both commands take these options:
 - `--yes` agrees in advance, including the trust of the Codex hooks.
 - `--dry-run` shows the plan and installs, creates, and changes nothing.
 - `--json` prints machine-readable output.
+
+On a terminal, plain `agboard setup` also offers to set up remote access after the plugin is installed: it asks whether to do so (the default is no), and then asks the same questions as `agboard setup remote`. Skip it and nothing is asked again. It is not offered without a terminal, with `--json`, with `--yes`, or with `--dry-run`.
 
 Neither command waits on a pipe. Without a terminal, or with `--json`, `setup` needs `--agent`, and both need `--yes` or `--dry-run`; otherwise they exit with `2`. An agent whose command is not on `PATH` is skipped with the reason. Failure reasons go to the error output. See [Data and backups](../operations/data#set-up-the-shared-folder) for the settings files they change and how they back them up.
 

@@ -29,6 +29,49 @@ pub trait TokenVault: Send + Sync {
     fn delete(&self) -> Result<(), VaultError>;
 }
 
+/// What the keychain held before a token was replaced: `None` when that could not be read, so
+/// there is nothing to put back.
+pub type Previous = Option<Option<Secret>>;
+
+/// Save `token`, returning what was there before so a failed settings save can undo it.
+pub fn replace_token(vault: &dyn TokenVault, token: &Secret) -> Result<Previous, VaultError> {
+    let previous = vault.load().ok();
+    vault.save(token)?;
+    Ok(previous)
+}
+
+/// Put back what `replace_token` replaced. Best effort: a failure here changes nothing more.
+pub fn put_back(vault: &dyn TokenVault, previous: Previous) {
+    let _ = match previous {
+        Some(Some(token)) => vault.save(&token),
+        Some(None) => vault.delete(),
+        None => Ok(()),
+    };
+}
+
+/// `replace_token` on a blocking thread, since the keychain may stop to ask the user.
+pub async fn replace_token_off_thread(
+    vault: &std::sync::Arc<dyn TokenVault>,
+    token: &Secret,
+) -> Result<Previous, VaultError> {
+    let vault = vault.clone();
+    let token = token.clone();
+    tokio::task::spawn_blocking(move || replace_token(&*vault, &token))
+        .await
+        .unwrap_or(Err(VaultError::Failed))
+}
+
+/// `put_back` on a blocking thread; nothing to put back is a no-op.
+pub async fn put_back_off_thread(
+    vault: &std::sync::Arc<dyn TokenVault>,
+    previous: Option<Previous>,
+) {
+    if let Some(previous) = previous {
+        let vault = vault.clone();
+        let _ = tokio::task::spawn_blocking(move || put_back(&*vault, previous)).await;
+    }
+}
+
 /// The operating system's keychain: Keychain on macOS, Credential Manager on
 /// Windows, the Secret Service on Linux.
 pub struct OsKeychain;
