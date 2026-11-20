@@ -39,6 +39,7 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `GET /api/projects/{projectId}/archive` | Archived tasks with bodies, full history, and attachment metadata, plus `epics` from the same snapshot. Each task's `epicId` resolves against that list; a task without an epic, or one whose epic is missing, has no label. |
 | `GET /api/projects/{projectId}/summary` | The list data for the board: project, `version`, tasks, epics, and problems, without any body text. See [Summary and Detail](#summary-and-detail). |
 | `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts, plus the sessions the board launched. See [Attached sessions](#attached-sessions). Never cached. |
+| `POST /api/projects/{projectId}/sessions/touch` | Counts the external session named in the headers for five minutes. Sent by every `agboard` command and hook; 204 always. Local listener only. See [Attached sessions](#attached-sessions). |
 | `GET …/sessions/models`, `GET …/sessions/log`, `POST …/sessions/launch`, `POST …/sessions/stop` | Launch and stop headless Claude Code and Codex sessions. Local listener only. See [Launching sessions](#launching-sessions). |
 | `GET /api/projects/{projectId}/tasks/{id}/detail` | One task's body, acceptance conditions, and history as an NDJSON stream. Archived tasks are read the same way. |
 | `GET /api/projects/{projectId}/epics/{epicId}/detail` | One epic's document as an NDJSON stream. |
@@ -117,7 +118,7 @@ The server compares the parsed data before and after every reload, so a save tha
 
 ### Attached sessions
 
-`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. A session is attached while a `wait --until task` command of it holds an `/api/events` stream open. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values. The response also has `launched`; see [Launching sessions](#launching-sessions).
+`GET /api/projects/{projectId}/sessions` lists the agent sessions that wait on a project, for the settings screen and the footer. An external session is attached while a `wait --until task` command of it holds an `/api/events` stream open, and for five minutes after any `agboard` command or hook of it reached the server; a session the board launched is added by the launcher. The same route is served through the ngrok entrance behind the passcode session, like the other reads. It carries no paths, process IDs, or environment values. The response also has `launched`; see [Launching sessions](#launching-sessions).
 
 ```json
 {
@@ -141,11 +142,11 @@ The server compares the parsed data before and after every reload, so a save tha
 ```
 
 - `tool` is `claude-code`, `codex`, or `unknown`. `origin` is `board` for a session the board launched and `external` for any other.
-- `state` is `connected` while a stream is open and `grace` for 30 seconds after the last one closed, so the gap between one wait and the next does not make the count flicker. A session in grace still counts in `total` and the other counts; `connected` counts only open ones. After the grace period the session is gone. `lastSeenAt` is the current time while connected and the time the last stream closed in grace. A session that reconnects within the grace period is the same session and keeps its first `connectedAt`.
+- `state` is `connected` while a stream is open. Otherwise it is `grace`: for 30 seconds after the last stream closed (so the gap between one wait and the next does not make the count flicker), and for five minutes after the last `agboard` command or hook of the session reached the server, whichever ends last. A session in grace still counts in `total` and the other counts; `connected` counts only open streams, so a session that uses the board without waiting is never `connected`. After both periods the session is gone. `lastSeenAt` is the current time while connected, else the time of the last closed stream or the last command. A session that reconnects or runs another command in time is the same session and keeps its first `connectedAt`.
 - Sessions are ordered by `connectedAt`. A malformed project ID is 422 `invalid_value`; a project with no sessions (or one that does not exist) has an empty list.
-- The server keeps the registry in memory only. After a restart it is empty and fills again as the waits reconnect. The list is read on request; the UI polls it, and no event announces a change.
+- The server keeps the registry in memory only. After a restart it is empty and fills again as the waits reconnect and the commands run. The list is read on request; the UI polls it, and no event announces a change.
 
-How a stream names its session: a command that waits for tasks sends four headers with its `GET /api/events` request, and a stream without a valid set is simply not counted.
+How a session names itself: a command that waits for tasks sends four headers with its `GET /api/events` request, and every other command or hook sends the same four with `POST /api/projects/{projectId}/sessions/touch` (the project in the headers must be the one in the path). A request without a valid set is simply not counted, and a touch whose origin is `board` is ignored, so a session the board launched is never counted twice.
 
 | Header | Value |
 | --- | --- |
@@ -154,7 +155,7 @@ How a stream names its session: a command that waits for tasks sends four header
 | `X-Agboard-Session-Tool` | `claude-code`, `codex`, or `unknown`. |
 | `X-Agboard-Session-Origin` | `board` or `external`. |
 
-The limit on launching is held by the launcher: it refuses a launch while it has a live child or a waiting restart, and also when `SessionRegistry::check_board_launch()` finds a board-origin wait of a session it does not know. Board-launched sessions are limited to one in total, over both tools and all projects. The refusal names the tool that holds the slot. External sessions are never limited or counted against the limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it.
+The limit on launching is held by the launcher: it refuses a launch while it has a live child or a waiting restart, and also when `SessionRegistry::check_board_launch()` finds a board-origin wait of a session it does not know. Board-launched sessions are limited to one in total, over both tools and all projects. The refusal names the tool that holds the slot. External sessions are never limited or counted against the limit. `AGBOARD_SESSION_GRACE_MS` replaces the 30-second grace period with a number of milliseconds; tests use it. The five-minute access window is fixed.
 
 ### Launching sessions
 

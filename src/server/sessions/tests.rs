@@ -105,3 +105,113 @@ fn a_session_added_from_outside_the_registry_is_counted_with_the_external_ones()
     // The older one comes first.
     assert_eq!(list.sessions[0].origin, Origin::Board);
 }
+
+fn minutes(n: u64) -> Duration {
+    Duration::from_secs(n * 60)
+}
+
+#[test]
+fn an_access_counts_an_external_session_for_five_minutes() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let start = Instant::now();
+    let wall = Utc::now();
+    registry.touch_at(attrs("a", Tool::ClaudeCode, Origin::External), start, wall);
+
+    let list = registry.list_at(&project(), start, wall);
+    assert_eq!(list.counts.total, 1);
+    assert_eq!(list.counts.connected, 0);
+    assert_eq!(list.counts.by_origin.external, 1);
+    assert_eq!(list.sessions[0].state, State::Grace);
+    assert_eq!(list.sessions[0].last_seen_at, wall);
+
+    let almost = start + minutes(5) - Duration::from_secs(1);
+    assert_eq!(registry.list_at(&project(), almost, wall).counts.total, 1);
+    let gone = registry.list_at(&project(), start + minutes(5), wall);
+    assert_eq!(gone.counts.total, 0);
+}
+
+#[test]
+fn a_later_access_extends_the_window_and_keeps_the_session() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let start = Instant::now();
+    let first = Utc::now();
+    registry.touch_at(attrs("a", Tool::Codex, Origin::External), start, first);
+    let later = first + chrono::Duration::minutes(4);
+    let at = start + minutes(4);
+    registry.touch_at(attrs("a", Tool::Codex, Origin::External), at, later);
+    let list = registry.list_at(&project(), start + minutes(8), later);
+    assert_eq!(list.counts.total, 1);
+    assert_eq!(list.sessions[0].connected_at, first);
+    assert_eq!(list.sessions[0].last_seen_at, later);
+    assert_eq!(
+        registry
+            .list_at(&project(), start + minutes(9), later)
+            .counts
+            .total,
+        0
+    );
+}
+
+#[test]
+fn an_open_stream_outlasts_the_access_window() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let start = Instant::now();
+    let wall = Utc::now();
+    let hold = registry.register_at(attrs("a", Tool::Codex, Origin::External), start, wall);
+    registry.touch_at(attrs("a", Tool::Codex, Origin::External), start, wall);
+    let list = registry.list_at(&project(), start + minutes(30), wall);
+    assert_eq!(list.counts.total, 1);
+    assert_eq!(list.counts.connected, 1);
+    // Once it closes, the later of the grace and the access window decides.
+    hold.release_at(start + minutes(30), wall);
+    assert_eq!(
+        registry
+            .list_at(
+                &project(),
+                start + minutes(30) + Duration::from_secs(31),
+                wall
+            )
+            .counts
+            .total,
+        0
+    );
+}
+
+#[test]
+fn an_access_shortly_before_a_wait_ends_keeps_the_session_for_the_window() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let start = Instant::now();
+    let wall = Utc::now();
+    let hold = registry.register_at(attrs("a", Tool::Codex, Origin::External), start, wall);
+    registry.touch_at(attrs("a", Tool::Codex, Origin::External), start, wall);
+    hold.release_at(start, wall);
+    let list = registry.list_at(&project(), start + Duration::from_secs(120), wall);
+    assert_eq!(list.counts.total, 1);
+    assert_eq!(list.counts.connected, 0);
+}
+
+#[test]
+fn a_board_launched_session_is_not_counted_by_an_access() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    let start = Instant::now();
+    let wall = Utc::now();
+    registry.touch_at(attrs("b", Tool::Codex, Origin::Board), start, wall);
+    assert_eq!(registry.list_at(&project(), start, wall).counts.total, 0);
+    assert!(!registry.has_board(Tool::Codex));
+
+    // A board session that waits is counted once, and an access under the same key does not
+    // add an external entry or change its origin.
+    let _hold = registry.register_at(attrs("b", Tool::Codex, Origin::Board), start, wall);
+    registry.touch_at(attrs("b", Tool::Codex, Origin::External), start, wall);
+    let list = registry.list_at(&project(), start, wall);
+    assert_eq!(list.counts.total, 1);
+    assert_eq!(list.counts.by_origin.board, 1);
+    assert_eq!(list.counts.by_origin.external, 0);
+}
+
+#[test]
+fn an_access_does_not_count_against_the_board_launch_limit() {
+    let registry = SessionRegistry::new(Duration::from_secs(30));
+    registry.touch(attrs("e", Tool::Codex, Origin::External));
+    assert!(registry.check_board_launch().is_ok());
+}

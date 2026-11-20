@@ -158,6 +158,7 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
         // An agent is working on a board: keep its server running, so that
         // automatic Done and live updates follow its direct file edits.
         if let Some(project) = &run.board {
+            crate::agent::session_touch::touch_from_env(&data_dir_of(&env.shared_dir), project);
             crate::autostart::start_in_background(&data_dir_of(&env.shared_dir), Some(project));
         }
         return 0;
@@ -226,6 +227,9 @@ pub fn execute(args: &[OsString], env: &mut Env) -> i32 {
                 outcome.human
             };
             write_text(env.stdout, &text);
+            if let Some(Ok(project)) = ctx.as_ref().map(|ctx| ctx.project_id()) {
+                crate::agent::session_touch::touch_from_env(&data_dir_of(&env.shared_dir), project);
+            }
             if let (true, Some(ctx)) = (outcome.changed, &ctx) {
                 let dir = env
                     .shared_dir
