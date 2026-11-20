@@ -2,6 +2,7 @@ import { ArrowUpIcon, ImageIcon, XIcon } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { keepFocusOnPress } from '@/shared/ui/keepFocus';
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 
 /** The footer of the Ask AI composer: the error line, the attached thumbnails, and the toolbar. */
@@ -83,7 +84,7 @@ export function AskAiToolbar({
         ) : (
           <span />
         )}
-        <Button type="button" disabled={saving || !canSend} onClick={onSend}>
+        <Button type="button" disabled={saving || !canSend} onClick={onSend} {...keepFocusOnPress}>
           <ArrowUpIcon aria-hidden="true" />
           {t('askAi.submit')}
         </Button>
