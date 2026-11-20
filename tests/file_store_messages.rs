@@ -91,6 +91,7 @@ impl Fixture {
                         choices: qa::choices(choices),
                         recommended_choice_id: None,
                         tasks: Vec::new(),
+                        images: Vec::new(),
                     }],
                     tasks: tasks.to_vec(),
                 },
@@ -157,12 +158,14 @@ fn every_message_is_one_file_and_one_sequence_numbers_them() {
                         choices: qa::choices(&[("keep", "Keep"), ("drop", "Drop")]),
                         recommended_choice_id: Some("keep".into()),
                         tasks: Vec::new(),
+                        images: Vec::new(),
                     },
                     AskQuestion {
                         body: "Anything else to know?".into(),
                         choices: Vec::new(),
                         recommended_choice_id: None,
                         tasks: Vec::new(),
+                        images: Vec::new(),
                     },
                 ],
                 tasks: vec![task],
@@ -699,6 +702,7 @@ fn a_refused_ask_writes_nothing_and_reserves_no_number() {
         choices: qa::choices(choices),
         recommended_choice_id: recommended.map(str::to_string),
         tasks: Vec::new(),
+        images: Vec::new(),
     };
     let two = [("a", "A"), ("b", "B")];
     assert!(matches!(

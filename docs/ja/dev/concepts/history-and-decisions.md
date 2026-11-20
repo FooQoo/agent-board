@@ -6,7 +6,7 @@
 
 メッセージはタスクではなくプロジェクトに属します。メッセージには、AIから人への質問と、人からAIへの依頼があります。タスクは待っている質問を参照します。
 
-- メッセージは1件1ファイルで、`qa/Q-<n>/QA.md`に保存します。YAMLのfrontmatterとMarkdownの本文で構成します。依頼に添付した画像は`qa/Q-<n>/attachments/`に置きます。質問と依頼は`project.json`の`nextQuestionId`の1本の連番を共有し、番号は増えるだけです。
+- メッセージは1件1ファイルで、`qa/Q-<n>/QA.md`に保存します。YAMLのfrontmatterとMarkdownの本文で構成します。依頼に添付した画像や、`message ask`の`images`で質問に付けた画像は`qa/Q-<n>/attachments/`に置きます。`ask`は先に質問のファイルを書き、そのあと用意しておいた画像フォルダを質問ごとに1回のrenameで移します。質問と依頼は`project.json`の`nextQuestionId`の1本の連番を共有し、番号は増えるだけです。
 - 質問は`from`、`to`、任意の`tasks`（質問の対象タスク）、任意で2〜10件の`choices`、任意の`recommended`、`reply`、`withdrawnAt`、`createdAt`を持ちます。本文が質問で、1〜5,000文字です。各選択肢は質問内で一意のID（`[A-Za-z0-9_-]`の1〜64文字）と1〜200文字のラベルを持ちます。`recommended`は選択肢のどれかを指します。
 - 依頼は`from`、`to`、`acceptedAt`、`withdrawnAt`、`createdAt`を持ちます。本文が依頼で、1〜20,000文字です。
 - `agboard message ask`は質問1件につき1ファイルを書き、1回に20件まで出せます。`--task <id>`または質問の`tasks`を指定すると、そのタスクのfrontmatterの`questions`に質問IDを足し、質問と選択肢を別々のブロックにした履歴を追加します。Runningのタスクは同じ保存でIdleに戻します。指定したタスクが存在しない、アーカイブ済み、下書き、またはAIの操作でDoneのときは、何も書きません。

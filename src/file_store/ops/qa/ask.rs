@@ -6,6 +6,7 @@ use super::super::{
     HistoryKind, Transition, ensure_ai_task_not_done, lock_project, save_project, stamp,
     transition_event,
 };
+use super::send::{RequestImage, checked_images, stage_images};
 use super::{message_change, options_line};
 use crate::domain::{Actor, ProjectId, RunState};
 use crate::error::AgboardError;
@@ -13,7 +14,7 @@ use crate::file_store::FileStore;
 use crate::file_store::frontmatter::compose_questions;
 use crate::file_store::history::{ParseMode, parse_task};
 use crate::file_store::model::{Choice, HistoryRecord};
-use crate::file_store::qa::{MAX_QUESTIONS, Message, Question, question_defect};
+use crate::file_store::qa::{self, MAX_QUESTIONS, Message, Question, question_defect};
 use crate::file_store::transaction::save_batch_locked;
 use crate::file_store::{io, layout, reader, validate};
 
@@ -26,6 +27,9 @@ pub struct AskQuestion {
     pub recommended_choice_id: Option<String>,
     /// Tasks that wait on this question only.
     pub tasks: Vec<i64>,
+    /// Images stored under the question's `attachments/` folder; the body shows them as
+    /// `![](attachments/<name>)`.
+    pub images: Vec<RequestImage>,
 }
 
 /// The questions one `ask` registers; each becomes its own file.
@@ -95,6 +99,19 @@ impl FileStore {
         now: DateTime<Utc>,
     ) -> Result<Vec<Question>, AgboardError> {
         let mut questions = normalize(&input)?;
+        let staged_images = input
+            .questions
+            .iter()
+            .enumerate()
+            .map(|(index, asked)| {
+                checked_images(&asked.images).map_err(|error| match error {
+                    AgboardError::InvalidValue { field, reason } => {
+                        invalid(format!("questions[{index}].{field}"), reason)
+                    }
+                    other => other,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
 
@@ -216,7 +233,31 @@ impl FileStore {
                 Some(&composed),
             )?);
         }
-        save_batch_locked(&project_dir, changes)?;
+        let staging = stage_images(&project_dir, &staged_images)?;
+        if let Err(error) = save_batch_locked(&project_dir, changes) {
+            if let Some(dir) = &staging {
+                let _ = std::fs::remove_dir_all(dir);
+            }
+            return Err(error);
+        }
+        if let Some(dir) = staging {
+            // The question files are in place; each image folder now moves under its question
+            // with one rename.
+            let placed = (|| -> Result<(), AgboardError> {
+                for (index, question) in questions.iter().enumerate() {
+                    let from = dir.join(index.to_string());
+                    if from.is_dir() {
+                        let target =
+                            qa::attachments_dir(&qa::message_dir(&project_dir, &question.id));
+                        std::fs::rename(&from, &target)
+                            .map_err(|e| io::write_error("attachments", e))?;
+                    }
+                }
+                Ok(())
+            })();
+            let _ = std::fs::remove_dir_all(&dir);
+            placed?;
+        }
         Ok(questions)
     }
 }

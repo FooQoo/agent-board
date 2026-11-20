@@ -62,6 +62,79 @@ fn stored_name(name: &str, extension: &str) -> Result<String, AgboardError> {
     })
 }
 
+/// Check the images of a request or a question and name each one as it is stored: PNG, JPEG,
+/// WebP, or GIF, at most 20 images and 50 MiB in all, with unique names.
+pub(super) fn checked_images(
+    images: &[RequestImage],
+) -> Result<Vec<(String, &Vec<u8>)>, AgboardError> {
+    if images.len() > MAX_TASK_ATTACHMENTS {
+        return Err(AgboardError::AttachmentLimitExceeded);
+    }
+    let mut total = 0usize;
+    let mut names = HashSet::new();
+    let mut files = Vec::new();
+    for image in images {
+        let media = validate_attachment(&"0".repeat(32), &image.name, &image.bytes)?;
+        total = total.saturating_add(image.bytes.len());
+        if total > MAX_TASK_ATTACHMENT_BYTES {
+            return Err(AgboardError::AttachmentLimitExceeded);
+        }
+        let extension = layout::asset_extension(media).ok_or_else(|| {
+            invalid(
+                "image",
+                "Only PNG, JPEG, WebP, and GIF images are accepted.",
+            )
+        })?;
+        let name = stored_name(&image.name, extension)?;
+        if !names.insert(name.clone()) {
+            return Err(invalid("image", "Image names must be unique."));
+        }
+        files.push((name, &image.bytes));
+    }
+    Ok(files)
+}
+
+/// Write the images of each question to a staging folder `<n>/` under `.internal/`, so the
+/// images are complete before the question appears. Returns `None` when there are none.
+pub(super) fn stage_images(
+    project_dir: &std::path::Path,
+    images: &[Vec<(String, &Vec<u8>)>],
+) -> Result<Option<std::path::PathBuf>, AgboardError> {
+    if images.iter().all(Vec::is_empty) {
+        return Ok(None);
+    }
+    let root = project_dir.join(".internal").join("request-staging");
+    if layout::has_symlink_below(project_dir, &root)
+        .map_err(|e| io::write_error("request-staging", e))?
+    {
+        return Err(io::write_error(
+            "request-staging",
+            "a symbolic link is in the way",
+        ));
+    }
+    fs::create_dir_all(&root).map_err(|e| io::write_error("request-staging", e))?;
+    let staging = root.join(io::random_hex(16).map_err(|e| io::write_error("request-staging", e))?);
+    fs::create_dir(&staging).map_err(|e| io::write_error("request-staging", e))?;
+    let written = (|| -> Result<(), AgboardError> {
+        for (index, files) in images.iter().enumerate() {
+            if files.is_empty() {
+                continue;
+            }
+            let dir = staging.join(index.to_string());
+            fs::create_dir(&dir).map_err(|e| io::write_error("attachments", e))?;
+            for (name, bytes) in files {
+                io::write_atomic(&dir.join(name), bytes, "attachments")?;
+            }
+        }
+        Ok(())
+    })();
+    if let Err(error) = written {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    Ok(Some(staging))
+}
+
 impl FileStore {
     /// Send a request. The next question number is reserved, then `qa/Q-<n>/` is published
     /// with one rename, so a request is never seen without its images.
@@ -76,30 +149,7 @@ impl FileStore {
         if text.is_empty() || text.chars().count() > MAX_REQUEST_CHARS {
             return Err(invalid("text", "A request is 1 to 20000 characters."));
         }
-        if input.images.len() > MAX_TASK_ATTACHMENTS {
-            return Err(AgboardError::AttachmentLimitExceeded);
-        }
-        let mut total = 0usize;
-        let mut names = HashSet::new();
-        let mut files = Vec::new();
-        for image in &input.images {
-            let media = validate_attachment(&"0".repeat(32), &image.name, &image.bytes)?;
-            total = total.saturating_add(image.bytes.len());
-            if total > MAX_TASK_ATTACHMENT_BYTES {
-                return Err(AgboardError::AttachmentLimitExceeded);
-            }
-            let extension = layout::asset_extension(media).ok_or_else(|| {
-                invalid(
-                    "image",
-                    "Only PNG, JPEG, WebP, and GIF images are accepted.",
-                )
-            })?;
-            let name = stored_name(&image.name, extension)?;
-            if !names.insert(name.clone()) {
-                return Err(invalid("image", "Image names must be unique."));
-            }
-            files.push((name, &image.bytes));
-        }
+        let files = checked_images(&input.images)?;
 
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;

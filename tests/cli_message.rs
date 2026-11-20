@@ -410,3 +410,129 @@ fn link_and_unlink_change_what_a_task_waits_for() {
     );
     assert_eq!(error, "message_type_mismatch");
 }
+
+fn project_dir(home: &Path) -> std::path::PathBuf {
+    std::fs::read_dir(home.join("shared/projects"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path()
+}
+
+#[test]
+fn a_question_carries_images_stored_under_its_own_folder() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let image = home.path().join("mock.png");
+    std::fs::write(&image, PNG).unwrap();
+    let questions = json!({"questions": [
+        {"body": "Which layout?\n\n![mock](attachments/mock.png)", "images": [image.to_str().unwrap()]},
+        {"body": "Anything else?"}
+    ]})
+    .to_string();
+    let (code, _, err) = msg(
+        home.path(),
+        &[
+            "ask",
+            "--actor",
+            "ai",
+            "--task",
+            "1",
+            "--questions-json",
+            &questions,
+            "--no-wait",
+            "--json",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    let project = project_dir(home.path());
+    assert_eq!(
+        std::fs::read(project.join("qa/Q-1/attachments/mock.png")).unwrap(),
+        PNG
+    );
+    assert!(!project.join("qa/Q-2/attachments").exists());
+    assert!(
+        std::fs::read_to_string(project.join("qa/Q-1/QA.md"))
+            .unwrap()
+            .contains("![mock](attachments/mock.png)")
+    );
+    let shown = msg_json(home.path(), &["show", "Q-1"]);
+    assert!(
+        shown["question"]["body"]
+            .as_str()
+            .unwrap()
+            .contains("attachments/mock.png")
+    );
+    // No staging folder is left behind.
+    let staging = project.join(".internal/request-staging");
+    assert!(!staging.exists() || std::fs::read_dir(staging).unwrap().next().is_none());
+}
+
+#[test]
+fn a_question_refuses_images_that_are_not_pictures_and_registers_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let text = home.path().join("notes.png");
+    std::fs::write(&text, b"not a picture").unwrap();
+    let svg = home.path().join("mock.svg");
+    std::fs::write(&svg, b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").unwrap();
+    for file in [&text, &svg] {
+        let questions =
+            json!({"questions": [{"body": "Which?", "images": [file.to_str().unwrap()]}]})
+                .to_string();
+        let (code, _, _) = msg(
+            home.path(),
+            &[
+                "ask",
+                "--actor",
+                "ai",
+                "--questions-json",
+                &questions,
+                "--no-wait",
+            ],
+        );
+        assert_ne!(code, 0, "{file:?}");
+    }
+    let missing =
+        json!({"questions": [{"body": "Which?", "images": ["/no/such/file.png"]}]}).to_string();
+    let (code, _, _) = msg(
+        home.path(),
+        &[
+            "ask",
+            "--actor",
+            "ai",
+            "--questions-json",
+            &missing,
+            "--no-wait",
+        ],
+    );
+    assert_ne!(code, 0);
+    assert!(!project_dir(home.path()).join("qa").exists());
+    assert_eq!(msg_json(home.path(), &["ls"])["messages"], json!([]));
+}
+
+#[test]
+fn a_question_refuses_too_many_or_duplicate_images() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let one = home.path().join("a.png");
+    std::fs::write(&one, PNG).unwrap();
+    let many: Vec<&str> = (0..21).map(|_| one.to_str().unwrap()).collect();
+    for images in [many, vec![one.to_str().unwrap(), one.to_str().unwrap()]] {
+        let questions = json!({"questions": [{"body": "Which?", "images": images}]}).to_string();
+        let (code, _, _) = msg(
+            home.path(),
+            &[
+                "ask",
+                "--actor",
+                "ai",
+                "--questions-json",
+                &questions,
+                "--no-wait",
+            ],
+        );
+        assert_ne!(code, 0);
+    }
+    assert_eq!(msg_json(home.path(), &["ls"])["messages"], json!([]));
+}
