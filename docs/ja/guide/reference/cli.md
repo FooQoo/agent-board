@@ -331,7 +331,7 @@ agboard update --yes
 
 ## Skillの本文 {#skill-text}
 
-`agboard skills`は、`agent-board`スキルの指示を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`file-format`、`listening`、`resident`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です。プラグインの`SKILL.md`が`agboard skills`を実行するので、エージェントは、インストールした`agboard`の指示をいつも受け取ります。このコマンドはMarkdownを出力し、何も書き込まず、サーバーも起動せず、常に終了コード`0`で終わります。トピックにない名前は、トピックの一覧を出力します。
+`agboard skills`は、`agent-board`スキルの指示を出力します。`agboard skills <topic>`は、参照や雛形を1つ出力します。トピックは`project`、`language`、`files`、`requests`、`work-loop`、`questions`、`waiting`、`file-format`、`listening`、`resident`、`planning`、`fixed-epic-bodies`、`drafts`、`phone`、`task-template`、`epic-template`、`bug-epic-template`、`enhancement-epic-template`です。プラグインの`SKILL.md`が`agboard skills`を実行するので、エージェントは、インストールした`agboard`の指示をいつも受け取ります。このコマンドはMarkdownを出力し、何も書き込まず、サーバーも起動せず、常に終了コード`0`で終わります。トピックにない名前は、トピックの一覧を出力します。
 
 ## 出力と確認
 
