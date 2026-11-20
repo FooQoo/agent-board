@@ -3,6 +3,26 @@
   "owner": "U13",
   "files": [
     {
+      "file": "shared/ui/editor/ComposerThumbs.tsx",
+      "exports": [
+        {
+          "name": "ComposerThumbs",
+          "stories": [
+            {
+              "id": "messages-askai--sheet-images-tappable",
+              "states": ["88px thumbnails", "44px remove target", "tap opens viewer"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--answer-images-tappable-on-phone",
+              "states": ["answer sheet", "88px thumbnails", "tap opens viewer"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "shared/ui/editor/EditorBody.tsx",
       "exports": [
         {
