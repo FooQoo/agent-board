@@ -33,7 +33,7 @@
             },
             {
               "id": "resident-residentview--stalled-items",
-              "states": ["stalled items", "item names", "last failure", "hint"],
+              "states": ["stalled items", "item names", "last failure", "hint", "on hold"],
               "interaction": true
             },
             {
@@ -329,6 +329,11 @@
             {
               "id": "resident-residentfooter--stalled",
               "states": ["stalled items", "warning with count", "button opens the dialog"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentfooter--on-hold",
+              "states": ["on hold", "neutral, not a warning"],
               "interaction": true
             },
             {

@@ -403,6 +403,12 @@ button.resident-footer {
   border-color: var(--r-danger);
 }
 
+.resident-hold {
+  border-color: var(--r-border);
+  background: var(--r-surface);
+  color: var(--r-text2);
+}
+
 .resident-stalled__title {
   margin: 0;
   font-weight: 600;
@@ -439,6 +445,15 @@ button.resident-footer {
   white-space: nowrap;
 }
 
+.resident-footer__hold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--r-text2);
+  white-space: nowrap;
+}
+
+.resident-footer__hold > svg,
 .resident-footer__stalled > svg {
   width: 14px;
   height: 14px;

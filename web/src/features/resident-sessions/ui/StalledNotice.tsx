@@ -1,4 +1,4 @@
-import { TriangleAlertIcon } from 'lucide-react';
+import { CirclePauseIcon, TriangleAlertIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SessionHealth } from '../api';
 import type { StalledItem } from '../api';
@@ -9,27 +9,63 @@ export function useStalledName() {
   return (item: StalledItem): string => t(`resident.stalledItem.${item.kind}`, { id: item.id });
 }
 
-/** Items the board pushed to the session several times and gave up on, with the way out. */
+/** Items the board gave up on after a failed turn, apart from those left on hold by clean turns. */
+export function splitStalled(health: SessionHealth): {
+  failed: StalledItem[];
+  onHold: StalledItem[];
+} {
+  return {
+    failed: health.pushStalled.filter((item) => !item.onHold),
+    onHold: health.pushStalled.filter((item) => item.onHold),
+  };
+}
+
+/**
+ * Items the board handed over several times without a change. Items whose turns failed are a
+ * warning with the way out; items the turns left as they were are on hold, in neutral wording.
+ */
 export function StalledNotice({ health }: { health: SessionHealth }) {
   const { t } = useTranslation();
   const name = useStalledName();
-  const items = health.pushStalled;
-  if (items.length === 0) return null;
+  const { failed, onHold } = splitStalled(health);
+  if (failed.length === 0 && onHold.length === 0) return null;
   return (
-    <section className="resident-notice resident-stalled" role="alert">
-      <TriangleAlertIcon aria-hidden="true" />
-      <div>
-        <p className="resident-stalled__title">{t('resident.stalledTitle')}</p>
-        <ul className="resident-stalled__list">
-          {items.map((item) => (
-            <li key={`${item.kind}:${item.id}`}>
-              <span>{name(item)}</span>
-              {item.lastError && <span className="resident-stalled__reason">{item.lastError}</span>}
-            </li>
-          ))}
-        </ul>
-        <p className="resident-stalled__hint">{t('resident.stalledHint')}</p>
-      </div>
-    </section>
+    <>
+      {failed.length > 0 && (
+        <section className="resident-notice resident-stalled" role="alert">
+          <TriangleAlertIcon aria-hidden="true" />
+          <div>
+            <p className="resident-stalled__title">{t('resident.stalledTitle')}</p>
+            <ul className="resident-stalled__list">
+              {failed.map((item) => (
+                <li key={`${item.kind}:${item.id}`}>
+                  <span>{name(item)}</span>
+                  {item.lastError && (
+                    <span className="resident-stalled__reason">{item.lastError}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="resident-stalled__hint">{t('resident.stalledHint')}</p>
+          </div>
+        </section>
+      )}
+      {onHold.length > 0 && (
+        <section className="resident-notice resident-hold" role="status">
+          <CirclePauseIcon aria-hidden="true" />
+          <div>
+            <p className="resident-stalled__title">{t('resident.holdTitle')}</p>
+            <ul className="resident-stalled__list">
+              {onHold.map((item) => (
+                <li key={`${item.kind}:${item.id}`}>
+                  <span>{name(item)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="resident-stalled__hint">{t('resident.holdHint')}</p>
+          </div>
+        </section>
+      )}
+    </>
   );
 }
