@@ -6,6 +6,7 @@ import {
   type MessageDetail,
   type MessagesApi,
   parseMessageDetail,
+  parseSummaries,
 } from './model/messages';
 
 const messagePath = (projectId: ProjectId, messageId: string) =>
@@ -31,9 +32,23 @@ export async function withdrawMessage(projectId: ProjectId, messageId: string) {
   return postTask<{ request: unknown }>(`${messagePath(projectId, messageId)}/withdraw`, {});
 }
 
+/** The periodic summaries of the project that were not dismissed, newest first. */
+export async function fetchSummaries(projectId: ProjectId) {
+  return parseSummaries(await getJson<unknown>(`${projectPath(projectId)}/summaries`));
+}
+
+/** Sets a periodic summary aside. The record stays in the project's `notify/` files. */
+export async function dismissSummary(projectId: ProjectId, summaryId: string) {
+  return postTask<{ summary: unknown }>(
+    `${projectPath(projectId)}/summaries/${encodeURIComponent(summaryId)}/dismiss`,
+    {},
+  );
+}
+
 /** The routes of the PC board and of the phone screen served by the same app. */
 export const messagesApi: MessagesApi = {
   read: fetchMessage,
   answer: answerMessages,
   withdraw: withdrawMessage,
+  summaries: { list: fetchSummaries, dismiss: dismissSummary },
 };

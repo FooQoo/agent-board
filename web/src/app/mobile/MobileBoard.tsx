@@ -69,6 +69,8 @@ export default function MobileBoard({
       guideLink={guideLink}
       resultLink={model.resultLink?.projectId === activeId ? model.resultLink : null}
       onResultLinkClose={model.clearResultLink}
+      summaryLink={model.summaryLink}
+      onSummaryLinkClose={model.clearSummaryLink}
       statusSlot={residentFooterSlot(activeId, { displayOnly: true })}
     />
   );

@@ -10,9 +10,10 @@ import {
   SAMPLE_PROJECT,
   sampleMessages,
   sampleMessagesApi,
+  sampleSummaries,
 } from './messageSamples';
 import { type MessagesPanelTarget, useMessagesPanel } from './useMessagesPanel';
-import type { MessagesApi } from './model/messages';
+import type { MessagesApi, SummariesApi } from './model/messages';
 
 interface HarnessProps {
   variant: 'board' | 'phone';
@@ -27,6 +28,8 @@ interface HarnessProps {
   withAnswered?: boolean;
   /** Lists no message at all. */
   empty?: boolean;
+  /** Gives the list its Summary tab; the value is what the list returns (a list or a failing read). */
+  summaries?: { dismiss: SummariesApi['dismiss']; none?: boolean };
 }
 
 /** The band and the list it opens, over the sample messages. */
@@ -39,6 +42,7 @@ function Harness({
   onAsk,
   withAnswered,
   empty,
+  summaries,
 }: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
@@ -53,8 +57,21 @@ function Harness({
     [i18n.language, withAnswered, empty],
   );
   const api = useMemo(
-    () => sampleMessagesApi(i18n.language, { answer, withdraw, ...(read ? { read } : {}) }),
-    [i18n.language, answer, withdraw, read],
+    () =>
+      sampleMessagesApi(i18n.language, {
+        answer,
+        withdraw,
+        ...(read ? { read } : {}),
+        ...(summaries
+          ? {
+              summaries: {
+                list: async () => (summaries.none ? [] : sampleSummaries(i18n.language)),
+                dismiss: summaries.dismiss,
+              },
+            }
+          : {}),
+      }),
+    [i18n.language, answer, withdraw, read, summaries],
   );
   const { open } = panel;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the list opens once, as a Story starts.
@@ -534,5 +551,80 @@ export const PhoneQuestionMarkdown: Story = {
     if (!(body instanceof HTMLElement)) throw new Error('The sheet has no body.');
     // The sheet never scrolls sideways; wide blocks scroll inside themselves.
     await expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth + 1);
+  },
+};
+
+const TIME_WINDOW = /^\d\d\/\d\d \d\d:\d\d–/;
+
+/** The Summary tab on the PC: the count, the windows with `#id title`, and a trash button on the left of each. */
+export const SummaryTabDesktop: Story = {
+  args: { initial: { tab: 'summary' }, summaries: { dismiss: fn(async () => undefined) } },
+  play: async ({ args }) => {
+    const list = await page().findByRole('dialog', { name: 'メッセージ' });
+    await expect(within(list).getAllByRole('tab')).toHaveLength(3);
+    const tab = within(list).getByRole('tab', { name: /サマリー/ });
+    await waitFor(() => expect(tab).toHaveTextContent('4'));
+    await expect(await within(list).findByText('#552')).toBeInTheDocument();
+    await expect(within(list).getAllByText(TIME_WINDOW)).toHaveLength(4);
+    await expect(within(list).getByText('#552')).toBeInTheDocument();
+    const trash = within(list).getAllByRole('button', { name: 'このサマリーを削除' });
+    await expect(trash).toHaveLength(4);
+    await userEvent.click(trash[0] as HTMLElement);
+    await waitFor(() => expect(within(list).getAllByText(TIME_WINDOW)).toHaveLength(3));
+    await expect(tab).toHaveTextContent('3');
+    await expect(args.summaries?.dismiss).toHaveBeenCalledWith(SAMPLE_PROJECT, expect.any(String));
+  },
+};
+
+/** No summaries yet: the tab counts 0 and says what will appear. */
+export const SummaryTabEmpty: Story = {
+  args: {
+    initial: { tab: 'summary' },
+    summaries: { dismiss: fn(async () => undefined), none: true },
+  },
+  globals: { locale: 'en' },
+  play: async () => {
+    const list = await page().findByRole('dialog', { name: 'Messages' });
+    await expect(await within(list).findByText('No summaries yet')).toBeInTheDocument();
+    await expect(within(list).getByRole('tab', { name: /Summary/ })).toHaveTextContent('0');
+  },
+};
+
+/** A dismissal the server refuses brings the summary back and says so. */
+export const SummaryDismissFails: Story = {
+  args: {
+    initial: { tab: 'summary' },
+    summaries: {
+      dismiss: fn(async () => {
+        throw new Error('no');
+      }),
+    },
+  },
+  play: async () => {
+    const list = await page().findByRole('dialog', { name: 'メッセージ' });
+    const trash = await within(list).findAllByRole('button', { name: 'このサマリーを削除' });
+    await userEvent.click(trash[0] as HTMLElement);
+    await expect(await within(list).findByRole('alert')).toHaveTextContent('削除できませんでした');
+    await waitFor(() => expect(within(list).getAllByText(TIME_WINDOW)).toHaveLength(4));
+  },
+};
+
+/** The Summary tab on a phone: a tap on an item shows the trash tile on its right; tapping the tile dismisses. */
+export const SummaryTabPhone: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'summary' },
+    summaries: { dismiss: fn(async () => undefined) },
+  },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async ({ args }) => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const first = (await within(sheet).findAllByText(TIME_WINDOW))[0] as HTMLElement;
+    await userEvent.click(first);
+    const tile = await within(sheet).findByRole('button', { name: 'このサマリーを削除' });
+    await userEvent.click(tile);
+    await waitFor(() => expect(within(sheet).getAllByText(TIME_WINDOW)).toHaveLength(3));
+    await expect(args.summaries?.dismiss).toHaveBeenCalledTimes(1);
   },
 };

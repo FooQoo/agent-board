@@ -16,6 +16,15 @@ export const messagesEn = {
       toYou: 'AI → You',
       toAi: 'You → AI',
     },
+    summary: {
+      tab: 'Summary',
+      delete: 'Delete this summary',
+      emptyTitle: 'No summaries yet',
+      emptyBody: 'Once results are recorded, they are gathered here every hour.',
+      itemsLabel: 'Summaries',
+      resultsLabel: 'Recorded results',
+      dismissFailed: 'The summary could not be deleted. Try again.',
+    },
     type: { question: 'Question', request: 'Request' },
     state: {
       unanswered: 'Unanswered',

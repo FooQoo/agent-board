@@ -5,7 +5,9 @@ import type { Message } from '@/shared/data/api/contracts';
 import { useSwipePages } from '@/shared/lib/gesture/useSwipePages';
 import { Badge } from '@/shared/ui/badge';
 import { formatShort } from '../model/format';
-import { countMessages, type MessageTab, tabOf } from './model/messages';
+import { countMessages, type MessageKindTab, type MessageTab, tabOf } from './model/messages';
+import { SummaryList } from './SummaryList';
+import type { SummariesController } from './useSummaries';
 
 const TYPE_ICONS = {
   question: CircleHelpIcon,
@@ -62,10 +64,11 @@ function MessageRow({ message, onOpen }: { message: Message; onOpen: () => void 
   );
 }
 
-const TABS: readonly MessageTab[] = ['fromAi', 'fromYou'];
+const KIND_TABS: readonly MessageTab[] = ['fromAi', 'fromYou'];
+const ALL_TABS: readonly MessageTab[] = ['fromAi', 'fromYou', 'summary'];
 
 /** Newest first, whatever order the project lists them in. */
-function rowsOf(messages: readonly Message[], tab: MessageTab) {
+function rowsOf(messages: readonly Message[], tab: MessageKindTab) {
   return messages
     .filter((message) => tabOf(message) === tab)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -90,17 +93,23 @@ function Rows({ rows, onOpen }: { rows: readonly Message[]; onOpen: (message: Me
 function SwipeRows({
   messages,
   tab,
+  tabs,
   onTabChange,
   onOpen,
   tabsRef,
+  summaries,
+  variant,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
+  tabs: readonly MessageTab[];
   onTabChange: (tab: MessageTab) => void;
   onOpen: (message: Message) => void;
   tabsRef: RefObject<HTMLElement | null>;
+  summaries?: SummariesController;
+  variant: 'dialog' | 'sheet';
 }) {
-  const viewportRef = useSwipePages(TABS, tab, onTabChange, {
+  const viewportRef = useSwipePages(tabs, tab, onTabChange, {
     progressTarget: tabsRef,
     progressVar: '--tab-progress',
     ignore: () => Boolean(window.getSelection()?.toString()),
@@ -120,7 +129,7 @@ function SwipeRows({
       onTouchCancel={(event) => event.stopPropagation()}
     >
       <div className="message-list__track">
-        {TABS.map((id) => (
+        {tabs.map((id) => (
           <div
             key={id}
             className="message-list__page"
@@ -128,7 +137,11 @@ function SwipeRows({
             aria-hidden={id !== tab}
             inert={id !== tab}
           >
-            <Rows rows={rowsOf(messages, id)} onOpen={onOpen} />
+            {id === 'summary' ? (
+              summaries && <SummaryList controller={summaries} variant={variant} />
+            ) : (
+              <Rows rows={rowsOf(messages, id)} onOpen={onOpen} />
+            )}
           </div>
         ))}
       </div>
@@ -143,6 +156,8 @@ export function MessageList({
   onTabChange,
   onOpen,
   swipe = false,
+  summaries,
+  kind = 'dialog',
 }: {
   messages: readonly Message[];
   tab: MessageTab;
@@ -151,20 +166,30 @@ export function MessageList({
   onOpen: (message: Message) => void;
   /** Switches the tabs by a sideways swipe (the phone sheet and the PC modal). */
   swipe?: boolean;
+  /** The periodic summaries; with them the list has a third tab. */
+  summaries?: SummariesController;
+  /** A modal on the PC (trash button beside each summary) or a phone sheet (swipe to trash). */
+  kind?: 'dialog' | 'sheet';
 }) {
   const { t } = useTranslation();
   const tabsRef = useRef<HTMLDivElement>(null);
   const tabs: { id: MessageTab; label: string }[] = [
     { id: 'fromAi', label: t('messages.list.tabFromAi') },
     { id: 'fromYou', label: t('messages.list.tabFromYou') },
+    ...(summaries ? [{ id: 'summary' as const, label: t('messages.summary.tab') }] : []),
   ];
+  const tabIds = summaries ? ALL_TABS : KIND_TABS;
   // A tab counts what waits: an answer no AI took in yet is listed but not counted.
-  const count = countMessages(messages);
+  const count = {
+    ...countMessages(messages),
+    summary: summaries?.summaries.length ?? 0,
+  };
   return (
     <div className="message-list">
       <div
         className="message-tabs"
         data-swipe={swipe || undefined}
+        data-tabs={tabs.length}
         ref={tabsRef}
         role="tablist"
         aria-label={t('messages.list.tabs')}
@@ -187,10 +212,15 @@ export function MessageList({
         <SwipeRows
           messages={messages}
           tab={tab}
+          tabs={tabIds}
           onTabChange={onTabChange}
           onOpen={onOpen}
           tabsRef={tabsRef}
+          summaries={summaries}
+          variant={kind}
         />
+      ) : tab === 'summary' ? (
+        summaries && <SummaryList controller={summaries} variant={kind} />
       ) : (
         <Rows rows={rowsOf(messages, tab)} onOpen={onOpen} />
       )}

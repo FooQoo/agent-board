@@ -20,6 +20,7 @@ import {
 } from './model/messages';
 import type { MessagesPanelTarget } from './useMessagesPanel';
 import { useMessageDetail } from './useMessageDetail';
+import { useSummaries } from './useSummaries';
 import './messages.css';
 
 export interface MessagesSurfaceProps {
@@ -110,6 +111,8 @@ export function MessagesSurface({
   useEffect(() => {
     if (openId !== null && listed === null && !busy) setOpenId(null);
   }, [openId, listed, busy]);
+
+  const summaries = useSummaries(api.summaries, projectId);
 
   const { detail, state, reload } = useMessageDetail(
     api.read,
@@ -207,6 +210,8 @@ export function MessagesSurface({
         tab={tab}
         onTabChange={setTab}
         swipe
+        kind={kind}
+        summaries={api.summaries ? summaries : undefined}
         onOpen={(message) => {
           setFromList(true);
           show(message.id);

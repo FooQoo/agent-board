@@ -16,6 +16,15 @@ export const messagesJa = {
       toYou: 'AI → あなた',
       toAi: 'あなた → AI',
     },
+    summary: {
+      tab: 'サマリー',
+      delete: 'このサマリーを削除',
+      emptyTitle: 'サマリーはまだありません',
+      emptyBody: '成果が記録されると、1時間ごとにここへまとめます。',
+      itemsLabel: 'サマリーの一覧',
+      resultsLabel: '記録された成果',
+      dismissFailed: 'サマリーを削除できませんでした。もう一度お試しください。',
+    },
     type: { question: '質問', request: '依頼' },
     state: {
       unanswered: '未回答',

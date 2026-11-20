@@ -157,6 +157,31 @@
               "id": "task-messages-messagecenter--phone-request-en-dark",
               "states": ["bottom sheet", "open request", "english", "dark"],
               "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-tab-desktop",
+              "states": [
+                "tab: summary",
+                "count in tab",
+                "trash button on the left",
+                "dismiss hides the item"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-tab-empty",
+              "states": ["tab: summary", "no summaries", "english"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-dismiss-fails",
+              "states": ["dismiss refused", "item restored", "error notice"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-tab-phone",
+              "states": ["phone sheet", "tap reveals trash tile", "tile dismisses"],
+              "interaction": true
             }
           ]
         }
@@ -178,7 +203,17 @@
         {
           "name": "MessageList",
           "stories": [],
-          "exclusion": "MessageList is the two tabs and the rows inside MessagesSurface; its states, including the phone swipe between the tabs, are the MessageCenter list Stories."
+          "exclusion": "MessageList is the tabs and the rows inside MessagesSurface; its states, including the phone swipe between the tabs and the Summary tab, are the MessageCenter list Stories."
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/messages/SummaryList.tsx",
+      "exports": [
+        {
+          "name": "SummaryList",
+          "stories": [],
+          "exclusion": "SummaryList is the Summary tab's page inside MessageList; the PC trash button, the phone swipe tile, the empty page and a refused dismissal are the MessageCenter Summary Stories."
         }
       ]
     }

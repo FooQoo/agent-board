@@ -1,8 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
-import { SAMPLE_PROJECT, sampleMessages } from '../features/tasks/messages/messageSamples';
+import {
+  SAMPLE_PROJECT,
+  sampleMessages,
+  sampleMessagesApi,
+  sampleSummaries,
+} from '../features/tasks/messages/messageSamples';
 import { firstQuestionOfTask } from '../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../features/tasks/messages/useMessagesPanel';
 import type { Message } from '../shared/data/api/contracts';
@@ -100,7 +105,14 @@ function WithMessages(props: Parameters<typeof BoardWorkspace>[0]) {
         }),
     },
   };
-  return <BoardWorkspace {...props} model={model} />;
+  const api = useMemo(
+    () =>
+      sampleMessagesApi('ja', {
+        summaries: { list: async () => sampleSummaries('ja'), dismiss: async () => undefined },
+      }),
+    [],
+  );
+  return <BoardWorkspace {...props} model={model} messagesApi={api} />;
 }
 
 function makeModel(viewMode: 'board' | 'archive' | 'epics' = 'board'): AppControllerModel {
@@ -365,7 +377,8 @@ export const MessageBandOpen: Story = {
     await expect(canvas.getByText('未回答の質問 1 件')).toBeInTheDocument();
     await userEvent.click(band.getByRole('button', { name: '質問・依頼を確認' }));
     const list = await within(document.body).findByRole('dialog', { name: 'メッセージ' });
-    await expect(within(list).getAllByRole('tab')).toHaveLength(2);
+    // The AI's questions, your requests, and the summaries.
+    await expect(within(list).getAllByRole('tab')).toHaveLength(3);
   },
 };
 
