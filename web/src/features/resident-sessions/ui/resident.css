@@ -366,7 +366,6 @@ button.resident-footer {
 /* ---- The dialog's frame: the shared Surface, a little narrower than its default ---- */
 
 .modal.surface-modal.resident-surface {
-  width: 640px;
   max-width: calc(100vw - 32px);
 }
 
@@ -443,4 +442,130 @@ button.resident-footer {
 .resident-footer__stalled > svg {
   width: 14px;
   height: 14px;
+}
+
+/* ---- The two panes: settings on the left, the agent's log on the right (as in the connection dialog) ---- */
+
+.modal.surface-modal.resident-surface {
+  width: 1040px;
+  height: min(720px, calc(var(--stable-vh, 100svh) - 48px));
+}
+
+/* The panes scroll on their own, so the dialog body does not. */
+.modal.surface-modal.resident-surface .surface__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.resident-split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.resident-split__main {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-right: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.resident-log {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--r-border);
+}
+
+.resident-log__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.resident-log__tool,
+.resident-log__note,
+.resident-log__empty {
+  color: var(--r-text2);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.resident-log__note,
+.resident-log__empty,
+.resident-log__error {
+  margin: 0;
+}
+
+.resident-log__empty {
+  font-size: 13px;
+}
+
+.resident-log__error {
+  color: var(--r-text2);
+  font-size: 12px;
+}
+
+.resident-log__scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-bg);
+}
+
+.resident-log__text {
+  margin: 0;
+  color: var(--r-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* A phone sheet: the log goes under the settings. */
+.surface-sheet .surface__body:has(.resident-split) {
+  overflow-y: auto;
+}
+
+.surface-sheet .resident-split {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.surface-sheet .resident-split__main {
+  flex: none;
+  padding-right: 0;
+  overflow: visible;
+}
+
+.surface-sheet .resident-log {
+  flex: none;
+  padding-top: 16px;
+  padding-left: 0;
+  border-top: 1px solid var(--r-border);
+  border-left: 0;
+}
+
+.surface-sheet .resident-log__scroll {
+  flex: none;
+  height: 280px;
 }

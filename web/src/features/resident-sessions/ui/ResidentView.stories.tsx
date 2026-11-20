@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
 import { FEATURE_STAGES_URL } from '@/shared/ui/preview-feature/feature-stage';
-import { scenarios } from './scenarios';
+import { logs, scenarios } from './scenarios';
 import { ResidentView } from './ResidentView';
 
 // The resident-session dialog in the states of the approved design. The board launches at most ONE
@@ -11,7 +11,7 @@ import { ResidentView } from './ResidentView';
 const meta = {
   title: 'Resident/ResidentView',
   component: ResidentView,
-  args: { ...scenarios.working, kind: 'dialog', onClose: fn() },
+  args: { ...scenarios.working, kind: 'dialog', onClose: fn(), log: logs.running },
   parameters: { layout: 'fullscreen', ...modalDocsParameters },
 } satisfies Meta<typeof ResidentView>;
 export default meta;
@@ -23,6 +23,8 @@ const page = () => within(document.body);
 export const Working: Story = {
   play: async () => {
     await expect(await page().findByRole('heading', { name: 'Claude Code' })).toBeInTheDocument();
+    // The right pane shows the log of the tool that runs.
+    await expect(page().getByText(/Request R-12 received/)).toBeInTheDocument();
     await expect(page().getByText('Working on a task')).toBeInTheDocument();
     await expect(page().getByRole('button', { name: 'Stop' })).toBeEnabled();
     await expect(page().getByRole('checkbox')).toBeChecked();
@@ -199,5 +201,51 @@ export const Sheet: Story = {
     await waitFor(() =>
       expect(page().getByText('Public preview', { selector: '[data-slot="badge"]' })).toBeVisible(),
     );
+  },
+};
+
+/** The log pane before any session was launched: the empty state, with the settings unchanged. */
+export const LogEmpty: Story = {
+  args: { ...scenarios.stopped, log: logs.empty },
+  play: async () => {
+    await expect(
+      await page().findByText('The log appears once the agent has started.'),
+    ).toBeInTheDocument();
+  },
+};
+
+/** The log is longer than the tail the board returns: a note says only the end is shown. */
+export const LogTruncated: Story = {
+  args: { ...scenarios.working, log: logs.truncated },
+  play: async () => {
+    await expect(await page().findByText('Only the end of the log is shown.')).toBeInTheDocument();
+  },
+};
+
+/** A failed read keeps the last tail and adds a quiet line. */
+export const LogReadFailed: Story = {
+  args: { ...scenarios.working, log: logs.failed },
+  play: async () => {
+    await expect(await page().findByText('Could not read the log. Trying again.')).toBeVisible();
+  },
+};
+
+/** A phone: the log sits under the settings in the sheet. */
+export const SheetWithLog: Story = {
+  args: { ...scenarios.working, kind: 'sheet' },
+  globals: { viewport: { value: 'mobile1' } },
+  play: async () => {
+    await expect(await page().findByText(/Request R-12 received/)).toBeInTheDocument();
+  },
+};
+
+/** The Japanese dialog with its log pane. */
+export const LogJapanese: Story = {
+  args: { ...scenarios.stopped, log: logs.empty },
+  globals: { locale: 'ja' },
+  play: async () => {
+    await expect(
+      await page().findByText('エージェントを起動すると、ここにログが表示されます。'),
+    ).toBeInTheDocument();
   },
 };
