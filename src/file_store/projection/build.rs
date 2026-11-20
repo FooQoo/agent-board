@@ -80,8 +80,8 @@ fn epic_projection(epic: &EpicView, progress: EpicProgress, damaged: bool) -> Ep
         name: epic.name.clone(),
         color: epic.color.clone(),
         draft: epic.draft,
-        priority: epic.priority.clone(),
-        priority_error: epic.priority_error,
+        waves: epic.waves.clone(),
+        waves_error: epic.waves_error,
     };
     EpicProjection {
         // The progress follows the tasks, which announce their own changes.

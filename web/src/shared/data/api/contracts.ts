@@ -77,10 +77,10 @@ export interface SummaryEpic {
   /** `#RRGGBB`. */
   color: string;
   draft: Draft | null;
-  /** The IDs of the epic's tasks in the order the epic sets; empty when it sets none. */
-  priority: number[];
+  /** The epic's task order as waves of task IDs; empty when it sets none. The tasks of a wave can run in parallel. */
+  waves: number[][];
   /** The stored order cannot be read, so it is ignored. */
-  priorityError: boolean;
+  wavesError: boolean;
   progress: SummaryEpicProgress;
   detailVersions: { document: Version };
 }

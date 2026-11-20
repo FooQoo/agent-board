@@ -4,10 +4,14 @@ import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
-import { isSortable } from '@dnd-kit/react/sortable';
+import { dropPlacement } from '../../../shared/lib/gesture/sortableDrag';
 import type { ProjectId } from '../../../shared/api/contracts';
 
 const COLUMNS: ColumnName[] = ['todo', 'doing', 'done'];
+
+function isColumn(value: unknown): value is ColumnName {
+  return value === 'todo' || value === 'doing' || value === 'done';
+}
 
 export interface BoardProps {
   /** A state shown in place of the lanes; `null` shows the lanes. */
@@ -72,20 +76,19 @@ export function Board({
         if (event.canceled) return;
         const taskId = event.operation.source?.data.taskId;
         const source = event.operation.source;
-        const column: unknown = event.operation.target?.data.column;
+        const placement = dropPlacement(event.operation);
         const task = tasks.find((item) => item.id === taskId);
-        if (!task || !(column === 'todo' || column === 'doing' || column === 'done')) return;
+        const column = placement?.group;
+        if (!task || !placement || !isColumn(column)) return;
         if (task.taskStatus !== column) {
           // The drag drops the focus from the card. Give it back first, so the dialog returns to the card.
           if (source?.element instanceof HTMLElement) source.element.focus();
           onMove(task, column);
           return;
         }
-        if (!onReorder || !source || !isSortable(source)) return;
-        const { initialIndex, index } = source.sortable;
-        if (initialIndex === index) return;
+        if (!onReorder || placement.unchanged || placement.index === null) return;
         const others = groups[column].filter((item) => item.id !== task.id);
-        onReorder(task, others[index]?.id ?? null);
+        onReorder(task, others[placement.index]?.id ?? null);
       }}
     >
       <main className={band ? 'board board--with-band' : 'board'}>

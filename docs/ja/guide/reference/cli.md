@@ -109,10 +109,12 @@ agboard --project "My project" edit 1 --desc-file task.md
 ```sh
 agboard --project "My project" epic edit LAUNCH --document-file epic.md
 agboard --project "My project" epic edit LAUNCH --document -
-agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
+agboard --project "My project" epic edit LAUNCH --waves 3 1,2
 ```
 
 `--document`と`--document-file`は同時に指定できません。どちらも100,000文字まで受け付けます。
+
+`--waves`は、エピックのタスクの順序を設定します。ウェーブごとに1つの値を渡し、値はタスクID、またはカンマでつないだ複数のタスクIDです。同じウェーブのタスクは並行して進められ、ウェーブは、その前のウェーブのタスクがすべてDoneになってから始まります。上の例では、タスク3が最初のウェーブ、タスク1と2が次のウェーブです。詳しくは[作業の順序を決める](../watch/epics#作業の順序を決める)を参照してください。
 
 エージェントが作るもの（`add`・`epic add`）は、AIの下書きから始まります。エージェントは編集できますが、開始されるまで`mv`と`state`は`task_is_draft`で失敗します。
 
@@ -123,7 +125,7 @@ agboard --project "My project" epic start LAUNCH --actor ai
 
 `start`は1件のタスクのAIの下書きを外します。`epic start`は、エピックとそのAIの下書きのタスクすべてを一度に外し、人がまだ下書きにしているタスクはそのままにします。計画を書いたエージェントが、質問への回答がそろい計画を清書してから開始し、人も同じコマンドを`--actor human`で実行できます。タスク、またはエピックのAIの下書きのタスクに紐づく未回答の質問があるときは、`start_blocked_by_questions`（終了コード1）で拒否されます。開始したタスクには、誰が開始したかが履歴に残ります。「AI が計画を清書し、タスクを開始しました。」または「人がタスクを開始しました。」です。
 
-人がブラウザでエピックを下書きにしている間は、`--priority`を含む`epic edit`が`epic_is_draft`（終了コード1）で失敗し、何も変わりません。保存か破棄が済むまで待つか、残った下書きなら確定を頼んでください。`epic attachment`とタスクの所属の変更は、引き続き使えます。
+人がブラウザでエピックを下書きにしている間は、`--waves`を含む`epic edit`が`epic_is_draft`（終了コード1）で失敗し、何も変わりません。保存か破棄が済むまで待つか、残った下書きなら確定を頼んでください。`epic attachment`とタスクの所属の変更は、引き続き使えます。
 
 ## 一覧を絞り込む
 

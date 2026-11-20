@@ -284,8 +284,9 @@ fn task_mode_selects_the_first_eligible_task_in_progress_order_without_writing()
             "epic",
             "edit",
             "ALPHA",
-            "--priority",
-            &format!("{second},{first}"),
+            "--waves",
+            &second.to_string(),
+            &first.to_string(),
         ],
     );
 

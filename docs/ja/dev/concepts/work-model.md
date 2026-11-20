@@ -47,7 +47,7 @@
 | Running。 | `Running`は申告のとおりに保存されます。期限で戻すことも、エージェントの生存を確かめることもしません。 | `src/file_store/ops/agent.rs`の`set_agent_status`。 |
 | 自動のDoneにはサーバーが要る。 | `auto_complete_project`は、ファイルのウォッチャーとサーバーの起動時から動き、CLIからは動きません。サーバーが動いていない間に条件が揃ったタスクは、次の起動まで待ちます。 | `src/file_store/watch.rs`。`src/file_store/ops/completion.rs`の`auto_complete_all`。 |
 | 自分のタスク。 | 人のタスクはIdleだけで、自動のDoneは対象にしません。Doneへの移動と条件のチェックは記録されるだけで、確かめられません。`ensure_acceptance_met`は、エージェントの移動でしか呼ばれません。 | `src/domain/mod.rs`の`check_work_state`。`src/file_store/ops/agent.rs`の`move_task`。 |
-| エピック。 | エピックには、管理される完了条件も完了の状態もありません。完了の条件は`EPIC.md`のMarkdownにあります。 | [タスクと状態](./tasks-and-states.md#エピックと進行順)。 |
+| エピック。 | エピックには、管理される完了条件も完了の状態もありません。完了の条件は`EPIC.md`のMarkdownにあります。 | [タスクと状態](./tasks-and-states.md#エピックとウェーブ)。 |
 
 ## エージェント側の決まりの置き場所
 

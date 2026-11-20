@@ -364,6 +364,13 @@
   overflow: hidden;
 }
 
+/* Stacked under the details, the column is a height: room for a few waves besides the header. */
+@media (max-width: 640px) {
+  .editor__aside--progress {
+    flex-basis: 460px;
+  }
+}
+
 .editor__aside--progress > .epic-label-row {
   padding: 0;
 }
@@ -463,8 +470,112 @@
   list-style: none;
 }
 
-.epic-progress__row {
+/* A wave: its header and one row of task cards that scrolls sideways when the cards do not fit. */
+.epic-wave {
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--r-border);
+  border-radius: 10px;
+  background: var(--r-surface);
+}
+
+.epic-wave.is-dragging {
+  opacity: 0.6;
+}
+
+.epic-wave--unlisted {
+  border-style: dashed;
+}
+
+.epic-wave__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  color: var(--r-text2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.epic-wave__title {
+  color: var(--r-text);
+  font-weight: 600;
+}
+
+.epic-wave__status {
+  margin-left: auto;
+}
+
+.epic-wave[data-status="waiting"] .epic-wave__status {
+  color: var(--r-muted);
+}
+
+.epic-wave__grip {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--r-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.epic-wave__grip svg {
+  width: 14px;
+  height: 14px;
+}
+
+.epic-wave__tasks {
+  display: flex;
+  gap: 8px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 0 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  list-style: none;
+}
+
+.epic-wave__tasks[data-drop-target="true"] {
+  outline: 2px dashed var(--r-accent);
+  outline-offset: 2px;
+}
+
+.epic-wave__new-item {
+  list-style: none;
+}
+
+.epic-wave__new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--r-border);
+  border-radius: 10px;
+  color: var(--r-text2);
+  font-size: 12px;
+}
+
+.epic-wave__new[data-drop-target="true"] {
+  border-color: var(--r-accent);
+  color: var(--r-text);
+}
+
+.epic-wave__new svg {
+  width: 14px;
+  height: 14px;
+}
+
+.epic-progress__row {
+  flex: 0 0 min(240px, 78%);
+  min-width: 0;
   cursor: default;
 }
 

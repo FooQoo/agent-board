@@ -85,7 +85,15 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 
 `project.json`は`formatVersion`・`id`・`name`・`createdAt`・`nextTaskId`・`nextQuestionId`・`defaultEpicsSeeded`を持ちます。`nextQuestionId`は次の質問の番号で、この項目がないファイルは`1`として読みます。`defaultEpicsSeeded`は、プロジェクトに既定のエピック`BUG`と`ENHANCEMENT`を用意済みのとき`true`になります。一度だけ書くので、削除された既定のエピックが作り直されることはありません。この項目がないファイルは`false`として読みます。`epic.json`は`formatVersion`・`id`・`name`・`color`・`isDraft`・`attachments`・`createdAt`・`updatedAt`を持ちます。
 
-`EPIC.md`には、エピックの詳細をMarkdownで保存します。frontmatterを含み、frontmatterには作業順の`priority`（タスクIDのリスト）を置けます。APIと`epic show --json`は、全文を`document`、frontmatterを除いた本文を`body`、解析した作業順を`priority`として返します。
+`EPIC.md`には、エピックの詳細をMarkdownで保存します。frontmatterを含み、frontmatterには作業順の`waves`を置けます。`waves`はYAMLのリストで、各項目が1つのウェーブです。項目はタスクID（`566`）、またはカンマでつないだタスクID（`569,570,571`）です。同じウェーブのタスクは並行して進められ、ウェーブは、その前のウェーブのタスクがすべてDoneになってから始まります。APIと`epic show --json`は、全文を`document`、frontmatterを除いた本文を`body`、解析した作業順を`waves`（タスクIDのリストのリスト）として返します。
+
+```yaml
+waves:
+- 566
+- 572
+- 569,570,571
+```
+
 
 `task.json`は次のような形です。
 

@@ -1,4 +1,4 @@
-//! `agboard progress`: the tasks an agent can pick up, by epic in priority
+//! `agboard progress`: the tasks an agent can pick up, by epic in wave
 //! order. The table is built by `crate::progress`, the same code the hook uses.
 
 use std::fmt::Write as _;

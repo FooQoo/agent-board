@@ -81,8 +81,7 @@
       "name": "Data layer",
       "color": "#3366CC",
       "draft": null,
-      "priority": "303,302",
-      "priorityError": false,
+      "wavesError": false,
       "progress": {
         "todo": 3,
         "doing": 2,

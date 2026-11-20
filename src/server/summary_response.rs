@@ -129,8 +129,8 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 name: epic.fields.name.clone(),
                 color: epic.fields.color.clone(),
                 draft: epic.fields.draft,
-                priority: epic.fields.priority.clone(),
-                priority_error: epic.fields.priority_error,
+                waves: epic.fields.waves.clone(),
+                waves_error: epic.fields.waves_error,
                 progress: SummaryEpicProgress {
                     todo: epic.progress.todo,
                     doing: epic.progress.doing,

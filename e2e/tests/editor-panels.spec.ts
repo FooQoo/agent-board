@@ -31,7 +31,9 @@ for (const mode of ['light', 'dark'] as const) {
       const dialog = page.locator('.editor-dialog');
       const list = dialog.locator('.epic-progress__list');
       await expect(list.locator('.epic-progress__row')).toHaveCount(16);
-      await expect.poll(() => list.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0);
+      // The tasks no wave lists sit in one row that scrolls sideways inside the list.
+      const tasksRow = list.locator('.epic-wave__tasks');
+      await expect.poll(() => tasksRow.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(0);
       const row = list.locator('.epic-progress__row').first();
       await expect(row).toHaveCSS('border-radius', '10px');
       await expect(row.locator('.card__title')).toHaveCSS('font-size', '14px');
@@ -44,9 +46,9 @@ for (const mode of ['light', 'dark'] as const) {
       const footer = await dialog.locator('.editor__footer').boundingBox();
       const listBox = await list.boundingBox();
       expect(listBox!.y + listBox!.height).toBeLessThan(footer!.y);
-      await list.hover();
-      await page.mouse.wheel(0, 3000);
-      await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      await tasksRow.hover();
+      await page.mouse.wheel(3000, 0);
+      await expect.poll(() => tasksRow.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
       await expect(list.getByText('Work item 16', { exact: true })).toBeInViewport();
       const imageHead = dialog.getByRole('button', { name: locale === 'ja' ? /^添付画像/ : /^Attachments/ });
       await expect(imageHead.locator('.collapsible__icon')).toBeVisible();

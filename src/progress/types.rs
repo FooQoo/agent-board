@@ -14,8 +14,8 @@ pub struct ProgressEpic {
     pub id: String,
     pub name: String,
     pub document_path: PathBuf,
-    /// The `priority` list of EPIC.md cannot be read; the tasks keep ID order.
-    pub priority_error: bool,
+    /// The `waves` list of EPIC.md cannot be read; the tasks keep ID order.
+    pub waves_error: bool,
     pub tasks: Vec<ProgressTask>,
 }
 

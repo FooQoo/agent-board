@@ -71,9 +71,9 @@ pub struct EpicSummaryFields {
     pub name: String,
     pub color: String,
     pub draft: Option<crate::domain::Draft>,
-    /// The epic's task order (EPIC.md `priority`) and whether it could not be read.
-    pub priority: Vec<i64>,
-    pub priority_error: bool,
+    /// The epic's task order (EPIC.md `waves`) and whether it could not be read.
+    pub waves: Vec<Vec<i64>>,
+    pub waves_error: bool,
 }
 
 /// How many of an epic's tasks are in each group.

@@ -45,17 +45,13 @@ describe('epic API fake (EpicDialog contract)', () => {
     const { api, calls } = createFakeEpicApi(async () => undefined);
     await api.saveDetails({ name: 'Renamed', color: '#ff0000', draft: null });
     await api.savePlan({ plan: '# Plan' });
-    await api.savePriority([3, 1, 2]);
-    expect(calls.calls.map(([method]) => method)).toEqual([
-      'saveDetails',
-      'savePlan',
-      'savePriority',
-    ]);
+    await api.saveWaves([[3], [1, 2]]);
+    expect(calls.calls.map(([method]) => method)).toEqual(['saveDetails', 'savePlan', 'saveWaves']);
     expect(calls.calls[0]).toEqual([
       'saveDetails',
       { name: 'Renamed', color: '#ff0000', draft: null },
     ]);
-    expect(calls.calls[2]).toEqual(['savePriority', [3, 1, 2]]);
+    expect(calls.calls[2]).toEqual(['saveWaves', [[3], [1, 2]]]);
   });
 
   it('models a staged save whose second stage fails, and still records the failed call', async () => {

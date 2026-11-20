@@ -19,7 +19,7 @@ agboard --project "My project" edit 1 --clear-epic
 ```
 
 - Epic IDs use letters, digits, and hyphens; lowercase input is turned into uppercase.
-- The details are free Markdown with optional `priority` frontmatter. Write reference completion conditions directly in the details; no heading is required.
+- The details are free Markdown with optional `waves` frontmatter. Write reference completion conditions directly in the details; no heading is required.
 - Use `--document-file` to set the whole `EPIC.md` text from a file, or `--document` to pass the text (use `-` to read standard input). The text includes frontmatter and can be up to 100,000 characters.
 - Use `--name` or `--color '#7C3AED'` with `epic edit` to change the name or color.
 - A task belongs to at most one epic.
@@ -28,7 +28,7 @@ agboard --project "My project" edit 1 --clear-epic
 
 Every project starts with two epics, `BUG` (named Bug) and `ENHANCEMENT` (named Enhancement), so that bug reports and improvements have a place to go. A project that already exists gets them the next time the server starts. You can rename, recolor, and delete them. A deleted default epic is not created again.
 
-The agent skill treats these two IDs as ongoing classification epics with fixed bodies. `BUG` collects defects in existing behavior; `ENHANCEMENT` collects requests for new capabilities and improvements. Empty details are initialized once from the skill’s fixed template in the board’s language. Per-task plans, decisions, and verification stay in task bodies and history. Agents do not append progress or completion summaries to these epic bodies. They preserve a non-empty body unless you explicitly request replacing or changing it, and keep useful existing records in relevant task bodies before a replacement. Task priority can still be changed. This is a skill workflow; the browser editor remains available.
+The agent skill treats these two IDs as ongoing classification epics with fixed bodies. `BUG` collects defects in existing behavior; `ENHANCEMENT` collects requests for new capabilities and improvements. Empty details are initialized once from the skill’s fixed template in the board’s language. Per-task plans, decisions, and verification stay in task bodies and history. Agents do not append progress or completion summaries to these epic bodies. They preserve a non-empty body unless you explicitly request replacing or changing it, and keep useful existing records in relevant task bodies before a replacement. Task order can still be changed. This is a skill workflow; the browser editor remains available.
 
 ## Browse all epics
 
@@ -40,17 +40,30 @@ Select an epic to read its name, details, and images in the details column besid
 
 ## Order the work
 
-Save an epic's task order from the command line:
+An epic orders its tasks in waves. The tasks of one wave can run in parallel, and a wave starts only when every task of the waves before it is Done. Put tasks that depend on each other in later waves, and tasks that can run side by side in the same wave.
+
+Save the waves from the command line, one value per wave. A value is a task ID, or task IDs joined by commas:
 
 ```sh
-agboard --project "My project" epic edit LAUNCH --priority "3,1,2"
+agboard --project "My project" epic edit LAUNCH --waves 3 1,2 4
 ```
 
-This writes `priority: [3, 1, 2]` in the epic's `EPIC.md`. The entries must be distinct positive task IDs, and only current members of the epic are kept. Unlisted members follow in ascending ID order. Pass `--priority ""` to clear the explicit order. The order is independent of where tasks sit on the board.
+This writes the following in the epic's `EPIC.md`: task 3 first, then tasks 1 and 2 together, then task 4.
+
+```yaml
+waves:
+- 3
+- 1,2
+- 4
+```
+
+The entries must be distinct positive task IDs across all waves, and only current members of the epic are kept. A wave that ends up empty is dropped. Unlisted members follow in ascending ID order, and a task that no wave lists is never held back. Pass `--waves ""` to clear the explicit order. The order is independent of where tasks sit on the board.
+
+The next-task list for agents holds back a Todo task while any task of an earlier wave is not Done. Archived tasks no longer count as unfinished. Stalled work in Doing is still offered to resume.
 
 ## Edit an epic in the browser
 
-Open an epic from its label, or from the pencil button (**Edit epic**) in its details, to edit its name, color, details, and task order. The epic opens in a preview: opening it changes nothing, and your first change makes it a draft until you save or discard. See [Preview and save](./editing#preview-and-save).
+Open an epic from its label, or from the pencil button (**Edit epic**) in its details, to edit its name, color, details, and waves. The epic opens in a preview: opening it changes nothing, and your first change makes it a draft until you save or discard. See [Preview and save](./editing#preview-and-save).
 
 ![Epic editor with a scrollable task progress panel and a full-height Markdown editor for the details](../../images/epic.png){.screenshot}
 
@@ -58,7 +71,13 @@ The epic editor shows the outline on the left, the name and the "Epic details (M
 
 - The right column starts with progress expanded and attachments folded. Opening either panel folds the other.
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
-- Drag a task by its handle (or use the handle's keyboard controls), then **Save** to apply the order.
+- The progress list shows the waves from top to bottom. Each wave has a header with its number ("Wave 1"), the number of tasks when it runs several in parallel, and its status: done, in progress, or waiting for the tasks of earlier waves that are not Done (for example "Waiting for #12"). The tasks of a wave sit side by side as cards, and the row scrolls sideways when there are many.
+- Drag a task card the way you drag a card on the board: with a mouse or pen, press and drag; on a touch screen, drag by the handle at once, or hold the card for a moment so that a swipe still scrolls. Drop it before or after another card to reorder it, into another wave to change its wave, or on **Drop here for a new wave** at the bottom to give it a wave of its own.
+- Drag a wave by the handle in its header to move the whole wave up or down.
+- A wave that loses its last task disappears. An empty wave is never saved.
+- With the keyboard, focus a card, press Space to pick it up, move it with the arrow keys (left and right inside a wave, up and down to the next wave), and press Space to drop it. Focus a wave's handle and use up and down the same way to move the wave.
+- Tasks of the epic that no wave lists appear in a last group, **Not in a wave**, in ascending ID order. They are never held back. Drag one into a wave to order it, or leave it there.
+- **Save** applies the waves. Nothing is stored before then.
 - Selecting a task opens its details. Change membership in the task editor or on the command line, not in the epic dialog. The epic dialog has no Draft checkbox.
 - While a person has an epic in draft, `agboard epic edit` refuses changes to its details and task order with `epic_is_draft`. Attachments and a task's membership in the epic still change.
 - If a draft is left behind, choose **Finalize** in the epic's details to release it.
@@ -87,9 +106,9 @@ agboard progress --include-pending --include-done 5
 - `--include-done COUNT` adds a "Recently done" section with the most recently completed tasks, newest first. Only tasks of epics that still have Todo or Doing work are included, so finished epics and tasks without an epic stay out. Archived tasks are never included.
 - Without these options the output is the same as before. To give agents these sections, add the same options to the hook command, for example `agboard hook --agent claude --include-pending --include-done 5`.
 
-Epics appear in ID order. Within an epic, the `priority` list decides the order of its tasks, and tasks not listed follow in ascending ID order. Work without an epic is also sorted by ID. Epics with no listed tasks are left out.
+Epics appear in ID order. Within an epic, the `waves` list decides the order of its tasks, and tasks not listed follow in ascending ID order. Work without an epic is also sorted by ID. Epics with no listed tasks are left out.
 
 ## Next
 
 - [Working with agents](../delegate/agents): how agents use the table.
-- [Markdown file format](../reference/file-format): the `priority` list and the rest of `EPIC.md`.
+- [Markdown file format](../reference/file-format): the `waves` list and the rest of `EPIC.md`.

@@ -25,8 +25,8 @@ const EPIC: Epic = {
   draft: null,
   document: DOCUMENT,
   body: DOCUMENT,
-  priority: [],
-  priorityError: false,
+  waves: [],
+  wavesError: false,
   attachments: [
     {
       id: IMAGE,
@@ -76,8 +76,8 @@ function fakeApi(overrides: Partial<EpicApi> = {}) {
     leaveDraft: vi.fn(async () => {
       calls.push('leaveDraft');
     }),
-    savePriority: vi.fn(async (priority: number[]) => {
-      calls.push(`savePriority:${priority.join(',')}`);
+    saveWaves: vi.fn(async (waves: number[][]) => {
+      calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`);
     }),
     remove: vi.fn(async () => {
       calls.push('remove');
@@ -168,9 +168,9 @@ async function openImages(root: HTMLElement) {
 
 function rowIds(root: HTMLElement): string[] {
   const list = within(root).getByRole('list', { name: 'Progress' });
-  return within(list)
-    .getAllByRole('listitem')
-    .map((item) => item.getAttribute('data-task-id') ?? '');
+  return [...list.querySelectorAll('[data-task-id]')].map(
+    (item) => item.getAttribute('data-task-id') ?? '',
+  );
 }
 
 beforeEach(() => selectLocale('en'));
@@ -253,10 +253,27 @@ describe('epic dialog layout', () => {
 describe('progress table', () => {
   it('lists the tasks of the epic in the saved order, the unlisted ones after them by ID', async () => {
     const { api } = fakeApi();
-    const epic = { ...EPIC, priority: [25, 24] };
+    const epic = { ...EPIC, waves: [[25], [24]] };
     await openEpic(api, { epic });
     const dialog = await screen.findByRole('dialog');
     expect(rowIds(dialog)).toEqual(['25', '24']);
+    const first = within(dialog).getByRole('listitem', { name: 'Wave 1' });
+    expect(first.querySelector('.epic-wave__status')?.textContent).toBe('In progress');
+    const second = within(dialog).getByRole('listitem', { name: 'Wave 2' });
+    expect(second.querySelector('.epic-wave__status')?.textContent).toBe('Done');
+  });
+
+  it('shows the tasks of a wave side by side with their count, and the unlisted ones last', async () => {
+    const { api } = fakeApi();
+    const epic = { ...EPIC, waves: [[25, 24]] };
+    const board = [...tasks(), makeTask({ id: 30, title: 'Loose task', epic: ref })];
+    await openEpic(api, { epic, board });
+    const dialog = await screen.findByRole('dialog');
+    expect(rowIds(dialog)).toEqual(['25', '24', '30']);
+    const wave = within(dialog).getByRole('listitem', { name: 'Wave 1' });
+    expect(within(wave).getByText('2 in parallel')).toBeTruthy();
+    expect(within(dialog).getByRole('listitem', { name: 'Not in a wave' })).toBeTruthy();
+    expect(within(dialog).getByText('Drop here for a new wave')).toBeTruthy();
   });
 
   it('shows no membership checks and no task filter', async () => {
@@ -398,9 +415,9 @@ describe('epic details document', () => {
   });
 
   it('saves the whole document as document when the stored order cannot be read', async () => {
-    const broken = '---\npriority: [\n---\n## Goal\n\nKeep.';
-    const changed = '---\npriority: [\n---\n## Goal\n\nChanged.';
-    const stored = { ...EPIC, document: broken, body: broken, priorityError: true };
+    const broken = '---\nwaves: [\n---\n## Goal\n\nKeep.';
+    const changed = '---\nwaves: [\n---\n## Goal\n\nChanged.';
+    const stored = { ...EPIC, document: broken, body: broken, wavesError: true };
     const { api } = fakeApi({
       enterDraft: vi.fn(async () => ({ ...stored, draft: 'human' as const })),
     });

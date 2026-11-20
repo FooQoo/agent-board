@@ -90,7 +90,7 @@ fn bytes_of(path: PathBuf) -> Vec<u8> {
 #[test]
 fn epic_conditions_are_body_text_and_not_managed_frontmatter() {
     let f = fixture();
-    let document = "---\npriority: []\nacceptance: no-longer-managed\n---\n\n## Completion conditions\n\n- [ ] Reference condition.\n";
+    let document = "---\nwaves: []\nacceptance: no-longer-managed\n---\n\n## Completion conditions\n\n- [ ] Reference condition.\n";
     let epic = f
         .store
         .create_epic(
@@ -441,7 +441,7 @@ fn a_draft_epic_is_refused_when_asked_and_a_draft_toggle_keeps_the_update_time()
     }
     let err = f
         .store
-        .set_epic_priority(&f.project, &id, &[], true, at(21))
+        .set_epic_waves(&f.project, &id, &[], true, at(21))
         .unwrap_err();
     assert!(matches!(err, AgboardError::EpicIsDraft { .. }), "{err:?}");
     assert_eq!(
@@ -516,7 +516,7 @@ fn update_changes_name_color_draft_and_document_and_refuses_a_broken_document() 
 
     let json_before = bytes_of(f.epic_dir("FILE-SHARE").join("epic.json"));
     let document_before = bytes_of(f.epic_dir("FILE-SHARE").join("EPIC.md"));
-    let broken = "---\npriority: [\n---\n\n目的だけ\n";
+    let broken = "---\nwaves: [\n---\n\n目的だけ\n";
     let err = f
         .store
         .update_epic(

@@ -2,7 +2,7 @@
 
 **All task progress and operation history lives only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
 
-The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use priority frontmatter for task order.
+The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use `waves` frontmatter for task order.
 
 Templates for a new task and a new epic: `agboard skills task-template` and `agboard skills epic-template`.
 
@@ -26,7 +26,7 @@ history: []
   - `done`: `true` or `false`.
 - `history`: a required top-level list in stored `TASK.md` files. An empty list is valid, even when `acceptance` is empty. New-task input may omit it or supply `history: []`; created tasks get a generated initial entry.
 - `questions`: an optional list of the project question IDs the task refers to, such as `[Q-12, Q-15]`, without duplicates. `message ask --task` and `message link`/`message unlink` maintain it. While any of them is open, an AI task in Todo or Doing reads as `pending`.
-- An `EPIC.md` may have `priority: [3, 1, 2]`: distinct positive task IDs in work order. Unlisted epic members follow in ascending ID order. Change it in the epic progress panel, with `epic edit --priority`, or by editing `EPIC.md`. This is independent of lane order.
+- An `EPIC.md` may have `waves`, a list in which each item is one wave: a task ID (`566`) or task IDs joined by commas (`569,570,571`). Tasks in one wave can run in parallel, and a wave starts only when every task of the earlier waves is Done, so put tasks that depend on each other in later waves. Task IDs are distinct positive numbers; unlisted epic members follow in ascending ID order. Set it with `epic edit --waves 566 572 569,570,571` (one value per wave) or by editing `EPIC.md`. This is independent of lane order.
 - Other frontmatter keys are preserved when the board writes the file. An `EPIC.md` without frontmatter is entirely body text; its reference conditions are not parsed by the app.
 - Earlier versions named this file `PLAN.md`; Agent Board renames it to `EPIC.md` on the first read of the project. If an epic folder has both files, do not choose between them yourself; report the conflict to the user.
 

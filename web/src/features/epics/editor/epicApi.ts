@@ -18,7 +18,7 @@ export interface EpicApi {
   addImages(files: EditorAttachment[], requestId: string): Promise<void>;
   removeImage(attachmentId: string): Promise<void>;
   /** Saves the card order of the epic: the IDs of its tasks, first is first. */
-  savePriority(priority: number[]): Promise<void>;
+  saveWaves(waves: number[][]): Promise<void>;
   /** The last request of a save: name, color, text, and finalizing the draft. */
   save(input: EpicSaveInput): Promise<void>;
   /** Makes the epic a draft and returns what the server holds then. */
@@ -46,8 +46,8 @@ export function epicApi(projectId: string, epicId: string, changed: () => void):
     removeImage: async (attachmentId) => {
       await done(deleteEpicAttachment(projectId, epicId, attachmentId));
     },
-    savePriority: async (priority) => {
-      await done(updateEpic(projectId, epicId, { priority }));
+    saveWaves: async (waves) => {
+      await done(updateEpic(projectId, epicId, { waves }));
     },
     save: async (input) => {
       await done(updateEpic(projectId, epicId, input));

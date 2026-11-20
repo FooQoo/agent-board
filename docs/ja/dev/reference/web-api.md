@@ -32,7 +32,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET …/tasks/{id}/results` | タスクの成果を古いものから返します。`{taskId, results}`で、各成果のフィールド（`title`を含む）は[成果](./files.md#results)のとおりです。読み取り専用で、存在しないタスクは404 `task_not_found`です。成果は、APIが返すすべてのタスクオブジェクトの`results`配列にも入ります。SummaryとDetailのストリームには載せません。 |
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・draft・documentまたはbody）。`acceptance`の入力は受け付けない。201。 |
-| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・priorityの更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（AIの下書きのエピックは409 `ai_draft_needs_start`）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `start_blocked_by_questions`・`epic_in_use`で拒否する。 |
+| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・作業順（`waves`、タスクIDのリストのリスト）の更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（AIの下書きのエピックは409 `ai_draft_needs_start`）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `start_blocked_by_questions`・`epic_in_use`で拒否する。 |
 | `…/epics/{epicId}/attachments`、`…/{attachmentId}` | エピックの画像。 |
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
@@ -67,7 +67,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | 項目 | フィールド |
 | --- | --- |
 | タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`draft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
-| エピック | `id`（文字列）、`name`、`color`、`draft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
+| エピック | `id`（文字列）、`name`、`color`、`draft`、`waves`（ウェーブごとにまとめたタスクID。例: `[[566],[572],[569,570,571]]`。定めなければ空）、`wavesError`（保存された順序を読めないため、`waves`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
 | 質問 | 未回答の質問をID順に並べる。`id`・`title`（最初の空でない行からMarkdownの記号を除いたプレーンテキスト、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
 | メッセージ | 未完了の質問と依頼を一つの形で、古い順（同時刻はID順）に並べる。`id`（`Q-<n>`）・`type`（`question`・`request`）・`from`・`to`（`ai`か`human`）・`turn`（次に動く側。`ai`・`human`、終わったものは`null`）・`title`・`createdAt`・`tasks`（関わるタスクの番号。依頼は持たない）・`epicId`（または`null`）。質問の`turn`は、未回答のあいだは`human`、回答済みでAIがまだ回答を受け取っていないあいだは`ai`で、その間も一覧に残る。依頼の`turn`は`ai`。回答をAIが受け取った質問、受け付け済みの依頼、取り下げたメッセージは含めないため、載っているメッセージには必ず`turn`がある。`questions`は、まだ読んでいる画面のために残す。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |

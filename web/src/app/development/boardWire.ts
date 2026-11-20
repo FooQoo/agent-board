@@ -103,8 +103,8 @@ export function summaryOfBoard(board: Board): Summary {
       name: epic.name,
       color: epic.color,
       draft: epic.draft,
-      priority: epic.priority,
-      priorityError: epic.priorityError,
+      waves: epic.waves,
+      wavesError: epic.wavesError,
       progress: board.epicTaskCounts[epic.id] ?? {
         todo: 0,
         doing: 0,

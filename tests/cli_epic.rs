@@ -343,7 +343,7 @@ fn a_draft_epic_refuses_cli_edit_but_reads_and_member_work_still_work() {
             "--document",
             "---\n---\n\nx\n",
         ],
-        vec!["epic", "edit", "FILE-SHARE", "--priority", "1"],
+        vec!["epic", "edit", "FILE-SHARE", "--waves", "1"],
     ] {
         let mut full = vec!["--project", "Demo"];
         full.extend(args);

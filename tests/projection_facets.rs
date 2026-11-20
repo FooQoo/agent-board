@@ -538,16 +538,16 @@ fn projection_an_epic_order_is_a_summary_change_and_leaves_the_document_version(
     }
     fx.reload();
     let before = fx.projection().epics[0].clone();
-    assert!(before.fields.priority.is_empty());
-    assert!(!before.fields.priority_error);
+    assert!(before.fields.waves.is_empty());
+    assert!(!before.fields.waves_error);
 
     fx.store
-        .set_epic_priority(&fx.project, &alpha, &[2, 1], false, at(5))
+        .set_epic_waves(&fx.project, &alpha, &[vec![2], vec![1]], false, at(5))
         .unwrap();
     let sets = fx.reload();
     let after = fx.projection().epics[0].clone();
-    assert_eq!(after.fields.priority, vec![2, 1]);
-    assert!(!after.fields.priority_error);
+    assert_eq!(after.fields.waves, vec![vec![2], vec![1]]);
+    assert!(!after.fields.waves_error);
     let facets = epic_facets(&sets, "ALPHA").expect("the epic changed");
     assert!(facets.contains(&Facet::Summary), "{facets:?}");
     assert_ne!(after.summary_hash, before.summary_hash);
@@ -561,9 +561,9 @@ fn projection_an_epic_order_is_a_summary_change_and_leaves_the_document_version(
 fn projection_an_unreadable_epic_order_is_reported_and_ignored() {
     let mut fx = Fx::new();
     let path = fx.epic_dir("ALPHA").join("EPIC.md");
-    fs::write(&path, "---\npriority: nope\n---\n\nText.\n").unwrap();
+    fs::write(&path, "---\nwaves: nope\n---\n\nText.\n").unwrap();
     fx.reload();
     let fields = fx.projection().epics[0].fields.clone();
-    assert!(fields.priority_error);
-    assert!(fields.priority.is_empty());
+    assert!(fields.waves_error);
+    assert!(fields.waves.is_empty());
 }

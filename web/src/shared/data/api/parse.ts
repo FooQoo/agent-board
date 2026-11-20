@@ -99,8 +99,8 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     'name',
     'color',
     'draft',
-    'priority',
-    'priorityError',
+    'waves',
+    'wavesError',
     'progress',
     'detailVersions',
   ]);
@@ -111,8 +111,8 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     name: str(o.name, `${path}.name`),
     color: str(o.color, `${path}.color`),
     draft: draft(o.draft, `${path}.draft`),
-    priority: list(o.priority, `${path}.priority`, (v, p) => int(v, p, 1)),
-    priorityError: bool(o.priorityError, `${path}.priorityError`),
+    waves: list(o.waves, `${path}.waves`, (wave, p) => list(wave, p, (v, q) => int(v, q, 1))),
+    wavesError: bool(o.wavesError, `${path}.wavesError`),
     progress: {
       todo: int(p.todo, `${path}.progress.todo`),
       doing: int(p.doing, `${path}.progress.doing`),
