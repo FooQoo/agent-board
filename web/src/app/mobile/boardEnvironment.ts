@@ -5,7 +5,12 @@ import { messagesApi } from '../../features/tasks/messages/api';
 import { setAcceptance } from '../../features/tasks/api/edit';
 import type { PreferencesEndpoint } from '../../shared/preferences';
 import { phoneSettingsSlot } from './phoneSettingsSlot';
-import { archiveDone, archiveTask, moveTask } from '../../features/tasks/api/lifecycle';
+import {
+  archiveDone,
+  archiveTask,
+  moveTask,
+  restoreTask,
+} from '../../features/tasks/api/lifecycle';
 
 const taskUrl = (projectId: ProjectId, taskId: number) =>
   `${projectPath(projectId)}/tasks/${taskId}`;
@@ -33,6 +38,6 @@ export function boardEnvironment(): MonitorEnvironment {
     // As on the PC board, the settings can show the guide again.
     settings: phoneSettingsSlot(preferences),
     messagesApi,
-    writes: { move: moveTask, archive: archiveTask, archiveDone },
+    writes: { move: moveTask, archive: archiveTask, archiveDone, restore: restoreTask },
   };
 }

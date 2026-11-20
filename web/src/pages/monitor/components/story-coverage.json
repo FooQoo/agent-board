@@ -480,7 +480,8 @@
                 "five items",
                 "Ask in the middle",
                 "count of open questions",
-                "clear of the home indicator"
+                "clear of the home indicator",
+                "bulk-archive button to the right of the dock"
               ],
               "interaction": true
             },
@@ -501,7 +502,12 @@
             },
             {
               "id": "pages-monitor-components-monitorlanes--archive-from-bar",
-              "states": ["Archive item", "archive drawer"],
+              "states": ["Archive item", "archive list drawer", "closes on tab switch"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-from-bar",
+              "states": ["bulk-archive button", "bulk archive drawer"],
               "interaction": true
             },
             {
@@ -548,6 +554,16 @@
               "id": "pages-monitor-components-monitorlanes--bulk-archive-confirm",
               "states": ["bulk archive confirmation"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-from-bar",
+              "states": ["archive list drawer"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-list-empty",
+              "states": ["empty archive list"],
+              "interaction": true
             }
           ]
         }
@@ -572,6 +588,56 @@
             {
               "id": "pages-monitor-components-monitorlanes--interactive",
               "states": ["whole screen"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/ArchiveListSheet.tsx",
+      "exports": [
+        {
+          "name": "ArchiveListSheet",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-from-bar",
+              "states": ["list of archived tasks", "lane each task returns to"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-list-empty",
+              "states": ["empty archive list"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-row-revealed",
+              "states": ["chosen row", "Restore tile open"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
+              "states": ["tap to choose", "swipe right", "Restore returns the task to its lane"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "pages/monitor/components/ArchiveSwipeRow.tsx",
+      "exports": [
+        {
+          "name": "ArchiveSwipeRow",
+          "stories": [
+            {
+              "id": "pages-monitor-components-monitorlanes--archive-row-revealed",
+              "states": ["chosen row", "Restore tile open"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
+              "states": ["tap to choose", "swipe right", "Restore returns the task to its lane"],
               "interaction": true
             }
           ]

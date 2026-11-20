@@ -11,7 +11,8 @@ import type { ColumnName } from '../../../shared/api/contracts';
 import type { MonitorTask, MonitorViewProps } from '../contracts';
 import { LaneTabs } from './LaneTabs';
 import { PhoneNav } from './PhoneNav';
-import { MonitorLaneDialogs, type LanePending } from './MonitorLaneDialogs';
+import type { ArchiveSheetData } from './ArchiveListSheet';
+import { MonitorLaneDialogs, type LanePending, pendingNavItem } from './MonitorLaneDialogs';
 import { MonitorLanes, type LaneItems, type MonitorLanesProps } from './MonitorLanes';
 import type { MonitorSection } from './MonitorSectionHeader';
 import './monitor-lanes.css';
@@ -37,6 +38,9 @@ export interface MonitorLanesScreenProps
   onMove: (item: MonitorTask, target: ColumnName) => Promise<void>;
   onArchive: (item: MonitorTask) => Promise<boolean>;
   onBulkArchive: () => Promise<void>;
+  /** The archive list the bar's Archive item opens, and the write that restores from it. */
+  archive?: ArchiveSheetData;
+  onRestore?: (taskId: number) => Promise<void>;
 }
 
 /**
@@ -59,6 +63,8 @@ export function MonitorLanesScreen({
   onMove,
   onArchive,
   onBulkArchive,
+  archive,
+  onRestore,
   previewRevealed,
   previewPull,
   onRefresh,
@@ -126,8 +132,9 @@ export function MonitorLanesScreen({
       <PhoneNav
         settings={sheetSettingsSlot}
         questionCount={countMessages(messages ?? []).fromAi}
-        archiveDisabled={lanes.done.length === 0}
-        open={panel.target !== null ? 'messages' : pending?.kind === 'bulk' ? 'archive' : null}
+        archiveDisabled={archive === undefined}
+        bulkArchiveDisabled={lanes.done.length === 0}
+        open={panel.target !== null ? 'messages' : pendingNavItem(pending)}
         onMessages={() => {
           close();
           panel.open({ tab: 'fromAi' });
@@ -138,6 +145,10 @@ export function MonitorLanesScreen({
           onAsk?.();
         }}
         onArchive={() => {
+          panel.close();
+          setPending({ kind: 'list' });
+        }}
+        onBulkArchive={() => {
           panel.close();
           setPending({ kind: 'bulk' });
         }}
@@ -152,6 +163,8 @@ export function MonitorLanesScreen({
         projectName={projectName}
         doneItems={lanes.done}
         onCancel={close}
+        archive={archive}
+        onRestore={onRestore}
         onArchive={async (item) => {
           const ok = await onArchive(item);
           if (ok) close();

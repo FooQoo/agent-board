@@ -8,13 +8,16 @@ export interface PhoneNavProps {
   settings: HeaderSettings;
   /** The questions that wait for an answer (the count on Messages). */
   questionCount: number;
-  /** Nothing to archive (no done card), or no way to archive. */
+  /** No way to read the archive. */
   archiveDisabled: boolean;
+  /** Nothing to archive in bulk (no done card), or no way to archive. */
+  bulkArchiveDisabled: boolean;
   /** What the screen has open above the board, for the open item of the bar. */
   open: Exclude<PhoneNavItem, 'board' | 'settings'> | null;
   onMessages: () => void;
   onAsk: () => void;
   onArchive: () => void;
+  onBulkArchive: () => void;
   /** Board: every sheet the screen owns closes. Settings opens through its `then`, once an unsent Ask request was kept or discarded. */
   onBoard: (then?: () => void) => void;
 }
@@ -27,10 +30,12 @@ export function PhoneNav({
   settings,
   questionCount,
   archiveDisabled,
+  bulkArchiveDisabled,
   open,
   onMessages,
   onAsk,
   onArchive,
+  onBulkArchive,
   onBoard,
 }: PhoneNavProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -45,6 +50,7 @@ export function PhoneNav({
         current={settingsOpen ? 'settings' : (open ?? 'board')}
         questionCount={questionCount}
         archiveDisabled={archiveDisabled}
+        bulkArchiveDisabled={bulkArchiveDisabled}
         onBoard={() => {
           dismissSettingsSheets();
           setSettingsOpen(false);
@@ -65,6 +71,11 @@ export function PhoneNav({
           dismissSettingsSheets();
           setSettingsOpen(false);
           onArchive();
+        }}
+        onBulkArchive={() => {
+          dismissSettingsSheets();
+          setSettingsOpen(false);
+          onBulkArchive();
         }}
         onSettings={() => {
           dismissSettingsSheets();

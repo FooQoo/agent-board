@@ -10,6 +10,7 @@ import { firstQuestionOfTask } from '../../../features/tasks/messages/model/mess
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import type { ColumnName } from '../../../shared/api/contracts';
+import type { ArchivedTask } from '../../../features/tasks/api/read';
 import type { MonitorTask } from '../contracts';
 import type { LaneItems } from './MonitorLanes';
 import type { LanePending } from './MonitorLaneDialogs';
@@ -36,11 +37,28 @@ function card(
   );
 }
 
+/** An archived card as the archive reads it: no body, history or attachments. */
+function archivedCard(
+  id: number,
+  title: string,
+  status: ColumnName,
+  archivedAt: string,
+  assignee: 'ai' | 'human' = 'ai',
+): ArchivedTask {
+  const { description, body, history, attachments, acceptance, ...rest } = makeTask({
+    id,
+    title,
+    taskStatus: status,
+    assignee,
+  });
+  return { ...rest, acceptance: { done: acceptance.length, total: acceptance.length }, archivedAt };
+}
+
 /**
  * The sample board of the lane stories: a few cards in each lane, an AI run in progress, and a
  * card waiting for an answer, with the messages of the band.
  */
-function useLaneFixture(options: { emptyDone?: boolean } = {}) {
+function useLaneFixture(options: { emptyDone?: boolean; emptyArchive?: boolean } = {}) {
   const { i18n } = useTranslation();
   const project = useMemo(() => makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }), []);
   // The first question waits on the card "API refactoring" (#11).
@@ -91,7 +109,25 @@ function useLaneFixture(options: { emptyDone?: boolean } = {}) {
     };
   });
   const messagesApi = useMemo(() => sampleMessagesApi(i18n.language), [i18n.language]);
-  return { lanes, setLanes, messages, messagesApi, projectId: SAMPLE_PROJECT };
+  // Archived as they were: each keeps the lane it was archived from.
+  const [archived, setArchived] = useState<ArchivedTask[]>(() =>
+    options.emptyArchive
+      ? []
+      : [
+          archivedCard(5, 'Write the release notes', 'done', '2026-10-01T09:00:00.000Z'),
+          archivedCard(4, 'Try the demo on a phone', 'done', '2026-09-30T09:00:00.000Z', 'human'),
+          archivedCard(3, 'Draft the onboarding tour', 'todo', '2026-09-28T09:00:00.000Z'),
+        ],
+  );
+  return {
+    lanes,
+    setLanes,
+    archived,
+    setArchived,
+    messages,
+    messagesApi,
+    projectId: SAMPLE_PROJECT,
+  };
 }
 
 type ScreenArgs = Pick<
@@ -99,14 +135,16 @@ type ScreenArgs = Pick<
   'initialLane' | 'previewRevealed' | 'previewPull' | 'onRefresh' | 'refreshing' | 'onAsk'
 > & {
   /** Opens a confirmation: `archive` uses the card named by `pendingTask`. */
-  pending?: 'archive' | 'bulk';
+  pending?: 'archive' | 'bulk' | 'list' | 'list-revealed';
   pendingTask?: number;
   emptyDone?: boolean;
+  emptyArchive?: boolean;
 };
 
 /** The phone monitor's lane view over sample cards. A move changes them at once; an archive changes them once confirmed. */
-function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) {
-  const { lanes, setLanes, messages, messagesApi, projectId } = useLaneFixture({ emptyDone });
+function LanesStory({ pending, pendingTask, emptyDone, emptyArchive, ...screen }: ScreenArgs) {
+  const { lanes, setLanes, archived, setArchived, messages, messagesApi, projectId } =
+    useLaneFixture({ emptyDone, emptyArchive });
   const find = (id?: number) =>
     Object.values(lanes)
       .flat()
@@ -115,9 +153,13 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
   const initialPending: LanePending =
     pending === 'bulk'
       ? { kind: 'bulk' }
-      : pending && target
-        ? { kind: 'archive', item: target }
-        : null;
+      : pending === 'list'
+        ? { kind: 'list' }
+        : pending === 'list-revealed'
+          ? { kind: 'list', armed: 5, revealed: true }
+          : pending && target
+            ? { kind: 'archive', item: target }
+            : null;
   const without = (id: number) => ({
     todo: lanes.todo.filter((item) => item.task.id !== id),
     doing: lanes.doing.filter((item) => item.task.id !== id),
@@ -144,6 +186,27 @@ function LanesStory({ pending, pendingTask, emptyDone, ...screen }: ScreenArgs) 
         return true;
       }}
       onBulkArchive={async () => setLanes({ ...lanes, done: [] })}
+      archive={{
+        data: {
+          project: makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }),
+          version: 'v1',
+          cursor: 'c1',
+          tasks: archived,
+          epics: [],
+        },
+        status: 'ready',
+      }}
+      onRestore={async (id) => {
+        const task = archived.find((entry) => entry.id === id);
+        if (!task) return;
+        setArchived(archived.filter((entry) => entry.id !== id));
+        // The task returns to the lane it was archived from.
+        const item = makeMonitorTask(
+          makeTask({ id, title: task.title, taskStatus: task.taskStatus, assignee: task.assignee }),
+          makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }),
+        );
+        setLanes({ ...lanes, [task.taskStatus]: [...lanes[task.taskStatus], item] });
+      }}
     />
   );
 }
@@ -322,8 +385,8 @@ export const BulkArchiveConfirm: Story = {
   },
 };
 
-/** The bar's アーカイブ item opens that confirmation as a drawer. */
-export const ArchiveFromBar: Story = {
+/** The button beside the bar opens the bulk-archive confirmation as a drawer. */
+export const BulkArchiveFromBar: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
     const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
@@ -331,6 +394,69 @@ export const ArchiveFromBar: Story = {
     const sheet = await within(document.body).findByRole('dialog');
     await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
     await expect(within(sheet).getAllByRole('row')).toHaveLength(5);
+  },
+};
+
+/** The bar's アーカイブ item opens the list of archived tasks as a drawer. */
+export const ArchiveFromBar: Story = {
+  args: { initialLane: 'done' },
+  play: async ({ canvasElement }) => {
+    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
+    await userEvent.click(within(bar).getByRole('button', { name: 'アーカイブ済みタスク' }));
+    const sheet = await within(document.body).findByRole('dialog');
+    await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
+    await expect(within(sheet).getAllByRole('listitem')).toHaveLength(3);
+    // Switching tabs closes it.
+    await userEvent.click(within(bar).getByRole('button', { name: 'ボード', hidden: true }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+  },
+};
+
+/** With nothing archived the list says so. */
+export const ArchiveListEmpty: Story = {
+  args: { initialLane: 'todo', pending: 'list', emptyArchive: true },
+  play: async () => {
+    const sheet = await within(document.body).findByRole('dialog');
+    await expect(within(sheet).getByText('アーカイブされたタスクはありません')).toBeVisible();
+  },
+};
+
+/** A row that was chosen and swiped right: the 復元 tile is open on its left. */
+export const ArchiveRowRevealed: Story = {
+  args: { initialLane: 'todo', pending: 'list-revealed' },
+  play: async () => {
+    const sheet = await within(document.body).findByRole('dialog');
+    const row = sheet.querySelector('[data-archive-row="5"]');
+    await expect(row).toHaveAttribute('data-revealed');
+    await expect(within(sheet).getByRole('button', { name: '#5 を復元' })).toBeVisible();
+  },
+};
+
+/** Tap a row, swipe it right, press 復元: the task leaves the list and returns to the lane it came from. */
+export const RestoreBySwipe: Story = {
+  args: { initialLane: 'todo', pending: 'list' },
+  play: async ({ canvasElement }) => {
+    const sheet = await within(document.body).findByRole('dialog');
+    const row = sheet.querySelector('[data-archive-row="3"]');
+    if (!row) throw new Error('No row 3.');
+    await userEvent.click(within(row as HTMLElement).getByRole('button', { pressed: false }));
+    await waitFor(() => expect(row).toHaveAttribute('data-armed'));
+    const rect = row.getBoundingClientRect();
+    const y = rect.top + 20;
+    press(row, 'pointerdown', rect.left + 20, y);
+    press(row, 'pointermove', rect.left + 60, y);
+    press(row, 'pointermove', rect.left + 140, y);
+    press(row, 'pointerup', rect.left + 140, y);
+    await waitFor(() => expect(row).toHaveAttribute('data-revealed'));
+    await userEvent.click(within(sheet).getByRole('button', { name: '#3 を復元' }));
+    await waitFor(() => expect(sheet.querySelector('[data-archive-row="3"]')).toBeNull());
+    await expect(within(sheet).getAllByRole('listitem')).toHaveLength(2);
+    // The card was archived from 未着手, so it is back there.
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector('.monitor-lane[data-lane="todo"] [data-swipe-card="3"]'),
+      ).not.toBeNull(),
+    );
   },
 };
 
@@ -351,13 +477,19 @@ export const BottomBar: Story = {
   play: async ({ canvasElement }) => {
     const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
     const items = within(bar).getAllByRole('button');
+    // Five items in the dock; the bulk-archive button sits to their right, with no label.
     await expect(items.map((item) => item.textContent?.replace(/^\d+/, ''))).toEqual([
       'ボード',
       'メッセージ',
       '依頼',
       'アーカイブ',
       '設定',
+      '',
     ]);
+    await expect(items[5]).toHaveAccessibleName('まとめてアーカイブ');
+    await expect(items[4]?.getBoundingClientRect().right ?? 0).toBeLessThan(
+      items[5]?.getBoundingClientRect().left ?? 0,
+    );
     await expect(items[2]).toHaveAccessibleName('AI に依頼');
     await expect(within(bar).getByRole('button', { name: 'メッセージ 2' })).toBeVisible();
     // Clear of the home indicator: the bar ends inside the window.

@@ -455,7 +455,7 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
 test('the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets', async ({ page }) => {
   await openPhone(page, 'Switch');
   // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
-  const bar = page.locator('.phone-nav');
+  const bar = page.locator('.phone-nav-bar');
   const item = (name: string) => bar.locator('button', { hasText: name });
   await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
   const messages = page.getByRole('dialog', { name: 'Messages' });
@@ -473,7 +473,7 @@ test('the bottom bar stays in front of an open sheet, the sheet runs behind it a
   expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
   expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
   // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
-  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
+  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav-bar') !== null, [
     barBox.x + barBox.width / 2,
     barBox.y + barBox.height / 2,
   ]);

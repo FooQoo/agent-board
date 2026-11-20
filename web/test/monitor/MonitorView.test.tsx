@@ -252,6 +252,8 @@ describe('monitor messages in the bottom bar', () => {
       'Ask',
       'Archive',
       'Settings',
+      // The bulk-archive button beside the dock has no label.
+      '',
     ]);
     await userEvent.click(within(bar()).getByRole('button', { name: 'Ask AI' }));
     expect(onAsk).toHaveBeenCalledTimes(1);

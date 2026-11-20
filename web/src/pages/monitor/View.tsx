@@ -13,10 +13,15 @@ import type { MonitorTask, MonitorViewProps } from './contracts';
 import { LaneTabs } from './components/LaneTabs';
 import { PhoneNav } from './components/PhoneNav';
 import { MonitorLanes } from './components/MonitorLanes';
-import { type LanePending, MonitorLaneDialogs } from './components/MonitorLaneDialogs';
+import {
+  type LanePending,
+  MonitorLaneDialogs,
+  pendingNavItem,
+} from './components/MonitorLaneDialogs';
 import type { MonitorSection } from './components/MonitorSectionHeader';
 import './components/monitor-lanes.css';
 import { Freshness } from './components/Freshness';
+import { useArchiveSheet } from './hooks/useArchiveSheet';
 import { sortDone, sortLane } from './model/sort';
 import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
@@ -128,11 +133,13 @@ export function MonitorView(props: MonitorViewProps) {
   // Leaving Ask goes through its discard question: `next` runs only once the Ask sheet has closed.
   const leaveAsk = (next: () => void) =>
     props.asking && props.onAskClose ? props.onAskClose(next) : next();
-  const closeSheets = ({ except }: { except?: 'messages' | 'ask' | 'archive' }) => {
+  const closeSheets = ({ except }: { except?: 'messages' | 'ask' | 'archive' | 'bulk' }) => {
     if (except !== 'messages') panel.close();
-    if (except !== 'archive') closePending();
+    if (except !== 'archive' && except !== 'bulk') closePending();
     if (detail.open) closeDrawer(false);
   };
+  // The archive is read only while its list is open, and again after each restore.
+  const archiveSheet = useArchiveSheet(pending?.kind === 'list', projectId, writes, onWritten);
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
@@ -219,6 +226,7 @@ export function MonitorView(props: MonitorViewProps) {
             onWritten?.();
             return true;
           }}
+          {...archiveSheet}
           onBulkArchive={async () => {
             try {
               const ids = ordered.done.map((item) => item.task.id);
@@ -256,15 +264,12 @@ export function MonitorView(props: MonitorViewProps) {
       <PhoneNav
         settings={settings}
         questionCount={countMessages(props.messages ?? []).fromAi}
-        archiveDisabled={!writes || ordered.done.length === 0}
+        archiveDisabled={!writes}
+        bulkArchiveDisabled={!writes || ordered.done.length === 0}
         open={
           panel.target !== null
             ? 'messages'
-            : pending?.kind === 'bulk'
-              ? 'archive'
-              : props.asking
-                ? 'ask'
-                : null
+            : (pendingNavItem(pending) ?? (props.asking ? 'ask' : null))
         }
         // The bar stays in front of an open sheet: an item closes the other sheets, then opens its own.
         onMessages={() =>
@@ -280,6 +285,12 @@ export function MonitorView(props: MonitorViewProps) {
         onArchive={() =>
           leaveAsk(() => {
             closeSheets({ except: 'archive' });
+            ask({ kind: 'list' });
+          })
+        }
+        onBulkArchive={() =>
+          leaveAsk(() => {
+            closeSheets({ except: 'bulk' });
             ask({ kind: 'bulk' });
           })
         }

@@ -1,0 +1,20 @@
+[21:36:25.177] [INFO] storybook v10.6.2
+[21:36:26.373] [DEBUG] Getting package.json info for /Users/satoshifukuyama/dev/fooqoo/agent-board-worktrees/archive-list-drawer/web/package.json...
+[21:36:26.492] [DEBUG] Could not determine @babel/preset-env version in use. In case of runtime errors with @babel/preset-env, you may need to set the babelRemoveBugfixes feature flag in your `main.ts` file.
+[21:36:26.948] [DEBUG] Serving static files from web/public at /
+[21:36:26.948] [DEBUG] Serving static files from web/.storybook/static at /
+[21:36:26.948] [INFO] Starting...
+[21:36:26.953] [DEBUG] readDependencyManifest: could not resolve "@milkdown/kit"
+[21:36:26.955] [DEBUG] readDependencyManifest: could not resolve "tw-animate-css"
+[21:36:27.005] [DEBUG] Starting preview..
+[21:36:27.146] [DEBUG] Change detection enabled.
+[21:36:27.147] [DEBUG] Change detection: snapshotting Vite resolve config (restart required if vite.config.ts changes)
+[21:36:27.147] [DEBUG] Change detection: ignored 12 regex alias(es); related modules tracked as opaque-leaf.
+[21:36:27.147] [DEBUG] ChangeDetectionResolverFactory: skipped regex aliases [/^@storybook\/global$/, /^storybook\/test$/, /^storybook\/actions$/, /^storybook\/preview-api$/, /^storybook\/internal\/channels$/, /^storybook\/internal\/client-logger$/, /^storybook\/internal\/core-events$/, /^storybook\/internal\/preview-errors$/, /^storybook\/internal\/types$/, /^storybook\/internal\/preview-api$/, /^\/?@vite\/env/, /^\/?@vite\/client/]
+[21:36:27.172] [ERROR] [38;2;241;97;97mError: listen EADDRINUSE: address already in use 127.0.0.1:8610[39m
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at node:net:2448:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[21:36:27.172] [WARN] Broken build, fix the error above.
+You may need to refresh the browser.
