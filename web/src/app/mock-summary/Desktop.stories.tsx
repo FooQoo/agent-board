@@ -42,10 +42,11 @@ export const LongList: Story = {
   },
 };
 
-/** The trash button is shown at the right edge (here already opened; on a PC hover or focus shows it too). */
-export const TrashRevealed: Story = {
-  args: { revealedId: 's1' },
+/** Every item has its trash button on the left, always visible; tapping it hides the item. */
+export const TrashAlwaysVisible: Story = {
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('button', { name: /削除|Delete/ })).toBeVisible();
+    await expect(
+      within(canvasElement).getAllByRole('button', { name: /削除|Delete/ }),
+    ).toHaveLength(4);
   },
 };

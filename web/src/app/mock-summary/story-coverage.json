@@ -24,8 +24,8 @@
               "interaction": true
             },
             {
-              "id": "mocks-summary-desktop--trash-revealed",
-              "states": ["trash button shown"],
+              "id": "mocks-summary-desktop--trash-always-visible",
+              "states": ["trash button always shown on the left"],
               "interaction": true
             },
             {

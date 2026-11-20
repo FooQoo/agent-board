@@ -219,24 +219,34 @@
   overflow-wrap: anywhere;
 }
 
-/* ---- PC: the trash button shows on hover, on focus and when the item is opened ---- */
+/* ---- PC: the trash button is always shown, on the left of each item ---- */
+
+.sm-item[data-variant="desktop"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow: visible;
+}
+
+.sm-item[data-variant="desktop"] .sm-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 .sm-item[data-variant="desktop"] .sm-item__trash {
-  display: none;
+  position: static;
+  flex: none;
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  color: var(--r-text2);
 }
 
-.sm-item[data-variant="desktop"]:hover .sm-item__trash,
-.sm-item[data-variant="desktop"]:focus-within .sm-item__trash,
-.sm-item[data-variant="desktop"][data-revealed] .sm-item__trash {
-  display: flex;
-}
-
-.sm-item[data-variant="desktop"]:hover .sm-item__body,
-.sm-item[data-variant="desktop"]:focus-within .sm-item__body,
-.sm-item[data-variant="desktop"][data-revealed] .sm-item__body {
-  margin-right: 76px;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+.sm-item[data-variant="desktop"] .sm-item__trash:hover {
+  border-color: var(--r-danger);
+  color: var(--r-danger);
 }
 
 /* ---- Empty ---- */
