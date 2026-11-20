@@ -27,8 +27,17 @@
               "id": "pages-monitor--sheet-stands-on-bar",
               "states": [
                 "bottom bar in front of an open sheet",
-                "sheet bottom edge on the bar",
+                "sheet surface to the screen bottom, content ends at the bar",
                 "Board closes the sheet"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--bar-hidden-with-keyboard",
+              "states": [
+                "bar hidden while the keyboard is open",
+                "space reserved for the bar collapses",
+                "bar returns when the keyboard closes"
               ],
               "interaction": true
             },
