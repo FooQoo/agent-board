@@ -150,10 +150,10 @@ impl Push {
     /// A turn ended: remember how, and look at the board.
     pub(super) fn turn_ended(&self, outcome: &TurnOutcome) {
         let mut log = self.log.lock().unwrap_or_else(|e| e.into_inner());
-        log.last_failure = match outcome {
-            TurnOutcome::Failed { message } => Some(message.clone()),
+        log.turn_ended(match outcome {
+            TurnOutcome::Failed { message } => Some(message.as_str()),
             TurnOutcome::Completed | TurnOutcome::Interrupted => None,
-        };
+        });
         drop(log);
         self.nudge();
     }
