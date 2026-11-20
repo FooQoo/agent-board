@@ -95,16 +95,8 @@ struct HookInput {
     hook_event_name: Option<serde_json::Value>,
     #[serde(default)]
     cwd: Option<serde_json::Value>,
-    /// Stop only: the turn was already continued by a Stop hook.
-    #[serde(default)]
-    stop_hook_active: Option<bool>,
-    #[serde(default)]
-    last_assistant_message: Option<String>,
-    #[serde(default)]
-    transcript_path: Option<String>,
-    /// Codex Stop only: the active turn.
-    #[serde(default)]
-    turn_id: Option<String>,
+    #[serde(flatten)]
+    stop: super::stop::StopFields,
 }
 
 fn hook_output(
@@ -145,7 +137,7 @@ fn hook_output(
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if event == "Stop" && matches!(agent, "claude" | "codex") {
-        return stop_output(shared, project, &input);
+        return super::stop::run_hook(shared, project, input.cwd.as_ref(), &input.stop);
     }
     let allowed = match agent {
         "claude" => matches!(event, "PostToolUse" | "PostToolUseFailure" | "SessionStart"),
@@ -166,33 +158,6 @@ fn hook_output(
         Err(failure) => error_context(&failure),
     };
     Some(output(event, &context))
-}
-
-/// The Stop event: block the turn once when it ends with a question that is
-/// not on the board. A folder with no project, or any failure, says nothing.
-fn stop_output(shared: &Path, project: Option<&str>, input: &HookInput) -> Option<String> {
-    if input.stop_hook_active == Some(true) {
-        return None;
-    }
-    let store = FileStore::open(shared);
-    let meta = if let Some(name) = project {
-        store
-            .project_by_name(&validate_project_name(name).ok()?)
-            .ok()?
-    } else {
-        let cwd = hook_folder(input.cwd.as_ref()).ok()?;
-        store.resolve_binding(&cwd).ok()??.project
-    };
-    super::stop::run(
-        &super::stop::StopInput {
-            stop_hook_active: false,
-            last_assistant_message: input.last_assistant_message.as_deref(),
-            transcript_path: input.transcript_path.as_deref(),
-            turn_id: input.turn_id.as_deref(),
-        },
-        shared,
-        &meta.id,
-    )
 }
 
 /// Adds a SessionStart `notice` to the hook's `output`. With no output (an
@@ -216,6 +181,11 @@ pub fn with_session_notice(output: Option<String>, notice: Option<String>) -> Op
         .unwrap_or_default();
     specific["additionalContext"] = serde_json::Value::String(format!("{context}\n\n{notice}"));
     Some(value.to_string())
+}
+
+/// [`hook_folder`] for the Stop hook, which skips instead of reporting.
+pub(super) fn folder_or_none(cwd: Option<&serde_json::Value>) -> Option<PathBuf> {
+    hook_folder(cwd).ok()
 }
 
 /// The folder the hook runs for: a non-empty absolute `cwd` from the input, or
