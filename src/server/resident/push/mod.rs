@@ -119,6 +119,15 @@ impl Push {
         std::mem::take(&mut *self.handed.lock().unwrap_or_else(|e| e.into_inner()))
     }
 
+    /// Take the failure kept from a turn end seen while busy (the child is gone), so that the
+    /// exit's note carries the original message instead of the exit reason.
+    pub(super) fn take_failure(&self) -> Option<String> {
+        self.failure
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+    }
+
     /// A turn ended; `failure` is its message when it failed. Returns the tasks to hand over and
     /// the failure detail for their note: the handed ones, when a failure is known and the
     /// session is idle. Only an idle session is sure to work on nothing, so a turn end seen while
@@ -241,6 +250,16 @@ mod tests {
         assert_eq!(push.settle(None, true), Some((vec![1], "first".into())));
         push.add_handed(&[2]);
         assert!(push.settle(None, true).is_none());
+    }
+
+    #[test]
+    fn an_exit_takes_the_failure_seen_while_busy() {
+        let push = Push::new();
+        push.add_handed(&[1]);
+        assert!(push.settle(Some("first"), false).is_none());
+        assert_eq!(push.take_failure().as_deref(), Some("first"));
+        assert_eq!(push.take_all_handed(), vec![1]);
+        assert!(push.take_failure().is_none());
     }
 
     #[test]
