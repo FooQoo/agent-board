@@ -13,18 +13,18 @@ mod final_result;
 mod next;
 mod requests;
 mod text;
-
-use std::path::PathBuf;
+mod types;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::domain::{Assignee, ChangeCursor, Column, ProjectMeta, RunState};
+use crate::domain::{ChangeCursor, Column, ProjectMeta, RunState};
 use crate::file_store::frontmatter;
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
 use crate::file_store::onboarding_model::is_onboarding_sample;
 use crate::file_store::reader::ProjectSnapshot;
+use crate::nudge::Reminder;
 
 /// The table as the CLI and the hook give it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -51,6 +51,10 @@ pub struct Progress {
     /// AI tasks with all conditions met and no final result; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub final_result_missing: Vec<FinalResultMissing>,
+    /// What the nudge rules remind the agent of, from this table alone (see
+    /// `crate::nudge`); left out when none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub reminders: Vec<Reminder>,
     /// Tasks waiting for a decision, in ID order. Only when asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pending: Option<Vec<ProgressTask>>,
@@ -75,34 +79,7 @@ pub use count::Count;
 pub use final_result::{FinalResultMissing, final_result_missing};
 pub use next::{MAX_NEXT_TASKS, NextReason, NextTask};
 pub use requests::{ProgressRequest, open_requests};
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProgressEpic {
-    pub id: String,
-    pub name: String,
-    pub document_path: PathBuf,
-    /// The `priority` list of EPIC.md cannot be read; the tasks keep ID order.
-    pub priority_error: bool,
-    pub tasks: Vec<ProgressTask>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProgressTask {
-    pub id: i64,
-    pub title: String,
-    pub assignee: Assignee,
-    pub task_status: Column,
-    pub agent_status: RunState,
-    pub draft: Option<crate::domain::Draft>,
-    pub task_path: PathBuf,
-    pub acceptance: Count,
-    pub acceptance_error: bool,
-    /// The waiting question, shortened. Only on a task waiting for a decision.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub question: Option<String>,
-}
+pub use types::{ProgressEpic, ProgressTask};
 
 /// Build the table from one project's unarchived snapshot. `shared` is the
 /// shared folder the snapshot was read from; the paths point into it.
@@ -169,7 +146,7 @@ pub fn build_with(
         .filter_map(|task| task.epic_id.as_deref())
         .collect();
 
-    Progress {
+    let mut table = Progress {
         project: snapshot.project.clone(),
         fetched_at,
         version: snapshot.version.clone(),
@@ -184,6 +161,7 @@ pub fn build_with(
         requests: open_requests(snapshot),
         answers: unaccepted_answers(snapshot),
         final_result_missing: final_result_missing(snapshot, &project_dir, fetched_at),
+        reminders: Vec::new(),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
                 .tasks
@@ -214,7 +192,9 @@ pub fn build_with(
                 .map(|task| task_of(task, &project_dir))
                 .collect()
         }),
-    }
+    };
+    table.reminders = crate::nudge::state_reminders(&table, fetched_at);
+    table
 }
 
 /// Tasks in the same order shown by the progress table. Task selection uses
