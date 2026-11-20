@@ -88,6 +88,11 @@ pub async fn wait_for_change(
     let deadline =
         timeout_secs.map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
     let id = resolve(shared_dir, project, &cursor)?;
+    let data_dir = shared_dir
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    super::session_touch::touch_from_env(data_dir, &id);
     let reader = Reader {
         shared: shared_dir,
         name: project,
