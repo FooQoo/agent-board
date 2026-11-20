@@ -61,7 +61,7 @@ pub struct MessageAskArgs {
     /// Who asks: only an agent
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
-    /// The questions as JSON: {"questions":[{"body","choices","recommendedChoiceId","tasks"}]}. Use - to read standard input
+    /// The questions as JSON: {"questions":[{"body","choices","recommendedChoiceId","tasks","images"}]}; images lists image file paths (PNG, JPEG, WebP, GIF; up to 20, 50 MiB in all) stored with the question and shown by writing ![](attachments/NAME) in the body. Use - to read standard input
     #[arg(long, value_name = "JSON", required = true, allow_hyphen_values = true)]
     pub questions_json: String,
     /// A task that waits on every question; repeat for more tasks

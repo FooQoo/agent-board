@@ -146,7 +146,7 @@ history:
 
 ## メッセージ
 
-AIから人への質問と、人からAIへの依頼は、どちらも`qa/Q-<n>/QA.md`という1つのファイルに保存します。YAMLのfrontmatterのあとに、本文としてMarkdownのテキストが続きます。依頼に添えた画像は`qa/Q-<n>/attachments/`に置きます。質問と依頼は`project.json`の`nextQuestionId`から採る1つの連番を共有するので、`Q-<n>`はどちらの種類でもプロジェクト内で一意です。フォルダ名がそのままIDです。
+AIから人への質問と、人からAIへの依頼は、どちらも`qa/Q-<n>/QA.md`という1つのファイルに保存します。YAMLのfrontmatterのあとに、本文としてMarkdownのテキストが続きます。依頼に添えた画像や、`message ask`で質問に付けた画像は`qa/Q-<n>/attachments/`に置き、本文では`![](attachments/<名前>)`で参照します。質問と依頼は`project.json`の`nextQuestionId`から採る1つの連番を共有するので、`Q-<n>`はどちらの種類でもプロジェクト内で一意です。フォルダ名がそのままIDです。
 
 質問の例です。
 
