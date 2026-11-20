@@ -408,7 +408,7 @@ test('the settings stay available while the board loads and when it cannot load'
     else await route.fallback();
   });
   await page.goto('/', { waitUntil: 'commit' });
-  await expect(page.getByText('Loading board…')).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Loading board…' })).toBeVisible();
   // While loading there is no board, so no board name or Add card; the settings are there.
   await expect(page.getByRole('button', { name: 'Ask AI' })).toHaveCount(0);
   const dialog = await openSettings(page);
@@ -842,7 +842,7 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
     else await route.fallback();
   });
   await page.reload({ waitUntil: 'commit' });
-  await expect(page.getByText('Loading board…')).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Loading board…' })).toBeVisible();
   await shot(page, testInfo, '12-loading-dark-red.png');
   failing = true;
   release();

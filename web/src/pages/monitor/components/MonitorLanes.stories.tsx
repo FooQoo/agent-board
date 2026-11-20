@@ -803,7 +803,7 @@ export const PullReady: Story = {
 export const Refreshing: Story = {
   args: { initialLane: 'todo', previewPull: 'refreshing' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('更新中…')).toBeVisible();
+    await expect(within(canvasElement).getByText('更新中…')).toBeInTheDocument();
   },
 };
 

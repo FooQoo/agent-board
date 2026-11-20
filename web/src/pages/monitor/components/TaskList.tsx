@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { MonitorTask, MonitorFreshness, MonitorViewProps } from '../contracts';
 import { MonitorTask as TaskRow } from './MonitorTask';
 import { MonitorSectionHeader, type MonitorSection } from './MonitorSectionHeader';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** Each card is in exactly one section; the view decides which (see MonitorView). */
 export type Sections = Record<MonitorSection, MonitorTask[]>;
@@ -25,7 +26,11 @@ export const TaskList = forwardRef<
   return (
     <div className="monitor-list" id={id} ref={ref} role="region" aria-label={t('monitor.cards')}>
       {freshness.state === 'loading' && (
-        <p className="monitor-empty">{t('monitor.freshness.loading')}</p>
+        <Spinner
+          size="lg"
+          className="spinner-ui--centered"
+          label={t('monitor.freshness.loading')}
+        />
       )}
       {sections.map(([section, items]) => (
         <section

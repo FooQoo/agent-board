@@ -386,7 +386,7 @@ describe('which project is shown', () => {
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    expect(await screen.findByText('Loading…')).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Loading…' })).toBeTruthy();
 
     app.navigate(urlOf(PROJECT_B.id));
     await screen.findByText('Eight in knowledge');
@@ -472,7 +472,7 @@ describe('states', () => {
     backend.gate = (url) => (url.endsWith('/summary') ? gate.promise : undefined);
     renderApp(urlOf(PROJECT_B.id));
 
-    expect(await screen.findByText('Loading board…')).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Loading board…' })).toBeTruthy();
     expect(switcher('knowledge')).toBeTruthy();
     expect(screen.getByText('Select a task to see its details.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Ask AI' })).toBeNull();
@@ -601,7 +601,7 @@ describe('late answers', () => {
     backend.gate = (url) =>
       url.includes(PROJECT_A.id) && url.endsWith('/summary') ? lateA.promise : undefined;
     renderApp(urlOf(PROJECT_A.id));
-    await screen.findByText('Loading board…');
+    await screen.findByRole('status', { name: 'Loading board…' });
 
     await choose('agent-board', 'knowledge');
     await screen.findByText('Eight in knowledge');
@@ -976,8 +976,10 @@ describe('Japanese state screens use the approved texts', () => {
     const gate = deferred();
     backend.gate = (url) => (url.endsWith('/summary') ? gate.promise : undefined);
     renderApp(urlOf(PROJECT_B.id));
-    expect(await screen.findByText('ボードを読み込み中…')).toBeTruthy();
-    expect(screen.getByText('読み込み中', { selector: '.status-bar__text' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'ボードを読み込み中…' })).toBeTruthy();
+    expect(
+      screen.getByText('読み込み中', { selector: '.status-bar__text .visually-hidden' }),
+    ).toBeTruthy();
     expect(screen.getByText(hint)).toBeTruthy();
     gate.resolve();
   });

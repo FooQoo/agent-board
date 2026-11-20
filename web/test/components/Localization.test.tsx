@@ -39,7 +39,7 @@ describe('localized board content', () => {
   it('translates loading, error, retry, and empty board messages while retaining the CLI command', async () => {
     await i18n.changeLanguage('ja');
     const { rerender } = render(<BoardMessage kind="loading" />);
-    expect(screen.getByText('読み込み中…')).toBeTruthy();
+    expect(screen.getByRole('status', { name: '読み込み中…' })).toBeTruthy();
     rerender(<BoardMessage kind="error" onRetry={() => undefined} />);
     expect(screen.getByText('ボードを読み込めませんでした。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '再試行' })).toBeTruthy();

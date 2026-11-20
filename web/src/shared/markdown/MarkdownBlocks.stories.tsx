@@ -172,7 +172,10 @@ export const ManyDiagrams: Story = {
   play: async ({ canvasElement }) => {
     const total = DIAGRAMS.filter((block) => block.kind === 'mermaid').length;
     await waitFor(
-      () => expect(canvasElement.querySelectorAll('.md-mermaid svg').length).toBeGreaterThan(0),
+      () =>
+        expect(
+          canvasElement.querySelectorAll('.md-mermaid:not(.md-mermaid--loading) svg').length,
+        ).toBeGreaterThan(0),
       {
         timeout: 10_000,
       },
@@ -206,14 +209,14 @@ export const Streaming: Story = {
   render: () => <StreamingViewer />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(canvas.getByRole('status')).toBeInTheDocument();
+    expect(canvas.getAllByRole('status').length).toBeGreaterThan(0);
     // The last block is a diagram that stays a placeholder until the stream ends.
     await waitFor(
       () => expect(canvasElement.querySelector('.md-mermaid--loading')).not.toBeNull(),
       { timeout: 5000 },
     );
     expect(canvasElement.querySelectorAll('h2').length).toBeGreaterThan(1);
-    expect(canvasElement.querySelector('.md-mermaid svg')).toBeNull();
+    expect(canvasElement.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')).toBeNull();
   },
 };
 

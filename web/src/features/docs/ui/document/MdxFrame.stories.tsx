@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 export const Loading: Story = {
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
-    await expect(view.getByRole('status')).toHaveTextContent('Loading the preview…');
+    await expect(view.getByRole('status', { name: 'Loading the preview…' })).toBeVisible();
     const frame = view.getByTitle('MDX preview');
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts');
     await expect(frame.getAttribute('sandbox')).not.toContain('allow-same-origin');
@@ -30,8 +30,8 @@ export const Loading: Story = {
 export const LoadingJapanese: Story = {
   globals: { locale: 'ja' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('status')).toHaveTextContent(
-      'プレビューを読み込み中…',
-    );
+    await expect(
+      within(canvasElement).getByRole('status', { name: 'プレビューを読み込み中…' }),
+    ).toBeVisible();
   },
 };

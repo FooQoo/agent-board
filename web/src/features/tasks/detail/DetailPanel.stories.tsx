@@ -95,9 +95,15 @@ export const Card: Story = {
       () => expect(view.getByRole('heading', { name: 'Background' })).toBeInTheDocument(),
       { timeout: 10000 },
     );
-    await waitFor(() => expect(canvasElement.querySelector('.md-mermaid svg')).not.toBeNull(), {
-      timeout: 10000,
-    });
+    await waitFor(
+      () =>
+        expect(
+          canvasElement.querySelector('.md-mermaid:not(.md-mermaid--loading) svg'),
+        ).not.toBeNull(),
+      {
+        timeout: 10000,
+      },
+    );
     expect(canvasElement.querySelector('.md-scroll table')).not.toBeNull();
     expect(canvasElement.querySelector('.detail-attachments')).not.toBeNull();
     expect(canvasElement.querySelector('.detail-evidence')).toBeNull();
@@ -266,9 +272,10 @@ export const TabEpicLoading: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Epic' }));
     expect(
-      canvasElement.querySelector('.detail__viewport:not([hidden], [aria-hidden="true"])')
-        ?.textContent,
-    ).toContain('Loading the epic…');
+      canvasElement
+        .querySelector('.detail__viewport:not([hidden], [aria-hidden="true"])')
+        ?.querySelector('[role="status"][aria-label="Loading the epic…"]'),
+    ).not.toBeNull();
   },
 };
 

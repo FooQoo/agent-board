@@ -305,7 +305,9 @@ describe('epic tab', () => {
     const onRetryEpics = vi.fn();
     const { rerender } = renderPanel(linked(63), { epics: undefined });
     await userEvent.click(screen.getByRole('tab', { name: /^Epic/ }));
-    expect(within(screen.getByRole('tabpanel')).getByText('Loading the epic…')).toBeTruthy();
+    expect(
+      within(screen.getByRole('tabpanel')).getByRole('status', { name: 'Loading the epic…' }),
+    ).toBeTruthy();
 
     rerender(
       <DetailPanel

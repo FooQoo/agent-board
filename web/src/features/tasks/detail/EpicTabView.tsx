@@ -6,6 +6,7 @@ import { DetailAttachments } from './DetailAttachments';
 import { DetailSectionView } from './DetailSection';
 import { DocumentBlocks } from './BodyDocumentView';
 import { EpicTabHeading } from './EpicTabHeading';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** What the epic tab of a card can show: nothing, the epic, or why the epic is not there. */
 export type EpicTabStatus = 'none' | 'loading' | 'failed' | 'ready';
@@ -42,7 +43,8 @@ export function EpicTabView({
 }) {
   const { t } = useTranslation();
   if (status === 'none') return <p className="detail__empty">{t('detail.epicNone')}</p>;
-  if (status === 'loading') return <p className="detail__empty">{t('detail.epicLoading')}</p>;
+  if (status === 'loading')
+    return <Spinner size="lg" className="spinner-ui--centered" label={t('detail.epicLoading')} />;
   if (status === 'failed' || epic === null) {
     return (
       <div className="detail__empty" role="alert">

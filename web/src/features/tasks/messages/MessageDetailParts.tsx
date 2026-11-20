@@ -2,6 +2,7 @@ import { ArrowLeftIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { WriteError } from '@/shared/api/writeErrors';
 import { Button } from '@/shared/ui/button';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** How a failed write is told: a conflict (409) is the question changing under the person. */
 export function failureKey(error: unknown): 'conflict' | 'gone' | 'failed' {
@@ -19,12 +20,16 @@ export function DetailState({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="message-detail__state" role={state === 'failed' ? 'alert' : 'status'}>
-      <p>{state === 'failed' ? t('messages.detail.loadFailed') : t('messages.detail.loading')}</p>
-      {state === 'failed' && (
-        <Button type="button" variant="outline" size="s" onClick={onReload}>
-          {t('messages.detail.reload')}
-        </Button>
+    <div className="message-detail__state" role={state === 'failed' ? 'alert' : undefined}>
+      {state === 'failed' ? (
+        <>
+          <p>{t('messages.detail.loadFailed')}</p>
+          <Button type="button" variant="outline" size="s" onClick={onReload}>
+            {t('messages.detail.reload')}
+          </Button>
+        </>
+      ) : (
+        <Spinner label={t('messages.detail.loading')} />
       )}
     </div>
   );

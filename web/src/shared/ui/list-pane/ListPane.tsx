@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import '../../styles/list-pane.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 export interface ListPaneProps {
   title: string;
@@ -60,8 +61,8 @@ export function ListPane({
       </header>
 
       {status === 'loading' && (
-        <div className="list-pane__state" role="status">
-          {t('board.loading')}
+        <div className="list-pane__state">
+          <Spinner size="lg" className="spinner-ui--centered" label={t('board.loading')} />
         </div>
       )}
 

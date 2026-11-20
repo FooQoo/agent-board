@@ -1,7 +1,8 @@
-import { AlertCircleIcon, LoaderCircleIcon } from 'lucide-react';
+import { AlertCircleIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { SpinnerIcon } from '@/shared/ui/spinner/Spinner';
 import './DetailState.css';
 
 /**
@@ -33,7 +34,7 @@ export function DetailPartialNotice() {
   const { t } = useTranslation();
   return (
     <p className="detail-state__partial" role="status">
-      <LoaderCircleIcon className="detail-state__spinner" aria-hidden="true" />
+      <SpinnerIcon />
       <span>{t('dataLayerDetail.partial')}</span>
     </p>
   );

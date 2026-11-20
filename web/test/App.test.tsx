@@ -61,7 +61,7 @@ const taskButton = (title: string) => screen.getByRole('button', { name: new Reg
 describe('App', () => {
   it('shows Loading… first, then the board with its name in the header and the page title', async () => {
     show();
-    expect(screen.getByText('Loading…')).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Loading…' })).toBeTruthy();
     expect(screen.getByText('Connecting…')).toBeTruthy();
     expect(screen.queryByRole('complementary', { name: 'Task details' })).toBeNull();
     expect(screen.queryByRole('separator')).toBeNull();

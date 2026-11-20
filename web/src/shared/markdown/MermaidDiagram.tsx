@@ -12,6 +12,7 @@ import {
   type RenderResult,
 } from './mermaid';
 import './markdown.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** The page theme for the diagrams; a new object only when a color of it changes. */
 function useMermaidTheme(): MermaidTheme {
@@ -106,7 +107,7 @@ export function MermaidDiagramView({
   if (state.status === 'loading') {
     return (
       <figure ref={figureRef} className="md-mermaid md-mermaid--loading" aria-busy="true">
-        <p className="md-mermaid__status">{t('markdown.diagramLoading')}</p>
+        <Spinner className="spinner-ui--centered" label={t('markdown.diagramLoading')} />
       </figure>
     );
   }

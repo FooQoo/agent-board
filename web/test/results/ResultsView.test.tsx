@@ -137,7 +137,7 @@ describe('ResultsView', () => {
     );
     expect(screen.getByText('No results yet.')).toBeTruthy();
     rerender(<ResultsView state={{ status: 'loading' }} attachmentUrl={url} />);
-    expect(screen.getByText('Loading the results…')).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Loading the results…' })).toBeTruthy();
     rerender(<ResultsView state={{ status: 'error' }} attachmentUrl={url} onRetry={() => {}} />);
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
   });

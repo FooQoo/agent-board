@@ -1,5 +1,6 @@
-import { ArrowDownIcon, LoaderIcon } from 'lucide-react';
+import { ArrowDownIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SpinnerIcon } from '@/shared/ui/spinner/Spinner';
 import type { PullState } from '../hooks/usePullToRefresh';
 
 /**
@@ -24,11 +25,11 @@ export function PullIndicator({ state, offset }: { state: PullState; offset: num
       style={{ height: `${offset}px` }}
     >
       {state === 'refreshing' ? (
-        <LoaderIcon className="monitor-pull__spinner" aria-hidden="true" />
+        <SpinnerIcon size="md" className="monitor-pull__spinner" />
       ) : (
         <ArrowDownIcon className="monitor-pull__arrow" aria-hidden="true" />
       )}
-      <span>{label}</span>
+      <span className={state === 'refreshing' ? 'visually-hidden' : undefined}>{label}</span>
     </div>
   );
 }

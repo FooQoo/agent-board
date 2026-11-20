@@ -1,6 +1,7 @@
-import { CircleAlertIcon, FolderIcon, FolderXIcon, LoaderCircleIcon } from 'lucide-react';
+import { CircleAlertIcon, FolderIcon, FolderXIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 export type BoardMessageKind =
   | 'empty'
@@ -20,8 +21,8 @@ export function BoardMessage({ kind, onRetry }: BoardMessageProps) {
   const { t } = useTranslation();
   if (kind === 'loading') {
     return (
-      <div className="board-message board-message--loading" role="status">
-        <p className="board-message__title">{t('board.loading')}</p>
+      <div className="board-message board-message--loading">
+        <Spinner size="lg" label={t('board.loading')} />
       </div>
     );
   }
@@ -37,9 +38,8 @@ export function BoardMessage({ kind, onRetry }: BoardMessageProps) {
   }
   if (kind === 'switching') {
     return (
-      <div className="board-message board-message--state board-message--switching" role="status">
-        <LoaderCircleIcon aria-hidden="true" className="board-message__icon" />
-        <p className="board-message__title">{t('board.loadingBoard')}</p>
+      <div className="board-message board-message--state board-message--switching">
+        <Spinner size="lg" label={t('board.loadingBoard')} />
       </div>
     );
   }

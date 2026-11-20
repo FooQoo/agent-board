@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toolName } from '../state';
 import type { LogState } from '../useSessionLog';
 import type { SessionTool } from '../api';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** How far from the end still counts as "at the end" (a fraction of a line is not scrolling away). */
 const AT_END_PX = 24;
@@ -35,9 +36,13 @@ export function ResidentLogPane({ tool, log }: { tool: SessionTool; log: LogStat
       </h3>
       {log.data?.truncated && <p className="resident-log__note">{t('resident.logTruncated')}</p>}
       {text === '' ? (
-        <p className="resident-log__empty" role="status">
-          {log.data ? t('resident.logEmpty') : t('status.boardLoading')}
-        </p>
+        log.data ? (
+          <p className="resident-log__empty" role="status">
+            {t('resident.logEmpty')}
+          </p>
+        ) : (
+          <Spinner className="spinner-ui--centered" label={t('status.boardLoading')} />
+        )
       ) : (
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a keyboard user must be able to scroll the log
         <div className="resident-log__scroll" ref={scroller} onScroll={onScroll} tabIndex={0}>
