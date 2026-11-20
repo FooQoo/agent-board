@@ -67,7 +67,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | --- | --- |
 | タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`draft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
 | エピック | `id`（文字列）、`name`、`color`、`draft`、`priority`（エピックが定める順序のタスクID。定めなければ空）、`priorityError`（保存された順序を読めないため、`priority`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
-| 質問 | 未回答の質問をID順に並べる。`id`・`title`（1行目、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
+| 質問 | 未回答の質問をID順に並べる。`id`・`title`（最初の空でない行からMarkdownの記号を除いたプレーンテキスト、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
 | メッセージ | 未完了の質問と依頼を一つの形で、古い順（同時刻はID順）に並べる。`id`（`Q-<n>`）・`type`（`question`・`request`）・`from`・`to`（`ai`か`human`）・`turn`（次に動く側。`ai`・`human`、終わったものは`null`）・`title`・`createdAt`・`tasks`（関わるタスクの番号。依頼は持たない）・`epicId`（または`null`）。質問の`turn`は、未回答のあいだは`human`、回答済みでAIがまだ回答を受け取っていないあいだは`ai`で、その間も一覧に残る。依頼の`turn`は`ai`。回答をAIが受け取った質問、受け付け済みの依頼、取り下げたメッセージは含めないため、載っているメッセージには必ず`turn`がある。`questions`は、まだ読んでいる画面のために残す。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
 

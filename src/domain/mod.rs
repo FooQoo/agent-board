@@ -3,6 +3,7 @@
 mod column;
 mod limits;
 pub mod markdown_blocks;
+mod plain_title;
 mod project;
 mod task;
 mod work;
@@ -14,6 +15,7 @@ pub use limits::{
     MAX_TITLE_CHARS, MIN_CHOICES, normalize_and_validate_description, validate_attachment,
     validate_board_name, validate_project_name, validate_reason, validate_title,
 };
+pub use plain_title::{first_line_plain, strip_inline_markdown};
 pub use project::{ChangeCursor, ProjectCatalog, ProjectId, ProjectMeta};
 pub use task::BoardMeta;
 pub use work::{
