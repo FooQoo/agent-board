@@ -1,4 +1,4 @@
-import { LoaderCircleIcon } from 'lucide-react';
+import { LoaderIcon } from 'lucide-react';
 import './Spinner.css';
 
 export type SpinnerSize = 'sm' | 'md' | 'lg';
@@ -22,7 +22,7 @@ export function SpinnerIcon({
   className?: string;
 }) {
   return (
-    <LoaderCircleIcon
+    <LoaderIcon
       className={['spinner-ui__icon', `spinner-ui--${size}`, className].filter(Boolean).join(' ')}
       aria-hidden="true"
     />
@@ -40,7 +40,7 @@ export function Spinner({ label, size = 'md', className }: SpinnerProps) {
       aria-label={label}
       className={['spinner-ui', `spinner-ui--${size}`, className].filter(Boolean).join(' ')}
     >
-      <LoaderCircleIcon className="spinner-ui__icon" aria-hidden="true" />
+      <LoaderIcon className="spinner-ui__icon" aria-hidden="true" />
     </span>
   );
 }
