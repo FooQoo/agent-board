@@ -436,3 +436,181 @@ fn epic_document_accepts_100000_characters_and_refuses_one_more() {
     assert_ne!(code, 0);
     assert!(err.contains("100,000"), "{err}");
 }
+
+/// Add tasks 2 to 4 to the demo project and put tasks 1 to 4 into the epic.
+fn epic_with_four_tasks(home: &Path) {
+    epic_add(home, "FILE-SHARE", "File share", Some("#111111"));
+    for title in ["Second", "Third", "Fourth"] {
+        let (code, _, err) = agboard(
+            home,
+            &[
+                "--project",
+                "Demo",
+                "add",
+                title,
+                "--assignee",
+                "ai",
+                "--actor",
+                "human",
+            ],
+        );
+        assert_eq!(code, 0, "{err}");
+    }
+    for id in ["1", "2", "3", "4"] {
+        let (code, _, err) = agboard(
+            home,
+            &["--project", "Demo", "edit", id, "--epic", "FILE-SHARE"],
+        );
+        assert_eq!(code, 0, "{err}");
+    }
+}
+
+fn waves_of(home: &Path) -> Value {
+    json_ok(
+        home,
+        &["--project", "Demo", "epic", "show", "FILE-SHARE", "--json"],
+    )["epic"]["waves"]
+        .clone()
+}
+
+#[test]
+fn epic_edit_waves_before_json_stores_the_waves_and_prints_json() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    epic_with_four_tasks(home.path());
+
+    let edited = json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "epic",
+            "edit",
+            "FILE-SHARE",
+            "--waves",
+            "1",
+            "2,3",
+            "--json",
+        ],
+    );
+    assert_eq!(edited["epic"]["waves"], serde_json::json!([[1], [2, 3]]));
+    assert_eq!(waves_of(home.path()), serde_json::json!([[1], [2, 3]]));
+
+    let single = json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "epic",
+            "edit",
+            "FILE-SHARE",
+            "--waves",
+            "4",
+            "--json",
+        ],
+    );
+    assert_eq!(single["epic"]["waves"], serde_json::json!([[4]]));
+}
+
+#[test]
+fn epic_edit_waves_works_in_any_order_with_the_other_options() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    epic_with_four_tasks(home.path());
+    let document = home.path().join("document.md");
+    std::fs::write(&document, "---\n---\n\nBody text.\n").unwrap();
+    let path = document.to_str().unwrap();
+
+    let orders: [Vec<&str>; 3] = [
+        vec![
+            "--waves",
+            "1,2",
+            "3",
+            "--document-file",
+            path,
+            "--name",
+            "A",
+        ],
+        vec!["--document-file", path, "--name", "B", "--waves", "4", "3"],
+        vec![
+            "--name",
+            "C",
+            "--waves",
+            "2",
+            "1,3",
+            "--document-file",
+            path,
+        ],
+    ];
+    let expected = [
+        ("A", serde_json::json!([[1, 2], [3]])),
+        ("B", serde_json::json!([[4], [3]])),
+        ("C", serde_json::json!([[2], [1, 3]])),
+    ];
+    for (tail, (name, waves)) in orders.iter().zip(expected) {
+        let mut args = vec!["--project", "Demo", "epic", "edit", "FILE-SHARE"];
+        args.extend(tail);
+        args.push("--json");
+        let edited = json_ok(home.path(), &args);
+        assert_eq!(edited["epic"]["name"], name);
+        assert_eq!(edited["epic"]["waves"], waves);
+        assert!(
+            edited["epic"]["document"]
+                .as_str()
+                .unwrap()
+                .contains("Body text.")
+        );
+    }
+}
+
+#[test]
+fn epic_edit_empty_waves_clears_the_order_with_or_without_later_flags() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    epic_with_four_tasks(home.path());
+    let set = [
+        "--project",
+        "Demo",
+        "epic",
+        "edit",
+        "FILE-SHARE",
+        "--waves",
+        "1",
+        "2",
+    ];
+    let (code, _, err) = agboard(home.path(), &set);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(waves_of(home.path()), serde_json::json!([[1], [2]]));
+
+    let cleared = json_ok(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "epic",
+            "edit",
+            "FILE-SHARE",
+            "--waves",
+            "",
+            "--json",
+        ],
+    );
+    assert_eq!(cleared["epic"]["waves"], serde_json::json!([]));
+
+    let (code, _, err) = agboard(home.path(), &set);
+    assert_eq!(code, 0, "{err}");
+    let (code, _, err) = agboard(
+        home.path(),
+        &[
+            "--project",
+            "Demo",
+            "epic",
+            "edit",
+            "FILE-SHARE",
+            "--waves",
+            "",
+        ],
+    );
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(waves_of(home.path()), serde_json::json!([]));
+}

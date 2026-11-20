@@ -78,7 +78,7 @@ pub struct EpicEditArgs {
     #[arg(long, value_name = "#RRGGBB")]
     pub color: Option<String>,
     /// Task order as waves, one value per wave: a task ID or task IDs joined by commas (for example --waves 24 25,26); a wave starts when the waves before it are done; an empty value clears it
-    #[arg(long, value_name = "WAVE", num_args(1..), allow_hyphen_values = true)]
+    #[arg(long, value_name = "WAVE", num_args(1..))]
     pub waves: Option<Vec<String>>,
     #[command(flatten)]
     pub document: DocumentArgs,
