@@ -55,7 +55,11 @@ pub(super) async fn write_guard(
         Method::GET | Method::HEAD | Method::OPTIONS
     );
     let allowed = guard::write_allowed(request.headers(), context.port, &context.token);
-    if reads || request.uri().path() == "/api/notify" || allowed {
+    // Like `/api/notify`, a session touch comes from a local command, which has no page token.
+    let path = request.uri().path();
+    let command_call = path == "/api/notify"
+        || (path.starts_with("/api/projects/") && path.ends_with("/sessions/touch"));
+    if reads || command_call || allowed {
         next.run(request).await
     } else if request.headers().contains_key("x-agboard-token")
         && matches!(

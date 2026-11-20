@@ -45,7 +45,9 @@ use messages::*;
 use onboarding::*;
 use pages::*;
 use projects::*;
-use sessions::{launch_session, list_sessions, session_models, set_autostart, stop_session};
+use sessions::{
+    launch_session, list_sessions, session_models, set_autostart, stop_session, touch_session,
+};
 use summaries::{dismiss_summary, list_summaries};
 use summary::summary;
 use task_acceptance::*;
@@ -70,6 +72,10 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
     };
     let local_only = monitor_connections::routes()
         .route("/api/notify", post(notify))
+        .route(
+            "/api/projects/{project_id}/sessions/touch",
+            post(touch_session),
+        )
         .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
         .route(
             "/api/projects/{project_id}/sessions/models",

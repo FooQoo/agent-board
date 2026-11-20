@@ -31,6 +31,9 @@ pub fn execute(cli: &Cli, env: &mut Env, args: &MessageArgs) -> i32 {
         Ok(ctx) => ctx,
         Err(error) => return fail(env, &error, cli.json),
     };
+    if let Ok(project) = ctx.project_id() {
+        crate::agent::session_touch::touch_from_env(&data_dir(ctx.files.shared_dir()), project);
+    }
     let result = match &args.command {
         MessageCommand::Ask(ask) => return stream::ask(&mut ctx, env, ask),
         MessageCommand::Wait(wait) => return stream::wait(&mut ctx, env, wait),

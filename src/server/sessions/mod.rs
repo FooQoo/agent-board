@@ -1,10 +1,12 @@
-//! The agent sessions attached to the board, counted while they listen.
+//! The agent sessions attached to the board.
 //!
-//! A session is attached for as long as a `wait --until task` command of it holds an event stream
-//! open. The command names itself with the headers below. When its stream closes the session is
-//! kept for a grace period, so the gap between one wait and the next does not make the count
-//! flicker; after that it leaves the count. The registry lives in memory only: a server that
-//! restarts starts with no sessions, and the waits that reconnect register again.
+//! A session counts in two ways. While a `wait --until task` command of it holds an event stream
+//! open, it is connected; when the stream closes it is kept for a grace period, so the gap
+//! between one wait and the next does not make the count flicker. An external session (one the
+//! board did not launch) also counts for [`ACCESS_WINDOW`] after any `agboard` command or hook
+//! of it reached the server with [`SessionRegistry::touch`], whether or not it waits. The
+//! commands name the session with the headers in `model`. The registry lives in memory only: a
+//! server that restarts starts with no sessions, and the next wait or command registers again.
 
 mod model;
 
@@ -30,6 +32,21 @@ struct Entry {
     streams: usize,
     /// When the last stream closed.
     released_at: Option<Instant>,
+    /// When an `agboard` command or hook of the session last reached the server.
+    touched_at: Option<Instant>,
+}
+
+impl Entry {
+    /// Whether the session still counts at `now`: a stream is open, or the grace period after the
+    /// last stream, or the access window after the last access, has not ended.
+    fn counts(&self, now: Instant, grace: Duration) -> bool {
+        let within = |at: Option<Instant>, limit: Duration| {
+            at.is_some_and(|at| now.saturating_duration_since(at) < limit)
+        };
+        self.streams > 0
+            || within(self.released_at, grace)
+            || within(self.touched_at, ACCESS_WINDOW)
+    }
 }
 
 /// The sessions attached to this server.
@@ -51,11 +68,7 @@ impl SessionRegistry {
     }
 
     fn prune(&self, entries: &mut HashMap<Id, Entry>, now: Instant) {
-        entries.retain(|_, entry| {
-            entry
-                .released_at
-                .is_none_or(|at| now.saturating_duration_since(at) < self.grace)
-        });
+        entries.retain(|_, entry| entry.counts(now, self.grace));
     }
 
     /// Count the session until the returned hold is dropped. A session that is already counted
@@ -80,6 +93,7 @@ impl SessionRegistry {
             last_seen_at: wall,
             streams: 0,
             released_at: None,
+            touched_at: None,
         });
         entry.tool = attributes.tool;
         entry.origin = attributes.origin;
@@ -92,6 +106,38 @@ impl SessionRegistry {
             id,
             released: false,
         }
+    }
+
+    /// Record that an `agboard` command or hook of an external session reached the server now.
+    /// The session counts for [`ACCESS_WINDOW`] from this call, on top of any open stream. A
+    /// board-launched session is ignored: the launcher counts it itself, so it is never counted
+    /// twice. A session that is already counted keeps its first `connectedAt`.
+    pub fn touch(&self, attributes: Attributes) {
+        self.touch_at(attributes, Instant::now(), SystemClock.now());
+    }
+
+    fn touch_at(&self, attributes: Attributes, now: Instant, wall: DateTime<Utc>) {
+        if attributes.origin == Origin::Board {
+            return;
+        }
+        let id = (attributes.project, attributes.key);
+        let mut entries = self.lock();
+        self.prune(&mut entries, now);
+        let entry = entries.entry(id).or_insert_with(|| Entry {
+            tool: attributes.tool,
+            origin: Origin::External,
+            connected_at: wall,
+            last_seen_at: wall,
+            streams: 0,
+            released_at: None,
+            touched_at: None,
+        });
+        if entry.origin == Origin::Board {
+            return;
+        }
+        entry.tool = attributes.tool;
+        entry.last_seen_at = wall;
+        entry.touched_at = Some(now);
     }
 
     fn release(&self, id: &Id, now: Instant, wall: DateTime<Utc>) {
@@ -155,7 +201,7 @@ impl SessionRegistry {
 }
 
 fn view(key: &str, entry: &Entry, wall: DateTime<Utc>) -> SessionView {
-    let connected = entry.released_at.is_none();
+    let connected = entry.streams > 0;
     SessionView {
         id: key.to_string(),
         tool: entry.tool,
