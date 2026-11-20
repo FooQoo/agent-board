@@ -6,7 +6,7 @@ import { Surface } from '@/shared/ui/surface/Surface';
 import './push-prompt.css';
 
 /**
- * The guide the Home Screen app shows once, asking to turn notifications on. The turn-on button
+ * The centered modal the Home Screen app shows once, asking to turn notifications on. The turn-on button
  * is the tap that lets the browser ask for the permission; "Not now" closes it for good.
  */
 export function PushPromptDialogView({
@@ -23,7 +23,7 @@ export function PushPromptDialogView({
   const { t } = useTranslation();
   return (
     <Surface
-      kind="sheet"
+      kind="dialog"
       title={t('pushPrompt.title')}
       closeLabel={t('dialog.close')}
       onClose={onClose}

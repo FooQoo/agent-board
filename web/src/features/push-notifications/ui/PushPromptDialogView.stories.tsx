@@ -1,11 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
-import { modalDocsParameters } from '../../../.storybook/support/modal-docs';
-// The bottom sheet's position and animation live in the phone board's stylesheet.
-import '../../pages/monitor/monitor-screen.css';
-import { PushPromptDialogView } from '../../features/push-notifications/ui/PushPromptDialogView';
+import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
+import { PushPromptDialogView } from './PushPromptDialogView';
 
-// The sheet the Home Screen app shows once, asking to turn notifications on. The toolbar switches
+// The modal the Home Screen app shows once, asking to turn notifications on. The toolbar switches
 // the language and the theme.
 const meta = {
   title: 'PushNotifications/PushPromptDialogView',
