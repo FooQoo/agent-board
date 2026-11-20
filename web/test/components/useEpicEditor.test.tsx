@@ -43,7 +43,10 @@ function fakeApi(calls: string[]): EpicApi {
     addImages: vi.fn(async () => void calls.push('addImages')),
     removeImage: vi.fn(async () => void calls.push('removeImage')),
     save: vi.fn(async () => void calls.push('save')),
-    saveWaves: vi.fn(async (waves: number[][]) => void calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`)),
+    saveWaves: vi.fn(
+      async (waves: number[][]) =>
+        void calls.push(`saveWaves:${waves.map((wave) => wave.join(',')).join(';')}`),
+    ),
     enterDraft: vi.fn(async () => {
       calls.push('enterDraft');
       return { ...EPIC, draft: 'human' as const };
@@ -73,7 +76,7 @@ describe('useEpicEditor save order', () => {
     const onClose = vi.fn();
     const { result } = mount(api, onClose);
     act(() => result.current.removeAttachment(IMAGE));
-    act(() => result.current.move(0, 1));
+    act(() => result.current.changeWaves([[25], [24]]));
     act(() => result.current.setName('Renamed'));
     await waitFor(() => expect(result.current.canSave).toBe(true));
     await act(async () => result.current.run());
@@ -95,7 +98,7 @@ describe('useEpicEditor save order', () => {
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockImplementation(async () => void calls.push('save'));
     const { result } = mount(api);
-    act(() => result.current.move(0, 1));
+    act(() => result.current.changeWaves([[25], [24]]));
     await waitFor(() => expect(result.current.canSave).toBe(true));
     await act(async () => result.current.run());
     expect(result.current.error).toContain('Earlier changes were saved');
@@ -107,7 +110,7 @@ describe('useEpicEditor save order', () => {
     const calls: string[] = [];
     const api = fakeApi(calls);
     const { result } = mount(api);
-    act(() => result.current.move(0, 1));
+    act(() => result.current.changeWaves([[25], [24]]));
     await waitFor(() => expect(result.current.canSave).toBe(true));
     await act(async () => result.current.run());
     expect(calls).toEqual(['enterDraft', 'saveWaves:25;24', 'save']);

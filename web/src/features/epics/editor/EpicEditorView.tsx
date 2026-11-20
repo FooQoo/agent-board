@@ -42,7 +42,9 @@ export function EpicEditorView({
     setColor,
     epicDocument,
     setEpicDocument,
-    rows,
+    waveRows,
+    unlisted,
+    changeWaves,
     dirty,
     overLimit,
     canSave,
@@ -61,7 +63,6 @@ export function EpicEditorView({
     pendingTask,
     setPendingTask,
     requestOpenTask,
-    move,
     attachmentState,
     removeAttachment,
   } = state;
@@ -138,7 +139,7 @@ export function EpicEditorView({
         sidebar={
           <CollapsibleSection
             title={t('epic.progressTitle')}
-            count={rows.length}
+            count={waveRows.flat().length + unlisted.length}
             open={panel === 'progress'}
             onToggle={() => setPanel(panel === 'progress' ? 'images' : 'progress')}
             icon={
@@ -146,9 +147,10 @@ export function EpicEditorView({
             }
           >
             <EpicProgressList
-              tasks={rows}
+              waves={waveRows}
+              unlisted={unlisted}
               disabled={saving}
-              onMove={move}
+              onChange={changeWaves}
               onOpenTask={requestOpenTask}
               renderTask={renderTask}
             />

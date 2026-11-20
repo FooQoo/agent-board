@@ -87,16 +87,6 @@
           ]
         },
         {
-          "name": "orderOf",
-          "stories": [
-            {
-              "id": "epic-editor-epicdialog--unchanged",
-              "states": ["saved task order", "unlisted members appended"],
-              "interaction": false
-            }
-          ]
-        },
-        {
           "name": "storedOf",
           "stories": [
             {
@@ -138,6 +128,79 @@
               "id": "epic-editor-epicdialog--details-save-retry",
               "states": ["composite rendering"],
               "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/WaveRow.tsx",
+      "exports": [
+        {
+          "name": "WaveRow",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--wave-order",
+              "states": [
+                "wave header",
+                "parallel count",
+                "wave status",
+                "task row",
+                "unlisted group"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "epic-editor-epicdialog--wave-keyboard-move",
+              "states": ["keyboard move", "move to another wave", "save waves"],
+              "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "WaveTasks",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--wave-order",
+              "states": [
+                "wave header",
+                "parallel count",
+                "wave status",
+                "task row",
+                "unlisted group"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "epic-editor-epicdialog--wave-keyboard-move",
+              "states": ["keyboard move", "move to another wave", "save waves"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/epics/editor/WaveTask.tsx",
+      "exports": [
+        {
+          "name": "WaveTask",
+          "stories": [
+            {
+              "id": "epic-editor-epicdialog--wave-order",
+              "states": [
+                "wave header",
+                "parallel count",
+                "wave status",
+                "task row",
+                "unlisted group"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "epic-editor-epicdialog--wave-keyboard-move",
+              "states": ["keyboard move", "move to another wave", "save waves"],
+              "interaction": true
             }
           ]
         }

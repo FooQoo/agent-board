@@ -63,7 +63,7 @@ The next-task list for agents holds back a Todo task while any task of an earlie
 
 ## Edit an epic in the browser
 
-Open an epic from its label, or from the pencil button (**Edit epic**) in its details, to edit its name, color, details, and task order. The epic opens in a preview: opening it changes nothing, and your first change makes it a draft until you save or discard. See [Preview and save](./editing#preview-and-save).
+Open an epic from its label, or from the pencil button (**Edit epic**) in its details, to edit its name, color, details, and waves. The epic opens in a preview: opening it changes nothing, and your first change makes it a draft until you save or discard. See [Preview and save](./editing#preview-and-save).
 
 ![Epic editor with a scrollable task progress panel and a full-height Markdown editor for the details](../../images/epic.png){.screenshot}
 
@@ -71,7 +71,13 @@ The epic editor shows the outline on the left, the name and the "Epic details (M
 
 - The right column starts with progress expanded and attachments folded. Opening either panel folds the other.
 - The progress list scrolls on its own, so a long list stays inside the dialog and includes finished tasks for review.
-- Drag a task by its handle (or use the handle's keyboard controls), then **Save** to apply the order.
+- The progress list shows the waves from top to bottom. Each wave has a header with its number ("Wave 1"), the number of tasks when it runs several in parallel, and its status: done, in progress, or waiting for the tasks of earlier waves that are not Done (for example "Waiting for #12"). The tasks of a wave sit side by side as cards, and the row scrolls sideways when there are many.
+- Drag a task card the way you drag a card on the board: with a mouse or pen, press and drag; on a touch screen, drag by the handle at once, or hold the card for a moment so that a swipe still scrolls. Drop it before or after another card to reorder it, into another wave to change its wave, or on **Drop here for a new wave** at the bottom to give it a wave of its own.
+- Drag a wave by the handle in its header to move the whole wave up or down.
+- A wave that loses its last task disappears. An empty wave is never saved.
+- With the keyboard, focus a card, press Space to pick it up, move it with the arrow keys (left and right inside a wave, up and down to the next wave), and press Space to drop it. Focus a wave's handle and use up and down the same way to move the wave.
+- Tasks of the epic that no wave lists appear in a last group, **Not in a wave**, in ascending ID order. They are never held back. Drag one into a wave to order it, or leave it there.
+- **Save** applies the waves. Nothing is stored before then.
 - Selecting a task opens its details. Change membership in the task editor or on the command line, not in the epic dialog. The epic dialog has no Draft checkbox.
 - While a person has an epic in draft, `agboard epic edit` refuses changes to its details and task order with `epic_is_draft`. Attachments and a task's membership in the epic still change.
 - If a draft is left behind, choose **Finalize** in the epic's details to release it.

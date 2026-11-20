@@ -90,9 +90,12 @@ function EpicPreview() {
             }
           >
             <EpicProgressList
-              tasks={rows}
+              waves={[[rows[0]], [rows[1], rows[2]]].map((wave) =>
+                wave.flatMap((task) => (task ? [task] : [])),
+              )}
+              unlisted={[]}
               disabled={false}
-              onMove={() => {}}
+              onChange={() => {}}
               onOpenTask={() => {}}
               renderTask={(task, row) => (
                 <div className="card__top">

@@ -168,9 +168,9 @@ async function openImages(root: HTMLElement) {
 
 function rowIds(root: HTMLElement): string[] {
   const list = within(root).getByRole('list', { name: 'Progress' });
-  return within(list)
-    .getAllByRole('listitem')
-    .map((item) => item.getAttribute('data-task-id') ?? '');
+  return [...list.querySelectorAll('[data-task-id]')].map(
+    (item) => item.getAttribute('data-task-id') ?? '',
+  );
 }
 
 beforeEach(() => selectLocale('en'));
@@ -257,6 +257,23 @@ describe('progress table', () => {
     await openEpic(api, { epic });
     const dialog = await screen.findByRole('dialog');
     expect(rowIds(dialog)).toEqual(['25', '24']);
+    const first = within(dialog).getByRole('listitem', { name: 'Wave 1' });
+    expect(first.querySelector('.epic-wave__status')?.textContent).toBe('In progress');
+    const second = within(dialog).getByRole('listitem', { name: 'Wave 2' });
+    expect(second.querySelector('.epic-wave__status')?.textContent).toBe('Done');
+  });
+
+  it('shows the tasks of a wave side by side with their count, and the unlisted ones last', async () => {
+    const { api } = fakeApi();
+    const epic = { ...EPIC, waves: [[25, 24]] };
+    const board = [...tasks(), makeTask({ id: 30, title: 'Loose task', epic: ref })];
+    await openEpic(api, { epic, board });
+    const dialog = await screen.findByRole('dialog');
+    expect(rowIds(dialog)).toEqual(['25', '24', '30']);
+    const wave = within(dialog).getByRole('listitem', { name: 'Wave 1' });
+    expect(within(wave).getByText('2 in parallel')).toBeTruthy();
+    expect(within(dialog).getByRole('listitem', { name: 'Not in a wave' })).toBeTruthy();
+    expect(within(dialog).getByText('Drop here for a new wave')).toBeTruthy();
   });
 
   it('shows no membership checks and no task filter', async () => {
