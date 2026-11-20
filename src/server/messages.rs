@@ -19,17 +19,17 @@ use crate::file_store::{AnswerItem, FileStore};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct AnswerInputItem {
-    question_id: String,
+    pub(super) question_id: String,
     #[serde(default)]
-    choice_id: Option<String>,
+    pub(super) choice_id: Option<String>,
     #[serde(default)]
-    text: Option<String>,
+    pub(super) text: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct AnswersInput {
-    answers: Vec<AnswerInputItem>,
+    pub(super) answers: Vec<AnswerInputItem>,
 }
 
 /// Run blocking file work against the shared folder.
@@ -166,15 +166,6 @@ pub(crate) async fn answer_questions(
     raw_project: String,
     input: AnswersInput,
 ) -> Response {
-    let project = match parse_project_id(&raw_project) {
-        Ok(project) => project,
-        Err(error) => return agboard_error_response(&error),
-    };
-    let ids: Vec<String> = input
-        .answers
-        .iter()
-        .map(|a| a.question_id.clone())
-        .collect();
     let items = input
         .answers
         .into_iter()
@@ -182,8 +173,23 @@ pub(crate) async fn answer_questions(
             question_id: a.question_id,
             choice_id: a.choice_id,
             text: a.text,
+            images: Vec::new(),
         })
         .collect();
+    record_answers(headers, state, raw_project, items).await
+}
+
+pub(super) async fn record_answers(
+    headers: HeaderMap,
+    state: Arc<AppState>,
+    raw_project: String,
+    items: Vec<AnswerItem>,
+) -> Response {
+    let project = match parse_project_id(&raw_project) {
+        Ok(project) => project,
+        Err(error) => return agboard_error_response(&error),
+    };
+    let ids: Vec<String> = items.iter().map(|a| a.question_id.clone()).collect();
     let result = with_request_files(&state, &headers, move |store| {
         Ok(
             match store.answer_questions(&project, items, AnswerVia::Ui, chrono::Utc::now()) {

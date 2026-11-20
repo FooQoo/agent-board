@@ -25,7 +25,7 @@ Accept a request before you plan it, and plan only requests you have accepted. D
 
 A person's answer to your question reaches you in the same places as a request, when you did not wait for it with `message ask` or `message wait`:
 
-- `answers` in the progress table (and in the hook output): `[{"id":"Q-12","title":"...","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"..."}]`. `choiceId` and `choiceLabel` are `null` when the user answered with only a note, so read `text` then. The field is absent when every answer was taken in.
+- `answers` in the progress table (and in the hook output): `[{"id":"Q-12","title":"...","tasks":[21],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"..."}]`. `choiceId` and `choiceLabel` are `null` when the user answered with only a note, so read `text` then. The field is absent when every answer was taken in. When the user attached pictures to the answer, `imagePaths` lists their absolute paths (and `message show` prints them as `Image:` lines): open them before you act on the answer.
 - `wait --until task` returns `{"kind":"answers", ...}` before requests and tasks while an answer waits.
 
 Read it with `agboard --project "<name>" message show <Q-id> --json`, act on it, and then take it in:

@@ -61,6 +61,7 @@ const autoStart = (tool: 'claude-code' | 'codex', model: string | null) => ({
 
 export type ScenarioId =
   | 'working'
+  | 'subagents'
   | 'waiting'
   | 'restarting'
   | 'nextStart'
@@ -93,6 +94,19 @@ const codexStopped = {
 
 export const scenarios: Record<ScenarioId, ResidentPanelProps> = {
   working: { ...base(working), choice: { tool: 'claude-code', model: 'sonnet' } },
+  subagents: base(
+    snapshotOf(
+      {
+        state: 'running',
+        tool: 'claude-code',
+        projectId: PROJECT,
+        model: 'sonnet',
+        backgroundTasks: ['Review the diff', 'pnpm test'],
+        ...autoStart('claude-code', 'sonnet'),
+      },
+      { ...external, ...launched('claude-code', 'sonnet') },
+    ),
+  ),
   waiting: base(
     snapshotOf(
       { state: 'running', waiting: true, tool: 'codex', projectId: PROJECT, restartCount: 1 },

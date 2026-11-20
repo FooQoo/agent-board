@@ -24,6 +24,8 @@ struct ReplyFront {
     choice: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     text: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    images: Vec<String>,
     via: AnswerVia,
     #[serde(with = "crate::clock::serde_utc")]
     at: DateTime<Utc>,
@@ -107,6 +109,7 @@ pub fn parse_message(id: &str, text: &str) -> Result<Message, Defect> {
                 reply: f.reply.map(|r| Reply {
                     choice: r.choice,
                     text: r.text,
+                    images: r.images,
                     via: r.via,
                     at: r.at,
                     accepted_at: r.accepted_at,
@@ -150,6 +153,7 @@ pub fn render_message(message: &Message) -> Result<String, Defect> {
                 reply: q.reply.as_ref().map(|r| ReplyFront {
                     choice: r.choice.clone(),
                     text: r.text.clone(),
+                    images: r.images.clone(),
                     via: r.via,
                     at: r.at,
                     accepted_at: r.accepted_at,
@@ -210,6 +214,7 @@ mod tests {
             choices: vec![],
             recommended: None,
             reply: Some(Reply {
+                images: Vec::new(),
                 choice: None,
                 text: Some("The smaller one.".into()),
                 via: AnswerVia::Cli,

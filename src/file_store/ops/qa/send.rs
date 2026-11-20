@@ -17,7 +17,7 @@ use crate::file_store::qa::{
 use crate::file_store::{io, layout, reader};
 
 /// An image sent with a request. It is stored as `attachments/<name>`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestImage {
     pub name: String,
     pub bytes: Vec<u8>,

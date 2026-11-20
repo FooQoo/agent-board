@@ -1,16 +1,17 @@
-import { ArrowLeftIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveMessageImage } from '@/shared/api/messageAttachment';
-import { WriteError } from '@/shared/api/writeErrors';
 import type { Message } from '@/shared/data/api/contracts';
 import { Button } from '@/shared/ui/button';
 import { keepFocusOnPress } from '@/shared/ui/keepFocus';
+import { attachmentNoticeText } from '@/shared/ui/editor/AttachmentPanel';
+import { useAttachmentState } from '@/shared/ui/editor/useAttachmentState';
 import { Surface } from '@/shared/ui/surface/Surface';
 import { DecisionAnswerFields } from '../answer/DecisionAnswerFields';
 import { DecisionQuestion } from '../answer/DecisionQuestion';
 import type { DecisionAnswerView } from '../answer/decisionAnswerView';
+import { BackButton, DetailState, failureKey } from './MessageDetailParts';
 import { MessageList } from './MessageRows';
 import {
   canSendAnswer,
@@ -40,43 +41,6 @@ export interface MessagesSurfaceProps {
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
 
-/** How a failed write is told: a conflict (409) is the question changing under the person. */
-function failureKey(error: unknown): 'conflict' | 'gone' | 'failed' {
-  if (error instanceof WriteError && error.status === 409) return 'conflict';
-  if (error instanceof WriteError && error.status === 404) return 'gone';
-  return 'failed';
-}
-
-function DetailState({ state, onReload }: { state: 'loading' | 'failed'; onReload: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <div className="message-detail__state" role={state === 'failed' ? 'alert' : 'status'}>
-      <p>{state === 'failed' ? t('messages.detail.loadFailed') : t('messages.detail.loading')}</p>
-      {state === 'failed' && (
-        <Button type="button" variant="outline" size="s" onClick={onReload}>
-          {t('messages.detail.reload')}
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function BackButton({ onBack }: { onBack: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="s"
-      className="message-detail__back"
-      onClick={onBack}
-    >
-      <ArrowLeftIcon aria-hidden="true" />
-      {t('messages.detail.back')}
-    </Button>
-  );
-}
-
 /**
  * The list of open messages and the opened one, in a modal or a bottom sheet. An opened question
  * is the question on the left and the answer on the right (stacked on a phone), with "Later" and
@@ -102,6 +66,7 @@ export function MessagesSurface({
   const [choiceId, setChoiceId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const images = useAttachmentState({ resolveStoredUrl: () => '' });
   const [failure, setFailure] = useState<'conflict' | 'gone' | 'failed' | 'withdraw' | null>(null);
 
   const listed = useMemo(
@@ -125,6 +90,7 @@ export function MessagesSurface({
     setOpenId(id);
     setChoiceId(null);
     setText('');
+    images.clear();
     setFailure(null);
   };
 
@@ -132,19 +98,29 @@ export function MessagesSurface({
   const choices = detail?.choices ?? [];
   const answering = opened?.type === 'question' && opened.turn === 'human';
   const sendable = answering && detail !== null && !busy && canSendAnswer(choices, choiceId, text);
+  // The demo build keeps nothing it could save pictures to.
+  const picturesAllowed = import.meta.env.MODE !== 'demo';
+  const addImages = (files: File[]) => {
+    const pictures = files.filter((file) => file.type.startsWith('image/'));
+    if (pictures.length > 0) images.addFiles(pictures);
+  };
 
   const send = async () => {
     if (!opened || !sendable) return;
     setBusy(true);
     setFailure(null);
     try {
-      await api.answer(projectId, [
-        {
-          questionId: opened.id,
-          ...(choiceId !== null ? { choiceId } : {}),
-          ...(text.trim() !== '' ? { text } : {}),
-        },
-      ]);
+      await api.answer(
+        projectId,
+        [
+          {
+            questionId: opened.id,
+            ...(choiceId !== null ? { choiceId } : {}),
+            ...(text.trim() !== '' ? { text } : {}),
+          },
+        ],
+        images.attachments,
+      );
       onChanged();
       show(null);
     } catch (error) {
@@ -177,7 +153,7 @@ export function MessagesSurface({
     tooLong: [...text].length > MAX_ANSWER_TEXT,
     sendable: sendable === true,
     disabled: busy,
-    hasInput: choiceId !== null || text.trim() !== '',
+    hasInput: choiceId !== null || text.trim() !== '' || images.attachments.length > 0,
   };
   const resolveAttachment =
     resolveFor && opened ? (id: string) => resolveFor(opened, id) : undefined;
@@ -230,6 +206,10 @@ export function MessagesSurface({
     // Answered: the question and the answer, read only, until an AI takes the answer in.
     const reply = detail.reply;
     const answer = [reply?.choiceLabel, reply?.text].filter(Boolean).join(' — ');
+    // The answer's images are stored with the question, so they are drawn like the images of its body.
+    const answerImages = (reply?.images ?? [])
+      .map((name) => `![${name}](attachments/${name})`)
+      .join('\n\n');
     body = (
       <div className="message-detail">
         {back}
@@ -239,10 +219,13 @@ export function MessagesSurface({
           resolveAttachment={resolveAttachment}
           resolveImage={resolveImage}
         />
-        {answer !== '' && (
+        {(answer !== '' || answerImages !== '') && (
           <section className="message-detail__answer" aria-label={t('messages.detail.yourAnswer')}>
             <h3>{t('messages.detail.yourAnswer')}</h3>
-            <p>{answer}</p>
+            {answer !== '' && <p>{answer}</p>}
+            {answerImages !== '' && (
+              <DecisionQuestion question={answerImages} resolveImage={resolveImage} />
+            )}
           </section>
         )}
       </div>
@@ -268,7 +251,18 @@ export function MessagesSurface({
             onClear={() => {
               setChoiceId(null);
               setText('');
+              images.clear();
             }}
+            images={
+              picturesAllowed
+                ? {
+                    attachments: images.attachments,
+                    notice: images.error ? attachmentNoticeText(images.error, t) : '',
+                    onFiles: addImages,
+                    onRemove: images.remove,
+                  }
+                : undefined
+            }
           />
           {failureText !== null && (
             <p className="message-detail__error" role="alert">

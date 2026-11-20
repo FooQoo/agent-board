@@ -89,6 +89,26 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--answer-with-image",
+              "states": ["add a picture", "remove a picture", "sent with the answer"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--answer-text-with-pasted-image",
+              "states": ["no options", "pasted picture", "english"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--answered-with-image",
+              "states": ["answered", "answer picture", "resolved by the message route"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-answer-with-image",
+              "states": ["phone", "add a picture", "no sideways scroll"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-question-with-image",
               "states": ["phone", "question body image", "no sideways scroll"],
               "interaction": true
@@ -194,6 +214,21 @@
           "name": "MessagesSurface",
           "stories": [],
           "exclusion": "MessagesSurface is the list and the opened message inside the shared Surface; every state of it is a MessageCenter Story, and the routes it calls are covered by the MessageCenter tests."
+        }
+      ]
+    },
+    {
+      "file": "features/tasks/messages/MessageDetailParts.tsx",
+      "exports": [
+        {
+          "name": "BackButton",
+          "stories": [],
+          "exclusion": "BackButton is the way back to the list inside the opened message of MessagesSurface; the MessageCenter Stories press it, and it has no state of its own."
+        },
+        {
+          "name": "DetailState",
+          "stories": [],
+          "exclusion": "DetailState is the loading and failed line of the opened message of MessagesSurface; it shows only inside it, and the MessageCenter tests cover its two states."
         }
       ]
     },

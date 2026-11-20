@@ -185,6 +185,7 @@ fn only_unanswered_questions_move_to_the_new_files() {
                 question_id: "Q-1".into(),
                 choice_id: Some("keep".into()),
                 text: None,
+                images: Vec::new(),
             }],
             agent_board::file_store::qa::AnswerVia::Cli,
             Utc::now(),

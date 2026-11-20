@@ -3,14 +3,16 @@
 use chrono::{DateTime, Utc};
 
 use super::super::{lock_project, stamp};
+use super::answer_images::{existing_name, place_images, remove_placed};
 use super::read::views_locked;
+use super::send::{RequestImage, checked_images};
 use super::{broken_file_error, message_change, referrers};
 use crate::domain::ProjectId;
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::model::HistoryRecord;
 use crate::file_store::qa::{
-    AnswerVia, Message, MessageState, QaIndex, Question, QuestionView, Reply,
+    self, AnswerVia, Message, MessageState, QaIndex, Question, QuestionView, Reply,
 };
 use crate::file_store::transaction::save_batch_locked;
 use crate::file_store::validate;
@@ -21,6 +23,9 @@ pub struct AnswerItem {
     pub question_id: String,
     pub choice_id: Option<String>,
     pub text: Option<String>,
+    /// Images stored under the question's `attachments/` folder, checked like the images of a
+    /// request.
+    pub images: Vec<RequestImage>,
 }
 
 fn history_text(question: &Question, reply: &Reply, japanese: bool) -> String {
@@ -57,6 +62,10 @@ fn history_text(question: &Question, reply: &Reply, japanese: bool) -> String {
     if let Some(body) = &reply.text {
         text.push_str(&format!("\n\n{answered}: {body}"));
     }
+    if !reply.images.is_empty() {
+        let label = if japanese { "添付画像" } else { "Images" };
+        text.push_str(&format!("\n\n{label}: {}", reply.images.join(", ")));
+    }
     if reply.via == AnswerVia::Chat {
         text.push_str(&format!("\n\n{chat}"));
     }
@@ -67,6 +76,7 @@ fn history_text(question: &Question, reply: &Reply, japanese: bool) -> String {
 fn answered(
     question: &Question,
     item: &AnswerItem,
+    image_names: Vec<String>,
     via: AnswerVia,
     at: DateTime<Utc>,
 ) -> Result<Question, AgboardError> {
@@ -99,6 +109,7 @@ fn answered(
     next.reply = Some(Reply {
         choice,
         text,
+        images: image_names,
         via,
         at,
         // An answer from the chat is written by the agent that was told it: it has it already.
@@ -129,10 +140,15 @@ impl FileStore {
         let index = QaIndex::load(shared, &project_dir)?;
         let at = stamp(now);
 
+        // Every image is checked before anything is written.
+        let mut staged: Vec<Vec<(String, &Vec<u8>)>> = Vec::new();
+        for item in &items {
+            staged.push(checked_images(&item.images)?);
+        }
         let mut done = Vec::new();
         let mut withdrawn = Vec::new();
         let mut planned: Vec<(Question, Question)> = Vec::new();
-        for item in &items {
+        for (item, files) in items.iter().zip(&staged) {
             if planned.iter().any(|(old, _)| old.id == item.question_id) {
                 return Err(AgboardError::InvalidValue {
                     field: "answers".into(),
@@ -160,7 +176,21 @@ impl FileStore {
                 MessageState::Withdrawn => withdrawn.push(question.id.clone()),
                 MessageState::Open => {}
             }
-            planned.push((question.clone(), answered(question, item, via, at)?));
+            let names = files.iter().map(|(name, _)| name.clone()).collect();
+            let attachments = qa::attachments_dir(&qa::message_dir(&project_dir, &question.id));
+            for (name, _) in files {
+                // An answer never replaces an image the question already holds.
+                if existing_name(&attachments, name) {
+                    return Err(AgboardError::InvalidValue {
+                        field: "image".into(),
+                        reason: format!(
+                            "{} already has an image named {name}; rename the new one.",
+                            question.id
+                        ),
+                    });
+                }
+            }
+            planned.push((question.clone(), answered(question, item, names, via, at)?));
         }
         if !done.is_empty() {
             return Err(AgboardError::QuestionAnswered { ids: done });
@@ -169,22 +199,51 @@ impl FileStore {
             return Err(AgboardError::QuestionWithdrawn { ids: withdrawn });
         }
 
+        let mut placed = Vec::new();
+        if let Err(error) = place_images(&project_dir, &planned, &staged, &mut placed) {
+            remove_placed(&placed);
+            return Err(error);
+        }
+        match self.record_answers(shared, project, &project_dir, &planned, at) {
+            Ok(ids) => {
+                let (questions, _) = views_locked(shared, project)?;
+                Ok(questions
+                    .into_iter()
+                    .filter(|q| ids.contains(&q.id))
+                    .collect())
+            }
+            Err(error) => {
+                remove_placed(&placed);
+                Err(error)
+            }
+        }
+    }
+
+    /// Save the answers and the history of the tasks that refer to them as one batch.
+    fn record_answers(
+        &self,
+        shared: &std::path::Path,
+        project: &ProjectId,
+        project_dir: &std::path::Path,
+        planned: &[(Question, Question)],
+        at: DateTime<Utc>,
+    ) -> Result<Vec<String>, AgboardError> {
         let mut changes = Vec::new();
-        for (_, next) in &planned {
+        for (_, next) in planned {
             changes.push(message_change(
-                &project_dir,
+                project_dir,
                 &Message::Question(next.clone()),
                 false,
             )?);
         }
 
         let ids: Vec<String> = planned.iter().map(|(q, _)| q.id.clone()).collect();
-        for mut referrer in referrers(shared, project, &project_dir, &ids)? {
+        for mut referrer in referrers(shared, project, project_dir, &ids)? {
             if referrer.task.archived_at.is_some() {
                 continue;
             }
             let language = self.history_language(project, &referrer.task)?;
-            for (_, next) in &planned {
+            for (_, next) in planned {
                 if !referrer.questions.contains(&next.id) {
                     continue;
                 }
@@ -199,17 +258,12 @@ impl FileStore {
             referrer.task.updated_at = at;
             changes.extend(super::super::save::task_pair_changes(
                 shared,
-                &project_dir,
+                project_dir,
                 &referrer.task,
                 Some(&referrer.text),
             )?);
         }
-        save_batch_locked(&project_dir, changes)?;
-
-        let (questions, _) = views_locked(shared, project)?;
-        Ok(questions
-            .into_iter()
-            .filter(|q| ids.contains(&q.id))
-            .collect())
+        save_batch_locked(project_dir, changes)?;
+        Ok(ids)
     }
 }

@@ -211,10 +211,124 @@ export const QuestionNeedsChoiceOrNote: Story = {
     await expect(send).toBeEnabled();
     await userEvent.click(send);
     await waitFor(() =>
-      expect(args.answer).toHaveBeenCalledWith(SAMPLE_PROJECT, [
-        { questionId: 'Q-13', choiceId: 'mail', text: 'Not sure' },
-      ]),
+      expect(args.answer).toHaveBeenCalledWith(
+        SAMPLE_PROJECT,
+        [{ questionId: 'Q-13', choiceId: 'mail', text: 'Not sure' }],
+        [],
+      ),
     );
+  },
+};
+
+/** Adds a picture through the file input, as the "画像" button does. */
+async function attachAnswerImage(dialog: HTMLElement, name: string): Promise<void> {
+  const blob = await (await fetch('/sample-attachment.png')).blob();
+  const input = dialog.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!input) throw new Error('the image input is missing');
+  await userEvent.upload(input, new File([blob], name, { type: 'image/png' }));
+}
+
+/** An answer with options takes a picture: it shows as a thumbnail, goes with the answer, and can be removed. */
+export const AnswerWithImage: Story = {
+  args: { initial: { tab: 'fromAi', openId: 'Q-13' } },
+  play: async ({ args }) => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(dialog).findByRole('radio', { name: 'メールとパスワードだけ' });
+    await attachAnswerImage(dialog, 'before.png');
+    await within(dialog).findByRole('button', { name: 'before.png を外す' });
+    await attachAnswerImage(dialog, 'after.png');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'before.png を外す' }));
+    await expect(within(dialog).queryByRole('button', { name: 'before.png を外す' })).toBeNull();
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'メールとパスワードだけ' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: '回答を送る' }));
+    await waitFor(() => expect(args.answer).toHaveBeenCalledTimes(1));
+    const call = (args.answer as ReturnType<typeof fn>).mock.calls[0] ?? [];
+    await expect(call[1]).toEqual([{ questionId: 'Q-13', choiceId: 'mail' }]);
+    await expect((call[2] as { name: string }[]).map((image) => image.name)).toEqual(['after.png']);
+  },
+};
+
+/** A question without options takes a note and a picture, and the picture can be pasted. */
+export const AnswerTextWithPastedImage: Story = {
+  args: {
+    initial: { tab: 'fromAi', openId: 'Q-13' },
+    read: async (_projectId, id) => ({
+      id,
+      type: 'question',
+      body: 'どの画面で起きましたか。',
+      choices: [],
+      recommendedChoiceId: null,
+      status: 'open',
+      referencedBy: [14],
+    }),
+  },
+  globals: { locale: 'en' },
+  play: async ({ args }) => {
+    const dialog = await page().findByRole('dialog', { name: 'Messages' });
+    const note = await within(dialog).findByRole('textbox', { name: 'Note' });
+    await userEvent.type(note, 'The login screen');
+    const blob = await (await fetch('/sample-attachment.png')).blob();
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', {
+      value: { files: [new File([blob], 'image.png', { type: 'image/png' })] },
+    });
+    note.dispatchEvent(paste);
+    await within(dialog).findByRole('button', { name: 'Remove image.png' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send answer' }));
+    await waitFor(() => expect(args.answer).toHaveBeenCalledTimes(1));
+    const call = (args.answer as ReturnType<typeof fn>).mock.calls[0] ?? [];
+    await expect((call[2] as unknown[]).length).toBe(1);
+  },
+};
+
+const answeredWithImages: MessagesApi['read'] = async (_projectId, id) => ({
+  id,
+  type: 'question',
+  body: 'どちらのレイアウトにしますか。',
+  choices: [
+    { id: 'a', label: 'A案' },
+    { id: 'b', label: 'B案' },
+  ],
+  recommendedChoiceId: null,
+  status: 'answered',
+  referencedBy: [14],
+  reply: { choiceLabel: 'A案', text: '余白は少し詰めて。', images: ['mock.png'], acceptedAt: null },
+});
+
+/** An answer's pictures are shown under the answer, read from the question's own route. */
+export const AnsweredWithImage: Story = {
+  args: {
+    withAnswered: true,
+    initial: { tab: 'fromAi', openId: 'Q-11' },
+    read: answeredWithImages,
+  },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    const answer = await within(dialog).findByRole('region', { name: 'あなたの回答' });
+    const image = await waitFor(() => {
+      const found = answer.querySelector('img.md__image-picture');
+      expect(found).not.toBeNull();
+      return found as HTMLImageElement;
+    });
+    await expect(image.getAttribute('src')).toBe(
+      `/api/projects/${SAMPLE_PROJECT}/messages/Q-11/attachments/mock.png`,
+    );
+  },
+};
+
+/** The phone: the answer sheet takes a picture, and the sheet does not grow sideways. */
+export const PhoneAnswerWithImage: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi', openId: 'Q-13' } },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(sheet).findByRole('radio', { name: 'メールとパスワードだけ' });
+    await attachAnswerImage(sheet, 'phone-shot.png');
+    await within(sheet).findByRole('button', { name: 'phone-shot.png を外す' });
+    const body = sheet.querySelector('.surface__body');
+    if (!(body instanceof HTMLElement)) throw new Error('The sheet has no body.');
+    await expect(body.scrollWidth).toBeLessThanOrEqual(body.clientWidth + 1);
   },
 };
 

@@ -22,6 +22,16 @@
               "interaction": true
             },
             {
+              "id": "resident-residentview--waiting-for-subagents",
+              "states": ["working while waiting for subagents", "list of waited tasks"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--waiting-for-subagents-phone",
+              "states": ["working while waiting for subagents", "phone sheet"],
+              "interaction": true
+            },
+            {
               "id": "resident-residentview--waiting",
               "states": ["waiting", "restart count"],
               "interaction": true
@@ -325,6 +335,11 @@
               "id": "resident-residentfooter--failed",
               "states": ["failed", "red"],
               "interaction": false
+            },
+            {
+              "id": "resident-residentfooter--waiting-for-subagents",
+              "states": ["working while waiting for subagents", "tooltip names the wait"],
+              "interaction": true
             },
             {
               "id": "resident-residentfooter--stalled",

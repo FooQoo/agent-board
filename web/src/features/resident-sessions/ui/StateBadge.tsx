@@ -29,16 +29,32 @@ const VARIANT = {
 /** The word for a state, in the long form of the badge or the short form of a summary line. */
 export function useStateLabel() {
   const { t } = useTranslation();
-  return (state: ResidentState, short = false) => t(short ? SHORT_KEY[state] : KEY[state]);
+  return (state: ResidentState, short = false, waitingOnTasks = false) =>
+    t(
+      state === 'working' && waitingOnTasks
+        ? short
+          ? 'resident.shortWorkingTasks'
+          : 'resident.stateWorkingTasks'
+        : short
+          ? SHORT_KEY[state]
+          : KEY[state],
+    );
 }
 
 /** The state badge: the dot colour carries the state next to its word. */
-export function StateBadge({ state }: { state: ResidentState }) {
+export function StateBadge({
+  state,
+  waitingOnTasks = false,
+}: {
+  state: ResidentState;
+  /** The working session waits on subagents or background commands. */
+  waitingOnTasks?: boolean;
+}) {
   const label = useStateLabel();
   return (
     <Badge variant={VARIANT[state]} className="resident-state" data-state={state}>
       <span className="resident-dot" aria-hidden="true" />
-      {label(state)}
+      {label(state, false, waitingOnTasks)}
     </Badge>
   );
 }

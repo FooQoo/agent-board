@@ -37,6 +37,9 @@ pub struct Health {
     /// Whether the session is idle between two turns, so that the board can hand it work. A
     /// running session that is not is working on something.
     pub waiting: bool,
+    /// What a working session waits on: the subagents and background commands that started and
+    /// have not ended. Empty while it is idle.
+    pub background_tasks: Vec<String>,
     /// Items the board pushed several times without the session handling them, and gave up on.
     pub push_stalled: Vec<Stalled>,
     /// Restarts since the last launch or stop by a person.
@@ -73,6 +76,7 @@ impl Launcher {
                 model: None,
                 reason: None,
                 waiting: false,
+                background_tasks: Vec::new(),
                 push_stalled: Vec::new(),
                 restart_count: 0,
                 last_exit_at: None,
@@ -96,6 +100,12 @@ impl Launcher {
                 && live
                     .as_ref()
                     .is_some_and(|(_, id, _, driver)| *id == plan.launch_id && driver.is_idle()),
+            background_tasks: live
+                .as_ref()
+                .filter(|(_, id, _, _)| *id == plan.launch_id)
+                .filter(|(_, _, _, driver)| !driver.is_idle())
+                .map(|(_, _, _, driver)| driver.background_tasks())
+                .unwrap_or_default(),
             push_stalled: live
                 .as_ref()
                 .filter(|(_, id, _, _)| *id == plan.launch_id)
