@@ -519,7 +519,13 @@ fn a_question_refuses_too_many_or_duplicate_images() {
     let one = home.path().join("a.png");
     std::fs::write(&one, PNG).unwrap();
     let many: Vec<&str> = (0..21).map(|_| one.to_str().unwrap()).collect();
-    for images in [many, vec![one.to_str().unwrap(), one.to_str().unwrap()]] {
+    let upper = home.path().join("A.png");
+    std::fs::write(&upper, PNG).unwrap();
+    for images in [
+        many,
+        vec![one.to_str().unwrap(), one.to_str().unwrap()],
+        vec![one.to_str().unwrap(), upper.to_str().unwrap()],
+    ] {
         let questions = json!({"questions": [{"body": "Which?", "images": images}]}).to_string();
         let (code, _, _) = msg(
             home.path(),

@@ -86,8 +86,12 @@ pub(super) fn checked_images(
             )
         })?;
         let name = stored_name(&image.name, extension)?;
-        if !names.insert(name.clone()) {
-            return Err(invalid("image", "Image names must be unique."));
+        // Case-insensitive file systems would store two such names in one file.
+        if !names.insert(name.to_ascii_lowercase()) {
+            return Err(invalid(
+                "image",
+                "Image names must be unique, ignoring letter case.",
+            ));
         }
         files.push((name, &image.bytes));
     }
