@@ -58,7 +58,9 @@ function archivedCard(
  * The sample board of the lane stories: a few cards in each lane, an AI run in progress, and a
  * card waiting for an answer, with the messages of the band.
  */
-function useLaneFixture(options: { emptyDone?: boolean; emptyArchive?: boolean } = {}) {
+function useLaneFixture(
+  options: { emptyDone?: boolean; emptyArchive?: boolean; manyArchived?: number } = {},
+) {
   const { i18n } = useTranslation();
   const project = useMemo(() => makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }), []);
   // The first question waits on the card "API refactoring" (#11).
@@ -113,11 +115,20 @@ function useLaneFixture(options: { emptyDone?: boolean; emptyArchive?: boolean }
   const [archived, setArchived] = useState<ArchivedTask[]>(() =>
     options.emptyArchive
       ? []
-      : [
-          archivedCard(5, 'Write the release notes', 'done', '2026-10-01T09:00:00.000Z'),
-          archivedCard(4, 'Try the demo on a phone', 'done', '2026-09-30T09:00:00.000Z', 'human'),
-          archivedCard(3, 'Draft the onboarding tour', 'todo', '2026-09-28T09:00:00.000Z'),
-        ],
+      : options.manyArchived
+        ? Array.from({ length: options.manyArchived }, (_, index) =>
+            archivedCard(
+              1000 + index,
+              `Archived task ${index + 1}`,
+              index % 2 === 0 ? 'done' : 'todo',
+              '2026-10-01T09:00:00.000Z',
+            ),
+          )
+        : [
+            archivedCard(5, 'Write the release notes', 'done', '2026-10-01T09:00:00.000Z'),
+            archivedCard(4, 'Try the demo on a phone', 'done', '2026-09-30T09:00:00.000Z', 'human'),
+            archivedCard(3, 'Draft the onboarding tour', 'todo', '2026-09-28T09:00:00.000Z'),
+          ],
   );
   return {
     lanes,
@@ -139,12 +150,21 @@ type ScreenArgs = Pick<
   pendingTask?: number;
   emptyDone?: boolean;
   emptyArchive?: boolean;
+  /** Archives this many tasks, to show that only a window of rows is drawn. */
+  manyArchived?: number;
 };
 
 /** The phone monitor's lane view over sample cards. A move changes them at once; an archive changes them once confirmed. */
-function LanesStory({ pending, pendingTask, emptyDone, emptyArchive, ...screen }: ScreenArgs) {
+function LanesStory({
+  pending,
+  pendingTask,
+  emptyDone,
+  emptyArchive,
+  manyArchived,
+  ...screen
+}: ScreenArgs) {
   const { lanes, setLanes, archived, setArchived, messages, messagesApi, projectId } =
-    useLaneFixture({ emptyDone, emptyArchive });
+    useLaneFixture({ emptyDone, emptyArchive, manyArchived });
   const find = (id?: number) =>
     Object.values(lanes)
       .flat()
@@ -434,6 +454,24 @@ export const ArchiveListEmpty: Story = {
   play: async () => {
     const sheet = await within(document.body).findByRole('dialog');
     await expect(within(sheet).getByText('アーカイブされたタスクはありません')).toBeVisible();
+  },
+};
+
+/** With 300 archived tasks only a window of rows is in the DOM, and scrolling brings in the rest. */
+export const ArchiveListMany: Story = {
+  args: { initialLane: 'todo', pending: 'list', manyArchived: 300 },
+  play: async () => {
+    const sheet = await within(document.body).findByRole('dialog');
+    const rows = () => sheet.querySelectorAll('[data-archive-row]');
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+    await expect(rows().length).toBeLessThan(40);
+    await expect(sheet.querySelector('[data-archive-row="1299"]')).toBeNull();
+    const body = sheet.querySelector<HTMLElement>('.surface__body');
+    if (!body) throw new Error('No sheet body.');
+    body.scrollTop = body.scrollHeight;
+    await waitFor(() => expect(sheet.querySelector('[data-archive-row="1299"]')).not.toBeNull());
+    await expect(sheet.querySelector('[data-archive-row="1000"]')).toBeNull();
+    await expect(rows().length).toBeLessThan(40);
   },
 };
 

@@ -615,6 +615,11 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor-components-monitorlanes--archive-list-many",
+              "states": ["300 archived tasks", "only the visible rows are drawn"],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor-components-monitorlanes--archive-row-revealed",
               "states": ["lane card in the list", "Restore tile open"],
               "interaction": true

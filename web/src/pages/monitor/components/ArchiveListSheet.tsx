@@ -1,10 +1,10 @@
 import { ArchiveIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ArchiveResponse } from '../../../features/tasks/api/read';
 import { Button } from '@/shared/ui/button';
 import { Surface } from '../../../shared/ui/surface/Surface';
-import { ArchiveSwipeRow } from './ArchiveSwipeRow';
+import { ArchiveVirtualList } from './ArchiveVirtualList';
 import './archive-sheet.css';
 
 /** What the sheet shows of the archive: the read the phone made when the sheet opened. */
@@ -44,6 +44,11 @@ export function ArchiveListSheet({
   const [revealed, setRevealed] = useState<number | null>(initialRevealed);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState(false);
+  // The sheet's scrolling body, which the virtual list reads its window from.
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  const busyRef = useRef<number | null>(null);
+  const onRestoreRef = useRef(onRestore);
+  onRestoreRef.current = onRestore;
   const tasks = data?.tasks ?? [];
 
   useEffect(() => {
@@ -55,19 +60,28 @@ export function ArchiveListSheet({
     return () => document.removeEventListener('pointerdown', release, true);
   }, [revealed]);
 
-  const restore = async (id: number) => {
-    if (busy !== null) return;
+  // Stable, so a change to one row does not re-render the others.
+  const restore = useCallback(async (id: number) => {
+    if (busyRef.current !== null) return;
+    busyRef.current = id;
     setBusy(id);
     setError(false);
     try {
-      await onRestore(id);
+      await onRestoreRef.current(id);
       setRevealed(null);
     } catch {
       setError(true);
     } finally {
+      busyRef.current = null;
       setBusy(null);
     }
-  };
+  }, []);
+  const onRestoreRow = useCallback((id: number) => void restore(id), [restore]);
+  const onRevealChange = useCallback(
+    (id: number, next: boolean) =>
+      setRevealed((current) => (next ? id : current === id ? null : current)),
+    [],
+  );
 
   let body: ReactNode;
   if (status === 'loading') {
@@ -100,20 +114,17 @@ export function ArchiveListSheet({
             {error ? t('archive.restoreError') : t('archive.refreshError')}
           </p>
         )}
-        <div className="archive-sheet__list" role="list" aria-label={t('archive.heading')}>
-          {tasks.map((task) => (
-            <ArchiveSwipeRow
-              key={task.id}
-              task={task}
-              projectId={data.project.id}
-              projectName={projectName}
-              revealed={revealed === task.id}
-              busy={busy === task.id}
-              onRevealChange={(next) => setRevealed(next ? task.id : null)}
-              onRestore={() => void restore(task.id)}
-            />
-          ))}
-        </div>
+        <ArchiveVirtualList
+          tasks={tasks}
+          projectId={data.project.id}
+          projectName={projectName}
+          label={t('archive.heading')}
+          scrollElement={scroller}
+          revealed={revealed}
+          busy={busy}
+          onRevealChange={onRevealChange}
+          onRestore={onRestoreRow}
+        />
       </>
     );
   }
@@ -124,6 +135,7 @@ export function ArchiveListSheet({
       closeLabel={t('dialog.close')}
       onClose={onClose}
       className="archive-sheet"
+      bodyRef={setScroller}
     >
       {body}
     </Surface>

@@ -1,5 +1,5 @@
 import { XIcon } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, type Ref, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '../dialog';
 import { Drawer } from '../drawer';
 import '../../styles/modal.css';
@@ -19,6 +19,7 @@ export function Surface({
   footer,
   className = '',
   dismissible = true,
+  bodyRef,
   children,
 }: {
   kind: 'dialog' | 'sheet';
@@ -34,6 +35,8 @@ export function Surface({
   className?: string;
   /** A sheet that cannot be dragged away while a save blocks closing. */
   dismissible?: boolean;
+  /** The scrolling body, for a list that draws only the rows in view. */
+  bodyRef?: Ref<HTMLDivElement>;
   children: ReactNode;
 }) {
   // Where the focus was when the dialog opened (the button that opened it).
@@ -52,7 +55,7 @@ export function Surface({
         fitKeyboard
         dismissible={dismissible}
       >
-        <div className="surface__body" tabIndex={-1}>
+        <div className="surface__body" tabIndex={-1} ref={bodyRef}>
           {children}
         </div>
         {footer && <div className="surface__footer">{footer}</div>}
@@ -92,7 +95,9 @@ export function Surface({
             <XIcon aria-hidden="true" />
           </button>
         </div>
-        <div className="surface__body">{children}</div>
+        <div className="surface__body" ref={bodyRef}>
+          {children}
+        </div>
         {footer && <div className="surface__footer">{footer}</div>}
       </DialogContent>
     </Dialog>

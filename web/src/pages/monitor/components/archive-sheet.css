@@ -60,3 +60,19 @@
   color: var(--r-danger, #d92d20);
   font-size: 13px;
 }
+
+/* The virtual list: rows are placed by translateY inside a box as tall as every row. */
+.archive-sheet__list--virtual {
+  position: relative;
+  display: block;
+}
+
+.archive-row--virtual {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* The gap between rows is padding, so the measured height includes it. */
+  padding-bottom: 10px;
+  box-sizing: border-box;
+}

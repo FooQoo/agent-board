@@ -1,5 +1,5 @@
 import { RotateCcwIcon } from 'lucide-react';
-import { type CSSProperties, type KeyboardEvent, useEffect, useRef } from 'react';
+import { type CSSProperties, type KeyboardEvent, memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { revealOffset, revealProgress } from '@/shared/lib/gesture/cardReveal';
 import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
@@ -21,8 +21,16 @@ export interface ArchiveSwipeRowProps {
   revealed: boolean;
   /** The row is being restored: the tile cannot be pressed twice. */
   busy: boolean;
-  onRevealChange: (revealed: boolean) => void;
-  onRestore: () => void;
+  /** Both callbacks take the task id, so one stable function serves every row. */
+  onRevealChange: (id: number, revealed: boolean) => void;
+  onRestore: (id: number) => void;
+  /** Set by the virtual list: where the row sits, and the ref that measures its height. */
+  virtual?: {
+    index: number;
+    count: number;
+    start: number;
+    measureRef: (element: HTMLElement | null) => void;
+  };
 }
 
 /**
@@ -31,7 +39,7 @@ export interface ArchiveSwipeRowProps {
  * open row closes the tile; a tap on a closed one does nothing, since an archived task has no
  * detail to open. Under the card, the lane it returns to and the date it was archived.
  */
-export function ArchiveSwipeRow({
+export const ArchiveSwipeRow = memo(function ArchiveSwipeRow({
   task,
   projectId,
   projectName,
@@ -39,6 +47,7 @@ export function ArchiveSwipeRow({
   busy,
   onRevealChange,
   onRestore,
+  virtual,
 }: ArchiveSwipeRowProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
@@ -53,18 +62,18 @@ export function ArchiveSwipeRow({
     if (event.target === ref.current && ['ArrowLeft', 'Enter', ' '].includes(event.key)) {
       event.preventDefault();
       focusRestore.current = true;
-      onRevealChange(true);
+      onRevealChange(task.id, true);
     } else if (event.key === 'ArrowRight' && revealed) {
       // Escape is left to the drawer, which it closes.
       event.preventDefault();
-      onRevealChange(false);
+      onRevealChange(task.id, false);
       ref.current?.focus();
     }
   };
   const side = revealed ? 'right' : null;
   const { drag, consumesClick, handlers } = useCardGesture(ref, {
     revealed: side,
-    onRevealChange: (next) => onRevealChange(next === 'right'),
+    onRevealChange: (next) => onRevealChange(task.id, next === 'right'),
     armed: true,
     onArm: () => {},
     leftWidth: 0,
@@ -75,7 +84,16 @@ export function ArchiveSwipeRow({
   // The card never reads more than a list card shows; an archived task is one of those.
   const item = { projectId, projectName, task } as MonitorTaskModel;
   return (
-    <div role="listitem" className="archive-row" data-archive-row={task.id}>
+    <div
+      role="listitem"
+      className={virtual ? 'archive-row archive-row--virtual' : 'archive-row'}
+      data-archive-row={task.id}
+      ref={virtual?.measureRef}
+      data-index={virtual?.index}
+      aria-setsize={virtual?.count}
+      aria-posinset={virtual ? virtual.index + 1 : undefined}
+      style={virtual ? { transform: `translateY(${virtual.start}px)` } : undefined}
+    >
       <div
         ref={ref}
         className="swipe-card"
@@ -96,7 +114,7 @@ export function ArchiveSwipeRow({
           if (consumesClick() || revealed) {
             event.preventDefault();
             event.stopPropagation();
-            if (revealed && !consumesClick()) onRevealChange(false);
+            if (revealed && !consumesClick()) onRevealChange(task.id, false);
           }
         }}
       >
@@ -120,7 +138,7 @@ export function ArchiveSwipeRow({
             aria-hidden={!revealed}
             aria-label={t('archive.restoreTask', { id: task.id })}
             disabled={busy}
-            onClick={onRestore}
+            onClick={() => onRestore(task.id)}
           >
             <RotateCcwIcon aria-hidden="true" />
           </button>
@@ -140,4 +158,4 @@ export function ArchiveSwipeRow({
       </p>
     </div>
   );
-}
+});
