@@ -428,14 +428,14 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
   if (!ask || !barBox) throw new Error('the bar has no box');
   expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
 
-  // On an iPhone with a home indicator the bar pads its bottom by the inset, so its items stay above it.
+  // On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
   await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
-  const padding = await bar.evaluate((element) => parseFloat(getComputedStyle(element).paddingBottom));
-  expect(padding).toBeGreaterThanOrEqual(34);
-  const last = await items.nth(0).boundingBox();
+  const margin = await bar.evaluate((element) => parseFloat(getComputedStyle(element).marginBottom));
+  expect(margin).toBeGreaterThanOrEqual(34);
   const after = await bar.boundingBox();
-  if (!last || !after) throw new Error('the bar has no box');
-  expect(last.y + last.height).toBeLessThanOrEqual(after.y + after.height - 34 + 1);
+  const viewport = page.viewportSize();
+  if (!after || !viewport) throw new Error('the bar has no box');
+  expect(after.y + after.height).toBeLessThanOrEqual(viewport.height - 34 + 1);
 });
 
 test('Messages opens the messages drawer without an Ask entry, and Ask opens the request form directly', async ({ page }) => {

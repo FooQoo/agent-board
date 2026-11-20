@@ -508,6 +508,11 @@
               "id": "pages-monitor-components-monitorgallery--bottom-bar-no-questions",
               "states": ["no count on Messages"],
               "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorgallery--bottom-bar-yellow",
+              "states": ["theme color on a light accent"],
+              "interaction": false
             }
           ]
         }
