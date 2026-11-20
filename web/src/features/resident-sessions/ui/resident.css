@@ -312,7 +312,7 @@
   font-size: 13px;
 }
 
-/* ---- Footer slot: the one indicator between the count and the sync state ---- */
+/* ---- Footer slot: the one indicator, right next to the sync state on its left ---- */
 
 .status-bar:has(.resident-footer) {
   min-height: 36px;
@@ -322,7 +322,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-inline: auto;
+  margin-inline-start: auto;
+  margin-inline-end: -10px;
   padding: 2px 6px;
   border: 0;
   background: none;
