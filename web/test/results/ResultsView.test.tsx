@@ -65,11 +65,35 @@ describe('ResultsView', () => {
     ]);
     fireEvent.click(screen.getByRole('button', { name: 'Enlarge image 2 of 3 of result 3' }));
     expect(screen.getByText('2 / 3')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+    // No arrow buttons: images are reached by swiping (scrolling) or the arrow keys.
+    expect(screen.queryByRole('button', { name: /(Next|Previous) image/ })).toBeNull();
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
     expect(screen.getByText('3 / 3')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Next image' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    fireEvent.keyDown(document, { key: 'ArrowRight' });
+    expect(screen.getByText('3 / 3')).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    expect(screen.getByText('2 / 3')).toBeTruthy();
+  });
+
+  it('follows a sideways swipe of the enlarged view and keeps each image in its own scrolling slide', () => {
+    const many: TaskResult = {
+      version: 3,
+      key: 'c',
+      kind: 'final',
+      title: 'Mock',
+      summary: 'Mock screens',
+      attachmentIds: ['s1', 's2', 's3'],
+      at: '2026-11-20T03:00:00Z',
+    };
+    render(<ResultsView state={{ status: 'ready', results: [many] }} attachmentUrl={url} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Enlarge image 1 of 3 of result 3' }));
+    const viewer = document.querySelector('[data-viewer]') as HTMLElement;
+    expect(viewer.querySelectorAll('.results__slide')).toHaveLength(3);
+    expect(screen.getByText('1 / 3')).toBeTruthy();
+    Object.defineProperty(viewer, 'clientWidth', { value: 300, configurable: true });
+    viewer.scrollLeft = 600;
+    fireEvent.scroll(viewer);
+    expect(screen.getByText('3 / 3')).toBeTruthy();
   });
 
   it('shows a text-only result without an image', () => {
