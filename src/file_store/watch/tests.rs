@@ -1,4 +1,5 @@
 use super::*;
+use std::str::FromStr;
 
 const ID: &str = "0123456789abcdef0123456789abcdef";
 
