@@ -62,19 +62,19 @@ The command assigns the timestamp and applies AI write permissions; it needs no 
 
 ### Deliver a result {#deliver-a-result}
 
-Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`), optionally with images (`--file`, repeated for several images, up to 20 in the order given) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
+Record the first result the requester can look at, even while the work goes on, and keep working. A result is short text (`--summary`) with an optional heading (`--title`, 1 to 80 characters on one line), optionally with images (`--file`, repeated for several images, up to 20 in the order given) and a link or storage location of the main artifact (`--link`). Without `--final` the result is in progress; `--final` marks the finished one.
 
 If an AI task has all its conditions met but no final result, `agboard progress` and the agent hook list it under `finalResultMissing` so the agent records one. This never blocks or delays automatic Done, and a Done task still accepts its first final result.
 
 ```sh
-agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
+agboard --project "My project" result add 1 --title "First draft" --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
 agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai
 agboard --project "My project" result add 1 --summary "All screens of the mock" --file 01.png --file 02.png --file 03.png --actor ai
 agboard --project "My project" result add 1 --summary "Finished and checked" --final --actor ai
 agboard --project "My project" result ls 1
 ```
 
-Each result gets the next version number of the task (1, 2, and so on). Recording one changes neither the column nor the run state, and adds one history entry. Repeating the same delivery is safe: the command finds the result it already recorded, reports `created: false`, and writes nothing. Without `--key` the delivery is recognized by its content (kind, summary, link, and the image's bytes); give `--key <key>` to name it yourself. Reusing a key for different content fails with `invalid_value`. The summary and the link are 1 to 2,000 characters, and a task keeps up to 100 results. An AI cannot record a result on a person's draft, an archived task, or a Done task, except that repeating a result that was already recorded succeeds.
+Each result gets the next version number of the task (1, 2, and so on). Recording one changes neither the column nor the run state, and adds one history entry. Repeating the same delivery is safe: the command finds the result it already recorded, reports `created: false`, and writes nothing. Without `--key` the delivery is recognized by its content (kind, summary, link, and the image's bytes); give `--key <key>` to name it yourself. Reusing a key for different content fails with `invalid_value`. Without `--title`, the title is the first sentence of the summary, cut to 80 characters (the last one is `…` when it was cut); the title is part of what makes a delivery the same one, so repeating a delivery with another title is a different result unless you pass the same `--key` (which then fails with `invalid_value`). The summary and the link are 1 to 2,000 characters, and a task keeps up to 100 results. An AI cannot record a result on a person's draft, an archived task, or a Done task, except that repeating a result that was already recorded succeeds.
 ### Finish a task
 
 To finish, record the verification in `TASK.md` and set each verified acceptance condition's `done` to `true`. The server moves eligible AI tasks to Done automatically (the hook and waiting commands start it when needed), so do not run `mv ... done --actor ai`. See the [Markdown file format](./file-format) for the rules. A Done task is read-only for agents; a user can reopen it when more work is needed.

@@ -62,19 +62,19 @@ agboard --project "My project" history add 1 --reason-file progress.txt
 
 ### 成果を届ける {#deliver-a-result}
 
-依頼者が見られる最初の成果ができたら、作業の途中でも記録し、そのまま作業を続けます。成果は短い文章（`--summary`）で、画像（`--file`。複数の画像は繰り返して指定し、指定した順に最大20枚）と、主な成果物へのリンクまたは保存場所（`--link`）を添えられます。`--final`を付けない成果は途中のもの、`--final`を付けると完成したものです。
+依頼者が見られる最初の成果ができたら、作業の途中でも記録し、そのまま作業を続けます。成果は短い文章（`--summary`）と、任意の見出し（`--title`。1行で1〜80文字）で、画像（`--file`。複数の画像は繰り返して指定し、指定した順に最大20枚）と、主な成果物へのリンクまたは保存場所（`--link`）を添えられます。`--final`を付けない成果は途中のもの、`--final`を付けると完成したものです。
 
 AIタスクの条件がすべて満たされているのに最終の成果がないとき、`agboard progress`とエージェントのHookが`finalResultMissing`にそのタスクを載せ、エージェントに成果の記録を促します。自動Doneを止めたり遅らせたりはせず、Doneになったタスクにも最初の最終の成果を記録できます。
 
 ```sh
-agboard --project "My project" result add 1 --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
+agboard --project "My project" result add 1 --title "First draft" --summary "The first 30 seconds are ready" --link ./out/draft.mp4 --actor ai
 agboard --project "My project" result add 1 --summary "Top page capture" --file top.png --actor ai
 agboard --project "My project" result add 1 --summary "All screens of the mock" --file 01.png --file 02.png --file 03.png --actor ai
 agboard --project "My project" result add 1 --summary "Finished and checked" --final --actor ai
 agboard --project "My project" result ls 1
 ```
 
-成果には、タスクごとに次の版番号（1、2、……）が付きます。記録しても列と稼働状態は変わらず、履歴が1件増えます。同じ成果を繰り返し送っても安全です。すでに記録した成果を見つけて`created: false`を返し、何も書きません。`--key`を省くと、内容（種別・要約・リンク・画像のバイト列）で同じ成果かを判断します。`--key <key>`で自分で名前を付けることもでき、別の内容に同じキーを使うと`invalid_value`で失敗します。要約とリンクは1〜2,000文字、1つのタスクに残せる成果は100件までです。AIは、人の下書き・アーカイブ済み・完了のタスクには成果を記録できません。ただし、すでに記録した成果の再送は成功します。
+成果には、タスクごとに次の版番号（1、2、……）が付きます。記録しても列と稼働状態は変わらず、履歴が1件増えます。同じ成果を繰り返し送っても安全です。すでに記録した成果を見つけて`created: false`を返し、何も書きません。`--key`を省くと、内容（種別・要約・リンク・画像のバイト列）で同じ成果かを判断します。`--key <key>`で自分で名前を付けることもでき、別の内容に同じキーを使うと`invalid_value`で失敗します。`--title`を省くと、タイトルは要約の最初の1文を80文字までに切ったものになります（切ったときは最後が`…`）。タイトルは同じ成果かどうかの判断にも含まれるため、別のタイトルで送り直すと、同じ`--key`を使わない限り別の成果になります（同じ`--key`では`invalid_value`で失敗します）。要約とリンクは1〜2,000文字、1つのタスクに残せる成果は100件までです。AIは、人の下書き・アーカイブ済み・完了のタスクには成果を記録できません。ただし、すでに記録した成果の再送は成功します。
 
 ### タスクを終える
 

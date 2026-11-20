@@ -30,7 +30,7 @@ fn list(ctx: &mut Context, args: &ResultLsArgs) -> Result<Outcome, AgboardError>
                     r.version,
                     r.kind.as_str(),
                     crate::clock::format_utc(r.at),
-                    r.summary.lines().next().unwrap_or_default()
+                    r.title
                 )
             })
             .collect()
@@ -73,6 +73,7 @@ fn add(ctx: &mut Context, args: &ResultAddArgs) -> Result<Outcome, AgboardError>
             } else {
                 ResultKind::Progress
             },
+            title: args.title.clone(),
             summary: args.summary.clone(),
             link: args.link.clone(),
             images,

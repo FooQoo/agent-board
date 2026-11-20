@@ -73,6 +73,15 @@
   margin-left: auto;
 }
 
+.results__title {
+  margin: 0;
+  color: var(--r-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
 .results__summary {
   margin: 0;
   color: var(--r-text);

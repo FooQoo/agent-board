@@ -44,6 +44,7 @@ Each tab loads its text when you open it. The number on the **History** tab appe
 When an agent delivers a result with `agboard result add` (see [Deliver a result](../reference/cli.md#deliver-a-result)), it appears in the **Results** tab. Results are listed newest first. Each one shows:
 
 - a badge, **In progress** or **Final**, with its version and the time it was delivered;
+- the title, as the heading of the result: the title the agent gave, or the first sentence of the summary when it gave none;
 - the summary;
 - the images, if there are any. One image is shown large; several images are a row of thumbnails that scrolls sideways. Select one to see it larger, and use the arrows to step through the others;
 - the link or storage location of the main artifact, if there is one. When it is an `http:` or `https:` URL, such as a pull request, it is a link: tap or select it to open it in a new tab (on an iPhone Home Screen app, in Safari). Any other value, such as a file path or a `file:` address, is shown as text only, because the artifact may exist only on the PC.

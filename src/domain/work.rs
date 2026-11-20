@@ -142,11 +142,16 @@ impl ResultKind {
 /// `version` counts up from 1 within the task and never changes or repeats;
 /// `key` identifies the delivery, so a retry finds the entry it already made.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[serde(from = "StoredTaskResult", rename_all = "camelCase")]
 pub struct TaskResult {
     pub version: u32,
     pub key: String,
     pub kind: ResultKind,
+    /// The heading of the result, at most `MAX_RESULT_TITLE_CHARS` characters.
+    /// It is the title the agent gave or, for a result recorded without one,
+    /// the first sentence of the summary (see `derive_result_title`), so it is
+    /// always present.
+    pub title: String,
     pub summary: String,
     /// The image of a result that has exactly one. Written for one image so
     /// that the file stays readable by older versions; see `image_ids`.
@@ -159,6 +164,77 @@ pub struct TaskResult {
     pub link: Option<String>,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
+}
+
+/// The longest result title, in characters.
+pub const MAX_RESULT_TITLE_CHARS: usize = 80;
+
+/// The title of a result that was recorded without one: the first sentence of
+/// the summary, cut to `MAX_RESULT_TITLE_CHARS` characters (the last one is
+/// `…` when it was cut). A sentence ends at the first line break, at `。`, `！`
+/// or `？`, or at `.`, `!` or `?` followed by white space or the end.
+pub fn derive_result_title(summary: &str) -> String {
+    let line = summary.trim().lines().next().unwrap_or("").trim();
+    let chars: Vec<char> = line.chars().collect();
+    let mut end = chars.len();
+    for (i, c) in chars.iter().enumerate() {
+        let ideographic = matches!(c, '。' | '！' | '？');
+        let latin =
+            matches!(c, '.' | '!' | '?') && chars.get(i + 1).is_none_or(|n| n.is_whitespace());
+        if ideographic || latin {
+            end = i + 1;
+            break;
+        }
+    }
+    let sentence: Vec<char> = chars[..end].to_vec();
+    if sentence.len() > MAX_RESULT_TITLE_CHARS {
+        let mut cut: String = sentence[..MAX_RESULT_TITLE_CHARS - 1].iter().collect();
+        cut.push('…');
+        cut
+    } else {
+        sentence.into_iter().collect()
+    }
+}
+
+/// `task.json` entry of a result as stored: `title` is absent from results
+/// recorded before titles existed, and is derived when the entry is read.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct StoredTaskResult {
+    version: u32,
+    key: String,
+    kind: ResultKind,
+    #[serde(default)]
+    title: Option<String>,
+    summary: String,
+    #[serde(default)]
+    attachment_id: Option<String>,
+    #[serde(default)]
+    attachment_ids: Vec<String>,
+    #[serde(default)]
+    link: Option<String>,
+    #[serde(with = "crate::clock::serde_utc")]
+    at: DateTime<Utc>,
+}
+
+impl From<StoredTaskResult> for TaskResult {
+    fn from(s: StoredTaskResult) -> Self {
+        let title = s
+            .title
+            .filter(|t| !t.trim().is_empty())
+            .unwrap_or_else(|| derive_result_title(&s.summary));
+        Self {
+            version: s.version,
+            key: s.key,
+            kind: s.kind,
+            title,
+            summary: s.summary,
+            attachment_id: s.attachment_id,
+            attachment_ids: s.attachment_ids,
+            link: s.link,
+            at: s.at,
+        }
+    }
 }
 
 impl TaskResult {

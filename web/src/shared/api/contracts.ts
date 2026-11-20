@@ -30,6 +30,8 @@ export interface TaskResult {
   version: number;
   key: string;
   kind: 'progress' | 'final';
+  /** The heading: the title the agent gave, or the first sentence of the summary (at most 80 characters). */
+  title: string;
   summary: string;
   /** The ID of the image of a result that has exactly one; see `resultImageIds`. */
   attachmentId?: string;

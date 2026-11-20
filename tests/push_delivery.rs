@@ -226,6 +226,7 @@ fn ctx(reason: &str) -> ChangeContext {
 
 fn progress(summary: &str) -> ResultInput {
     ResultInput {
+        title: None,
         kind: ResultKind::Progress,
         summary: summary.into(),
         link: None,

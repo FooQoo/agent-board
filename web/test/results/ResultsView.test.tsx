@@ -10,11 +10,19 @@ beforeEach(() => {
 });
 
 const results: TaskResult[] = [
-  { version: 1, key: 'a', kind: 'progress', summary: 'First draft', at: '2026-11-20T01:00:00Z' },
+  {
+    version: 1,
+    key: 'a',
+    kind: 'progress',
+    title: 'First draft',
+    summary: 'First draft body',
+    at: '2026-11-20T01:00:00Z',
+  },
   {
     version: 2,
     key: 'b',
     kind: 'final',
+    title: 'Screen ready',
     summary: 'Screen is ready',
     attachmentId: 'img-1',
     link: 'storage/outputs/report.html',
@@ -42,6 +50,7 @@ describe('ResultsView', () => {
       version: 3,
       key: 'c',
       kind: 'final',
+      title: 'Mock',
       summary: 'Mock screens',
       attachmentIds: ['s1', 's2', 's3'],
       at: '2026-11-20T03:00:00Z',

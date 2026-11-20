@@ -9,6 +9,7 @@ function renderWithLink(link: string) {
     version: 1,
     key: 'k',
     kind: 'final',
+    title: 'Done',
     summary: 'done',
     link,
     at: '2026-11-20T05:10:00Z',
@@ -35,5 +36,31 @@ describe('ResultsView link', () => {
     renderWithLink(link);
     expect(screen.queryByRole('link')).toBeNull();
     expect(screen.getByText(link).tagName).toBe('SPAN');
+  });
+});
+
+describe('ResultsView title', () => {
+  it('shows the title as the heading of each result', () => {
+    const results: TaskResult[] = [
+      {
+        version: 1,
+        key: 'a',
+        kind: 'progress',
+        title: 'First look',
+        summary: 'S1',
+        at: '2026-11-20T05:10:00Z',
+      },
+      {
+        version: 2,
+        key: 'b',
+        kind: 'final',
+        title: 'Finished',
+        summary: 'S2',
+        at: '2026-11-20T06:10:00Z',
+      },
+    ];
+    render(<ResultsView state={{ status: 'ready', results }} attachmentUrl={() => ''} />);
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Finished', 'First look']);
   });
 });
