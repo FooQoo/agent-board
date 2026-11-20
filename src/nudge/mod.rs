@@ -10,6 +10,7 @@
 
 mod commands;
 mod question_rules;
+mod record_rules;
 mod rules;
 mod turn;
 
@@ -21,6 +22,8 @@ mod cases_question;
 mod commands_tests;
 #[cfg(test)]
 mod coverage;
+#[cfg(test)]
+mod record_cases;
 #[cfg(test)]
 pub mod test_support;
 #[cfg(test)]

@@ -143,27 +143,7 @@ pub fn all() -> Vec<Case> {
             ),
         ),
     ]);
-    // result-history
-    cases.extend([
-        case(
-            "result-history",
-            "a pull request and no result",
-            true,
-            running("Done.", vec![call(PR)]),
-        ),
-        case(
-            "result-history",
-            "a push and no result",
-            true,
-            running("Done.", vec![call("git push")]),
-        ),
-        case(
-            "result-history",
-            "a plain command",
-            false,
-            running("Done.", vec![call("cargo test")]),
-        ),
-    ]);
+    cases.extend(super::record_cases::all());
     cases.extend(super::cases_question::all());
     cases
 }
