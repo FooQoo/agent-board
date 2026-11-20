@@ -70,7 +70,7 @@ The **Summary** tab lists the periodic summaries the board records of the result
 
 Each item shows the window it covers in your local time, such as `11/20 09:00–10:00`, and one row for every result recorded in it: the task number and the result's title. Newest windows come first. A window without results has no item.
 
-To delete a summary from the list, press the trash button on the left of the item on the PC. On a phone, swipe the item to the left, or tap it, to show the trash tile on its right, then tap the tile. A sideways swipe that starts on an item moves that item and never switches the tab. A deleted summary disappears at once, and the board keeps its record on disk. If the board cannot delete it, the item comes back with a notice. The list also updates by itself when a new summary is recorded.
+To delete a summary from the list, press the trash button at the right end of the item's heading on the PC. On a phone, swipe the item to the left, or tap it, to show the trash tile on its right, then tap the tile. A sideways swipe that starts on an item moves that item and never switches the tab. A deleted summary disappears at once, and the board keeps its record on disk. If the board cannot delete it, the item comes back with a notice. The list also updates by itself when a new summary is recorded.
 
 The notification for a periodic summary opens the messages on this tab.
 
