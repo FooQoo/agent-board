@@ -168,7 +168,7 @@ impl Launcher {
             let reason = launcher.pump(tool, &launch_id, &project, driver.as_ref(), &push);
             // A session that dies in the middle of a turn leaves its task running too.
             if launcher.is_current_plan(tool, &launch_id) {
-                launcher.hand_over(&project, &push.take_handed(), &reason);
+                launcher.hand_over(&project, &push.take_all_handed(), &reason);
             }
             push.close();
             launcher.forget(tool, &launch_id);
