@@ -452,7 +452,7 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
   await expect(page.getByRole('dialog', { name: 'Ask AI' })).toBeVisible();
 });
 
-test('the bottom bar stays in front of an open sheet, the sheet stands on it, and its items switch sheets', async ({ page }) => {
+test('the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets', async ({ page }) => {
   await openPhone(page, 'Switch');
   // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
   const bar = page.locator('.phone-nav');
@@ -465,8 +465,13 @@ test('the bottom bar stays in front of an open sheet, the sheet stands on it, an
   const sheetBox = await messages.boundingBox();
   const barBox = await bar.boundingBox();
   if (!sheetBox || !barBox) throw new Error('the sheet or the bar has no box');
-  expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(barBox.y + 1);
-  expect(sheetBox.y + sheetBox.height).toBeGreaterThan(barBox.y - 3);
+  // The sheet's surface runs to the bottom of the screen, behind the bar, and its content ends at the bar.
+  const viewportHeight = page.viewportSize()?.height ?? 0;
+  expect(Math.abs(sheetBox.y + sheetBox.height - viewportHeight)).toBeLessThanOrEqual(1);
+  const contentBox = await messages.locator('.mobile-drawer__content').boundingBox();
+  if (!contentBox) throw new Error('the sheet has no content box');
+  expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
+  expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
   // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
   const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
     barBox.x + barBox.width / 2,

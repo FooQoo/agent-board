@@ -255,7 +255,7 @@
 
   body:has(.onboarding-panel--compact)
     .mobile-drawer.decision-sheet-popup[data-slot="drawer-popup"] {
-    height: calc(var(--stable-vh, 100svh) - 84px - var(--phone-nav-height, 0px));
+    height: calc(var(--stable-vh, 100svh) - 84px);
   }
 
   .onboarding-panel--compact .onboarding-panel__foot {

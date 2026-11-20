@@ -233,7 +233,7 @@
 
 /* The answer sheet rises to 56px below the top of the screen, as in the design. */
 .mobile-drawer.decision-sheet-popup[data-slot="drawer-popup"] {
-  height: calc(var(--stable-vh, 100svh) - 56px - var(--phone-nav-height, 0px));
+  height: calc(var(--stable-vh, 100svh) - 56px);
 }
 
 .decision-sheet {
