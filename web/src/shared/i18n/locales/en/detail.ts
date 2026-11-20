@@ -43,8 +43,6 @@ export const detailEn = {
     link: 'Link',
     enlarge: 'Enlarge the image of result {{version}}',
     enlargeNth: 'Enlarge image {{index}} of {{count}} of result {{version}}',
-    previousImage: 'Previous image',
-    nextImage: 'Next image',
     imagePosition: '{{index}} / {{count}}',
   },
   draft: {

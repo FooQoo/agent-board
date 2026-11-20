@@ -35,7 +35,15 @@
             },
             {
               "id": "task-detail-resultsview--multiple-images",
-              "states": ["several images as a strip", "enlarged view steps between images"],
+              "states": [
+                "several images as a strip",
+                "enlarged view moves between images by key, without arrow buttons"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-resultsview--tall-image-phone",
+              "states": ["tall image scrolls in the viewer", "phone width", "no arrow buttons"],
               "interaction": true
             },
             {
