@@ -139,7 +139,13 @@ export function MonitorView(props: MonitorViewProps) {
     if (detail.open) closeDrawer(false);
   };
   // The archive is read only while its list is open, and again after each restore.
-  const archiveSheet = useArchiveSheet(pending?.kind === 'list', projectId, writes, onWritten);
+  const archiveSheet = useArchiveSheet(
+    pending?.kind === 'list',
+    projectId,
+    writes,
+    onWritten,
+    overlay.unhide,
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
   // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
