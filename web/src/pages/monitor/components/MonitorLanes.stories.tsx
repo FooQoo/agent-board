@@ -156,7 +156,7 @@ function LanesStory({ pending, pendingTask, emptyDone, emptyArchive, ...screen }
       : pending === 'list'
         ? { kind: 'list' }
         : pending === 'list-revealed'
-          ? { kind: 'list', armed: 5, revealed: true }
+          ? { kind: 'list', revealed: 5 }
           : pending && target
             ? { kind: 'archive', item: target }
             : null;
@@ -358,20 +358,16 @@ export const ArchiveConfirm: Story = {
   },
 };
 
-/** まとめてアーカイブ is the bar's アーカイブ item: the lane has no such button of its own. */
+/** まとめてアーカイブ sits after the last card of the lane, not in the bar. */
 export const DoneLane: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
+    const lane = within(
+      canvasElement.querySelector('.monitor-lane[data-lane="done"]') as HTMLElement,
+    );
+    await expect(lane.getByRole('button', { name: 'まとめてアーカイブ' })).toBeEnabled();
     const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
-    const button = within(bar).getByRole('button', { name: 'まとめてアーカイブ' });
-    await expect(button).toBeEnabled();
-    await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
-    await expect(
-      within(canvasElement.querySelector('[data-lane="done"]') as HTMLElement).queryByRole(
-        'button',
-        { name: 'まとめてアーカイブ' },
-      ),
-    ).toBeNull();
+    await expect(within(bar).queryByRole('button', { name: 'まとめてアーカイブ' })).toBeNull();
   },
 };
 
@@ -385,14 +381,34 @@ export const BulkArchiveConfirm: Story = {
   },
 };
 
-/** The button beside the bar opens the bulk-archive confirmation as a drawer. */
-export const BulkArchiveFromBar: Story = {
+/** On the Done lane, a long swipe to the left past its end opens the bulk-archive confirmation as a drawer. */
+export const BulkArchiveBySwipe: Story = {
   args: { initialLane: 'done' },
   play: async ({ canvasElement }) => {
-    const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
-    await userEvent.click(within(bar).getByRole('button', { name: 'まとめてアーカイブ' }));
+    const lane = canvasElement.querySelector(
+      '.monitor-lane[data-lane="done"] .monitor-lane__scroll',
+    );
+    if (!lane) throw new Error('No Done lane.');
+    const rect = lane.getBoundingClientRect();
+    const y = rect.bottom - 24;
+    press(lane, 'pointerdown', rect.right - 40, y);
+    press(lane, 'pointermove', rect.right - 90, y);
+    press(lane, 'pointermove', rect.right - 160, y);
+    press(lane, 'pointerup', rect.right - 160, y);
     const sheet = await within(document.body).findByRole('dialog');
     await expect(sheet.getAttribute('data-slot')).toBe('drawer-popup');
+    await expect(within(sheet).getAllByRole('row')).toHaveLength(5);
+  },
+};
+
+/** The button after the last Done card asks the same, for a keyboard or a screen reader. */
+export const BulkArchiveButton: Story = {
+  args: { initialLane: 'done' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' }),
+    );
+    const sheet = await within(document.body).findByRole('dialog');
     await expect(within(sheet).getAllByRole('row')).toHaveLength(5);
   },
 };
@@ -421,33 +437,33 @@ export const ArchiveListEmpty: Story = {
   },
 };
 
-/** A row that was chosen and swiped right: the 復元 tile is open on its left. */
+/** A row swiped right: the 復元 tile is open on its left. */
 export const ArchiveRowRevealed: Story = {
   args: { initialLane: 'todo', pending: 'list-revealed' },
   play: async () => {
     const sheet = await within(document.body).findByRole('dialog');
-    const row = sheet.querySelector('[data-archive-row="5"]');
+    const row = sheet.querySelector('[data-archive-row="5"] .swipe-card');
     await expect(row).toHaveAttribute('data-revealed');
     await expect(within(sheet).getByRole('button', { name: '#5 を復元' })).toBeVisible();
   },
 };
 
-/** Tap a row, swipe it right, press 復元: the task leaves the list and returns to the lane it came from. */
+/** Swipe a row right, press 復元: the task leaves the list and returns to the lane it came from. */
 export const RestoreBySwipe: Story = {
   args: { initialLane: 'todo', pending: 'list' },
   play: async ({ canvasElement }) => {
     const sheet = await within(document.body).findByRole('dialog');
     const row = sheet.querySelector('[data-archive-row="3"]');
     if (!row) throw new Error('No row 3.');
-    await userEvent.click(within(row as HTMLElement).getByRole('button', { pressed: false }));
-    await waitFor(() => expect(row).toHaveAttribute('data-armed'));
-    const rect = row.getBoundingClientRect();
+    const card = row.querySelector('.swipe-card');
+    if (!card) throw new Error('No card in row 3.');
+    const rect = card.getBoundingClientRect();
     const y = rect.top + 20;
-    press(row, 'pointerdown', rect.left + 20, y);
-    press(row, 'pointermove', rect.left + 60, y);
-    press(row, 'pointermove', rect.left + 140, y);
-    press(row, 'pointerup', rect.left + 140, y);
-    await waitFor(() => expect(row).toHaveAttribute('data-revealed'));
+    press(card, 'pointerdown', rect.left + 20, y);
+    press(card, 'pointermove', rect.left + 60, y);
+    press(card, 'pointermove', rect.left + 140, y);
+    press(card, 'pointerup', rect.left + 140, y);
+    await waitFor(() => expect(card).toHaveAttribute('data-revealed'));
     await userEvent.click(within(sheet).getByRole('button', { name: '#3 を復元' }));
     await waitFor(() => expect(sheet.querySelector('[data-archive-row="3"]')).toBeNull());
     await expect(within(sheet).getAllByRole('listitem')).toHaveLength(2);
@@ -460,13 +476,13 @@ export const RestoreBySwipe: Story = {
   },
 };
 
-/** With nothing completed the bar's アーカイブ item is disabled and the lane says so. */
+/** With nothing completed the lane says so, and offers no bulk archive. */
 export const EmptyDoneLane: Story = {
   args: { initialLane: 'done', emptyDone: true },
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getByRole('button', { name: 'まとめてアーカイブ' }),
-    ).toBeDisabled();
+      within(canvasElement).queryByRole('button', { name: 'まとめてアーカイブ' }),
+    ).toBeNull();
     await expect(within(canvasElement).getByText('完了した作業はありません。')).toBeVisible();
   },
 };
@@ -477,19 +493,13 @@ export const BottomBar: Story = {
   play: async ({ canvasElement }) => {
     const bar = within(canvasElement).getByRole('navigation', { name: '主なナビゲーション' });
     const items = within(bar).getAllByRole('button');
-    // Five items in the dock; the bulk-archive button sits to their right, with no label.
     await expect(items.map((item) => item.textContent?.replace(/^\d+/, ''))).toEqual([
       'ボード',
       'メッセージ',
       '依頼',
       'アーカイブ',
       '設定',
-      '',
     ]);
-    await expect(items[5]).toHaveAccessibleName('まとめてアーカイブ');
-    await expect(items[4]?.getBoundingClientRect().right ?? 0).toBeLessThan(
-      items[5]?.getBoundingClientRect().left ?? 0,
-    );
     await expect(items[2]).toHaveAccessibleName('AI に依頼');
     await expect(within(bar).getByRole('button', { name: 'メッセージ 2' })).toBeVisible();
     // Clear of the home indicator: the bar ends inside the window.

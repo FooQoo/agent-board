@@ -40,6 +40,7 @@ const sheet = (props: Partial<Parameters<typeof ArchiveListSheet>[0]> = {}) =>
     <ArchiveListSheet
       data={response([task(5, 'done'), task(3, 'todo')])}
       status="ready"
+      projectName="Demo"
       onRestore={async () => {}}
       onClose={() => {}}
       {...props}
@@ -47,11 +48,16 @@ const sheet = (props: Partial<Parameters<typeof ArchiveListSheet>[0]> = {}) =>
   );
 
 describe('ArchiveListSheet', () => {
-  it('lists the archived tasks with the lane each one returns to', () => {
+  it('draws each archived task as a lane card, with the lane it returns to and the date under it', () => {
     sheet();
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(2);
+    // The card is the one the lanes use.
+    expect(rows[0]?.querySelector('article.monitor-card--done')).not.toBeNull();
+    expect(rows[1]?.querySelector('article.monitor-card--todo')).not.toBeNull();
+    expect(rows[0]?.querySelector('.swipe-card')).not.toBeNull();
     expect(within(rows[0] as HTMLElement).getByText('Returns to Done')).toBeTruthy();
+    expect(within(rows[0] as HTMLElement).getByText('Archived 2026-10-02')).toBeTruthy();
     expect(within(rows[1] as HTMLElement).getByText('Returns to Todo')).toBeTruthy();
   });
 
@@ -60,21 +66,17 @@ describe('ArchiveListSheet', () => {
     expect(screen.getByText('No archived tasks')).toBeTruthy();
   });
 
-  it('a tap chooses a row, and a second tap on another row moves the choice', async () => {
+  it('keeps Restore closed until a swipe, and a tap on a card chooses nothing', () => {
     const { container } = sheet();
     const row = container.ownerDocument.querySelector('[data-archive-row="3"]') as HTMLElement;
-    fireEvent.click(within(row).getByRole('button', { pressed: false }));
-    await waitFor(() => expect(row.hasAttribute('data-armed')).toBe(true));
-    expect(row.hasAttribute('data-revealed')).toBe(false);
-    const other = container.ownerDocument.querySelector('[data-archive-row="5"]') as HTMLElement;
-    fireEvent.click(within(other).getByRole('button', { pressed: false }));
-    await waitFor(() => expect(other.hasAttribute('data-armed')).toBe(true));
-    expect(row.hasAttribute('data-armed')).toBe(false);
+    fireEvent.click(within(row).getByText('Archived 3'));
+    expect(row.querySelector('[data-revealed]')).toBeNull();
+    expect(row.querySelector('[data-armed]')).toBeNull();
   });
 
-  it('pressing Restore restores that task and drops it from the list', async () => {
+  it('pressing Restore restores that task', async () => {
     const onRestore = vi.fn(async () => {});
-    sheet({ initialArmed: 3, initialRevealed: true, onRestore });
+    sheet({ initialRevealed: 3, onRestore });
     fireEvent.click(screen.getByRole('button', { name: 'Restore #3' }));
     await waitFor(() => expect(onRestore).toHaveBeenCalledWith(3));
   });
@@ -83,47 +85,31 @@ describe('ArchiveListSheet', () => {
     const onRestore = vi.fn(async () => {
       throw new Error('no');
     });
-    sheet({ initialArmed: 3, initialRevealed: true, onRestore });
+    sheet({ initialRevealed: 3, onRestore });
     fireEvent.click(screen.getByRole('button', { name: 'Restore #3' }));
     expect((await screen.findByRole('alert')).textContent).toContain('Could not restore');
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
 });
 
-describe('PhoneNavBar archive entries', () => {
-  const bar = (props: Partial<Parameters<typeof PhoneNavBar>[0]> = {}) => {
-    const handlers = {
-      onBoard: vi.fn(),
-      onMessages: vi.fn(),
-      onAsk: vi.fn(),
-      onArchive: vi.fn(),
-      onBulkArchive: vi.fn(),
-      onSettings: vi.fn(),
-    };
-    render(<PhoneNavBar {...handlers} {...props} />);
-    return handlers;
-  };
-
-  it('Archive opens the list and the button on its right opens the bulk archive', () => {
-    const handlers = bar();
+describe('PhoneNavBar', () => {
+  it('holds the five items only, with Archive opening the list', () => {
+    const onArchive = vi.fn();
+    render(
+      <PhoneNavBar
+        onBoard={vi.fn()}
+        onMessages={vi.fn()}
+        onAsk={vi.fn()}
+        onArchive={onArchive}
+        onSettings={vi.fn()}
+        current="archive"
+      />,
+    );
     const nav = screen.getByRole('navigation');
-    const buttons = within(nav).getAllByRole('button');
-    fireEvent.click(within(nav).getByRole('button', { name: 'Archived tasks' }));
-    expect(handlers.onArchive).toHaveBeenCalledOnce();
-    const bulk = within(nav).getByRole('button', { name: 'Archive all' });
-    expect(buttons.at(-1)).toBe(bulk);
-    fireEvent.click(bulk);
-    expect(handlers.onBulkArchive).toHaveBeenCalledOnce();
-    expect(handlers.onArchive).toHaveBeenCalledOnce();
-  });
-
-  it('dims the bulk button when nothing is done, and marks the open one', () => {
-    bar({ bulkArchiveDisabled: true, current: 'archive' });
-    expect(
-      (screen.getByRole('button', { name: 'Archive all' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(
-      screen.getByRole('button', { name: 'Archived tasks' }).getAttribute('aria-current'),
-    ).toBe('page');
+    expect(within(nav).getAllByRole('button')).toHaveLength(5);
+    const archive = within(nav).getByRole('button', { name: 'Archived tasks' });
+    expect(archive.getAttribute('aria-current')).toBe('page');
+    fireEvent.click(archive);
+    expect(onArchive).toHaveBeenCalledOnce();
   });
 });

@@ -480,8 +480,7 @@
                 "five items",
                 "Ask in the middle",
                 "count of open questions",
-                "clear of the home indicator",
-                "bulk-archive button to the right of the dock"
+                "clear of the home indicator"
               ],
               "interaction": true
             },
@@ -506,8 +505,13 @@
               "interaction": true
             },
             {
-              "id": "pages-monitor-components-monitorlanes--bulk-archive-from-bar",
-              "states": ["bulk-archive button", "bulk archive drawer"],
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-by-swipe",
+              "states": ["swipe left past the Done lane", "bulk archive drawer"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor-components-monitorlanes--bulk-archive-button",
+              "states": ["button after the last Done card", "bulk archive drawer"],
               "interaction": true
             },
             {
@@ -612,12 +616,12 @@
             },
             {
               "id": "pages-monitor-components-monitorlanes--archive-row-revealed",
-              "states": ["chosen row", "Restore tile open"],
+              "states": ["lane card in the list", "Restore tile open"],
               "interaction": true
             },
             {
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
-              "states": ["tap to choose", "swipe right", "Restore returns the task to its lane"],
+              "states": ["swipe right", "Restore returns the task to its lane"],
               "interaction": true
             }
           ]
@@ -632,12 +636,12 @@
           "stories": [
             {
               "id": "pages-monitor-components-monitorlanes--archive-row-revealed",
-              "states": ["chosen row", "Restore tile open"],
+              "states": ["lane card in the list", "Restore tile open"],
               "interaction": true
             },
             {
               "id": "pages-monitor-components-monitorlanes--restore-by-swipe",
-              "states": ["tap to choose", "swipe right", "Restore returns the task to its lane"],
+              "states": ["swipe right", "Restore returns the task to its lane"],
               "interaction": true
             }
           ]

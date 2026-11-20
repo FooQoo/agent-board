@@ -115,6 +115,10 @@ export function MonitorLanesScreen({
         onMove={(item, target) => void onMove(item, target)}
         onArchive={(item) => setPending({ kind: 'archive', item })}
         onOpenDetail={onOpenDetail}
+        onBulkArchive={() => {
+          panel.close();
+          setPending({ kind: 'bulk' });
+        }}
         onOpenAnswer={
           messagesApi
             ? (item) =>
@@ -133,7 +137,6 @@ export function MonitorLanesScreen({
         settings={sheetSettingsSlot}
         questionCount={countMessages(messages ?? []).fromAi}
         archiveDisabled={archive === undefined}
-        bulkArchiveDisabled={lanes.done.length === 0}
         open={panel.target !== null ? 'messages' : pendingNavItem(pending)}
         onMessages={() => {
           close();
@@ -147,10 +150,6 @@ export function MonitorLanesScreen({
         onArchive={() => {
           panel.close();
           setPending({ kind: 'list' });
-        }}
-        onBulkArchive={() => {
-          panel.close();
-          setPending({ kind: 'bulk' });
         }}
         onBoard={(then) => {
           panel.close();

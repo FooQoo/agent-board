@@ -1,7 +1,9 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
+import { ArchiveXIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
+import { useLaneOverscroll } from '../hooks/useLaneOverscroll';
 import { type PullState, REFRESHING_HEIGHT, usePullToRefresh } from '../hooks/usePullToRefresh';
 import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
@@ -24,6 +26,11 @@ export interface MonitorLanesProps {
   onArchive: (item: MonitorTaskModel) => void;
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
   onOpenAnswer?: (item: MonitorTaskModel) => void;
+  /**
+   * Swiping left on the last lane (Done) past its end, or the button after its cards, asks to
+   * archive every done card; the screen opens the confirmation. Without it neither is offered.
+   */
+  onBulkArchive?: () => void;
   id?: string;
   /** The tab bar: its marker follows the slide between lanes. */
   tabsRef?: RefObject<HTMLElement | null>;
@@ -43,7 +50,7 @@ const keyOf = (item: MonitorTaskModel) => `${item.projectId}:${item.task.id}`;
  * The phone monitor's lanes: one lane on screen, the other two beside it in a carousel. Tabs and a
  * sideways swipe anywhere move it. A card held for a moment is chosen and shows a focus
  * ring; a later swipe on it slides it left to show the lane on the right and the archive, or right
- * to show the lane on the left. Nothing here writes: every action is a callback.
+ * to show the lane on the left. A swipe to the left past the Done lane asks for the bulk archive. Nothing here writes: every action is a callback.
  */
 export function MonitorLanes({
   lanes,
@@ -53,6 +60,7 @@ export function MonitorLanes({
   onArchive,
   onOpenDetail,
   onOpenAnswer,
+  onBulkArchive,
   id,
   tabsRef,
   previewRevealed,
@@ -79,6 +87,9 @@ export function MonitorLanes({
     viewportRef.current = node;
     carousel(node);
   };
+  const last = LANES[LANES.length - 1];
+  const canBulk = onBulkArchive !== undefined && lanes.done.length > 0;
+  useLaneOverscroll(viewportRef, lane === last && canBulk, () => onBulkArchive?.());
   const pull = usePullToRefresh({ container: viewportRef, lane, onRefresh, refreshing });
   const shown =
     previewPull === undefined
@@ -147,6 +158,17 @@ export function MonitorLanes({
                       />
                     </SwipeableCard>
                   ))
+                )}
+                {name === 'done' && canBulk && (
+                  <button
+                    type="button"
+                    className="monitor-lane__bulk"
+                    data-lane-ignore=""
+                    onClick={onBulkArchive}
+                  >
+                    <ArchiveXIcon aria-hidden="true" />
+                    {t('monitor.lanes.bulkArchive')}
+                  </button>
                 )}
               </div>
             </section>

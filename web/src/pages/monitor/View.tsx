@@ -198,6 +198,15 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         onRefresh={props.onRefresh}
         refreshing={props.refreshing}
+        onBulkArchive={
+          writes
+            ? () =>
+                leaveAsk(() => {
+                  closeSheets({ except: 'bulk' });
+                  ask({ kind: 'bulk' });
+                })
+            : undefined
+        }
         onOpenAnswer={
           props.messagesApi
             ? (item) =>
@@ -265,7 +274,6 @@ export function MonitorView(props: MonitorViewProps) {
         settings={settings}
         questionCount={countMessages(props.messages ?? []).fromAi}
         archiveDisabled={!writes}
-        bulkArchiveDisabled={!writes || ordered.done.length === 0}
         open={
           panel.target !== null
             ? 'messages'
@@ -286,12 +294,6 @@ export function MonitorView(props: MonitorViewProps) {
           leaveAsk(() => {
             closeSheets({ except: 'archive' });
             ask({ kind: 'list' });
-          })
-        }
-        onBulkArchive={() =>
-          leaveAsk(() => {
-            closeSheets({ except: 'bulk' });
-            ask({ kind: 'bulk' });
           })
         }
         onBoard={(then) =>

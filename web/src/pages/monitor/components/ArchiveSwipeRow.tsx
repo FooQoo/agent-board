@@ -1,40 +1,42 @@
 import { RotateCcwIcon } from 'lucide-react';
 import { type CSSProperties, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
 import { revealOffset, revealProgress } from '@/shared/lib/gesture/cardReveal';
+import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
 import type { ArchivedTask } from '../../../features/tasks/api/read';
-import { AssigneeLabel } from '../../../features/tasks/assignee/AssigneeLabel';
-import { EpicBadge } from '../../../features/epics/label/EpicBadge';
-import './archive-sheet.css';
+import type { ProjectId } from '../../../shared/api/contracts';
+import type { MonitorTask as MonitorTaskModel } from '../contracts';
+import { actionsWidth } from '../model/lanes';
+import { MonitorTask } from './MonitorTask';
+import './monitor-lanes.css';
 
-/** The width (px) of the Restore tile a right swipe uncovers. */
-const RESTORE_TILE_WIDTH = 88;
+/** One Restore tile on the left, as wide as a lane card's tiles. */
+const RESTORE_WIDTH = actionsWidth(1);
 
 export interface ArchiveSwipeRowProps {
   task: ArchivedTask;
-  /** The row a tap or a hold chose: only then does a right swipe slide it. */
-  armed: boolean;
+  projectId: ProjectId;
+  projectName: string;
   /** The Restore tile is showing. */
   revealed: boolean;
   /** The row is being restored: the tile cannot be pressed twice. */
   busy: boolean;
-  onArm: () => void;
   onRevealChange: (revealed: boolean) => void;
   onRestore: () => void;
 }
 
 /**
- * One archived task. A tap chooses the row (a focus ring shows); a swipe to the right on a chosen
- * row slides it and uncovers a Restore tile on its left. A tap on an open row closes the tile.
- * The task returns to the lane it was archived from.
+ * One archived task, drawn with the card the lanes use. A swipe to the right uncovers the Restore
+ * tile at once, with no choosing first (nothing else in the drawer moves sideways). A tap on an
+ * open row closes the tile; a tap on a closed one does nothing, since an archived task has no
+ * detail to open. Under the card, the lane it returns to and the date it was archived.
  */
 export function ArchiveSwipeRow({
   task,
-  armed,
+  projectId,
+  projectName,
   revealed,
   busy,
-  onArm,
   onRevealChange,
   onRestore,
 }: ArchiveSwipeRowProps) {
@@ -44,79 +46,71 @@ export function ArchiveSwipeRow({
   const { drag, consumesClick, handlers } = useCardGesture(ref, {
     revealed: side,
     onRevealChange: (next) => onRevealChange(next === 'left'),
-    armed,
-    onArm,
-    leftWidth: RESTORE_TILE_WIDTH,
+    armed: true,
+    onArm: () => {},
+    leftWidth: RESTORE_WIDTH,
     rightWidth: 0,
   });
-  const offset = drag ?? revealOffset(side, RESTORE_TILE_WIDTH, 0);
+  const offset = drag ?? revealOffset(side, RESTORE_WIDTH, 0);
   const shown = offset > 0;
-  const lane = t(`monitor.status.${task.taskStatus}`);
+  // The card never reads more than a list card shows; an archived task is one of those.
+  const item = { projectId, projectName, task } as MonitorTaskModel;
   return (
-    <div
-      ref={ref}
-      className="archive-swipe"
-      role="listitem"
-      data-archive-row={task.id}
-      data-revealed={revealed || undefined}
-      data-armed={armed || undefined}
-      data-dragging={drag !== null || undefined}
-      {...handlers}
-      onClickCapture={(event) => {
-        // The click that ends a swipe is not a tap; a tap on an open row closes it.
-        if ((event.target as Element).closest('[data-swipe-action]')) return;
-        if (consumesClick()) {
-          event.preventDefault();
-          event.stopPropagation();
-        } else if (revealed) {
-          event.preventDefault();
-          event.stopPropagation();
-          onRevealChange(false);
-        }
-      }}
-    >
+    <div role="listitem" className="archive-row" data-archive-row={task.id}>
       <div
-        className="archive-swipe__actions"
-        data-revealed={shown || undefined}
-        style={
-          {
-            width: `${shown ? Math.min(RESTORE_TILE_WIDTH, offset) : 0}px`,
-            '--reveal': shown ? revealProgress(offset, RESTORE_TILE_WIDTH) : 0,
-          } as CSSProperties
-        }
+        ref={ref}
+        className="swipe-card"
+        data-swipe-card={task.id}
+        data-revealed={revealed ? 'left' : undefined}
+        data-dragging={drag !== null || undefined}
+        {...handlers}
+        onClickCapture={(event) => {
+          // The click that ends a swipe is not a tap; a tap on an open row closes it.
+          if ((event.target as Element).closest('[data-swipe-action]')) return;
+          if (consumesClick() || revealed) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (revealed && !consumesClick()) onRevealChange(false);
+          }
+        }}
       >
-        <button
-          type="button"
-          data-swipe-action
-          className="archive-swipe__restore"
-          tabIndex={revealed ? 0 : -1}
-          aria-hidden={!revealed}
-          aria-label={t('archive.restoreTask', { id: task.id })}
-          disabled={busy}
-          onClick={onRestore}
+        <div
+          className="swipe-card__actions"
+          data-side="left"
+          data-revealed={shown || undefined}
+          style={
+            {
+              width: `${shown ? Math.min(RESTORE_WIDTH, offset) : 0}px`,
+              '--reveal': shown ? revealProgress(offset, RESTORE_WIDTH) : 0,
+            } as CSSProperties
+          }
         >
-          <RotateCcwIcon aria-hidden="true" />
-          <span>{t('archive.restore')}</span>
-        </button>
+          <button
+            type="button"
+            data-swipe-action
+            className="swipe-card__tile"
+            tabIndex={revealed ? 0 : -1}
+            aria-hidden={!revealed}
+            aria-label={t('archive.restoreTask', { id: task.id })}
+            disabled={busy}
+            onClick={onRestore}
+          >
+            <RotateCcwIcon aria-hidden="true" />
+          </button>
+        </div>
+        <div
+          className="swipe-card__body"
+          style={offset !== 0 ? { transform: `translateX(${offset}px)` } : undefined}
+        >
+          <MonitorTask item={item} section={task.taskStatus} />
+        </div>
       </div>
-      <button
-        type="button"
-        className="archive-swipe__body"
-        aria-pressed={armed}
-        style={offset !== 0 ? { transform: `translateX(${offset}px)` } : undefined}
-        onClick={onArm}
-      >
-        <span className="archive-swipe__id">#{task.id}</span>
-        <span className="archive-swipe__title">{task.title}</span>
-        <AssigneeLabel assignee={task.assignee} />
-        <span className="archive-swipe__meta">
-          <span>{t('archive.returnsTo', { lane })}</span>
-          <time dateTime={task.archivedAt ?? undefined}>
-            {task.archivedAt?.slice(0, 10) ?? '—'}
-          </time>
-          {task.epic && <EpicBadge epic={task.epic} className="archive-swipe__epic" />}
-        </span>
-      </button>
+      <p className="archive-row__meta">
+        <span>{t('archive.returnsTo', { lane: t(`monitor.status.${task.taskStatus}`) })}</span>
+        <time dateTime={task.archivedAt ?? undefined}>
+          {t('archive.archivedOn', { date: task.archivedAt?.slice(0, 10) ?? '—' })}
+        </time>
+      </p>
     </div>
   );
 }

@@ -9,13 +9,12 @@ export type LanePending =
   | { kind: 'archive'; item: MonitorTask }
   | { kind: 'bulk' }
   /** The list of archived tasks, opened from the bar's Archive item. */
-  | { kind: 'list'; armed?: number; revealed?: boolean }
+  | { kind: 'list'; revealed?: number }
   | null;
 
-/** The bar item a sheet of the lanes belongs to. */
-export function pendingNavItem(pending: LanePending): 'archive' | 'bulkArchive' | null {
-  if (pending?.kind === 'list') return 'archive';
-  return pending?.kind === 'bulk' ? 'bulkArchive' : null;
+/** The bar item a sheet of the lanes belongs to; the bulk archive is opened from the Done lane, not the bar. */
+export function pendingNavItem(pending: LanePending): 'archive' | null {
+  return pending?.kind === 'list' ? 'archive' : null;
 }
 
 export interface MonitorLaneDialogsProps {
@@ -54,8 +53,8 @@ export function MonitorLaneDialogs({
     return archive && onRestore ? (
       <ArchiveListSheet
         {...archive}
-        initialArmed={pending.armed ?? null}
-        initialRevealed={pending.revealed}
+        projectName={projectName}
+        initialRevealed={pending.revealed ?? null}
         onRestore={onRestore}
         onClose={onCancel}
       />

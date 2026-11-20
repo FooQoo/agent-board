@@ -167,3 +167,31 @@
     animation: none;
   }
 }
+
+/* After the last card of the Done lane: the same ask as swiping left past the lane's end. */
+.monitor-lane__bulk {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--r-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--r-text2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.monitor-lane__bulk svg {
+  width: 16px;
+  height: 16px;
+}
+
+.monitor-lane__bulk:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
