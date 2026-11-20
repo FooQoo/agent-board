@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { onDismissSettingsSheets } from '@/shared/lib/sheets/dismissSheets';
 import { onNotificationDialogRequest } from '../events';
 
 // The dialog's code loads when it is first asked for, not with the board.
@@ -8,6 +9,8 @@ const NotificationDialog = lazy(() => import('./NotificationDialog'));
 export function NotificationHost({ push }: { push?: ReactNode }) {
   const [open, setOpen] = useState(false);
   useEffect(() => onNotificationDialogRequest(() => setOpen(true)), []);
+  // The phone bar switching tabs closes the sheet, so the chosen screen is the one on show.
+  useEffect(() => onDismissSettingsSheets(() => setOpen(false)), []);
   if (!open) return null;
   return (
     <Suspense fallback={null}>
