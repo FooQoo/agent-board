@@ -24,6 +24,15 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor--sheet-stands-on-bar",
+              "states": [
+                "bottom bar in front of an open sheet",
+                "sheet bottom edge on the bar",
+                "Board closes the sheet"
+              ],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor--standalone-safe-area",
               "states": [
                 "Home Screen app",

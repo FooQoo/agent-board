@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { type ReactNode, useLayoutEffect, useMemo, useState } from 'react';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { SAMPLE_PROJECT, sampleMessagesApi } from '../../features/tasks/messages/messageSamples';
 import type { Message } from '../../shared/data/api/contracts';
 import { health } from '../../features/resident-sessions/fixtures';
@@ -201,6 +201,40 @@ export const BarAskAi: StoryObj<typeof WiredPhoneStory> = {
   play: async ({ canvasElement, args }) => {
     await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
     await expect(args.onAsk).toHaveBeenCalledOnce();
+  },
+};
+
+/**
+ * A sheet opened from the bar stands on the bar: the bar is in front of the sheet and its backdrop and
+ * stays tappable, the sheet's bottom edge is the bar's top, and Board closes the sheet.
+ */
+export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
+  args: { onAsk: fn() },
+  globals: { locale: 'en', width: 'phone-390' },
+  render: (args) => (
+    <StandaloneInsets>
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
+    </StandaloneInsets>
+  ),
+  play: async ({ canvasElement }) => {
+    const nav = within(canvasElement).getByRole('navigation', { name: 'Main navigation' });
+    await userEvent.click(within(nav).getByRole('button', { name: /^Messages/ }));
+    const sheet = await body().findByRole('dialog', { name: 'Messages' });
+    // The sheet slides in: wait for it to rest before measuring.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const navBox = nav.getBoundingClientRect();
+    await expect(sheet.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
+    await expect(sheet.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
+    // The bar is what a tap on its middle reaches, above the sheet's backdrop, and it takes pointer events.
+    const centre = [navBox.left + navBox.width / 2, navBox.top + navBox.height / 2] as const;
+    await expect(nav.contains(document.elementFromPoint(...centre))).toBe(true);
+    await expect(getComputedStyle(nav).pointerEvents).toBe('auto');
+    // A tap on Board closes the sheet. The dialog marks the page behind it aria-hidden, so the bar is
+    // found by its hidden role; it is still on screen and tappable.
+    await userEvent.click(within(nav).getByRole('button', { name: 'Board', hidden: true }));
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Messages' })).toBeNull());
   },
 };
 

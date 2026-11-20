@@ -1,6 +1,18 @@
 /* The phone screen's bottom bar: a floating dock inset from the screen edges. It clears the home indicator. */
 
+:root[data-phone-nav] {
+  /*
+   * How much of the screen's bottom the bar takes: its 48px items, 4px padding and 1px border on both
+   * sides, and the margin below it. A sheet stops this far above the bottom. It is derived from the bar's
+   * fixed sizes, so it needs no measuring and follows --safe-bottom at once. Without a bar it is unset
+   * and every sheet reads 0px.
+   */
+  --phone-nav-height: calc(48px + 2 * 4px + 2 * 1px + max(10px, var(--safe-bottom)));
+}
+
 .phone-nav {
+  /* A modal sheet turns pointer events off outside itself; the bar must stay tappable. */
+  pointer-events: auto;
   display: grid;
   flex: none;
   grid-auto-flow: column;
@@ -14,6 +26,22 @@
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.06),
     0 8px 24px -8px rgb(0 0 0 / 0.18);
+}
+
+/* While a sheet is mounted (open or closing) the bar rides above it and its backdrop (z-index 50 and 49). */
+body:has(.mobile-drawer) .phone-nav {
+  position: relative;
+  z-index: 60;
+}
+
+/* The bar covers the home indicator's strip, so a sheet standing on it needs no inset of its own. */
+:root[data-phone-nav] .mobile-drawer__content[data-slot="drawer-content"] {
+  padding-bottom: 0;
+}
+
+/* With the on-screen keyboard open the sheet sits on the keyboard and the bar stays behind it. */
+:root[data-visual-keyboard] body:has(.mobile-drawer) .phone-nav {
+  visibility: hidden;
 }
 
 .phone-nav__item {

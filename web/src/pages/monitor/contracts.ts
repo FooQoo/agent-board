@@ -103,6 +103,8 @@ export interface MonitorViewProps {
   onSummaryLinkClose?(): void;
   /** The bar's Ask item opens "Ask AI"; the screen leaves it to this callback. */
   onAsk?(): void;
+  /** The bar switched to another sheet or to the board: the Ask sheet closes. */
+  onAskClose?(): void;
   /** The Ask sheet is open, so the bar shows Ask as the open item. */
   asking?: boolean;
   /** Read-only resolvers used by the monitor drawer. */

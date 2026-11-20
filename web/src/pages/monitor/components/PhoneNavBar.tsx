@@ -6,6 +6,7 @@ import {
   SparklesIcon,
   type LucideIcon,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import './phone-nav.css';
 
@@ -42,6 +43,10 @@ const badgeText = (count: number) => (count > 9 ? '9+' : String(count));
  * The phone screen's bottom bar: Board, Messages, Ask, Archive and Settings. Ask sits in the
  * middle and is a little stronger than the rest. Everything except Board opens a drawer above the
  * board. The bar keeps clear of the home indicator through the `--safe-*` variables.
+ *
+ * While it is mounted the root carries `data-phone-nav`, which gives `--phone-nav-height` its value
+ * (see phone-nav.css): the sheets stop above the bar, and the bar stays in front of them and
+ * stays tappable. Drawer ignores an outside tap on `[data-phone-nav-bar]` instead of dismissing.
  */
 export function PhoneNavBar({
   current = 'board',
@@ -54,6 +59,11 @@ export function PhoneNavBar({
   onSettings,
 }: PhoneNavBarProps) {
   const { t } = useTranslation();
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-phone-nav', '');
+    return () => root.removeAttribute('data-phone-nav');
+  }, []);
   const entries: Entry[] = [
     { id: 'board', label: t('monitor.nav.board'), icon: KanbanIcon, onPick: onBoard },
     {
@@ -81,7 +91,7 @@ export function PhoneNavBar({
     { id: 'settings', label: t('settings.title'), icon: SettingsIcon, onPick: onSettings },
   ];
   return (
-    <nav className="phone-nav" aria-label={t('monitor.nav.label')}>
+    <nav className="phone-nav" data-phone-nav-bar="" aria-label={t('monitor.nav.label')}>
       {entries.map(({ id, label, name, icon: Icon, badge, disabled, onPick }) => {
         const selected = current === id;
         return (

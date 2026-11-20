@@ -14,7 +14,7 @@ export interface PhoneNavProps {
   onMessages: () => void;
   onAsk: () => void;
   onArchive: () => void;
-  /** Board: whatever is open closes. */
+  /** Board: every sheet the screen owns closes. Settings calls it before it opens. */
   onBoard: () => void;
 }
 
@@ -48,10 +48,23 @@ export function PhoneNav({
           setSettingsOpen(false);
           onBoard();
         }}
-        onMessages={onMessages}
-        onAsk={onAsk}
-        onArchive={onArchive}
-        onSettings={() => setSettingsOpen(true)}
+        // The bar stays in front of an open sheet, so each item first closes whatever is open.
+        onMessages={() => {
+          setSettingsOpen(false);
+          onMessages();
+        }}
+        onAsk={() => {
+          setSettingsOpen(false);
+          onAsk();
+        }}
+        onArchive={() => {
+          setSettingsOpen(false);
+          onArchive();
+        }}
+        onSettings={() => {
+          onBoard();
+          setSettingsOpen(true);
+        }}
       />
       <Suspense fallback={null}>
         {settings.render({ open: settingsOpen, onOpenChange: setSettingsOpen, restoreFocusRef })}
