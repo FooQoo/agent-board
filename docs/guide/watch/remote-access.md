@@ -180,13 +180,13 @@ The first time the Home Screen app opens, a dialog asks **Turn on notifications?
 
 ![The Home Screen app asking to turn on notifications](../../images/guide/push-prompt.png){.screenshot--narrow}
 
-To turn them on later, open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog. In a browser tab on an iPhone, that control only explains that the board must be added to the Home Screen first.
+To turn them on later, open the settings, choose **Notification settings** on the **Notifications** row, then choose **Enable notifications** at the top of the dialog. In a browser tab on an iPhone, that control only explains that the board must be added to the Home Screen first.
 
 ### Choose what is sent {#notified-about}
 
 **Notification settings** opens a dialog of its own, on the PC and in the phone layout; on a narrow screen it is a bottom sheet. The choices are saved on this PC, like the language and theme, and apply to the next notification. Changing them sends nothing by itself. Notifications are on by default, and at first results and the periodic summary are sent. Each of the four kinds can be switched off one by one. Below the kinds, **Summary interval** sets how often the board records a summary of the results (every 30 minutes, every hour, every 2 hours, every 4 hours, or off); the default is every hour. A window without results records and sends nothing.
 
-![Phone notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
+![Notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
 - A **question that needs my decision** arrives, once you switch it on, with a high priority. Tap it to open that question, ready to answer.

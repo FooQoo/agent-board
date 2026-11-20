@@ -94,7 +94,7 @@ function Loaded({
   );
 }
 
-/** The choices of the "Phone notifications" dialog, drawn from a loaded state. */
+/** The choices of the "Notifications" dialog, drawn from a loaded state. */
 export function NotificationSettingsView({
   state,
   onChange,
