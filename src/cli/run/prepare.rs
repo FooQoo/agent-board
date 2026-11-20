@@ -28,11 +28,9 @@ fn access(command: &Command) -> Access {
     match command {
         // The list of every project reads the catalog and names no project.
         Command::Ls(args) if args.all_projects => Access::ReadCatalog,
-        Command::Ls(_)
-        | Command::Show(_)
-        | Command::Snapshot(_)
-        | Command::Workspace(_)
-        | Command::Remote(_) => Access::ReadProject,
+        Command::Ls(_) | Command::Show(_) | Command::Snapshot(_) | Command::Workspace(_) => {
+            Access::ReadProject
+        }
         Command::Epic(args) => match args.command {
             EpicCommand::Ls | EpicCommand::Show(_) => Access::ReadProject,
             EpicCommand::Add(_)
@@ -143,7 +141,6 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Workspace(_) => commands::workspace::run(ctx),
         Command::Progress(args) => commands::progress::run(ctx, args),
         Command::Open(args) => commands::open::run(ctx, args),
-        Command::Remote(_) => commands::remote::run(ctx),
         Command::Hook(_)
         | Command::Skills(_)
         | Command::Message(_)

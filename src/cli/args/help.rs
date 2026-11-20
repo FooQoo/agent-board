@@ -22,7 +22,7 @@ Commands:
   message Ask the user questions, wait for the answers, and handle requests from the user
   rm      Delete a task (humans only; asks for confirmation)
   ls      List tasks
-  show    Show a task and its history
+  show    Show a task and its history, or the remote access (show remote)
   epic    Create, list, show, edit, or delete epics and their documents
   attachment Add, list, or read image attachments
   result     Record results for the requester, or list them
@@ -34,9 +34,8 @@ Commands:
   workspace Show the project's shared folder and where its files are
   serve   Show the board in your browser (-d runs it in the background)
   open    Open the project's board in your browser
-  remote  Show the ngrok state, public URL, and passcode for the phone
   stop    Stop the running server
-  setup   Install the Agent Board plugin for Codex and Claude Code
+  setup   Install the Agent Board plugin for Codex and Claude Code; set up remote access (setup remote)
   update  Update the installed Agent Board plugin to this version
 
 Workflow for agents:
@@ -46,7 +45,7 @@ Workflow for agents:
   agboard --project NAME progress --json
   agboard --project NAME ls --json
   agboard ls --all-projects --json
-  agboard --project NAME remote --json
+  agboard --project NAME show remote --json
   agboard --project NAME mv <id> doing --actor ai --reason \"Start\"
   agboard --project NAME state <id> running --actor ai --reason \"Working\"
   agboard --project NAME message ask --actor ai --task <id> --json --questions-json '{\"questions\":[{\"body\":\"Which plan?\",\"choices\":[{\"id\":\"a\",\"label\":\"Plan A\"},{\"id\":\"b\",\"label\":\"Plan B\"}]}]}'

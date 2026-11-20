@@ -5,9 +5,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::config::ConfigError;
 use super::contracts::{ConnectionStatus, PublicOrigin};
 use super::keychain::VaultError;
 use super::lifecycle::{Inner, MonitorConnections, idle_status};
+use super::types::FailureCode;
 use super::types::Settings;
 use super::types::{ForgetError, Secret, Snapshot, TokenSource};
 
@@ -20,8 +22,9 @@ impl MonitorConnections {
     /// The current state. The first call starts the keychain read in the
     /// background and waits for it at most `PROBE_GRACE`, without the lock.
     pub async fn snapshot(self: &Arc<Self>) -> Snapshot {
+        drop(self.synced());
         let _ = tokio::time::timeout(PROBE_GRACE, self.probed()).await;
-        self.snapshot_now(&self.lock())
+        self.snapshot_now(&self.synced())
     }
 
     pub(super) fn snapshot_now(&self, inner: &Inner) -> Snapshot {
@@ -37,11 +40,12 @@ impl MonitorConnections {
             return;
         }
         inner.probing = true;
+        let epoch = inner.probe_epoch;
         let this = self.clone();
         tokio::spawn(async move {
             let loaded = this.read_keychain().await;
             let mut inner = this.lock();
-            this.apply_probe(&mut inner, loaded);
+            let _ = this.apply_probe(&mut inner, loaded, epoch);
         });
     }
 
@@ -59,11 +63,12 @@ impl MonitorConnections {
         &self,
         inner: &mut Inner,
         loaded: Result<Option<Secret>, VaultError>,
-    ) {
-        // A save or delete since the read began made it obsolete: drop what it found.
-        if !inner.probing {
+        epoch: u64,
+    ) -> bool {
+        if epoch != inner.probe_epoch {
+            // The saved settings changed while the keychain was read: another read is needed.
             self.probed.notify_waiters();
-            return;
+            return false;
         }
         inner.probing = false;
         let saved = matches!(loaded, Ok(Some(_)));
@@ -78,6 +83,7 @@ impl MonitorConnections {
         }
         inner.keychain_saved = Some(saved);
         self.probed.notify_waiters();
+        true
     }
 
     /// Wait until the keychain has been looked at, starting the read if nobody
@@ -95,6 +101,52 @@ impl MonitorConnections {
                 self.probe_in_background(&mut inner);
             }
             notified.await;
+        }
+    }
+
+    /// Take in settings saved from the command line (`agboard setup remote`, `agboard setup`),
+    /// which write the file without going through this server. They always move the revision
+    /// forward, so a file whose revision is not the one held here is newer. A saved token is
+    /// found again too: the keychain is looked at again on the next read. A connection that is
+    /// up is left alone; the new settings apply to the next start. An unreadable file is ignored.
+    pub(super) fn synced(&self) -> std::sync::MutexGuard<'_, Inner> {
+        let mut inner = self.lock();
+        self.sync_locked(&mut inner);
+        inner
+    }
+
+    /// The lock on the settings file and then the state, taken in that order, with the state
+    /// brought up to date. Whoever changes the saved settings holds both until it has saved.
+    pub(super) fn write_guard(
+        &self,
+    ) -> Result<(super::config::ConfigLock, std::sync::MutexGuard<'_, Inner>), ConfigError> {
+        let file = self.store.lock()?;
+        Ok((file, self.synced()))
+    }
+
+    /// The file is read while the state is locked, so a read that is older than a save made here
+    /// can never replace it.
+    fn sync_locked(&self, inner: &mut Inner) {
+        let Ok(file) = self.store.load() else {
+            return;
+        };
+        if file.revision == inner.config.revision {
+            return;
+        }
+        inner.config = file;
+        if inner.failure == Some(FailureCode::ConfigUnreadable) {
+            inner.failure = None;
+        }
+        // A keychain read that is under way started before this change: its result is dropped.
+        inner.probe_epoch += 1;
+        inner.probing = false;
+        inner.keychain_saved = None;
+        if inner.token_source == Some(TokenSource::Keychain) {
+            inner.token = None;
+            inner.token_source = None;
+        }
+        if inner.run.is_none() && inner.failure.is_none() {
+            inner.status = idle_status(&inner.config, inner.token.is_some());
         }
     }
 
@@ -120,8 +172,11 @@ impl MonitorConnections {
             .unwrap_or(Err(VaultError::Failed))
             .map_err(|_| ForgetError::KeychainUnavailable)?;
         let mut inner = self.lock();
-        inner.keychain_saved = Some(false);
+        // A read started while the token was being deleted may have seen it: drop that result.
+        inner.probe_epoch += 1;
         inner.probing = false;
+        inner.keychain_saved = Some(false);
+        self.probed.notify_waiters();
         if inner.token_source == Some(TokenSource::Keychain) {
             inner.token = None;
             inner.token_source = None;

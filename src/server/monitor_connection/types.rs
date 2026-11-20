@@ -59,6 +59,19 @@ pub fn parse_domain(raw: &str) -> Option<String> {
         .then_some(domain)
 }
 
+/// The longest ngrok token accepted.
+const MAX_TOKEN: usize = 512;
+
+/// An ngrok token as typed: trimmed, not empty, not too long, with no space or control
+/// character. The board's connection dialog and `agboard setup remote` both use this.
+pub fn parse_token(raw: &str) -> Option<Secret> {
+    let token = raw.trim();
+    (!token.is_empty()
+        && token.len() <= MAX_TOKEN
+        && !token.chars().any(|c| c.is_control() || c.is_whitespace()))
+    .then(|| Secret::new(token))
+}
+
 impl MonitorEnv {
     pub fn from_process() -> Self {
         let get = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());

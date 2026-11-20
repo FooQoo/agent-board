@@ -11,6 +11,7 @@ pub mod lifecycle;
 pub mod paths;
 pub mod plugin_hash;
 pub mod progress;
+pub mod remote_settings;
 pub mod server;
 pub mod setup;
 pub mod skills;

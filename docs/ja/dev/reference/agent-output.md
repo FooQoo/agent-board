@@ -52,6 +52,7 @@
 - `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
 - 人が質問に回答し、まだどのエージェントも回答を受け取っていない（`reply`に`acceptedAt`がない）とき、表に`answers`配列がID順で加わります。各要素は`{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`で、`title`は依頼のタイトルと同じ規則、`tasks`はその質問を参照しているアーカイブされていないタスク、`choiceId`・`choiceLabel`・`text`は該当する部分がなければ`null`です。選択肢のある質問にメモだけで答えた場合は、`choiceId`と`choiceLabel`が`null`で`text`が設定されます。該当する回答がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で受け取ります。
 - 人からの依頼が未処理（受理も取り下げもされていない）のとき、表に`requests`配列がID順で加わります。各要素は`{"id":"Q-3","createdAt":"…","title":"…"}`で、`title`は依頼の最初の空でない行から見出しの記号を除いた80文字までです（超える分は`…`で終わります）。未処理の依頼がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で依頼を引き受けます。
+- AIタスクに受け入れ条件が1件以上あり、そのすべてが完了していて、`--final`の成果がないとき、表に`finalResultMissing`配列がID順で加わります。最大5件で、各要素は`{"id":21,"title":"…","taskPath":"…/tasks/21/TASK.md"}`です。タスクがTodoまたはDoingにあるあいだと、レーンがDoneに変わってから24時間は一覧に残ります。エージェントが成果を書く前に自動Doneが起きても促せるようにするためです。下書き、人のタスク、アーカイブ済み、条件が不正なタスクは含みません。エージェントは各要素について`result add --final`を記録し、記録すると要素は消えます。何かを止めたり遅らせたりはしません。自動Doneは成果を待ちません。該当するタスクがなければフィールドはありません。
 - 本文も履歴もありません。エージェントは、必要な`documentPath`と`taskPath`のファイルを読みます。
 - `cursor`は`wait --after`に渡す値です。
 - `locale`は、設定画面で選んだ言語で、エージェントが返答する言語の短い手がかりです。サーバーを介さず`<データ領域>/.internal/preferences.json`から読み、保存した言語が英語以外のとき（現在は`"ja"`）だけ含まれます。英語のとき、言語が保存されていないとき、ファイルがないか不正なときはフィールドがないため、既存の読み手には影響しません。`agboard progress`のテキスト形式には表示しません。
@@ -118,15 +119,25 @@ taskの項目を省略した例です。
 
 ## remote
 
-`agboard remote --json`は、動いているサーバーにngrok接続を問い合わせ、`ready`のときにオブジェクトを一つ出します。
+`agboard --project <name> show remote --json`は、動いているサーバーにngrok接続を問い合わせ、`ready`のときにオブジェクトを一つ出します。保存済みの設定も同じオブジェクトに入ります。
 
 ```json
-{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"}}
+{"status":"ready","url":"https://<name>.ngrok-free.app/?project=<id>","entrance":"https://<name>.ngrok-free.app","passcode":"2418","project":{"id":"<id>","name":"<name>"},"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":true,"keychainAvailable":true}
 ```
 
-`--project`は必須で、指定しないと`invalid_argument`（終了コード2）です。`url`は指定したプロジェクトのボードを開くアドレスで、`entrance`はプロジェクトを含まないアドレスです。指定したプロジェクトがなければ`project_not_found`です。
+`url`は指定したプロジェクトのボードを開くアドレスで、`entrance`はプロジェクトを含まないアドレスです。指定したプロジェクトがなければ`project_not_found`です。`show <id>`は、これまでどおりタスクを表示します。`show`がタスクIDの代わりに受け付ける語は`remote`だけです。
 
 それ以外のときは、標準出力には何も出さず、終了コード1と`remote_unavailable`で終わります。サーバーが動いていないか、接続が`ready`ではない場合です。エラーにはアドレスも合言葉も含まれません。サーバーはこの情報をローカルのアドレスにだけ返すので、合言葉はこのコンピューターの前にいる人にだけ届き、トンネルは通りません。[エラーコード](./errors.md#サーバーと待機)を参照してください。
+
+`--project`を付けない`agboard show remote --json`は、接続が止まっていても失敗せず、合言葉もプロジェクトのアドレスも出しません。
+
+```json
+{"enabled":true,"domain":"example.ngrok-free.dev","tokenSaved":false,"keychainAvailable":true,"status":"ready","entrance":"https://<name>.ngrok-free.dev"}
+```
+
+`status`は、サーバーが動いていなければ`no_server`、サーバーが応えなければ`unknown`です。それ以外は接続の状態（`ready`、`disabled`、`starting`、`reconnecting`、`failed`など）です。`entrance`は接続が`ready`のときだけアドレスで、それ以外は`null`です。ngrokのトークンは出力に含まれません。`tokenSaved`は、OSのキーチェーンにトークンがあるかどうかを示します。
+
+`agboard setup remote --domain … --enabled … --token-stdin --json`は、保存した設定を同じ4つのフィールド（`enabled`、`domain`、`tokenSaved`、`keychainAvailable`）で出力し、`saved: true`と、設定は次に接続を開始するときから使われることを伝える`note`を加えます。
 
 ## messageのイベント
 

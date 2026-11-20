@@ -1,52 +1,96 @@
-//! `agboard remote`: the ngrok connection state, the public address of the
-//! board, and the 4-digit passcode, so that an agent can hand the user a link
-//! to open the board on a phone.
+//! `agboard show remote`: the saved ngrok settings, the connection state, and, with a project,
+//! the public address of the board and the 4-digit passcode, so that an agent can hand the user
+//! a link to open the board on a phone.
 //!
 //! The running server is found through `serve.json` and asked on its loopback
 //! address, as `agboard open` finds it. The server answers
 //! `GET /api/monitor-connections` on the local router only, so the passcode
 //! goes to the person at this computer and never through the tunnel. Nothing
-//! is started here: without a ready connection there is no address and no
-//! passcode to print.
+//! is started here.
+//!
+//! - With a project, the command is what the old `agboard remote` was: only a ready connection with
+//!   an address and a passcode gives an outcome, anything else is `remote_unavailable`. The
+//!   outcome also carries the saved settings.
+//! - Without a project it reports the saved settings and whatever state the connection is
+//!   in, and never fails because the connection is down. It prints no passcode.
 
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, TcpStream};
+use std::path::Path;
 use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use crate::cli::{Context, Outcome, Target};
+use crate::cli::Outcome;
 use crate::error::AgboardError;
+use crate::remote_settings::{self as saved, Saved};
+use crate::server::monitor_connection::keychain::TokenVault;
 
 /// How long the server gets to answer, in total for each step.
 const TIMEOUT: Duration = Duration::from_secs(3);
 /// The status carries no secret but the passcode and is small.
 const MAX_REPLY: usize = 64 * 1024;
 
-pub fn run(ctx: &Context) -> Result<Outcome, AgboardError> {
-    let dir = ctx
-        .files
-        .shared_dir()
-        .parent()
-        .filter(|dir| !dir.as_os_str().is_empty())
-        .unwrap_or_else(|| std::path::Path::new("."))
-        .to_path_buf();
-    let info = crate::paths::read_serve_info_in(&dir)
-        .filter(crate::server::is_serving)
-        .ok_or_else(|| {
-            unavailable(
-                "No server is running, so there is no ngrok connection. Start one with \"NGROK_AUTHTOKEN=... agboard serve --monitor ngrok\", or turn the connection on in the board's settings.",
-            )
-        })?;
-    // `--project` is required, so the target is always an existing project.
-    let Target::Existing(meta) = &ctx.target else {
-        return Err(AgboardError::InvalidArgument {
-            message: "--project NAME is required.".to_string(),
-            command: Some("remote".to_string()),
-        });
+pub fn run(
+    data_dir: &Path,
+    project: Option<(String, String)>,
+    vault: &dyn TokenVault,
+) -> Result<Outcome, AgboardError> {
+    let settings = saved::read(data_dir, vault)?;
+    let info = crate::paths::read_serve_info_in(data_dir).filter(crate::server::is_serving);
+    let Some(project) = project else {
+        let status = info.map(|info| fetch_status(info.port));
+        return Ok(overview(&settings, status));
     };
+    let info = info.ok_or_else(|| {
+        unavailable(
+            "No server is running, so there is no ngrok connection. Start one with \"agboard serve\" and turn the connection on in the board's settings, or with \"NGROK_AUTHTOKEN=... agboard serve --monitor ngrok\".",
+        )
+    })?;
     let status = fetch_status(info.port)?;
-    build(&status, (meta.id.to_string(), meta.name.clone()))
+    let mut outcome = build(&status, project)?;
+    outcome.human.push_str(&settings.human());
+    for (key, value) in settings.to_json().as_object().into_iter().flatten() {
+        outcome.json[key] = value.clone();
+    }
+    Ok(outcome)
+}
+
+/// The saved settings and the state of the connection, for a run with no project. A server that
+/// is not running, or that did not answer, is a state to report, not an error.
+fn overview(settings: &Saved, status: Option<Result<Value, AgboardError>>) -> Outcome {
+    let (state, entrance) = match &status {
+        None => ("no_server", None),
+        Some(Err(_)) => ("unknown", None),
+        Some(Ok(status)) => (
+            status["status"].as_str().unwrap_or("unknown"),
+            status["url"]
+                .as_str()
+                .map(|url| url.trim_end_matches('/'))
+                .filter(|url| {
+                    state_is_ready(status)
+                        && url.starts_with("https://")
+                        && !url.contains(['?', '#'])
+                }),
+        ),
+    };
+    let mut json = settings.to_json();
+    json["status"] = json!(state);
+    json["entrance"] = json!(entrance);
+    let connection = match (state, entrance) {
+        ("no_server", _) => "no server is running".to_string(),
+        (state, Some(url)) => format!("{state} at {url}"),
+        (state, None) => state.to_string(),
+    };
+    Outcome {
+        changed: false,
+        human: format!("{}Connection: {connection}\n", settings.human()),
+        json,
+    }
+}
+
+fn state_is_ready(status: &Value) -> bool {
+    status["status"].as_str() == Some("ready")
 }
 
 /// The outcome for the status the server returned. Only a ready connection
@@ -91,7 +135,7 @@ fn not_ready_reason(status: &Value, state: &str) -> String {
         reason.push_str(&format!(" Failure: {failure}."));
     }
     reason.push_str(
-        " Start it with \"NGROK_AUTHTOKEN=... agboard serve --monitor ngrok\" or from the board's connection settings, and run this again once it is ready.",
+        " Start it with \"NGROK_AUTHTOKEN=... agboard serve --monitor ngrok\" or from the board's connection settings, and run this again once it is ready. \"agboard show remote\" without --project shows the saved settings.",
     );
     reason
 }

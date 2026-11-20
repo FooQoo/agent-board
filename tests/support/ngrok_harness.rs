@@ -173,6 +173,11 @@ pub struct MockVault {
     /// When set, `load` waits (until a message, a dropped sender or 20 seconds)
     /// as the OS keychain does while it asks the user for permission.
     pub hold: Mutex<Option<mpsc::Receiver<()>>>,
+    /// The second save fails, as a keychain that stops answering does; later ones go through.
+    pub fail_second_save: std::sync::atomic::AtomicBool,
+    saves: AtomicUsize,
+    /// Run once, right after the first successful save.
+    pub after_first_save: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 impl MockVault {
@@ -182,6 +187,9 @@ impl MockVault {
             usable,
             loads: AtomicUsize::new(0),
             hold: Mutex::new(None),
+            fail_second_save: std::sync::atomic::AtomicBool::new(false),
+            saves: AtomicUsize::new(0),
+            after_first_save: Mutex::new(None),
         })
     }
     pub fn saved(&self) -> Option<String> {
@@ -211,7 +219,16 @@ impl TokenVault for MockVault {
         if !self.usable {
             return Err(VaultError::Unavailable);
         }
+        let n = self.saves.fetch_add(1, Ordering::SeqCst);
+        if n == 1 && self.fail_second_save.load(Ordering::SeqCst) {
+            return Err(VaultError::Failed);
+        }
         *self.saved.lock().unwrap() = Some(token.expose().to_owned());
+        if n == 0
+            && let Some(hook) = self.after_first_save.lock().unwrap().take()
+        {
+            hook();
+        }
         Ok(())
     }
     fn delete(&self) -> Result<(), VaultError> {

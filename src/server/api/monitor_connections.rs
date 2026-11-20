@@ -20,7 +20,7 @@ use serde::Deserialize;
 use crate::server::AppState;
 use crate::server::guard::{header_text, origin_allowed};
 use crate::server::monitor_connection::lifecycle::{
-    ForgetError, Secret, SettingsUpdate, Snapshot, StartError, UpdateError, parse_domain,
+    ForgetError, SettingsUpdate, Snapshot, StartError, UpdateError, parse_domain, parse_token,
 };
 use crate::server::response::{error_response, forbidden, json_response};
 
@@ -49,7 +49,6 @@ pub(super) fn routes() -> Router<Arc<AppState>> {
 }
 
 const MAX_BODY: usize = 16 * 1024;
-const MAX_TOKEN: usize = 512;
 
 /// A read must not come from another site: a cross-site Fetch Metadata or a
 /// foreign Origin is refused.
@@ -176,16 +175,10 @@ pub(super) async fn start_ngrok(State(state): State<Arc<AppState>>, body: Bytes)
     let save = parsed.save;
     let token = match parsed.token {
         None => None,
-        Some(token) => {
-            let token = token.trim();
-            if token.is_empty()
-                || token.len() > MAX_TOKEN
-                || token.chars().any(|c| c.is_control() || c.is_whitespace())
-            {
-                return invalid("the ngrok token is not valid.");
-            }
-            Some(Secret::new(token))
-        }
+        Some(token) => match parse_token(&token) {
+            Some(token) => Some(token),
+            None => return invalid("the ngrok token is not valid."),
+        },
     };
     match state.monitor.start(token, save).await {
         Ok(snapshot) => snapshot_response(StatusCode::ACCEPTED, &snapshot),
