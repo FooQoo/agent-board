@@ -9,7 +9,7 @@
   min-height: 0;
   /* The header starts a gap below the status bar or the Dynamic Island, not flush against it. No bottom
      padding: the bottom dock keeps its own margin above the home indicator. */
-  padding: calc(var(--safe-top) + 8px) max(8px, var(--safe-right)) 0 max(8px, var(--safe-left));
+  padding: calc(var(--safe-top) + 16px) max(8px, var(--safe-right)) 0 max(8px, var(--safe-left));
   background: var(--r-bg);
   overflow: hidden;
 }
