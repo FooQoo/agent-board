@@ -42,7 +42,7 @@ Swipe the task back, or tap anywhere outside it, to close the buttons without a 
 
 ### Switch sheets from the bottom bar
 
-The bottom bar stays in front while a drawer is open, and the drawer's background continues to the bottom edge of the screen behind it. The drawer's content stops just above the bar, so nothing in it is hidden. Choose another item to replace the open drawer with that one, or choose **Board** to close it. While the on-screen keyboard is open, the bar is hidden, with or without a drawer, and the drawer sits on the keyboard with no empty strip above it. The bar returns when the keyboard closes.
+The bottom bar stays in front while a drawer is open, and the drawer's background continues to the bottom edge of the screen behind it. The drawer's content stops just above the bar, so nothing in it is hidden. Choose another item to replace the open drawer with that one, or choose **Board** to close it. If the open drawer is the **Ask** form and you have typed text or attached an image, the bar asks before it discards them; choose to keep editing and the form stays open. While the on-screen keyboard is open, the bar is hidden, with or without a drawer, and the drawer sits on the keyboard with no empty strip above it. The bar returns when the keyboard closes.
 
 ### Read a task
 
