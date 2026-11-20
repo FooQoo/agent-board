@@ -4,7 +4,7 @@ title: Remote access
 
 # Remote access
 
-Remote access opens the board from another device when you are away from your desk, most often a phone. Use it to check progress and to answer an agent's question. This page explains what the phone screen shows, how to connect it with ngrok, and how to check that it works.
+Remote access opens the board from another device when you are away from your desk, most often a phone. Use it to check progress and to answer an agent's question. This page explains what the phone screen shows, how to connect it with ngrok, how to use the board as a Home Screen app with notifications, and how to check that it works.
 
 ## What the monitor shows
 
@@ -146,31 +146,55 @@ If the connection drops, for example because the PC slept or the network changed
 
 When the connection was left on, it starts again the next time Agent Board starts, as long as a token is available from the environment or this PC's secure storage. Without one, the dialog asks for the token.
 
-## Get notifications on an iPhone
+## Use the board as a Home Screen app {#home-screen-app}
 
-An iPhone can receive notifications from the board once the board is on its Home Screen. No other notification app or account is needed.
+Adding the board's address to the phone's Home Screen gives it an icon of its own. It opens full screen, without the browser's address bar, like an app, and it is what lets the phone receive [notifications](#notifications). The phone must be registered first, so open the address in the phone's browser and enter the passcode as described in [Open it on the phone](#open-it-on-the-phone).
 
-1. Open the board's address in Safari on the iPhone and enter the passcode, so that the phone is registered.
+**iPhone (Safari)**
+
+1. Open the board's address in Safari.
 2. Tap Share, choose **Add to Home Screen**, and add it.
 3. Open **Agent Board** from the Home Screen icon, not from Safari.
-4. The first time the Home Screen app opens, a sheet asks **Turn on notifications?** Choose **Enable notifications** and allow notifications when iOS asks. Choose **Not now** to close it; the sheet is not shown again on this phone. It does not appear in a Safari tab, or once notifications are allowed or blocked.
-5. To turn them on later, open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog.
+
+**Android (Chrome)**
+
+1. Open the board's address in Chrome.
+2. Open the Chrome menu and choose **Add to Home screen** (on some versions, **Install app**), then confirm.
+3. Open **Agent Board** from the Home Screen icon.
+
+The Home Screen app is the same board as in the browser, with the same address, passcode, and session. Because ngrok chooses a new address at every start unless you set a domain, the icon opens the old address after the connection restarts; see [Keep the same address](#keep-the-same-address). On an iPhone, a link to a web page, such as a result's link, opens in Safari rather than inside the app.
+
+## Notifications in the app {#notifications}
+
+A phone that has the board on its Home Screen can receive notifications from it. No other notification app or account is needed.
+
+### Turn them on
+
+The first time the Home Screen app opens, a dialog asks **Turn on notifications?** Choose **Enable notifications** and allow notifications when the phone asks. Choose **Not now** to close it; the dialog is not shown again on this phone. It does not appear in a browser tab, or once notifications are allowed or blocked.
 
 ![The Home Screen app asking to turn on notifications](../../images/guide/push-prompt.png){.screenshot--narrow}
 
-To turn them off, choose **Turn off** in the same place. If you chose Don't Allow, the board keeps working; to allow notifications later, open the iPhone's Settings, choose Agent Board, and turn on Notifications. In a Safari tab that control only explains that the board must be added to the Home Screen first. Removing the phone in the dialog on the PC also stops its notifications, and they keep working after the PC restarts.
+To turn them on later, open the settings, choose **Notification settings** on the **Phone notifications** row, then choose **Enable notifications** at the top of the dialog. In a browser tab on an iPhone, that control only explains that the board must be added to the Home Screen first.
 
-### What you are notified about {#notified-about}
+### Choose what is sent {#notified-about}
 
-The board sends only what you chose in the **Phone notifications** dialog, which you open from [Settings](./board.md#phone-notifications). Notifications are on by default, and at first only results are sent. Questions that need your decision and history additions are off until you switch them on:
+**Notification settings** opens a dialog of its own, on the PC and in the phone layout; on a narrow screen it is a bottom sheet. The choices are saved on this PC, like the language and theme, and apply to the next notification. Changing them sends nothing by itself. Notifications are on by default, and at first only results are sent. All three kinds can be switched off one by one.
+
+![Phone notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
-- A **question** that needs your decision arrives, once you switch it on, with a high priority. Tap it to open that question, ready to answer.
-- **History additions** arrive only when you switch them on. Tap one to open the card on its **History** tab.
+- A **question that needs my decision** arrives, once you switch it on, with a high priority. Tap it to open that question, ready to answer.
+- A **history addition** arrives only when you switch it on. Tap it to open the card on its **History** tab.
 
-Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that a history entry was added. Tap the notification to read the whole text on the board.
+Each notification shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that a history entry was added. Tap the notification to read the whole text on the board.
 
 If one change matches several of the kinds you chose, for example a question that also adds a history entry, you get one notification, and it opens the result or the question. The same result or question is never shown twice on a phone, even if the board reads it again.
+
+### Turn them off or remove the phone
+
+To turn them off, choose **Turn off** in the same dialog. If you chose Don't Allow, the board keeps working; to allow notifications later, open the phone's own settings, choose Agent Board, and turn on Notifications. Removing the phone in the dialog on the PC (see [Registered phones](#registered-phones)) also stops its notifications, and they keep working after the PC restarts.
+
+### When nothing is sent
 
 Notifications carry a link, so they are sent only while the remote connection is up. If the connection is paused or the PC is off, nothing is sent for that time, and the board still shows everything. If the push service does not accept a notification, the board tries again a few times with growing pauses and then gives up; the result stays readable on the board either way. Notifications are encrypted from the PC to your phone; see [Security](../../dev/concepts/security.md#the-ngrok-entrance) for what the push service can see.
 
