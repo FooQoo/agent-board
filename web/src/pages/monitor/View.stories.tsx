@@ -206,7 +206,8 @@ export const BarAskAi: StoryObj<typeof WiredPhoneStory> = {
 
 /**
  * A sheet opened from the bar stands on the bar: the bar is in front of the sheet and its backdrop and
- * stays tappable, the sheet's bottom edge is the bar's top, and Board closes the sheet.
+ * stays tappable, the sheet's surface runs to the bottom of the screen behind it while its content ends at
+ * the bar's top, and Board closes the sheet.
  */
 export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
   args: { onAsk: fn() },
@@ -225,8 +226,12 @@ export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
     // The sheet slides in: wait for it to rest before measuring.
     await new Promise((resolve) => setTimeout(resolve, 400));
     const navBox = nav.getBoundingClientRect();
-    await expect(sheet.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
-    await expect(sheet.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
+    await expect(
+      Math.abs(sheet.getBoundingClientRect().bottom - window.innerHeight),
+    ).toBeLessThanOrEqual(1);
+    const content = sheet.querySelector<HTMLElement>('.mobile-drawer__content') as HTMLElement;
+    await expect(content.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
+    await expect(content.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
     // The bar is what a tap on its middle reaches, above the sheet's backdrop, and it takes pointer events.
     const centre = [navBox.left + navBox.width / 2, navBox.top + navBox.height / 2] as const;
     await expect(nav.contains(document.elementFromPoint(...centre))).toBe(true);
