@@ -21,6 +21,8 @@ A session the board starts runs without a person watching it, and it approves th
 3. Under **Model**, keep **Default model** or choose one from the list. If the list cannot be read, the dialog says why and offers only the default.
 4. Choose **Start**. While the request runs, the controls are disabled and the button reads **Starting…**. Choose **Stop** to end the session, or **Restart** after a failure.
 
+If the agent is in the middle of a turn (the state is **Working on a task**), **Stop** first asks `Stop while it is working?`. Stopping then cuts the agent off: unfinished work is lost, and a task it was handling stays Running until you or another agent takes it over. Choose **Stop anyway** to go on, or **Keep running** to close the question. The board cannot see background work an agent started itself, so treat a working agent as busy. A waiting agent is idle and stops at once with no question, and so does a failed or restarting one.
+
 ![The resident agent dialog with a waiting Claude Code session, the tool and model choices, and the external sessions list](../../images/guide/resident-session.png){.screenshot}
 
 The tool and model you choose apply from the next start. While a session runs with another choice, the dialog shows `Next start: …`.

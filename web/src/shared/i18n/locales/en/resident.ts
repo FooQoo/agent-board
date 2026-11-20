@@ -42,6 +42,11 @@ export const residentEn = {
     restart: 'Restart',
     starting: 'Starting…',
     stopping: 'Stopping…',
+    stopBusyTitle: 'Stop while it is working?',
+    stopBusyBody:
+      'The agent is in the middle of a turn, or may be waiting on background work. Stopping now cuts it off: the unfinished work is lost, and a task it was handling stays Running until you or another agent takes it over.',
+    stopBusyConfirm: 'Stop anyway',
+    stopBusyCancel: 'Keep running',
     startFailed: 'Could not start: {{reason}}',
     requestFailed: 'The request failed: {{reason}}',
     unreachable: 'Could not reach the board. Check that it is running.',

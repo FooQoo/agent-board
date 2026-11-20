@@ -326,3 +326,36 @@ it('shows every attachment after the description and only offers viewing control
   await userEvent.click(within(zoom).getByRole('button', { name: 'Close' }));
   expect(screen.queryByRole('dialog')).toBeNull();
 });
+
+it('opens an attachment at the tapped one and reaches the others by swiping', async () => {
+  const make = (id: string, name: string) => ({
+    id,
+    name,
+    mediaType: 'image/png',
+    size: 50,
+    createdAt: '2026-10-08T00:00:00Z',
+  });
+  renderDetail(
+    <DetailPanel
+      projectId={PROJECT_A.id}
+      task={makeTask({
+        id: 1,
+        description: 'Text without an image reference',
+        attachments: [
+          make('0123456789abcdef0123456789abcde1', 'a.png'),
+          make('0123456789abcdef0123456789abcde2', 'b.png'),
+          make('0123456789abcdef0123456789abcde3', 'c.png'),
+        ],
+      })}
+      onClose={noop}
+      onRemove={noRemove}
+    />,
+  );
+  const list = await screen.findByRole('region', { name: 'Image attachments' });
+  await userEvent.click(within(list).getByRole('button', { name: 'Preview b.png' }));
+  const zoom = screen.getByRole('dialog', { name: 'b.png' });
+  expect(within(zoom).getByText('2 / 3')).toBeTruthy();
+  await userEvent.keyboard('{ArrowRight}');
+  expect(within(zoom).getByText('3 / 3')).toBeTruthy();
+  expect(screen.getByRole('dialog', { name: 'c.png' })).toBeTruthy();
+});

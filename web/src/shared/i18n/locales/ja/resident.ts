@@ -43,6 +43,11 @@ export const residentJa = {
     restart: '再起動',
     starting: '起動しています…',
     stopping: '停止しています…',
+    stopBusyTitle: '作業中ですが停止しますか?',
+    stopBusyBody:
+      'エージェントはターンの途中で、裏の作業を待っている可能性もあります。いま止めると中断され、終わっていない作業は失われます。扱っていたタスクは、あなたか別のエージェントが引き継ぐまで実行中のままです。',
+    stopBusyConfirm: '停止する',
+    stopBusyCancel: '続ける',
     startFailed: '起動できませんでした: {{reason}}',
     requestFailed: '操作に失敗しました: {{reason}}',
     unreachable: 'ボードに接続できません。起動しているか確認してください。',

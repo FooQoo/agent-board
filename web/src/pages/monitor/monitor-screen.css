@@ -92,6 +92,12 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  /*
+   * iOS WebKit paints the overlay scroll indicator in the scroller's own layer. The cards inside
+   * (rounded, clipped, and moved by a swipe) get layers of their own, and these hid the indicator
+   * behind them. A layer for the scroller itself keeps the indicator above its cards.
+   */
+  transform: translateZ(0);
 }
 .monitor-list__section {
   display: flex;
@@ -597,6 +603,8 @@
   overscroll-behavior: contain;
   scrollbar-gutter: auto;
   touch-action: pan-y;
+  /* Keeps the scroll indicator above the swipe cards inside (see `.monitor-list`). */
+  transform: translateZ(0);
 }
 .monitor-drawer__tablist .detail__tab[aria-selected="true"] {
   color: var(--r-accent);

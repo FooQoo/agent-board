@@ -125,6 +125,31 @@
               "id": "resident-residentview--log-japanese",
               "states": ["japanese", "log empty state"],
               "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-while-working",
+              "states": ["stop asks while working", "keep running focused", "stop anyway"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-cancelled",
+              "states": ["keep running closes the question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-while-waiting",
+              "states": ["idle session stops without a question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-sheet-japanese",
+              "states": ["phone", "japanese", "stop question"],
+              "interaction": true
+            },
+            {
+              "id": "resident-residentview--stop-asks-dark",
+              "states": ["dark theme", "stop question"],
+              "interaction": true
             }
           ]
         }

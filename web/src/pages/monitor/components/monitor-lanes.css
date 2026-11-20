@@ -121,6 +121,8 @@
   padding-bottom: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Own compositing layer: see the note on `.monitor-list` in monitor-screen.css. */
+  transform: translateZ(0);
 }
 
 /* Pull to refresh: the indicator above the cards of the lane on screen. */

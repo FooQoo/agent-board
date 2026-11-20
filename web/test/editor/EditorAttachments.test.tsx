@@ -30,9 +30,11 @@ beforeEach(() => {
 function Host({
   onFiles = vi.fn(),
   notice = null,
+  attachments = [attachment],
 }: {
   onFiles?: (files: File[]) => void;
   notice?: AttachmentNotice | null;
+  attachments?: (typeof attachment)[];
 }) {
   const [value, setValue] = useState('Before after');
   const editorRef = useRef<RichMarkdownEditorHandle>(null);
@@ -44,7 +46,7 @@ function Host({
       onDescriptionChange={setValue}
       editorRef={editorRef}
       disabled={false}
-      attachments={[attachment]}
+      attachments={attachments}
       onFiles={onFiles}
       onRemoveAttachment={() => {}}
       attachmentNotice={notice}
@@ -90,6 +92,17 @@ describe('editor attachment side panel', () => {
     if (input === null) throw new Error('missing file input');
     fireEvent.change(input, { target: { files: [file] } });
     expect(onFiles).toHaveBeenCalledExactlyOnceWith([file]);
+  });
+
+  it('opens at the tapped picture and reaches the others by swiping', async () => {
+    const second = { ...attachment, id: 'b'.repeat(32), name: 'second.png', url: 'blob:b' };
+    const third = { ...attachment, id: 'c'.repeat(32), name: 'third.png', url: 'blob:c' };
+    render(<Host attachments={[attachment, second, third]} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Preview second.png' }));
+    const dialog = screen.getByRole('dialog', { name: 'second.png' });
+    expect(within(dialog).getByText('2 / 3')).toBeTruthy();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('dialog', { name: 'third.png' })).toBeTruthy();
   });
 
   it('closes only the enlarged picture on Escape, returns focus to its thumbnail and keeps the draft', async () => {
