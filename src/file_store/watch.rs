@@ -208,6 +208,7 @@ async fn reload_loop(
     docs: DocsSink,
 ) {
     let mut due: HashMap<Target, Instant> = HashMap::new();
+    let mut prints = prints::NotifyPrints::baseline(&root);
     loop {
         let next = due.values().min().copied();
         tokio::select! {
@@ -231,8 +232,17 @@ async fn reload_loop(
                     match target {
                         Target::Docs(id) => (docs.0)(Some(id.clone())),
                         // Lost events may have been in any project's Docs.
-                        Target::All => (docs.0)(None),
-                        Target::Notify(id) => changed.send(super::notify::summaries_changed(id)),
+                        Target::All => {
+                            (docs.0)(None);
+                            // Announce only the summary changes that no event announced yet.
+                            for id in prints.changed_since(&root) {
+                                changed.send(super::notify::summaries_changed(&id));
+                            }
+                        }
+                        Target::Notify(id) => {
+                            prints.seen(&root, id);
+                            changed.send(super::notify::summaries_changed(id));
+                        }
                         Target::Project(_) => {}
                     }
                 }
@@ -296,6 +306,7 @@ fn apply(root: &Path, index: &RwLock<ProjectIndex>, changed: &ChangeSink, ready:
 }
 
 mod mode;
+mod prints;
 
 #[cfg(test)]
 mod tests;

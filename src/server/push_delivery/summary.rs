@@ -80,6 +80,18 @@ pub(super) fn record(
     }
 }
 
+/// [`record`] over the tasks as the files hold them now, not as the index does. A project that
+/// cannot be read is an `Err`, retried like a failed write.
+pub(super) fn record_from_files(
+    store: &FileStore,
+    project: &ProjectId,
+    floor: DateTime<Utc>,
+    to: DateTime<Utc>,
+) -> Result<Option<Summary>, ()> {
+    let snapshot = store.snapshot(project).map_err(|_| ())?;
+    record(store, project, &snapshot.tasks, floor, to)
+}
+
 fn clock(at: DateTime<Utc>) -> String {
     at.with_timezone(&Local).format("%H:%M").to_string()
 }
@@ -134,13 +146,12 @@ pub(super) fn payload_of(
     })
 }
 
-/// What each project holds now: its id and the tasks of its last good read.
-fn snapshots(state: &AppState) -> Vec<(ProjectId, Vec<TaskView>)> {
+/// The projects the index holds. Their tasks are read from the files when a window closes: the
+/// index lags a save by the watcher delay, so a result recorded just before the end of a window
+/// could be missing from it, and the next window would not take it back.
+fn project_ids(state: &AppState) -> Vec<ProjectId> {
     let index = state.index.read().unwrap_or_else(|e| e.into_inner());
-    index
-        .entries()
-        .filter_map(|(id, entry)| Some((id.clone(), entry.last_good()?.tasks.clone())))
-        .collect()
+    index.entries().map(|(id, _)| id.clone()).collect()
 }
 
 /// Follow the clock and record a summary each time a window ends. The task ends with the server.
@@ -180,16 +191,16 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
             // notification that was due while the entrance was down is recorded, never sent
             // after it comes back.
             let entrance_up = *due_up.get_or_insert_with(|| super::runtime::entrance_up(&state));
-            let mut projects = snapshots(&state);
-            projects.retain(|(id, _)| !done.contains(id));
+            let mut projects = project_ids(&state);
+            projects.retain(|id| !done.contains(id));
             let shared = state.shared.clone();
             let written = tokio::task::spawn_blocking(move || {
                 let store = FileStore::open(&shared);
                 let mut failed = false;
                 let mut recorded = Vec::new();
                 let mut written = Vec::new();
-                for (id, tasks) in &projects {
-                    match record(&store, id, tasks, floor, to) {
+                for id in &projects {
+                    match record_from_files(&store, id, floor, to) {
                         Ok(summary) => {
                             recorded.push(id.clone());
                             if let Some(s) = summary {

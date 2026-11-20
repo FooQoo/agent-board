@@ -140,3 +140,51 @@ fn recording_continues_from_the_newest_stored_summary_and_skips_an_empty_window(
     assert_eq!(next.results[0].title, "Two");
     assert_eq!(store.summaries(&project).unwrap().len(), 2);
 }
+
+#[test]
+fn a_result_saved_just_before_the_end_of_a_window_is_in_its_summary() {
+    use crate::domain::{Actor, Assignee, NewTask, ResultKind};
+    use crate::file_store::ResultInput;
+    let root = tempfile::tempdir().unwrap();
+    let store = FileStore::open(&root.path().join("shared"));
+    let project = store.create_project("Alpha", at(0, 0)).unwrap().id;
+    let task = store
+        .create_task(
+            &project,
+            NewTask {
+                title: "T".into(),
+                description: String::new(),
+                assignee: Assignee::Ai,
+                actor: Actor::Human,
+                draft: None,
+            },
+            at(0, 0),
+        )
+        .unwrap()
+        .id;
+    // A copy of the tasks as an index that has not caught up would hold them.
+    let stale = store.snapshot(&project).unwrap().tasks;
+    store
+        .add_result(
+            &project,
+            task,
+            ResultInput {
+                kind: ResultKind::Progress,
+                title: Some("Late".into()),
+                summary: "Late.".into(),
+                link: None,
+                images: Vec::new(),
+                key: None,
+            },
+            at(10, 59),
+        )
+        .unwrap();
+    assert!(
+        Summary::for_window(&stale, at(10, 0), at(11, 0)).is_none(),
+        "the stale copy misses the result"
+    );
+    let summary = record_from_files(&store, &project, at(10, 0), at(11, 0))
+        .unwrap()
+        .unwrap();
+    assert_eq!(summary.results[0].title, "Late");
+}
