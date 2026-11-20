@@ -203,10 +203,24 @@ pub fn save_batch_reporting(project: &Path, changes: Vec<FileChange>) -> Result<
     }
     journal.phase = Phase::Committed;
     if let Err(error) = write_journal(&path, &journal) {
-        recover_batches_locked(project).map_err(BatchFailure::before)?;
-        return Err(BatchFailure::before(error));
+        // The Committed journal may have been renamed into place before the failure (a later
+        // sync can fail), and recovery then keeps the new files. Only a rollback that is
+        // established, with every target back at its old bytes, is reported as uncommitted.
+        let recovered = recover_batches_locked(project).is_ok();
+        return Err(if recovered && rolled_back(project, &journal.changes) {
+            BatchFailure::before(error)
+        } else {
+            BatchFailure::after(error)
+        });
     }
     finish_committed(&path, &dir)
+}
+
+/// Whether every target holds its old bytes again.
+fn rolled_back(project: &Path, changes: &[FileChange]) -> bool {
+    changes
+        .iter()
+        .all(|c| read_optional(project, &c.target).is_ok_and(|now| now == c.old))
 }
 
 /// Remove the journal of a committed batch. The new files are durable already, so a failure
@@ -372,5 +386,28 @@ mod tests {
         // Cleanup that fails after the journal was marked committed is past the commit point.
         let failure = finish_committed(&project.join("missing.json"), project).unwrap_err();
         assert!(failure.committed);
+    }
+
+    #[test]
+    fn a_committed_journal_kept_by_recovery_is_reported_as_committed() {
+        // Recovery after a failed committed-marker write: the journal is Committed on disk.
+        let root = tempfile::tempdir().unwrap();
+        let project = root.path();
+        fs::create_dir_all(project.join("tasks/1")).unwrap();
+        fs::write(project.join("tasks/1/TASK.md"), "new").unwrap();
+        let changes = vec![change("tasks/1/TASK.md", Some("old"), Some("new"))];
+        let journal = BatchJournal {
+            format_version: 1,
+            phase: Phase::Committed,
+            hashes: hashes(&changes),
+            changes,
+        };
+        fs::create_dir_all(project.join(DIR)).unwrap();
+        write_journal(&project.join(DIR).join(format!("{RID}.json")), &journal).unwrap();
+        assert!(recover_batches_locked(project).is_ok());
+        assert!(!rolled_back(project, &journal.changes));
+        // A prepared journal is rolled back and reported as such.
+        fs::write(project.join("tasks/1/TASK.md"), "old").unwrap();
+        assert!(rolled_back(project, &journal.changes));
     }
 }
