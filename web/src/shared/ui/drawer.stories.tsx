@@ -12,11 +12,13 @@ function DrawerDemo({
   initialOpen = false,
   withLabel = false,
   longBody = false,
+  fitKeyboard = false,
   onOpenChange,
 }: {
   initialOpen?: boolean;
   withLabel?: boolean;
   longBody?: boolean;
+  fitKeyboard?: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(initialOpen);
@@ -31,6 +33,7 @@ function DrawerDemo({
           setOpen(next);
           onOpenChange(next);
         }}
+        fitKeyboard={fitKeyboard}
         identity="#42"
         title={DRAWER_TITLE}
         label={withLabel ? <Badge>Doing</Badge> : undefined}
@@ -180,5 +183,26 @@ export const DragDownDismissesAndReopensAtRest: Story = {
     const reopened = within(document.body).getByRole('dialog', { name: DRAWER_TITLE });
     await waitFor(() => expect(reopened.getAnimations()).toHaveLength(0));
     await expect(reopened.getBoundingClientRect().top).toBeCloseTo(rest, 0);
+  },
+};
+
+/** With the keyboard open, a second shadow paints the sheet's surface 64px below its bottom edge, so the keyboard's transparent margin shows the sheet and not the backdrop. */
+export const KeyboardOpenExtendsSurface: Story = {
+  args: { initialOpen: true, fitKeyboard: true },
+  play: async () => {
+    const root = document.documentElement;
+    root.setAttribute('data-visual-keyboard', '');
+    root.style.setProperty('--keyboard-inset', '300px');
+    try {
+      const sheet = within(document.body).getByRole('dialog', { name: DRAWER_TITLE });
+      const surface = getComputedStyle(sheet).backgroundColor;
+      await waitFor(() => {
+        const shadow = getComputedStyle(sheet).boxShadow;
+        expect(shadow).toContain(`${surface} 0px 64px 0px 0px`);
+      });
+    } finally {
+      root.removeAttribute('data-visual-keyboard');
+      root.style.removeProperty('--keyboard-inset');
+    }
   },
 };

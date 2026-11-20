@@ -25,10 +25,15 @@
   padding-bottom: 0;
   /* The second shadow is the sheet's own box moved down by the keyboard inset, with no blur: it paints
      the sheet's surface over the strip between the sheet and the bottom of the layout viewport, where
-     Safari draws its floating address pill and form bar, so the board never shows through there. */
+     Safari draws its floating address pill and form bar, so the board never shows through there. That
+     shadow leaves a gap when the sheet is shorter than the keyboard, so the third one is the box moved
+     down 64px: iOS 26 leaves a transparent margin around the keyboard's rounded accessory bar, and this
+     paints the sheet's surface there instead of the dim backdrop. A shadow, not a pseudo-element,
+     because the sheet clips its overflow. It sits behind the sheet, so the content does not move. */
   box-shadow:
     0 -8px 32px rgb(0 0 0 / 14%),
-    0 var(--keyboard-inset, 0px) 0 0 var(--r-surface);
+    0 var(--keyboard-inset, 0px) 0 0 var(--r-surface),
+    0 64px 0 0 var(--r-surface);
 }
 
 /* The sheet is a focus target for the script, not a control: no ring on it, however the browser matches
