@@ -9,11 +9,21 @@ import {
   footerVisible,
   initialChoice,
   isActive,
+  isBusy,
   isForOtherProject,
   modelValue,
   secondsUntil,
   startedAt,
 } from './state';
+
+describe('isBusy', () => {
+  it('is true only for a session that is mid-turn', () => {
+    expect(isBusy('working')).toBe(true);
+    for (const s of ['waiting', 'restarting', 'stopped', 'failed'] as const) {
+      expect(isBusy(s)).toBe(false);
+    }
+  });
+});
 
 describe('deriveState', () => {
   it('is working while a running session is not waiting, and waiting once its wait is registered', () => {

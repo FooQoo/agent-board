@@ -21,6 +21,8 @@ A session the board starts runs without a person watching it, and it approves th
 3. Under **Model**, keep **Default model** or choose one from the list. If the list cannot be read, the dialog says why and offers only the default.
 4. Choose **Start**. While the request runs, the controls are disabled and the button reads **Starting…**. Choose **Stop** to end the session, or **Restart** after a failure.
 
+If the agent is in the middle of a turn (the state is **Working on a task**), **Stop** first asks `Stop while it is working?`. Stopping then cuts the agent off: unfinished work is lost, and a task it was handling stays Running until you or another agent takes it over. Choose **Stop anyway** to go on, or **Keep running** to close the question. The board cannot see background work an agent started itself, so treat a working agent as busy. A waiting agent is idle and stops at once with no question, and so does a failed or restarting one.
+
 ![The resident agent dialog with a waiting Claude Code session, the tool and model choices, and the external sessions list](../../images/guide/resident-session.png){.screenshot}
 
 The tool and model you choose apply from the next start. While a session runs with another choice, the dialog shows `Next start: …`.
@@ -51,12 +53,17 @@ The dialog also counts the sessions attached to the board, split into those the 
 
 ## When a session does not handle something {#not-handled}
 
-If the session ends its turn without handling an item, for example a request it did not accept, the board sends the item again after a short delay, up to three times. After that it stops sending that item so a failing turn cannot loop, and the other items keep going. Handle the item yourself on the board, or stop and start the session. An item leaves the list once it is no longer on the board.
+If the session ends its turn without handling an item, for example a request it did not accept, the board sends the item again after a short delay, up to three times. After that it stops sending that item so a failing turn cannot loop, and the other items keep going. An item leaves the list once it is no longer on the board.
+
+Two cases look alike but differ:
+
+- **The last turn failed.** The board shows a warning, **Some items could not be handled**, with the reason. Handle the item yourself on the board, or stop and start the session.
+- **The turns ended without an error and the item did not change.** This is usually work that waits for a person, such as a check on a real device, which the agent cannot advance. The board shows it as **On hold**, in neutral wording and without a warning. It is not an error. Finish or answer the item on the board. To stop the board from handing it over at all, the agent should ask what it needs with a question: a task with an open question is Pending, and the board never hands over a Pending task. The agent's instructions tell it to do so.
 
 The board shows these items in two places:
 
-- The dialog has a **Some items could not be handled** notice with each item by name (for example **Request Q-3**, **Answer to Q-5**, or **Task #12**), the reason the last turn failed, and how to clear it.
-- On the PC, the footer indicator gets a warning with the number of items. Click it to open the dialog. The phone indicator shows only the warning icon, and its description names the items.
+- The dialog has a **Some items could not be handled** notice for failed turns, and an **On hold** notice for items left unchanged. Each lists the items by name (for example **Request Q-3**, **Answer to Q-5**, or **Task #12**); the warning adds the reason the last turn failed, and both say how to clear the item.
+- On the PC, the footer indicator gets a warning with the number of failed items, and a neutral **On hold** mark with the number of held items. Click it to open the dialog. The phone indicator shows only the warning icon, and its description names the items.
 
 ## When the agent stops on an error {#stopped-on-error}
 

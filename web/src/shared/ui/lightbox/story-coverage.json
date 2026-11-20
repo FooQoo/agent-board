@@ -1,20 +1,109 @@
 {
   "schemaVersion": 1,
   "owner": "U11",
-  "file": "shared/ui/lightbox/Lightbox.tsx",
-  "exports": [
+  "files": [
     {
-      "name": "Lightbox",
-      "stories": [
+      "file": "shared/ui/lightbox/ImageLightbox.tsx",
+      "exports": [
         {
-          "id": "shared-ui-lightbox--picture",
-          "states": ["open", "picture"],
-          "interaction": false
-        },
+          "name": "ImageLightbox",
+          "stories": [
+            {
+              "id": "shared-ui-imageviewer--multiple-images",
+              "states": [
+                "opens at the chosen picture",
+                "position",
+                "arrow keys step",
+                "no arrow buttons"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--multiple-images-dark-phone",
+              "states": ["phone width", "dark theme", "Japanese"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--tall-image-phone",
+              "states": ["tall picture scrolls", "stays within the screen"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--single-image",
+              "states": ["single picture", "no position"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--pinch-zoom-phone",
+              "states": ["pinch zoom allowed", "phone width"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/lightbox/ImageViewer.tsx",
+      "exports": [
         {
-          "id": "shared-ui-lightbox--close-calls",
-          "states": ["close control"],
-          "interaction": true
+          "name": "ImageViewer",
+          "stories": [
+            {
+              "id": "shared-ui-imageviewer--multiple-images",
+              "states": [
+                "opens at the chosen picture",
+                "position",
+                "arrow keys step",
+                "no arrow buttons"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--multiple-images-dark-phone",
+              "states": ["phone width", "dark theme", "Japanese"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--tall-image-phone",
+              "states": ["tall picture scrolls", "stays within the screen"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--single-image",
+              "states": ["single picture", "no position"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--pinch-zoom-phone",
+              "states": ["pinch zoom allowed", "phone width"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "shared/ui/lightbox/Lightbox.tsx",
+      "exports": [
+        {
+          "name": "Lightbox",
+          "stories": [
+            {
+              "id": "shared-ui-lightbox--picture",
+              "states": ["open", "picture"],
+              "interaction": false
+            },
+            {
+              "id": "shared-ui-lightbox--close-calls",
+              "states": ["close control"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-lightbox--close-by-escape-and-backdrop",
+              "states": ["Escape", "backdrop press"],
+              "interaction": true
+            }
+          ]
         }
       ]
     }

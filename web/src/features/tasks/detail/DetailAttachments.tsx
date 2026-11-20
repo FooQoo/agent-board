@@ -1,7 +1,7 @@
 import { ImageOffIcon, Maximize2Icon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lightbox } from '../../../shared/ui/lightbox/Lightbox';
+import { ImageLightbox } from '../../../shared/ui/lightbox/ImageLightbox';
 import type { Attachment, ProjectId } from '../../../shared/api/contracts';
 
 /** A card's complete image list, including images not referenced in its description. */
@@ -17,7 +17,7 @@ export function DetailAttachments({
   attachmentUrl?: (id: string) => string;
 }) {
   const { t } = useTranslation();
-  const [zoom, setZoom] = useState<Attachment | null>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
   const imageUrl =
     attachmentUrl ??
     ((id: string) => `/api/projects/${projectId}/tasks/${taskId}/attachments/${id}`);
@@ -28,13 +28,13 @@ export function DetailAttachments({
         {t('editor.attachments')} · {attachments.length}
       </h3>
       <div className="detail-attachments__list">
-        {attachments.map((attachment) => (
+        {attachments.map((attachment, index) => (
           <div key={attachment.id} className="detail-attachments__tile">
             <button
               type="button"
               className="detail-attachments__preview"
               aria-label={t('editor.previewAttachment', { name: attachment.name })}
-              onClick={() => setZoom(attachment)}
+              onClick={() => setZoom(index)}
             >
               <AttachmentImage key={imageUrl(attachment.id)} url={imageUrl(attachment.id)} />
               <Maximize2Icon aria-hidden="true" />
@@ -45,10 +45,13 @@ export function DetailAttachments({
           </div>
         ))}
       </div>
-      {zoom && (
-        <Lightbox label={zoom.name} onClose={() => setZoom(null)}>
-          <img src={imageUrl(zoom.id)} alt={zoom.name} />
-        </Lightbox>
+      {zoom !== null && (
+        <ImageLightbox
+          images={attachments.map((item) => ({ src: imageUrl(item.id), alt: item.name }))}
+          startIndex={zoom}
+          label={(index) => attachments[index]?.name ?? ''}
+          onClose={() => setZoom(null)}
+        />
       )}
     </section>
   );
