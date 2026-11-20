@@ -429,10 +429,10 @@ test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in
   await expect(page.locator('.header__settings')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
   await expect(bar.locator('.phone-nav__badge')).toHaveCount(0);
+  // Ask sits in the middle of the dock; the bulk-archive button beside it is not part of the dock.
   const ask = await items.nth(2).boundingBox();
-  const barBox = await bar.boundingBox();
-  if (!ask || !barBox) throw new Error('the bar has no box');
-  expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
+  if (!ask || !dockBox) throw new Error('the dock has no box');
+  expect(Math.abs(ask.x + ask.width / 2 - (dockBox.x + dockBox.width / 2))).toBeLessThanOrEqual(2);
 
   // On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
   await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
