@@ -13,15 +13,10 @@ pub(super) fn short_question(text: &str) -> String {
     cut(&flat, QUESTION_LIMIT)
 }
 
-/// The first non-empty line without heading marks, cut to `TITLE_LIMIT` characters with an
+/// The first non-empty line as plain text, cut to `TITLE_LIMIT` characters with an
 /// ellipsis when it was longer.
 pub(super) fn request_title(body: &str) -> String {
-    let line = body
-        .lines()
-        .map(|line| line.trim().trim_start_matches('#').trim())
-        .find(|line| !line.is_empty())
-        .unwrap_or_default();
-    cut(line, TITLE_LIMIT)
+    cut(&crate::domain::first_line_plain(body), TITLE_LIMIT)
 }
 
 fn cut(text: &str, limit: usize) -> String {

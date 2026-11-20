@@ -142,3 +142,15 @@ fn the_line_is_the_first_sentence() {
         assert_eq!(p.body, line);
     }
 }
+
+#[test]
+fn markdown_marks_are_not_shown_in_the_line() {
+    for (detail, line) in [
+        ("**Which one?** The rest", "Which one?"),
+        ("## Use `cargo test`. Then more", "Use cargo test."),
+        ("- See [the docs](https://x.y) now", "See the docs now"),
+    ] {
+        let p = payload_of(&event(Kind::Question, None, detail), Lang::En, &origin()).unwrap();
+        assert_eq!(p.body, line);
+    }
+}
