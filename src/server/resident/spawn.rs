@@ -168,7 +168,7 @@ impl Launcher {
             let reason = launcher.pump(tool, &launch_id, &project, driver.as_ref(), &push);
             // A session that dies in the middle of a turn leaves its task running too.
             if launcher.is_current_plan(tool, &launch_id) {
-                launcher.hand_over(&project, &push.take_all_handed(), &reason);
+                launcher.hand_over(&project, &push, &push.take_all_handed(), &reason);
             }
             push.close();
             launcher.forget(tool, &launch_id);
@@ -206,12 +206,13 @@ impl Launcher {
                 DriverEvent::TurnEnded(outcome) => {
                     push.attach(SystemClock.now());
                     self.on_attached(tool, launch_id);
-                    let handed = push.take_handed();
                     // A turn that a person's stop cut short is not an error to hand over.
+                    let failed = matches!(outcome, TurnOutcome::Failed { .. });
+                    let handed = push.settle(failed, driver.is_idle());
                     if let TurnOutcome::Failed { message } = &outcome
                         && self.is_current_plan(tool, launch_id)
                     {
-                        self.hand_over(project, &handed, message);
+                        self.hand_over(project, push, &handed, message);
                     }
                     push.turn_ended(&outcome);
                 }

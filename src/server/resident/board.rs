@@ -27,8 +27,15 @@ impl Launcher {
 
     /// The session stopped on an error with `tasks` in hand: each one it left running gets one
     /// history entry that another agent has to take it over, and goes back to idle. Nothing here
-    /// can fail the session's own bookkeeping: a task that cannot be saved is left as it is.
-    pub(super) fn hand_over(&self, project: &ProjectId, tasks: &[i64], detail: &str) {
+    /// can fail the session's own bookkeeping: a task that cannot be saved is reported on stderr
+    /// and kept for the next attempt.
+    pub(super) fn hand_over(
+        &self,
+        project: &ProjectId,
+        push: &super::push::Push,
+        tasks: &[i64],
+        detail: &str,
+    ) {
         if tasks.is_empty() || self.is_closing() {
             return;
         }
@@ -37,7 +44,15 @@ impl Launcher {
         };
         let store = FileStore::open(&shared);
         for id in tasks {
-            let _ = store.record_agent_stopped(project, *id, detail, SystemClock.now());
+            if let Err(error) = store.record_agent_stopped(project, *id, detail, SystemClock.now())
+            {
+                // Keep the task, so a later failure or exit tries it again.
+                eprintln!(
+                    "agboard: could not record that the resident agent stopped on task #{id}: {}",
+                    error.reason()
+                );
+                push.add_handed(&[*id]);
+            }
         }
     }
 

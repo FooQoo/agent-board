@@ -15,7 +15,6 @@
 //! a backoff, and at most [`Timing::push_max_attempts`] times in total, so a turn that keeps
 //! failing cannot loop. An item that gave up is listed in the health of the session.
 
-use std::collections::VecDeque;
 use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -37,11 +36,10 @@ pub(super) struct Push {
     log: Mutex<Log>,
     attached_at: Mutex<Option<DateTime<Utc>>>,
     closed: Mutex<bool>,
-    /// The tasks given to the session, one entry per push whose turn has not been handled yet,
-    /// oldest first. A reader may report a turn as idle before the pump has handled its end, so
-    /// the next push can arrive while an earlier entry is still waiting: entries queue up and
-    /// each turn end takes the oldest, so a push never replaces the tasks of an earlier turn.
-    handed: Mutex<VecDeque<Vec<i64>>>,
+    /// The tasks given to the session whose turn the board has not seen end cleanly. Turn ends
+    /// cannot be matched to sends (Claude Code also ends turns nobody sent, for example when a
+    /// background command finishes), so this is a set, not a queue: see [`Push::settle`].
+    handed: Mutex<Vec<i64>>,
 }
 
 impl Push {
@@ -52,8 +50,7 @@ impl Push {
             log: Mutex::new(Log::default()),
             attached_at: Mutex::new(None),
             closed: Mutex::new(false),
-            // The launch prompt starts the first turn, so its end owns the first entry (no tasks).
-            handed: Mutex::new(VecDeque::from([Vec::new()])),
+            handed: Mutex::new(Vec::new()),
         }
     }
 
@@ -95,20 +92,40 @@ impl Push {
         *self.attached_at.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Take the tasks of the oldest turn that has not been handled, so a failure is recorded
-    /// for them only once.
-    pub(super) fn take_handed(&self) -> Vec<i64> {
+    /// Remember tasks that were just handed to the session.
+    pub(super) fn add_handed(&self, tasks: &[i64]) {
+        let mut handed = self.handed.lock().unwrap_or_else(|e| e.into_inner());
+        for id in tasks {
+            if !handed.contains(id) {
+                handed.push(*id);
+            }
+        }
+    }
+
+    /// Forget tasks (a send that failed).
+    pub(super) fn unhand(&self, tasks: &[i64]) {
         self.handed
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .pop_front()
-            .unwrap_or_default()
+            .retain(|id| !tasks.contains(id));
     }
 
-    /// Take the tasks of every turn that has not been handled (the child is gone).
+    /// Take the tasks of every unhandled turn (the child is gone).
     pub(super) fn take_all_handed(&self) -> Vec<i64> {
-        let mut handed = self.handed.lock().unwrap_or_else(|e| e.into_inner());
-        handed.drain(..).flatten().collect()
+        std::mem::take(&mut *self.handed.lock().unwrap_or_else(|e| e.into_inner()))
+    }
+
+    /// A turn ended. Returns the tasks to hand over: the handed ones, when the turn failed and
+    /// the session is idle. Only an idle session is sure to work on nothing, so a turn end seen
+    /// while another turn runs (an autonomous end, or one the next push raced ahead of) neither
+    /// takes nor drops anything, and the tasks wait for a later end. An idle session that ended
+    /// a turn cleanly has finished what it was given, so those tasks are released without a note.
+    pub(super) fn settle(&self, failed: bool, idle: bool) -> Vec<i64> {
+        if !idle {
+            return Vec::new();
+        }
+        let handed = self.take_all_handed();
+        if failed { handed } else { Vec::new() }
     }
 
     /// A turn ended: remember how, and look at the board.
@@ -175,16 +192,10 @@ pub(super) fn push_once(
         .unwrap_or_else(|e| e.into_inner())
         .record(&instruction.keys, now);
     // Set before the send: a turn can end before the send returns.
-    push.handed
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .push_back(instruction.tasks);
+    push.add_handed(&instruction.tasks);
     let sent = driver.send_user_message(&instruction.text).is_ok();
     if !sent {
-        push.handed
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .pop_back();
+        push.unhand(&instruction.tasks);
     }
     sent
 }
@@ -194,39 +205,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_launch_turn_owns_the_first_entry_even_when_a_push_comes_before_its_end() {
+    fn a_turn_end_while_another_turn_runs_neither_takes_nor_drops_the_tasks() {
         let push = Push::new();
-        // The reader reported idle, so the pusher queued task 7 before the pump saw the end of
-        // the launch turn.
-        push.handed.lock().unwrap().push_back(vec![7]);
-        assert!(
-            push.take_handed().is_empty(),
-            "the launch turn has no tasks"
-        );
-        assert_eq!(push.take_handed(), vec![7]);
+        push.add_handed(&[1]);
+        // An autonomous failed end while the session works on task 1's turn.
+        assert!(push.settle(true, false).is_empty());
+        assert!(push.settle(false, false).is_empty());
+        // The turn really fails once the session is idle.
+        assert_eq!(push.settle(true, true), vec![1]);
+        assert!(push.settle(true, true).is_empty());
     }
 
     #[test]
-    fn a_later_push_does_not_replace_the_tasks_of_an_earlier_turn() {
+    fn a_clean_end_of_an_idle_session_releases_the_tasks_without_a_note() {
         let push = Push::new();
-        assert!(push.take_handed().is_empty());
-        let mut handed = push.handed.lock().unwrap();
-        handed.push_back(vec![1]);
-        // The next push arrives before the pump handled the end of the first turn.
-        handed.push_back(vec![2]);
-        drop(handed);
-        assert_eq!(push.take_handed(), vec![1]);
-        assert_eq!(push.take_handed(), vec![2]);
-        assert!(push.take_handed().is_empty());
+        push.add_handed(&[1, 2]);
+        assert!(push.settle(false, true).is_empty());
+        assert!(push.take_all_handed().is_empty());
     }
 
     #[test]
-    fn an_exit_takes_the_tasks_of_every_unhandled_turn() {
+    fn an_exit_takes_every_handed_task_once() {
         let push = Push::new();
-        let mut handed = push.handed.lock().unwrap();
-        handed.push_back(vec![1]);
-        handed.push_back(vec![2, 3]);
-        drop(handed);
+        push.add_handed(&[1]);
+        push.add_handed(&[1, 2, 3]);
         assert_eq!(push.take_all_handed(), vec![1, 2, 3]);
         assert!(push.take_all_handed().is_empty());
     }
