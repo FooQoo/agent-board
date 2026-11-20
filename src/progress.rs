@@ -9,6 +9,7 @@
 
 mod answers;
 mod count;
+mod epic_close;
 mod final_result;
 mod next;
 mod requests;
@@ -18,7 +19,7 @@ mod types;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::domain::{ChangeCursor, Column, ProjectMeta, RunState};
+use crate::domain::{Assignee, ChangeCursor, Column, ProjectMeta, ResultKind, RunState};
 use crate::file_store::frontmatter;
 use crate::file_store::layout;
 use crate::file_store::model::{EpicView, TaskView};
@@ -51,6 +52,10 @@ pub struct Progress {
     /// AI tasks with all conditions met and no final result; left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub final_result_missing: Vec<FinalResultMissing>,
+    /// Epics whose tasks are all Done but whose `EPIC.md` still has an unchecked `- [ ]`; left
+    /// out when none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub epics_to_close: Vec<EpicToClose>,
     /// What the nudge rules remind the agent of, from this table alone (see
     /// `crate::nudge`); left out when none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -79,7 +84,7 @@ pub use count::Count;
 pub use final_result::{FinalResultMissing, final_result_missing};
 pub use next::{MAX_NEXT_TASKS, NextReason, NextTask};
 pub use requests::{ProgressRequest, open_requests};
-pub use types::{ProgressEpic, ProgressTask};
+pub use types::{EpicToClose, ProgressEpic, ProgressTask};
 
 /// Build the table from one project's unarchived snapshot. `shared` is the
 /// shared folder the snapshot was read from; the paths point into it.
@@ -161,6 +166,7 @@ pub fn build_with(
         requests: open_requests(snapshot),
         answers: unaccepted_answers(snapshot),
         final_result_missing: final_result_missing(snapshot, &project_dir, fetched_at),
+        epics_to_close: epic_close::epics_to_close(snapshot, &project_dir),
         reminders: Vec::new(),
         pending: include.pending.then(|| {
             let mut tasks: Vec<&TaskView> = snapshot
@@ -211,11 +217,7 @@ pub(crate) fn ordered_tasks(snapshot: &ProjectSnapshot) -> Vec<&TaskView> {
         .collect();
     let mut ordered = Vec::new();
     for epic in epics {
-        let order: Vec<i64> = frontmatter::waves_of(&epic.document)
-            .unwrap_or_default()
-            .into_iter()
-            .flatten()
-            .collect();
+        let order = frontmatter::task_order(&epic.document);
         let mut tasks: Vec<&TaskView> = listed
             .iter()
             .copied()
@@ -275,6 +277,19 @@ fn task_of(task: &TaskView, project_dir: &std::path::Path) -> ProgressTask {
         task_path: layout::task_md(&layout::task_dir(project_dir, task.id)),
         acceptance: count::count(&task.acceptance),
         acceptance_error: task.acceptance_error,
+        last_activity_at: (task.assignee == Assignee::Ai && task.agent_status == RunState::Running)
+            .then(|| {
+                task.history
+                    .iter()
+                    .map(|entry| entry.at)
+                    .max()
+                    .map_or(task.agent_status_changed_at, |at| {
+                        at.max(task.agent_status_changed_at)
+                    })
+            }),
+        has_final_result: task.assignee == Assignee::Ai
+            && task.task_status == Column::Doing
+            && task.results.iter().any(|r| r.kind == ResultKind::Final),
         question: if is_waiting(task) {
             task.pending_reason.as_deref().map(text::short_question)
         } else {

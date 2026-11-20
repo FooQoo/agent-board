@@ -222,6 +222,13 @@ pub(super) async fn update_epic(
     };
     match with_files(&state, move |store| {
         let waves = input.waves;
+        // Refuse bad waves before anything is written, so a rejected request changes nothing.
+        if let Some(waves) = &waves {
+            frontmatter::validate_waves(waves).map_err(|d| AgboardError::InvalidValue {
+                field: d.field,
+                reason: d.reason,
+            })?;
+        }
         let document = if input.body.is_some() {
             if input.document.is_some() {
                 return Err(whole_or_parts());

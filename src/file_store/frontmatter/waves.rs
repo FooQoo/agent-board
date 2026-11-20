@@ -33,6 +33,15 @@ pub fn waves_of(text: &str) -> Result<Vec<Vec<i64>>, Defect> {
     }
 }
 
+/// The task IDs of a text in order, the waves flattened; empty when the order cannot be read.
+pub fn task_order(text: &str) -> Vec<i64> {
+    waves_of(text)
+        .unwrap_or_default()
+        .into_iter()
+        .flatten()
+        .collect()
+}
+
 fn waves_from(field: &str, value: &Value) -> Result<Vec<Vec<i64>>, Defect> {
     let Value::Sequence(items) = value else {
         return Err(defect(field, "The order must be a list of waves."));

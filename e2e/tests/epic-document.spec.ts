@@ -32,8 +32,8 @@ const PNG = Buffer.from(
   'base64',
 );
 
-const DOC_ALPHA = `---\npriority: [3, 1, 2]\n---\n\n# Alpha document\n\nAlpha text.\n\n![alpha picture](assets/${IMAGE_ID}.png)\n`;
-const DOC_BETA = `---\npriority: [5, 4]\n---\n\n# Beta document\n\nBeta text.\n`;
+const DOC_ALPHA = `---\nwaves: [3, 1, 2]\n---\n\n# Alpha document\n\nAlpha text.\n\n![alpha picture](assets/${IMAGE_ID}.png)\n`;
+const DOC_BETA = `---\nwaves: [5, 4]\n---\n\n# Beta document\n\nBeta text.\n`;
 // An epic whose document is empty.
 const DOC_GAMMA = '';
 
@@ -46,7 +46,7 @@ interface Fixture {
 }
 
 /**
- * A data area with three epics (a document with a priority and an image, one with a priority, an empty one),
+ * A data area with three epics (a document with waves and an image, one with waves, an empty one),
  * five cards spread over two epics, and one card with no epic. Built with the real CLI; the documents are then
  * written straight to each EPIC.md.
  */
@@ -159,15 +159,15 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
   const shown = json(fixture.home, ['epic', 'show', 'ALPHA', '--json']);
   expect(shown.epic.document).toBe(DOC_ALPHA);
   expect(shown.epic.body).toBe(DOC_ALPHA.split('---\n\n')[1]);
-  expect(shown.epic.priority).toEqual([3, 1, 2]);
-  expect(shown.epic.priorityError).toBe(false);
+  expect(shown.epic.waves).toEqual([[3], [1], [2]]);
+  expect(shown.epic.wavesError).toBe(false);
 
   const listed = json(fixture.home, ['epic', 'ls', '--json']);
   expect((listed.epics as { id: string }[]).map((epic) => epic.id)).toEqual(expect.arrayContaining(['ALPHA', 'BETA', 'GAMMA']));
-  expect(listed.epics.find((epic: { id: string }) => epic.id === 'BETA')).toMatchObject({ body: DOC_BETA.split('---\n\n')[1], priority: [5, 4] });
+  expect(listed.epics.find((epic: { id: string }) => epic.id === 'BETA')).toMatchObject({ body: DOC_BETA.split('---\n\n')[1], waves: [[5], [4]] });
 
   const snapshot = json(fixture.home, ['snapshot', '--json']);
-  expect(snapshot.epics.find((epic: { id: string }) => epic.id === 'ALPHA')).toMatchObject({ document: DOC_ALPHA, priority: [3, 1, 2] });
+  expect(snapshot.epics.find((epic: { id: string }) => epic.id === 'ALPHA')).toMatchObject({ document: DOC_ALPHA, waves: [[3], [1], [2]] });
 
   const progress = json(fixture.home, ['progress', '--json']);
   const alpha = progress.epics.find((epic: { id: string }) => epic.id === 'ALPHA');
@@ -208,7 +208,7 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
 
   const base = `http://127.0.0.1:${port}/api/projects/${projectId(PROJECT, fixture.home)}`;
   const one = await (await fetch(`${base}/epics/ALPHA`)).json();
-  expect(one.epic).toMatchObject({ id: 'ALPHA', document: DOC_ALPHA, priority: [3, 1, 2] });
+  expect(one.epic).toMatchObject({ id: 'ALPHA', document: DOC_ALPHA, waves: [[3], [1], [2]] });
   const all = await (await fetch(`${base}/epics`)).json();
   // The Epic Detail streams the document as blocks; the front matter is not part of the body.
   const detail = (await (await fetch(`${base}/epics/ALPHA/detail?sections=document`)).text())
@@ -221,7 +221,7 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
     .join('\n\n');
   expect(body).toContain('# Alpha document');
   expect(body).toContain('Alpha text.');
-  expect(body).not.toContain('priority:');
+  expect(body).not.toContain('waves:');
 });
 
 test('the CLI stores the epic details from --document, standard input, and --document-file', async () => {
@@ -229,9 +229,9 @@ test('the CLI stores the epic details from --document, standard input, and --doc
   writeFileSync(file, 'Document from a file.\n');
 
 
-  const text = agboard(PROJECT, ['epic', 'edit', 'BETA', '--document', '---\npriority: [4, 5]\n---\n\nDocument from text.\n', '--json'], fixture.home);
+  const text = agboard(PROJECT, ['epic', 'edit', 'BETA', '--document', '---\nwaves: [4, 5]\n---\n\nDocument from text.\n', '--json'], fixture.home);
   expect(text.code, text.stderr).toBe(0);
-  expect(JSON.parse(text.stdout).epic).toMatchObject({ body: 'Document from text.\n', priority: [4, 5] });
+  expect(JSON.parse(text.stdout).epic).toMatchObject({ body: 'Document from text.\n', waves: [[4], [5]] });
   expect(readFileSync(path.join(fixture.beta, 'EPIC.md'), 'utf8')).toContain('Document from text.');
 
   const piped = runWith(fixture.home, ['epic', 'edit', 'GAMMA', '--document', '-'], 'Document from standard input.\n');
@@ -264,7 +264,7 @@ test('the page shows the epic details with its cards in order and the Markdown i
   await expect(page.getByRole('heading', { level: 1, name: 'Alpha document' })).toBeVisible();
   await page.getByRole('button', { name: 'Back to board' }).click();
 
-  // The epic dialog from a card label: the details label, the cards in priority order, the picture.
+  // The epic dialog from a card label: the details label, the cards in wave order, the picture.
   await page.locator('[data-epic-label="ALPHA"]').first().click();
   const dialog = dialogOf(page);
   await expect(dialog).toBeVisible();
@@ -294,7 +294,7 @@ test('the page shows the epic details with its cards in order and the Markdown i
   const saved = json(fixture.home, ['epic', 'show', 'ALPHA', '--json']).epic;
   expect(saved.body).toContain('Alpha text. Edited in the page.');
   expect(saved.body).toContain(`assets/${IMAGE_ID}.png`);
-  expect(saved.priority).toEqual([3, 1, 2]);
+  expect(saved.waves).toEqual([[3], [1], [2]]);
   expect(readFileSync(path.join(fixture.alpha, 'EPIC.md'), 'utf8')).toContain('Edited in the page.');
 
   // Restart the server and open the page again: the edit, the order, and the picture are still there.

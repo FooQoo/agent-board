@@ -241,5 +241,10 @@ fn the_api_serves_and_saves_the_document() {
         fs::read_to_string(epic_dir(home.path(), "ALPHA").join("EPIC.md")).unwrap(),
         "# New\n"
     );
+    // A PATCH with bad waves is refused as a whole: the name does not change either.
+    let name = server.get(&one).json()["epic"]["name"].clone();
+    let refused = server.write("PATCH", &one, Some(r##"{"name":"Changed","waves":[[0]]}"##));
+    assert_eq!(refused.status, 422, "{}", refused.body);
+    assert_eq!(server.get(&one).json()["epic"]["name"], name);
     server.stop();
 }
