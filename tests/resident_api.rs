@@ -221,3 +221,77 @@ fn health_is_listed_and_auto_start_is_saved_guarded_and_used_at_the_next_start()
     assert_eq!(health["autoStart"], Value::Null);
     server.stop();
 }
+
+#[test]
+fn the_log_tail_is_read_whole_cut_at_a_line_or_missing_and_only_for_a_known_tool() {
+    let home = tempdir().unwrap();
+    demo_project(home.path());
+    let server = Running::start(home.path());
+    let id = project_id(&server);
+    let url = |tool: &str| format!("/api/projects/{id}/sessions/log?tool={tool}");
+    let log = home.path().join("resident").join("claude-code.log");
+
+    // No launch yet: no file.
+    let missing = server.get(&url("claude-code"));
+    assert_eq!(missing.status, 200, "{}", missing.body);
+    assert_eq!(
+        missing.json(),
+        serde_json::json!({"tool":"claude-code","exists":false,"text":"","truncated":false,"size":0})
+    );
+
+    // A small log comes back whole.
+    std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+    std::fs::write(&log, "first\nsecond \u{3042}\n").unwrap();
+    let small = server.get(&url("claude-code")).json();
+    assert_eq!(small["exists"], true);
+    assert_eq!(small["text"], "first\nsecond \u{3042}\n");
+    assert_eq!(small["truncated"], false);
+    assert_eq!(small["size"], "first\nsecond \u{3042}\n".len());
+    // The other tool has its own file.
+    assert_eq!(server.get(&url("codex")).json()["exists"], false);
+
+    // A log over 64 KiB keeps the last lines, cut at a line boundary.
+    let line = format!("{}\n", "x".repeat(99)); // 100 bytes
+    let total = 1000;
+    let mut body = String::new();
+    for n in 0..total {
+        body.push_str(&format!("{n:04}{}", &line[4..]));
+    }
+    std::fs::write(&log, &body).unwrap();
+    let big = server.get(&url("claude-code")).json();
+    assert_eq!(big["truncated"], true);
+    assert_eq!(big["size"], body.len());
+    let text = big["text"].as_str().unwrap();
+    assert!(text.len() <= 64 * 1024);
+    assert!(text.ends_with(&format!("{:04}{}", total - 1, &line[4..])));
+    assert!(
+        text.lines()
+            .all(|l| l.len() == 99 && l.starts_with(|c: char| c.is_ascii_digit()))
+    );
+    assert!(body.ends_with(text));
+
+    // A tool the launcher cannot start, or none at all, is refused.
+    let unknown = server.get(&url("unknown"));
+    assert_eq!(unknown.status, 422, "{}", unknown.body);
+    assert_eq!(unknown.code(), "invalid_value");
+    assert_eq!(server.get(&url("other")).status, 422);
+    server.stop();
+}
+
+#[test]
+fn the_log_is_refused_to_a_page_that_is_not_the_local_one() {
+    let home = tempdir().unwrap();
+    demo_project(home.path());
+    let server = Running::start(home.path());
+    let id = project_id(&server);
+    let path = format!("/api/projects/{id}/sessions/log?tool=codex");
+    let foreign = server.request(
+        "GET",
+        &path,
+        None,
+        &[("Host".to_string(), "example.com".to_string())],
+        None,
+    );
+    assert_eq!(foreign.status, 403, "{}", foreign.body);
+    server.stop();
+}
