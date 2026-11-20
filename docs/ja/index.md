@@ -130,7 +130,7 @@ landing:
       - { title: インストールする, commands: [brew install fooqoo/tap/agboard] }
       - { title: エージェントとプロジェクトを設定する, commands: [agboard setup, 'agboard project create "My project"'] }
       - { title: ボードを開く, commands: [agboard serve] }
-    note: "ドキュメントや常駐セッションなど、一部の機能はパブリックプレビューです。詳しくは"
+    note: "ドキュメントや常駐エージェントなど、一部の機能はパブリックプレビューです。詳しくは"
     noteLinks:
       - { text: 機能の提供段階, link: /ja/guide/feature-stages }
     noteJoin: と

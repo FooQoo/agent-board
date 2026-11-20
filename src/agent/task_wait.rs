@@ -47,7 +47,7 @@ impl WaitReader for Reader<'_> {
         &self.project_id
     }
 
-    /// A task wait keeps a resident session on the board, so it tells the server which one.
+    /// A task wait keeps a resident agent on the board, so it tells the server which one.
     fn session(&self) -> Option<SessionIdentity> {
         Some(SessionIdentity::from_env())
     }

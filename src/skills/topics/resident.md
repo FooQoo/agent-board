@@ -1,6 +1,6 @@
-# Stay on the board as a resident session
+# Stay on the board as a resident agent
 
-There are two kinds of resident session, and the environment tells them apart:
+There are two kinds of resident agent, and the environment tells them apart:
 
 - **Launched by the board** (`AGBOARD_RESIDENT_ID` and `AGBOARD_SESSION_ORIGIN=board` are set). The board watches the project for you and sends each piece of work as a message when you are idle. Follow "Work the board pushes" below, and never run `agboard wait`.
 - **Opened by a person** who told you to stay on the board. Nothing sends you work, so you wait for it yourself. Follow "Wait for work yourself" below.

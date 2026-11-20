@@ -42,7 +42,8 @@ interface ItemProps {
  * One summary. On a phone it is the board card's own swipe: `useCardGesture` slides it left and
  * the trash tile grows from a dot, drawn with the card's `swipe-card__*` styles; a tap shows the
  * tile too. The gesture is always armed, so a sideways move that starts on an item belongs to the
- * item and never switches the tab. On a PC the trash button is always shown on the left.
+ * item and never switches the tab. On a PC the trash button is always shown inside the card, at
+ * the right end of its heading.
  */
 function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemProps) {
   const { t } = useTranslation();
@@ -78,6 +79,15 @@ function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemPr
       ) : (
         <div className="summary-item__head">
           <span className="summary-item__window">{label}</span>
+          <button
+            type="button"
+            className="summary-item__trash"
+            aria-label={title}
+            title={title}
+            onClick={onDismiss}
+          >
+            <Trash2Icon aria-hidden="true" />
+          </button>
         </div>
       )}
       <ResultList summary={summary} />
@@ -92,14 +102,6 @@ function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemPr
   if (variant === 'dialog') {
     return (
       <li {...itemProps}>
-        <button
-          type="button"
-          className="summary-item__trash"
-          aria-label={title}
-          onClick={onDismiss}
-        >
-          <Trash2Icon aria-hidden="true" />
-        </button>
         <div className="summary-item__body">{content}</div>
       </li>
     );

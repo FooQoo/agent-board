@@ -68,7 +68,7 @@ fn every_topic_prints_its_text() {
     for (topic, heading) in [
         ("file-format", "# TASK.md and EPIC.md format"),
         ("listening", "# Listen for tasks in one session"),
-        ("resident", "# Stay on the board as a resident session"),
+        ("resident", "# Stay on the board as a resident agent"),
         ("planning", "# Plan a request"),
         ("fixed-epic-bodies", "# Fixed bodies for BUG"),
         ("drafts", "# Drafts and archived tasks"),
