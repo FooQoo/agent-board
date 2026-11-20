@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use super::events::{Event, Kind};
 use crate::domain::ResultKind;
 use crate::server::monitor_connection::contracts::PublicOrigin;
-use crate::server::notification_settings::StateChange;
 
 const TITLE_CHARS: usize = 60;
 /// The summary, question, or history entry is cut short: the board has the whole text.
@@ -80,12 +79,6 @@ fn what_happened(kind: Kind, lang: Lang) -> &'static str {
         (Kind::Result(ResultKind::Progress), Lang::Ja) => "途中の成果が届きました",
         (Kind::Result(ResultKind::Final), Lang::En) => "The final result is ready",
         (Kind::Result(ResultKind::Final), Lang::Ja) => "最終の成果が届きました",
-        (Kind::State(StateChange::Started), Lang::En) => "A card was started",
-        (Kind::State(StateChange::Started), Lang::Ja) => "カードの作業を始めました",
-        (Kind::State(StateChange::Pending), Lang::En) => "A card is waiting for you",
-        (Kind::State(StateChange::Pending), Lang::Ja) => "カードが回答を待っています",
-        (Kind::State(StateChange::Done), Lang::En) => "A card is done",
-        (Kind::State(StateChange::Done), Lang::Ja) => "カードが完了しました",
         (Kind::History, Lang::En) => "A history entry was added",
         (Kind::History, Lang::Ja) => "履歴が追加されました",
     }

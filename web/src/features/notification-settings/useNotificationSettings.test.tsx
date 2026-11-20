@@ -30,13 +30,15 @@ describe('useNotificationSettings', () => {
     const { result } = renderHook(() => useNotificationSettings(load, save));
     await waitFor(() => expect(result.current.state.status).toBe('ready'));
 
-    act(() => result.current.change({ periodic: { enabled: true, intervalMinutes: 30 } }));
+    act(() =>
+      result.current.change({ kinds: { ...DEFAULT_NOTIFICATION_SETTINGS.kinds, history: true } }),
+    );
     await waitFor(() => {
       const { state } = result.current;
       expect(state.status === 'ready' && state.saveFailed).toBe(true);
     });
     const { state } = result.current;
-    expect(state.status === 'ready' && state.settings.periodic.enabled).toBe(false);
+    expect(state.status === 'ready' && state.settings.kinds.history).toBe(false);
   });
 
   it('reports a failed read', async () => {

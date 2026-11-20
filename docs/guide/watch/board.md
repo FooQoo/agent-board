@@ -147,12 +147,10 @@ The dialog has a language switch and a grid of themes: one row of 12 light color
 
 **Notification settings** on the **Phone notifications** row opens a dialog of its own, on the PC and in the phone layout. On a narrow screen it opens as a bottom sheet. Closing it returns you to the board. The choices are saved on this PC, like the language and theme, and apply to the next notification; changing them sends nothing by itself. See [What you are notified about](./remote-access.md#notified-about).
 
-- **Results**, **Questions that need my decision**, **Card state changes**, and **History additions** are switched one by one. Results and questions are on at first; the other two are off. All four can be off.
-- With **Card state changes** on, pick which changes you want: **Started**, **Waiting for an answer**, and **Done**.
-- **Periodic status notification** is separate from the four choices above and is off at first. When it is on, choose an interval of 30 minutes, 1 hour, 2 hours, or 4 hours. See [What you are notified about](./remote-access.md#notified-about) for what it says.
+- **Results**, **Questions that need my decision**, and **History additions** are switched one by one. Results and questions are on at first; history additions are off. All three can be off.
 - In the Home Screen app on an iPhone, **Enable notifications** is at the top of this dialog; see [Get notifications on an iPhone](./remote-access.md#get-notifications-on-an-iphone).
 
-![Phone notifications dialog with the four kinds, the state changes, and the periodic notification interval](../../images/guide/notification-settings.png){.screenshot}
+![Phone notifications dialog with the three kinds](../../images/guide/notification-settings.png){.screenshot}
 
 ![The board in a dark theme](../../images/guide/board-dark.png){.screenshot}
 
