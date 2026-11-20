@@ -8,19 +8,15 @@
 //! and sends nothing. The next window of a project begins where its newest stored summary ends,
 //! so a restart never reports a result twice.
 
-use std::collections::HashSet;
-use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use chrono::{DateTime, Local, Utc};
 
-use super::deliver::{Context, Dispatcher};
 use super::message::{Lang, Payload, shorten};
 use crate::domain::ProjectId;
 use crate::file_store::FileStore;
 use crate::file_store::model::TaskView;
 use crate::file_store::notify::Summary;
-use crate::server::AppState;
 use crate::server::monitor_connection::contracts::PublicOrigin;
 
 /// How often the task checks whether a window is due.
@@ -81,7 +77,8 @@ pub(super) fn record(
 }
 
 /// [`record`] over the tasks as the files hold them now, not as the index does. A project that
-/// cannot be read is an `Err`, retried like a failed write.
+/// cannot be read, or that has a task whose `task.json` cannot be read, is an `Err`, retried like
+/// a failed write.
 pub(super) fn record_from_files(
     store: &FileStore,
     project: &ProjectId,
@@ -89,6 +86,16 @@ pub(super) fn record_from_files(
     to: DateTime<Utc>,
 ) -> Result<Option<Summary>, ()> {
     let snapshot = store.snapshot(project).map_err(|_| ())?;
+    // The snapshot leaves out a task whose `task.json` cannot be read and reports it as a
+    // problem. Its results are unknown, so the window is not closed for the project: writing it
+    // would move the boundary past results that the task holds.
+    if snapshot
+        .problems
+        .iter()
+        .any(|p| p.file.ends_with("task.json"))
+    {
+        return Err(());
+    }
     record(store, project, &snapshot.tasks, floor, to)
 }
 
@@ -146,100 +153,8 @@ pub(super) fn payload_of(
     })
 }
 
-/// The projects the index holds. Their tasks are read from the files when a window closes: the
-/// index lags a save by the watcher delay, so a result recorded just before the end of a window
-/// could be missing from it, and the next window would not take it back.
-fn project_ids(state: &AppState) -> Vec<ProjectId> {
-    let index = state.index.read().unwrap_or_else(|e| e.into_inner());
-    index.entries().map(|(id, _)| id.clone()).collect()
-}
-
-/// Follow the clock and record a summary each time a window ends. The task ends with the server.
-pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
-    tokio::spawn(async move {
-        let mut tick = tokio::time::interval(CHECK_EVERY);
-        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        tick.tick().await;
-        let mut schedule = Schedule::new((dispatcher.now)(), None);
-        // For the open window: when it ends, the entrance state when it first became due, and
-        // the projects that already recorded it. All are fixed when the window first becomes due,
-        // kept across retries, and cleared when it closes. Because the end is fixed, a retry
-        // writes the same window, never a shorter one, and the next window starts at that end,
-        // so a result is never left between two windows.
-        let mut open_to: Option<DateTime<Utc>> = None;
-        let mut due_up: Option<bool> = None;
-        let mut done: HashSet<ProjectId> = HashSet::new();
-        loop {
-            tick.tick().await;
-            let Some(state) = weak.upgrade() else { return };
-            let now = (dispatcher.now)();
-            let minutes = state.notification_settings.load().summary.interval_minutes;
-            if minutes == 0 {
-                // Off: counting starts again when it is switched on.
-                schedule.mark(now);
-                open_to = None;
-                due_up = None;
-                done.clear();
-                continue;
-            }
-            if !schedule.due(now, minutes) {
-                continue;
-            }
-            let floor = schedule.since(minutes);
-            let to = *open_to.get_or_insert(now);
-            // Read when the window first becomes due, not on each retry or after the write: a
-            // notification that was due while the entrance was down is recorded, never sent
-            // after it comes back.
-            let entrance_up = *due_up.get_or_insert_with(|| super::runtime::entrance_up(&state));
-            let mut projects = project_ids(&state);
-            projects.retain(|id| !done.contains(id));
-            let shared = state.shared.clone();
-            let written = tokio::task::spawn_blocking(move || {
-                let store = FileStore::open(&shared);
-                let mut failed = false;
-                let mut recorded = Vec::new();
-                let mut written = Vec::new();
-                for id in &projects {
-                    match record_from_files(&store, id, floor, to) {
-                        Ok(summary) => {
-                            recorded.push(id.clone());
-                            if let Some(s) = summary {
-                                written.push((id.to_string(), s));
-                            }
-                        }
-                        Err(()) => failed = true,
-                    }
-                }
-                (written, recorded, failed)
-            })
-            .await;
-            // A failed write leaves the window open and the next check tries it again, but only
-            // for the projects that have not recorded it: one that has is not given a short
-            // window of its own.
-            let Ok((written, recorded, failed)) = written else {
-                continue;
-            };
-            done.extend(recorded);
-            if !failed {
-                schedule.mark(to);
-                open_to = None;
-                due_up = None;
-                done.clear();
-            }
-            if written.is_empty() {
-                continue;
-            }
-            let ctx: Option<Context> = super::runtime::context(&state, entrance_up)
-                .filter(|ctx| ctx.settings.kinds.summary);
-            drop(state);
-            if let Some(ctx) = ctx {
-                for (project, summary) in &written {
-                    dispatcher.deliver_summary(&ctx, project, summary).await;
-                }
-            }
-        }
-    });
-}
+mod run;
+pub(super) use run::start;
 
 #[cfg(test)]
 mod tests;
