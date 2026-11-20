@@ -49,7 +49,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
 | `GET /api/projects/{projectId}/summaries`<br>`POST /api/projects/{projectId}/summaries/{summaryId}/dismiss` | プロジェクトの定期サマリーを新しい順に返す経路と、1件を片付ける経路。[定期サマリー](#定期サマリー)を参照。 |
-| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`summary`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
+| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`summary`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[通知設定](#通知設定)を参照。 |
 | `PUT /api/notification-settings` | JSONの本文で`kinds`グループ、`summary`グループ、またはその両方を保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
@@ -252,9 +252,9 @@ versionはすべて不透明な文字列で、解析済みデータの内容ハ�
 
 JSONとして読めない本文は、ほかの書き込みと同じく400です。`locale`と`theme`のどちらもない本文、それ以外の項目を含む本文、許可されない値は422 `invalid_preferences`です。revisionの確認はなく、後から保存した内容が優先されます。
 
-### スマホの通知設定
+### 通知設定
 
-`GET`と`PUT /api/notification-settings`はローカルのリスナーにあります。ngrokの入口は、表示設定と同じく、この組をsessionの背後で提供します（[入口のルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#スマホの通知設定)で説明しています。
+`GET`と`PUT /api/notification-settings`はローカルのリスナーにあります。ngrokの入口は、表示設定と同じく、この組をsessionの背後で提供します（[入口のルート](./remote-routes.md)を参照）。保存先のファイルは[共有ファイル](./files.md#通知設定)で説明しています。
 
 `GET`は保存済みの設定を返します。何も保存していなければ、`revision`が`0`の既定値です。
 

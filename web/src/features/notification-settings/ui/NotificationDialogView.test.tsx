@@ -18,7 +18,7 @@ describe('NotificationDialogView', () => {
     render(
       <NotificationDialogView kind="dialog" onClose={vi.fn()} state={ready} onChange={onChange} />,
     );
-    expect(screen.getByRole('dialog', { name: 'Phone notifications' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Notifications' })).toBeTruthy();
     fireEvent.click(screen.getByRole('checkbox', { name: /^History additions/ }));
     expect(onChange).toHaveBeenCalledWith({
       kinds: { ...DEFAULT_NOTIFICATION_SETTINGS.kinds, history: true },

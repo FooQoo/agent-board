@@ -6,7 +6,7 @@ import type { NotificationSettingsState } from '../useNotificationSettings';
 import { NotificationSettingsView } from './NotificationSettingsView';
 
 /**
- * The dialog the "Phone notifications" row opens: a modal on the PC, a bottom sheet in a narrow
+ * The dialog the "Notifications" row opens: a modal on the PC, a bottom sheet in a narrow
  * window. `push` is the control that turns notifications on for this phone; only a page that came
  * through the remote entrance has one.
  */

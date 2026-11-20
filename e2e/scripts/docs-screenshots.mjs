@@ -20,7 +20,7 @@ const extra = {
     archived: ['Set up the repository', 'Choose the color palette', 'Write the first draft'],
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     preview: 'Open full screen (task)', close: 'Close', settings: 'Settings',
-    notificationRow: 'Notification settings', notificationDialog: 'Phone notifications',
+    notificationRow: 'Notification settings', notificationDialog: 'Notifications',
     residentRow: 'Resident session settings', residentDialog: 'Resident session', residentWaiting: 'Waiting', residentStart: 'Start',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
     messages: 'Messages', later: 'Later', discard: 'Discard and close',
@@ -39,7 +39,7 @@ const extra = {
     archived: ['リポジトリを準備する', '配色を決める', '最初の下書きを書く'],
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定',
-    notificationRow: '通知の設定', notificationDialog: 'スマホの通知',
+    notificationRow: '通知の設定', notificationDialog: '通知',
     residentRow: '常駐セッションの設定', residentDialog: '常駐セッション', residentWaiting: '待機中', residentStart: '起動',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
     messages: 'メッセージ', later: 'あとでやる', discard: '破棄して閉じる',
@@ -197,7 +197,7 @@ try {
       await expect(settings).toBeVisible();
       await expect(settings.getByRole('radio').first()).toBeVisible();
       await shot('settings', page, page);
-      // notification-settings: the dialog of the Phone notifications row, which replaces the inline section.
+      // notification-settings: the dialog of the Notifications row, which replaces the inline section.
       await settings.getByRole('button', { name: more.notificationRow }).click();
       const notifications = page.getByRole('dialog', { name: more.notificationDialog });
       await expect(notifications).toBeVisible();
