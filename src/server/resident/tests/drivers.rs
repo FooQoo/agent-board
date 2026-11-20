@@ -145,3 +145,25 @@ fn the_real_driver_answers_a_can_use_tool_request_with_an_allow_that_echoes_the_
     assert!(fx.launcher.status().len() == 1);
     fx.launcher.shutdown();
 }
+
+#[test]
+fn a_working_session_reports_the_subagents_it_waits_on_and_logs_their_start_and_end() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let fx = fixture();
+    std::fs::write(fx.dir.path().join("run-task"), "").unwrap();
+    fx.launch(Tool::ClaudeCode, None).unwrap();
+    // The session is mid-turn: it works, waiting for the subagent that has not ended.
+    let log_path = fx.launcher.log_path(Tool::ClaudeCode);
+    let log = || std::fs::read_to_string(&log_path).unwrap_or_default();
+    wait_until("both task events are logged", || {
+        log().contains("agboard: background task completed: t2 pnpm test")
+    });
+    assert_eq!(fx.launcher.health().background_tasks, ["Review the diff"]);
+    assert!(!fx.launcher.health().waiting);
+    assert!(
+        log().contains("agboard: background task started: t1 Review the diff"),
+        "{}",
+        log()
+    );
+    fx.launcher.shutdown();
+}

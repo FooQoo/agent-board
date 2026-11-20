@@ -42,6 +42,11 @@ if [ "$n" = claude ]; then
   mv "$d/$n.stdin.tmp" "$d/$n.stdin"
   if [ -f "$d/silent" ]; then exec sleep 60; fi
   echo '{"type":"system","subtype":"init","session_id":"fake-1","claude_code_version":"9.9.9"}'
+  if [ -f "$d/run-task" ]; then
+    echo '{"type":"system","subtype":"task_started","task_id":"t1","description":"Review the diff","task_type":"local_agent"}'
+    echo '{"type":"system","subtype":"task_started","task_id":"t2","description":"pnpm test","task_type":"local_bash"}'
+    echo '{"type":"system","subtype":"task_notification","task_id":"t2","status":"completed","summary":"pnpm test"}'
+  fi
   if [ -f "$d/finish-turn" ]; then echo '{"type":"result","subtype":"success","is_error":false,"result":"ok"}'; fi
   if [ -f "$d/ask-permission" ]; then
     echo '{"type":"control_request","request_id":"req-1","request":{"subtype":"can_use_tool","tool_name":"Write","input":{"file_path":"/tmp/x","content":"hi"},"tool_use_id":"tool-1"}}'

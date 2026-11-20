@@ -45,6 +45,25 @@ export const Working: Story = {
   },
 };
 
+/** Working while it waits for subagents or background commands: the badge says so and the tasks are listed. */
+export const WaitingForSubagents: Story = {
+  args: scenarios.subagents,
+  play: async () => {
+    await expect(await page().findByText('Working (waiting for subagents)')).toBeInTheDocument();
+    await expect(page().getByText('Review the diff')).toBeInTheDocument();
+    await expect(page().getByText('pnpm test')).toBeInTheDocument();
+  },
+};
+
+/** A phone: the sheet shows the same state and the list of what it waits for. */
+export const WaitingForSubagentsPhone: Story = {
+  args: { ...scenarios.subagents, kind: 'sheet' },
+  globals: { viewport: { value: 'mobile1' } },
+  play: async () => {
+    await expect(await page().findByText('Working (waiting for subagents)')).toBeInTheDocument();
+  },
+};
+
 /** Waiting: running with its wait registered. Codex, one automatic restart behind it. */
 export const Waiting: Story = {
   args: scenarios.waiting,

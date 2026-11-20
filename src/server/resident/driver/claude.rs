@@ -8,7 +8,7 @@
 //! reported as a [`DriverEvent::PermissionRequest`] and answered through
 //! [`AgentDriver::answer_permission`].
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use serde_json::json;
 
-use super::claude_parse::{Pending, parse_line, permission_response};
+use super::claude_parse::{Pending, TaskChange, parse_line, permission_response};
 use super::lines::{Line, MAX_LINE, for_each_line};
 use super::proc::{Out, Proc, send_line};
 use super::{AgentDriver, DriverEvent, PermissionAnswer, StartSpec};
@@ -27,8 +27,12 @@ pub struct ClaudeDriver {
     program: PathBuf,
     proc: OnceLock<Proc>,
     pending: Arc<Mutex<Pending>>,
+    tasks: Arc<Mutex<Tasks>>,
     requests: AtomicU64,
 }
+
+/// The subagents and background commands that have not ended, by task ID.
+type Tasks = BTreeMap<String, String>;
 
 impl ClaudeDriver {
     pub fn new(program: &Path) -> ClaudeDriver {
@@ -36,6 +40,7 @@ impl ClaudeDriver {
             program: program.to_path_buf(),
             proc: OnceLock::new(),
             pending: Arc::new(Mutex::new(HashMap::new())),
+            tasks: Arc::new(Mutex::new(BTreeMap::new())),
             requests: AtomicU64::new(0),
         }
     }
@@ -53,7 +58,12 @@ impl ClaudeDriver {
     }
 }
 
-fn read(stdout: std::process::ChildStdout, out: Out, pending: Arc<Mutex<Pending>>) {
+fn read(
+    stdout: std::process::ChildStdout,
+    out: Out,
+    pending: Arc<Mutex<Pending>>,
+    tasks: Arc<Mutex<Tasks>>,
+) {
     let mut noted = false;
     for_each_line(stdout, MAX_LINE, |line| {
         let text = match line {
@@ -69,6 +79,13 @@ fn read(stdout: std::process::ChildStdout, out: Out, pending: Arc<Mutex<Pending>
             let mut pending = pending.lock().unwrap_or_else(|e| e.into_inner());
             parse_line(text, &mut pending)
         };
+        if let Some(change) = &parsed.task {
+            note_task(
+                &out,
+                &mut tasks.lock().unwrap_or_else(|e| e.into_inner()),
+                change,
+            );
+        }
         if let Some(reply) = parsed.reply {
             let _ = send_line(&out.stdin, &reply.to_string());
         }
@@ -97,10 +114,33 @@ fn read(stdout: std::process::ChildStdout, out: Out, pending: Arc<Mutex<Pending>
     });
 }
 
+/// Keep the set of running tasks in step and write the start or end to the log.
+fn note_task(out: &Out, tasks: &mut Tasks, change: &TaskChange) {
+    match change {
+        TaskChange::Started { id, description } => {
+            tasks.insert(id.clone(), description.clone());
+            out.log
+                .note(&format!("background task started: {id} {description}"));
+        }
+        TaskChange::Ended {
+            id,
+            status,
+            description,
+        } => {
+            let known = tasks.remove(id);
+            let description = known.as_deref().unwrap_or(description);
+            out.log
+                .note(&format!("background task {status}: {id} {description}"));
+        }
+    }
+}
+
 impl AgentDriver for ClaudeDriver {
     fn start(&self, spec: StartSpec) -> Result<(), AgboardError> {
         let pending = self.pending.clone();
-        let reader: super::proc::Reader = Box::new(move |stdout, out| read(stdout, out, pending));
+        let tasks = self.tasks.clone();
+        let reader: super::proc::Reader =
+            Box::new(move |stdout, out| read(stdout, out, pending, tasks));
         let proc = Proc::spawn(
             &self.program,
             cli::claude_args(spec.model.as_deref()),
@@ -124,6 +164,11 @@ impl AgentDriver for ClaudeDriver {
         self.proc
             .get()
             .is_some_and(|proc| !proc.busy.load(Ordering::SeqCst))
+    }
+
+    fn background_tasks(&self) -> Vec<String> {
+        let tasks = self.tasks.lock().unwrap_or_else(|e| e.into_inner());
+        tasks.values().cloned().collect()
     }
 
     fn next_event(&self) -> DriverEvent {
