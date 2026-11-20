@@ -21,7 +21,7 @@ const extra = {
     archive: { trigger: 'Archive completed tasks', submit: /^Archive \d+ tasks$/, open: 'Archive', doneLane: 'Done' },
     preview: 'Open full screen (task)', close: 'Close', settings: 'Settings',
     notificationRow: 'Notification settings', notificationDialog: 'Notifications',
-    residentRow: 'Resident session settings', residentDialog: 'Resident session', residentWaiting: 'Waiting', residentStart: 'Start',
+    residentRow: 'Agent settings', residentDialog: 'Resident agent', residentWaiting: 'Waiting', residentStart: 'Start',
     askAi: 'Ask AI', promptLabel: 'What would you like done?',
     messages: 'Messages', later: 'Later', discard: 'Discard and close',
     attachLabel: 'Image attachments', requestText: 'Review the attached logo and prepare a short launch checklist.',
@@ -40,7 +40,7 @@ const extra = {
     archive: { trigger: '完了タスクをアーカイブ', submit: /^\d+件をアーカイブ$/, open: 'アーカイブ', doneLane: '完了' },
     preview: '全画面で開く（タスク）', close: '閉じる', settings: '設定',
     notificationRow: '通知の設定', notificationDialog: '通知',
-    residentRow: '常駐セッションの設定', residentDialog: '常駐セッション', residentWaiting: '待機中', residentStart: '起動',
+    residentRow: 'エージェントの設定', residentDialog: '常駐エージェント', residentWaiting: '待機中', residentStart: '起動',
     askAi: 'AI に依頼', promptLabel: '何をしてほしいですか？',
     messages: 'メッセージ', later: 'あとでやる', discard: '破棄して閉じる',
     attachLabel: '画像添付', requestText: '添付したロゴを確認して、公開前の短いチェックリストを作成してください。',
@@ -64,7 +64,7 @@ function addDocs(home, id, locale, more) {
   return docs;
 }
 
-// A stand-in for the `claude` command, so the resident session dialog can show a running session without
+// A stand-in for the `claude` command, so the resident agent dialog can show a running session without
 // a real agent: it is logged in, and it ends every turn at once, so the board sees it waiting.
 function fakeClaude(dir) {
   const file = path.join(dir, 'claude');
@@ -102,7 +102,7 @@ try {
       const text = copy[locale];
       const more = extra[locale];
       const id = addSamples(home, seed(home, text), text, more);
-      // The resident session needs a bound folder and a command to start; the stand-in keeps the shot free of a real agent.
+      // The resident agent needs a bound folder and a command to start; the stand-in keeps the shot free of a real agent.
       const folder = path.join(home, 'work');
       mkdirSync(folder);
       cli(home, ['project', 'bind', project, '--folder', folder]);
@@ -207,7 +207,7 @@ try {
       await expect(notifications).toHaveCount(0);
       await page.getByRole('button', { name: more.settings, exact: true }).click();
       await expect(settings).toBeVisible();
-      // resident-session: the dialog of a running session, opened from the Resident session row of Settings.
+      // resident-session: the dialog of a running session, opened from the Resident agent row of Settings.
       await settings.getByRole('button', { name: more.residentRow }).click();
       const resident = page.getByRole('dialog', { name: more.residentDialog });
       await expect(resident).toBeVisible();

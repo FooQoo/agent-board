@@ -74,7 +74,7 @@ fn the_documented_stages_match_the_confirmed_classification() {
                 "Docs",
                 "ドキュメント",
                 "Resident",
-                "常駐セッション",
+                "常駐エージェント",
                 "Questions and requests",
                 "質問と依頼",
             ] {

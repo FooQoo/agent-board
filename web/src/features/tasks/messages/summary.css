@@ -104,33 +104,34 @@
   overflow-wrap: anywhere;
 }
 
-/* ---- PC: the trash button is always shown, on the left of each item ---- */
+/* ---- PC: the trash button is always shown, inside the card at the right end of its heading ---- */
 
 .summary-item[data-variant="desktop"] {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
   overflow: visible;
 }
 
-.summary-item[data-variant="desktop"] .summary-item__body {
-  flex: 1 1 auto;
-  min-width: 0;
+.summary-item[data-variant="desktop"] .summary-item__head {
+  cursor: default;
 }
 
 .summary-item[data-variant="desktop"] .summary-item__trash {
   position: static;
   flex: none;
-  min-width: 36px;
-  min-height: 36px;
-  border: 1px solid var(--r-border);
-  border-radius: 8px;
-  background: var(--r-surface);
-  color: var(--r-text2);
+  min-width: 28px;
+  min-height: 28px;
+  margin: -4px -6px -4px 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--r-muted);
+}
+
+.summary-item[data-variant="desktop"] .summary-item__trash svg {
+  width: 16px;
+  height: 16px;
 }
 
 .summary-item[data-variant="desktop"] .summary-item__trash:hover {
-  border-color: var(--r-danger);
+  background: var(--r-lane);
   color: var(--r-danger);
 }
 

@@ -26,7 +26,7 @@ pub(crate) trait WaitReader {
     fn project(&self) -> &ProjectId;
 
     /// The session to tell the server about while the wait listens. Only a wait that keeps a
-    /// resident session on the board names one.
+    /// resident agent on the board names one.
     fn session(&self) -> Option<SessionIdentity> {
         None
     }

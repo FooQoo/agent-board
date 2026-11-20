@@ -167,13 +167,14 @@ What this protects: the token and the files stay out of reach of a document's co
 
 ## Sessions the board launches
 
-The board can start a headless Claude Code or Codex session in a project's bound folder (see [Launching resident sessions](./agents.md#launching-resident-sessions)). **Nobody watches such a session, and its approvals are automatic.** Neither agent stops to ask you.
+The board can start a headless Claude Code or Codex session in a project's bound folder (see [Launching resident agents](./agents.md#launching-resident-agents)). **Nobody watches such a session, and its approvals are automatic.** Neither agent stops to ask you.
 
 - Claude Code is started in auto mode (`--permission-mode auto --permission-prompts none`). A reviewer checks each action, and an action that would have asked is refused and returned to the agent as a denied tool result; nothing waits for you.
 - Codex runs as `codex app-server`, and the session's thread is started with the workspace-write sandbox, `approvalPolicy` `on-request`, and `approvalsReviewer` `auto_review`: the sandbox stays on, and the approvals the sandbox raises go through automatic review. The board adds its own data area as writable (`sandbox_workspace_write.writable_roots`), so the session's `agboard` commands are not blocked by the sandbox before the review. The project folder is the working folder (`cwd`). The server loads your `~/.codex/config.toml` as well, so its MCP servers, hooks, and writable folders apply to the session.
 - Automatic review is not a person. It can approve an action you would not, and a mistaken or hijacked instruction, for example one written in a task or in a web page the agent reads, can still reach what the session's account and approved actions reach. The session also holds your signed-in agent account. Launch these sessions only in projects you trust.
 - The launcher scrubs the agents' own session variables from the child and sets `AGBOARD_RESIDENT_ID`, `AGBOARD_SESSION_TOOL`, and `AGBOARD_SESSION_ORIGIN` so the child is told apart from a session you started yourself. This is identification, not a restriction.
 - Only the local page can start or stop a session. The routes are not served through the ngrok entrance, so a phone that is allowed in cannot launch one. Each launch needs the page's write guard like any other write.
+- The log of a launched session (`GET …/sessions/log`) is local-only too: it can hold whatever the agent printed, so a phone that is allowed in cannot read it.
 - The board launches at most one session in total, whichever tool, and stops it when the server stops.
 - A session with auto-start enabled is launched every time the server starts, without a click, and is started again after it dies. Enabling it is a write on the local page only; leave it off for a project you do not trust.
 

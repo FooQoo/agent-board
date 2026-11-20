@@ -28,7 +28,7 @@ Choose **Ask AI** in the board's header and ask for a piece of work that is more
 
 > Add a dark mode to the settings page, and update the docs.
 
-Choose **Send request**. The request counts under **Your requests** in the **Messages** band until an agent takes it. A session that waits on the board takes it at once: one you keep there with `/agent-board:wait`, or a resident session started from **Settings** (see [Working with agents](./delegate/agents)). You can also ask in the agent's chat instead.
+Choose **Send request**. The request counts under **Your requests** in the **Messages** band until an agent takes it. A session that waits on the board takes it at once: one you keep there with `/agent-board:wait`, or a resident agent started from **Settings** (see [Working with agents](./delegate/agents)). You can also ask in the agent's chat instead.
 
 You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a plan at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until it is started. On the board the tasks are ordinary cards in Todo with a **Draft** badge. Open them to read the plan while the agent asks about it.
 
