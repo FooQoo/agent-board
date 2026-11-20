@@ -11,21 +11,12 @@ export const editEn = {
     sendFailed: 'Could not send the request. Your text and images are kept. Try again.',
   },
   dialog: {
-    moveTitle: 'Move task',
     cardStatus: 'Move to',
     chooseStatus: 'Choose a status',
     moveAction: 'Move',
-    reason: 'Reason (optional)',
     close: 'Close',
-    statusChange: 'Status change',
-    moveHint: 'The task stays where it is until you confirm.',
-    moveReasonDefault: '{{who}} changed the status from {{from}} to {{to}}.',
-    moveStatusChanged:
-      'Another change moved this task to {{status}}. The dialog now shows its current status; check it and move again.',
-    reasonRequired: 'Use up to 2,000 characters for the reason.',
     saveFailed: 'Could not save the change.',
     cancel: 'Cancel',
-    submitMove: 'Move',
     saving: 'Saving…',
   },
   editor: {

@@ -2,7 +2,6 @@ import type { DialogAction, ProjectId } from '../../api/contracts';
 
 export type OperationKind =
   | 'create'
-  | 'move'
   | 'answer'
   | 'edit'
   | 'epic'
