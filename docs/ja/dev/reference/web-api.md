@@ -48,8 +48,9 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET /api/events` | SSE。購読後にボードのビルドIDを含む`ready`（`{"build":"<16桁の16進数>"}`）、変更されたリソースを運ぶ`changed`（[変更イベント](#変更イベント)を参照）、保存した言語やテーマが変わったときに`preferences`（`GET /api/preferences`と同じJSON）、15秒ごとに接続維持のコメント。 |
 | `GET /api/preferences` | 保存済みの言語とカラーテーマ。`locale`・`theme`（`mode`・`accent`）・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[表示設定](#表示設定)を参照。 |
 | `PUT /api/preferences` | JSONの本文で`locale`・`theme`・両方のいずれかを保存し、`GET`と同じ形を、`revision`を1増やして返す。未知の項目と不正な値は422 `invalid_preferences`、書き込みの失敗は500 `preferences_unavailable`。拒否・失敗のときは保存済みの値を変えない。 |
-| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
-| `PUT /api/notification-settings` | JSONの本文で`kinds`グループを保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
+| `GET /api/projects/{projectId}/summaries`<br>`POST /api/projects/{projectId}/summaries/{summaryId}/dismiss` | プロジェクトの定期サマリーを新しい順に返す経路と、1件を片付ける経路。[定期サマリー](#定期サマリー)を参照。 |
+| `GET /api/notification-settings` | スマホに届ける通知の種類。`kinds`・`summary`・`revision`。ファイルがない、または読めない場合は既定値。キャッシュしない。[スマホの通知設定](#スマホの通知設定)を参照。 |
+| `PUT /api/notification-settings` | JSONの本文で`kinds`グループ、`summary`グループ、またはその両方を保存し、`GET`と同じ形を、`revision`を1増やして返す。不正な本文は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`。 |
 | `POST /api/notify` | 全クライアントに再取得を促す。データを変えず、トークンも不要。204。 |
 | `GET /api/health` | `ok`と`pid`。 |
 | `GET /api/monitor-connections`とその配下の経路 | ngrokのリモート接続。[リモート接続](#リモート接続)を参照。 |
@@ -259,16 +260,25 @@ JSONとして読めない本文は、ほかの書き込みと同じく400です�
 
 ```json
 {
-  "kinds": { "results": true, "questions": true, "history": false },
+  "kinds": { "results": true, "questions": true, "history": false, "summary": true },
+  "summary": { "intervalMinutes": 60 },
   "revision": 0
 }
 ```
 
-`PUT`は、`kinds`を持つJSONの本文を取ります。`kinds`はすべての項目（`results`・`questions`・`history`）を持つ必要があります。`GET`と同じ形を、`revision`を1増やして返します。書き込みの保護は`PUT /api/preferences`と同じです。
+`PUT`は、`kinds`、`summary`、またはその両方を持つJSONの本文を取ります。`kinds`はすべての項目（`results`・`questions`・`history`）を持つ必要があります（`summary`は省略でき、省略するとオンとして読みます）。`summary`は`intervalMinutes`を持ち、`0`（オフ）・`30`・`60`・`120`・`240`のいずれかです。ほかの値は422です。`GET`と同じ形を、`revision`を1増やして返します。書き込みの保護は`PUT /api/preferences`と同じです。
 
 定期的な状況通知とカードの状態変化の通知は廃止しました。古いバージョンのまま開いているページがそれらの項目を送ることがあるため、`stateChanges`と`periodic`、および`kinds.stateChanges`は、受け取っても無視します。廃止した項目だけを持つ本文は、保存するものがないので422です。`GET`はそれらを返しません。
 
 JSONとして読めない本文は400です。空の本文、未知の項目、足りない項目は422 `invalid_notification_settings`、書き込みの失敗は500 `notification_settings_unavailable`です。拒否した場合は何も保存しません。revisionの確認はなく、後から保存した内容が優先されます。
+
+### 定期サマリー
+
+`GET /api/projects/{projectId}/summaries`は、`{"summaries": [...]}`を新しい順（期間の終わりの順）に返します。各要素は、プロジェクトの`notify/`のファイルの1行です（[定期サマリー](./files.md#定期サマリー)を参照）。`id`・`dismissed`・`from`・`to`・`results`（`taskId`・`title`・`at`）を持ちます。片付けたサマリーは含めません。`?dismissed=include`を付けると、それも返します。要求のたびにファイルを読むので、手で編集した内容はすぐに見えます。キャッシュしません。
+
+`POST /api/projects/{projectId}/summaries/{summaryId}/dismiss`は、そのサマリーの行に`dismissed`を立て、`{"summary": {...}}`を返します。本文は取らず、繰り返しても安全で、行を消すことはありません。未知のサマリーは404 `message_not_found`、未知のプロジェクトは404 `project_not_found`、形式の誤ったプロジェクトIDは422 `invalid_value`です。どちらの経路もボードのルーターにあるので、ngrokの入口もsessionの背後で提供します。書き込みの保護はほかの変更と同じです。
+
+サーバーがサマリーを記録したとき、片付けたとき、ファイルを手で編集したときは、いずれもプロジェクトの`messages`リソースの`summary`ファセットで`changed`を送ります。
 
 ### プロジェクトのドキュメント
 

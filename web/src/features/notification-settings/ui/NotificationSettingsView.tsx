@@ -1,7 +1,14 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { KIND_KEYS, type NotificationSettings, type NotificationSettingsPatch } from '../model';
+import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group';
+import {
+  KIND_KEYS,
+  type NotificationSettings,
+  type NotificationSettingsPatch,
+  SUMMARY_INTERVALS,
+  type SummaryInterval,
+} from '../model';
 import type { NotificationSettingsState } from '../useNotificationSettings';
 import './notification-settings.css';
 
@@ -44,6 +51,7 @@ function Loaded({
 }) {
   const { t } = useTranslation();
   const { kinds } = settings;
+  const intervalId = useId();
   return (
     <>
       <div className="notification-settings__group">
@@ -56,6 +64,31 @@ function Loaded({
             onChange={(checked) => onChange({ kinds: { ...kinds, [key]: checked } })}
           />
         ))}
+      </div>
+      <div className="notification-settings__group" data-notification-summary-interval="">
+        <span className="notification-settings__label" id={intervalId}>
+          {t('notifications.summaryInterval.label')}
+          <span className="notification-settings__hint">
+            {t('notifications.summaryInterval.hint')}
+          </span>
+        </span>
+        <RadioGroup
+          aria-labelledby={intervalId}
+          value={String(settings.summary.intervalMinutes)}
+          onValueChange={(value) =>
+            onChange({ summary: { intervalMinutes: Number(value) as SummaryInterval } })
+          }
+          className="notification-settings__intervals"
+        >
+          {SUMMARY_INTERVALS.map((minutes) => (
+            <div className="notification-settings__option" key={minutes}>
+              <RadioGroupItem value={String(minutes)} id={`${intervalId}-${minutes}`} />
+              <label htmlFor={`${intervalId}-${minutes}`} className="notification-settings__label">
+                {t(`notifications.summaryInterval.options.${minutes}`)}
+              </label>
+            </div>
+          ))}
+        </RadioGroup>
       </div>
     </>
   );
