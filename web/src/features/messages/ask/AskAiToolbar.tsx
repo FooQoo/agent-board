@@ -1,4 +1,4 @@
-import { ArrowUpIcon, ImageIcon, XIcon } from 'lucide-react';
+import { ImageIcon, SendIcon, XIcon } from 'lucide-react';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
@@ -85,7 +85,7 @@ export function AskAiToolbar({
           <span />
         )}
         <Button type="button" disabled={saving || !canSend} onClick={onSend} {...keepFocusOnPress}>
-          <ArrowUpIcon aria-hidden="true" />
+          <SendIcon aria-hidden="true" />
           {t('askAi.submit')}
         </Button>
       </div>
