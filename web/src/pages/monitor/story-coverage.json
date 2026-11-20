@@ -24,6 +24,30 @@
               "interaction": true
             },
             {
+              "id": "pages-monitor--sheet-stands-on-bar",
+              "states": [
+                "bottom bar in front of an open sheet",
+                "sheet bottom edge on the bar",
+                "Board closes the sheet"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--bar-leaves-empty-ask",
+              "states": ["empty Ask sheet", "bar switches in one tap"],
+              "interaction": true
+            },
+            {
+              "id": "pages-monitor--bar-asks-before-discarding-ask",
+              "states": [
+                "typed request",
+                "discard question",
+                "keep stays on Ask",
+                "discard switches sheet"
+              ],
+              "interaction": true
+            },
+            {
               "id": "pages-monitor--standalone-safe-area",
               "states": [
                 "Home Screen app",

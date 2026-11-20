@@ -128,12 +128,23 @@ export function MonitorLanesScreen({
         questionCount={countMessages(messages ?? []).fromAi}
         archiveDisabled={lanes.done.length === 0}
         open={panel.target !== null ? 'messages' : pending?.kind === 'bulk' ? 'archive' : null}
-        onMessages={() => panel.open({ tab: 'fromAi' })}
-        onAsk={() => onAsk?.()}
-        onArchive={() => setPending({ kind: 'bulk' })}
-        onBoard={() => {
+        onMessages={() => {
+          close();
+          panel.open({ tab: 'fromAi' });
+        }}
+        onAsk={() => {
           panel.close();
           close();
+          onAsk?.();
+        }}
+        onArchive={() => {
+          panel.close();
+          setPending({ kind: 'bulk' });
+        }}
+        onBoard={(then) => {
+          panel.close();
+          close();
+          then?.();
         }}
       />
       <MonitorLaneDialogs

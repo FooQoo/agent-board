@@ -103,6 +103,11 @@ export interface MonitorViewProps {
   onSummaryLinkClose?(): void;
   /** The bar's Ask item opens "Ask AI"; the screen leaves it to this callback. */
   onAsk?(): void;
+  /**
+   * The bar leaves the Ask sheet: it closes through its discard question and calls `then` only once
+   * it has closed. A person who keeps the request stays on Ask and `then` is never called.
+   */
+  onAskClose?(then: () => void): void;
   /** The Ask sheet is open, so the bar shows Ask as the open item. */
   asking?: boolean;
   /** Read-only resolvers used by the monitor drawer. */

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { type ReactNode, useLayoutEffect, useMemo, useState } from 'react';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { SAMPLE_PROJECT, sampleMessagesApi } from '../../features/tasks/messages/messageSamples';
 import type { Message } from '../../shared/data/api/contracts';
 import { health } from '../../features/resident-sessions/fixtures';
@@ -204,6 +204,40 @@ export const BarAskAi: StoryObj<typeof WiredPhoneStory> = {
   },
 };
 
+/**
+ * A sheet opened from the bar stands on the bar: the bar is in front of the sheet and its backdrop and
+ * stays tappable, the sheet's bottom edge is the bar's top, and Board closes the sheet.
+ */
+export const SheetStandsOnBar: StoryObj<typeof WiredPhoneStory> = {
+  args: { onAsk: fn() },
+  globals: { locale: 'en', width: 'phone-390' },
+  render: (args) => (
+    <StandaloneInsets>
+      <div className="app" data-layout="mobile">
+        <WiredPhoneStory {...args} />
+      </div>
+    </StandaloneInsets>
+  ),
+  play: async ({ canvasElement }) => {
+    const nav = within(canvasElement).getByRole('navigation', { name: 'Main navigation' });
+    await userEvent.click(within(nav).getByRole('button', { name: /^Messages/ }));
+    const sheet = await body().findByRole('dialog', { name: 'Messages' });
+    // The sheet slides in: wait for it to rest before measuring.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const navBox = nav.getBoundingClientRect();
+    await expect(sheet.getBoundingClientRect().bottom).toBeLessThanOrEqual(navBox.top + 0.5);
+    await expect(sheet.getBoundingClientRect().bottom).toBeGreaterThan(navBox.top - 2);
+    // The bar is what a tap on its middle reaches, above the sheet's backdrop, and it takes pointer events.
+    const centre = [navBox.left + navBox.width / 2, navBox.top + navBox.height / 2] as const;
+    await expect(nav.contains(document.elementFromPoint(...centre))).toBe(true);
+    await expect(getComputedStyle(nav).pointerEvents).toBe('auto');
+    // A tap on Board closes the sheet. The dialog marks the page behind it aria-hidden, so the bar is
+    // found by its hidden role; it is still on screen and tappable.
+    await userEvent.click(within(nav).getByRole('button', { name: 'Board', hidden: true }));
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Messages' })).toBeNull());
+  },
+};
+
 /** The connected screen opens the Ask AI sheet from the bar. */
 export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,
@@ -211,6 +245,53 @@ export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   play: async ({ canvasElement }) => {
     await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
     await expect(await body().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+  },
+};
+
+/** The bar's Board item, found by class: an open sheet hides the page behind it from the accessibility tree. */
+const barItem = (canvasElement: HTMLElement, name: string) =>
+  within(canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement).getByText(name);
+
+/** With nothing typed, leaving the Ask sheet from the bar is one tap: no question, and the sheet is gone. */
+export const BarLeavesEmptyAsk: StoryObj<typeof ConnectedProjectStory> = {
+  render: () => <ConnectedProjectStory />,
+  globals: { locale: 'en', width: 'phone-390' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
+    await expect(await body().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+    await userEvent.click(barItem(canvasElement, 'Board'));
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Ask AI' })).toBeNull());
+    await expect(body().queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+  },
+};
+
+/** A typed request is not thrown away by the bar: it asks first, keeping stays on Ask, discarding leaves. */
+export const BarAsksBeforeDiscardingAsk: StoryObj<typeof ConnectedProjectStory> = {
+  render: () => <ConnectedProjectStory />,
+  globals: { locale: 'en', width: 'phone-390' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
+    const ask = await body().findByRole('dialog', { name: 'Ask AI' });
+    await userEvent.type(within(ask).getByRole('textbox'), 'Please check the build');
+    await userEvent.click(barItem(canvasElement, 'Messages'));
+    const question = await body().findByRole('dialog', { name: 'Discard changes?' });
+    // Keep: the question closes, Ask stays with its text, and the bar went nowhere.
+    await userEvent.click(within(question).getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(body().queryByRole('dialog', { name: 'Discard changes?' })).toBeNull(),
+    );
+    await expect(body().getByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+    await expect(within(ask).getByRole('textbox')).toHaveValue('Please check the build');
+    await expect(body().queryByRole('dialog', { name: 'Messages' })).toBeNull();
+    // Discard: Ask closes, and the sheet the person chose opens.
+    await userEvent.click(barItem(canvasElement, 'Messages'));
+    await userEvent.click(
+      within(await body().findByRole('dialog', { name: 'Discard changes?' })).getByRole('button', {
+        name: 'Discard and close',
+      }),
+    );
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Ask AI' })).toBeNull());
+    await expect(await body().findByRole('dialog', { name: 'Messages' })).toBeInTheDocument();
   },
 };
 

@@ -123,6 +123,8 @@ pub async fn wait_for_task(
     // Work already on the board when listening starts is returned immediately.
     let initial = reader.read()?;
     if let Some(output) = ready(shared, &initial, &project_id)? {
+        // No stream opens here to name the session, so the read itself is the access.
+        super::session_touch::touch_from_env(&data_dir_of(shared), &project_id);
         return Ok(output);
     }
 
@@ -232,4 +234,13 @@ pub(crate) fn render_task(
     serde_json::to_string(&output).map_err(|error| AgboardError::BoardUnavailable {
         reason: error.to_string(),
     })
+}
+
+/// The data directory: the parent of the shared folder.
+fn data_dir_of(shared: &Path) -> std::path::PathBuf {
+    shared
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf()
 }

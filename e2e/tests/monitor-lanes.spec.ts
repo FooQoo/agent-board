@@ -452,6 +452,36 @@ test('Messages opens the messages drawer without an Ask entry, and Ask opens the
   await expect(page.getByRole('dialog', { name: 'Ask AI' })).toBeVisible();
 });
 
+test('the bottom bar stays in front of an open sheet, the sheet stands on it, and its items switch sheets', async ({ page }) => {
+  await openPhone(page, 'Switch');
+  // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
+  const bar = page.locator('.phone-nav');
+  const item = (name: string) => bar.locator('button', { hasText: name });
+  await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
+  const messages = page.getByRole('dialog', { name: 'Messages' });
+  await expect(messages).toBeVisible();
+  await page.waitForTimeout(500);
+
+  const sheetBox = await messages.boundingBox();
+  const barBox = await bar.boundingBox();
+  if (!sheetBox || !barBox) throw new Error('the sheet or the bar has no box');
+  expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(barBox.y + 1);
+  expect(sheetBox.y + sheetBox.height).toBeGreaterThan(barBox.y - 3);
+  // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
+  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
+    barBox.x + barBox.width / 2,
+    barBox.y + barBox.height / 2,
+  ]);
+  expect(topmost).toBe(true);
+
+  // Another item replaces the sheet at once, with one dialog on screen; Board closes it.
+  await item('Settings').tap();
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await item('Board').tap();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('Settings opens as a drawer, and Archive asks in a drawer that cancels without a change', async ({ page }) => {
   await openPhone(page, 'Switch');
   await bottomBar(page).getByRole('button', { name: 'Settings' }).tap();

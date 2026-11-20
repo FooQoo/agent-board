@@ -72,5 +72,9 @@ export const residentEn = {
     },
     stalledHint:
       'The board tried each item three times and stopped. Finish it on the board yourself, or stop and start the session; an item leaves this list once it is no longer on the board.',
+    logTitle: 'Log',
+    logEmpty: 'The log appears once the agent has started.',
+    logTruncated: 'Only the end of the log is shown.',
+    logFailed: 'Could not read the log. Trying again.',
   },
 } as const;
