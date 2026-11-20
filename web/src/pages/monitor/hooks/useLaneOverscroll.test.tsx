@@ -100,4 +100,37 @@ describe('useLaneOverscroll', () => {
     swipe(chosen.plain, -OVERSCROLL_DISTANCE * 2);
     expect(chosen.onOverscroll).not.toHaveBeenCalled();
   });
+
+  describe('touch moves for the outer area', () => {
+    const touchMove = (target: Element, x: number) => {
+      const event = new Event('touchmove', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'touches', { value: [{ clientX: x, clientY: 0 }] });
+      act(() => {
+        target.dispatchEvent(event);
+      });
+    };
+
+    it('reaches an ancestor once the press is judged vertical, even drifting left', () => {
+      const { lane, plain } = setup();
+      const seen = vi.fn();
+      lane.parentElement?.addEventListener('touchmove', seen);
+      touchMove(plain, 195); // no press yet
+      pointer(plain, 'pointerdown', 200);
+      pointer(plain, 'pointermove', 196, 20); // clearly vertical
+      touchMove(plain, 196);
+      touchMove(plain, 190);
+      expect(seen).toHaveBeenCalledTimes(3);
+    });
+
+    it('is still stopped while sliding to the left', () => {
+      const { lane, plain } = setup();
+      const seen = vi.fn();
+      lane.parentElement?.addEventListener('touchmove', seen);
+      pointer(plain, 'pointerdown', 200);
+      pointer(plain, 'pointermove', 170);
+      touchMove(plain, 170);
+      expect(seen).not.toHaveBeenCalled();
+      pointer(plain, 'pointerup', 170);
+    });
+  });
 });
