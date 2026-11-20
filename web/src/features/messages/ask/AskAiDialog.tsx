@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type MutableRefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isTouchScreen } from '../../../shared/lib/viewport/isTouchScreen';
 import { Surface } from '../../../shared/ui/surface/Surface';
@@ -32,6 +32,7 @@ export function AskAiDialog({
   onSubmit,
   onSavingChange,
   initialText = '',
+  closeGuard,
 }: {
   /** A modal on the board, a bottom sheet on a phone. */
   kind?: 'dialog' | 'sheet';
@@ -41,6 +42,12 @@ export function AskAiDialog({
   /** Reports that a send started (`true`) or failed and the input was kept (`false`). */
   onSavingChange?: (saving: boolean) => void;
   initialText?: string;
+  /**
+   * Filled with the guarded close, for a caller that leaves the dialog by another way than its own
+   * close button (the phone's bottom bar). It asks before discarding, closes at once when nothing was
+   * entered, and calls `after` only once the dialog has closed; it does nothing while a send runs.
+   */
+  closeGuard?: MutableRefObject<((after: () => void) => void) | null>;
 }) {
   const { t } = useTranslation();
   const field = useRef<HTMLTextAreaElement>(null);
@@ -90,11 +97,24 @@ export function AskAiDialog({
   };
   const dirty = text.trim() !== '' || images.attachments.length > 0;
   // Closing with something entered asks first; an empty composer closes at once.
-  const requestClose = () => {
+  const afterClose = useRef<(() => void) | null>(null);
+  const requestClose = (after?: () => void) => {
     if (saving) return;
-    if (dirty) setConfirmDiscard(true);
-    else onClose();
+    afterClose.current = after ?? null;
+    if (dirty) {
+      setConfirmDiscard(true);
+      return;
+    }
+    onClose();
+    after?.();
   };
+  useEffect(() => {
+    if (!closeGuard) return;
+    closeGuard.current = (after) => requestClose(after);
+    return () => {
+      closeGuard.current = null;
+    };
+  });
   const notice = images.error ? attachmentNoticeText(images.error, t) : '';
   return (
     <>
@@ -102,7 +122,7 @@ export function AskAiDialog({
         kind={kind}
         title={t('askAi.title')}
         closeLabel={t('dialog.close')}
-        onClose={requestClose}
+        onClose={() => requestClose()}
         className={`ask-ai ask-ai--${kind}`}
         footer={
           <AskAiToolbar
@@ -150,10 +170,15 @@ export function AskAiDialog({
       <DiscardConfirm
         open={confirmDiscard}
         onOpenChange={setConfirmDiscard}
-        onKeep={() => setConfirmDiscard(false)}
+        onKeep={() => {
+          afterClose.current = null;
+          setConfirmDiscard(false);
+        }}
         onDiscard={() => {
           setConfirmDiscard(false);
           onClose();
+          afterClose.current?.();
+          afterClose.current = null;
         }}
       />
     </>

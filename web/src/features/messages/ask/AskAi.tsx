@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import type { ProjectId } from '../../../shared/api/contracts';
 import { AskAiDialog } from './AskAiDialog';
 import { sendMessageRequest } from './sendRequest';
@@ -10,6 +11,8 @@ export interface AskAiProps {
   onSent?: () => void;
   /** A draft the text starts with. */
   initialText?: string;
+  /** Receives the dialog's guarded close (see `AskAiDialog`). */
+  closeGuard?: MutableRefObject<((after: () => void) => void) | null>;
 }
 
 /** "Ask AI" that sends its own request. A modal on the board (`kind="dialog"`) or a sheet. */
@@ -19,11 +22,13 @@ export function AskAi({
   onClose,
   onSent,
   initialText,
+  closeGuard,
 }: AskAiProps & { kind?: 'dialog' | 'sheet' }) {
   return (
     <AskAiDialog
       kind={kind}
       initialText={initialText}
+      closeGuard={closeGuard}
       onClose={onClose}
       onSubmit={async (input) => {
         await sendMessageRequest(projectId, input);

@@ -340,13 +340,14 @@
   right: 0;
   /* Anchored to the bottom of the kept page height, not the viewport: while the keyboard is open the
      sheet keeps its top on screen and the keyboard covers its lower part. */
-  bottom: min(0px, calc(100% - var(--stable-vh, 100%)));
+  /* Above the phone's bottom bar, which stays in front of the sheet (--phone-nav-height is 0px without one). */
+  bottom: calc(min(0px, 100% - var(--stable-vh, 100%)) + var(--phone-nav-height, 0px));
   left: 0;
   z-index: 50;
   width: 100%;
   max-width: none;
   height: min(calc(var(--stable-vh, 100svh) * 0.85), 720px);
-  max-height: calc(var(--stable-vh, 100svh) - var(--safe-top));
+  max-height: calc(var(--stable-vh, 100svh) - var(--safe-top) - var(--phone-nav-height, 0px));
   /* The only writer of the sheet's position besides the enter and exit keyframes: the drag hook sets
      the pull, and the keyframes start or end at it. */
   translate: 0 var(--drawer-drag-y, 0px);
