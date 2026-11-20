@@ -16,7 +16,8 @@
 .monitor-shell > .header {
   flex: none;
   height: auto;
-  min-height: 44px;
+  /* 52px: the 44px finger target of the project selector plus 4px of air above and below it. */
+  min-height: 52px;
   padding: 0;
   background: transparent;
   box-shadow: none;
@@ -28,6 +29,27 @@
 }
 .monitor-shell > .header .header__app {
   gap: 8px;
+  font-size: 14px;
+}
+/* The selector is drawn smaller than the bar so it does not touch the bar's edges; the transparent area
+   around it keeps the 44px target (the global touch rule's min-height gives way to the drawn size). */
+.monitor-shell > .header .project-switcher {
+  position: relative;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 8px;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 18px;
+}
+.monitor-shell > .header .project-switcher::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+.monitor-shell > .header .header__slash,
+.monitor-shell > .header .header__board-name {
   font-size: 14px;
 }
 .monitor-summary {
