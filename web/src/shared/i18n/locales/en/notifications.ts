@@ -1,7 +1,7 @@
-// The "Phone notifications" row of the settings dialog and the dialog it opens.
+// The "Notifications" row of the settings dialog and the dialog it opens.
 export const notificationsEn = {
   notifications: {
-    title: 'Phone notifications',
+    title: 'Notifications',
     entryBody: 'Choose what the board tells your phone about.',
     entryAction: 'Notification settings',
     intro:

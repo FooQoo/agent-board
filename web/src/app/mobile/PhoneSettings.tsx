@@ -10,7 +10,7 @@ import { ResidentSettingsRow } from '../residentSlot';
 
 /**
  * The settings dialog of the board's phone screen: the language and theme, and the row that shows
- * the guide again, the resident-session row, and the phone notifications row, as on the PC board.
+ * the guide again, the resident-session row, and the notifications row, as on the PC board.
  * The notification dialog the row opens also holds the control that turns notifications on. The remote connection is set up on a PC, so it is not here.
  */
 export function PhoneSettings({
@@ -24,7 +24,7 @@ export function PhoneSettings({
   preferencesEndpoint?: PreferencesEndpoint;
   /** Replaces the row wired to the local API (for Stories, which may not call it). */
   residentRow?: ReactNode;
-  /** Replaces the phone notifications row (for Stories). */
+  /** Replaces the notifications row (for Stories). */
   notificationRow?: ReactNode;
 }) {
   // The project the board shows, from the same `project` query the board reads.

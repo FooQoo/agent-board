@@ -10,7 +10,7 @@ export interface StatusBarProps {
   lastSyncedAt: Date | null;
   /** A project state that replaces the count and the sync state with one line of text. */
   note?: 'boardLoading' | 'notSynced' | 'noProjects' | 'noSelection';
-  /** An optional indicator between the count and the sync state (not drawn when `note` is set). */
+  /** An optional indicator drawn just left of the sync state (not drawn when `note` is set). */
   slot?: ReactNode;
 }
 
