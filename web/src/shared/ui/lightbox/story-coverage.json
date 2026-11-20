@@ -32,6 +32,11 @@
               "id": "shared-ui-imageviewer--single-image",
               "states": ["single picture", "no position"],
               "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--pinch-zoom-phone",
+              "states": ["pinch zoom allowed", "phone width"],
+              "interaction": true
             }
           ]
         }
@@ -67,6 +72,11 @@
               "id": "shared-ui-imageviewer--single-image",
               "states": ["single picture", "no position"],
               "interaction": true
+            },
+            {
+              "id": "shared-ui-imageviewer--pinch-zoom-phone",
+              "states": ["pinch zoom allowed", "phone width"],
+              "interaction": true
             }
           ]
         }
@@ -86,6 +96,11 @@
             {
               "id": "shared-ui-lightbox--close-calls",
               "states": ["close control"],
+              "interaction": true
+            },
+            {
+              "id": "shared-ui-lightbox--close-by-escape-and-backdrop",
+              "states": ["Escape", "backdrop press"],
               "interaction": true
             }
           ]

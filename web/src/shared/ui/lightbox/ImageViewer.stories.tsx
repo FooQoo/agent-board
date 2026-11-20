@@ -111,3 +111,22 @@ export const SingleImage: Story = {
     await expect(slide.scrollHeight).toBeGreaterThan(slide.clientHeight);
   },
 };
+
+/**
+ * On a phone the pinch that zooms the page stays with the browser: the viewer and its slide allow
+ * it next to the sideways and vertical scrolling, so a picture can be zoomed in as well as swiped.
+ */
+export const PinchZoomPhone: Story = {
+  args: { images: ONE, startIndex: 0, label: () => 'Tall picture' },
+  globals: { width: 'phone-375' },
+  play: async () => {
+    const dialog = await openDialog();
+    const viewer = dialog.querySelector('[data-viewer]') as HTMLElement;
+    const slide = within(dialog).getByRole('group');
+    for (const element of [viewer, slide]) {
+      const action = getComputedStyle(element).touchAction;
+      // The browser reports pan-x, pan-y and pinch-zoom together as `manipulation`.
+      await expect(action).toMatch(/^(manipulation|.*pinch-zoom.*)$/);
+    }
+  },
+};
