@@ -115,14 +115,26 @@ fn recording_continues_from_the_newest_stored_summary_and_skips_an_empty_window(
     let tasks = |store: &FileStore| store.snapshot(&project).unwrap().tasks;
 
     add("One", at(10, 20));
-    let first = record(&store, &project, &tasks(&store), at(10, 0), at(11, 0)).unwrap();
+    let first = record(&store, &project, &tasks(&store), at(10, 0), at(11, 0))
+        .unwrap()
+        .unwrap();
     assert_eq!(first.results.len(), 1);
     // The same window again, or a window with nothing new, writes nothing.
-    assert!(record(&store, &project, &tasks(&store), at(10, 0), at(11, 0)).is_none());
-    assert!(record(&store, &project, &tasks(&store), at(11, 0), at(12, 0)).is_none());
+    assert!(
+        record(&store, &project, &tasks(&store), at(10, 0), at(11, 0))
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        record(&store, &project, &tasks(&store), at(11, 0), at(12, 0))
+            .unwrap()
+            .is_none()
+    );
     // A floor older than the stored end does not report "One" again.
     add("Two", at(12, 30));
-    let next = record(&store, &project, &tasks(&store), at(9, 0), at(13, 0)).unwrap();
+    let next = record(&store, &project, &tasks(&store), at(9, 0), at(13, 0))
+        .unwrap()
+        .unwrap();
     assert_eq!(next.from, at(11, 0));
     assert_eq!(next.results.len(), 1);
     assert_eq!(next.results[0].title, "Two");
