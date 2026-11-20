@@ -58,24 +58,25 @@ impl Schedule {
     }
 }
 
-/// Write the summary of the window ending at `to` for one project. The window starts at `floor`,
-/// or at the end of the newest stored summary when that is later. `None` when no result falls in
-/// it or the summary is already stored.
+/// Write the summary of the window ending at `to` for one project. The window starts at the end
+/// of the newest stored summary, or at `floor` when the project has none, so a restart or a failed
+/// earlier write leaves no gap. `Ok(None)` when no result falls in it or the summary is already
+/// stored; `Err` when the write failed, so the caller retries the window.
 pub(super) fn record(
     store: &FileStore,
     project: &ProjectId,
     tasks: &[TaskView],
     floor: DateTime<Utc>,
     to: DateTime<Utc>,
-) -> Option<Summary> {
-    let from = store
-        .latest_summary_end(project)
-        .map_or(floor, |end| end.max(floor));
-    let summary = Summary::for_window(tasks, from, to)?;
-    store
-        .append_summary(project, &summary)
-        .ok()?
-        .then_some(summary)
+) -> Result<Option<Summary>, ()> {
+    let from = store.latest_summary_end(project).unwrap_or(floor);
+    let Some(summary) = Summary::for_window(tasks, from, to) else {
+        return Ok(None);
+    };
+    match store.append_summary(project, &summary) {
+        Ok(stored) => Ok(stored.then_some(summary)),
+        Err(_) => Err(()),
+    }
 }
 
 fn clock(at: DateTime<Utc>) -> String {
@@ -162,26 +163,38 @@ pub(super) fn start(weak: Weak<AppState>, dispatcher: Arc<Dispatcher>) {
                 continue;
             }
             let floor = schedule.since(minutes);
-            schedule.mark(now);
+            // Whether the entrance is up is read now, not after the write: a notification that
+            // was due while it was down is recorded, never sent after it comes back.
+            let entrance_up = super::runtime::entrance_up(&state);
             let projects = snapshots(&state);
             let shared = state.shared.clone();
             let written = tokio::task::spawn_blocking(move || {
                 let store = FileStore::open(&shared);
-                projects
-                    .iter()
-                    .filter_map(|(id, tasks)| {
-                        record(&store, id, tasks, floor, now).map(|s| (id.to_string(), s))
-                    })
-                    .collect::<Vec<_>>()
+                let mut failed = false;
+                let mut written = Vec::new();
+                for (id, tasks) in &projects {
+                    match record(&store, id, tasks, floor, now) {
+                        Ok(Some(s)) => written.push((id.to_string(), s)),
+                        Ok(None) => {}
+                        Err(()) => failed = true,
+                    }
+                }
+                (written, failed)
             })
-            .await
-            .unwrap_or_default();
+            .await;
+            // A failed write leaves the window open: the next check tries it again, and a project
+            // that already has its summary starts after it, so nothing is reported twice.
+            let Ok((written, failed)) = written else {
+                continue;
+            };
+            if !failed {
+                schedule.mark(now);
+            }
             if written.is_empty() {
                 continue;
             }
-            let ctx: Option<Context> =
-                super::runtime::context(&state, super::runtime::entrance_up(&state))
-                    .filter(|ctx| ctx.settings.kinds.summary);
+            let ctx: Option<Context> = super::runtime::context(&state, entrance_up)
+                .filter(|ctx| ctx.settings.kinds.summary);
             drop(state);
             if let Some(ctx) = ctx {
                 for (project, summary) in &written {

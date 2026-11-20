@@ -217,7 +217,10 @@ impl FileStore {
         let _lock = WriteLock::acquire(&layout::write_lock(&project_dir))?;
         let not_found = || AgboardError::MessageNotFound { id: id.to_string() };
         for path in files_in(&project_dir.join(NOTIFY_DIR)) {
-            let mut lines = read_lines(&path, &self.shared)?;
+            // An unreadable file cannot hold the summary; `summaries` skips it too.
+            let Ok(mut lines) = read_lines(&path, &self.shared) else {
+                continue;
+            };
             let Some(at) = lines.iter().position(|l| line_id(l).as_deref() == Some(id)) else {
                 continue;
             };
