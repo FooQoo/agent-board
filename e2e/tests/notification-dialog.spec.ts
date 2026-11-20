@@ -23,6 +23,9 @@ test('the row opens the notification dialog, a choice is saved, and focus return
 
   const dialog = page.getByRole('dialog', { name: 'Phone notifications' });
   await expect(dialog).toBeVisible();
+  // The defaults: results only.
+  await expect(dialog.getByRole('checkbox', { name: /^Results/ })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /^Questions that need/ })).not.toBeChecked();
   const history = dialog.getByRole('checkbox', { name: /^History additions/ });
   await expect(history).not.toBeChecked();
   await history.click();

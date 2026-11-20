@@ -17,7 +17,7 @@ export interface NotificationSettings {
 export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'revision'>>;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  kinds: { results: true, questions: true, history: false },
+  kinds: { results: true, questions: false, history: false },
   revision: 0,
 };
 

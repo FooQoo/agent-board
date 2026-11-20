@@ -51,6 +51,36 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/push-notifications/ui/PushPromptDialogView.tsx",
+      "exports": [
+        {
+          "name": "PushPromptDialogView",
+          "stories": [
+            {
+              "id": "pushnotifications-pushpromptdialogview--guide",
+              "states": ["guide sheet", "enable button", "not now button"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushpromptdialogview--dark-japanese",
+              "states": ["Japanese", "dark theme"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushpromptdialogview--failed",
+              "states": ["failure message"],
+              "interaction": true
+            },
+            {
+              "id": "pushnotifications-pushpromptdialogview--busy",
+              "states": ["buttons disabled while working"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }
