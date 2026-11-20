@@ -248,6 +248,53 @@ export const ConnectedAskAiSheet: StoryObj<typeof ConnectedProjectStory> = {
   },
 };
 
+/** The bar's Board item, found by class: an open sheet hides the page behind it from the accessibility tree. */
+const barItem = (canvasElement: HTMLElement, name: string) =>
+  within(canvasElement.querySelector<HTMLElement>('.phone-nav') as HTMLElement).getByText(name);
+
+/** With nothing typed, leaving the Ask sheet from the bar is one tap: no question, and the sheet is gone. */
+export const BarLeavesEmptyAsk: StoryObj<typeof ConnectedProjectStory> = {
+  render: () => <ConnectedProjectStory />,
+  globals: { locale: 'en', width: 'phone-390' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
+    await expect(await body().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+    await userEvent.click(barItem(canvasElement, 'Board'));
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Ask AI' })).toBeNull());
+    await expect(body().queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+  },
+};
+
+/** A typed request is not thrown away by the bar: it asks first, keeping stays on Ask, discarding leaves. */
+export const BarAsksBeforeDiscardingAsk: StoryObj<typeof ConnectedProjectStory> = {
+  render: () => <ConnectedProjectStory />,
+  globals: { locale: 'en', width: 'phone-390' },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Ask AI' }));
+    const ask = await body().findByRole('dialog', { name: 'Ask AI' });
+    await userEvent.type(within(ask).getByRole('textbox'), 'Please check the build');
+    await userEvent.click(barItem(canvasElement, 'Messages'));
+    const question = await body().findByRole('dialog', { name: 'Discard changes?' });
+    // Keep: the question closes, Ask stays with its text, and the bar went nowhere.
+    await userEvent.click(within(question).getByRole('button', { name: 'Keep editing' }));
+    await waitFor(() =>
+      expect(body().queryByRole('dialog', { name: 'Discard changes?' })).toBeNull(),
+    );
+    await expect(body().getByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
+    await expect(within(ask).getByRole('textbox')).toHaveValue('Please check the build');
+    await expect(body().queryByRole('dialog', { name: 'Messages' })).toBeNull();
+    // Discard: Ask closes, and the sheet the person chose opens.
+    await userEvent.click(barItem(canvasElement, 'Messages'));
+    await userEvent.click(
+      within(await body().findByRole('dialog', { name: 'Discard changes?' })).getByRole('button', {
+        name: 'Discard and close',
+      }),
+    );
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Ask AI' })).toBeNull());
+    await expect(await body().findByRole('dialog', { name: 'Messages' })).toBeInTheDocument();
+  },
+};
+
 /** Sets the safe-area variables of an iPhone with a Dynamic Island in portrait, which Storybook cannot report through env(). */
 function StandaloneInsets({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {

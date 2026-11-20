@@ -141,9 +141,10 @@ export function MonitorLanesScreen({
           panel.close();
           setPending({ kind: 'bulk' });
         }}
-        onBoard={() => {
+        onBoard={(then) => {
           panel.close();
           close();
+          then?.();
         }}
       />
       <MonitorLaneDialogs
