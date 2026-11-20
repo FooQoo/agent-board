@@ -159,13 +159,6 @@ async function holdAndSwipe(page: Page, card: Locator, direction: -1 | 1): Promi
   );
 }
 
-async function confirmMove(page: Page): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: 'Move task' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-}
-
 // #447
 test('a horizontal swipe, even one that starts on a card, and the tabs switch between the three lanes', async ({ page }) => {
   await openPhone(page, 'Switch');
@@ -249,19 +242,9 @@ test('a long-pressed card swipes open and moves forward and back, and the files 
   await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Move #\d+ to Todo$/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Move #\d+ to Done$/ })).toHaveCount(0);
-  // Nothing has changed until the move is confirmed, and the dialog can be cancelled.
+  // The move is made at once: no dialog asks, and the file changes.
   await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  const dialog = page.getByRole('dialog', { name: 'Move task' });
-  await expect(dialog).toContainText('Move forward');
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(show('Move', 'Move forward').taskStatus).toBe('todo');
-  // Pressing a button closes the card, so it is held and slid open once more.
-  await expect(forward).not.toHaveAttribute('data-revealed', /.*/);
-  await holdAndSwipe(page, forward, -1);
-  await expect(forward).toHaveAttribute('data-revealed', 'right');
-  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  await confirmMove(page);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(() => show('Move', 'Move forward').taskStatus).toBe('doing');
   // The saved move stays on screen: the counts follow it.
   await expect(tab(page, 'Todo 1')).toBeVisible();
@@ -273,7 +256,6 @@ test('a long-pressed card swipes open and moves forward and back, and the files 
   await holdAndSwipe(page, finish, -1);
   await expect(finish).toHaveAttribute('data-revealed', 'right');
   await page.getByRole('button', { name: /^Move #\d+ to Done$/ }).tap();
-  await confirmMove(page);
   await expect.poll(() => show('Move', 'Move finish').taskStatus).toBe('done');
   await expect(tab(page, 'Doing 2')).toBeVisible();
   await expect(tab(page, 'Done 2')).toBeVisible();
@@ -286,7 +268,6 @@ test('a long-pressed card swipes open and moves forward and back, and the files 
   await expect(page.getByRole('button', { name: /^Move #\d+ to Done$/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toHaveCount(0);
   await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  await confirmMove(page);
   await expect.poll(() => show('Move', 'Move back').taskStatus).toBe('todo');
 
   // Done -> Doing.
@@ -295,7 +276,6 @@ test('a long-pressed card swipes open and moves forward and back, and the files 
   await holdAndSwipe(page, reopen, 1);
   await expect(reopen).toHaveAttribute('data-revealed', 'left');
   await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  await confirmMove(page);
   await expect.poll(() => show('Move', 'Move reopen').taskStatus).toBe('doing');
 
   // The card nobody touched is where it was.

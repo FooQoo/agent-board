@@ -98,7 +98,11 @@ ol {
   grid-template-rows: 56px minmax(0, 1fr) 40px;
   height: 100vh;
   height: var(--stable-vh, 100svh);
-  /* A wide screen in the Home Screen app (a landscape iPhone) keeps clear of the notch and the home indicator. */
+}
+
+/* A wide screen in the Home Screen app (a landscape iPhone) keeps clear of the notch and the home indicator.
+   The phone screen applies the insets itself (see .monitor-shell), so only the wide layout is padded. */
+.app[data-layout="desktop"] {
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 

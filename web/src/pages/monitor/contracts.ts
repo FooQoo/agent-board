@@ -47,15 +47,15 @@ export const unconnectedMonitorReadResolvers: MonitorReadResolvers = {
 };
 
 /**
- * The changes the lane view makes: a move with its reason, the archive of one card, and the
- * archive of the done lane, each after the person confirmed it. They go to the board's own routes.
+ * The changes the lane view makes: a move at once, the archive of one card, and the archive of
+ * the done lane, the last two after the person confirmed them. They go to the board's own routes.
  */
 export interface MonitorWrites {
   move(
     projectId: ProjectId,
     taskId: number,
     target: ColumnName,
-    reason: string,
+    /** The status the page showed; a task that has moved on since is refused. */
     fromStatus: ColumnName,
   ): Promise<unknown>;
   /** Puts a card before `beforeId` in its lane, or at the end when it is null. */

@@ -1,23 +1,15 @@
 /**
  * The phone notification settings as the server saves them (`/api/notification-settings`). The
- * kinds, defaults, and intervals are defined once on the server (`notification_settings` module);
- * this file mirrors them for the screen.
+ * kinds and defaults are defined once on the server (`notification_settings` module);
+ * this file mirrors them for the screen. The removed periodic and state-change groups that an older
+ * server may still send are ignored.
  */
 
-export const KIND_KEYS = ['results', 'questions', 'stateChanges', 'history'] as const;
+export const KIND_KEYS = ['results', 'questions', 'history'] as const;
 export type KindKey = (typeof KIND_KEYS)[number];
-
-export const STATE_CHANGE_KEYS = ['started', 'pending', 'done'] as const;
-export type StateChangeKey = (typeof STATE_CHANGE_KEYS)[number];
-
-/** The intervals of the periodic status notification, in minutes. */
-export const PERIODIC_INTERVALS = [30, 60, 120, 240] as const;
-export type PeriodicInterval = (typeof PERIODIC_INTERVALS)[number];
 
 export interface NotificationSettings {
   kinds: Record<KindKey, boolean>;
-  stateChanges: Record<StateChangeKey, boolean>;
-  periodic: { enabled: boolean; intervalMinutes: PeriodicInterval };
   revision: number;
 }
 
@@ -25,9 +17,7 @@ export interface NotificationSettings {
 export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'revision'>>;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  kinds: { results: true, questions: true, stateChanges: false, history: false },
-  stateChanges: { started: true, pending: true, done: true },
-  periodic: { enabled: false, intervalMinutes: 60 },
+  kinds: { results: true, questions: true, history: false },
   revision: 0,
 };
 
@@ -50,13 +40,8 @@ function flags<K extends string>(value: unknown, keys: readonly K[]): Record<K, 
 export function parseNotificationSettings(value: unknown): NotificationSettings | null {
   if (!isRecord(value)) return null;
   const kinds = flags(value.kinds, KIND_KEYS);
-  const stateChanges = flags(value.stateChanges, STATE_CHANGE_KEYS);
-  const { periodic, revision } = value;
-  if (!kinds || !stateChanges || !isRecord(periodic)) return null;
-  const { enabled, intervalMinutes } = periodic;
-  if (typeof enabled !== 'boolean') return null;
-  const interval = PERIODIC_INTERVALS.find((minutes) => minutes === intervalMinutes);
-  if (interval === undefined) return null;
+  const { revision } = value;
+  if (!kinds) return null;
   if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 0) return null;
-  return { kinds, stateChanges, periodic: { enabled, intervalMinutes: interval }, revision };
+  return { kinds, revision };
 }

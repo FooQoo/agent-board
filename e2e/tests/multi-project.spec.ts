@@ -79,8 +79,8 @@ async function open(page: Page, id: string): Promise<void> {
   await expect(synced(page)).toHaveText(/^(Synced|同期済み)/);
 }
 
-/** Moves the card with a real drag to the target lane; the reason dialog opens. */
-async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Locator> {
+/** Moves the card with a real drag to the target lane. The move is made at once, with no dialog. */
+async function dragTaskTo(page: Page, id: number, laneName: string): Promise<void> {
   const source = await task(page, id).boundingBox();
   const target = await lane(page, laneName).boundingBox();
   if (!source || !target) throw new Error('Could not measure the drag source and target.');
@@ -89,10 +89,7 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
   await waitForDrop(page);
-  return dialog;
 }
 
 /** The text of every request the project holds, as one string. */
@@ -239,11 +236,8 @@ test.describe('two projects with the same task numbers', () => {
     await expect(task(page, fresh)).toContainText('Alpha: made on the page');
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
 
-    // Move #1 with a reason, then archive #3.
-    const move = await dragTaskTo(page, 1, 'Doing');
-    await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the notes.');
-    await move.getByRole('button', { name: 'Move', exact: true }).click();
-    await expect(move).toHaveCount(0);
+    // Move #1, then archive #3.
+    await dragTaskTo(page, 1, 'Doing');
     await expect(lane(page, 'Doing').getByRole('button', { name: /^#1 User / })).toBeVisible();
     expect(snapshotOf('Beta', home)).toEqual(betaBefore);
     await task(page, 3).click();
@@ -399,7 +393,7 @@ test.describe('two projects with the same task numbers', () => {
     await expect(page.getByRole('button', { name: 'Ask AI', exact: true })).toBeFocused();
   });
 
-  for (const kind of ['ask', 'move', 'delete'] as const) {
+  for (const kind of ['ask', 'delete'] as const) {
     test(`while a ${kind} form is open the menu is disabled, and it works again when the form is done`, async ({
       page,
     }) => {
@@ -409,11 +403,6 @@ test.describe('two projects with the same task numbers', () => {
         const dialog = await openAskAi(page);
         close = async () => {
           await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-        };
-      } else if (kind === 'move') {
-        const dialog = await dragTaskTo(page, 1, 'Doing');
-        close = async () => {
-          await dialog.getByRole('button', { name: 'Cancel' }).click();
         };
       } else {
         await task(page, 3).click();
@@ -497,16 +486,14 @@ test.describe('two projects with the same task numbers', () => {
     expect(requestsOf('Beta', home)).not.toContain('Never saved');
     expect(requestsOf('Alpha', home)).not.toContain('Never saved');
 
-    // A move opened in Beta, with the URL moved back to Alpha meanwhile, moves Beta's card #1.
+    // A move made in Beta moves Beta's card #1, and the URL moving back to Alpha afterwards changes nothing.
     await page.goForward();
     await expect(switcher(page)).toHaveText('Beta');
     const alphaBefore = snapshotOf('Alpha', home);
-    const move = await dragTaskTo(page, 1, 'Doing');
+    await dragTaskTo(page, 1, 'Doing');
+    await expect.poll(() => listTasks('Beta', home).find(({ id }) => id === 1)?.taskStatus).toBe('doing');
     await page.goBack();
     await expect.poll(() => projectParam(page)).toBe(alpha);
-    await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Beta moves its #1.');
-    await move.getByRole('button', { name: 'Move', exact: true }).click();
-    await expect(move).toHaveCount(0);
     await expect(switcher(page)).toHaveText('Alpha');
     expect(listTasks('Beta', home).find(({ id }) => id === 1)?.taskStatus).toBe('doing');
     expect(listTasks('Alpha', home).find(({ id }) => id === 1)?.taskStatus).toBe('todo');

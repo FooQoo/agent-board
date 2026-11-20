@@ -99,12 +99,23 @@ fn forgetting_a_device_removes_its_entries() {
 }
 
 #[test]
-fn the_time_of_the_last_periodic_report_survives_a_restart() {
+fn a_ledger_written_with_the_removed_periodic_time_still_loads() {
     let dir = tempfile::tempdir().unwrap();
+    let internal = dir.path().join(".internal");
+    std::fs::create_dir_all(&internal).unwrap();
+    let old = serde_json::json!({
+        "formatVersion": 1,
+        "periodicAt": "2026-11-01T00:00:00Z",
+        "entries": [{
+            "deviceId": "dev_a", "key": "k", "state": "sent", "attempts": 0,
+            "at": "2026-11-01T00:00:00Z"
+        }]
+    });
+    std::fs::write(internal.join("push-ledger.json"), old.to_string()).unwrap();
     let ledger = Ledger::open(dir.path());
-    assert_eq!(ledger.periodic_at(), None);
-    ledger.set_periodic_at(at(60));
-    ledger.record(entry("dev_a", "k", State::Sent, 0));
-    assert_eq!(Ledger::open(dir.path()).periodic_at(), Some(at(60)));
-    assert_eq!(Ledger::open(dir.path()).entries().len(), 1);
+    assert!(ledger.has("dev_a", "k"));
+    ledger.record(entry("dev_b", "k", State::Sent, 0));
+    let saved = std::fs::read_to_string(internal.join("push-ledger.json")).unwrap();
+    assert!(!saved.contains("periodicAt"));
+    assert!(Ledger::open(dir.path()).has("dev_b", "k"));
 }

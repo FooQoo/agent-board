@@ -150,8 +150,8 @@ async function expectTheme(page: Page, mode: Mode, accent: Accent, withAddButton
 
 const storedTheme = (page: Page) => page.evaluate((key) => localStorage.getItem(key), THEME_KEY);
 
-/** Moves the card with a real drag to the target lane; the reason dialog opens. */
-async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Locator> {
+/** Moves the card with a real drag to the target lane. The move is made at once, with no dialog. */
+async function dragTaskTo(page: Page, id: number, laneName: string): Promise<void> {
   const source = await task(page, id).boundingBox();
   const target = await lane(page, laneName).boundingBox();
   if (!source || !target) throw new Error('Could not measure the drag source and target.');
@@ -160,10 +160,7 @@ async function dragTaskTo(page: Page, id: number, laneName: string): Promise<Loc
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
   await waitForDrop(page);
-  return dialog;
 }
 
 // ------------------------------------------------------------------ Themes and the language
@@ -506,20 +503,13 @@ test('the Ask AI dialog takes focus, keeps it inside, and gives it back', async 
   await expect(add).toBeFocused();
 });
 
-test('the move dialog and the answer dialog take the focus and give it back', async ({ page }) => {
+test('the answer dialog takes the focus and gives it back', async ({ page }) => {
   await openFresh(page);
-  const move = await dragTaskTo(page, 16, 'Doing');
-  await expect(move).toContainText('Move task');
-  await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toBeFocused();
-  for (let step = 0; step < 8; step += 1) {
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-  }
-  await page.keyboard.press('Escape');
-  await expect(move).toHaveCount(0);
-  // Nothing moved, and the focus is on the card that was dragged.
-  await expect(task(page, 16)).toBeFocused();
-  expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
+  // A drag moves the card at once: no dialog opens.
+  await dragTaskTo(page, 16, 'Doing');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
+  expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('doing');
 
   await task(page, 12).click();
   // The card's button opens the answer dialog; the dialog takes the focus and Tab stays inside.
@@ -539,12 +529,10 @@ test('the move dialog and the answer dialog take the focus and give it back', as
 
 test('changing the language does not translate or alter what was entered', async ({ page }) => {
   await openFresh(page);
-  // Enter a card in English, move it with a reason, and answer a decision request.
+  // Enter a card in English, move it, and answer a decision request.
   agboardOk(mainProject, ['add', 'Draft the release note', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Line one\n\nLine two')]);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
-  const move = await dragTaskTo(page, fresh, 'Doing');
-  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the draft today.');
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
+  await dragTaskTo(page, fresh, 'Doing');
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
   await task(page, 12).click();
   await sendAnswer(page, 12, { choice: 'Keep compatibility (recommended)', text: 'Keep the database name.' });
@@ -570,7 +558,7 @@ test('changing the language does not translate or alter what was entered', async
   // The count is known once the log is read, so the tab is pressed by its plain name first.
   await panel.getByRole('tab', { name: /^履歴/ }).click();
   await expect(panel.getByRole('tab', { name: '履歴 2' })).toBeVisible();
-  await expect(panel).toContainText('Starting the draft today.');
+  await expect(panel).toContainText('Moved task from Todo to Doing');
   await task(page, 12).click();
   // The answer is in the log, which is read when its tab is opened.
   await panel.getByRole('tab', { name: /^履歴/ }).click();
@@ -599,17 +587,13 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   await expect(page.getByRole('contentinfo')).toContainText('9 tasks');
   expect(listTasks(mainProject).find(({ id }) => id === fresh)).toMatchObject({ title: 'Review the themes', taskStatus: 'todo', assignee: 'ai' });
 
-  // Move with a reason by dragging; nothing changes until it is confirmed.
-  const move = await dragTaskTo(page, fresh, 'Doing');
-  await expect(move.getByRole('group', { name: 'Status change' })).toHaveText(/Todo\s*Doing/);
-  expect(listTasks(mainProject).find(({ id }) => id === fresh)?.taskStatus).toBe('todo');
-  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Starting the review.');
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(move).toHaveCount(0);
+  // Move by dragging; the move is made at once, with a generated reason.
+  await dragTaskTo(page, fresh, 'Doing');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} AI Idle Review the themes `) })).toBeVisible();
   await lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh}(?!\\d)`) }).click();
   await details(page).getByRole('tab', { name: /^History/ }).click();
-  await expect(details(page).getByRole('listitem').first()).toContainText('Starting the review.');
+  await expect(details(page).getByRole('listitem').first()).toContainText('Moved task from Todo to Doing');
   expect(listTasks(mainProject).find(({ id }) => id === fresh)).toMatchObject({ taskStatus: 'doing' });
 
   // Answer a decision request; the run state goes back to Idle and the answer is in the history.
@@ -704,7 +688,7 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   await sendRequest(ask);
   expect(requestsText()).toContain('Typed request');
 
-  // Moving: a refused move keeps the reason and the card where it was.
+  // Moving: a refused move leaves the card where it was and says so.
   let moveFails = true;
   await page.route('**/api/projects/*/tasks/16/move', async (route) => {
     if (!moveFails) return route.fallback();
@@ -714,15 +698,12 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
       body: JSON.stringify({ error: { reason: 'The move was refused.' } }),
     });
   });
-  const move = await dragTaskTo(page, 16, 'Doing');
-  await move.getByRole('textbox', { name: 'Reason (optional)' }).fill('Kept reason.');
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(move.getByRole('alert')).toHaveText('The move was refused.');
-  await expect(move.getByRole('textbox', { name: 'Reason (optional)' })).toHaveValue('Kept reason.');
+  await dragTaskTo(page, 16, 'Doing');
+  await expect(page.locator('.transient-notice')).toHaveText('Could not move the task. It stays where it was.');
   expect(listTasks(mainProject).find(({ id }) => id === 16)?.taskStatus).toBe('todo');
+  await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toBeVisible();
   moveFails = false;
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(move).toHaveCount(0);
+  await dragTaskTo(page, 16, 'Doing');
   await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
 
   // Answering: a refused answer keeps the text, and the card stays pending.
@@ -833,10 +814,6 @@ test('screenshots of the settings, the light and dark boards, yellow and red, an
   // The dialogs, in Dark Red.
   await openAskAi(page);
   await shot(page, testInfo, '07-ask-ai-dark-red.png');
-  await page.keyboard.press('Escape');
-  const move = await dragTaskTo(page, 16, 'Doing');
-  await shot(page, testInfo, '08-move-dark-red.png');
-  void move;
   await page.keyboard.press('Escape');
   await shot(page, testInfo, '09-answer-dark-red.png');
   await page.keyboard.press('Escape');

@@ -363,11 +363,7 @@ test('a person can still move a draft task by dragging it', async ({ page }) => 
   await page.mouse.move(source.x + source.width / 2 + 24, source.y + source.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 100, target.y + 100, { steps: 12 });
   await page.mouse.up();
-  const move = page.getByRole('dialog');
-  await expect(move).toContainText('Move task');
-  await move.getByLabel('Reason').fill('The person moves the draft.');
-  await move.getByRole('button', { name: 'Move', exact: true }).click();
-  await expect(move).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Doing' }).getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) })).toBeVisible();
   expect(show(id)).toMatchObject({ taskStatus: 'doing', draft: 'human' });
   await expect(details(page).getByRole('region', { name: 'Draft' })).toBeVisible();

@@ -53,6 +53,8 @@ export function BulkArchiveDialog({
   const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
+  // The ref refuses a second submit in the same tick; the state tells the sheet it cannot be dragged away.
+  const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
@@ -64,12 +66,14 @@ export function BulkArchiveDialog({
   const confirm = async () => {
     if (saving || submitting.current || targets.length === 0) return;
     submitting.current = true;
+    setBusy(true);
     setError(null);
     try {
       await onConfirm();
     } catch (cause) {
       setError(cause instanceof Error && cause.message ? cause.message : t('archive.error'));
       submitting.current = false;
+      setBusy(false);
     }
   };
 
@@ -140,6 +144,7 @@ export function BulkArchiveDialog({
         closeLabel={t('dialog.close')}
         onClose={close}
         className="bulk-archive__sheet"
+        dismissible={!(saving || busy)}
         footer={actions}
       >
         <p className="bulk-archive__description">{description_}</p>

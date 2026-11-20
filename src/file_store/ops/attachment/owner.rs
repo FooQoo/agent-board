@@ -40,7 +40,7 @@ impl Loaded {
             Loaded::Task(task) => task
                 .results
                 .iter()
-                .find(|r| r.attachment_id.as_deref() == Some(attachment_id))
+                .find(|r| r.image_ids().contains(&attachment_id))
                 .map(|r| r.version),
             Loaded::Epic(_) => None,
         }

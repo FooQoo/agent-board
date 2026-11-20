@@ -13,17 +13,13 @@ const ready = {
 } as const;
 
 describe('NotificationSettingsView', () => {
-  it('shows the four kinds with the defaults, the picks, and the periodic choice', () => {
+  it('shows the three kinds with their defaults', () => {
     render(<NotificationSettingsView state={ready} onChange={vi.fn()} />);
     const on = (name: string) =>
       screen.getByRole('checkbox', { name: new RegExp(name) }).getAttribute('aria-checked');
     expect(on('^Results')).toBe('true');
     expect(on('^Questions that need')).toBe('true');
-    expect(on('^Card state changes')).toBe('false');
     expect(on('^History additions')).toBe('false');
-    expect(screen.getByRole('checkbox', { name: 'Started' }).hasAttribute('disabled')).toBe(true);
-    expect(on('^Periodic status')).toBe('false');
-    expect(screen.getByRole('radio', { name: '1 hour' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('sends the whole group when a flag changes', () => {
@@ -33,28 +29,6 @@ describe('NotificationSettingsView', () => {
     expect(onChange).toHaveBeenCalledWith({
       kinds: { ...DEFAULT_NOTIFICATION_SETTINGS.kinds, history: true },
     });
-  });
-
-  it('lets the state changes and the interval be picked once their switches are on', () => {
-    const onChange = vi.fn();
-    const settings = {
-      ...DEFAULT_NOTIFICATION_SETTINGS,
-      kinds: { ...DEFAULT_NOTIFICATION_SETTINGS.kinds, stateChanges: true },
-      periodic: { enabled: true, intervalMinutes: 60 as const },
-    };
-    render(
-      <NotificationSettingsView
-        state={{ status: 'ready', settings, saveFailed: false }}
-        onChange={onChange}
-      />,
-    );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Started' }));
-    expect(onChange).toHaveBeenCalledWith({
-      stateChanges: { ...settings.stateChanges, started: false },
-    });
-    fireEvent.mouseDown(screen.getByRole('radio', { name: '4 hours' }));
-    fireEvent.click(screen.getByRole('radio', { name: '4 hours' }));
-    expect(onChange).toHaveBeenCalledWith({ periodic: { enabled: true, intervalMinutes: 240 } });
   });
 
   it('shows a failed read and a failed save as alerts', () => {

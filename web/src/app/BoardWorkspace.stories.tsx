@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useLayoutEffect } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { makeEpic, makeProject, makeTask } from '../../.storybook/support/fixtures';
 import { SAMPLE_PROJECT, sampleMessages } from '../features/tasks/messages/messageSamples';
@@ -259,7 +260,7 @@ const meta = {
   render: (args) =>
     withDetailFixture(
       detailFixtureOf(boardTasks, [epic]),
-      <div className="app">
+      <div className="app" data-layout="desktop">
         <WithMessages {...args} />
       </div>,
     ),
@@ -382,4 +383,32 @@ export const MessageBandEmpty: Story = {
 export const MessageBandDark: Story = {
   args: { model: makeMessageModel() },
   globals: { locale: 'ja', mode: 'dark' },
+};
+
+/** A landscape iPhone in the Home Screen app: the wide frame keeps clear of the notch and the home indicator. */
+export const LandscapeSafeArea: Story = {
+  args: { model: makeMessageModel() },
+  globals: { locale: 'ja' },
+  decorators: [
+    (Story) => {
+      useLayoutEffect(() => {
+        const root = document.documentElement;
+        const insets = { top: '0px', right: '59px', bottom: '21px', left: '59px' };
+        for (const [side, value] of Object.entries(insets))
+          root.style.setProperty(`--safe-${side}`, value);
+        return () => {
+          for (const side of Object.keys(insets)) root.style.removeProperty(`--safe-${side}`);
+        };
+      }, []);
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>('.app');
+    await expect(frame).not.toBeNull();
+    const style = getComputedStyle(frame as HTMLElement);
+    await expect(style.paddingLeft).toBe('59px');
+    await expect(style.paddingRight).toBe('59px');
+    await expect(style.paddingBottom).toBe('21px');
+  },
 };

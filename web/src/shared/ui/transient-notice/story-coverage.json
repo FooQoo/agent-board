@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "owner": "U10",
+  "file": "shared/ui/transient-notice/TransientNotice.tsx",
+  "exports": [
+    {
+      "name": "TransientNotice",
+      "stories": [
+        {
+          "id": "shared-ui-transientnotice--default",
+          "states": ["status message"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-transientnotice--hidden",
+          "states": ["no message"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

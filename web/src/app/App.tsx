@@ -4,6 +4,7 @@ import { useAppActions } from './useAppActions';
 import { useAppController } from './useAppController';
 import type { AppInitial } from './contracts';
 import { PcDataProvider } from './data/PcData';
+import { TransientNotice } from '../shared/ui/transient-notice/TransientNotice';
 import { StalePageNotice } from '../shared/ui/stale-page-notice/StalePageNotice';
 import { NARROW_VIEWPORT_QUERY, useNarrowViewport } from '../shared/lib/viewport/useNarrowViewport';
 import { preloadable } from '../shared/lib/lazy/preloadable';
@@ -89,6 +90,7 @@ function AppScreen({ initial }: AppProps) {
       {/* Above the width switch too: a dialog left open becomes a sheet when the window narrows. */}
       <ResidentDialogHost projectId={known && isProjectId(activeId) ? activeId : null} />
       <NotificationDialogHost />
+      <TransientNotice message={actions.moveNotice} onDismiss={actions.dismissMoveNotice} />
       <AppDialogs
         model={model}
         onSubmit={actions.submitDialog}

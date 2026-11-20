@@ -42,11 +42,14 @@ export function useDrawerDrag({
   onOpenChange,
   popup,
   overlay,
+  dismissible = true,
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
   popup: RefObject<HTMLElement | null>;
   overlay: RefObject<HTMLElement | null>;
+  /** False while the sheet cannot be dismissed (a save is running): a drag would only leave it offset. */
+  dismissible?: boolean;
 }) {
   const drag = useRef<Drag | null>(null);
 
@@ -114,7 +117,7 @@ export function useDrawerDrag({
   };
 
   const start = (event: PointerEvent<HTMLElement>) => {
-    if (event.button !== 0 || event.isPrimary === false || drag.current) return;
+    if (!dismissible || event.button !== 0 || event.isPrimary === false || drag.current) return;
     // The close button keeps its own tap target inside the draggable top area.
     if (event.target instanceof Element && event.target.closest(NO_DRAG_SELECTOR)) return;
     try {

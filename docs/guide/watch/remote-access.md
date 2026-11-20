@@ -30,7 +30,7 @@ Moving and archiving start from a task you have chosen, so a stray swipe does no
 
 1. Press and hold a task until it shows an outline. That chooses it.
 2. Swipe the chosen task sideways. A swipe to the left shows a button for the next lane and the red **Archive** button with a trash can icon. A swipe to the right shows a button for the previous lane. The same press that chose the task can continue into the swipe. Each lane button shows the icon of its lane; a screen reader reads it as, for example, **Move #3 to Doing**.
-3. Tap a button. A lane button opens **Move task**, where you can add a reason and choose **Move**. The archive button opens **Archive task**, where you choose **Archive**. Nothing changes until you confirm, and **Cancel** leaves the task where it was.
+3. Tap a button. A lane button moves the task at once, with no confirmation, and the history records a generated reason. If the task was moved meanwhile, it is not moved and a short notice names the lane it is in now. The archive button opens **Archive task**, where you choose **Archive**; **Cancel** leaves the task where it was.
 
 ![Remote access with a chosen task slid open, showing its move and archive buttons](../../images/mobile-swipe.png){.screenshot--narrow}
 
@@ -169,19 +169,11 @@ The board sends only what you chose in the **Phone notifications** dialog, which
 
 - A **result** arrives as soon as the first viewable version is saved, even while the work is still in progress, and each later version arrives too. Tap it to open that version.
 - A **question** that needs your decision arrives with a high priority. Tap it to open that question, ready to answer.
-- **Card state changes** and **history additions** arrive only when you switch them on, and state changes only for the transitions you picked. Tap one to open the card. A history notification opens the card on its **History** tab.
+- **History additions** arrive only when you switch them on. Tap one to open the card on its **History** tab.
 
-Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that it is done. Tap the notification to read the whole text on the board.
+Each of these notifications shows the card's title, with one short line under it: the first sentence of the result summary, the question, or the history entry, cut to 40 characters. When there is no such text, the line says what happened to the card, such as that a history entry was added. Tap the notification to read the whole text on the board.
 
-With **Periodic status notification** on, the board also sends one notification every interval you chose (30 minutes, 1 hour, 2 hours, or 4 hours) about the cards in Doing, even if nothing new was recorded. It is separate from the choices above, and a first draft, a final result, or a question is never held back for it: those arrive at once. The first one comes one interval after the board starts or after the previous one. Each card in it says one of these:
-
-- **New records.** How many records (history entries and results) were written since the previous report, with the time and content of the latest.
-- **No new record.** It says so, with the time and content of the last record on the card. It does not say the work is still going on, because the board cannot tell that from old records.
-- **Agent status.** Only when the card's run state on the board is *running* or *waiting for your answer* does the report say so. A running card is described as what the agent reports about itself (a self-report), not as something the board has confirmed.
-
-Nothing is sent when no card is in Doing. Tap the notification to open the card, or the project when it lists several cards.
-
-If one change matches several of the kinds you chose, for example a question that also makes the card wait, you get one notification, and it opens the result or the question. The same result or question is never shown twice on a phone, even if the board reads it again.
+If one change matches several of the kinds you chose, for example a question that also adds a history entry, you get one notification, and it opens the result or the question. The same result or question is never shown twice on a phone, even if the board reads it again.
 
 Notifications carry a link, so they are sent only while the remote connection is up. If the connection is paused or the PC is off, nothing is sent for that time, and the board still shows everything. If the push service does not accept a notification, the board tries again a few times with growing pauses and then gives up; the result stays readable on the board either way. Notifications are encrypted from the PC to your phone; see [Security](../../dev/concepts/security.md#the-ngrok-entrance) for what the push service can see.
 

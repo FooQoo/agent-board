@@ -1,16 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import type { ColumnName } from '../../../shared/api/contracts';
 import { BulkArchiveDialog } from '../../../features/tasks/archive/BulkArchiveDialog';
-import { MoveDialog } from '../../../features/tasks/move/MoveDialog';
 import type { MonitorTask } from '../contracts';
 import './monitor-lanes.css';
 
-/** The confirmation the lane view is waiting on: nothing changes until the person agrees. */
-export type LanePending =
-  | { kind: 'archive'; item: MonitorTask }
-  | { kind: 'move'; item: MonitorTask; target: ColumnName }
-  | { kind: 'bulk' }
-  | null;
+/** The confirmation the lane view is waiting on: nothing changes until the person agrees. A move asks nothing. */
+export type LanePending = { kind: 'archive'; item: MonitorTask } | { kind: 'bulk' } | null;
 
 export interface MonitorLaneDialogsProps {
   pending: LanePending;
@@ -20,18 +14,13 @@ export interface MonitorLaneDialogsProps {
   onCancel: () => void;
   /** Resolves with false (or throws) when it failed, and the confirmation says so. */
   onArchive: (item: MonitorTask) => Promise<boolean>;
-  onMove: (
-    item: MonitorTask,
-    target: ColumnName,
-    data: { reason: string; fromStatus: ColumnName },
-  ) => Promise<void>;
   onBulkArchive: () => Promise<void>;
 }
 
 /**
- * The three confirmations of the lane view, each the one the PC board uses: the archive question
- * of a card, the move dialog with its reason, and the bulk archive of the done lane. Archiving one
- * card asks in the same dialog as the bulk archive, listing that card alone, so both read alike.
+ * The two confirmations of the lane view, each the one the PC board uses: the archive question of
+ * a card and the bulk archive of the done lane. Archiving one card asks in the same dialog as the
+ * bulk archive, listing that card alone, so both read alike.
  */
 export function MonitorLaneDialogs({
   pending,
@@ -39,20 +28,10 @@ export function MonitorLaneDialogs({
   doneItems,
   onCancel,
   onArchive,
-  onMove,
   onBulkArchive,
 }: MonitorLaneDialogsProps) {
   const { t } = useTranslation();
   if (pending === null) return null;
-  if (pending.kind === 'move')
-    return (
-      <MoveDialog
-        task={pending.item.task}
-        target={pending.target}
-        onClose={onCancel}
-        onSubmit={(data) => onMove(pending.item, pending.target, data)}
-      />
-    );
   if (pending.kind === 'bulk')
     return (
       <BulkArchiveDialog
