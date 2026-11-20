@@ -132,7 +132,7 @@ describe('EpicList', () => {
 
   it('shows the loading state, a load failure with retry, and a refresh failure beside the rows', async () => {
     renderList({ status: 'loading', epics: undefined });
-    expect(screen.getByRole('status').textContent).toBe('Loading…');
+    expect(screen.getByRole('status', { name: 'Loading…' })).toBeTruthy();
 
     const { onRetry } = renderList({ status: 'error', epics: undefined });
     expect(screen.getByRole('alert').textContent).toContain('Could not load the epics.');

@@ -1,0 +1,52 @@
+.spinner-ui {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--r-muted);
+  line-height: 0;
+}
+
+.spinner-ui__icon {
+  flex: none;
+  animation: spinner-ui-spin 1s linear infinite;
+}
+
+.spinner-ui > .spinner-ui__icon {
+  width: 100%;
+  height: 100%;
+}
+
+.spinner-ui--sm {
+  width: 13px;
+  height: 13px;
+}
+
+.spinner-ui--md {
+  width: 18px;
+  height: 18px;
+}
+
+.spinner-ui--lg {
+  width: 28px;
+  height: 28px;
+}
+
+@keyframes spinner-ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner-ui__icon {
+    animation: none;
+  }
+}
+
+/* A loading state that fills its place: the spinner sits alone in the middle of the line. */
+.spinner-ui--centered {
+  display: flex;
+  margin: 16px auto;
+}

@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { Surface } from '../../../shared/ui/surface/Surface';
 import { ArchiveVirtualList } from './ArchiveVirtualList';
 import './archive-sheet.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** What the sheet shows of the archive: the read the phone made when the sheet opened. */
 export interface ArchiveSheetData {
@@ -85,7 +86,11 @@ export function ArchiveListSheet({
 
   let body: ReactNode;
   if (status === 'loading') {
-    body = <p className="archive-sheet__note">{t('archive.loading')}</p>;
+    body = (
+      <div className="archive-sheet__note">
+        <Spinner size="lg" label={t('archive.loading')} />
+      </div>
+    );
   } else if (status === 'error' || data === null) {
     body = (
       <div className="archive-sheet__note" role="alert">

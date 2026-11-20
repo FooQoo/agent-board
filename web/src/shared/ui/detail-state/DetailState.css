@@ -34,13 +34,6 @@
   line-height: 1.5;
 }
 
-.detail-state__spinner {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  animation: detail-state-spin 1s linear infinite;
-}
-
 .detail-state--error {
   flex-direction: row;
   flex-wrap: wrap;
@@ -85,15 +78,8 @@
   }
 }
 
-@keyframes detail-state-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .detail-state__line,
-  .detail-state__spinner {
+  .detail-state__line {
     animation: none;
   }
 }

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "owner": "U6",
+  "file": "shared/ui/spinner/Spinner.tsx",
+  "exports": [
+    {
+      "name": "Spinner",
+      "stories": [
+        {
+          "id": "shared-ui-spinner--default",
+          "states": ["medium", "accessible label"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-spinner--sizes",
+          "states": ["small", "medium", "large"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-spinner--in-pane",
+          "states": ["large", "centered in a pane"],
+          "interaction": false
+        },
+        {
+          "id": "shared-ui-spinner--in-pane-ja-dark",
+          "states": ["large", "Japanese", "dark"],
+          "interaction": false
+        }
+      ]
+    }
+  ]
+}

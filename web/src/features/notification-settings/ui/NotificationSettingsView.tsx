@@ -11,6 +11,7 @@ import {
 } from '../model';
 import type { NotificationSettingsState } from '../useNotificationSettings';
 import './notification-settings.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 function Option({
   checked,
@@ -110,9 +111,7 @@ export function NotificationSettingsView({
       data-notification-settings=""
     >
       <p className="notification-settings__intro">{t('notifications.intro')}</p>
-      {state.status === 'loading' ? (
-        <p className="notification-settings__intro">{t('notifications.loading')}</p>
-      ) : null}
+      {state.status === 'loading' ? <Spinner label={t('notifications.loading')} /> : null}
       {state.status === 'failed' ? (
         <p className="modal__error" role="alert">
           {t('notifications.loadFailed')}

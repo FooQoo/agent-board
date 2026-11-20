@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { formatTime } from '../../lib/time/formatTime';
 import { useTranslation } from 'react-i18next';
+import { SpinnerIcon } from '@/shared/ui/spinner/Spinner';
 
 export interface StatusBarProps {
   status: 'loading' | 'ready' | 'error';
@@ -34,7 +35,14 @@ export function StatusBar(props: StatusBarProps) {
     return (
       <footer className="status-bar">
         <span className="status-bar__text" role="status">
-          {t(`status.${props.note}`)}
+          {props.note === 'boardLoading' ? (
+            <>
+              <SpinnerIcon />
+              <span className="visually-hidden">{t('status.boardLoading')}</span>
+            </>
+          ) : (
+            t(`status.${props.note}`)
+          )}
         </span>
       </footer>
     );

@@ -100,7 +100,7 @@ export const NoDocs: Story = {
 export const TreeLoading: Story = {
   args: { status: 'loading', tree: [] },
   play: async () => {
-    await expect((await opened()).getByText('Loading files…')).toBeVisible();
+    await expect((await opened()).getByRole('status', { name: 'Loading files…' })).toBeVisible();
   },
 };
 

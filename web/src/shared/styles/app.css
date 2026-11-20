@@ -839,10 +839,6 @@ ol {
   color: var(--r-text);
 }
 
-.board-message--loading .board-message__title {
-  color: var(--r-text2);
-}
-
 .board-message__sub {
   font-size: 13px;
   line-height: 20px;
@@ -1019,6 +1015,8 @@ ol {
 }
 
 .status-bar__text {
+  display: flex;
+  align-items: center;
   margin-left: auto;
   color: var(--r-muted);
 }

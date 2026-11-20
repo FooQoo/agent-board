@@ -152,19 +152,10 @@
 }
 .monitor-pull__spinner {
   color: var(--r-accent);
-  animation: monitor-pull-spin 900ms linear infinite;
-}
-@keyframes monitor-pull-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .monitor-pull__arrow {
     transition: none;
-  }
-  .monitor-pull__spinner {
-    animation: none;
   }
 }
 

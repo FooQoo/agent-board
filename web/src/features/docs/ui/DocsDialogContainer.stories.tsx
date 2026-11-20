@@ -134,7 +134,9 @@ export const NoFileSelected: Story = {
 export const TreeLoading: Story = {
   parameters: { handler: api({ tree: () => 'never' }) },
   play: async () => {
-    await expect(await (await open()).findByText('Loading files…')).toBeVisible();
+    await expect(
+      await (await open()).findByRole('status', { name: 'Loading files…' }),
+    ).toBeVisible();
   },
 };
 

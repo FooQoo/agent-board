@@ -7,6 +7,7 @@ import {
   type SandboxThemeMessage,
 } from '@/shared/docs-sandbox/protocol';
 import '@/shared/i18n/docs-strings';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /** The sandbox page the board serves; it runs the MDX. */
 export const SANDBOX_URL = '/docs-sandbox';
@@ -97,11 +98,7 @@ export function MdxFrame({ source, onLink }: MdxFrameProps) {
 
   return (
     <div className="docs-mdx" data-shown={shown ? 'true' : undefined}>
-      {!shown && (
-        <p className="docs-mdx__loading" role="status">
-          {t('docsDocument.mdxLoading')}
-        </p>
-      )}
+      {!shown && <Spinner className="docs-mdx__loading" label={t('docsDocument.mdxLoading')} />}
       <iframe
         ref={frame}
         className="docs-mdx__frame"

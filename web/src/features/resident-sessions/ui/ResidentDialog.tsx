@@ -5,6 +5,7 @@ import { useResidentController } from '../useResidentController';
 import { useSessionLog } from '../useSessionLog';
 import { ResidentView } from './ResidentView';
 import './resident.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /**
  * The dialog wired to the local API. Mount it only while it is open; it reads the sessions every
@@ -33,9 +34,13 @@ export default function ResidentDialog({
         onClose={onClose}
         className="resident-surface"
       >
-        <p className="resident-intro" role="status">
-          {controller.failed ? t('resident.loadFailed') : t('status.boardLoading')}
-        </p>
+        {controller.failed ? (
+          <p className="resident-intro" role="status">
+            {t('resident.loadFailed')}
+          </p>
+        ) : (
+          <Spinner className="spinner-ui--centered" label={t('status.boardLoading')} />
+        )}
       </Surface>
     );
   }

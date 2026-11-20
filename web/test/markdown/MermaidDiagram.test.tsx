@@ -29,14 +29,18 @@ afterEach(() => {
 describe('MermaidDiagram', () => {
   it('shows a loading line, then the drawn diagram', async () => {
     const { container } = render(<MermaidDiagram source={'flowchart TD\n  P1 --> Q1'} />);
-    expect(screen.getByText('Drawing the diagram…')).toBeTruthy();
-    await waitFor(() => expect(container.querySelector('svg')).toBeTruthy());
-    expect(screen.queryByText('Drawing the diagram…')).toBeNull();
+    expect(screen.getByRole('status', { name: 'Drawing the diagram…' })).toBeTruthy();
+    await waitFor(() =>
+      expect(container.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')).toBeTruthy(),
+    );
+    expect(screen.queryByRole('status', { name: 'Drawing the diagram…' })).toBeNull();
   });
 
   it('draws the diagram again when the page theme changes, and keeps it for other changes', async () => {
     const { container } = render(<MermaidDiagram source={'flowchart TD\n  P2 --> Q2'} />);
-    await waitFor(() => expect(container.querySelector('svg')).toBeTruthy());
+    await waitFor(() =>
+      expect(container.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')).toBeTruthy(),
+    );
     expect(draw).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -56,6 +60,6 @@ describe('MermaidDiagram', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe('The diagram cannot be drawn: Parse error on line 1:');
     expect(container.querySelector('pre code')?.textContent).toBe('flowchart TD\n  ???');
-    expect(container.querySelector('svg')).toBeNull();
+    expect(container.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')).toBeNull();
   });
 });

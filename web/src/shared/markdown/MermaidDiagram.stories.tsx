@@ -17,7 +17,9 @@ export const Loading: Story = {
   play: async ({ canvasElement }) => {
     const diagram = canvasElement.querySelector('.md-mermaid');
     expect(diagram).toHaveAttribute('aria-busy', 'true');
-    expect(within(canvasElement).getByText('Drawing the diagram…')).toBeInTheDocument();
+    expect(
+      within(canvasElement).getByRole('status', { name: 'Drawing the diagram…' }),
+    ).toBeInTheDocument();
   },
 };
 

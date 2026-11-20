@@ -240,11 +240,19 @@ export const ImageEnlargeSwipe: Story = {
 export const MermaidValid: Story = {
   args: { source: '```mermaid\nflowchart TD\n  Start --> Finish\n```' },
   play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('.md-mermaid svg')).not.toBeNull(), {
-      timeout: 10000,
-    });
+    await waitFor(
+      () =>
+        expect(
+          canvasElement.querySelector('.md-mermaid:not(.md-mermaid--loading) svg'),
+        ).not.toBeNull(),
+      {
+        timeout: 10000,
+      },
+    );
     expect(canvasElement.querySelector('.md-mermaid foreignObject')).toBeNull();
-    expect(canvasElement.querySelector('.md-mermaid svg')?.textContent).toContain('Finish');
+    expect(
+      canvasElement.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')?.textContent,
+    ).toContain('Finish');
   },
 };
 
@@ -255,6 +263,6 @@ export const MermaidInvalid: Story = {
     const alert = await within(canvasElement).findByRole('alert', {}, { timeout: 10000 });
     expect(alert.textContent).toContain('cannot be drawn');
     expect(canvasElement.querySelector('.md-mermaid pre code')?.textContent).toBe('not a diagram');
-    expect(canvasElement.querySelector('.md-mermaid svg')).toBeNull();
+    expect(canvasElement.querySelector('.md-mermaid:not(.md-mermaid--loading) svg')).toBeNull();
   },
 };

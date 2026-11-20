@@ -7,6 +7,7 @@ import { openableUrl } from './openableUrl';
 import { formatShort } from '../model/format';
 import type { TaskResultsState } from './useTaskResults';
 import './results.css';
+import { Spinner } from '@/shared/ui/spinner/Spinner';
 
 /**
  * The results tab: what an agent delivered for the task, newest first. Each one shows its kind,
@@ -36,7 +37,8 @@ export function ResultsView({
     if (Date.now() - openedAt.current > 3000) return;
     listRef.current?.querySelector('[data-focused="true"]')?.scrollIntoView?.({ block: 'start' });
   };
-  if (state.status === 'loading') return <p className="results__note">{t('results.loading')}</p>;
+  if (state.status === 'loading')
+    return <Spinner size="lg" className="spinner-ui--centered" label={t('results.loading')} />;
   if (state.status === 'error')
     return (
       <div className="results__note" role="alert">

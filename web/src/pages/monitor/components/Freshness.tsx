@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { CircleAlertIcon, CircleCheckIcon, CircleOffIcon, LoaderIcon } from 'lucide-react';
+import { CircleAlertIcon, CircleCheckIcon, CircleOffIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SpinnerIcon } from '@/shared/ui/spinner/Spinner';
 import { formatShort } from '../../../features/tasks/model/format';
 import type { MonitorFreshnessState } from '../contracts';
 
 const icon = {
-  loading: <LoaderIcon />,
-  syncing: <LoaderIcon />,
+  loading: <SpinnerIcon />,
+  syncing: <SpinnerIcon />,
   fresh: <CircleCheckIcon />,
   stale: <CircleOffIcon />,
   partial: <CircleAlertIcon />,
@@ -38,7 +39,15 @@ export function Freshness({
       role="status"
     >
       {icon[state]}
-      <span className="monitor-freshness__message">{message}</span>
+      <span
+        className={
+          state === 'loading' || state === 'syncing'
+            ? 'visually-hidden'
+            : 'monitor-freshness__message'
+        }
+      >
+        {message}
+      </span>
       {slot}
       {lastFetchedAt && (
         <span className="monitor-freshness__time">
