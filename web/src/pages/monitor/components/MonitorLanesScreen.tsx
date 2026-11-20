@@ -28,19 +28,15 @@ export interface MonitorLanesScreenProps extends Pick<MonitorLanesProps, 'previe
   initialPanel?: Parameters<ReturnType<typeof useMessagesPanel>['open']>[0];
   onAsk?: MonitorViewProps['onAsk'];
   onOpenDetail?: MonitorViewProps['onOpenDetail'];
-  /** The writes. The screen asks for them only after the person confirmed. */
-  onMove: (
-    item: MonitorTask,
-    target: ColumnName,
-    data: { reason: string; fromStatus: ColumnName },
-  ) => Promise<void>;
+  /** The writes. A move is made at once; an archive is asked for only after the person confirmed. */
+  onMove: (item: MonitorTask, target: ColumnName) => Promise<void>;
   onArchive: (item: MonitorTask) => Promise<boolean>;
   onBulkArchive: () => Promise<void>;
 }
 
 /**
  * The phone monitor with one lane on screen: header, the questions band, the lane tabs, the lanes
- * and their confirmations. It holds the lane on screen and the confirmation that is open, and
+ * and their archive confirmations. It holds the lane on screen and the confirmation that is open, and
  * leaves the data and the writes to its parent. It is not connected to the live monitor yet.
  */
 export function MonitorLanesScreen({
@@ -102,7 +98,7 @@ export function MonitorLanesScreen({
         lanes={lanes}
         lane={lane}
         onLaneChange={setLane}
-        onMove={(item, target) => setPending({ kind: 'move', item, target })}
+        onMove={(item, target) => void onMove(item, target)}
         onArchive={(item) => setPending({ kind: 'archive', item })}
         onBulkArchive={() => setPending({ kind: 'bulk' })}
         onOpenDetail={onOpenDetail}
@@ -126,10 +122,6 @@ export function MonitorLanesScreen({
           const ok = await onArchive(item);
           if (ok) close();
           return ok;
-        }}
-        onMove={async (item, target, data) => {
-          await onMove(item, target, data);
-          close();
         }}
         onBulkArchive={async () => {
           await onBulkArchive();

@@ -31,3 +31,12 @@
   margin-top: 12px;
   color: var(--r-danger, currentColor);
 }
+
+/* A short question: the dialog fits its content instead of the shared 720px by 320px body. */
+.modal.surface-modal.push-prompt {
+  width: 440px;
+}
+
+.surface-modal.push-prompt .surface__body {
+  min-height: 0;
+}

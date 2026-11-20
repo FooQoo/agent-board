@@ -11,11 +11,9 @@ function leafPaths(value: unknown, prefix = ''): string[] {
 }
 
 describe('dialog texts', () => {
-  it('uses the design wording for the move title and the confirm buttons', () => {
-    expect(resources.ja.translation.dialog.moveTitle).toBe('列を移動');
+  it('uses the design wording for the editor buttons', () => {
     expect(resources.ja.translation.editor.save).toBe('保存');
     expect(resources.ja.translation.editor.discardAndMove).toBe('破棄して移動');
-    expect(resources.en.translation.dialog.submitMove).toBe('Move');
     expect(resources.en.translation.answer.open).toBe('Answer the question');
     expect(resources.ja.translation.draft.finalize).toBe('確定する');
   });

@@ -5,7 +5,6 @@ import { AskAiDialog } from '../../features/messages/ask/AskAiDialog';
 import { EditDialog } from '../../features/tasks/editor/EditDialog';
 import { TaskPreviewDialog } from './TaskPreviewDialog';
 import { EpicDialog, type EpicApi } from '../../features/epics/editor/EpicDialog';
-import { MoveDialog } from '../../features/tasks/move/MoveDialog';
 import { TaskProgressRow } from '../../features/tasks/card/TaskProgressRow';
 import { epicInk } from '../../features/epics/model/epic';
 import type { ProgressTaskRenderer } from '../../features/epics/editor/EpicProgressList';
@@ -80,16 +79,6 @@ export function ActionDialog({
           onSubmit={(input) =>
             onSubmit({ requestText: input.text, attachments: input.attachments })
           }
-        />
-      );
-    case 'move':
-      return (
-        <MoveDialog
-          task={tasks.find((task) => task.id === action.task.id) ?? action.task}
-          target={action.target}
-          onClose={onClose}
-          onSavingChange={onSavingChange}
-          onSubmit={onSubmit}
         />
       );
     case 'edit':

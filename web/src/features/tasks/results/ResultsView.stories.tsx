@@ -35,6 +35,16 @@ const RESULTS: TaskResult[] = [
   },
 ];
 
+/** A result with twelve screenshots, as an agent records a UI mock. */
+const MANY_IMAGES: TaskResult = {
+  version: 4,
+  key: 'mock-screens',
+  kind: 'final',
+  summary: 'All 12 screens of the mock, in the order a person walks through them.',
+  attachmentIds: Array.from({ length: 12 }, (_, i) => `screen-${i + 1}`),
+  at: '2026-11-20T07:00:00Z',
+};
+
 const meta = {
   title: 'Task Detail/ResultsView',
   component: ResultsView,
@@ -113,6 +123,36 @@ export const EnlargeImage: Story = {
     const view = within(canvasElement);
     await userEvent.click(view.getAllByRole('button', { name: /Enlarge/ })[0] as HTMLElement);
     await waitFor(() => expect(within(document.body).getByRole('dialog')).toBeVisible());
+  },
+};
+
+/** Several images on one result are a strip of thumbnails; the enlarged view steps through them. */
+export const MultipleImages: Story = {
+  args: { state: { status: 'ready', results: [...RESULTS, MANY_IMAGES] } },
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    const thumbnails = view.getAllByRole('button', { name: /Enlarge image \d+ of 12/ });
+    await expect(thumbnails).toHaveLength(12);
+    await userEvent.click(thumbnails[1] as HTMLElement);
+    const dialog = await waitFor(() => {
+      const found = within(document.body).getByRole('dialog');
+      expect(found).toBeVisible();
+      return found;
+    });
+    await expect(within(dialog).getByText('2 / 12')).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Next image' }));
+    await expect(within(dialog).getByText('3 / 12')).toBeVisible();
+  },
+};
+
+/** The same result in Japanese on a phone-width window, in the dark theme. */
+export const MultipleImagesJapanesePhone: Story = {
+  args: { state: { status: 'ready', results: [MANY_IMAGES] } },
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getAllByRole('button', { name: /の画像 \d+\/12 を拡大/ }),
+    ).toHaveLength(12);
   },
 };
 

@@ -43,29 +43,27 @@ fn list(ctx: &mut Context, args: &ResultLsArgs) -> Result<Outcome, AgboardError>
 }
 
 fn add(ctx: &mut Context, args: &ResultAddArgs) -> Result<Outcome, AgboardError> {
-    let image = match &args.file {
-        Some(path) => {
-            let bytes = fs::read(path).map_err(|e| AgboardError::FileError {
-                action: FileAction::Read,
-                file: path.display().to_string(),
+    let mut images = Vec::new();
+    for path in &args.file {
+        let bytes = fs::read(path).map_err(|e| AgboardError::FileError {
+            action: FileAction::Read,
+            file: path.display().to_string(),
+            reason: e.to_string(),
+        })?;
+        images.push(AttachmentInput {
+            id: crate::file_store::io::random_hex(16).map_err(|e| AgboardError::FileError {
+                action: FileAction::Write,
+                file: "attachment".into(),
                 reason: e.to_string(),
-            })?;
-            Some(AttachmentInput {
-                id: crate::file_store::io::random_hex(16).map_err(|e| AgboardError::FileError {
-                    action: FileAction::Write,
-                    file: "attachment".into(),
-                    reason: e.to_string(),
-                })?,
-                name: path
-                    .file_name()
-                    .and_then(|v| v.to_str())
-                    .unwrap_or_default()
-                    .to_owned(),
-                bytes,
-            })
-        }
-        None => None,
-    };
+            })?,
+            name: path
+                .file_name()
+                .and_then(|v| v.to_str())
+                .unwrap_or_default()
+                .to_owned(),
+            bytes,
+        });
+    }
     let recorded = ctx.files.add_result(
         ctx.project_id()?,
         args.task_id,
@@ -77,16 +75,20 @@ fn add(ctx: &mut Context, args: &ResultAddArgs) -> Result<Outcome, AgboardError>
             },
             summary: args.summary.clone(),
             link: args.link.clone(),
-            image,
+            images,
             key: args.key.clone(),
         },
         ctx.clock.now(),
     )?;
     let result = &recorded.result;
-    let path = recorded.attachment.as_ref().map(|a| {
-        let ext = layout::asset_extension(&a.media_type).unwrap_or("png");
-        format!("assets/{}.{ext}", a.id)
-    });
+    let paths: Vec<String> = recorded
+        .attachments
+        .iter()
+        .map(|a| {
+            let ext = layout::asset_extension(&a.media_type).unwrap_or("png");
+            format!("assets/{}.{ext}", a.id)
+        })
+        .collect();
     let human = if recorded.created {
         format!(
             "Recorded {} result v{} on #{}.\n",
@@ -107,8 +109,10 @@ fn add(ctx: &mut Context, args: &ResultAddArgs) -> Result<Outcome, AgboardError>
             "taskId": args.task_id,
             "result": result,
             "created": recorded.created,
-            "attachment": recorded.attachment,
-            "path": path,
+            "attachment": recorded.attachments.first(),
+            "path": paths.first(),
+            "attachments": recorded.attachments,
+            "paths": paths,
         }),
     })
 }

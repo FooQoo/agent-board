@@ -11,21 +11,12 @@ export const editJa = {
     sendFailed: '依頼を送れませんでした。入力と画像は残っています。もう一度お試しください。',
   },
   dialog: {
-    moveTitle: '列を移動',
     cardStatus: '移動先',
     chooseStatus: 'ステータスを選択',
     moveAction: '移動',
-    reason: '変更理由(任意)',
     close: '閉じる',
-    statusChange: '状態の変更',
-    moveHint: '確定するまでタスクの状態は変わりません。',
-    moveReasonDefault: '{{who}}が{{from}}から{{to}}に変更しました。',
-    moveStatusChanged:
-      'このタスクは別の操作で「{{status}}」に変わっていました。今の状態を表示したので、確認してからもう一度移動してください。',
-    reasonRequired: '理由は2,000文字以内で入力してください。',
     saveFailed: '変更を保存できませんでした。',
     cancel: 'キャンセル',
-    submitMove: '移動する',
     saving: '保存中…',
   },
   editor: {
