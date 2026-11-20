@@ -1,13 +1,14 @@
 //! Reading the JSON and the limits that `message` takes on the command line.
 
 use std::io::Read;
+use std::path::PathBuf;
 
 use serde::Deserialize;
 
 use crate::domain::Actor;
 use crate::error::{AgboardError, FileAction};
 use crate::file_store::model::Choice;
-use crate::file_store::{AskInput, AskQuestion};
+use crate::file_store::{AskInput, AskQuestion, RequestImage};
 
 /// The default wait, in seconds.
 pub(super) const DEFAULT_TIMEOUT: u64 = 600;
@@ -30,6 +31,9 @@ struct QuestionJson {
     recommended_choice_id: Option<String>,
     #[serde(default)]
     tasks: Vec<i64>,
+    /// Paths of image files to attach, shown in the body as `![](attachments/<name>)`.
+    #[serde(default)]
+    images: Vec<PathBuf>,
 }
 
 /// The value itself, or standard input when the value is `-`.
@@ -46,6 +50,23 @@ pub(super) fn text_of(value: &str) -> Result<String, AgboardError> {
             reason: e.to_string(),
         })?;
     Ok(text)
+}
+
+/// An image file named in a question's `images`, stored under its own file name.
+fn read_image(path: &std::path::Path) -> Result<RequestImage, AgboardError> {
+    let bytes = std::fs::read(path).map_err(|e| AgboardError::FileError {
+        action: FileAction::Read,
+        file: path.display().to_string(),
+        reason: e.to_string(),
+    })?;
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .ok_or_else(|| AgboardError::InvalidValue {
+            field: "images".into(),
+            reason: "Each image needs a file path.".into(),
+        })?;
+    Ok(RequestImage { name, bytes })
 }
 
 /// The questions of `--questions-json` and the tasks of `--task`.
@@ -72,13 +93,20 @@ pub(super) fn ask_input(
         questions: parsed
             .questions
             .into_iter()
-            .map(|q| AskQuestion {
-                body: q.body,
-                choices: q.choices,
-                recommended_choice_id: q.recommended_choice_id,
-                tasks: q.tasks,
+            .map(|q| {
+                Ok(AskQuestion {
+                    body: q.body,
+                    choices: q.choices,
+                    recommended_choice_id: q.recommended_choice_id,
+                    tasks: q.tasks,
+                    images: q
+                        .images
+                        .iter()
+                        .map(|path| read_image(path))
+                        .collect::<Result<Vec<_>, _>>()?,
+                })
             })
-            .collect(),
+            .collect::<Result<Vec<_>, AgboardError>>()?,
     })
 }
 

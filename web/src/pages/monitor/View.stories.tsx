@@ -258,7 +258,7 @@ function StandaloneInsets({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the bottom bar ends above the indicator. */
+/** The Home Screen app with the status bar (59px) and the home indicator (34px) kept clear: the header starts below the bar and the bottom dock ends above the indicator. */
 export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
   globals: { locale: 'en' },
   render: (args) => (
@@ -277,11 +277,11 @@ export const StandaloneSafeArea: StoryObj<typeof WiredPhoneStory> = {
     await expect(shell).not.toBeNull();
     const style = getComputedStyle(shell as HTMLElement);
     await expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(59);
-    // The bottom bar pads itself above the home indicator.
+    // The floating dock keeps its own margin above the home indicator.
     const nav = canvasElement.querySelector<HTMLElement>('.phone-nav');
     await expect(nav).not.toBeNull();
     await expect(
-      Number.parseFloat(getComputedStyle(nav as HTMLElement).paddingBottom),
+      Number.parseFloat(getComputedStyle(nav as HTMLElement).marginBottom),
     ).toBeGreaterThanOrEqual(34);
     const bottom = (nav as HTMLElement).getBoundingClientRect().bottom;
     await expect(bottom).toBeLessThanOrEqual(window.innerHeight);

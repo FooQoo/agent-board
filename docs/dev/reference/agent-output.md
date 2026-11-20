@@ -160,7 +160,8 @@ Without `--project`, `agboard show remote --json` never fails because the connec
 ```
 
 - `questions`: 1 to 20 items, and each becomes its own question file (`Q-<n>`). Each has a `body` (Markdown, 1 to 5,000 characters).
-- Optional per question: `choices` (2 to 10 items; each choice `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the question, and each `label` is 1 to 200 characters), `recommendedChoiceId` (one of the choices), and `tasks`, the IDs of tasks that refer to that question. A `--task` task refers to every question. A question without `choices` is answered with text. Unknown fields are refused.
+- Optional per question: `choices` (2 to 10 items; each choice `id` is 1 to 64 characters of `[A-Za-z0-9_-]` and unique in the question, and each `label` is 1 to 200 characters), `recommendedChoiceId` (one of the choices), `images`, and `tasks`, the IDs of tasks that refer to that question. A `--task` task refers to every question. A question without `choices` is answered with text. Unknown fields are refused.
+- `images` is a list of image file paths that the CLI reads and stores as `qa/Q-<n>/attachments/<file name>`, checked like the images of a request: PNG, JPEG, WebP, or GIF, at most 20 files and 50 MiB in all, with unique plain names. The body shows one as `![](attachments/<file name>)`. One bad image fails the whole command with nothing saved. The output does not list the images; the body is the reference.
 - `--timeout` is 1 to 86,400 seconds, or `none` (default 600). `--heartbeat` is 10 to 600 seconds (default 60). `message wait Q-<n> [Q-<n>]…` takes the same two options.
 
 With `--json`, `message ask` and `message wait` write one JSON object per line. Each has a `type`:

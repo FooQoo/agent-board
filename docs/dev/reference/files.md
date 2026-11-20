@@ -147,7 +147,7 @@ Recording a result changes neither `taskStatus` nor `agentStatus`. Under one pro
 
 ## Messages
 
-A question from an agent to a person and a request from a person to an agent are both stored as one file, `qa/Q-<n>/QA.md`: YAML frontmatter, then the Markdown text as the body. Images sent with a request are kept in `qa/Q-<n>/attachments/`. Questions and requests share one number sequence, taken from `nextQuestionId` in `project.json`, so `Q-<n>` is unique in the project whichever kind it is. The folder name is the ID.
+A question from an agent to a person and a request from a person to an agent are both stored as one file, `qa/Q-<n>/QA.md`: YAML frontmatter, then the Markdown text as the body. Images sent with a request, or attached to a question with `message ask`, are kept in `qa/Q-<n>/attachments/`; the body refers to one as `![](attachments/<name>)`. Questions and requests share one number sequence, taken from `nextQuestionId` in `project.json`, so `Q-<n>` is unique in the project whichever kind it is. The folder name is the ID.
 
 A question:
 
