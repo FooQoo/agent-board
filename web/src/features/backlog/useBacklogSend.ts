@@ -27,7 +27,17 @@ export function useBacklogSend(
   onSent: () => void,
 ): BacklogSend {
   const { t } = useTranslation();
-  const [confirming, setConfirming] = useState<BacklogSend['confirming']>(null);
+  // A pending confirmation belongs to the project that asked for it: after a project change it is
+  // neither shown nor confirmed.
+  const [pending, setPending] = useState<{
+    projectId: ProjectId | null;
+    value: NonNullable<BacklogSend['confirming']>;
+  } | null>(null);
+  const confirming = pending !== null && pending.projectId === projectId ? pending.value : null;
+  const setConfirming = useCallback(
+    (value: BacklogSend['confirming']) => setPending(value && { projectId, value }),
+    [projectId],
+  );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const running = useRef(false);
@@ -62,7 +72,7 @@ export function useBacklogSend(
         onSent();
       }
     },
-    [projectId, tasks, onSent, t],
+    [projectId, tasks, onSent, t, setConfirming],
   );
 
   const request = useCallback(
@@ -76,11 +86,11 @@ export function useBacklogSend(
       void run(ids, false, epicId);
       return true;
     },
-    [tasks, run],
+    [tasks, run, setConfirming],
   );
   const confirm = useCallback(() => {
     if (confirming) void run(confirming.ids, true, confirming.epicId);
   }, [confirming, run]);
-  const cancel = useCallback(() => setConfirming(null), []);
+  const cancel = useCallback(() => setConfirming(null), [setConfirming]);
   return { confirming, busy, notice, dismissNotice, request, confirm, cancel };
 }

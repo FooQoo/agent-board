@@ -41,7 +41,15 @@ export interface BoardProps {
   band?: ReactNode;
 }
 
-export function Board({
+/**
+ * The board of one project. The Backlog selection and the drag state belong to the project, so a
+ * project change starts them over: a card of the same number in another project is not picked.
+ */
+export function Board(props: BoardProps) {
+  return <ProjectBoard key={props.projectId ?? ''} {...props} />;
+}
+
+function ProjectBoard({
   message,
   tasks,
   selectedId,
