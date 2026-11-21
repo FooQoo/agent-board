@@ -41,8 +41,8 @@ interface ItemProps {
 /**
  * One summary. On a phone it is the board card's own swipe: `useCardGesture` slides it left and
  * the trash tile grows from a dot, drawn with the card's `swipe-card__*` styles; a tap shows the
- * tile too. The gesture is always armed, so a sideways move that starts on an item belongs to the
- * item and never switches the tab. On a PC the trash button is always shown inside the card, at
+ * tile too. The gesture is always armed, so a leftward move that starts on an item belongs to the
+ * item, while a rightward one is left to the tab swipe. On a PC the trash button is always shown inside the card, at
  * the right end of its heading.
  */
 function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemProps) {
@@ -58,6 +58,8 @@ function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemPr
     leftWidth: 0,
     rightWidth,
     disabled: variant !== 'sheet',
+    // A swipe to the right belongs to the tab swipe; only a swipe to the left opens the trash.
+    swipeRight: false,
   });
   const offset = drag ?? revealOffset(side, 0, rightWidth);
   const label = windowLabel(summary.from, summary.to);

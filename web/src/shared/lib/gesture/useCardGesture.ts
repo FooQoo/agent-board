@@ -15,6 +15,12 @@ export interface CardGestureOptions {
   rightWidth: number;
   /** The card sits in the lane that is not on screen: it takes no gesture. */
   disabled?: boolean;
+  /**
+   * Whether a rightward swipe slides the card (default true). A screen whose sideways swipe also
+   * switches tabs turns it off, so a swipe to the right on a card goes to the tabs. A card that
+   * already shows its tiles still slides back to the right to close.
+   */
+  swipeRight?: boolean;
 }
 
 /**
@@ -25,7 +31,16 @@ export interface CardGestureOptions {
  */
 export function useCardGesture(
   ref: RefObject<HTMLElement | null>,
-  { revealed, onRevealChange, armed, onArm, leftWidth, rightWidth, disabled }: CardGestureOptions,
+  {
+    revealed,
+    onRevealChange,
+    armed,
+    onArm,
+    leftWidth,
+    rightWidth,
+    disabled,
+    swipeRight = true,
+  }: CardGestureOptions,
 ) {
   const [drag, setDrag] = useState<number | null>(null);
   const origin = useRef(0);
@@ -34,6 +49,7 @@ export function useCardGesture(
     active: armed,
     onHold: onArm,
     disabled,
+    accepts: (dx) => swipeRight || dx < 0 || revealed !== null,
     ignore: '[data-swipe-action]',
     onPress: () => {
       origin.current = revealOffset(revealed, leftWidth, rightWidth);

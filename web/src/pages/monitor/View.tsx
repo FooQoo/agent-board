@@ -168,6 +168,8 @@ export function MonitorView(props: MonitorViewProps) {
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
           onClose={panel.close}
+          onRefresh={props.onRefresh}
+          refreshing={props.refreshing}
           resolveAttachment={resolveAttachment}
         />
       )}

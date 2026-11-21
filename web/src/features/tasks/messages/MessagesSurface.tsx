@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveMessageImage } from '@/shared/api/messageAttachment';
@@ -22,6 +22,7 @@ import {
 } from './model/messages';
 import type { MessagesPanelTarget } from './useMessagesPanel';
 import { useMessageDetail } from './useMessageDetail';
+import { useScrollToTop } from './useScrollToTop';
 import { useSummaries } from './useSummaries';
 import './messages.css';
 
@@ -37,6 +38,12 @@ export interface MessagesSurfaceProps {
   /** An answer or a withdrawal was saved; the screen reads the project again at once. */
   onChanged: () => void;
   onClose: () => void;
+  /** Pulling the list down from its top reads the messages again. */
+  onRefresh?: () => void;
+  /** The refresh the person asked for is running. */
+  refreshing?: boolean;
+  /** A story's still picture of the pull. */
+  previewPull?: ComponentProps<typeof MessageList>['previewPull'];
   /** Turns an `attachment:<id>` image of a message into its URL; null when there is no such file. */
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
@@ -55,6 +62,9 @@ export function MessagesSurface({
   api,
   onChanged,
   onClose,
+  onRefresh,
+  refreshing,
+  previewPull,
   resolveAttachment: resolveFor,
 }: MessagesSurfaceProps) {
   const { t } = useTranslation();
@@ -78,15 +88,7 @@ export function MessagesSurface({
     if (openId !== null && listed === null && !busy) setOpenId(null);
   }, [openId, listed, busy]);
 
-  // The body is one scroller shared by the list and every opened message, so it keeps the scroll
-  // position of whichever was shown before. Each switch starts at the top.
-  const bodyRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (bodyRef.current) {
-      bodyRef.current.dataset.opened = openId ?? '';
-      bodyRef.current.scrollTop = 0;
-    }
-  }, [openId]);
+  const bodyRef = useScrollToTop<HTMLDivElement>(openId);
 
   const summaries = useSummaries(api.summaries, projectId);
 
@@ -171,12 +173,8 @@ export function MessagesSurface({
   const resolveImage = opened
     ? (src: string) => resolveMessageImage(projectId, opened.id, src)
     : undefined;
-  const failureText =
-    failure === null
-      ? null
-      : failure === 'withdraw'
-        ? t('messages.detail.withdrawFailed')
-        : t(`messages.detail.${failure}`);
+  const failureName = failure === 'withdraw' ? 'withdrawFailed' : failure;
+  const failureText = failureName === null ? null : t(`messages.detail.${failureName}`);
 
   // On the PC a message opened from the list offers the way back at the top of its body; a phone
   // sheet puts it in the footer instead (below), so the body starts with the message itself.
@@ -198,6 +196,9 @@ export function MessagesSurface({
         onTabChange={setTab}
         swipe
         kind={kind}
+        onRefresh={kind === 'sheet' ? onRefresh : undefined}
+        refreshing={refreshing}
+        previewPull={previewPull}
         summaries={api.summaries ? summaries : undefined}
         onOpen={(message) => {
           setFromList(true);

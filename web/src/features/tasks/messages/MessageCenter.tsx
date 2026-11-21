@@ -1,7 +1,7 @@
 import type { ProjectId } from '@/shared/api/contracts';
 import type { Message } from '@/shared/data/api/contracts';
 import { MessageBand } from './MessageBand';
-import { MessagesSurface } from './MessagesSurface';
+import { MessagesSurface, type MessagesSurfaceProps } from './MessagesSurface';
 import type { MessagesApi } from './model/messages';
 import type { MessagesPanelController } from './useMessagesPanel';
 
@@ -17,6 +17,10 @@ export interface MessageCenterProps {
   onChanged: () => void;
   /** The phone band's "Ask AI" button; the band shows no such button without it. */
   onAsk?: () => void;
+  /** Pulling the phone list down from its top reads the messages again. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  previewPull?: MessagesSurfaceProps['previewPull'];
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
 
@@ -29,6 +33,9 @@ export function MessageCenter({
   api,
   onChanged,
   onAsk,
+  onRefresh,
+  refreshing,
+  previewPull,
   resolveAttachment,
 }: MessageCenterProps) {
   return (
@@ -48,6 +55,9 @@ export function MessageCenter({
           api={api}
           onChanged={onChanged}
           onClose={panel.close}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          previewPull={previewPull}
           resolveAttachment={resolveAttachment}
         />
       )}
