@@ -86,27 +86,26 @@ function appendPage(previous: State, page: ArchivePage): State {
 }
 
 /**
- * The newest page read again. The rows it covers are replaced (so an archived row appears and a
- * restored one leaves); the older rows already read stay, and the next cursor stays with them.
+ * The loaded window read again, from the newest page on, replaces the old rows in one step: an
+ * archived row appears, a restored one leaves, and no gap can open between the new rows and the old.
  */
-function refreshNewest(previous: State, page: ArchivePage): State {
-  const edge = page.tasks.at(-1);
-  const keepOlder = page.nextCursor !== null && edge !== undefined;
-  const older = keepOlder
-    ? (previous.data?.tasks ?? []).filter((row) => compareArchivedNewestFirst(edge, row) < 0)
-    : [];
+function swapWindow(previous: State, pages: ArchivePage[]): State {
+  const first = pages[0] as ArchivePage;
+  const last = pages[pages.length - 1] as ArchivePage;
   return {
     ...previous,
     status: 'ready',
     error: null,
     fetchFailed: false,
     lastSyncedAt: new Date(),
+    loadingMore: false,
+    loadMoreFailed: false,
     data: {
-      ...page,
-      tasks: join([...page.tasks, ...older]),
-      epics: uniqueEpics(previous.data?.epics ?? [], page.epics),
+      ...first,
+      tasks: join(pages.flatMap((page) => page.tasks)),
+      epics: uniqueEpics(...pages.map((page) => page.epics)),
     },
-    nextCursor: older.length > 0 ? previous.nextCursor : page.nextCursor,
+    nextCursor: last.nextCursor,
   };
 }
 
@@ -118,66 +117,90 @@ function refreshNewest(previous: State, page: ArchivePage): State {
  */
 export function useArchivePages(projectId: ProjectId | null): ArchivePages {
   const [state, setState] = useState<State>(() => empty(projectId));
-  const epoch = useRef(0);
+  // Bumped when the project changes and when a refresh starts: an older response is then dropped.
+  const generation = useRef(0);
   const projectRef = useRef(projectId);
   const stateRef = useRef(state);
   stateRef.current = state;
   const moreInFlight = useRef(false);
+  const refreshing = useRef(false);
+  const refreshAgain = useRef(false);
 
-  const readNewest = useCallback((target: ProjectId) => {
-    const mine = epoch.current;
-    fetchArchivePage(target, null).then(
-      (page) => {
-        if (mine !== epoch.current || page.project.id !== target) return;
-        setState((previous) =>
-          previous.projectId === target && previous.data
-            ? refreshNewest(previous, page)
-            : {
-                ...appendPage(empty(target), page),
-                error: null,
-                lastSyncedAt: new Date(),
-              },
-        );
-      },
-      (cause: unknown) => {
-        if (mine !== epoch.current) return;
-        const notFound = cause instanceof FetchError && cause.projectNotFound;
-        setState((previous) =>
-          previous.projectId === target && previous.data && !notFound
-            ? { ...previous, fetchFailed: true }
-            : {
-                ...empty(target),
-                status: 'error',
-                error: notFound ? 'not_found' : 'failed',
-                fetchFailed: true,
-              },
-        );
-      },
-    );
+  /** Reads from the newest page on until the rows already loaded are covered, then swaps them in. */
+  const refresh = useCallback(async (target: ProjectId) => {
+    if (refreshing.current) {
+      refreshAgain.current = true;
+      return;
+    }
+    refreshing.current = true;
+    try {
+      do {
+        refreshAgain.current = false;
+        const mine = ++generation.current;
+        // A next-page read of the old window is dropped now, so it is no longer in flight.
+        moreInFlight.current = false;
+        const current = stateRef.current;
+        const wanted = current.projectId === target ? (current.data?.tasks.length ?? 0) : 0;
+        try {
+          const pages: ArchivePage[] = [];
+          let cursor: string | null = null;
+          let rows = 0;
+          do {
+            const page: ArchivePage = await fetchArchivePage(target, cursor);
+            if (mine !== generation.current) break;
+            pages.push(page);
+            rows += page.tasks.length;
+            cursor = page.nextCursor;
+          } while (cursor !== null && rows < wanted);
+          if (mine !== generation.current || pages.length === 0) continue;
+          if (pages[0]?.project.id !== target) continue;
+          setState((previous) =>
+            previous.projectId === target ? swapWindow(previous, pages) : previous,
+          );
+        } catch (cause) {
+          if (mine !== generation.current) continue;
+          const notFound = cause instanceof FetchError && cause.projectNotFound;
+          setState((previous) =>
+            previous.projectId === target && previous.data && !notFound
+              ? { ...previous, fetchFailed: true }
+              : {
+                  ...empty(target),
+                  status: 'error',
+                  error: notFound ? 'not_found' : 'failed',
+                  fetchFailed: true,
+                },
+          );
+        }
+      } while (refreshAgain.current);
+    } finally {
+      refreshing.current = false;
+    }
   }, []);
 
   useEffect(() => {
     projectRef.current = projectId;
     moreInFlight.current = false;
+    refreshing.current = false;
+    refreshAgain.current = false;
     if (projectId === null) return;
     setState(empty(projectId));
-    readNewest(projectId);
+    void refresh(projectId);
     return () => {
-      epoch.current++;
+      generation.current++;
     };
-  }, [projectId, readNewest]);
+  }, [projectId, refresh]);
 
   const loadMore = useCallback(() => {
     const target = projectRef.current;
     const current = stateRef.current;
     if (target === null || current.projectId !== target || moreInFlight.current) return;
-    if (current.status !== 'ready' || current.nextCursor === null) return;
-    const mine = epoch.current;
+    if (refreshing.current || current.status !== 'ready' || current.nextCursor === null) return;
+    const mine = generation.current;
     moreInFlight.current = true;
     setState((previous) => ({ ...previous, loadingMore: true, loadMoreFailed: false }));
     fetchArchivePage(target, current.nextCursor).then(
       (page) => {
-        if (mine !== epoch.current) return;
+        if (mine !== generation.current) return;
         moreInFlight.current = false;
         setState((previous) =>
           previous.projectId === target
@@ -186,7 +209,7 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
         );
       },
       () => {
-        if (mine !== epoch.current) return;
+        if (mine !== generation.current) return;
         moreInFlight.current = false;
         setState((previous) => ({ ...previous, loadingMore: false, loadMoreFailed: true }));
       },
@@ -199,8 +222,8 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
     setState((previous) =>
       previous.projectId === target && previous.status === 'error' ? empty(target) : previous,
     );
-    readNewest(target);
-  }, [readNewest]);
+    void refresh(target);
+  }, [refresh]);
 
   const remove = useCallback((id: number) => {
     setState((previous) => {

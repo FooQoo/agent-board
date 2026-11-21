@@ -258,6 +258,101 @@ describe('useArchivePages', () => {
       expect(result.current.hasMore).toBe(true);
     });
 
+    it('on a live update leaves no gap between the new rows and the old ones when all were loaded', async () => {
+      const { backend } = withMany();
+      const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.data?.tasks).toHaveLength(100));
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.hasMore).toBe(false));
+      // 60 tasks are archived at once: more than a page lies between the newest and the old rows.
+      const fresh = Array.from({ length: 60 }, (_, i) =>
+        at(501 + i, new Date(Date.UTC(2026, 10, 1, 0, i)).toISOString()),
+      );
+      backend.archives = { ...backend.archives, [PROJECT_A.id]: [...many(), ...fresh] };
+      act(() => result.current.reload());
+      await waitFor(() => expect(result.current.data?.tasks[0]?.id).toBe(560));
+      await waitFor(() => expect(result.current.data?.total).toBe(180));
+      const ids = result.current.data?.tasks.map((task) => task.id) ?? [];
+      // Newest first with no hole: 560..501 then 120 downward, as far as the window reaches.
+      const expected = [
+        ...Array.from({ length: 60 }, (_, i) => 560 - i),
+        ...Array.from({ length: 120 }, (_, i) => 120 - i),
+      ];
+      expect(ids).toEqual(expected.slice(0, ids.length));
+      expect(ids.length).toBeGreaterThanOrEqual(120);
+      // Rows that were cut off are still reachable: either the list is whole or more follow.
+      expect(ids.length === 180 || result.current.hasMore).toBe(true);
+    });
+
+    it('drops a next-page answer that was in flight when a live update replaced the list', async () => {
+      const { backend } = withMany();
+      const late = deferred<void>();
+      let held = false;
+      backend.gate = (url) => {
+        if (!held && url.includes('cursor=')) {
+          held = true;
+          return late.promise;
+        }
+        return undefined;
+      };
+      const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.loadingMore).toBe(true));
+      // #60 is restored and the list is refreshed while that page is still on its way.
+      backend.archives = {
+        ...backend.archives,
+        [PROJECT_A.id]: many().filter((task) => task.id !== 60),
+      };
+      act(() => result.current.reload());
+      await waitFor(() => expect(result.current.data?.total).toBe(119));
+      expect(result.current.loadingMore).toBe(false);
+      await act(async () => {
+        late.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => Promise.resolve());
+      const ids = result.current.data?.tasks.map((task) => task.id) ?? [];
+      expect(ids).not.toContain(60);
+      expect(result.current.data?.total).toBe(119);
+      expect(result.current.loadingMore).toBe(false);
+      // The list can still be extended afterwards.
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.data?.tasks).toHaveLength(100));
+      expect(result.current.data?.tasks.map((task) => task.id)).not.toContain(60);
+    });
+
+    it('runs one refresh at a time and follows up once for the updates that came meanwhile', async () => {
+      const { backend, fetchMock } = withMany();
+      const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      const gate = deferred<void>();
+      let first = true;
+      backend.gate = () => {
+        if (first) {
+          first = false;
+          return gate.promise;
+        }
+        return undefined;
+      };
+      const reads = () =>
+        fetchMock.mock.calls.filter(([url]) => String(url).includes('/archive')).length;
+      const before = reads();
+      act(() => {
+        result.current.reload();
+        result.current.reload();
+        result.current.reload();
+      });
+      expect(reads()).toBe(before + 1);
+      await act(async () => {
+        gate.resolve();
+        await Promise.resolve();
+      });
+      await waitFor(() => expect(reads()).toBe(before + 2));
+    });
+
     it('drops a removed row at once and counts it out of the total', async () => {
       withMany();
       const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
