@@ -38,7 +38,7 @@ Swipe the task back, or tap anywhere outside it, to close the buttons without a 
 
 ### Review and restore archived tasks
 
-**Archive** in the bottom bar opens **Archived tasks** as a drawer, newest first. Each task is drawn with the same card as in the lanes. Under it, the lane it returns to and the date it was archived.
+**Archive** in the bottom bar opens **Archived tasks** as a drawer, newest first. Each task is drawn with the same card as in the lanes. Under it, the lane it returns to and the date it was archived. The drawer loads 50 tasks at a time and reads the next page as you scroll to the end of the list; a note under the last task says the list is complete, and a failed page shows a **Retry** button.
 
 To restore a task, swipe its card to the left. A **Restore** button appears on the right at once, with no need to choose the card first; press it and the task leaves the list and returns to the lane it was archived from, with its run state Idle, the state every archived task is stored with. It goes to the end of that lane. A tap outside the open card, or a tap on it, closes the button. A tap on a closed card does nothing. With a keyboard, focus a card and press Enter or the left arrow to open **Restore** and move focus to it; the right arrow closes it. If the restore fails, the row stays and the drawer says so.
 

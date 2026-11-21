@@ -389,7 +389,7 @@ test('the Archive drawer lists the newest archived task first', async ({ page })
   const [one, two, three] = ['Order one', 'Order two', 'Order three'].map((t) => ids.get(`ArchiveOrder:${t}`)!);
 
   // Hand the drawer the archive in a scrambled order with spread-out archive times.
-  await page.route('**/api/projects/*/archive', async (route) => {
+  await page.route('**/api/projects/*/archive?*', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     const times = new Map([

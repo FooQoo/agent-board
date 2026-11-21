@@ -2,6 +2,7 @@
 //! `guards`; the handlers live in the submodules, grouped as the routes are.
 
 mod archive;
+mod archive_page;
 mod detail;
 mod docs;
 mod epic_attachments;
@@ -36,6 +37,7 @@ use axum::routing::{delete, get, patch, post, put};
 use super::response::error_response;
 use super::{AppState, events};
 use archive::*;
+use archive_page::archive;
 use detail::{epic_detail, task_detail};
 use docs::*;
 use epic_attachments::*;

@@ -17,14 +17,15 @@ const archived = [
 const expected = [4, 5, 2, 1, 3];
 
 async function stubArchive(page: import("@playwright/test").Page) {
-	await page.route("**/api/projects/*/archive", async (route) => {
-		const summaryUrl = route.request().url().replace(/\/archive$/, "/summary");
+	await page.route("**/api/projects/*/archive?*", async (route) => {
+		const summaryUrl = route.request().url().replace(/\/archive\?.*$/, "/summary");
 		const summary = await (await page.request.get(summaryUrl)).json();
 		const base = summary.tasks[0];
 		await route.fulfill({
 			json: {
 				...summary,
-				cursor: summary.version,
+				total: archived.length,
+				nextCursor: null,
 				tasks: archived.map(({ id, archivedAt }) => ({
 					...base,
 					id,

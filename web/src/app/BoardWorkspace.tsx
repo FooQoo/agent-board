@@ -138,12 +138,9 @@ export function BoardWorkspace({
           />
         ) : archiveVisible ? (
           <ArchiveList
-            data={archive.data}
-            status={archive.status}
-            fetchFailed={archive.fetchFailed}
+            pages={archive}
             selectedId={session.archiveSelectedId}
             onSelect={actions.onSelectArchiveCard}
-            onRetry={archive.reload}
             layoutRef={attachLayoutRef}
           />
         ) : (
@@ -252,7 +249,7 @@ export function BoardWorkspace({
         status={archiveVisible ? archive.status : epicsVisible ? board.status : barStatus}
         taskCount={
           archiveVisible
-            ? (archive.data?.tasks.length ?? 0)
+            ? (archive.data?.total ?? 0)
             : epicsVisible
               ? (boardData?.epics.length ?? 0)
               : tasks.length

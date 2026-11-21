@@ -37,7 +37,7 @@ The ngrok entrance serves the board page and the routes below under the same pat
 | `…/epics/{epicId}/attachments`, `…/{attachmentId}` | Epic images. |
 | `POST …/tasks/{id}/archive`, `POST …/tasks/{id}/restore` | No body. Repeating either on a task already in that state returns the same task unchanged. |
 | `POST …/tasks/archive-done` | `{ids: number[]}`; empty, duplicate, or invalid IDs are 422. Returns `{tasks, archivedCount}`. |
-| `GET /api/projects/{projectId}/archive` | Archived tasks with bodies, full history, and attachment metadata, plus `epics` from the same snapshot. Each task's `epicId` resolves against that list; a task without an epic, or one whose epic is missing, has no label. |
+| `GET /api/projects/{projectId}/archive` | One page of the archived tasks. See [Archive pages](#archive-pages). |
 | `GET /api/projects/{projectId}/summary` | The list data for the board: project, `version`, tasks, epics, and problems, without any body text. See [Summary and Detail](#summary-and-detail). |
 | `GET /api/projects/{projectId}/sessions` | The agent sessions attached to the project and their counts, plus the sessions the board launched. See [Attached sessions](#attached-sessions). Never cached. |
 | `POST /api/projects/{projectId}/sessions/touch` | Counts the external session named in the headers for five minutes. Sent by every `agboard` command and hook; 204 always. Local listener only. See [Attached sessions](#attached-sessions). |
@@ -324,6 +324,24 @@ Failures use the usual error body. Their codes and statuses are in [Error codes]
 ```
 
 `epicId` and `attachments` are optional; omit the epic or use `null`, and use an empty attachments array when there are no images. A simple request accepts no `title`, `assignee`, `draft`, or `finalize` metadata. The server creates an AI-owned Todo task, wraps the original text in `## 元の依頼`, and derives the title from the first non-empty line (up to 100 Unicode characters). It validates and stages the task and its images under the project lock, then publishes them together by renaming the completed task directory. Every accepted submission creates a new task and returns `201 {"task": …}`; the server does not compare content to detect duplicates. A task created with its own metadata continues to use `POST /tasks` or the regular multipart metadata; it does not become a simple request.
+
+### Archive pages
+
+`GET /api/projects/{projectId}/archive` returns the archived tasks a page at a time, so a project with hundreds of them never sends them all at once.
+
+| Part | Meaning |
+| --- | --- |
+| `limit` (query) | The page size, 1 to 200. The default is 50. Anything else is 422 `invalid_value`. |
+| `cursor` (query) | The `nextCursor` of the previous page. Leave it out for the newest page. A value this endpoint did not hand out is 422 `invalid_value`. |
+| `tasks` | The page's tasks, newest `archivedAt` first; tasks with the same time come with the larger ID first. Each is the card the Summary lists (no body text, full history, or attachment list; the Detail has them). |
+| `epics` | Only the epics that the tasks on this page refer to. A task without an epic, or one whose epic is missing, has no label. |
+| `total` | How many archived tasks the project has. |
+| `nextCursor` | The cursor of the next page, or `null` after the last. |
+| `project`, `version` | The project and the version of the snapshot that answered. |
+
+The cursor is opaque to clients. It holds the last row's archive time and ID (URL-safe Base64 of `<nanoseconds>:<id>`), and the next page is every row that sorts after it. The cursor is a keyset, not an offset, so a task archived or restored between two reads never makes a row repeat or hides one: a newly archived task sorts before the cursor and shows up when the first page is read again, and a restored one simply leaves the rows after the cursor. Each page is read from the project's current snapshot.
+
+The web UI joins the pages with one hook, `useArchivePages` (`web/src/features/tasks/model/`), for both the PC list and the phone sheet. It appends each page, keeps a row once by ID, and asks for the next page when the last row enters the virtualized range. A live update reads the pages again from the newest one until they cover at least as many rows as were loaded, and swaps the whole list in one step; an answer to an older read is dropped, and updates that arrive during a refresh are coalesced into one more.
 
 **Bulk archive.** The target IDs are fixed when the confirmation opens; the request never re-collects all Done tasks. Under the lock every unarchived target must still be Done. If any target moved or was deleted, the whole request is 409 `archive_targets_changed` and nothing changes. Targets that are already archived count as done, so a retry after a lost response never duplicates history. Targets are saved one at a time with a single reload and notification at the end; if a save fails partway, the saved targets stay archived and a retry handles the rest.
 
