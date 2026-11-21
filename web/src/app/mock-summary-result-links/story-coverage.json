@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-summary-result-links/SummaryResultLinksScreen.tsx",
+      "exports": [
+        {
+          "name": "SummaryResultLinksScreen",
+          "stories": [
+            {
+              "id": "mocks-summaryresultlinks-desktop--underline-arrow",
+              "states": ["option A underline and arrow"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-desktop--follow-link",
+              "states": ["click a result leads to the results"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-desktop--card-row",
+              "states": ["option B card row"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-desktop--thumbnail",
+              "states": ["option C thumbnail"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-desktop--destination",
+              "states": ["results tab at the linked version"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-phone--underline-arrow",
+              "states": ["option A underline and arrow"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-phone--follow-link",
+              "states": ["click a result leads to the results"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-phone--card-row",
+              "states": ["option B card row"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-phone--thumbnail",
+              "states": ["option C thumbnail"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-summaryresultlinks-phone--destination",
+              "states": ["results tab at the linked version"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
