@@ -90,24 +90,24 @@ pub(in crate::server::push_delivery) fn start(weak: Weak<AppState>, dispatcher: 
             let minutes = state.notification_settings.load().summary.interval_minutes;
             if minutes == 0 {
                 // Off: counting starts again when it is switched on.
-                schedule.mark(now);
+                schedule.restart(now);
                 pending.clear();
                 resume.clear();
                 continue;
             }
             let mut windows: Vec<(ProjectId, Pending)> = pending.drain().collect();
             let retried = windows.clone();
-            if schedule.due(now, minutes) {
+            if let Some(end) = schedule.due(now, minutes) {
                 let window = Pending {
                     floor: schedule.since(minutes),
-                    to: now,
+                    to: end,
                     // Read when the window first becomes due, not on each retry or after the
                     // write: a notification that was due while the entrance was down is
                     // recorded, never sent after it comes back.
                     entrance_up: super::super::runtime::entrance_up(&state),
                 };
                 add_new_windows(&mut windows, window, project_ids(&state), &mut resume);
-                schedule.mark(now);
+                schedule.mark(end);
             }
             if windows.is_empty() {
                 continue;
