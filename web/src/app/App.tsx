@@ -95,6 +95,7 @@ function AppScreen({ initial }: AppProps) {
       {actions.backlogSend.confirming ? (
         <SendConfirm
           kind={narrow ? 'sheet' : 'dialog'}
+          to={actions.backlogSend.confirming.to}
           count={actions.backlogSend.confirming.ids.length}
           warned={actions.backlogSend.confirming.warned}
           busy={actions.backlogSend.busy}

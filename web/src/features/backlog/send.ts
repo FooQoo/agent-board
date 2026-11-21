@@ -2,11 +2,27 @@ import type { ProjectId, Task, TaskSummary } from '../../shared/api/contracts';
 import { projectPath } from '../../shared/api/http';
 import { postTask } from '../../shared/api/write';
 
-/** Sends one Backlog card to Todo, as a person. `ack` confirms the warning about open questions. */
-export function sendTask(projectId: ProjectId, id: number, ack: boolean) {
-  return postTask<{ task: Task; changed: boolean }>(`${projectPath(projectId)}/tasks/${id}/send`, {
-    ack,
-  });
+/** The lanes a person can drop a Backlog card on. */
+export type BacklogTarget = 'todo' | 'doing' | 'done';
+
+/**
+ * Sends one Backlog card to Todo, as a person, or moves it to Doing or Done. `ack` confirms the
+ * warning about open questions.
+ */
+export function sendTask(
+  projectId: ProjectId,
+  id: number,
+  ack: boolean,
+  to: BacklogTarget = 'todo',
+) {
+  const base = `${projectPath(projectId)}/tasks/${id}`;
+  return to === 'todo'
+    ? postTask<{ task: Task; changed: boolean }>(`${base}/send`, { ack })
+    : postTask<{ task: Task; changed: boolean }>(`${base}/move`, {
+        taskStatus: to,
+        fromStatus: 'backlog',
+        ack,
+      });
 }
 
 /** Sends the Backlog cards of an epic to Todo in one save. */
@@ -30,11 +46,12 @@ export async function sendTasks(
   projectId: ProjectId,
   ids: readonly number[],
   ack: boolean,
+  to: BacklogTarget = 'todo',
 ): Promise<SendOutcome> {
   const outcome: SendOutcome = { sent: [], failed: [] };
   for (const id of ids) {
     try {
-      await sendTask(projectId, id, ack);
+      await sendTask(projectId, id, ack, to);
       outcome.sent.push(id);
     } catch {
       outcome.failed.push(id);

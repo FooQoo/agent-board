@@ -336,7 +336,7 @@ fn an_epic_is_sent_whole_or_by_chosen_cards_and_a_failure_sends_nothing() {
 }
 
 #[test]
-fn nothing_leaves_the_backlog_by_a_move_or_a_run_state_except_a_persons_move_to_todo() {
+fn nothing_leaves_the_backlog_by_a_move_or_a_run_state_except_a_persons_move() {
     let f = fx();
     let id = f.plan("Plan");
     let go = |actor, to| {
@@ -370,8 +370,8 @@ fn nothing_leaves_the_backlog_by_a_move_or_a_run_state_except_a_persons_move_to_
         now(),
     );
     assert_eq!(state.unwrap_err().code(), "task_in_backlog");
-    // A person cannot jump to Doing or Done either; Todo is the send.
-    let user_move = |to| {
+    // A person moves it to Todo (the send), Doing or Done.
+    let user_move = |id, to| {
         f.store.move_work_task_for_user(
             &f.project,
             id,
@@ -383,19 +383,82 @@ fn nothing_leaves_the_backlog_by_a_move_or_a_run_state_except_a_persons_move_to_
             now(),
         )
     };
-    assert_eq!(
-        user_move(Column::Doing).unwrap_err().code(),
-        "task_in_backlog"
-    );
-    assert_eq!(
-        user_move(Column::Done).unwrap_err().code(),
-        "task_in_backlog"
-    );
     assert_eq!(f.lane(id), Column::Backlog);
     assert_eq!(
-        user_move(Column::Todo).unwrap().value.task_status,
+        user_move(id, Column::Todo).unwrap().value.task_status,
         Column::Todo
     );
+    let doing = f.plan("To Doing");
+    let moved = user_move(doing, Column::Doing).unwrap();
+    assert_eq!(moved.value.task_status, Column::Doing);
+    assert!(moved.changed);
+    assert_eq!(f.lane(doing), Column::Doing);
+    let done = f.plan("To Done");
+    assert_eq!(
+        user_move(done, Column::Done).unwrap().value.task_status,
+        Column::Done
+    );
+}
+
+#[test]
+fn an_agent_still_cannot_move_a_backlog_card_to_any_lane() {
+    let f = fx();
+    let id = f.plan("Plan");
+    for to in [Column::Todo, Column::Doing, Column::Done] {
+        let ctx = || ChangeContext {
+            actor: Actor::Ai,
+            reason: "go".into(),
+        };
+        let agent = f.store.move_work_task(&f.project, id, to, ctx(), now());
+        assert_eq!(agent.unwrap_err().code(), "task_in_backlog");
+        let user = f
+            .store
+            .move_work_task_for_user(&f.project, id, to, ctx(), now());
+        assert_eq!(user.unwrap_err().code(), "task_in_backlog");
+    }
+    assert_eq!(f.lane(id), Column::Backlog);
+}
+
+#[test]
+fn a_persons_move_to_doing_or_done_follows_the_rules_of_a_send() {
+    let f = fx();
+    let ctx = || ChangeContext {
+        actor: Actor::Human,
+        reason: "drag".into(),
+    };
+    let id = f.plan("Plan");
+    let q = qa::ask(&f.store, &f.project, &[id], "Which way?", &[]);
+    let from = Column::Backlog;
+
+    // An open question is confirmed first, as for a send; nothing moved.
+    let warned = f
+        .store
+        .move_work_task_for_user_from(&f.project, id, from, Column::Doing, ctx(), now())
+        .unwrap_err();
+    assert_eq!(warned.code(), "send_with_open_questions");
+    assert_eq!(f.lane(id), Column::Backlog);
+
+    // The confirmed move goes through and the question stays.
+    f.store
+        .move_work_task_for_user_confirmed(&f.project, id, from, Column::Doing, ctx(), now())
+        .unwrap();
+    let view = f.store.task(&f.project, id).unwrap();
+    assert_eq!(view.task_status, Column::Doing);
+    assert_eq!(view.open_question_ids, vec![q.id]);
+
+    // A card a person is editing is not moved.
+    let editing = f.plan("Editing");
+    f.store
+        .set_draft(&f.project, editing, Some(Draft::Human), false, now())
+        .unwrap();
+    for to in [Column::Doing, Column::Done] {
+        let refused = f
+            .store
+            .move_work_task_for_user(&f.project, editing, to, ctx(), now())
+            .unwrap_err();
+        assert_eq!(refused.code(), "task_is_draft");
+    }
+    assert_eq!(f.lane(editing), Column::Backlog);
 }
 
 #[test]

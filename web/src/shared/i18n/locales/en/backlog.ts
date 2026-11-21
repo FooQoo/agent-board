@@ -25,6 +25,20 @@ export const backlogEn = {
     counts: 'Backlog {{backlogBefore}} → {{backlogAfter}}, Todo {{todoBefore}} → {{todoAfter}}',
     partial: 'Sent {{sent}} of {{total}} cards. {{failed}} could not be sent.',
     failed: 'Could not send to Todo. Nothing was changed.',
+    move: {
+      confirmTitle: 'Move to {{lane}}',
+      confirmScope_one: 'Move the {{count}} selected card to {{lane}}.',
+      confirmScope_other: 'Move the {{count}} selected cards to {{lane}}.',
+      warnBody:
+        'The questions stay after the move, and the agent cannot work on the card until they are answered. Move anyway?',
+      confirm: 'Move to {{lane}}',
+      one: 'Moved 1 card to {{lane}}.',
+      many: 'Moved {{count}} cards to {{lane}}.',
+      counts:
+        'Backlog {{backlogBefore}} → {{backlogAfter}}, {{lane}} {{targetBefore}} → {{targetAfter}}',
+      partial: 'Moved {{sent}} of {{total}} cards. {{failed}} could not be moved.',
+      failed: 'Could not move to {{lane}}. Nothing was changed.',
+    },
     detail: {
       heading: 'Backlog',
       text: 'This plan is not started yet. Agents never start it until you send it to Todo.',

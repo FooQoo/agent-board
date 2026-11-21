@@ -94,7 +94,8 @@
   background: var(--r-accent);
 }
 
-.lane[data-drop-target="true"][data-column="todo"] {
+.board__lanes[data-backlog-drag="true"]
+  .lane[data-drop-target="true"]:not([data-column="backlog"]) {
   outline: 2px dashed var(--r-accent);
   outline-offset: -2px;
 }

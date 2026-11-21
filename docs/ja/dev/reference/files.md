@@ -67,7 +67,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 ```
 
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
-- `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`は`formatVersion: 1`です。Backlogを使う`task.json`・`epic.json`は`formatVersion: 2`、通常のカードのファイルは`formatVersion: 1`のままで、どちらも読めます。それ以外のバージョンは`format_unsupported`を報告し、変更せずに残します。以前のバージョンの`agboard`はバージョン2のファイルを読めません。古いAI下書きは一度だけ自動で変換します（[保存と復旧](../concepts/saving-and-recovery.md#形式のバージョンとbacklogへの移行)を参照）。
+- `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`は`formatVersion: 1`です。Backlogを使う`task.json`・`epic.json`は`formatVersion: 2`、通常のカードのファイルは`formatVersion: 1`のままで、どちらも読めます。それ以外のバージョンは`format_unsupported`を報告し、変更せずに残します。以前のバージョンの`agboard`はバージョン2のファイルを読めません。古いAI下書きは一度だけ自動で変換します（[保存と復旧](../concepts/saving-and-recovery.md#形式のバージョンとdraftの値)を参照）。
 - `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
 - 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。`agboard stop`もこのファイルからサーバーを見つけます。
