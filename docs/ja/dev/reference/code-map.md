@@ -40,7 +40,7 @@
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
 | `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
-| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作。 |
+| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作・`send.rs`（人によるBacklogのタスクのTodoへの送信。1件、エピック全体、選んだ一部を一回の保存で）・`backlog_migrate.rs`（古いAI下書きをBacklogへ移す一度きりの変換）。`src/file_store/legacy_draft.rs`は、古い`draft: ai`のファイルをメモリー上でBacklogとして読みます。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -93,7 +93,7 @@
 - `src/cli/commands/message/`と`src/cli/args/message.rs`: `agboard message`の各コマンド、そのJSON入力（`input.rs`）、`message ask`と`message wait`のJSON Linesのイベント（`stream.rs`）。待機そのものは、共通の待機エンジンの上に作った`src/agent/message_wait.rs`です。
 - `web/src/features/tasks/messages/`: メッセージの一覧。`model/messages.ts`はタブ・件数・`canSendAnswer`、`api.ts`はメッセージの読み出しと回答・取り下げの送信、`MessageBand.tsx`は件数を示す帯（PCのボードとスマホ画面で共通）、`MessageCenter.tsx`は帯と一覧をつなぎ、`MessageRows.tsx`は行を描き、`MessagesSurface.tsx`は一覧・質問・依頼をモーダルまたは下からのシートで表示します。`web/src/features/tasks/answer/`は質問と回答の欄（`DecisionQuestion`・`DecisionAnswerFields`）を描き、`web/src/app/model/useMessagesController.ts`は一覧をPCのボードにつなぎます。
 - `web/src/features/messages/ask/`: **AIに依頼**の入力画面（`AskAiDialog.tsx`、`AskAiToolbar.tsx`）と、multipartの依頼を組み立てる`sendRequest.ts`。
-- ボード（`pages/board/ui/Lane.tsx`）とスマホのモニター（`pages/monitor/components/MonitorLanes.tsx`）は、AIの下書きのタスクを下書きのバッジ付きの通常のカードとして描きます。WebのUIに、計画のカード・計画のレビュー・開始のルートはありません。
+- ボード（`pages/board/ui/Lane.tsx`）とスマホのモニター（`pages/monitor/components/MonitorLanes.tsx`）は、Backlogのタスクを、いまのところTodoの列に下書きのバッジ付きで描きます（変換は`web/src/shared/data/api/parse.ts`）。WebのUIにBacklogのレーンと送信のボタンはまだなく、送信のルートだけがあります。
 - `web/src/pages/monitor/`: スマホ幅の画面です。`View.tsx`がヘッダー、レーンのタブ、レーン、下部のバー（`components/PhoneNav.tsx`と`components/PhoneNavBar.tsx`）を組み立てます。`components/LaneTabs.tsx`は件数付きのタブ、`components/MonitorLanes.tsx`は指に追従するレーンのカルーセル（`hooks/useLaneCarousel.ts`。`hooks/useLaneOverscroll.ts`は完了レーンを越える左スワイプをまとめてアーカイブとして読み、レーンを指に付けて動かします。`components/BulkArchiveTile.tsx`はそのとき現れるアイコンです）、`components/SwipeableCard.tsx`と`hooks/useCardGesture.ts`はカードの長押しで選ぶ動きとスライドして開く動き（`web/src/shared/lib/gesture/useSideSwipe.ts`の上に作っています）、`components/MonitorLaneDialogs.tsx`はアーカイブ・まとめてアーカイブの確認を持ち、アーカイブ一覧も開きます。`components/ArchiveListSheet.tsx`と`components/ArchiveSwipeRow.tsx`がその一覧で（各行はレーンの`MonitorTask`カードを`.swipe-card`に入れたもので、左スワイプですぐに復元ボタンを開く）、`hooks/useArchiveSheet.ts`は一覧が開いている間だけアーカイブを読みます。`model/lanes.ts`はレーンの並びとスワイプで出るボタンを持ち、`hooks/useLaneOverlay.ts`はこのスマホが保存した内容を次の読み取りまで画面に残します。`components/MonitorLanesScreen.tsx`は同じ部品をStorybook用に組み立てます。`web/src/shared/viewport/stableHeight.ts`はソフトウェアキーボードが開いている間のページの高さを保ちます。
 - `scripts/release/`と`.github/workflows/release.yml`: リリースのアーカイブ、署名、公証、Formula（[リリースをビルドする](../getting-started/setup.md#build-release)を参照）。
 
@@ -114,6 +114,7 @@
 
 - `src/file_store/onboarding_state.rs`: 状態ファイル。案内を見たかどうかだけを記録します。
 - `src/server/api/onboarding.rs`: 案内の2つのルート。
+- `src/server/api/send.rs`と`src/server/api/draft_wire.rs`: 送信の2つのルート（タスクとエピック）と、古いクライアントの`"ai"`を`null`として扱う`draft`項目の読み取り。
 - `web/src/app/onboarding/`: リクエスト、制御、サンプルカードと質問、サンプルの回答フォーム、層。
 - `web/src/app/development/mock-server/guide.ts`: デモの案内の2つのルート。
 - `web/src/features/onboarding/ui/`: 表示部品。

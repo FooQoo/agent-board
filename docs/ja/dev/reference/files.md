@@ -15,10 +15,10 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 | `acceptance`・`acceptanceError` | frontmatterの完了条件（不正なときは空）と、`acceptance`かYAML構文が不正かどうか。 |
 | `assignee` | `ai`か`human`。作成時に決め、以後は変えない。 |
 | `epicId` | 同じプロジェクトのEPIC-ID、または`null`。 |
-| `taskStatus` | レーン。`todo`・`doing`・`done`。 |
+| `taskStatus` | レーン。`backlog`・`todo`・`doing`・`done`。Backlogは、まだ始めてはいけない確定済みの計画を置くレーンで、Todoへ送れるのは人だけです。 |
 | `position` | 正の整数。同じレーンの未アーカイブのタスク内で一意。 |
 | `agentStatus` | AIの稼働状態。`task.json`には`idle`か`running`を保存します。TodoかDoingのAIタスクが人の判断待ちのとき、読み出すと`pending`になります（[メッセージ](../concepts/history-and-decisions.md#メッセージ)）。保存された`pending`は`idle`として読みます。 |
-| `draft` | `null`・`"human"`・`"ai"`のいずれか。`human`は人がブラウザで書いている下書き、`ai`はエージェントが作った提案で、エージェントが、質問への回答がそろってから開始する（人も開始できる）。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読む。書き込みは`draft`だけを使う。エピックの場合、CLIの`epic edit`は`human`の下書きを`epic_is_draft`で拒否する。 |
+| `draft` | `null`または`"human"`。`human`は人がブラウザで書いている下書きで、編集ロックです。以前のバージョンのファイルは`isDraft`を持ち、`true`は`human`、`false`は`null`として読む。書き込みは`draft`だけを使う。エピックの場合、CLIの`epic edit`は`human`の下書きを`epic_is_draft`で拒否する。 |
 | `questions` | `TASK.md`のfrontmatterにあり、タスクが参照するプロジェクトの質問のIDを`[Q-12, Q-15]`のように並べます。省略・`null`・空はどれも0件で、重複は拒否します。 |
 | `requestAnswers` | 以前のAgent Boardが記録した回答。記録として残し、新しくは追加しません。 |
 | `archivedAt` | `null`、またはアーカイブ日時。 |
@@ -67,7 +67,7 @@ Agent Boardが保存するすべてのファイルを、項目と例とともに
 ```
 
 - JSONはUTF-8・camelCase・2スペースのインデントで、末尾に改行を一つ付けます。未知の項目は拒否します。
-- `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`と`epic.json`は`formatVersion: 1`、`task.json`も`formatVersion: 1`を持ちます。対応するバージョンは1だけです。それ以外は`format_unsupported`を報告し、変更せずに残します。移行もフォールバックもしません。
+- `workspace.json`は`{"format":"agboard-files","formatVersion":1}`です。`project.json`は`formatVersion: 1`です。Backlogを使う`task.json`・`epic.json`は`formatVersion: 2`、通常のカードのファイルは`formatVersion: 1`のままで、どちらも読めます。それ以外のバージョンは`format_unsupported`を報告し、変更せずに残します。以前のバージョンの`agboard`はバージョン2のファイルを読めません。古いAI下書きは一度だけ自動で変換します（[保存と復旧](../concepts/saving-and-recovery.md#形式のバージョンとbacklogへの移行)を参照）。
 - `.`で始まる名前は正本ではありません。`README.md`はフォルダと編集の規則の案内で、製品が作成時に書きます。
 - 画像は所有者の`assets/`に置きます。本文からは`assets/<attachment-id>.<ext>`（または旧形式の`attachment:<id>`）で画像を参照します。画像はPNG・JPEG・WebP・GIFで、1件10 MiBまで、所有者ごとに20件・合計50 MiBまでです。
 - `bindings.json`と`serve.json`はそのマシンだけで使うファイルです。`serve.json`は、CLIに通知先を、`wait`に接続先を教えます。トークンは含みません。`agboard stop`もこのファイルからサーバーを見つけます。

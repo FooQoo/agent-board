@@ -14,13 +14,15 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | --- | --- |
 | `GET /` | 書き込み用トークンを`meta[name=agboard-token]`に埋め込んだHTML。 |
 | `GET /api/projects` | `projects`（id・name・createdAt）と`catalogVersion`。タスクは含まない。0件でも200。 |
-| `POST /api/projects/{projectId}/tasks` | title・body・acceptance・assigneeと任意の`draft: "human"`からTodo・Idleのタスクを作る（AIの下書きはエージェントだけが作るので、`"ai"`は422 `invalid_value`）。サーバーがfrontmatterを組み立てて検証する。201。 |
+| `POST /api/projects/{projectId}/tasks` | title・body・acceptance・assigneeと任意の`draft: "human"`からTodo・Idleのタスクを作る（`"ai"`は422 `invalid_value`）。サーバーがfrontmatterを組み立てて検証する。201。 |
 | `POST /api/projects/{projectId}/tasks/multipart` | 画像付きの通常タスク、または依頼本文・任意のエピック・画像をまとめた簡易依頼タスクを作る。下記を参照。 |
-| `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。`draft: "ai"`を付けると、保存後もAIの下書きのままにする（人がAIの提案を直したあと、確定せず提案に戻す）。AIの下書きへの`finalize`は409 `ai_draft_needs_start`。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
-| `PUT /api/projects/{projectId}/tasks/{id}/draft` | `draft`（必須）を設定する。`"human"`で人の下書きにし、`null`で確定し、`"ai"`で元のAIの下書きに戻す。AIの下書きを外せるのは開始（`agboard start`）だけで、AIの下書きへの`null`は409 `ai_draft_needs_start`、通常のタスクへの`"ai"`は422。`discard: true`（`null`と一緒の場合だけ）を付けると、確定せずに下書きを取り消し、履歴に`Discarded draft changes.`を残す。Runningのタスクは409 `invalid_state_for_draft`。 |
+| `PATCH /api/projects/{projectId}/tasks/{id}` | **下書き**のタスクのtitle・body・acceptanceと任意の`finalize: true`を更新する。古いクライアントの`draft: "ai"`（multipartフォームも同じ）は、Backlogのカードでは受け付けて`null`として扱い、TodoまたはDoingのカードでは422 `invalid_value`で拒否する（そのまま保存すると、着手できる状態のまま残るため）。先にカードをBacklogへ戻す。bodyだけならfrontmatterを、acceptanceだけなら本文を保つ。`description`と`body`の同時指定は422 `invalid_value`。後から保存した内容が優先される。下書きでなければ409 `task_not_draft`。 |
+| `PUT /api/projects/{projectId}/tasks/{id}/draft` | `draft`（必須）を設定する。`"human"`で人の下書きにし、`null`で確定する。古いクライアントの`"ai"`は、Backlogのカードでは受け付けて`null`として扱い、TodoまたはDoingのカードでは上のタスク保存と同じく422 `invalid_value`で拒否する（何も書き込まない）。`discard: true`（`null`と一緒の場合だけ）を付けると、確定せずに下書きを取り消し、履歴に`Discarded draft changes.`を残す。Runningのタスクは409 `invalid_state_for_draft`。 |
+| `POST /api/projects/{projectId}/tasks/{id}/send` | `{"ack"?: bool}`。人として、BacklogのタスクをTodoの末尾へ送り、`{task, changed}`を返す。すでにBacklogを出ているタスクは`changed: false`で何も書かないので、再試行しても安全。未回答の質問がある計画は、`ack: true`を付けるまで409 `send_with_open_questions`。人の下書きは409 `task_is_draft`、アーカイブ済みは409 `task_archived`。履歴に`A person sent the task to Todo.`を残す。 |
+| `POST /api/projects/{projectId}/epics/{epicId}/send` | `{"taskIds"?: [int], "ack"?: bool}`。人として、エピックのBacklogのタスク（または`taskIds`だけ）を、全部成功か何も変えないかの一回の保存で送り、`{epic, sent, changed}`を返す。`sent`は移したタスクIDです。エピックの未完了のカードでない`taskId`は422 `invalid_value`。未回答の質問があれば`ack: true`が必要（409 `send_with_open_questions`）。人の下書きのエピックは409 `epic_is_draft`、下書きのタスクは409 `task_is_draft`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/acceptance/{condition}` | `{"done": true\|false}`で、条件を1件、人として設定する。版は送らず、ロックの中で最新の`TASK.md`を変え、その選択を優先する。`{task, changed}`を返す。アーカイブ済みのタスクは409 `task_archived`、存在しない条件は422 `invalid_argument`。 |
 | `PUT /api/projects/{projectId}/tasks/{id}/epic` | `{epicId: string \| null}`。未知のEPIC-IDは404 `epic_not_found`。 |
-| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードとスマホの画面は`reason`を送らず（サーバーが理由を生成します）、いつも`fromStatus`を送る。移動が拒否されたときは、カードはその列のままで、画面に短い通知を出す。 |
+| `POST /api/projects/{projectId}/tasks/{id}/move` | `taskStatus`、任意の`reason`、任意の`fromStatus`（利用者が移動を選んだときに画面が表示していた状態）。`fromStatus`があるとき、タスクがもうその状態にいなければ409 `task_status_changed`で、何も書かない。本文には今の状態の`currentStatus`を加えるので、画面はそれを表示し、利用者はそこからもう一度移動できる。ボードとスマホの画面は`reason`を送らず（サーバーが理由を生成します）、いつも`fromStatus`を送る。移動が拒否されたときは、カードはその列のままで、画面に短い通知を出す。BacklogのタスクのTodoへの移動は、`ack`なしの送信と同じ（未回答の質問があれば409 `send_with_open_questions`）で、DoingやDoneへの移動は409 `task_in_backlog`。 |
 | `POST /api/projects/{projectId}/tasks/{id}/agent-status` | 状態の規則の範囲で稼働状態を変える。画面から操作する機能はない。 |
 | `GET /api/projects/{projectId}/messages` | 質問と依頼をまとめて`{messages}`で、新しい順に返す。`status`は`open`（既定）・`closed`・`withdrawn`・`all`、`type`は`question`か`request`、`limit`は1〜500（既定50）。 |
 | `GET /api/projects/{projectId}/messages/{messageId}` | メッセージ1件を`{question}`または`{request}`で返す。質問は`id`・`type`・`from`・`to`・`body`・`tasks`・`choices`・`recommendedChoiceId`・`reply`（`choiceId`・`choiceLabel`・`text`・`images`（回答に添えた画像のファイル名で、質問の`attachments/`にある）・`via`・`at`・`acceptedAt`、なければ`null`。`acceptedAt`はAIが回答を受け取るまで`null`）・`status`（`open`・`answered`・`withdrawn`）・`referencedBy`・`createdAt`・`withdrawnAt`を持つ。依頼は`id`・`type`・`from`・`to`・`body`・`status`（`open`・`accepted`・`withdrawn`）・`acceptedAt`・`withdrawnAt`・`createdAt`を持つ。未知のIDは404 `message_not_found`。 |
@@ -33,7 +35,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | `GET …/tasks/{id}/results` | タスクの成果を古いものから返します。`{taskId, results}`で、各成果のフィールド（`title`を含む）は[成果](./files.md#results)のとおりです。読み取り専用で、存在しないタスクは404 `task_not_found`です。成果は、APIが返すすべてのタスクオブジェクトの`results`配列にも入ります。SummaryとDetailのストリームには載せません。 |
 | `…/tasks/{id}/attachments`、`…/attachments/{attachmentId}` | タスクの画像（GET・POST・DELETE）。ProjectId・タスクID・添付IDで照合する。 |
 | `GET`・`POST /api/projects/{projectId}/epics` | エピックの一覧と作成（id・name・color・draft・documentまたはbody）。`acceptance`の入力は受け付けない。201。 |
-| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・作業順（`waves`、タスクIDのリストのリスト）の更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（AIの下書きのエピックは409 `ai_draft_needs_start`）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `start_blocked_by_questions`・`epic_in_use`で拒否する。 |
+| `GET`・`PATCH`・`DELETE /api/projects/{projectId}/epics/{epicId}` | 取得、またはname・color・draft・documentまたはbody・作業順（`waves`、タスクIDのリストのリスト）の更新。本文と未知のメタデータを保つ。下書きのエピックを拒否するのはCLIだけで、この更新は拒否しない。`draft: null`で人の下書きを解除する（古いクライアントの`"ai"`は`null`として扱う）。エピックには履歴がないので、何も記録しない。`EPIC.md`→`epic.json`の順に保存する。`DELETE`は204を返す。そのエピックを名指ししているタスク（アーカイブ済みを含む）が一つでもあれば、409 `epic_in_use`で拒否する。 |
 | `…/epics/{epicId}/attachments`、`…/{attachmentId}` | エピックの画像。 |
 | `POST …/tasks/{id}/archive`、`POST …/tasks/{id}/restore` | 本文なし。すでにその状態のタスクに繰り返すと、変更せず同じタスクを返す。 |
 | `POST …/tasks/archive-done` | `{ids: number[]}`。空・重複・不正なIDは422。`{tasks, archivedCount}`を返す。 |
@@ -68,7 +70,7 @@ ngrokの入口は、ボードのページと以下のルートを同じパスで
 | 項目 | フィールド |
 | --- | --- |
 | タスク | `id`（整数）、`title`、`taskStatus`、`agentStatus`、`assignee`、`draft`、`position`、`epicId`（なければ`null`）、`acceptance`（`done`・`total`）、`acceptanceError`、`createdAt`、`updatedAt`、`taskStatusChangedAt`、`agentStatusChangedAt`、`questionIds`、`openQuestionIds`、`pendingRequestId`、`pendingReason`、`pendingChoices`、`onboardingSample`（以前のリリースの案内が作ったカードのみ）、`detailVersions`（`document`・`history`）。名前はボードの`Task`と同じ。 |
-| エピック | `id`（文字列）、`name`、`color`、`draft`、`waves`（ウェーブごとにまとめたタスクID。例: `[[566],[572],[569,570,571]]`。定めなければ空）、`wavesError`（保存された順序を読めないため、`waves`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`）、`detailVersions`（`document`）。 |
+| エピック | `id`（文字列）、`name`、`color`、`draft`、`waves`（ウェーブごとにまとめたタスクID。例: `[[566],[572],[569,570,571]]`。定めなければ空）、`wavesError`（保存された順序を読めないため、`waves`は無視する）、`progress`（`todo`・`doing`・`done`・`archived`・`total`。0でなければ`backlog`も）、`detailVersions`（`document`）。 |
 | 質問 | 未回答の質問をID順に並べる。`id`・`title`（最初の空でない行からMarkdownの記号を除いたプレーンテキスト、200文字まで）・`recommendedChoiceId`・`referencedBy`（参照しているアーカイブ前のタスク）・`createdAt`。全文は`GET …/messages/{messageId}`で読む。 |
 | メッセージ | 未完了の質問と依頼を一つの形で、古い順（同時刻はID順）に並べる。`id`（`Q-<n>`）・`type`（`question`・`request`）・`from`・`to`（`ai`か`human`）・`turn`（次に動く側。`ai`・`human`、終わったものは`null`）・`title`・`createdAt`・`tasks`（関わるタスクの番号。依頼は持たない）・`epicId`（または`null`）。質問の`turn`は、未回答のあいだは`human`、回答済みでAIがまだ回答を受け取っていないあいだは`ai`で、その間も一覧に残る。依頼の`turn`は`ai`。回答をAIが受け取った質問、受け付け済みの依頼、取り下げたメッセージは含めないため、載っているメッセージには必ず`turn`がある。`questions`は、まだ読んでいる画面のために残す。 |
 | Problem | `file`・`field`・`reason`。ボードと同じ。 |
@@ -312,7 +314,7 @@ JSONとして読めない本文は400です。空の本文、未知の項目、�
 
 ### multipartでタスクを作成する
 
-`POST /api/projects/{projectId}/tasks/multipart`は、JSONの`metadata`パートを一つ、`file`パートを0件以上受け付けます。各ファイルには、`metadata.attachments`に対応する`{id, name}`が必要です。通常の添付枚数・サイズ・メディア形式の制限も適用されます。通常のタスクでは、`requestId`・`title`・`description`・`assignee`と任意の`draft`（新しいタスクでは`"human"`、編集では`"ai"`で、保存後もAIの下書きのままにする）を指定します。簡易依頼フォームの場合は次のように送ります。
+`POST /api/projects/{projectId}/tasks/multipart`は、JSONの`metadata`パートを一つ、`file`パートを0件以上受け付けます。各ファイルには、`metadata.attachments`に対応する`{id, name}`が必要です。通常の添付枚数・サイズ・メディア形式の制限も適用されます。通常のタスクでは、`requestId`・`title`・`description`・`assignee`と任意の`draft`（新しいタスクでは`"human"`）を指定します。簡易依頼フォームの場合は次のように送ります。
 
 ```json
 {
@@ -352,7 +354,7 @@ Web UIは、PCの一覧とスマートフォンのシートの両方で、一つ
 | 400 | 壊れたJSON、不正な`sections`クエリ（`invalid_sections`）、または不正なドキュメントのパス（`docs_path_invalid`）。 |
 | 403 | 保護に失敗した。または`ai_only`（人が質問を取り下げようとした）。 |
 | 404 | プロジェクト・タスク・エピック・メッセージがない。またはドキュメントのファイルがない。 |
-| 409 | `question_answered`・`question_withdrawn`・`message_closed`・`request_accepted`・`answer_accepted`・`question_open`・`request_withdrawn`・`task_status_changed`・`task_not_draft`・`ai_draft_needs_start`・`invalid_state_for_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
+| 409 | `question_answered`・`question_withdrawn`・`message_closed`・`request_accepted`・`answer_accepted`・`question_open`・`request_withdrawn`・`task_status_changed`・`task_not_draft`・`invalid_state_for_draft`・`task_in_backlog`・`send_with_open_questions`・`task_is_draft`・`epic_is_draft`・`epic_in_use`・`epic_id_taken`・`task_not_archived`・`archive_targets_changed`。 |
 | 413 | 1 MiBを超える本文。または、上限を超えるドキュメントのファイル（`docs_too_large`）。 |
 | 415 | Markdownでないドキュメントのファイル、または提供しない形式の画像（`docs_not_markdown`・`docs_asset_type`）。 |
 | 422 | ID構文・入力・状態の規則の違反。UTF-8でないドキュメントのファイル（`docs_not_utf8`）。または、パス・項目・理由つきの正本ファイルの不備（`file_invalid`）。 |

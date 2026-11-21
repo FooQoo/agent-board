@@ -20,10 +20,11 @@
 
 | 担当 | レーン | 有効な稼働状態 |
 | --- | --- | --- |
+| ai | backlog | idleのみ |
 | ai | todo | idle、pending |
 | ai | doing | idle、running、pending |
 | ai | done | idleのみ |
-| human | すべて | idleのみ |
+| human | すべて（backlogを含む） | idleのみ |
 
 - **Running**は自己申告で、生存監視ではありません。自動で戻ることはなく、エージェントもセッションの開始や中断だけを理由に変えません。
 - **Pending**は、タスクが参照するプロジェクトの質問に、まだ回答がない状態です。読めないメッセージのファイルを参照しているタスクもPendingです。その間もほかのタスクを進めてかまいません。Pendingは保存しません。`task.json`にはIdleかRunningを保存し、読み出すときにタスクの`questions`からPendingを導きます（[メッセージ](./history-and-decisions.md#メッセージ)）。
@@ -38,7 +39,7 @@
 - **エピックの所属**は`epicId`を設定または解除します。実際に変わったときだけ履歴を追加します。下書きやアーカイブ済みのタスクでも人は変更できます。
 - **削除**はタスクのフォルダを消します。Web画面はアーカイブ済みのタスクだけを削除し、CLIは端末での確認を求めます。
 
-通常の更新では、後から保存した内容が優先され、内容の照合や編集ロックはありません。最新の`task.json`と照らして書き込みロックの中で検証するのは、回答、下書きへのAIの書き込み、アーカイブ済みへの書き込み、一括アーカイブの対象だけです。
+通常の更新では、後から保存した内容が優先され、内容の照合や編集ロックはありません。最新の`task.json`と照らして書き込みロックの中で検証するのは、回答、人の下書きへのAIの書き込み、アーカイブ済みへの書き込み、一括アーカイブの対象だけです。
 
 ## エピックとウェーブ
 
@@ -49,7 +50,7 @@
 | `id` | EPIC-ID。`[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`に合う1〜64文字。小文字の入力は大文字にする。変更不可。 |
 | `name` | 前後の空白を除いて1〜100文字、1行。 |
 | `color` | `#RRGGBB`（大文字）。省略時は作成時に乱数で決める。 |
-| `draft` | タスクと同じく`null`・`"human"`・`"ai"`。人の下書き（`human`）のエピックは、CLIの`epic edit`と`--waves`を`epic_is_draft`で拒否する。AIの下書きのエピックは、エージェントがふつうに編集できる。所属タスクと`epic attachment`には影響しない。 |
+| `draft` | タスクと同じく`null`または`"human"`。人の下書き（`human`）のエピックは、CLIの`epic edit`と`--waves`を`epic_is_draft`で拒否する。所属タスクと`epic attachment`には影響しない。エピックにレーンはなく、`progress`には任意の`backlog`の件数がある。 |
 | `document`・`body` | frontmatterを含む`EPIC.md`の全文（0〜100,000文字）と、frontmatterを除いた本文。 |
 | `waves`・`wavesError` | 所属タスクの作業順をウェーブ（タスクIDのリストのリスト）で表したものと、保存された順序の読み込みに失敗したかどうか。 |
 
@@ -62,13 +63,24 @@
 
 ## 下書き
 
-下書きは、まだ作業に出していないタスクやエピックです。`draft`は持ち主を表し、`null`（通常のタスク）、`"human"`（人がブラウザで書いている）、`"ai"`（エージェントの提案で、質問への回答がそろったあとに開始される）のいずれかです。保存される項目は[共有ファイル](../reference/files.md)にあります。下書きが自動で確定されることはなく、`wait`と自動Doneはすべての下書きを飛ばします。
+下書きは、人がまだ書いているタスクやエピックです。`draft`は`null`（通常のタスク）か`"human"`（人がブラウザで書いている。編集ロック）です。保存される項目は[共有ファイル](../reference/files.md)にあります。下書きに期限はなく、`wait`と自動Doneはすべての下書きを飛ばします。AIの下書きはありません。エージェントが提案する計画はBacklogのタスクです（[Backlogと送信](#backlogと送信)を参照）。
 
-- エージェントが作ったタスクとエピック（CLIの`add`と`epic add`。担当が誰でも）は、AIの下書きになります。人が作ったものは`null`で、ブラウザで下書きとして作ると`human`です。
-- プレビューは、最初の実際の変更で人の下書きに入ります。タスクは`PUT /tasks/{id}/draft`で`draft: "human"`を送り、エピックは`PATCH /epics/{id}`で`draft: "human"`を送ります。下書きにできるのはIdleかPendingのタスクだけで、Runningは`invalid_state_for_draft`で拒否します。実際に変わると履歴を追加しますが、`updatedAt`は変えません。エピックの下書きの出入りも`updatedAt`を変えません。AIの提案を人が直すときも同じく`human`に入り、`draft: "ai"`で保存すると提案に戻ります。
-- `human`の下書きでは、CLIの`edit`・`mv`・`state`・`history add`が書き込みロックの中で`draft`を確かめ、`task_is_draft`で失敗し、CLIの`epic edit`と`epic edit --waves`は`epic_is_draft`で失敗します。`ai`の下書きでは、`edit`・`history add`・`epic edit`は通り、`mv`と`state`は`task_is_draft`で失敗します。読み取り・`add`・`epic attachment`・所属の変更は影響を受けません。エピックへのWebの`PATCH`は下書きを拒否しません。
-- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`draft: null`・履歴を一組で確定します。破棄は、`draft: null`と`discard: true`を送ります。履歴には`Discarded draft changes.`が残ります。エピックには履歴がないので、破棄は`PATCH /epics/{id}`で`draft: null`を送るだけです。AIの下書きはこの方法では確定できず、`ai_draft_needs_start`で失敗します。
-- **開始。** 計画を書いたエージェントが、質問への回答がそろい計画を清書してから、自分のAIの下書きを開始します。人も開始できます。`agboard start <id> --actor ai`は、1件のタスクのAIの下書きを外します。`agboard epic start <EPIC-ID> --actor ai`は、エピックと、そのエピックの未アーカイブでAIの下書きのタスクを、一度の保存（全体でロールバックするバッチ）で外します。開始のためのWebのルートやボタンはなく、WebのUIは下書きのバッジを表示するだけです。外したタスクごとに、`--actor ai`なら「AI が計画を清書し、タスクを開始しました。」、`--actor human`なら「人がタスクを開始しました。」を履歴に残し、エピックには履歴がありません。人自身の（`human`）下書きは外さず、下書きでないタスクは何も変えません。開始を断る規則は、`src/file_store/ops/start.rs`の`ensure_startable`という一つの関数に置きます。この関数は、開始するタスク（タスクの開始）、またはエピックの開始で外すAIの下書きのタスクを指す、返事のない質問があるあいだ、CLIでも`start_blocked_by_questions`で断ります。答えで計画が変わりうるため、先に質問に答え、そのあとで計画を開始します。エピック外のタスクの質問や、回答済み・取り下げ済みの質問は妨げません。
+- エージェントが作ったタスクとエピック（CLIの`add`と`epic add`）は`draft: null`です。人が作ったものは`null`で、ブラウザで下書きとして作ると`human`です。
+- プレビューは、最初の実際の変更で人の下書きに入ります。タスクは`PUT /tasks/{id}/draft`で`draft: "human"`を送り、エピックは`PATCH /epics/{id}`で`draft: "human"`を送ります。下書きにできるのはIdleまたはPendingのタスクだけで、Runningは`invalid_state_for_draft`で拒否します。実際の変更は履歴を追加しますが、`updatedAt`は変えません。エピックの下書きに入る・出るときも`updatedAt`は変わりません。古いバージョンのクライアントが送る`draft: "ai"`は受け付け、`null`として扱います（編集ロックを解除します）。`draft: "ai"`でのタスクの作成は拒否します。
+- `human`の下書きでは、CLIの`edit`・`mv`・`state`・`history add`が書き込みロックの中で`draft`を確かめ、`task_is_draft`で失敗し、CLIの`epic edit`と`epic edit --waves`は`epic_is_draft`で失敗します。読み取り、`add`、`epic attachment`、所属の変更には影響しません。エピックへのWebの`PATCH`は下書きを拒否しません。
+- Webの編集は下書きのタスクだけを受け付けます。`finalize`を指定すると、本文・タイトル・`draft: null`・履歴を一組で確定します。破棄は、`draft: null`と`discard: true`を送り、履歴に`Discarded draft changes.`を残します。エピックに履歴はないので、破棄は`PATCH /epics/{id}`の`draft: null`だけです。
+- 下書きの`TASK.md`の直接編集は製品では止められず、READMEとエージェントのスキルで編集しないよう伝えます。
+
+## Backlogと送信
+
+Backlogのレーンは、まだ始めてはいけない確定済みの計画を置く場所で、「始めない」と同じ意味です。計画はチャットやAIへの依頼で直します。Backlog専用の編集はなく、通常のカードの編集は変わりません。Backlogを使うファイルは`formatVersion: 2`になります（[保存と復旧](./saving-and-recovery.md#形式のバージョンとbacklogへの移行)を参照）。
+
+- **作成。** `agboard add ... --actor ai --backlog`でBacklogにカードを作ります。エージェントは、計画だけを頼まれたときに使います。`--backlog`なしのエージェントの`add`は、通常のTodoのタスクを作ります（未回答の質問があればこれまでどおりPendingになります）。`epic add`にレーンはありません。エージェントのエピックは通常のエピックで、計画だけのエピックは、カードを`--backlog --epic <ID>`で作ったものです。
+- **送信。** BacklogからTodoへ送れるのは人だけです。`agboard send <id> --actor human [--force]`と、エピック全体または選んだカードを、全部成功か何も変えないかの一回の保存で送る`agboard epic send <EPIC-ID> --actor human [--tasks 1,2] [--force]`です。Webのルートは`POST /tasks/{id}/send`と`POST /epics/{epicId}/send`（[Web API](../reference/web-api.md)を参照）で、WebのUIに送信のボタンはまだありません。エージェントが行うと`human_only`になります。`agboard start`と`agboard epic start`は、同じ動作の非推奨の隠しエイリアスとして残っています。Todoへ送ったカードはTodoの末尾に置かれ、すでにBacklogを出たカードを送っても何も変わらないので、再試行しても安全です。人が編集中のカード（`draft: human`）は送れません（`task_is_draft`）。履歴には`人が Todo へ送りました。`と残ります。
+- **未回答の質問。** 未回答の質問がある計画は、人が`--force`（CLI）または`ack: true`（API）で確認するまで、`send_with_open_questions`（409。メッセージに質問のIDを示す）で拒否します。送ったあとも質問は残り、回答があるまでカードはPendingです。
+- **移動。** エージェントのBacklogのカードへの`mv`・`state`は`task_in_backlog`で失敗します。人のWebでのTodoへの移動は`ack`なしの送信で、DoingやDoneへの移動は`task_in_backlog`です。`agboard mv <id> backlog --actor human`は、未着手のTodoのカード（Idleで成果なし）をBacklogへ戻します。エージェントが行うと`human_only`です。
+- **エージェントの画面。** nextTasks・`wait`・Hook・常駐セッション・自動Done・進捗表の候補は、Backlogを見ません。エピックの中のBacklogのカードは、Doneではないので、あとのウェーブを待たせ続けます。エピックの`progress`には、任意の`backlog`の件数があり、0のときは省きます。
+- **規則の置き場所。** 送信の規則は`src/file_store/ops/send.rs`にあり、`check_sender`と`open_questions`が、タスク、またはエピックの送信が動かすすべてのカードについて、エージェントと、確認のない未回答の質問のある計画を拒みます。
 - 下書きの`TASK.md`の直接編集は製品では止められず、READMEとエージェントのスキルで編集しないよう伝えます。
 
 ## アーカイブ
