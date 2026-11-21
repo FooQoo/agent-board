@@ -25,6 +25,8 @@ export interface SwipeableCardProps
   onArchive: () => void;
   /** The select tile of a Backlog card was tapped; the parent starts the selection mode with it. */
   onSelect?: () => void;
+  /** A Todo card can go back to the Backlog: nobody has started it. Defaults to true. */
+  canReturn?: boolean;
   /** The card is in a lane that is not on screen. */
   inactive?: boolean;
   children: ReactNode;
@@ -43,6 +45,7 @@ export function SwipeableCard({
   onMove,
   onArchive,
   onSelect,
+  canReturn,
   inactive,
   children,
   revealed,
@@ -50,7 +53,7 @@ export function SwipeableCard({
 }: SwipeableCardProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const actions = swipeActions(lane);
+  const actions = swipeActions(lane, canReturn);
   const leftWidth = actionsWidth(actions.left.length);
   const rightWidth = actionsWidth(actions.right.length);
   const { drag, consumesClick, handlers } = useCardGesture(ref, {
