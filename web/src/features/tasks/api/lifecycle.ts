@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { i18n } from '../../../shared/i18n';
 import type { ColumnName, ProjectId, Task } from '../../../shared/api/contracts';
 import { projectPath, authHeaders } from '../../../shared/api/http';
@@ -53,7 +54,7 @@ export class TaskStatusChangedError extends Error {
   }
 }
 
-const COLUMNS: readonly ColumnName[] = ['todo', 'doing', 'done'];
+const COLUMNS: readonly ColumnName[] = ['backlog', 'todo', 'doing', 'done'];
 
 /**
  * Moves a task as a person. No reason is sent, so the server writes the history entry from the
@@ -91,4 +92,17 @@ export async function reorderTask(projectId: ProjectId, id: number, beforeId: nu
     `${projectPath(projectId)}/tasks/${id}/reorder`,
     { beforeId },
   );
+}
+
+/**
+ * The notice for a move that did not happen. A task that moved on says where it is now; a refusal
+ * from the server (an AI actor, or a card that has been started) shows the server's own reason. A
+ * server failure (5xx) is not a refusal, so it gets the generic notice.
+ */
+export function moveFailureNotice(cause: unknown, t: TFunction) {
+  if (cause instanceof TaskStatusChangedError)
+    return t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) });
+  if (cause instanceof WriteError && cause.status < 500 && cause.message)
+    return t('moveNotice.refused', { reason: cause.message });
+  return t('moveNotice.failed');
 }

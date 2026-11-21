@@ -12,7 +12,7 @@ import { startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
 test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, locale: 'en-US', timezoneId: 'UTC' });
 
-type Lane = 'todo' | 'doing' | 'done';
+type Lane = 'backlog' | 'todo' | 'doing' | 'done';
 interface Seed {
   title: string;
   lane: Lane;
@@ -91,6 +91,11 @@ test.beforeAll(async () => {
     { title: 'Order three', lane: 'done' },
   ]);
   seed('Quiet', [{ title: 'Quiet todo', lane: 'todo' }]);
+  seed('Return', [
+    { title: 'Return plain', lane: 'todo' },
+    { title: 'Return started', lane: 'todo' },
+  ]);
+  cli('Return', ['result', 'add', String(ids.get('Return:Return started')), '--summary=Work began.', '--actor', 'ai']);
   entrance = await startPhoneEntrance(home);
 });
 
@@ -323,6 +328,23 @@ test('a long-pressed card swipes open and moves forward and back, and the files 
   await expect(tab(page, 'Done 1')).toBeVisible();
 });
 
+// #673: a Todo card nobody started goes back to the Backlog with a right swipe; a started one is refused with the reason.
+test('a held Todo card swipes right to the Backlog, and a started card is refused with the reason', async ({ page }) => {
+  await openPhone(page, 'Return');
+  const plain = swipeCard(page, 'Return plain');
+  await holdAndSwipe(page, plain, 1);
+  await expect(plain).toHaveAttribute('data-revealed', 'left');
+  await page.getByRole('button', { name: /^Move #\d+ to Backlog$/ }).tap();
+  await expect.poll(() => show('Return', 'Return plain').taskStatus).toBe('backlog');
+  await expect(tab(page, 'Backlog 1')).toBeVisible();
+
+  const started = swipeCard(page, 'Return started');
+  await holdAndSwipe(page, started, 1);
+  await page.getByRole('button', { name: /^Move #\d+ to Backlog$/ }).tap();
+  await expect(page.locator('.transient-notice')).toContainText('Only a Todo card that has not been started can go back to the Backlog.');
+  expect(show('Return', 'Return started').taskStatus).toBe('todo');
+});
+
 // #449
 test('a chosen card is archived from its left-swipe button after a confirmation', async ({ page }) => {
   await openPhone(page, 'Archive');
@@ -360,7 +382,8 @@ test('swiping a chosen card back, or tapping outside it, closes its buttons with
   await expect(card).toHaveAttribute('data-revealed', 'right');
   const b = await box(card);
   const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.9, y });
+  // Only far enough to close: a Todo card also has the Backlog tile on its left side.
+  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.65, y });
   await expect(card).not.toHaveAttribute('data-revealed', /.*/);
   await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -489,7 +512,7 @@ test('a card tile still acts after a swipe back and a cancelled archive, and the
   // Swipe it closed, then open it again with a plain swipe (the card is still chosen).
   const b = await box(card);
   const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.9, y });
+  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.65, y });
   await expect(card).not.toHaveAttribute('data-revealed', /.*/);
   await swipeOver(page, card, -1);
   await expect(card).toHaveAttribute('data-revealed', 'right');

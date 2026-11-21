@@ -18,16 +18,20 @@ export const LANES: readonly MonitorSection[] = ['backlog', 'todo', 'doing', 'do
 /**
  * The tiles a swipe shows, by the side they appear on. A swipe to the left shows the lane on the
  * right and the archive; a swipe to the right shows the lane on the left. A lane at an end of the
- * row has no tile for the lane beyond it.
+ * row has no tile for the lane beyond it; Todo's left tile is the Backlog.
  */
-export function swipeActions(lane: MonitorSection): {
+export function swipeActions(
+  lane: MonitorSection,
+  canReturn = true,
+): {
   left: MonitorSection[];
   right: SwipeTile[];
 } {
-  // A plan in the Backlog is sent to Todo from the selection mode, which the first tile starts; a
-  // card in Todo cannot be taken back to the Backlog from the screen.
+  // A plan in the Backlog is sent to Todo from the selection mode, which the first tile starts.
   if (lane === 'backlog') return { left: [], right: ['select', 'archive'] };
-  const before = lane === 'todo' ? null : neighbourLane(lane, -1);
+  // A Todo card goes back to the Backlog while nobody has started it (`canReturn`); the server
+  // refuses a card that has been started and says why.
+  const before = lane === 'todo' && !canReturn ? null : neighbourLane(lane, -1);
   const after = neighbourLane(lane, 1);
   return { left: before ? [before] : [], right: [...(after ? [after] : []), 'archive'] };
 }

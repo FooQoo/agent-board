@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppControllerModel, AppWorkspaceActions } from './contracts';
 import { WriteError, editTask, editTaskMultipart, moveTask, reorderTask } from './api';
-import { TaskStatusChangedError } from '../features/tasks/api/lifecycle';
+import { moveFailureNotice } from '../features/tasks/api/lifecycle';
 import { sendMessageRequest } from '../features/messages/ask/sendRequest';
 import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
@@ -64,11 +64,7 @@ export function useAppActions(model: AppControllerModel) {
       const projectId = activeId;
       void moveTask(projectId, task.id, column as ColumnName, task.taskStatus)
         .catch((cause: unknown) => {
-          setMoveNotice(
-            cause instanceof TaskStatusChangedError
-              ? t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) })
-              : t('moveNotice.failed'),
-          );
+          setMoveNotice(moveFailureNotice(cause, t));
         })
         .finally(() => refreshProject(projectId));
     },

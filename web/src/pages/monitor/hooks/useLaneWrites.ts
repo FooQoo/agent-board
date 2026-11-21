@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ColumnName, ProjectId } from '../../../shared/api/contracts';
-import { TaskStatusChangedError } from '../../../features/tasks/api/lifecycle';
+import { moveFailureNotice } from '../../../features/tasks/api/lifecycle';
 import type { MonitorTask, MonitorWrites } from '../contracts';
 import type { useLaneOverlay } from './useLaneOverlay';
 
@@ -35,11 +35,7 @@ export function useLaneWrites({
       await writes.move(projectId as ProjectId, item.task.id, target, item.task.taskStatus);
       overlay.move(item.task.id, target);
     } catch (cause) {
-      setNotice(
-        cause instanceof TaskStatusChangedError
-          ? t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) })
-          : t('moveNotice.failed'),
-      );
+      setNotice(moveFailureNotice(cause, t));
     } finally {
       onWritten?.();
     }
