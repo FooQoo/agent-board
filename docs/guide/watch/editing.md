@@ -4,7 +4,7 @@ title: Editing and image attachments
 
 # Editing and image attachments
 
-Tasks and epics are written in a Markdown editor. A task's completion conditions sit in a panel below the text, and tasks accept image attachments. Record verification results in the task body or history. Agents edit the same content as plain files in the project's shared folder. This page covers the editor and images; the file format is in [Markdown file format](../reference/file-format).
+Tasks and epics are written in a Markdown editor. A task's completion conditions sit in a panel below the text, and tasks accept image attachments. Record verification results in the task body. Agents edit the same content as plain files in the project's shared folder. This page covers the editor and images; the file format is in [Markdown file format](../reference/file-format).
 
 ## Write tasks and epic details in the editor
 

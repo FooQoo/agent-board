@@ -67,7 +67,7 @@ The rules:
   - **`request`** (State, Both, Definite). Each entry of `requests` gives a reminder: read it with `message show`, accept it with `message accept`, and plan it.
   - **`conditions`** (State, Both, Check). An AI task in Doing has a recorded `--final` result but fewer acceptance conditions done than it has: record the verification and set the conditions done in `TASK.md`.
   - **`epic-close`** (State, Both, Definite). An entry of `epicsToClose` (an epic other than `BUG` and `ENHANCEMENT` with at least one task, all of them Done, whose `EPIC.md` body still has an unchecked `- [ ]`): verify the reference conditions and record the outcome.
-  - **`stale-running`** (State, Both, Check). An AI task is Running and its latest history entry (or its last run-state change when it has none) is older than 30 minutes (`STALE_RUNNING_MINUTES` in `src/nudge/state_rules.rs`): set it back to idle with `state` if the work stopped, or record progress with `history add`.
+  - **`stale-running`** (State, Both, Check). An AI task is Running and its latest history entry (or its last run-state change when it has none) is older than 30 minutes (`STALE_RUNNING_MINUTES` in `src/nudge/state_rules.rs`): set it back to idle with `state` if the work stopped; otherwise record a decision that matters later with `history add`, and skip it when there is no such decision.
   - **`next-task`** (State, Both, Check). `nextTasks` is not empty and no AI task is Running: pick up the first next task.
   - **`draft-moved`** (State, Both, Definite). An AI draft is in Doing, so a person moved it there: start it with `start <id> --actor ai`.
   - **`drafts`** (State, Both, Check). An AI draft with no open question (a draft with one waits and is not listed). One reminder per draft, with its id, title, and lane: a draft means its plan is not settled. If the plan is settled, start it (put its order in the epic priority and dependencies in `EPIC.md`; do not leave it as a draft to make it wait). If not, ask the question that settles it.
@@ -193,7 +193,7 @@ The rule is defined in [Data model](./history-and-decisions.md#acceptance-condit
 - A CLI edit that also changes the epic is evaluated after all changes apply. AI-facing CLI and FileStore entry points apply the Done guard.
 - Tasks that wait for a person are skipped and re-evaluated after the answer. Done tasks never reopen automatically.
 - Automatic Done needs a running server. The hook starts one, and a watcher-seen file change counts as use, so an automatic server does not stop while an agent keeps editing.
-- Agents record verification in history, put concise results in the body, and only then set the last condition to `done: true`.
+- Agents put the concise verification result in the body, and only then set the last condition to `done: true`.
 - Starting a new version of `serve` completes existing eligible tasks. Before adopting it for normal use, list those tasks and take a backup.
 
 This restrains cooperative agents; it does not authenticate against direct file edits or a spoofed actor.

@@ -86,7 +86,7 @@ History keeps the decisions and grounds a reader needs later, not a log of every
 1. **Choose** a ready AI task from the progress table and its `nextTasks`, respecting the epic's task order; read its `EPIC.md` and `TASK.md` first.
 2. **Start**: `mv <id> doing --actor ai` and `state <id> running --actor ai`, each with a concise `--reason`.
 3. **Work and record.** State changes record themselves through their `--reason`; use `history add` only for a decision that changes no state but matters later. As soon as the first thing the requester can look at is ready, record it with `result add` and keep working (`agboard skills results`).
-4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded, and record the verification in history before saving the last completed condition. A running `agboard serve` completes an eligible AI task automatically; do not manually move a task to Done during the normal work loop.
+4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded. Keep the verification result in the task body and save it before the last completed condition. A running `agboard serve` completes an eligible AI task automatically; do not manually move a task to Done during the normal work loop.
 5. **Ask when blocked** (section 7). Do not wait idle: continue other independent work while the question is open.
 6. **Finish or interrupt.** Record a `result add <id> --final` for each task in `finalResultMissing`, the one change allowed on a Done task. Otherwise Done tasks are read-only for agents. If work stops before completion, record why.
 7. **Close the epic** when all its tasks are done, except `BUG` and `ENHANCEMENT`, whose bodies stay fixed.
@@ -108,7 +108,7 @@ After the start, call the user only when:
 - An action **cannot be undone**: deleting, publishing, sending anything outside.
 - The **scope** grows beyond the request.
 
-Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later, and record the decision once: in the `--reason` of the `mv` or `state` when it changes state, otherwise with `history add`.
+Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later. Record such a decision only when it matters later, once: in the `--reason` of the `mv` or `state` when it changes state, otherwise with `history add`.
 
 Every question goes on the board with `message ask`, never only in chat. Permission ("may I...?"), a question ending a progress report, and confirming an action a subagent was denied are questions too. Before ending a turn, re-read your reply: if it still asks anything that waits on the user, put it on the board now. Each question is its own message (`Q-<n>`) and belongs to the project; the task shows as `pending` while any question it refers to is open. Never answer a question yourself, and use `--actor human` only to record the user's own chat answer. If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead.
 

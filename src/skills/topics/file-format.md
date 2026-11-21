@@ -1,8 +1,8 @@
 # TASK.md and EPIC.md format
 
-**All task progress and operation history lives only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
+**All task operation history and recorded decisions live only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
 
-The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use `waves` frontmatter for task order.
+The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record decisions and their grounds in history, as the history rules describe. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use `waves` frontmatter for task order.
 
 Templates for a new task and a new epic: `agboard skills task-template` and `agboard skills epic-template`.
 
@@ -63,7 +63,7 @@ If frontmatter cannot be read, the board reports the file, item, and reason as a
 
 ## Rules
 
-- Set `done: true` only after verification succeeds. Keep the result in the task body and record the verification in history before saving the final completed condition. Attach images when a visual result is useful.
+- Set `done: true` only after verification succeeds. Keep the verification result in the task body, and save it before the final completed condition. Attach images when a visual result is useful.
 - Add a condition with the next free number. Do not renumber items.
 - When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing task to Done. A task that waits for an answer is skipped until the answer arrives. Do not manually move an AI task to Done in the normal work loop; people can still move tasks themselves.
-- Keep task plans, verified results, and references in the body; keep all chronological progress and operation history only in the `history` frontmatter.
+- Keep task plans, verified results, and references in the body; keep the history of operations and decisions only in the `history` frontmatter.

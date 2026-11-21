@@ -66,7 +66,7 @@ history: []
 
 - `acceptance` is a list; omitted, `null`, and empty all mean zero items. Each item has exactly `id` (`AC-<positive integer>`, no leading zero, unique in the file), `text` (1 to 2,000 characters after trimming), and `done` (boolean). Numbers are never reassigned.
 - Other top-level keys are preserved on save (YAML formatting may be normalized). A file without frontmatter, or with old heading-based `- [ ] AC-n.` lines, has zero conditions; old formats are not migrated.
-- The body holds the plan, concise verification results, and artifact references. Chronological progress goes only to `history`.
+- The body holds the plan, concise verification results, and artifact references. Decisions and operations go only to `history`.
 
 **Automatic Done.** An AI-owned, non-draft, unarchived Todo or Doing task with at least one valid condition, all `done: true`, moves to Done by itself. One history entry records it and `taskStatusChangedAt` is updated. Tasks that wait for a person are skipped and re-evaluated when the answer arrives. Tasks with no or invalid conditions, human tasks, and drafts are excluded. `serve` also evaluates existing tasks at startup.
 

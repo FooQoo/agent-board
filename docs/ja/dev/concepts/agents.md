@@ -67,7 +67,7 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
   - **`request`**（State、Both、Definite）。`requests`の各項目について、`message show`で読み、`message accept`で受け付けて、計画するよう求めます。
   - **`conditions`**（State、Both、Check）。Doingの AI タスクに`--final`の成果が記録されているのに、完了済みの完了条件が総数に満たない場合に、確認結果を記録して`TASK.md`の完了条件を完了にするよう求めます。
   - **`epic-close`**（State、Both、Definite）。`epicsToClose`の各項目（`BUG`と`ENHANCEMENT`以外で、タスクが1つ以上あり、すべて Done で、`EPIC.md`の本文に未チェックの`- [ ]`が残るエピック）について、参照条件を確認して結果を記録するよう求めます。
-  - **`stale-running`**（State、Both、Check）。AI タスクが Running で、最新の履歴（履歴がなければ最後の実行状態の変更）が30分より前の場合に（`src/nudge/state_rules.rs`の`STALE_RUNNING_MINUTES`）、作業が止まっているなら`state`で idle に戻し、続いているなら`history add`で進捗を記録するよう求めます。
+  - **`stale-running`**（State、Both、Check）。AI タスクが Running で、最新の履歴（履歴がなければ最後の実行状態の変更）が30分より前の場合に（`src/nudge/state_rules.rs`の`STALE_RUNNING_MINUTES`）、作業が止まっているなら`state`で idle に戻し、続いているなら、後で効く判断があるときだけ`history add`で記録し、なければ記録しないよう求めます。
   - **`next-task`**（State、Both、Check）。`nextTasks`が空でなく、Running の AI タスクがない場合に、先頭の次のタスクに着手するよう求めます。
   - **`draft-moved`**（State、Both、Definite）。AI の下書きが Doing にある（人が移した）場合に、`start <id> --actor ai`で開始するよう求めます。
   - **`drafts`**（State、Both、Check）。未回答の質問がない AI の下書き（質問がある下書きは待機中で一覧に出ません）ごとに、ID、題名、レーンを示して1件ずつ求めます。下書きは計画が固まっていないことを意味します。計画が固まっているなら開始し（順序はエピックの priority に、依存関係は`EPIC.md`に書き、待たせるために下書きのまま残さない）、固まっていないなら固めるための質問をします。
@@ -193,7 +193,7 @@ pusherが見るとき。ボードが変わったとき（サーバーが変更�
 - エピックも変えるCLIの編集は、すべての変更を適用した後に評価します。AI向けのCLIとFileStoreの入口は、Doneの制限を適用します。
 - 人の判断待ちのタスクは飛ばし、回答の後に評価し直します。Doneのタスクが自動で再開することはありません。
 - 自動Doneには動いているサーバーが必要です。Hookがサーバーを起動し、監視が捉えたファイルの変更も「使われている」に数えるので、エージェントが編集を続ける間に自動のサーバーが止まることはありません。
-- エージェントは、検証を履歴に記録し、簡潔な結果を本文に書いてから、最後の条件を`done: true`にします。
+- エージェントは、簡潔な検証結果を本文に書いてから、最後の条件を`done: true`にします。
 - 新しい版の`serve`を起動すると、条件を満たした既存のタスクが完了します。通常の利用に導入する前に、対象のタスクを一覧にしてバックアップを取ってください。
 
 この制限は、ルールに従うエージェントの誤操作を防ぐためのものです。ファイルの直接編集やactorの偽装を防ぐ認証機能ではありません。

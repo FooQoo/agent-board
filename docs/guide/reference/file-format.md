@@ -82,7 +82,7 @@ History keeps the decisions and grounds a reader needs later, not a log of every
 
 ### Check conditions and finish
 
-Mark a condition `done: true` only after you have verified it. Keep a concise result in the body, and record the verification in the history before you save the last completed condition.
+Mark a condition `done: true` only after you have verified it. Keep the verification result in the body, and save it before you save the last completed condition.
 
 While the server runs, a task finishes by itself when it is the following. The agent hook starts the server when it is not running, so this works while an agent only edits files.
 
