@@ -20,6 +20,7 @@ use crate::error::AgboardError;
 use crate::file_store::legacy_draft::{is_legacy_ai_draft, upgrade_epic_value};
 use crate::file_store::model::HistoryRecord;
 use crate::file_store::transaction::{FileChange, save_batch_locked};
+use crate::file_store::validate::EpicId;
 use crate::file_store::{FileStore, io, layout, reader};
 
 fn marker(project_dir: &Path) -> PathBuf {
@@ -84,6 +85,9 @@ pub(in crate::file_store) fn migrate_ai_drafts_locked(
             .filter_map(Result::ok)
             .filter_map(|entry| entry.file_name().to_str().map(str::to_owned))
             .filter(|name| !name.starts_with('.'))
+            // A folder that is not a valid epic id (a backup copy such as `OLD.bak`) is
+            // left out, as the epic reader leaves it out, so it cannot fail the batch.
+            .filter(|name| name.parse::<EpicId>().is_ok())
             .collect();
         names.sort();
         for name in names {
