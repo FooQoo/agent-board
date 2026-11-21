@@ -7,8 +7,8 @@ import { useLayoutEffect, useRef } from 'react';
  */
 export function useScrollToTop<T extends HTMLElement>(key: string | null) {
   const ref = useRef<T>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: key is the trigger; reset scroll whenever the opened message changes
   useLayoutEffect(() => {
-    if (ref.current) ref.current.dataset.screen = key ?? '';
     if (ref.current) ref.current.scrollTop = 0;
   }, [key]);
   return ref;
