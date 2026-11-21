@@ -8,6 +8,37 @@ import type { SummaryResult } from './model/messages';
  *
  * Gives nothing when the project or the task is not a valid link target.
  */
+/**
+ * Whether a click is the plain primary-button click that an in-app link may take over. A click
+ * with a modifier key (new tab, new window, download) or a button other than the primary one is
+ * left to the browser.
+ */
+export function isPlainPrimaryClick(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  defaultPrevented: boolean;
+}): boolean {
+  return (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+}
+
+/**
+ * Opens a link of this page without loading it again: the address changes through the history
+ * and the page reads the new query (the board's query state listens to the history).
+ */
+export function openInPage(href: string): void {
+  window.history.pushState(null, '', href);
+}
+
 export function summaryResultHref(projectId: string, result: SummaryResult): string | null {
   return result.version === null
     ? resultsTabLinkQuery(projectId, result.taskId)

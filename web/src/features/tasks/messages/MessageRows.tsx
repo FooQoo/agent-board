@@ -105,6 +105,7 @@ function SwipeRows({
   tabsRef,
   summaries,
   variant,
+  onOpenResult,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
@@ -114,6 +115,7 @@ function SwipeRows({
   tabsRef: RefObject<HTMLElement | null>;
   summaries?: SummariesController;
   variant: 'dialog' | 'sheet';
+  onOpenResult?: (scrollTop: number) => void;
 }) {
   const viewportRef = useSwipePages(tabs, tab, onTabChange, {
     progressTarget: tabsRef,
@@ -144,7 +146,9 @@ function SwipeRows({
             inert={id !== tab}
           >
             {id === 'summary' ? (
-              summaries && <SummaryList controller={summaries} variant={variant} />
+              summaries && (
+                <SummaryList controller={summaries} variant={variant} onOpenResult={onOpenResult} />
+              )
             ) : (
               <Rows rows={rowsOf(messages, id)} onOpen={onOpen} />
             )}
@@ -167,10 +171,13 @@ export function MessageList({
   onRefresh,
   refreshing,
   previewPull,
+  onOpenResult,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
   onTabChange: (tab: MessageTab) => void;
+  /** A summary result was opened in the page (the list closes). */
+  onOpenResult?: (scrollTop: number) => void;
   /** A question or a request was chosen. */
   onOpen: (message: Message) => void;
   /** Switches the tabs by a sideways swipe (the phone sheet and the PC modal). */
@@ -245,9 +252,12 @@ export function MessageList({
           tabsRef={tabsRef}
           summaries={summaries}
           variant={kind}
+          onOpenResult={onOpenResult}
         />
       ) : tab === 'summary' ? (
-        summaries && <SummaryList controller={summaries} variant={kind} />
+        summaries && (
+          <SummaryList controller={summaries} variant={kind} onOpenResult={onOpenResult} />
+        )
       ) : (
         <Rows rows={rowsOf(messages, tab)} onOpen={onOpen} />
       )}

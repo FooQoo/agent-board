@@ -55,6 +55,7 @@ export function MessageCenter({
           api={api}
           onChanged={onChanged}
           onClose={panel.close}
+          onLeaveForResult={panel.leaveForResult}
           onRefresh={onRefresh}
           refreshing={refreshing}
           previewPull={previewPull}
