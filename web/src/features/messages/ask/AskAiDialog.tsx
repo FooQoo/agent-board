@@ -70,7 +70,18 @@ export function AskAiDialog({
   // keyboard over the dialog.
   useEffect(() => {
     if (isTouchScreen()) return;
-    const frame = requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
+    const frame = requestAnimationFrame(() => {
+      // Someone who already pressed a control of the form keeps the focus there; taking it back would
+      // close a picker that has just opened.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        active.closest('[role="dialog"]') !== active &&
+        active !== document.body
+      )
+        return;
+      field.current?.focus({ preventScroll: true });
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
   const validate = (): string | null => {

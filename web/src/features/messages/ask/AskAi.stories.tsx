@@ -331,6 +331,11 @@ export const AttachTasksJapanese: Story = {
   args: { initialText: DRAFT, tasks: TASKS },
   globals: { locale: 'ja' },
   play: async () => {
+    // The language switch re-renders the composer; open the picker only once it has settled.
+    await expect(await page().findByRole('dialog', { name: 'AI に依頼' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(page().getByRole('textbox', { name: '何をしてほしいですか？' })).toBeVisible(),
+    );
     await userEvent.click(await page().findByRole('button', { name: 'タスクを添付' }));
     await expect(await page().findByRole('button', { name: '添付 (0)' })).toBeVisible();
   },

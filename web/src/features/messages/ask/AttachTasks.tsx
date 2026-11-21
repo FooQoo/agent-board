@@ -1,5 +1,5 @@
 import { HashIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { keepFocusOnPress } from '@/shared/ui/keepFocus';
@@ -16,12 +16,14 @@ function PickerBody({
   initial,
   onConfirm,
   onClose,
+  returnFocusTo,
 }: {
   kind: 'dialog' | 'sheet';
   tasks: readonly PickerTask[];
   initial: readonly number[];
   onConfirm: (ids: number[]) => void;
   onClose: () => void;
+  returnFocusTo: () => HTMLElement | null;
 }) {
   const { t } = useTranslation();
   const picker = useTaskPicker(tasks, initial);
@@ -37,6 +39,7 @@ function PickerBody({
         onClose={onClose}
         className="task-picker-sheet"
         footer={confirm}
+        returnFocusTo={returnFocusTo}
       >
         <TaskPickerFields picker={picker} />
       </Surface>
@@ -82,12 +85,6 @@ export function AttachTasks({
     if (next) setContainer(button.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
     setOpen(next);
   };
-  // Whatever closed the picker, the keyboard continues from the button that opened it.
-  const wasOpen = useRef(false);
-  useEffect(() => {
-    if (wasOpen.current && !open) button.current?.focus();
-    wasOpen.current = open;
-  }, [open]);
   const body = (
     <PickerBody
       kind={kind}
@@ -98,6 +95,7 @@ export function AttachTasks({
         setOpen(false);
       }}
       onClose={() => setOpen(false)}
+      returnFocusTo={() => button.current}
     />
   );
   const trigger = (
@@ -134,7 +132,11 @@ export function AttachTasks({
         aria-label={t('askAi.attachTitle')}
         className="task-picker task-picker--popover"
         container={container}
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          // The button, not whatever had the focus before: a press on it keeps the focus in the field.
+          event.preventDefault();
+          button.current?.focus();
+        }}
       >
         {body}
       </PopoverContent>
