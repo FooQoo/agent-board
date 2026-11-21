@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ComponentProps, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveMessageImage } from '@/shared/api/messageAttachment';
@@ -37,6 +37,12 @@ export interface MessagesSurfaceProps {
   /** An answer or a withdrawal was saved; the screen reads the project again at once. */
   onChanged: () => void;
   onClose: () => void;
+  /** Pulling the list down from its top reads the messages again. */
+  onRefresh?: () => void;
+  /** The refresh the person asked for is running. */
+  refreshing?: boolean;
+  /** A story's still picture of the pull. */
+  previewPull?: ComponentProps<typeof MessageList>['previewPull'];
   /** Turns an `attachment:<id>` image of a message into its URL; null when there is no such file. */
   resolveAttachment?: (message: Message, attachmentId: string) => string | null;
 }
@@ -55,6 +61,9 @@ export function MessagesSurface({
   api,
   onChanged,
   onClose,
+  onRefresh,
+  refreshing,
+  previewPull,
   resolveAttachment: resolveFor,
 }: MessagesSurfaceProps) {
   const { t } = useTranslation();
@@ -188,6 +197,9 @@ export function MessagesSurface({
         onTabChange={setTab}
         swipe
         kind={kind}
+        onRefresh={kind === 'sheet' ? onRefresh : undefined}
+        refreshing={refreshing}
+        previewPull={previewPull}
         summaries={api.summaries ? summaries : undefined}
         onOpen={(message) => {
           setFromList(true);

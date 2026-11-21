@@ -1,10 +1,11 @@
 import { ArrowDownIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SpinnerIcon } from '@/shared/ui/spinner/Spinner';
-import type { PullState } from '../hooks/usePullToRefresh';
+import './pull.css';
+import type { PullState } from '@/shared/lib/gesture/usePullToRefresh';
 
 /**
- * What pulling down at the top of a lane shows above its cards: an arrow while the finger pulls,
+ * What pulling down at the top of a list shows above its cards: an arrow while the finger pulls,
  * turned over once a release would refresh, and a spinner while the board refreshes. It takes
  * `offset` px above the cards, so the cards follow the finger down.
  */
