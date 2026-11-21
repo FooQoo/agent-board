@@ -18,6 +18,11 @@ describe('moveFailureNotice', () => {
     expect(moveFailureNotice(cause, t)).toContain('moveNotice.statusChanged');
   });
 
+  it('keeps the generic notice for a server failure, even with a reason', () => {
+    const cause = new WriteError('The move was refused.', 500, null);
+    expect(moveFailureNotice(cause, t)).toBe('moveNotice.failed');
+  });
+
   it('falls back to the generic notice for anything else', () => {
     expect(moveFailureNotice(new Error('network'), t)).toBe('moveNotice.failed');
   });

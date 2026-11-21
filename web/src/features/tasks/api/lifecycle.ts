@@ -96,12 +96,13 @@ export async function reorderTask(projectId: ProjectId, id: number, beforeId: nu
 
 /**
  * The notice for a move that did not happen. A task that moved on says where it is now; a refusal
- * from the server (an AI actor, or a card that has been started) shows the server's own reason.
+ * from the server (an AI actor, or a card that has been started) shows the server's own reason. A
+ * server failure (5xx) is not a refusal, so it gets the generic notice.
  */
 export function moveFailureNotice(cause: unknown, t: TFunction) {
   if (cause instanceof TaskStatusChangedError)
     return t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) });
-  if (cause instanceof WriteError && cause.message)
+  if (cause instanceof WriteError && cause.status < 500 && cause.message)
     return t('moveNotice.refused', { reason: cause.message });
   return t('moveNotice.failed');
 }
