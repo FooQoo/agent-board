@@ -126,6 +126,33 @@ describe('watchKeyboardInset', () => {
     field.remove();
   });
 
+  it('keeps the text focus mark until a press that blurred the field ends', async () => {
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 });
+    const target = Object.assign(new EventTarget(), {
+      visualViewport: viewport,
+      document,
+      matchMedia: () => ({ matches: true }),
+      setTimeout: (fn: () => void) => setTimeout(fn, 0),
+    }) as unknown as Window;
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      value: 800,
+      configurable: true,
+    });
+    const field = document.body.appendChild(document.createElement('textarea'));
+    const stop = watchKeyboardInset(target);
+    const root = document.documentElement;
+    field.focus();
+    document.dispatchEvent(new Event('pointerdown'));
+    field.blur();
+    // The layout must not move from under the finger before the tap completes.
+    expect(root.hasAttribute('data-text-focus')).toBe(true);
+    document.dispatchEvent(new Event('pointerup'));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(root.hasAttribute('data-text-focus')).toBe(false);
+    stop();
+    field.remove();
+  });
+
   it('marks no text focus with a mouse', () => {
     const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 });
     const target = Object.assign(new EventTarget(), {

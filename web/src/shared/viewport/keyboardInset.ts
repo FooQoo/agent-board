@@ -51,6 +51,10 @@ export function watchKeyboardInset(target: Window = window): () => void {
   const viewport = target.visualViewport;
   if (!viewport) return () => {};
   const root = target.document.documentElement;
+  // The bar's strip is part of every sheet's height. Pressing a button blurs the field and would give
+  // that strip back between the press and the release, moving the button from under the finger, so a
+  // field losing the focus keeps the mark until the press ends.
+  let pressed = false;
   const update = () => {
     root.style.setProperty('--keyboard-inset', `${keyboardInset(root.clientHeight, viewport)}px`);
     root.style.setProperty('--visual-vh', `${Math.round(viewport.height)}px`);
@@ -63,10 +67,16 @@ export function watchKeyboardInset(target: Window = window): () => void {
     if (now && !was) revealFocusedField(target);
     // A touch device shows a keyboard for any text field, whatever its viewport did: iOS may resize
     // the layout viewport too, so no height gap shows. The phone bar goes on the focus alone.
-    root.toggleAttribute(
-      'data-text-focus',
-      touchScreen(target) && editingText(target.document.activeElement),
-    );
+    const focused = touchScreen(target) && editingText(target.document.activeElement);
+    if (focused || !pressed) root.toggleAttribute('data-text-focus', focused);
+  };
+  const press = () => {
+    pressed = true;
+  };
+  const release = () => {
+    pressed = false;
+    // The click follows the release; let it land before the layout moves.
+    target.setTimeout(update, 0);
   };
   update();
   viewport.addEventListener('resize', update);
@@ -76,7 +86,13 @@ export function watchKeyboardInset(target: Window = window): () => void {
   // The keyboard follows the focus; a field losing it must give the dialogs their place back.
   target.document.addEventListener('focusin', update);
   target.document.addEventListener('focusout', update);
+  target.document.addEventListener('pointerdown', press, true);
+  target.document.addEventListener('pointerup', release, true);
+  target.document.addEventListener('pointercancel', release, true);
   return () => {
+    target.document.removeEventListener('pointerdown', press, true);
+    target.document.removeEventListener('pointerup', release, true);
+    target.document.removeEventListener('pointercancel', release, true);
     viewport.removeEventListener('resize', update);
     viewport.removeEventListener('scroll', update);
     target.removeEventListener('scroll', update);

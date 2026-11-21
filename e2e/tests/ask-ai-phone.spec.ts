@@ -88,6 +88,8 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   expect(near.equals(far)).toBe(true);
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
+  // Dismissing the keyboard blurs the field, which gives the phone bar and its strip back.
+  await field.blur();
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
   // Back where it was, give or take the subpixel rounding of the visual viewport.
   await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(tolerance);
