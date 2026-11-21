@@ -353,6 +353,48 @@ describe('useArchivePages', () => {
       await waitFor(() => expect(reads()).toBe(before + 2));
     });
 
+    it('a superseded refresh of the old project never consumes the new project queued refresh', async () => {
+      const lateA = deferred<void>();
+      const lateB = deferred<void>();
+      const heldA = { done: false };
+      const heldB = { done: false };
+      const backend = fakeBackend((url) => {
+        if (url.includes(PROJECT_A.id) && !heldA.done) {
+          heldA.done = true;
+          return lateA.promise;
+        }
+        if (url.includes(PROJECT_B.id) && !heldB.done) {
+          heldB.done = true;
+          return lateB.promise;
+        }
+        return undefined;
+      });
+      const fetchMock = stubBackend(backend);
+      const { result, rerender } = renderHook(({ id }) => useArchivePages(id), {
+        initialProps: { id: PROJECT_A.id },
+      });
+      rerender({ id: PROJECT_B.id });
+      // B is loading; a live update asks for another read of B.
+      act(() => result.current.reload());
+      // A's stale answer arrives first.
+      await act(async () => {
+        lateA.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        lateB.resolve();
+        await Promise.resolve();
+      });
+      await waitFor(() => expect(result.current.data?.project.id).toBe(PROJECT_B.id));
+      expect(result.current.data?.tasks.map((task) => task.id)).toEqual([8]);
+      expect(result.current.status).toBe('ready');
+      // A is not read again on behalf of B.
+      const reads = fetchMock.mock.calls.filter(
+        ([url]) => String(url).includes(PROJECT_A.id) && String(url).includes('/archive'),
+      );
+      expect(reads).toHaveLength(1);
+    });
+
     it('drops a removed row at once and counts it out of the total', async () => {
       withMany();
       const { result } = renderHook(() => useArchivePages(PROJECT_A.id));

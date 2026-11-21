@@ -109,6 +109,18 @@ function swapWindow(previous: State, pages: ArchivePage[]): State {
   };
 }
 
+/** The reads of one shown project; see `useArchivePages`. */
+interface Session {
+  target: ProjectId;
+  /** Counts the refresh passes; a read that started in an earlier pass is dropped. */
+  generation: number;
+  refreshing: boolean;
+  refreshAgain: boolean;
+  moreInFlight: boolean;
+  /** The project is no longer shown: nothing started by this session may change anything. */
+  dead: boolean;
+}
+
 /**
  * The archive of a project, read a page at a time. Rows are kept newest first with no duplicates, so
  * a task archived or restored between two page reads never shows twice (the cursor is a keyset: it
@@ -117,52 +129,54 @@ function swapWindow(previous: State, pages: ArchivePage[]): State {
  */
 export function useArchivePages(projectId: ProjectId | null): ArchivePages {
   const [state, setState] = useState<State>(() => empty(projectId));
-  // Bumped when the project changes and when a refresh starts: an older response is then dropped.
-  const generation = useRef(0);
-  const projectRef = useRef(projectId);
+  // Everything an in-flight read may touch lives in the session of one shown project. A project
+  // change ends the session (`dead`) and starts another, so a read that outlives its project can
+  // change neither the new project's flags nor its state.
+  const session = useRef<Session | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
-  const moreInFlight = useRef(false);
-  const refreshing = useRef(false);
-  const refreshAgain = useRef(false);
 
   /** Reads from the newest page on until the rows already loaded are covered, then swaps them in. */
-  const refresh = useCallback(async (target: ProjectId) => {
-    if (refreshing.current) {
-      refreshAgain.current = true;
+  const refresh = useCallback(async (mine: Session) => {
+    if (mine.dead) return;
+    if (mine.refreshing) {
+      mine.refreshAgain = true;
       return;
     }
-    refreshing.current = true;
+    mine.refreshing = true;
     try {
-      do {
-        refreshAgain.current = false;
-        const mine = ++generation.current;
+      while (!mine.dead) {
+        mine.refreshAgain = false;
+        const pass = ++mine.generation;
         // A next-page read of the old window is dropped now, so it is no longer in flight.
-        moreInFlight.current = false;
+        mine.moreInFlight = false;
+        const target = mine.target;
         const current = stateRef.current;
         const wanted = current.projectId === target ? (current.data?.tasks.length ?? 0) : 0;
+        const superseded = () => mine.dead || pass !== mine.generation;
         try {
           const pages: ArchivePage[] = [];
           let cursor: string | null = null;
           let rows = 0;
           do {
             const page: ArchivePage = await fetchArchivePage(target, cursor);
-            if (mine !== generation.current) break;
+            if (superseded()) return;
             pages.push(page);
             rows += page.tasks.length;
             cursor = page.nextCursor;
           } while (cursor !== null && rows < wanted);
-          if (mine !== generation.current || pages.length === 0) continue;
-          if (pages[0]?.project.id !== target) continue;
-          setState((previous) =>
-            previous.projectId === target ? swapWindow(previous, pages) : previous,
-          );
+          const answered = pages[0]?.project.id === target;
+          setState((previous) => {
+            if (previous.projectId !== target) return previous;
+            // An answer for another project is ignored, but the dropped next-page read is not "loading".
+            return answered ? swapWindow(previous, pages) : { ...previous, loadingMore: false };
+          });
         } catch (cause) {
-          if (mine !== generation.current) continue;
+          if (superseded()) return;
           const notFound = cause instanceof FetchError && cause.projectNotFound;
           setState((previous) =>
             previous.projectId === target && previous.data && !notFound
-              ? { ...previous, fetchFailed: true }
+              ? { ...previous, fetchFailed: true, loadingMore: false }
               : {
                   ...empty(target),
                   status: 'error',
@@ -171,37 +185,49 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
                 },
           );
         }
-      } while (refreshAgain.current);
+        if (!mine.refreshAgain) return;
+      }
     } finally {
-      refreshing.current = false;
+      mine.refreshing = false;
     }
   }, []);
 
   useEffect(() => {
-    projectRef.current = projectId;
-    moreInFlight.current = false;
-    refreshing.current = false;
-    refreshAgain.current = false;
-    if (projectId === null) return;
+    if (projectId === null) {
+      session.current = null;
+      return;
+    }
+    const mine: Session = {
+      target: projectId,
+      generation: 0,
+      refreshing: false,
+      refreshAgain: false,
+      moreInFlight: false,
+      dead: false,
+    };
+    session.current = mine;
     setState(empty(projectId));
-    void refresh(projectId);
+    void refresh(mine);
     return () => {
-      generation.current++;
+      mine.dead = true;
     };
   }, [projectId, refresh]);
 
   const loadMore = useCallback(() => {
-    const target = projectRef.current;
+    const mine = session.current;
     const current = stateRef.current;
-    if (target === null || current.projectId !== target || moreInFlight.current) return;
-    if (refreshing.current || current.status !== 'ready' || current.nextCursor === null) return;
-    const mine = generation.current;
-    moreInFlight.current = true;
+    if (mine === null || mine.dead || current.projectId !== mine.target) return;
+    if (mine.moreInFlight || mine.refreshing) return;
+    if (current.status !== 'ready' || current.nextCursor === null) return;
+    const pass = mine.generation;
+    const target = mine.target;
+    const superseded = () => mine.dead || pass !== mine.generation;
+    mine.moreInFlight = true;
     setState((previous) => ({ ...previous, loadingMore: true, loadMoreFailed: false }));
     fetchArchivePage(target, current.nextCursor).then(
       (page) => {
-        if (mine !== generation.current) return;
-        moreInFlight.current = false;
+        if (superseded()) return;
+        mine.moreInFlight = false;
         setState((previous) =>
           previous.projectId === target
             ? { ...appendPage(previous, page), loadingMore: false, loadMoreFailed: false }
@@ -209,20 +235,25 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
         );
       },
       () => {
-        if (mine !== generation.current) return;
-        moreInFlight.current = false;
-        setState((previous) => ({ ...previous, loadingMore: false, loadMoreFailed: true }));
+        if (superseded()) return;
+        mine.moreInFlight = false;
+        setState((previous) =>
+          previous.projectId === target
+            ? { ...previous, loadingMore: false, loadMoreFailed: true }
+            : previous,
+        );
       },
     );
   }, []);
 
   const reload = useCallback(() => {
-    const target = projectRef.current;
-    if (target === null) return;
+    const mine = session.current;
+    if (mine === null || mine.dead) return;
+    const target = mine.target;
     setState((previous) =>
       previous.projectId === target && previous.status === 'error' ? empty(target) : previous,
     );
-    void refresh(target);
+    void refresh(mine);
   }, [refresh]);
 
   const remove = useCallback((id: number) => {
