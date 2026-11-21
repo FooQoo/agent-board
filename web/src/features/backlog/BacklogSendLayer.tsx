@@ -10,6 +10,7 @@ export function BacklogSendLayer({ send, kind }: { send: BacklogSend; kind: 'dia
       {send.confirming && (
         <SendConfirm
           kind={kind}
+          to={send.confirming.to}
           count={send.confirming.ids.length}
           warned={send.confirming.warned}
           busy={send.busy}

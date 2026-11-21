@@ -13,6 +13,8 @@ import type { BacklogSelection } from '../../../features/backlog/useSelection';
 
 export interface LaneProps {
   column: ColumnName;
+  /** A card is being dragged over the lane or one of its cards. */
+  hovered?: boolean;
   tasks: TaskModel[];
   selectedId: number | null;
   onSelect: (id: number) => void;
@@ -32,6 +34,7 @@ export interface LaneProps {
 
 export function Lane({
   column,
+  hovered = false,
   tasks,
   selectedId,
   onSelect,
@@ -63,7 +66,7 @@ export function Lane({
       ref={ref}
       className="lane"
       data-column={column}
-      data-drop-target={isDropTarget ? 'true' : 'false'}
+      data-drop-target={isDropTarget || hovered ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >
       <LaneHeader

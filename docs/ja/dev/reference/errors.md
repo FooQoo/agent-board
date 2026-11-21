@@ -13,7 +13,7 @@
 | `task_not_archived` | アーカイブされていないタスクの削除や復元。 | 1 | 409 |
 | `epic_is_draft` | CLIの`epic edit`、または`epic edit --waves`が人の下書きのエピックを対象にした。または、人の下書きのエピックを送ろうとした。 | 1 | 409 |
 | `task_is_draft` | AIの`edit`・`history add`・`mv`・`state`が人の下書き（`human`）を対象にした。または人の`send`が下書きを対象にした。`reason`は、ユーザーが確定するのを待つよう案内します。 | 1 | 409 |
-| `task_in_backlog` | エージェントの`mv`・`state`、または人のWebでのDoing・Doneへの移動が、Backlogのタスクを対象にした。先にTodoへ送ります。 | 1 | 409 |
+| `task_in_backlog` | エージェントの`mv`・`state`が、Backlogのタスクを対象にした。Backlogから出せるのは人だけです。 | 1 | 409 |
 | `send_with_open_questions` | 人の`send`・`epic send`・WebでのTodoへの移動が、未回答の質問がある計画を、確認なし（`--force`、APIでは`ack: true`）で対象にした。何も保存せず、メッセージに質問のIDを示す。確認して送ったあとも質問は残り、回答があるまでタスクはPendingです。 | 1 | 409 |
 | `human_only` | エージェントが依頼の取り下げ、または`send`・`epic send`・`start`・`epic start`・`mv ... backlog`を行おうとした。これを行えるのは人だけ。 | 1 | 403 |
 | `task_not_draft` | 下書きでないタスクへのWebの編集。 | 1 | 409 |

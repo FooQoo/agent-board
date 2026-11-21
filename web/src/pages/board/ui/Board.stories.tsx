@@ -98,7 +98,7 @@ export const SelectionAndSend: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /Plan the demo/ }));
     await expect(canvas.getByText('2 selected')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Send to Todo (2)' }));
-    await expect(args.onSend).toHaveBeenCalledWith([31, 33]);
+    await expect(args.onSend).toHaveBeenCalledWith([31, 33], 'todo');
     await expect(canvas.queryByRole('checkbox')).toBeNull();
   },
 };
@@ -111,7 +111,7 @@ export const SendWaitsForConfirmation: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Select cards to send to Todo' }));
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Select #32' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Send to Todo (1)' }));
-    await expect(args.onSend).toHaveBeenCalledWith([32]);
+    await expect(args.onSend).toHaveBeenCalledWith([32], 'todo');
     await expect(canvas.getByRole('checkbox', { name: 'Select #32' })).toBeChecked();
   },
 };

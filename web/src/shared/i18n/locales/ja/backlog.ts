@@ -25,6 +25,20 @@ export const backlogJa = {
     counts: 'Backlog {{backlogBefore}} → {{backlogAfter}} ・ Todo {{todoBefore}} → {{todoAfter}}',
     partial: '{{total}} 枚のうち {{sent}} 枚を送りました。{{failed}} 枚は送れませんでした。',
     failed: 'Todo へ送れませんでした。何も変更していません。',
+    move: {
+      confirmTitle: '{{lane}} へ移す',
+      confirmScope_one: '選んだ {{count}} 枚を {{lane}} へ移します。',
+      confirmScope_other: '選んだ {{count}} 枚を {{lane}} へ移します。',
+      warnBody:
+        '移しても質問は残り、エージェントは回答が付くまでそのカードの作業を進められません。それでも移しますか。',
+      confirm: '{{lane}} へ移す',
+      one: '1 枚を {{lane}} へ移しました。',
+      many: '{{count}} 枚を {{lane}} へ移しました。',
+      counts:
+        'Backlog {{backlogBefore}} → {{backlogAfter}} ・ {{lane}} {{targetBefore}} → {{targetAfter}}',
+      partial: '{{total}} 枚のうち {{sent}} 枚を移しました。{{failed}} 枚は移せませんでした。',
+      failed: '{{lane}} へ移せませんでした。何も変更していません。',
+    },
     detail: {
       heading: 'Backlog',
       text: 'この計画はまだ着手されません。Todo へ送るまで、エージェントは着手しません。',
