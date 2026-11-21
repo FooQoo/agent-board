@@ -193,6 +193,12 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
   }, []);
 
   useEffect(() => {
+    // Leaving the archive, or showing another project, discards the rows and the loaded count: the
+    // first read of the next session covers only the first page. `stateRef` is reset here too, as
+    // the first read starts before the next render refreshes it.
+    const fresh = empty(projectId);
+    stateRef.current = fresh;
+    setState(fresh);
     if (projectId === null) {
       session.current = null;
       return;
@@ -206,7 +212,6 @@ export function useArchivePages(projectId: ProjectId | null): ArchivePages {
       dead: false,
     };
     session.current = mine;
-    setState(empty(projectId));
     void refresh(mine);
     return () => {
       mine.dead = true;

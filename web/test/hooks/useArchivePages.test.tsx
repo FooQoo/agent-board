@@ -395,6 +395,42 @@ describe('useArchivePages', () => {
       expect(reads).toHaveLength(1);
     });
 
+    it('reads only the first page when the archive is left and opened again', async () => {
+      const { fetchMock } = withMany();
+      const archiveReads = () =>
+        fetchMock.mock.calls.filter(([url]) => String(url).includes('/archive'));
+      const { result, rerender } = renderHook(({ id }) => useArchivePages(id), {
+        initialProps: { id: PROJECT_A.id as typeof PROJECT_A.id | null },
+      });
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.data?.tasks).toHaveLength(100));
+      expect(archiveReads()).toHaveLength(2);
+
+      rerender({ id: null });
+      expect(result.current.data).toBeNull();
+      rerender({ id: PROJECT_A.id });
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      await act(async () => Promise.resolve());
+      expect(archiveReads()).toHaveLength(3);
+      expect(result.current.data?.tasks).toHaveLength(50);
+      expect(result.current.hasMore).toBe(true);
+    });
+
+    it('re-reads up to the loaded count on a refresh while the archive stays open', async () => {
+      const { fetchMock } = withMany();
+      const archiveReads = () =>
+        fetchMock.mock.calls.filter(([url]) => String(url).includes('/archive'));
+      const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.data?.tasks).toHaveLength(100));
+      const before = archiveReads().length;
+      act(() => result.current.reload());
+      await waitFor(() => expect(archiveReads()).toHaveLength(before + 2));
+      expect(result.current.data?.tasks).toHaveLength(100);
+    });
+
     it('drops a removed row at once and counts it out of the total', async () => {
       withMany();
       const { result } = renderHook(() => useArchivePages(PROJECT_A.id));
