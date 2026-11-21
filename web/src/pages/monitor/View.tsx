@@ -5,7 +5,6 @@ import { countMessages, firstQuestionOfTask } from '../../features/tasks/message
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
 import type { ProjectId } from '../../shared/api/contracts';
 import { BacklogSendLayer } from '../../features/backlog/BacklogSendLayer';
-import { useBacklogSend } from '../../features/backlog/useBacklogSend';
 import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
@@ -28,8 +27,8 @@ import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { useReportOpen } from './hooks/useReportOpen';
-import { useLaneWrites } from './hooks/useLaneWrites';
 import { useSummaryLinkOpen } from './hooks/useSummaryLinkOpen';
+import { useMonitorWrites } from './hooks/useMonitorWrites';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
@@ -141,19 +140,16 @@ export function MonitorView(props: MonitorViewProps) {
     onWritten,
     overlay.unhide,
   );
-  const backlogSend = useBacklogSend(
-    writes ? (projectId as ProjectId) : null,
-    tasks.map((item) => item.task),
-    () => onWritten?.(),
-  );
-  const { moveNow, archiveOne, archiveAll, notice, dismissNotice } = useLaneWrites({
-    writes,
-    projectId,
-    overlay,
-    doneItems: ordered.done,
-    closePending,
-    onWritten,
-  });
+  const { backlogSend, backlogMove, moveNow, archiveOne, archiveAll, notice, dismissNotice } =
+    useMonitorWrites({
+      writes,
+      projectId,
+      overlay,
+      doneItems: ordered.done,
+      closePending,
+      onWritten,
+      tasks: tasks.map((item) => item.task),
+    });
   return (
     <main className="monitor-shell">
       <Header {...props.header} withSettings={false} />
@@ -190,7 +186,12 @@ export function MonitorView(props: MonitorViewProps) {
         lanes={ordered}
         lane={lane}
         onLaneChange={setLane}
-        onMove={(item, target) => void moveNow(item, target)}
+        onMove={(item, target) =>
+          // A Backlog card goes to Todo through the send, which confirms an open question first.
+          writes && item.task.taskStatus === 'backlog' && target === 'todo'
+            ? backlogMove.request(item.task.id)
+            : void moveNow(item, target)
+        }
         onArchive={(item) => ask({ kind: 'archive', item })}
         onOpenDetail={(item, tab) => {
           detail.show(item, tab);
@@ -221,6 +222,7 @@ export function MonitorView(props: MonitorViewProps) {
       />
       <TransientNotice message={notice} onDismiss={dismissNotice} />
       <BacklogSendLayer send={backlogSend} kind="sheet" />
+      <BacklogSendLayer send={backlogMove} kind="sheet" />
       {writes && (
         <MonitorLaneDialogs
           pending={pending}

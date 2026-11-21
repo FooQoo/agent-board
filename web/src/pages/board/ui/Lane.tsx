@@ -120,7 +120,6 @@ export function Lane({
       </div>
       {picking && (
         <BacklogBar
-          variant="lane"
           count={backlog.selection.picked.length}
           busy={backlog.busy}
           onCancel={backlog.selection.leave}

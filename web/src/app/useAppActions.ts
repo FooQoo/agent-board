@@ -8,6 +8,7 @@ import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
 import type { ColumnName } from '../shared/api/contracts';
+import { useBacklogMove } from '../features/backlog/useBacklogMove';
 import { useBacklogSend } from '../features/backlog/useBacklogSend';
 import { isProjectId } from './model/projectSession';
 
@@ -35,6 +36,17 @@ export function useAppActions(model: AppControllerModel) {
   const sendProjectId = isProjectId(activeId) ? activeId : null;
   const backlogSend = useBacklogSend(sendProjectId, tasks, () => {
     if (sendProjectId) refreshProject(sendProjectId);
+  });
+
+  // One Backlog card moved by a plain drag or the details' button: a normal move, apart from the
+  // batch send of picked cards above.
+  const backlogMove = useBacklogMove(sendProjectId, tasks, {
+    apply: model.moveCard,
+    revert: model.unmoveCard,
+    onDone: () => {
+      if (sendProjectId) refreshProject(sendProjectId);
+    },
+    refusal: (cause) => moveFailureNotice(cause, t),
   });
 
   const workspace: AppWorkspaceActions = {
@@ -67,6 +79,9 @@ export function useAppActions(model: AppControllerModel) {
           setMoveNotice(moveFailureNotice(cause, t));
         })
         .finally(() => refreshProject(projectId));
+    },
+    onMoveBacklog: (id, to) => {
+      if (session.operation === null) backlogMove.request(id, to);
     },
     sendBusy: backlogSend.busy,
     onSendEpic: (epicId) =>
@@ -261,9 +276,14 @@ export function useAppActions(model: AppControllerModel) {
 
   return {
     workspace,
-    moveNotice: backlogSend.notice ?? moveNotice,
-    dismissMoveNotice: backlogSend.notice ? backlogSend.dismissNotice : dismissMoveNotice,
+    moveNotice: backlogSend.notice ?? backlogMove.notice ?? moveNotice,
+    dismissMoveNotice: backlogSend.notice
+      ? backlogSend.dismissNotice
+      : backlogMove.notice
+        ? backlogMove.dismissNotice
+        : dismissMoveNotice,
     backlogSend,
+    backlogMove,
     submitDialog,
     confirmBulkArchive,
     cancelBulkArchive,

@@ -10,14 +10,16 @@ function Host({
   onOverscroll,
   chosen,
   onIgnoredClick,
+  direction,
 }: {
+  direction?: -1 | 1;
   enabled: boolean;
   onOverscroll: () => void;
   chosen?: boolean;
   onIgnoredClick?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const lane = useLaneOverscroll(ref, enabled, onOverscroll);
+  const lane = useLaneOverscroll(ref, enabled, onOverscroll, direction);
   return (
     <div
       ref={ref}
@@ -161,5 +163,41 @@ describe('useLaneOverscroll', () => {
       expect(seen).not.toHaveBeenCalled();
       pointer(plain, 'pointerup', 170);
     });
+  });
+});
+
+// The Backlog's mirror of the Done lane's gesture: a swipe to the right past the first lane.
+describe('useLaneOverscroll to the right', () => {
+  const setup = () => {
+    const onOverscroll = vi.fn();
+    const view = render(<Host enabled direction={1} onOverscroll={onOverscroll} />);
+    return { onOverscroll, lane: view.getByTestId('lane'), plain: view.getByTestId('plain') };
+  };
+
+  it('fires for a long swipe to the right, and the lane springs back', () => {
+    const { onOverscroll, lane, plain } = setup();
+    swipe(plain, OVERSCROLL_DISTANCE);
+    expect(onOverscroll).toHaveBeenCalledOnce();
+    expect(lane.dataset.offset).toBe('0');
+  });
+
+  it('follows the finger to the right, then takes a quarter of the drag beyond the tile', () => {
+    const { lane, plain } = setup();
+    pointer(plain, 'pointerdown', 200);
+    pointer(plain, 'pointermove', 220);
+    pointer(plain, 'pointermove', 230);
+    expect(lane.dataset.offset).toBe('30');
+    pointer(plain, 'pointermove', 200 + BULK_WIDTH + 40);
+    expect(lane.dataset.offset).toBe(String(BULK_WIDTH + 10));
+    pointer(plain, 'pointerup', 200 + BULK_WIDTH + 40);
+  });
+
+  it('ignores a short swipe, a swipe to the left and a mostly vertical one', () => {
+    const { onOverscroll, lane, plain } = setup();
+    swipe(plain, OVERSCROLL_DISTANCE - 10);
+    swipe(plain, -OVERSCROLL_DISTANCE * 2);
+    swipe(plain, OVERSCROLL_DISTANCE, OVERSCROLL_DISTANCE * 2);
+    expect(onOverscroll).not.toHaveBeenCalled();
+    expect(lane.dataset.offset).toBe('0');
   });
 });

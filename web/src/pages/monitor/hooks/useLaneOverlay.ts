@@ -29,6 +29,14 @@ export function useLaneOverlay(lanes: Lanes) {
     unhide,
     move: (id: number, target: MonitorSection) =>
       setOverlay((current) => ({ ...current, moved: new Map(current.moved).set(id, target) })),
+    /** Takes back a move the server refused: the card shows where the last read has it. */
+    unmove: (id: number) =>
+      setOverlay((current) => {
+        if (!current.moved.has(id)) return current;
+        const moved = new Map(current.moved);
+        moved.delete(id);
+        return { ...current, moved };
+      }),
     hide: (ids: readonly number[]) =>
       setOverlay((current) => ({ ...current, hidden: new Set([...current.hidden, ...ids]) })),
   };

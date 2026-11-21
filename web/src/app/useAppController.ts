@@ -11,6 +11,7 @@ import { useDataCore, usePresentationHold } from '../shared/data/react';
 import { useDetailWidth } from '../shared/lib/detail-width/useDetailWidth';
 import { useProjectSession } from './model/useProjectSession';
 import { useMessagesController } from './model/useMessagesController';
+import { useMovedCards } from './model/useMovedCards';
 import { useStreamSubscriptions } from './model/useStreamSubscriptions';
 import { useLinkedTaskSelection, useResultLink } from './model/useResultLink';
 import { findTask, nextSelection } from '../features/tasks/model/board';
@@ -86,7 +87,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     [board.summary],
   );
   const boardData = view === 'board' ? boardView : null;
-  const tasks = isProjectId(activeId) ? (boardData?.tasks ?? []) : [];
+  const { tasks, ...moves } = useMovedCards(isProjectId(activeId) ? boardData?.tasks : undefined);
   const messages = useMessagesController(activeId, boardData?.messages ?? null, link);
 
   const selected = findTask(tasks, session.selectedId);
@@ -249,6 +250,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
     archive,
     messages,
     tasks,
+    ...moves,
     selected,
     archivedSelected,
     selectedEpic,

@@ -1,8 +1,5 @@
 import { ArchiveXIcon } from 'lucide-react';
-import type { CSSProperties } from 'react';
-import { revealProgress } from '@/shared/lib/gesture/cardReveal';
-import { BULK_WIDTH } from '../hooks/useLaneOverscroll';
-import './monitor-lanes.css';
+import { LaneEdgeTile } from './LaneEdgeTile';
 
 export interface BulkArchiveTileProps {
   /** How far (px, negative is left) the Done lane has followed the finger. */
@@ -16,25 +13,5 @@ export interface BulkArchiveTileProps {
  * button after the lane's cards.
  */
 export function BulkArchiveTile({ offset }: BulkArchiveTileProps) {
-  const shown = offset < 0;
-  return (
-    <div
-      className="swipe-card__actions"
-      data-side="right"
-      data-revealed={shown || undefined}
-      data-bulk-tile=""
-      aria-hidden="true"
-      style={
-        {
-          width: `${shown ? Math.min(BULK_WIDTH, Math.abs(offset)) : 0}px`,
-          '--reveal': shown ? revealProgress(offset, BULK_WIDTH) : 0,
-          pointerEvents: 'none',
-        } as CSSProperties
-      }
-    >
-      <div className="swipe-card__tile swipe-card__tile--archive">
-        <ArchiveXIcon aria-hidden="true" />
-      </div>
-    </div>
-  );
+  return <LaneEdgeTile offset={offset} side="right" icon={ArchiveXIcon} archive />;
 }

@@ -32,6 +32,8 @@ export interface BoardProps {
    * send was started without a confirmation, which ends the selection mode.
    */
   onSend?: (ids: number[], to: BacklogTarget) => boolean;
+  /** One unselected Backlog card dropped on another lane: a normal move, not the batch send. */
+  onMoveBacklog?: (id: number, to: BacklogTarget) => void;
   sendBusy?: boolean;
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
@@ -60,6 +62,7 @@ function ProjectBoard({
   onReorder,
   onArchiveDone,
   onSend,
+  onMoveBacklog,
   sendBusy = false,
   onOpenEpic,
   projectId,
@@ -117,15 +120,13 @@ function ProjectBoard({
         const column = placement?.group;
         if (!task || !placement || !isColumn(column)) return;
         if (task.taskStatus === 'backlog' && column !== 'backlog' && onSend) {
-          // The drag drops the focus from the card; the Backlog cards go to the lane as one send:
-          // the picked cards when the grabbed one is among them, else only this card.
+          // The drag drops the focus from the card. The picked cards go to the lane as one batch send
+          // when the grabbed one is among them; any other Backlog card is a normal move of its own.
           if (source?.element instanceof HTMLElement) source.element.focus();
-          send(
-            selection.selecting && selection.picked.includes(task.id)
-              ? selection.picked
-              : [task.id],
-            column,
-          );
+          if (selection.selecting && selection.picked.includes(task.id))
+            send(selection.picked, column);
+          else if (onMoveBacklog) onMoveBacklog(task.id, column as BacklogTarget);
+          else send([task.id], column);
           return;
         }
         if (task.taskStatus !== column) {

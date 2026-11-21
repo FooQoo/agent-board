@@ -159,6 +159,7 @@ export function BoardWorkspace({
             onReorder={actions.onReorder}
             onArchiveDone={actions.onArchiveDone}
             onSend={actions.onSend}
+            onMoveBacklog={actions.onMoveBacklog}
             sendBusy={actions.sendBusy}
           />
         )}
@@ -234,7 +235,7 @@ export function BoardWorkspace({
               onOpenEpic={actions.onOpenEpic}
               renderEpicLabel={renderEpicLabel}
               onChanged={actions.onTaskChanged}
-              onSend={(id) => actions.onSend([id])}
+              onSend={(id) => actions.onMoveBacklog(id)}
               sendBusy={actions.sendBusy}
               archived={archiveVisible}
               operationSaving={operation?.saving ?? false}

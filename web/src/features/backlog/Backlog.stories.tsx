@@ -2,17 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeTask } from '../../../.storybook/support/fixtures';
 import { BacklogBar } from './BacklogBar';
+import { BacklogSheet } from './BacklogSheet';
 import { SendConfirm } from './SendConfirm';
 
 const meta = {
   title: 'Backlog/Send',
   component: BacklogBar,
-  args: { count: 2, busy: false, variant: 'phone', onCancel: fn(), onSend: fn() },
+  args: { count: 2, busy: false, onCancel: fn(), onSend: fn() },
 } satisfies Meta<typeof BacklogBar>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The bar of the selection mode: the count, and Cancel and Send in two buttons of the same width. */
+/** The PC lane's bar of the selection mode: the count, and Cancel and Send in two buttons of the same width. */
 export const Bar: Story = {
   play: async ({ canvasElement, args }) => {
     const bar = within(canvasElement).getByRole('region', { name: 'Send selected cards' });
@@ -29,7 +30,7 @@ export const Bar: Story = {
 
 /** Nothing is picked yet: the send button waits. */
 export const BarWithNothingPicked: Story = {
-  args: { count: 0, variant: 'lane' },
+  args: { count: 0 },
   play: async ({ canvasElement }) => {
     await expect(
       within(canvasElement).getByRole('button', { name: 'Send to Todo (0)' }),
@@ -83,5 +84,28 @@ export const ConfirmSheet: Story = {
   play: async () => {
     const sheet = await within(document.body).findByRole('dialog', { name: 'Send to Todo' });
     await expect(within(sheet).getByRole('alert')).toHaveTextContent('Plan the migration guide');
+  },
+};
+
+/** The phone's selection mode: a short, non-modal drawer with only Cancel and the send button. */
+export const SelectionDrawer: Story = {
+  render: (args) => (
+    <div>
+      <button type="button">A card behind the drawer</button>
+      <BacklogSheet open count={args.count} onCancel={args.onCancel} onSend={args.onSend} />
+    </div>
+  ),
+  play: async ({ canvasElement, args }) => {
+    const drawer = await within(document.body).findByRole('region', {
+      name: 'Send selected cards',
+    });
+    await expect(within(drawer).getByRole('status')).toHaveTextContent('2 selected');
+    // The page behind stays usable: a tap on it does not close the drawer.
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /behind the drawer/ }));
+    await expect(drawer).toBeVisible();
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Send to Todo (2)' }));
+    await expect(args.onSend).toHaveBeenCalledOnce();
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Cancel' }));
+    await expect(args.onCancel).toHaveBeenCalledOnce();
   },
 };

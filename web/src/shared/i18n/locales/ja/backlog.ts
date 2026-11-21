@@ -5,6 +5,7 @@ export const backlogJa = {
     selectCard: '#{{id}} を選ぶ',
     selected: '{{count}} 枚を選択中',
     barLabel: '選んだカードを送る',
+    sheetDismiss: '下へスワイプして選択をやめる',
     cancel: 'やめる',
     send: '未着手へ送る ({{count}})',
     selectCards: 'カードを選ぶ',
@@ -20,10 +21,6 @@ export const backlogJa = {
     warnAck: '質問が残っていることを確認しました',
     sendConfirm: '未着手へ送る',
     sending: '送信中…',
-    sentOne: '1 枚を未着手へ送りました。',
-    sentMany: '{{count}} 枚を未着手へ送りました。',
-    counts:
-      'バックログ {{backlogBefore}} → {{backlogAfter}} ・ 未着手 {{todoBefore}} → {{todoAfter}}',
     partial: '{{total}} 枚のうち {{sent}} 枚を送りました。{{failed}} 枚は送れませんでした。',
     failed: '未着手へ送れませんでした。何も変更していません。',
     move: {
@@ -33,10 +30,6 @@ export const backlogJa = {
       warnBody:
         '移しても質問は残り、エージェントは回答が付くまでそのカードの作業を進められません。それでも移しますか。',
       confirm: '{{lane}} へ移す',
-      one: '1 枚を {{lane}} へ移しました。',
-      many: '{{count}} 枚を {{lane}} へ移しました。',
-      counts:
-        'バックログ {{backlogBefore}} → {{backlogAfter}} ・ {{lane}} {{targetBefore}} → {{targetAfter}}',
       partial: '{{total}} 枚のうち {{sent}} 枚を移しました。{{failed}} 枚は移せませんでした。',
       failed: '{{lane}} へ移せませんでした。何も変更していません。',
     },
