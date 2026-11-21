@@ -1,63 +1,80 @@
-import { useId, useMemo, useState } from 'react';
+import { ListChecksIcon } from 'lucide-react';
+import { type PointerEvent, useId, useMemo, useRef, useState } from 'react';
 import type { DetailTab } from '../../features/tasks/detail/DetailTabs';
+import { Button } from '@/shared/ui/button';
 import { Drawer } from '@/shared/ui/drawer';
 import { Header } from '../../shared/ui/app-header/Header';
-import type { AcceptanceItem } from '../../shared/api/contracts';
+import '../../pages/monitor/components/monitor-lanes.css';
 import { buildFixture, countIn, type Fixture, type Lane, LANES, type MockCard } from './data';
 import { DetailPane } from './DetailPane';
-import { LaneBody, type LaneActions, type Notice, NoticeBar } from './LaneParts';
-import { SendSurface, type SendTarget } from './SendSurface';
+import {
+  BoardLaneHeader,
+  DragStack,
+  LaneBody,
+  type LaneActions,
+  type Notice,
+  NoticeBar,
+} from './LaneParts';
+import { DestinationSheet, type PhoneConfirm, SelectBar } from './PhoneParts';
+import { SendSurface } from './SendSurface';
 import { useIsJa, useMockText } from './text';
-import '../../pages/monitor/components/monitor-lanes.css';
 import './backlog-mock.css';
 
-export type Overlay = { kind: 'none' } | { kind: 'send'; target: SendTarget };
-
 export interface Initial {
-  overlay?: Overlay;
+  /** Selection mode of the Backlog lane is on, with these cards selected. */
   selected?: number[];
-  /** The card whose detail is open. */
+  /** Shows the stack of the dragged cards over the Todo lane (PC) or the Todo tab (phone). */
+  dragPreview?: boolean;
+  /** The confirmation of the move is open for these cards. */
+  confirm?: number[];
+  /** The "choose where to move" sheet (phone alternative B) is open. */
+  sheet?: boolean;
+  /** The cards were just sent. */
+  sentIds?: number[];
   openId?: number | null;
   tab?: DetailTab;
-  /** Shows the result of a send, as if it had just run. */
-  sentIds?: number[];
-  /** Starts on this lane (phone). */
   lane?: Lane;
 }
 
 export interface BacklogScreenProps {
   variant?: 'desktop' | 'phone';
+  /** Phone only: the way the move is confirmed. */
+  phoneConfirm?: PhoneConfirm;
   initial?: Initial;
 }
 
-const patch = (cards: MockCard[], id: number, change: Partial<MockCard>) =>
-  cards.map((card) => (card.id === id ? { ...card, ...change } : card));
-
 /**
- * The Backlog mock: the board (or the phone monitor) with a Backlog lane before Todo, the card detail,
- * and the "Send to Todo" confirmation. Data is fixed and held in memory; nothing is saved.
+ * The Backlog mock: a plain fourth lane. A button in the Backlog header (PC) or at the bottom of the lane
+ * (phone) starts a selection mode like the bulk archive's; the selected cards then move to Todo together.
+ * Data is fixed and held in memory; nothing is saved.
  */
-export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScreenProps) {
+export function BacklogScreen({
+  variant = 'desktop',
+  phoneConfirm = 'bar',
+  initial = {},
+}: BacklogScreenProps) {
   const ja = useIsJa();
   const m = useMockText();
   const fixture = useMemo<Fixture>(() => buildFixture(ja), [ja]);
-  const [cards, setCards] = useState<MockCard[]>(() => {
-    const base = buildFixture(ja).cards;
-    // A story can start right after a send.
-    return (initial.sentIds ?? []).reduce(
-      (all, id) => patch(all, id, { lane: 'todo', sent: true }),
-      base,
-    );
-  });
+  const [cards, setCards] = useState<MockCard[]>(() =>
+    (initial.sentIds ?? []).reduce<MockCard[]>(
+      (all, id) => all.map((c) => (c.id === id ? { ...c, lane: 'todo', sent: true } : c)),
+      buildFixture(ja).cards,
+    ),
+  );
+  const [selecting, setSelecting] = useState(initial.selected !== undefined);
   const [selected, setSelected] = useState<number[]>(initial.selected ?? []);
-  const [overlay, setOverlay] = useState<Overlay>(initial.overlay ?? { kind: 'none' });
+  const [confirm, setConfirm] = useState<number[] | null>(initial.confirm ?? null);
+  const [sheet, setSheet] = useState(initial.sheet ?? false);
   const [openId, setOpenId] = useState<number | null>(initial.openId ?? null);
   const [tab, setTab] = useState<DetailTab>(initial.tab ?? 'description');
   const [lane, setLane] = useState<Lane>(initial.lane ?? 'backlog');
+  const [dragging, setDragging] = useState(false);
+  const [overTodo, setOverTodo] = useState(false);
+  const [chipAt, setChipAt] = useState<{ x: number; y: number } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(() =>
     initial.sentIds
       ? {
-          kind: 'sent',
           ids: initial.sentIds,
           b0: 5,
           b1: 5 - initial.sentIds.length,
@@ -67,125 +84,133 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
       : null,
   );
   const lanesId = useId();
+  const ghostRef = useRef<HTMLDivElement>(null);
   const kind = variant === 'phone' ? 'sheet' : 'dialog';
-  const close = () => setOverlay({ kind: 'none' });
   const open = cards.find((card) => card.id === openId) ?? null;
+  const preview = initial.dragPreview ?? false;
 
   const toggle = (id: number) =>
     setSelected((now) => (now.includes(id) ? now.filter((item) => item !== id) : [...now, id]));
+  const leaveSelect = () => {
+    setSelecting(false);
+    setSelected([]);
+  };
 
-  const confirmSend = (target: SendTarget) => {
+  const send = (ids: number[]) => {
     const b0 = countIn(cards, 'backlog');
     const t0 = countIn(cards, 'todo');
     setCards((all) =>
-      all.map((card) =>
-        target.ids.includes(card.id)
-          ? { ...card, lane: 'todo', sent: true }
-          : { ...card, sent: false },
+      all.map((c) =>
+        ids.includes(c.id) ? { ...c, lane: 'todo', sent: true } : { ...c, sent: false },
       ),
     );
-    setNotice({
-      kind: 'sent',
-      ids: target.ids,
-      b0,
-      b1: b0 - target.ids.length,
-      t0,
-      t1: t0 + target.ids.length,
-    });
-    setSelected([]);
+    setNotice({ ids, b0, b1: b0 - ids.length, t0, t1: t0 + ids.length });
+    leaveSelect();
+    setConfirm(null);
+    setSheet(false);
     setLane('todo');
-    close();
   };
-
+  /** A card with an open question asks for a confirmation first; the rest go straight away. */
+  const requestSend = (ids: number[]) => {
+    if (ids.length === 0) return;
+    setSheet(false);
+    if (cards.some((c) => ids.includes(c.id) && c.question !== null)) setConfirm(ids);
+    else send(ids);
+  };
   const moveBack = (ids: number[]) => {
     setCards((all) =>
-      all.map((card) => (ids.includes(card.id) ? { ...card, lane: 'backlog', sent: false } : card)),
+      all.map((c) => (ids.includes(c.id) ? { ...c, lane: 'backlog', sent: false } : c)),
     );
     setNotice(null);
     setLane('backlog');
   };
 
-  const sendOne = (id: number) => {
-    const card = cards.find((item) => item.id === id);
-    if (!card) return;
-    setOverlay({ kind: 'send', target: { scope: 'one', epicId: card.epicId, ids: [id] } });
-  };
-  const sendSelected = (epicId: string) =>
-    setOverlay({
-      kind: 'send',
-      target: {
-        scope: 'cards',
-        epicId,
-        ids: selected.filter((id) => cards.find((card) => card.id === id)?.epicId === epicId),
-      },
-    });
-  const sendEpic = (epicId: string) =>
-    setOverlay({
-      kind: 'send',
-      target: {
-        scope: 'epic',
-        epicId,
-        ids: cards.filter((c) => c.epicId === epicId && c.lane === 'backlog').map((c) => c.id),
-      },
-    });
-
-  const lanes: LaneActions = {
+  const actions: LaneActions = {
     fixture,
     cards,
+    selecting,
     selected,
     openId,
+    dragging,
     onToggle: toggle,
     onOpenCard: (id) => {
       setOpenId(id);
       setTab('description');
     },
-    onSendEpic: sendEpic,
-    onSendSelected: sendSelected,
-    onSendOne: sendOne,
-    onClearSelection: () => setSelected([]),
+    onDragStart: (event) => {
+      setDragging(true);
+      event.dataTransfer.effectAllowed = 'move';
+      if (ghostRef.current) event.dataTransfer.setDragImage(ghostRef.current, 28, 28);
+    },
+    onDragEnd: () => {
+      setDragging(false);
+      setOverTodo(false);
+    },
   };
+
   const noticeView = notice && (
     <NoticeBar notice={notice} onUndo={moveBack} onDismiss={() => setNotice(null)} />
   );
 
-  const laneName = (name: Lane) => m[name];
-  const history = (card: MockCard) =>
-    card.lane === 'backlog'
-      ? ja
-        ? 'AI が計画を作り、Backlog に置きました。'
-        : 'The AI wrote the plan and put it in Backlog.'
-      : ja
-        ? '人が Todo へ送りました。'
-        : 'A person sent it to Todo.';
+  // Phone alternative C: the chip is held and dragged onto the Todo tab.
+  const chipDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setChipAt({ x: event.clientX, y: event.clientY });
+  };
+  const chipMove = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!chipAt) return;
+    setChipAt({ x: event.clientX, y: event.clientY });
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    setOverTodo(under?.closest('[data-lane="todo"][role="tab"]') != null);
+  };
+  const chipUp = () => {
+    if (chipAt && overTodo) requestSend(selected);
+    setChipAt(null);
+    setOverTodo(false);
+  };
+  const tabHot = overTodo || (preview && phoneConfirm === 'tab');
 
   const detail = (statusLabels: 'pc' | 'monitor') =>
     open && (
       <DetailPane
         fixture={fixture}
         card={open}
-        history={history(open)}
+        history={ja ? '履歴' : 'History'}
         tab={tab}
         onTab={setTab}
         onClose={() => setOpenId(null)}
         statusLabels={statusLabels}
         onToggleCondition={(conditionId, done) =>
           setCards((all) =>
-            all.map((card) =>
-              card.id === open.id
+            all.map((c) =>
+              c.id === open.id
                 ? {
-                    ...card,
-                    conditions: card.conditions.map((item: AcceptanceItem) =>
-                      item.id === conditionId ? { ...item, done } : item,
+                    ...c,
+                    conditions: c.conditions.map((i) =>
+                      i.id === conditionId ? { ...i, done } : i,
                     ),
                   }
-                : card,
+                : c,
             ),
           )
         }
-        onSend={() => sendOne(open.id)}
-        onBack={() => moveBack([open.id])}
       />
     );
+
+  const dropProps = {
+    onDragOver: (event: React.DragEvent) => {
+      if (!dragging) return;
+      event.preventDefault();
+      setOverTodo(true);
+    },
+    onDragLeave: () => setOverTodo(false),
+    onDrop: (event: React.DragEvent) => {
+      event.preventDefault();
+      setOverTodo(false);
+      setDragging(false);
+      requestSend(selected);
+    },
+  };
 
   return (
     <>
@@ -193,7 +218,6 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
         <div className="bapp">
           <Header canAdd onAdd={() => {}} />
           <main className="bboard">
-            {noticeView}
             <div className="bboard__row">
               <div className="board__lanes bboard__lanes">
                 {LANES.map((name) => (
@@ -202,29 +226,44 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
                     className="lane blane"
                     data-column={name}
                     data-lane={name}
-                    aria-label={laneName(name)}
+                    data-drop={
+                      name === 'todo' && (overTodo || (preview && !dragging)) ? 'true' : undefined
+                    }
+                    aria-label={m[name]}
+                    {...(name === 'todo' ? dropProps : {})}
                   >
-                    <header className="lane-header">
-                      <h2 className="lane-header__name">{laneName(name)}</h2>
-                      <span className="lane-header__count">{countIn(cards, name)}</span>
-                    </header>
-                    {name === 'backlog' && <p className="blane__hint">{m.backlogHint}</p>}
+                    <BoardLaneHeader
+                      lane={name}
+                      cards={cards}
+                      selecting={selecting}
+                      selectedCount={selected.length}
+                      onToggleSelect={() => (selecting ? leaveSelect() : setSelecting(true))}
+                    />
+                    {name === 'backlog' && selecting && (
+                      <p className="blane__hint">{m.selectHint}</p>
+                    )}
                     <div className="lane__scroll">
                       <div className="lane__cards">
-                        <LaneBody lane={name} a={lanes} />
+                        <LaneBody lane={name} a={actions} />
                       </div>
                     </div>
+                    {name === 'todo' && (overTodo || preview) && (
+                      <p className="blane__drop">{m.dropHere}</p>
+                    )}
                   </section>
                 ))}
               </div>
               {open && <div className="bboard__detail">{detail('pc')}</div>}
             </div>
           </main>
+          {preview && <DragStack count={selected.length} floating />}
+          <div className="bghost-offscreen" ref={ghostRef}>
+            <DragStack count={selected.length} />
+          </div>
         </div>
       ) : (
         <main className="monitor-shell bphone">
           <Header settingsSize="l" />
-          {noticeView}
           <div className="lane-tabs btabs" role="tablist" aria-label="lanes">
             {LANES.map((name) => (
               <button
@@ -235,21 +274,49 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
                 aria-controls={lanesId}
                 className="lane-tabs__tab btabs__tab"
                 data-lane={name}
+                data-drop={name === 'todo' && tabHot ? 'true' : undefined}
                 onClick={() => setLane(name)}
               >
-                <span className="lane-tabs__name">{laneName(name)}</span>
+                <span className="lane-tabs__name">{m[name]}</span>
                 <strong className="lane-tabs__count">{countIn(cards, name)}</strong>
               </button>
             ))}
           </div>
-          <p className="bphone__hint" data-lane={lane}>
-            {lane === 'backlog' ? m.backlogHint : lane === 'todo' ? m.todoHint : ''}
-          </p>
           <div className="bphone__lane blane" id={lanesId} data-lane={lane}>
-            <LaneBody lane={lane} a={lanes} />
+            <LaneBody lane={lane} a={actions} />
+            {lane === 'backlog' && !selecting && countIn(cards, 'backlog') > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="bphone__enter"
+                onClick={() => setSelecting(true)}
+              >
+                <ListChecksIcon aria-hidden="true" />
+                {m.selectEnter}
+              </Button>
+            )}
           </div>
+          {lane === 'backlog' && selecting && (
+            <SelectBar
+              mode={phoneConfirm}
+              count={selected.length}
+              onCancel={leaveSelect}
+              onSend={() => requestSend(selected)}
+              onSheet={() => setSheet(true)}
+              chip={{ down: chipDown, move: chipMove, up: chipUp }}
+            />
+          )}
+          {(chipAt || (preview && phoneConfirm === 'tab')) && (
+            <div
+              className="bchip-ghost"
+              style={chipAt ? { left: chipAt.x, top: chipAt.y } : undefined}
+              data-preview={chipAt ? undefined : 'true'}
+            >
+              <DragStack count={selected.length} />
+            </div>
+          )}
           <Drawer
-            open={open !== null && overlay.kind === 'none'}
+            open={open !== null && confirm === null && !sheet}
             onOpenChange={(isOpen) => !isOpen && setOpenId(null)}
             identity={open ? `#${open.id}` : ''}
             title={open?.title ?? ''}
@@ -259,14 +326,21 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
           </Drawer>
         </main>
       )}
-      {overlay.kind === 'send' && overlay.target.ids.length > 0 && (
+      {noticeView}
+      {sheet && (
+        <DestinationSheet
+          count={selected.length}
+          onClose={() => setSheet(false)}
+          onPick={() => requestSend(selected)}
+        />
+      )}
+      {confirm && (
         <SendSurface
           kind={kind}
-          fixture={fixture}
           cards={cards}
-          target={overlay.target}
-          onClose={close}
-          onConfirm={() => confirmSend(overlay.target)}
+          ids={confirm}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => send(confirm)}
         />
       )}
     </>

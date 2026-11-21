@@ -3,73 +3,40 @@ import { useId, useState } from 'react';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { DialogActions } from '@/shared/ui/dialog-actions';
-import { allAchieved, countIn, type Fixture, type MockCard } from './data';
+import { countIn, type MockCard } from './data';
 import { Surface } from './Surface';
 import { useMockText } from './text';
 import './backlog-mock.css';
 
-export interface SendTarget {
-  scope: 'cards' | 'epic' | 'one';
-  epicId: string | null;
-  ids: number[];
-}
-
-/** The warnings a send shows, derived from the cards (SPEC 3.3, 3.5 and chapter 5). */
-export function warningsOf(cards: readonly MockCard[], target: SendTarget) {
-  const picked = cards.filter((card) => target.ids.includes(card.id));
-  const withQuestion = picked.filter((card) => card.question !== null);
-  const achieved = picked.filter(allAchieved);
-  const highestWave = Math.max(...picked.map((card) => card.wave));
-  // A Backlog card of an earlier wave that is not part of this send keeps the later wave waiting.
-  const blockers = cards.filter(
-    (card) =>
-      card.epicId !== null &&
-      card.epicId === target.epicId &&
-      card.lane === 'backlog' &&
-      !target.ids.includes(card.id) &&
-      card.wave < highestWave,
-  );
-  return { picked, withQuestion, achieved, blockers };
-}
-
 /**
- * The confirmation of "Send to Todo": what is sent, the lane counts before and after, and the warnings.
- * A card with an open question needs an explicit confirmation; nothing else blocks the send.
+ * The confirmation of "Send to Todo": the cards that go, the lane counts before and after, and, when
+ * a card still has an open question, a warning that names it and needs an explicit confirmation.
  */
 export function SendSurface({
   kind,
-  fixture,
   cards,
-  target,
+  ids,
   onClose,
   onConfirm,
 }: {
   kind: 'dialog' | 'sheet';
-  fixture: Fixture;
   cards: readonly MockCard[];
-  target: SendTarget;
+  ids: readonly number[];
   onClose: () => void;
   onConfirm: () => void;
 }) {
   const m = useMockText();
   const [ack, setAck] = useState(false);
   const ackId = useId();
-  const { picked, withQuestion, achieved, blockers } = warningsOf(cards, target);
+  const picked = cards.filter((card) => ids.includes(card.id));
+  const withQuestion = picked.filter((card) => card.question !== null);
   const needAck = withQuestion.length > 0;
   const b0 = countIn(cards, 'backlog');
   const t0 = countIn(cards, 'todo');
-  const scope =
-    target.scope === 'epic'
-      ? m.sendScopeEpic(target.epicId ?? '', picked.length)
-      : target.scope === 'cards'
-        ? m.sendScopeCards(picked.length)
-        : m.sendScopeOne;
-  const epicName = fixture.epics.find((item) => item.id === target.epicId)?.name;
   return (
     <Surface
       kind={kind}
       title={m.sendTitle}
-      identity={target.epicId ? `${target.epicId} ${epicName ?? ''}` : m.standalone}
       onClose={onClose}
       className="bsend"
       footer={
@@ -87,7 +54,7 @@ export function SendSurface({
       }
     >
       <div className="bsend__body">
-        <p className="bsend__scope">{scope}</p>
+        <p className="bsend__scope">{m.sendScope(picked.length)}</p>
         <div className="bsend__counts" role="group" aria-label={`${m.sendBefore} / ${m.sendAfter}`}>
           <div className="bsend__count">
             <span className="bsend__count-head">{m.sendBefore}</span>
@@ -116,13 +83,13 @@ export function SendSurface({
               <li key={card.id} className="bsend__item">
                 <span className="bsend__id">#{card.id}</span>
                 <span className="bsend__title">{card.title}</span>
-                <span className="bsend__wave">{m.waveLabel(card.wave)}</span>
+                {card.question && <span className="bsend__q">{m.openQuestion}</span>}
               </li>
             ))}
           </ul>
         </section>
-        {withQuestion.length > 0 && (
-          <div className="bwarn" role="alert" data-tone="question">
+        {needAck && (
+          <div className="bwarn" role="alert">
             <AlertTriangleIcon aria-hidden="true" />
             <div>
               <strong>{m.warnQuestionTitle}</strong>
@@ -136,26 +103,6 @@ export function SendSurface({
                 />
                 <label htmlFor={ackId}>{m.warnQuestionAck}</label>
               </div>
-            </div>
-          </div>
-        )}
-        {blockers.length > 0 && (
-          <div className="bwarn" role="note" data-tone="wave">
-            <AlertTriangleIcon aria-hidden="true" />
-            <div>
-              <strong>{m.warnWaveTitle}</strong>
-              <p>{m.warnWaveBody(blockers.map((card) => `#${card.id}`).join(', '))}</p>
-            </div>
-          </div>
-        )}
-        {achieved.length > 0 && (
-          <div className="bwarn" role="note" data-tone="achieved">
-            <AlertTriangleIcon aria-hidden="true" />
-            <div>
-              <strong>{m.warnAchievedTitle}</strong>
-              <p>
-                {achieved.map((card) => `#${card.id}`).join(', ')}: {m.warnAchievedBody}
-              </p>
             </div>
           </div>
         )}

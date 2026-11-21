@@ -12,47 +12,34 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The board with Backlog (dashed, "plans") before Todo (filled). Compare with the four-lane order. */
+/** A plain fourth lane before Todo. The Backlog header has the selection button (like Done's archive button). */
 export const BoardWithBacklog: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('region', { name: 'Backlog' })).toBeVisible();
-    await expect(within(canvasElement).getByRole('region', { name: 'Todo' })).toBeVisible();
   },
 };
 
-/** A Backlog card's detail: the plan banner, and the tick note on the conditions tab. */
-export const BacklogCardDetail: Story = {
-  args: { initial: { openId: 42 } },
-};
-
-/** Two cards picked in the Backlog group, with the picked-count bar. */
-export const PickSome: Story = {
+/** Selection mode: a radio-style selector at the left of each card; two cards are selected. */
+export const SelectionMode: Story = {
   args: { initial: { selected: [41, 43] } },
-};
-
-/** Sending two picked cards: target, before/after counts and the wave warning. */
-export const SendSelectedConfirm: Story = {
-  args: {
-    initial: {
-      selected: [43, 44],
-      overlay: { kind: 'send', target: { scope: 'cards', epicId: 'LOGIN-1', ids: [43, 44] } },
-    },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getAllByRole('checkbox', { name: /^Select #/ }),
+    ).toHaveLength(5);
   },
 };
 
-/** Sending the whole epic: the open question needs an explicit confirmation (the button stays off). */
-export const SendEpicWithQuestion: Story = {
-  args: {
-    initial: {
-      overlay: {
-        kind: 'send',
-        target: { scope: 'epic', epicId: 'LOGIN-1', ids: [41, 42, 43, 44] },
-      },
-    },
-  },
+/** Drag in progress: the selected cards move as one stack with a count badge; Todo shows the drop target. */
+export const DragInProgress: Story = {
+  args: { initial: { selected: [41, 43, 44], dragPreview: true } },
 };
 
-/** After a send: the cards are in Todo (marked), the counts moved, and "Move back to Backlog" is offered. */
-export const AfterSend: Story = {
-  args: { initial: { sentIds: [41, 43] } },
+/** After the drop: the moved cards are in Todo (marked), counts moved, and the toast offers the way back. */
+export const AfterDrop: Story = {
+  args: { initial: { sentIds: [41, 43, 44] } },
+};
+
+/** A card with an open question was selected: the confirm names it and needs a tick before sending. */
+export const ConfirmWithQuestion: Story = {
+  args: { initial: { selected: [42, 43], confirm: [42, 43] } },
 };

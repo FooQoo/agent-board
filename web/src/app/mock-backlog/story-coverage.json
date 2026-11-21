@@ -10,32 +10,27 @@
           "stories": [
             {
               "id": "mocks-backlog-desktop--board-with-backlog",
-              "states": ["backlog lane before todo"],
+              "states": ["plain backlog lane"],
               "interaction": true
             },
             {
-              "id": "mocks-backlog-desktop--backlog-card-detail",
-              "states": ["detail open"],
+              "id": "mocks-backlog-desktop--selection-mode",
+              "states": ["selection mode"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-desktop--drag-in-progress",
+              "states": ["drag stack"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-desktop--pick-some",
-              "states": ["cards picked"],
+              "id": "mocks-backlog-desktop--after-drop",
+              "states": ["after drop"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-desktop--send-selected-confirm",
-              "states": ["send some"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-desktop--send-epic-with-question",
-              "states": ["send epic with warning"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-desktop--after-send",
-              "states": ["after send"],
+              "id": "mocks-backlog-desktop--confirm-with-question",
+              "states": ["confirm with ack"],
               "interaction": false
             },
             {
@@ -44,33 +39,28 @@
               "interaction": true
             },
             {
-              "id": "mocks-backlog-phone--todo-tab",
-              "states": ["phone todo tab"],
+              "id": "mocks-backlog-phone--alt-a-bottom-bar",
+              "states": ["bottom bar"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-phone--card-drawer",
-              "states": ["card drawer"],
+              "id": "mocks-backlog-phone--alt-b-destination-sheet",
+              "states": ["destination sheet"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-phone--pick-some",
-              "states": ["cards picked"],
+              "id": "mocks-backlog-phone--alt-c-drag-to-todo-tab",
+              "states": ["drag to tab"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-phone--send-selected-sheet",
-              "states": ["send some sheet"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--send-epic-sheet",
-              "states": ["send epic sheet"],
+              "id": "mocks-backlog-phone--confirm-with-question",
+              "states": ["confirm sheet"],
               "interaction": false
             },
             {
               "id": "mocks-backlog-phone--after-send",
-              "states": ["after send sheet"],
+              "states": ["after send"],
               "interaction": false
             }
           ]
@@ -81,32 +71,52 @@
       "file": "app/mock-backlog/LaneParts.tsx",
       "exports": [
         {
+          "name": "DragStack",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--drag-in-progress",
+              "states": ["drag stack"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--alt-c-drag-to-todo-tab",
+              "states": ["drag to tab"],
+              "interaction": false
+            }
+          ]
+        },
+        {
           "name": "LaneBody",
           "stories": [
             {
               "id": "mocks-backlog-desktop--board-with-backlog",
-              "states": ["backlog lane before todo"],
+              "states": ["plain backlog lane"],
               "interaction": true
             },
             {
-              "id": "mocks-backlog-desktop--pick-some",
-              "states": ["cards picked"],
-              "interaction": false
+              "id": "mocks-backlog-desktop--selection-mode",
+              "states": ["selection mode"],
+              "interaction": true
             },
             {
               "id": "mocks-backlog-phone--backlog-tab",
               "states": ["phone backlog tab"],
               "interaction": true
+            }
+          ]
+        },
+        {
+          "name": "BoardLaneHeader",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--board-with-backlog",
+              "states": ["plain backlog lane"],
+              "interaction": true
             },
             {
-              "id": "mocks-backlog-phone--todo-tab",
-              "states": ["phone todo tab"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--pick-some",
-              "states": ["cards picked"],
-              "interaction": false
+              "id": "mocks-backlog-desktop--selection-mode",
+              "states": ["selection mode"],
+              "interaction": true
             }
           ]
         },
@@ -114,13 +124,48 @@
           "name": "NoticeBar",
           "stories": [
             {
-              "id": "mocks-backlog-desktop--after-send",
-              "states": ["after send"],
+              "id": "mocks-backlog-desktop--after-drop",
+              "states": ["after drop"],
               "interaction": false
             },
             {
               "id": "mocks-backlog-phone--after-send",
-              "states": ["after send sheet"],
+              "states": ["after send"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/PhoneParts.tsx",
+      "exports": [
+        {
+          "name": "SelectBar",
+          "stories": [
+            {
+              "id": "mocks-backlog-phone--alt-a-bottom-bar",
+              "states": ["bottom bar"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--alt-b-destination-sheet",
+              "states": ["destination sheet"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--alt-c-drag-to-todo-tab",
+              "states": ["drag to tab"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "DestinationSheet",
+          "stories": [
+            {
+              "id": "mocks-backlog-phone--alt-b-destination-sheet",
+              "states": ["destination sheet"],
               "interaction": false
             }
           ]
@@ -132,18 +177,8 @@
       "exports": [
         {
           "name": "DetailPane",
-          "stories": [
-            {
-              "id": "mocks-backlog-desktop--backlog-card-detail",
-              "states": ["detail open"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--card-drawer",
-              "states": ["card drawer"],
-              "interaction": false
-            }
-          ]
+          "stories": [],
+          "exclusion": "Opens on a card tap; the existing detail panel, not part of the compared Stories."
         }
       ]
     },
@@ -154,23 +189,13 @@
           "name": "SendSurface",
           "stories": [
             {
-              "id": "mocks-backlog-desktop--send-selected-confirm",
-              "states": ["send some"],
+              "id": "mocks-backlog-desktop--confirm-with-question",
+              "states": ["confirm with ack"],
               "interaction": false
             },
             {
-              "id": "mocks-backlog-desktop--send-epic-with-question",
-              "states": ["send epic with warning"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--send-selected-sheet",
-              "states": ["send some sheet"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--send-epic-sheet",
-              "states": ["send epic sheet"],
+              "id": "mocks-backlog-phone--confirm-with-question",
+              "states": ["confirm sheet"],
               "interaction": false
             }
           ]
@@ -183,7 +208,7 @@
         {
           "name": "Surface",
           "stories": [],
-          "exclusion": "Frame of the send dialog and sheet; the send Stories show it."
+          "exclusion": "Frame of the send dialog and sheets; the send Stories show it."
         }
       ]
     }

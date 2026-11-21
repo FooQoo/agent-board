@@ -184,15 +184,22 @@
 /* ---- Notice (result of a send or a save) ---- */
 
 .bnotice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 40;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin: 12px 24px 0;
+  max-width: 640px;
+  margin: 0 auto;
   padding: 10px 12px;
   border: 1px solid var(--r-accent);
   border-radius: 10px;
-  background: var(--r-accent-soft);
+  background: var(--r-surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
   color: var(--r-text);
   font-size: 13px;
 }
@@ -214,10 +221,6 @@
 
 .bnotice__text span {
   color: var(--r-text2);
-}
-
-.bphone .bnotice {
-  margin: 8px 0 0;
 }
 
 /* ---- Phone ---- */
@@ -481,4 +484,218 @@
 .lane-tabs.btabs .lane-tabs__count {
   min-width: 0;
   padding: 1px 5px;
+}
+
+/* ---- Plain Backlog lane and selection mode (modelled on the bulk archive) ---- */
+
+.blane__picked {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--r-accent);
+}
+
+.blane__select-btn {
+  display: inline-flex;
+}
+
+.blane__picked + .blane__select-btn {
+  margin-left: 4px;
+}
+
+.blane__drop {
+  padding: 10px;
+  border: 1.5px dashed var(--r-accent);
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--r-accent);
+}
+
+.blane[data-drop="true"] {
+  outline: 2px dashed var(--r-accent);
+  outline-offset: -2px;
+  background: var(--r-accent-soft);
+}
+
+.brow__radio.brow__radio {
+  border-radius: 999px;
+}
+
+.brow[data-selected="true"] .card {
+  border-color: var(--r-accent);
+  box-shadow: 0 0 0 2px var(--r-accent-soft);
+}
+
+.brow[draggable="true"] {
+  cursor: grab;
+}
+
+.brow[data-dragging="true"] {
+  opacity: 0.45;
+}
+
+/* The stack of dragged cards with a count badge. */
+.bghost {
+  position: relative;
+  width: 140px;
+  height: 64px;
+}
+
+.bghost__card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  width: 120px;
+  height: 48px;
+  padding: 0 10px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  font-size: 12px;
+  color: var(--r-text2);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.15);
+}
+
+.bghost__card--back {
+  top: 12px;
+  left: 12px;
+}
+
+.bghost__card--mid {
+  top: 6px;
+  left: 6px;
+}
+
+.bghost__card--top {
+  top: 0;
+  left: 0;
+  border-color: var(--r-accent);
+}
+
+.bghost__count {
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--r-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.bghost[data-floating="true"] {
+  position: fixed;
+  top: 220px;
+  left: 56%;
+  z-index: 50;
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+
+.bghost-offscreen {
+  position: fixed;
+  top: -200px;
+  left: -200px;
+  padding: 12px;
+}
+
+/* ---- Phone selection bar and alternatives ---- */
+
+.bphone__enter {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.bbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.bbar__count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.bbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bbar__hint {
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bchip {
+  flex: 1 1 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1.5px dashed var(--r-accent);
+  border-radius: 8px;
+  background: var(--r-accent-soft);
+  color: var(--r-accent);
+  font-size: 13px;
+  font-weight: 600;
+  touch-action: none;
+}
+
+.bchip:disabled {
+  opacity: 0.5;
+}
+
+.bchip-ghost {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  transform: translate(-40px, -50px);
+}
+
+.bchip-ghost[data-preview="true"] {
+  top: 210px;
+  left: 150px;
+}
+
+.btabs__tab[data-drop="true"] {
+  border-radius: 8px;
+  outline: 2px dashed var(--r-accent);
+  background: var(--r-accent-soft);
+}
+
+.bdest__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bdest__item {
+  width: 100%;
+  justify-content: center;
+}
+
+.bdest__note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bsend__q {
+  flex: none;
+  font-size: 12px;
+  color: var(--r-pend-tx);
 }

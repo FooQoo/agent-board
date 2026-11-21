@@ -1,6 +1,4 @@
-import { SendIcon, Undo2Icon } from 'lucide-react';
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { TaskDetailView } from '../../features/tasks/detail/TaskDetailView';
 import {
   createDetailFixtureAdapter,
@@ -8,10 +6,8 @@ import {
 } from '../../features/tasks/detail/detailFixture';
 import type { DetailTab } from '../../features/tasks/detail/DetailTabs';
 import { EpicLabel } from '../../features/epics/label/EpicLabel';
-import { Button } from '@/shared/ui/button';
 import { DataProvider, useEpicDetail, useTaskDetail } from '../../shared/data/react';
 import { type Fixture, type MockCard, PROJECT_ID, summaryOf } from './data';
-import { useMockText } from './text';
 import './backlog-mock.css';
 
 function fixtureOf(fixture: Fixture, card: MockCard, history: string): DetailFixture {
@@ -36,16 +32,11 @@ function Body({
   onTab,
   onClose,
   onToggleCondition,
-  onSend,
-  onBack,
   statusLabels,
 }: Omit<DetailPaneProps, 'history'>) {
-  const m = useMockText();
-  const { t } = useTranslation();
   const summary = summaryOf(card, fixture.epics);
   const detail = useTaskDetail(PROJECT_ID, card.id);
   const epicDetail = useEpicDetail(PROJECT_ID, card.epicId);
-  const backlog = card.lane === 'backlog';
   return (
     <TaskDetailView
       projectId={PROJECT_ID}
@@ -63,40 +54,7 @@ function Body({
       renderEpicLabel={(epic) => (
         <EpicLabel epic={epic} className="card__epic" onClick={() => undefined} />
       )}
-      toolbar={
-        <div
-          className="detail__toolbar bdetail__toolbar"
-          role="toolbar"
-          aria-label={t('detail.toolbar')}
-        >
-          {backlog && (
-            <Button type="button" size="s" onClick={onSend}>
-              <SendIcon aria-hidden="true" />
-              {m.sendCard}
-            </Button>
-          )}
-          {card.lane === 'todo' && card.sent && (
-            <Button type="button" size="s" variant="outline" onClick={onBack}>
-              <Undo2Icon aria-hidden="true" />
-              {m.backToBacklog}
-            </Button>
-          )}
-        </div>
-      }
-    >
-      {backlog ? (
-        <div className="bdetail__banner" data-lane="backlog">
-          <strong>{m.detailBacklogTitle}</strong>
-          <p>{m.detailBacklogBody}</p>
-        </div>
-      ) : (
-        card.lane === 'todo' && (
-          <div className="bdetail__banner" data-lane="todo">
-            <strong>{m.detailTodoBanner}</strong>
-          </div>
-        )
-      )}
-    </TaskDetailView>
+    />
   );
 }
 
@@ -108,8 +66,6 @@ export interface DetailPaneProps {
   onTab: (tab: DetailTab) => void;
   onClose: () => void;
   onToggleCondition: (conditionId: string, done: boolean) => void;
-  onSend: () => void;
-  onBack: () => void;
   statusLabels?: 'pc' | 'monitor';
 }
 

@@ -1,15 +1,15 @@
-import { CheckCircle2Icon, ClockIcon, SendIcon } from 'lucide-react';
+import { CheckCircle2Icon, ListChecksIcon, XIcon } from 'lucide-react';
+import type { DragEvent } from 'react';
 import { EpicLabel } from '../../features/epics/label/EpicLabel';
 import { TaskCardView } from '../../features/tasks/card/TaskCard';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { allAchieved, type Fixture, type Lane, type MockCard, summaryOf } from './data';
+import { countIn, type Fixture, type Lane, type MockCard, summaryOf } from './data';
 import { useMockText } from './text';
 import './backlog-mock.css';
 
 export type Notice = {
-  kind: 'sent';
   ids: number[];
   b0: number;
   b1: number;
@@ -20,48 +20,52 @@ export type Notice = {
 export interface LaneActions {
   fixture: Fixture;
   cards: MockCard[];
+  /** Selection mode of the Backlog lane (modelled on the bulk archive). */
+  selecting: boolean;
   selected: number[];
   openId: number | null;
+  /** The PC drag of the selected cards is in progress. */
+  dragging: boolean;
   onToggle: (id: number) => void;
   onOpenCard: (id: number) => void;
-  onSendEpic: (epicId: string) => void;
-  onSendSelected: (epicId: string) => void;
-  onSendOne: (id: number) => void;
-  onClearSelection: () => void;
+  onDragStart: (event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
 }
 
-/** The marks under a card: plan, open question, all conditions achieved, just sent, edited. */
-function Marks({ card }: { card: MockCard }) {
+/** The stack shown while the selected cards are dragged: the top card and a count badge. */
+export function DragStack({ count, floating = false }: { count: number; floating?: boolean }) {
   const m = useMockText();
-  const backlog = card.lane === 'backlog';
   return (
-    <span className="bmarks">
-      {backlog && (
-        <span className="bmark bmark--plan">
-          <ClockIcon aria-hidden="true" />
-          {m.notStartedMark}
-        </span>
-      )}
-      {card.question && backlog && <Badge variant="pending">{m.openQuestion}</Badge>}
-      {backlog && allAchieved(card) && (
-        <span className="bmark bmark--done">
-          <CheckCircle2Icon aria-hidden="true" />
-          {m.allAchieved}
-        </span>
-      )}
-      {card.sent && <span className="bmark bmark--sent">{m.sentMark}</span>}
-    </span>
+    <div className="bghost" data-floating={floating || undefined} aria-hidden="true">
+      <span className="bghost__card bghost__card--back" />
+      <span className="bghost__card bghost__card--mid" />
+      <span className="bghost__card bghost__card--top">{m.backlog}</span>
+      <span className="bghost__count">{m.dragCount(count)}</span>
+    </div>
   );
 }
 
 function CardRow({ card, a }: { card: MockCard; a: LaneActions }) {
   const m = useMockText();
+  const inSelect = a.selecting && card.lane === 'backlog';
+  const isSelected = a.selected.includes(card.id);
+  const canDrag = inSelect && isSelected;
   return (
-    <div className="brow" data-lane={card.lane} data-sent={card.sent ? 'true' : undefined}>
-      {card.lane === 'backlog' && (
+    // biome-ignore lint/a11y/noStaticElementInteractions: the drag handle of a selected card; the keyboard path is the send button
+    <div
+      className="brow"
+      data-lane={card.lane}
+      data-selected={isSelected || undefined}
+      data-sent={card.sent ? 'true' : undefined}
+      data-dragging={a.dragging && isSelected ? 'true' : undefined}
+      draggable={canDrag}
+      onDragStart={canDrag ? a.onDragStart : undefined}
+      onDragEnd={canDrag ? a.onDragEnd : undefined}
+    >
+      {inSelect && (
         <Checkbox
-          className="brow__check"
-          checked={a.selected.includes(card.id)}
+          className="brow__radio"
+          checked={isSelected}
           aria-label={m.selectCard(card.id)}
           onCheckedChange={() => a.onToggle(card.id)}
         />
@@ -70,86 +74,76 @@ function CardRow({ card, a }: { card: MockCard; a: LaneActions }) {
         <TaskCardView
           task={summaryOf(card, a.fixture.epics)}
           selected={a.openId === card.id}
-          onSelect={() => a.onOpenCard(card.id)}
+          onSelect={() => (inSelect ? a.onToggle(card.id) : a.onOpenCard(card.id))}
           renderEpic={(epic) => (
             <EpicLabel epic={epic} className="card__epic" onClick={() => undefined} />
           )}
         >
-          <Marks card={card} />
+          {(card.question && card.lane === 'backlog') || card.sent ? (
+            <span className="bmarks">
+              {card.question && card.lane === 'backlog' && (
+                <Badge variant="pending">{m.openQuestion}</Badge>
+              )}
+              {card.sent && <span className="bmark bmark--sent">{m.sentMark}</span>}
+            </span>
+          ) : null}
         </TaskCardView>
       </div>
     </div>
   );
 }
 
-/** Backlog groups its cards by epic, so the epic can be read and sent as a whole. */
-function BacklogGroups({ a }: { a: LaneActions }) {
-  const m = useMockText();
-  const groups = [...new Set(a.cards.filter((c) => c.lane === 'backlog').map((c) => c.epicId))];
-  if (groups.length === 0) return <p className="blane__empty">{m.laneEmpty}</p>;
-  return groups.map((epicId) => {
-    const own = a.cards.filter((c) => c.lane === 'backlog' && c.epicId === epicId);
-    const epic = a.fixture.epics.find((item) => item.id === epicId);
-    const pickedHere = a.selected.filter((id) => own.some((c) => c.id === id));
-    return (
-      <section key={epicId ?? 'none'} className="bgroup" aria-label={epic?.id ?? m.standalone}>
-        <header className="bgroup__head">
-          {epic ? (
-            <>
-              <EpicLabel epic={epic} className="card__epic" onClick={() => undefined} />
-              <span className="bgroup__name">{epic.name}</span>
-            </>
-          ) : (
-            <span className="bgroup__name">{m.standalone}</span>
-          )}
-        </header>
-        <div className="bgroup__actions">
-          {epic ? (
-            <Button
-              type="button"
-              size="s"
-              className="bgroup__wide"
-              onClick={() => a.onSendEpic(epic.id)}
-            >
-              <SendIcon aria-hidden="true" />
-              {m.sendEpic(own.length)}
-            </Button>
-          ) : (
-            <Button type="button" size="s" onClick={() => a.onSendOne(own[0]?.id ?? 0)}>
-              <SendIcon aria-hidden="true" />
-              {m.sendCard}
-            </Button>
-          )}
-        </div>
-        {epic && pickedHere.length > 0 && (
-          <div className="bgroup__picked" role="status">
-            <span>{m.selectedCount(pickedHere.length)}</span>
-            <Button type="button" size="s" onClick={() => a.onSendSelected(epic.id)}>
-              <SendIcon aria-hidden="true" />
-              {m.sendSelected(pickedHere.length)}
-            </Button>
-            <Button type="button" size="s" variant="outline" onClick={a.onClearSelection}>
-              {m.clearSelection}
-            </Button>
-          </div>
-        )}
-        {own.map((card) => (
-          <CardRow key={card.id} card={card} a={a} />
-        ))}
-      </section>
-    );
-  });
-}
-
 export function LaneBody({ lane, a }: { lane: Lane; a: LaneActions }) {
   const m = useMockText();
-  if (lane === 'backlog') return <BacklogGroups a={a} />;
   const own = a.cards.filter((card) => card.lane === lane);
   if (own.length === 0) return <p className="blane__empty">{m.laneEmpty}</p>;
   return own.map((card) => <CardRow key={card.id} card={card} a={a} />);
 }
 
-/** The result of a send or a save, with the way back for a send. */
+/**
+ * A lane header in the board's own classes. The Backlog header carries the selection button, the way the
+ * Done header carries the bulk-archive button (`lane-header__archive`).
+ */
+export function BoardLaneHeader({
+  lane,
+  cards,
+  selecting,
+  selectedCount,
+  onToggleSelect,
+}: {
+  lane: Lane;
+  cards: readonly MockCard[];
+  selecting: boolean;
+  selectedCount: number;
+  onToggleSelect: () => void;
+}) {
+  const m = useMockText();
+  const count = countIn(cards, lane);
+  return (
+    <header className="lane-header">
+      <h2 className="lane-header__name">{m[lane]}</h2>
+      <span className="lane-header__count">{count}</span>
+      {lane === 'backlog' && (
+        <>
+          {selecting && <span className="blane__picked">{m.selectedCount(selectedCount)}</span>}
+          <button
+            type="button"
+            className="lane-header__archive blane__select-btn"
+            aria-label={selecting ? m.selectExit : m.selectEnter}
+            title={selecting ? m.selectExit : m.selectEnter}
+            aria-pressed={selecting}
+            onClick={onToggleSelect}
+            disabled={count === 0}
+          >
+            {selecting ? <XIcon aria-hidden="true" /> : <ListChecksIcon aria-hidden="true" />}
+          </button>
+        </>
+      )}
+    </header>
+  );
+}
+
+/** The toast after a send: what moved and the way back. The moved cards stand out in Todo. */
 export function NoticeBar({
   notice,
   onUndo,
@@ -161,7 +155,7 @@ export function NoticeBar({
 }) {
   const m = useMockText();
   return (
-    <div className="bnotice" role="status" data-kind={notice.kind}>
+    <div className="bnotice" role="status">
       <CheckCircle2Icon aria-hidden="true" />
       <div className="bnotice__text">
         <strong>
@@ -169,11 +163,9 @@ export function NoticeBar({
         </strong>
         <span>{m.resultCounts(notice.b0, notice.b1, notice.t0, notice.t1)}</span>
       </div>
-      {
-        <Button type="button" size="s" variant="outline" onClick={() => onUndo(notice.ids)}>
-          {m.resultUndo}
-        </Button>
-      }
+      <Button type="button" size="s" variant="outline" onClick={() => onUndo(notice.ids)}>
+        {m.resultUndo}
+      </Button>
       <Button type="button" size="s" variant="outline" onClick={onDismiss}>
         {m.dismiss}
       </Button>
