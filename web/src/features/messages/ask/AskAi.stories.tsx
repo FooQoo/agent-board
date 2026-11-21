@@ -17,6 +17,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// After `meta`: the coverage check reads the first `title:` of this file as the story title.
+const TASKS = [
+  { id: 552, title: 'Jump from a result to its task', taskStatus: 'doing' as const },
+  { id: 651, title: 'Hide the project name on cards', taskStatus: 'doing' as const },
+  { id: 648, title: 'Shorten the notification wording', taskStatus: 'todo' as const },
+  { id: 559, title: 'Keep the phone draft', taskStatus: 'done' as const },
+];
+
 const page = () => within(document.body);
 const PHONE = {
   args: { kind: 'sheet' as const },
@@ -307,4 +315,77 @@ export const ConnectedSheet: StoryObj<typeof AskAiSheet> = {
   play: async () => {
     await expect(await page().findByRole('dialog', { name: 'Ask AI' })).toBeInTheDocument();
   },
+};
+
+const field = () => page().getByRole('textbox', { name: 'What would you like done?' });
+const attachButton = (name: string | RegExp = /^Attach task/) =>
+  page().findByRole('button', { name });
+const row = (id: number) => page().findByRole('checkbox', { name: new RegExp(`#${id}`) });
+const confirm = async (count: number) => {
+  await userEvent.click(await page().findByRole('button', { name: `Attach (${count})` }));
+  await waitFor(() => expect(page().queryByRole('checkbox')).toBeNull());
+};
+
+/** The picker in Japanese. */
+export const AttachTasksJapanese: Story = {
+  args: { initialText: DRAFT, tasks: TASKS },
+  globals: { locale: 'ja' },
+  play: async () => {
+    await userEvent.click(await page().findByRole('button', { name: 'タスクを添付' }));
+    await expect(await page().findByRole('button', { name: '添付 (0)' })).toBeVisible();
+  },
+};
+
+/** The sheet flow: pick, confirm, reopen pre-checked, clear. See `DialogAttachTasks` for the rules. */
+async function attachFlow(): Promise<void> {
+  await userEvent.click(await attachButton());
+  await userEvent.click(await row(552));
+  await userEvent.click(await row(651));
+  await confirm(2);
+  await waitFor(() => expect(field()).toHaveValue(`${DRAFT}\n#552 #651`));
+  await userEvent.click(await attachButton('Attach task (2)'));
+  await expect(await row(552)).toBeChecked();
+  await expect(await row(651)).toBeChecked();
+  await expect(await row(648)).not.toBeChecked();
+  await userEvent.click(await row(552));
+  await userEvent.click(await row(651));
+  await confirm(0);
+  await waitFor(() => expect(field()).toHaveValue(DRAFT));
+}
+
+/**
+ * "Attach task" opens a popover above the button. The picker writes `#552 #651` as the last line, is
+ * pre-checked from that line when it opens again, replaces it (never doubles it), and removes it when
+ * nothing is checked; Escape closes only the picker; a `#552` in the middle of the text is not read.
+ * One story for the whole flow: it is the request text that carries the state between the steps.
+ */
+export const DialogAttachTasks: Story = {
+  args: { initialText: DRAFT, tasks: TASKS },
+  play: async () => {
+    await attachFlow();
+    // Search narrows the list; Escape closes the picker and returns the focus to the button.
+    const button = await attachButton();
+    await userEvent.click(button);
+    await userEvent.type(await page().findByRole('searchbox', { name: /Search tasks/ }), '648');
+    await expect(page().queryByRole('checkbox', { name: /#552/ })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(button).toHaveFocus());
+    await expect(page().getByRole('dialog', { name: 'Ask AI' })).toBeVisible();
+    // An existing last line is replaced; a reference in the middle is left alone.
+    await userEvent.clear(field());
+    await userEvent.type(field(), 'See #552 first.{Enter}Then fix it.{Enter}#559');
+    await userEvent.click(await attachButton('Attach task (1)'));
+    await expect(await row(559)).toBeChecked();
+    await expect(await row(552)).not.toBeChecked();
+    await userEvent.click(await row(648));
+    await confirm(2);
+    await waitFor(() => expect(field()).toHaveValue('See #552 first.\nThen fix it.\n#559 #648'));
+  },
+};
+
+/** On a phone the same picker is a second bottom sheet over the composer. */
+export const SheetAttachTasks: Story = {
+  ...PHONE,
+  args: { kind: 'sheet', initialText: DRAFT, tasks: TASKS },
+  play: attachFlow,
 };
