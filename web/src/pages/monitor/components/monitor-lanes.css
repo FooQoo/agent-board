@@ -88,6 +88,17 @@
     display: none;
   }
 }
+/* On the narrowest phones the Japanese name of the Backlog (5 characters) needs a little more room. */
+@media (max-width: 380px) {
+  .lane-tabs__tab {
+    gap: 2px;
+    font-size: 11px;
+  }
+  .lane-tabs__count {
+    min-width: 16px;
+    padding: 1px 3px;
+  }
+}
 .lane-tabs__tab[aria-selected="true"] .lane-tabs__count {
   background: var(--r-accent-soft);
   color: var(--r-accent);
