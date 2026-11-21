@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use agent_board::domain::{Actor, Assignee, Column, Draft, NewTask, ProjectId, RunState};
+use agent_board::domain::{Actor, Assignee, Column, NewTask, ProjectId, RunState};
 use agent_board::file_store::FileStore;
 use chrono::Utc;
 
@@ -210,7 +210,7 @@ fn a_task_that_only_referred_to_dropped_questions_is_not_pending() {
 }
 
 #[test]
-fn an_unanswered_start_approval_makes_its_ai_tasks_ai_drafts() {
+fn an_unanswered_start_approval_moves_its_ai_tasks_to_the_backlog() {
     let b = board();
     let importer = b.task("Write the importer", Assignee::Ai, false);
     let docs = b.task("Document the importer", Assignee::Ai, false);
@@ -227,26 +227,27 @@ fn an_unanswered_start_approval_makes_its_ai_tasks_ai_drafts() {
     assert!(b.folders().is_empty());
     for id in [importer, docs] {
         let task = b.store.task(&b.project, id).unwrap();
-        assert_eq!(task.draft, Some(Draft::Ai), "#{id}");
+        assert_eq!(task.task_status, Column::Backlog, "#{id}");
+        assert_eq!(task.draft, None, "#{id}");
         assert!(task.question_ids.is_empty());
         assert_ne!(task.agent_status, RunState::Pending);
         assert!(
-            task.history.last().unwrap().reason.contains("AI draft"),
+            task.history.last().unwrap().reason.contains("Backlog"),
             "{:?}",
             task.history.last()
         );
     }
-    // A person's task and a task already in Doing are not drafts, and none of them waits.
+    // A person's task and a task already in Doing stay where they are, and none of them waits.
     for id in [person, started] {
         let task = b.store.task(&b.project, id).unwrap();
         assert_eq!(task.draft, None, "#{id}");
         assert!(task.question_ids.is_empty());
         assert_ne!(task.agent_status, RunState::Pending);
     }
-    // A person starts the drafts as before.
+    // A person sends the plan to Todo.
     let result = b
         .store
-        .start_task(&b.project, importer, Actor::Human, Utc::now())
+        .send_task(&b.project, importer, Actor::Human, false, Utc::now())
         .unwrap();
     assert!(result.changed);
 }

@@ -90,6 +90,7 @@ fn write_task(out: &mut String, task: &ProgressTask) {
         Assignee::Human => "human",
     };
     let column = match task.task_status {
+        Column::Backlog => "backlog",
         Column::Todo => "todo",
         Column::Doing => "doing",
         Column::Done => "done",
@@ -102,7 +103,6 @@ fn write_task(out: &mut String, task: &ProgressTask) {
     let draft = match task.draft {
         None => "",
         Some(crate::domain::Draft::Human) => ", draft",
-        Some(crate::domain::Draft::Ai) => ", AI draft",
     };
     let _ = writeln!(
         out,

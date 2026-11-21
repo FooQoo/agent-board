@@ -340,7 +340,7 @@ function showFromSnapshot(id: number): TaskView {
 	return task;
 }
 
-for (const version of [0, 2, 3]) test(`version-${version} task files are refused without changing any bytes`, async () => {
+for (const version of [0, 3, 4]) test(`version-${version} task files are refused without changing any bytes`, async () => {
 	const id = addTask('Unsupported old task');
 	const metadataFile = taskJsonFile(id);
 	const metadata = JSON.parse(readFileSync(metadataFile, 'utf8')) as Record<string, unknown>;
@@ -352,6 +352,18 @@ for (const version of [0, 2, 3]) test(`version-${version} task files are refused
 	const strict = cli(['show', String(id), '--json']);
 	expect(strict.code).not.toBe(0);
 	expect([hash(metadataFile), hash(taskFile(id))]).toEqual(before);
+});
+
+test('version-2 task files (the Backlog format) are read and written', async () => {
+	const id = addTask('Backlog format task');
+	const metadataFile = taskJsonFile(id);
+	const metadata = JSON.parse(readFileSync(metadataFile, 'utf8')) as Record<string, unknown>;
+	replaceFileAtomically(metadataFile, `${JSON.stringify({ ...metadata, formatVersion: 2 }, null, 2)}\n`);
+	expect(snapshot().tasks.some((task) => task.id === id)).toBe(true);
+	expect(snapshot().problems.some((problem) => problem.file.endsWith(`tasks/${id}/task.json`))).toBe(false);
+	expect(cli(['show', String(id), '--json']).code).toBe(0);
+	expect(cli(['history', 'add', String(id), '--reason', 'Still writable.']).code).toBe(0);
+	expect(show(id).history.at(-1)?.reason).toBe('Still writable.');
 });
 
 test('history add timestamps free work notes and defaults without changing lane timestamps', async ({ page }) => {

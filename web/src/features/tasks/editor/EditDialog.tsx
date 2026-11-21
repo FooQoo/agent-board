@@ -101,8 +101,11 @@ export function EditDialog({
     countChars(description) <= DESCRIPTION_LIMIT &&
     (whole || acceptanceProblem(conditions) === null);
 
+  // Only a person's draft is stored as a draft. The `'ai'` the Summary shows on a plan in the
+  // Backlog is not: the editor takes the edit lock first, like any other card.
+  const storedDraft = task.draft === 'human';
   const lock = usePreviewLock({
-    draftAtOpen: task.draft !== null,
+    draftAtOpen: storedDraft,
     readOnly,
     dirty,
     snapshot: snapshotOf({
@@ -116,7 +119,7 @@ export function EditDialog({
       await leaveDraft?.();
     },
   });
-  const locked = task.draft !== null || lock.entered;
+  const locked = storedDraft || lock.entered;
 
   const follow = useFollowLatest<EditorContent>({
     subscribe: subscribeChanges,

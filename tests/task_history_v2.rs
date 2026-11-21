@@ -102,7 +102,7 @@ fn task_format_versions_other_than_one_are_reported_and_left_byte_for_byte_uncha
     let json_path = fx.task_dir(id).join("task.json");
     let mut json: serde_json::Value =
         serde_json::from_slice(&fs::read(&json_path).unwrap()).unwrap();
-    for version in [0, 2, 3] {
+    for version in [0, 3, 4] {
         json["formatVersion"] = version.into();
         let bytes = serde_json::to_vec_pretty(&json).unwrap();
         fs::write(&json_path, &bytes).unwrap();
@@ -113,7 +113,7 @@ fn task_format_versions_other_than_one_are_reported_and_left_byte_for_byte_uncha
         assert!(snapshot.problems.iter().any(|problem| {
             problem.file.ends_with("task.json")
                 && problem.field == "formatVersion"
-                && problem.reason.contains("Only formatVersion 1")
+                && problem.reason.contains("Only formatVersion 2")
         }));
         assert!(matches!(
             fx.store.task(&fx.project, id),

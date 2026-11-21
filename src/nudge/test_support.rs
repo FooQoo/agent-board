@@ -35,7 +35,7 @@ pub fn progress_with(running: bool, missing: &[i64]) -> Progress {
                 title: "T".into(),
                 description: "## 作業内容\n\nx\n\n## 完了条件と確認結果\n\n- [ ] AC-1. Works\n  - 確認結果: 未確認\n  - 根拠: 未記入\n  - 調整役の確認: 未確認\n\n## 実行記録\n\n".into(),
                 assignee: Assignee::Ai,
-                actor: Actor::Ai,
+                actor: Actor::Human,
                 draft: None,
             },
             now,
@@ -55,6 +55,8 @@ pub fn progress_with(running: bool, missing: &[i64]) -> Progress {
             task.agent_status = RunState::Running;
         }
     }
+    // The one task is not picked up next unless a case says so.
+    table.next_tasks.clear();
     table.final_result_missing = missing
         .iter()
         .map(|id| FinalResultMissing {

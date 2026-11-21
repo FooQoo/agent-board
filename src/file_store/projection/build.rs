@@ -110,6 +110,7 @@ fn epic_progress(epic: &EpicView, tasks: &[TaskView]) -> EpicProgress {
             progress.archived += 1;
         } else {
             match task.task_status {
+                crate::domain::Column::Backlog => progress.backlog += 1,
                 crate::domain::Column::Todo => progress.todo += 1,
                 crate::domain::Column::Doing => progress.doing += 1,
                 crate::domain::Column::Done => progress.done += 1,

@@ -1,21 +1,20 @@
-# Plan a request: AI drafts, questions, then start them yourself
+# Plan a request: the Backlog, questions, then a person sends it
 
-When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, put a plan on the board as AI drafts and let the person see and correct it. Do not ask before registering it: reacting to a plan is easier than describing one.
+When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, decide what it asks for. If it asks for the plan only, put the plan in the Backlog and let the person see and correct it. If it asks you to carry out the work, create ordinary Todo tasks. If the scope is unclear, ask with `message ask` (`agboard skills questions`) before you create the plan.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
-2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. Create the tasks in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions. Everything you create this way is an AI draft (`draft: ai`), the user's tasks too. The board shows the epic's drafts as one proposed plan.
-3. **Ask what you cannot settle.** Ask in one `message ask` call (`agboard skills questions`), with choices and a recommendation where you can, and wait for the answers. List the draft tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A draft that refers to a question without an answer cannot be started: `start` and `epic start` fail with `start_blocked_by_questions`. A question can have no choices and be answered in words. When a question asks the user to judge something visual (a mock, a screenshot, a layout), attach the images to the question with `images` and show them in its `body` as `![description](attachments/<file name>)`; never send only a local link, because the user may be on a phone where it does not open.
-4. **Revise.** You may `edit` a draft and `history add` to it. Write the answers into the epic and the tasks, and record what changed. If the answers leave something open, ask again the same way.
-5. **Start the drafts.** When every question is answered and the plan is written up, start them yourself:
+2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. `epic add` has no lane. For a plan only, create each task in the Backlog with `--backlog`, in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions.
 
    ```sh
-   agboard --project "<name>" start <ID> --actor ai
-   agboard --project "<name>" epic start <EPIC-ID> --actor ai
+   agboard --project "<name>" add "Plan the work" --assignee ai --actor ai --backlog --epic <EPIC-ID>
    ```
 
-   `mv` and `state` on a draft are refused with `task_is_draft` until then. A person may also start drafts. Tasks a person is still drafting (`draft: human`) stay drafts. Work on other tasks while questions are open.
-6. **Proceed.** After the start, the tasks are ordinary tasks. Work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
+   A Backlog task means "do not start": agents never start it. For a request to carry out the work, create the tasks without `--backlog`; they are ordinary Todo tasks, and open questions make them pending as usual.
+3. **Ask what you cannot settle.** Ask in one `message ask` call (`agboard skills questions`), with choices and a recommendation where you can, and wait for the answers. List the tasks the answer would change in `tasks` (`--task` or the per-question `tasks`). A question can have no choices and be answered in words. When a question asks the user to judge something visual (a mock, a screenshot, a layout), attach the images to the question with `images` and show them in its `body` as `![description](attachments/<file name>)`; never send only a local link, because the user may be on a phone where it does not open.
+4. **Revise.** You may `edit` a Backlog task and `history add` to it. Write the answers into the epic and the tasks, and record what changed. If the answers leave something open, ask again the same way.
+5. **Leave the sending to the person.** For a Backlog plan only: only a person sends a Backlog task to Todo (`send`, `epic send`). `send`, `epic send`, `start`, and `epic start` fail for an agent with `human_only`, and `mv` and `state` on a Backlog task fail with `task_in_backlog`. Do not try them. Work on other tasks while the plan waits. For a request to carry out the work there is nothing to send: the tasks are Todo already, so go to step 6.
+6. **Proceed.** For a Backlog plan, after a person sends the tasks, they are ordinary Todo tasks; for an execute request they were Todo from the start. Work through the epic's tasks in its order (section 6) without asking again, except in the four cases of section 7.
 
-After the start, the board cannot stop you from rewriting a started task's contents. Keep to the plan you started: if the work needs a different scope, ask (`agboard skills questions`) instead of changing the tasks silently.
+After the send (or, for an execute request, once the tasks exist), the board cannot stop you from rewriting a started task's contents. Keep to the plan that was sent: if the work needs a different scope, ask (`agboard skills questions`) instead of changing the tasks silently.
 
-A task the user already put on the board needs no start to work on. Splitting an oversized task plan (section 3) is asked with a question on that task. A task you add to an epic that is already running is a draft too: start it with `start <ID> --actor ai`.
+A task the user already put on the board needs no send to work on. Splitting an oversized task plan (section 3) is asked with a question on that task.

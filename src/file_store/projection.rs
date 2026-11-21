@@ -79,6 +79,7 @@ pub struct EpicSummaryFields {
 /// How many of an epic's tasks are in each group.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub struct EpicProgress {
+    pub backlog: u32,
     pub todo: u32,
     pub doing: u32,
     pub done: u32,

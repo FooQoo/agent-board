@@ -11,6 +11,7 @@ use super::parse_task_id;
 use crate::domain::{Actor, Changed, NewTask, validate_attachment};
 use crate::file_store::model::AttachmentOwner;
 use crate::file_store::model::SimpleRequestInput;
+use crate::file_store::{DraftSave, ImageChanges};
 use crate::server::AppState;
 use crate::server::response::{agboard_error_response, error_response, json_response};
 use crate::server::store::{parse_project_id, refresh_index, with_request_files};
@@ -57,7 +58,7 @@ pub(super) async fn edit_task_multipart(
             "requestId is required.",
         );
     }
-    if payload.meta.draft == Some(crate::domain::Draft::Human) {
+    if payload.meta.draft.target == Some(Some(crate::domain::Draft::Human)) {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -65,28 +66,24 @@ pub(super) async fn edit_task_multipart(
             "draft \"human\" is only accepted when a task is added.",
         );
     }
-    let finalize = super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft);
+    let finalize = DraftSave {
+        target: super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft.target),
+        legacy_ai: payload.meta.draft.legacy_ai,
+    };
     let title = payload.meta.title;
     let description = payload.meta.description;
     let removed = payload.meta.remove_attachment_ids;
-    let additions = payload.additions;
-    let attachments_changed = !removed.is_empty() || !additions.is_empty();
+    let added = payload.additions;
+    let attachments_changed = !removed.is_empty() || !added.is_empty();
     let result = with_request_files(&state, &headers, move |store| {
         let now = chrono::Utc::now();
-        // Images first, then the text and the draft flag.
-        let owner = AttachmentOwner::Task(id);
-        for attachment_id in &removed {
-            store.delete_attachment_for_user(&project_id, &owner, attachment_id, now)?;
-        }
-        for input in additions {
-            store.add_attachment_for_user(&project_id, &owner, input, now)?;
-        }
-        store.edit_draft_task_to(
+        // The images and the text are saved under one lock, after every refusal.
+        store.edit_draft_task_with_images(
             &project_id,
             id,
-            title.as_deref(),
-            description.as_deref(),
+            (title.as_deref(), description.as_deref()),
             finalize,
+            ImageChanges { removed, added },
             now,
         )
     })
@@ -134,7 +131,7 @@ pub(super) async fn create_task_multipart(
     if payload.meta.request_kind.as_deref() == Some("simple") {
         if payload.meta.title.is_some()
             || payload.meta.assignee.is_some()
-            || payload.meta.draft.is_some()
+            || payload.meta.draft.target.is_some()
             || payload.meta.finalize
             || !payload.meta.remove_attachment_ids.is_empty()
         {
@@ -209,10 +206,15 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
-    let draft = match super::tasks::person_draft(payload.meta.draft) {
-        Ok(draft) => draft,
-        Err(error) => return agboard_error_response(&error),
-    };
+    if payload.meta.draft.legacy_ai {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "draft \"ai\" is not accepted when a task is added.",
+        );
+    }
+    let draft = payload.meta.draft.target.flatten();
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,

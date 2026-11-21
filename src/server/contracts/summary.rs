@@ -118,11 +118,18 @@ pub struct SummaryEpic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SummaryEpicProgress {
+    /// The plans in the Backlog; left out while there are none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub backlog: u32,
     pub todo: u32,
     pub doing: u32,
     pub done: u32,
     pub archived: u32,
     pub total: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
 }
 
 /// An epic has a document and no history of its own.

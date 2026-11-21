@@ -6,6 +6,7 @@ use crate::domain::{Actor, Assignee, Column, RunState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum ColumnArg {
+    Backlog,
     Todo,
     Doing,
     Done,
@@ -14,6 +15,7 @@ pub enum ColumnArg {
 impl ColumnArg {
     pub fn column(self) -> Column {
         match self {
+            ColumnArg::Backlog => Column::Backlog,
             ColumnArg::Todo => Column::Todo,
             ColumnArg::Doing => Column::Doing,
             ColumnArg::Done => Column::Done,

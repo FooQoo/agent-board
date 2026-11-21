@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Changed, Draft, ProjectId, RunState};
+use crate::domain::{Changed, Column, Draft, ProjectId, RunState};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::history_language::HistoryLanguage;
@@ -13,11 +13,10 @@ use super::super::{HistoryKind, Transition, lock_project, save_task, stamp, tran
 use super::view;
 
 impl FileStore {
-    /// Change who owns the draft: `Some(Draft::Human)` makes the task a person's
-    /// draft (also from an AI draft, while a person edits the proposal),
-    /// `Some(Draft::Ai)` gives a person's draft back to the proposal it was, and
-    /// `None` finalizes a person's draft. An AI draft is created by an agent and
-    /// started with `start_task`, so neither is possible here. Only an idle or
+    /// Take or release the edit lock: `Some(Draft::Human)` makes the task a
+    /// person's draft (a Backlog card too, while a person edits the plan), and
+    /// `None` finalizes it. Finalizing keeps the lane: a Backlog card stays in
+    /// the Backlog, and only `send_task` hands it over. Only an idle or
     /// pending task can become a draft. The update time does not move; the history
     /// records the change. `discard` marks leaving the draft as a discard of its
     /// changes instead of a confirmation; it does not apply to turning it on.
@@ -27,6 +26,21 @@ impl FileStore {
         id: i64,
         draft: Option<Draft>,
         discard: bool,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        self.set_draft_from(project, id, draft, discard, false, now)
+    }
+
+    /// Like `set_draft`. `legacy_ai` is set when an older client asked for `draft: null`
+    /// with `"ai"`: a card in Todo or Doing is then refused (see
+    /// `refuse_legacy_release_in_todo`) and a card in the Backlog only loses the edit lock.
+    pub fn set_draft_from(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        draft: Option<Draft>,
+        discard: bool,
+        legacy_ai: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         if draft == Some(Draft::Human) && discard {
@@ -47,20 +61,7 @@ impl FileStore {
                 changed: false,
             });
         }
-        match (task.draft, draft) {
-            (Some(Draft::Ai), None) => {
-                return Err(AgboardError::AiDraftNeedsStart {
-                    target: format!("task #{id}"),
-                });
-            }
-            (None, Some(Draft::Ai)) => {
-                return Err(AgboardError::InvalidValue {
-                    field: "draft".into(),
-                    reason: "An AI draft is created by an agent.".into(),
-                });
-            }
-            _ => {}
-        }
+        refuse_legacy_release_in_todo(&task, legacy_ai)?;
         if draft == Some(Draft::Human) && task.agent_status == RunState::Running {
             return Err(AgboardError::InvalidStateForDraft {
                 id,
@@ -83,6 +84,27 @@ impl FileStore {
     }
 }
 
+/// An older client names `draft: "ai"` to hand a plan back to the AI. A plan is in the
+/// Backlog now, where that only releases the edit lock. In Todo it would leave an
+/// unsent card the agent can pick up, so the save is refused until a person takes the
+/// card back to the Backlog. Checked under the project lock, with the lane just read.
+pub(super) fn refuse_legacy_release_in_todo(
+    task: &TaskFile,
+    legacy_ai: bool,
+) -> Result<(), AgboardError> {
+    if legacy_ai && matches!(task.task_status, Column::Todo | Column::Doing) {
+        return Err(AgboardError::InvalidValue {
+            field: "draft".into(),
+            reason: format!(
+                "Task #{} is not in the Backlog, so handing it back to the AI would leave \
+                 it ready to start. Take it back to the Backlog first, then save.",
+                task.id
+            ),
+        });
+    }
+    Ok(())
+}
+
 /// A draft history event. The statuses are the task's current ones.
 pub(super) fn draft_event(
     task: &TaskFile,
@@ -96,11 +118,6 @@ pub(super) fn draft_event(
         kind: HistoryKind::Draft,
         reason: Some(if draft == Some(Draft::Human) {
             language.text("Marked task as draft.", "タスクを下書きにしました。")
-        } else if draft == Some(Draft::Ai) {
-            language.text(
-                "Returned task to the AI draft.",
-                "タスクをAIの下書きに戻しました。",
-            )
         } else if discard {
             language.text("Discarded draft changes.", "下書きの変更を破棄しました。")
         } else {

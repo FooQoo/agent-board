@@ -1,18 +1,22 @@
 //! Editing a task's title and body, and editing a draft.
 
+use std::path::Path;
+
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Actor, Changed, Draft, ProjectId, validate_title};
+use crate::domain::{Actor, Attachment, Changed, Draft, ProjectId, validate_title};
 use crate::error::AgboardError;
 use crate::file_store::history_language::HistoryLanguage;
 use crate::file_store::model::TaskView;
 use crate::file_store::reader;
-use crate::file_store::{FileStore, TaskTextParts};
+use crate::file_store::{DraftSave, FileStore, TaskTextParts};
 
 use super::super::{
-    ensure_ai_task_not_done, lock_project, save_task_with_markdown, stamp, write_parts, write_text,
+    ensure_ai_task_not_done, lock_project, save_task_text, save_task_with_markdown, stamp,
+    write_parts, write_text,
 };
-use super::draft::draft_event;
+use super::draft::{draft_event, refuse_legacy_release_in_todo};
+use super::saved::SavedDraft;
 use super::{normalize_description, view};
 
 impl FileStore {
@@ -115,28 +119,51 @@ impl FileStore {
             id,
             title,
             description,
-            finalize.then_some(None),
+            DraftSave::from_finalize(finalize),
             now,
         )
     }
 
     /// Like `edit_draft_task`, with the draft the task ends as: `None` saves and
-    /// keeps the draft, `Some(None)` finalizes it, and `Some(Some(Draft::Ai))`
-    /// returns a person's edit of an AI proposal to that proposal. An AI draft
-    /// cannot be finalized: it is started with `start_task`.
+    /// keeps the draft, `Some(None)` finalizes it.
     pub fn edit_draft_task_to(
         &self,
         project: &ProjectId,
         id: i64,
         title: Option<&str>,
         description: Option<&str>,
-        finalize: Option<Option<Draft>>,
+        finalize: DraftSave,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
+        Ok(self
+            .save_draft_locked(
+                &project_dir,
+                project,
+                id,
+                (title, description),
+                (finalize, None),
+                now,
+            )?
+            .into_changed(shared, &project_dir))
+    }
+
+    /// `edit_draft_task_to` for a caller that holds the project lock, with the
+    /// title and description already validated; `images` replaces the image list.
+    /// `Err` means nothing was committed; `Ok` holds the saved state.
+    pub(super) fn save_draft_locked(
+        &self,
+        project_dir: &Path,
+        project: &ProjectId,
+        id: i64,
+        (title, description): (Option<String>, Option<String>),
+        (finalize, images): (DraftSave, Option<Vec<Attachment>>),
+        now: DateTime<Utc>,
+    ) -> Result<SavedDraft, AgboardError> {
+        let shared = self.shared_dir();
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
@@ -144,19 +171,20 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
+        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
-        let target = resolve_finalize(id, owner, finalize)?;
+        let target = resolve_finalize(finalize.target, owner);
         let (text_changed, markdown) =
-            write_text(shared, project, &project_dir, &mut task, title, description)?;
-        if !text_changed && target == current {
-            return Ok(Changed {
-                value: view(shared, project, id)?,
-                changed: false,
-            });
+            write_text(shared, project, project_dir, &mut task, title, description)?;
+        if !text_changed && target == current && images.is_none() {
+            return SavedDraft::unchanged(shared, project, task);
         }
         let at = stamp(now);
-        if text_changed {
+        if text_changed || images.is_some() {
             task.updated_at = at;
+        }
+        if let Some(attachments) = images {
+            task.attachments = attachments;
         }
         if target != current {
             task.draft = target;
@@ -173,11 +201,9 @@ impl FileStore {
                 },
             )?);
         }
-        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
-        Ok(Changed {
-            value: view(shared, project, id)?,
-            changed: true,
-        })
+        // The commit returns the text it wrote, so the response needs no later read.
+        let description = save_task_text(shared, project_dir, &task, markdown.as_deref())?;
+        Ok(SavedDraft::committed(task, description))
     }
 
     /// Edit a draft against the latest TASK.md and finalize in one pair save.
@@ -190,7 +216,14 @@ impl FileStore {
         finalize: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.edit_draft_task_parts_to(project, id, title, parts, finalize.then_some(None), now)
+        self.edit_draft_task_parts_to(
+            project,
+            id,
+            title,
+            parts,
+            DraftSave::from_finalize(finalize),
+            now,
+        )
     }
 
     /// `edit_draft_task_to` for body and acceptance parts.
@@ -200,7 +233,7 @@ impl FileStore {
         id: i64,
         title: Option<&str>,
         parts: TaskTextParts<'_>,
-        finalize: Option<Option<Draft>>,
+        finalize: DraftSave,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
@@ -213,8 +246,9 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
+        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
-        let target = resolve_finalize(id, owner, finalize)?;
+        let target = resolve_finalize(finalize.target, owner);
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
             shared,
@@ -261,19 +295,6 @@ impl FileStore {
 }
 
 /// The draft a saved edit leaves: the current one when `finalize` is `None`.
-/// Finalizing an AI draft is refused, because only starting it clears it.
-fn resolve_finalize(
-    id: i64,
-    current: Draft,
-    finalize: Option<Option<Draft>>,
-) -> Result<Option<Draft>, AgboardError> {
-    match finalize {
-        None => Ok(Some(current)),
-        Some(None) if current == Draft::Ai => Err(AgboardError::AiDraftNeedsStart {
-            target: format!("task #{id}"),
-        }),
-        Some(None) => Ok(None),
-        Some(Some(Draft::Ai)) => Ok(Some(Draft::Ai)),
-        Some(Some(Draft::Human)) => Ok(Some(Draft::Human)),
-    }
+fn resolve_finalize(finalize: Option<Option<Draft>>, current: Draft) -> Option<Draft> {
+    finalize.unwrap_or(Some(current))
 }

@@ -16,6 +16,7 @@ pub mod image_size;
 pub mod index;
 pub mod io;
 pub mod layout;
+mod legacy_draft;
 pub mod lock;
 pub mod message;
 pub mod model;
@@ -34,12 +35,12 @@ pub mod watch;
 
 use std::path::{Path, PathBuf};
 
-use crate::domain::{ProjectId, ProjectMeta};
+use crate::domain::{Draft, ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 use model::TaskView;
 pub use ops::{
-    Accepted, AnswerItem, AskInput, AskQuestion, EpicStarted, MAX_RESULTS, RecordedResult,
-    RequestImage, ResultInput, SendRequestInput,
+    Accepted, AnswerItem, AskInput, AskQuestion, EpicSent, ImageChanges, MAX_RESULTS,
+    RecordedResult, RequestImage, ResultInput, SendRequestInput,
 };
 use reader::ProjectSnapshot;
 
@@ -48,6 +49,24 @@ use reader::ProjectSnapshot;
 pub struct TaskTextParts<'a> {
     pub body: Option<&'a str>,
     pub acceptance: Option<&'a [frontmatter::AcceptanceItem]>,
+}
+
+/// How a saved draft ends: `target` is the draft it leaves (`None` keeps it, `Some(None)`
+/// finalizes it), and `legacy_ai` is set when an older client asked for it with `"ai"`.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct DraftSave {
+    pub target: Option<Option<Draft>>,
+    pub legacy_ai: bool,
+}
+
+impl DraftSave {
+    /// The save of a plain `finalize` flag.
+    pub fn from_finalize(finalize: bool) -> Self {
+        Self {
+            target: finalize.then_some(None),
+            legacy_ai: false,
+        }
+    }
 }
 
 /// The file-based store of one shared directory. Opening it reads nothing and

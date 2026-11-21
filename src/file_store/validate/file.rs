@@ -18,6 +18,15 @@ pub fn check_format_version(value: &Value, file: &str) -> Result<(), AgboardErro
     check_format_version_expected(value, file, 1)
 }
 
+/// Accept the versions of `task.json` and `epic.json`: 1, and 2 for a file that
+/// uses the Backlog. Anything else is `format_unsupported`.
+pub fn check_entity_format_version(value: &Value, file: &str) -> Result<(), AgboardError> {
+    match value.get("formatVersion").and_then(Value::as_u64) {
+        Some(1) | Some(2) => Ok(()),
+        _ => check_format_version_expected(value, file, 2),
+    }
+}
+
 pub fn check_format_version_expected(
     value: &Value,
     file: &str,

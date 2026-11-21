@@ -1,10 +1,10 @@
 //! The Summary's `messages` (questions, requests and approvals in one shape) and the rule that
-//! a start waits for the answers to questions about the draft. Every test uses a temporary
+//! a send waits for the answers to questions about the plan. Every test uses a temporary
 //! data area; servers listen on port 0.
 
 mod common;
 
-use agent_board::domain::{Actor, Assignee, Draft, NewTask, ProjectId};
+use agent_board::domain::{Actor, Assignee, Column, NewTask, ProjectId};
 use agent_board::error::AgboardError;
 use agent_board::file_store::message::messages;
 use agent_board::file_store::model::NewEpic;
@@ -38,21 +38,22 @@ fn fx() -> Fx {
 
 impl Fx {
     fn task(&self, title: &str, actor: Actor, epic: Option<&str>, minute: u32) -> i64 {
-        let id = self
-            .store
-            .create_task(
-                &self.project,
-                NewTask {
-                    title: title.into(),
-                    description: String::new(),
-                    assignee: Assignee::Ai,
-                    actor,
-                    draft: None,
-                },
-                at(minute),
-            )
-            .unwrap()
-            .id;
+        let new = NewTask {
+            title: title.into(),
+            description: String::new(),
+            assignee: Assignee::Ai,
+            actor,
+            draft: None,
+        };
+        // A plan an agent makes waits in the Backlog.
+        let id = if actor == Actor::Ai {
+            self.store
+                .create_task_in_backlog(&self.project, new, at(minute))
+        } else {
+            self.store.create_task(&self.project, new, at(minute))
+        }
+        .unwrap()
+        .id;
         if let Some(epic) = epic {
             self.store
                 .set_task_epic(
@@ -67,7 +68,7 @@ impl Fx {
         id
     }
 
-    fn epic(&self, id: &str, name: &str, actor_draft: Option<Draft>, minute: u32) -> EpicId {
+    fn epic(&self, id: &str, name: &str, minute: u32) -> EpicId {
         self.store
             .create_epic(
                 &self.project,
@@ -75,7 +76,7 @@ impl Fx {
                     id: id.into(),
                     name: name.into(),
                     color: None,
-                    draft: actor_draft,
+                    draft: None,
                     document: None,
                 },
                 at(minute),
@@ -194,65 +195,55 @@ fn a_request_is_the_agents_turn_until_it_is_accepted_or_withdrawn() {
 }
 
 #[test]
-fn a_task_start_is_refused_while_a_question_about_it_has_no_answer() {
+fn a_send_is_a_warning_for_a_person_while_a_question_about_it_has_no_answer() {
     let f = fx();
     let task = f.task("Plan", Actor::Ai, None, 1);
-    let other = f.task("Other", Actor::Ai, None, 2);
     let q = f.ask("Which way?", &[task], 3);
-    let refused = f
+    let warned = f
         .store
-        .start_task(&f.project, task, Actor::Human, at(4))
+        .send_task(&f.project, task, Actor::Human, false, at(4))
         .unwrap_err();
     assert!(
-        matches!(&refused, AgboardError::StartBlockedByQuestions { ids } if ids.as_slice() == std::slice::from_ref(&q))
+        matches!(&warned, AgboardError::SendWithOpenQuestions { ids } if ids.as_slice() == std::slice::from_ref(&q))
     );
     assert_eq!(
-        f.store.task(&f.project, task).unwrap().draft,
-        Some(Draft::Ai)
+        f.store.task(&f.project, task).unwrap().task_status,
+        Column::Backlog
     );
     assert!(
         f.store
-            .start_task(&f.project, other, Actor::Human, at(5))
-            .is_ok()
-    );
-    f.answer(&q, 6);
-    assert!(
-        f.store
-            .start_task(&f.project, task, Actor::Human, at(7))
+            .send_task(&f.project, task, Actor::Human, true, at(5))
             .is_ok()
     );
 }
 
 #[test]
-fn an_epic_start_is_refused_while_a_question_about_its_drafts_has_no_answer() {
+fn an_epic_send_is_a_warning_while_a_question_about_its_cards_has_no_answer() {
     let f = fx();
-    let epic = f.epic("PLAN", "Plan", Some(Draft::Ai), 1);
+    let epic = f.epic("PLAN", "Plan", 1);
     let one = f.task("One", Actor::Ai, Some("PLAN"), 2);
     let two = f.task("Two", Actor::Ai, Some("PLAN"), 3);
     let unrelated = f.task("Elsewhere", Actor::Ai, None, 4);
     f.ask("About elsewhere", &[unrelated], 5);
     let q = f.ask("About two", &[two], 6);
-    let refused = f
+    let warned = f
         .store
-        .start_epic(&f.project, &epic, Actor::Human, at(7))
+        .send_epic(&f.project, &epic, None, Actor::Human, false, at(7))
         .unwrap_err();
     assert!(
-        matches!(&refused, AgboardError::StartBlockedByQuestions { ids } if ids.as_slice() == std::slice::from_ref(&q))
+        matches!(&warned, AgboardError::SendWithOpenQuestions { ids } if ids.as_slice() == std::slice::from_ref(&q))
     );
     assert_eq!(
-        f.store.epic(&f.project, &epic).unwrap().draft,
-        Some(Draft::Ai)
-    );
-    assert_eq!(
-        f.store.task(&f.project, one).unwrap().draft,
-        Some(Draft::Ai)
+        f.store.task(&f.project, one).unwrap().task_status,
+        Column::Backlog,
+        "nothing is sent"
     );
     f.answer(&q, 8);
-    let started = f
+    let sent = f
         .store
-        .start_epic(&f.project, &epic, Actor::Human, at(9))
+        .send_epic(&f.project, &epic, None, Actor::Human, false, at(9))
         .unwrap();
-    assert_eq!(started.value.started, vec![one, two]);
+    assert_eq!(sent.value.sent, vec![one, two]);
 }
 
 #[test]
@@ -264,8 +255,24 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
         all.extend(args);
         json_ok(home.path(), &[&all[..], &["--json"]].concat())
     };
-    run(&["add", "Plan A", "--assignee", "ai", "--actor", "ai"]);
-    run(&["add", "Plan B", "--assignee", "ai", "--actor", "ai"]);
+    run(&[
+        "add",
+        "Plan A",
+        "--assignee",
+        "ai",
+        "--actor",
+        "ai",
+        "--backlog",
+    ]);
+    run(&[
+        "add",
+        "Plan B",
+        "--assignee",
+        "ai",
+        "--actor",
+        "ai",
+        "--backlog",
+    ]);
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -285,22 +292,23 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
     );
     assert_eq!(code, 0, "{err}");
 
+    // A person is warned and confirms with --force; an agent cannot send.
     let (code, name) = json_error(
         home.path(),
         &[
             "--project",
             "Demo",
-            "start",
+            "send",
             "2",
             "--actor",
             "human",
             "--json",
         ],
     );
-    assert_eq!((code, name.as_str()), (1, "start_blocked_by_questions"));
+    assert_eq!((code, name.as_str()), (1, "send_with_open_questions"));
     let (_, _, err_text) = agboard(
         home.path(),
-        &["--project", "Demo", "start", "2", "--actor", "human"],
+        &["--project", "Demo", "send", "2", "--actor", "human"],
     );
     assert!(err_text.contains("Q-1"), "{err_text}");
 
@@ -318,7 +326,7 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
     assert_eq!(kinds, [("question", "Q-1")]);
     server.stop();
 
-    // Answer it, and the agent starts the task.
+    // Answer it, and the person sends the task without a warning.
     let (code, _, err) = agboard(
         home.path(),
         &[
@@ -339,7 +347,15 @@ fn the_cli_and_the_api_name_the_unanswered_questions_and_the_summary_lists_messa
     assert_eq!(code, 0, "{err}");
     let started = json_ok(
         home.path(),
-        &["--project", "Demo", "start", "2", "--actor", "ai", "--json"],
+        &[
+            "--project",
+            "Demo",
+            "send",
+            "2",
+            "--actor",
+            "human",
+            "--json",
+        ],
     );
-    assert_eq!(started["task"]["draft"], serde_json::Value::Null);
+    assert_eq!(started["task"]["taskStatus"], "todo");
 }

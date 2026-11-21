@@ -45,11 +45,14 @@ pub struct AddArgs {
     /// Epic to put the task in (its EPIC-ID)
     #[arg(long, value_name = "EPIC-ID")]
     pub epic: Option<String>,
+    /// Create the task in the Backlog: a settled plan that must not be started until a person sends it to Todo (for a request for the plan only)
+    #[arg(long)]
+    pub backlog: bool,
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A task a person is drafting (draft: human) is read-only for agents: edit fails with task_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again. A task you created is an AI draft (draft: ai): you can edit it, and a person starts it.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
+    after_help = "A task a person is drafting (draft: human) is read-only for agents: edit fails with task_is_draft (exit code 1) and changes nothing. Wait for the user to finalize it, then try again. A task you created in the Backlog can be edited by you; only a person sends it to Todo.\n\nExamples:\n  agboard --project demo edit 15 --title \"Write the install guide\"\n  agboard --project demo edit 15 --desc \"Steps for macOS and Linux\"\n  agboard --project demo edit 15 --desc \"\""
 )]
 pub struct EditArgs {
     /// ID of the task
@@ -102,14 +105,17 @@ pub struct StateArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "The agent that wrote the plan starts it once every question about the task is answered and the plan is written up; a person can start it too. An open question on the task refuses the start (start_blocked_by_questions). A task that is not an AI draft changes nothing.\n\nExamples:\n  agboard --project demo start 12 --actor ai"
+    after_help = "Sending is the only operation that hands a plan over to be worked on; saving, answering, and checking conditions never do. Only a person sends a Backlog task: an agent is refused with human_only. When a question about the task is still open, the send is refused with send_with_open_questions until the person confirms with --force. A task that is not in the Backlog changes nothing. A task a person is editing is refused with task_is_draft.\n\nExamples:\n  agboard --project demo send 12 --actor human\n  agboard --project demo send 12 --actor human --force"
 )]
-pub struct StartArgs {
-    /// ID of the AI draft task to start
+pub struct SendArgs {
+    /// ID of the Backlog task to send to Todo
     pub id: i64,
     /// Who is making this change
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
+    /// Send even though a question about the task is open
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]

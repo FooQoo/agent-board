@@ -126,13 +126,6 @@ pub const RULES: &[Rule] = &[
         Kind::Check,
         state_rules::next_task,
     ),
-    entry(
-        "draft-moved",
-        Area::RunState,
-        Kind::Definite,
-        state_rules::draft_moved,
-    ),
-    entry("drafts", Area::RunState, Kind::Check, state_rules::drafts),
 ];
 
 /// A `State` rule shown in the progress table and the Stop checklist.

@@ -11,9 +11,9 @@ use super::epics::whole_or_parts;
 use super::{changed_task_response, parse_task_id};
 use crate::domain::{Actor, Draft};
 use crate::error::AgboardError;
-use crate::file_store::TaskTextParts;
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::validate::EpicId;
+use crate::file_store::{DraftSave, TaskTextParts};
 use crate::server::AppState;
 use crate::server::request::StrictJson;
 use crate::server::response::{agboard_error_response, error_response};
@@ -30,18 +30,18 @@ pub(super) struct EditTaskInput {
     acceptance: Option<Vec<AcceptanceItem>>,
     #[serde(default)]
     finalize: bool,
-    /// `"ai"` leaves the task an AI draft after the save: a person's edit of an AI
-    /// proposal goes back to the proposal instead of being finalized.
-    #[serde(default)]
-    draft: Option<Draft>,
+    /// `"human"` keeps the draft after the save; `"ai"` of older clients, like
+    /// `finalize`, releases the edit lock.
+    #[serde(default, deserialize_with = "super::draft_wire::named_draft")]
+    draft: super::draft_wire::NamedDraft,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct DraftInput {
-    /// `"human"` makes the task a person's draft, `null` finalizes it, and `"ai"`
-    /// gives it back to the AI draft it was.
-    #[serde(default, deserialize_with = "super::epics::present_draft")]
-    draft: Option<Option<Draft>>,
+    /// `"human"` makes the task a person's draft, `null` finalizes it (`"ai"` of
+    /// older clients does the same).
+    #[serde(default, deserialize_with = "super::draft_wire::present_named_draft")]
+    draft: super::draft_wire::NamedDraft,
     /// Leaving the draft discards its changes instead of confirming them.
     #[serde(default)]
     discard: bool,
@@ -67,14 +67,17 @@ pub(super) async fn edit_task(
         && input.body.is_none()
         && input.acceptance.is_none()
         && !input.finalize
-        && input.draft.is_none()
+        && input.draft.target.is_none()
     {
         return agboard_error_response(&AgboardError::InvalidArgument {
             message: "Nothing to change.".to_string(),
             command: None,
         });
     }
-    let finalize = finalize_target(input.finalize, input.draft);
+    let finalize = DraftSave {
+        target: finalize_target(input.finalize, input.draft.target),
+        legacy_ai: input.draft.legacy_ai,
+    };
     let result = with_request_files(&state, &headers, move |store| {
         if input.body.is_some() || input.acceptance.is_some() {
             if input.description.is_some() {
@@ -121,7 +124,7 @@ pub(super) async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let Some(draft) = input.draft else {
+    let Some(draft) = input.draft.target else {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -130,7 +133,14 @@ pub(super) async fn set_draft(
         );
     };
     let result = with_request_files(&state, &headers, move |store| {
-        store.set_draft(&project_id, id, draft, input.discard, chrono::Utc::now())
+        store.set_draft_from(
+            &project_id,
+            id,
+            draft,
+            input.discard,
+            input.draft.legacy_ai,
+            chrono::Utc::now(),
+        )
     })
     .await;
     changed_task_response(&state, result)
@@ -195,10 +205,13 @@ pub(super) async fn set_task_epic(
     changed_task_response(&state, result)
 }
 
-/// What a saved edit does to the draft: nothing, clear it, or end as an AI draft.
-pub(super) fn finalize_target(finalize: bool, draft: Option<Draft>) -> Option<Option<Draft>> {
+/// What a saved edit does to the draft: nothing, or the draft it ends as.
+pub(super) fn finalize_target(
+    finalize: bool,
+    draft: Option<Option<Draft>>,
+) -> Option<Option<Draft>> {
     match (finalize, draft) {
-        (_, Some(owner)) => Some(Some(owner)),
+        (_, Some(owner)) => Some(owner),
         (true, None) => Some(None),
         (false, None) => None,
     }

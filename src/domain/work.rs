@@ -17,20 +17,21 @@ pub enum Actor {
     Human,
 }
 
-/// Who is still writing a task or epic that is not yet put to work. `None` is a
-/// normal task or epic.
+/// A person is still writing a task or epic: the edit lock. An agent cannot
+/// change it while it is held. `None` is a task or epic nobody holds. A person
+/// holds it in the browser, on a Backlog card as well as on a normal one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Draft {
     /// A person's work in progress in the browser.
     Human,
-    /// A proposal an agent made; only a person can start it.
-    Ai,
 }
 
 impl Draft {
     /// Read a stored `draft`. Files written before the owner was recorded hold
     /// `isDraft` as a boolean: `true` is a person's draft, `false` is none.
+    /// `"ai"`, written by earlier versions, is converted before the file is
+    /// parsed (see `file_store::legacy_draft`) and never reaches this reader.
     pub fn deserialize_stored<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<Draft>, D::Error> {
@@ -62,8 +63,7 @@ pub struct NewTask {
     pub description: String,
     pub assignee: Assignee,
     pub actor: Actor,
-    /// The draft the task starts as. A task an agent creates is always an AI
-    /// draft, whatever is given here.
+    /// The edit lock the task starts with.
     pub draft: Option<Draft>,
 }
 
@@ -91,7 +91,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
     #[serde(with = "crate::clock::serde_utc")]
     pub agent_status_changed_at: DateTime<Utc>,
-    /// A draft is not put to work yet. See [`Draft`].
+    /// A person holds the edit lock. See [`Draft`].
     #[serde(
         default,
         alias = "isDraft",

@@ -53,9 +53,9 @@ pub(crate) fn agboard_error_response(error: &AgboardError) -> Response {
         | AgboardError::RequestWithdrawn { .. }
         | AgboardError::TaskStatusChanged { .. }
         | AgboardError::TaskIsDraft { .. }
-        | AgboardError::TaskIsAiDraft { .. }
+        | AgboardError::TaskInBacklog { .. }
         | AgboardError::EpicIsDraft { .. }
-        | AgboardError::AiDraftNeedsStart { .. }
+        | AgboardError::SendWithOpenQuestions { .. }
         | AgboardError::TaskIsDone { .. }
         | AgboardError::TaskNotDraft { .. }
         | AgboardError::InvalidStateForDraft { .. }

@@ -145,20 +145,6 @@ impl FileStore {
         if let Some(draft) = update.draft
             && draft != file.draft
         {
-            match (file.draft, draft) {
-                (Some(Draft::Ai), None) => {
-                    return Err(AgboardError::AiDraftNeedsStart {
-                        target: format!("epic {id}"),
-                    });
-                }
-                (None, Some(Draft::Ai)) => {
-                    return Err(AgboardError::InvalidValue {
-                        field: "draft".into(),
-                        reason: "An AI draft is created by an agent.".into(),
-                    });
-                }
-                _ => {}
-            }
             file.draft = draft;
             changed = true;
         }

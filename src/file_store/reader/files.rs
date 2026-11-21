@@ -8,7 +8,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use crate::error::AgboardError;
-use crate::file_store::model::{Problem, TaskMetadata};
+use crate::file_store::model::{EpicFile, Problem, TaskMetadata};
 use crate::file_store::validate;
 
 /// Parse one shared JSON file. Syntax errors, the `formatVersion` gate, and
@@ -33,13 +33,21 @@ pub(crate) fn parse_file<T: DeserializeOwned>(
     })
 }
 
-pub(super) fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetadata, AgboardError> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|e| AgboardError::FileInvalid {
-        file: label.to_string(),
-        field: String::new(),
-        reason: format!("The JSON is malformed: {e}."),
-    })?;
-    validate::check_format_version(&value, label)?;
+fn parse_entity<T: DeserializeOwned>(
+    bytes: &[u8],
+    label: &str,
+    upgrade: fn(&mut Value) -> bool,
+) -> Result<T, AgboardError> {
+    let mut value: Value =
+        serde_json::from_slice(bytes).map_err(|e| AgboardError::FileInvalid {
+            file: label.to_string(),
+            field: String::new(),
+            reason: format!("The JSON is malformed: {e}."),
+        })?;
+    validate::check_entity_format_version(&value, label)?;
+    // An AI draft of an earlier version reads as the Backlog; the one-time
+    // migration writes the same result to the file.
+    upgrade(&mut value);
     serde_json::from_value(value).map_err(|e| {
         let message = e.to_string();
         AgboardError::FileInvalid {
@@ -48,6 +56,24 @@ pub(super) fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetad
             reason: message,
         }
     })
+}
+
+pub(super) fn parse_task_metadata(bytes: &[u8], label: &str) -> Result<TaskMetadata, AgboardError> {
+    parse_entity(
+        bytes,
+        label,
+        crate::file_store::legacy_draft::upgrade_task_value,
+    )
+}
+
+/// Parse an `epic.json`: its format versions and an AI draft of an earlier
+/// version are handled here.
+pub(crate) fn parse_epic_file(bytes: &[u8], label: &str) -> Result<EpicFile, AgboardError> {
+    parse_entity(
+        bytes,
+        label,
+        crate::file_store::legacy_draft::upgrade_epic_value,
+    )
 }
 
 /// The problem a tolerated read error stands for, with the file label kept.

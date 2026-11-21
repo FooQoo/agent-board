@@ -1360,7 +1360,7 @@ fn each_notify_sends_one_changed() {
                     title: format!("Notified {n}"),
                     description: BODY.into(),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
+                    actor: Actor::Human,
                     draft: None,
                 },
                 t(12),

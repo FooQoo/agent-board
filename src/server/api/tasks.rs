@@ -86,9 +86,6 @@ pub(super) async fn create_task(
         Ok(description) => description.unwrap_or_default(),
         Err(error) => return agboard_error_response(&error),
     };
-    if let Err(error) = person_draft(input.draft) {
-        return agboard_error_response(&error);
-    }
     match with_request_files(&state, &headers, move |store| {
         store.create_task(
             &project_id,
@@ -257,17 +254,6 @@ pub(super) async fn set_agent_status(
             )
         }
         Err(error) => agboard_error_response(&error),
-    }
-}
-
-/// The draft a person may create something with: none or their own.
-pub(super) fn person_draft(draft: Option<Draft>) -> Result<Option<Draft>, AgboardError> {
-    match draft {
-        Some(Draft::Ai) => Err(AgboardError::InvalidValue {
-            field: "draft".into(),
-            reason: "An AI draft is created by an agent. Use \"human\" or null.".into(),
-        }),
-        other => Ok(other),
     }
 }
 

@@ -37,16 +37,16 @@ fn messages_and_reasons_follow_the_design_table() {
             "Wait for the user to finalize it, then try again.",
         ),
         (
-            "task #5 is a draft and read-only for agents.",
-            "Start it once its questions are answered (agboard start), then try again.",
+            "task #5 is in the Backlog and has not been sent to Todo.",
+            "Send it to Todo first (agboard send), then try again.",
         ),
         (
             "epic E is a draft and read-only for the CLI.",
             "Wait for the user to finalize it, then try again.",
         ),
         (
-            "task #5 is an AI draft; a person starts it instead.",
-            "Start the task (or its epic) instead of finalizing it.",
+            "the plan has open questions: Q-1.",
+            "Check the questions, then send again with --force (the API takes ack: true).",
         ),
         (
             "start is for a person only.",
@@ -81,8 +81,8 @@ fn messages_and_reasons_follow_the_design_table() {
             "A withdrawn question takes no answer. Ask a new question if one is still needed.",
         ),
         (
-            "cannot start while Q-2 has no answer.",
-            "Answer the questions (the board, or \"agboard message answer\"), then start again.",
+            "cannot send while Q-2 has no answer.",
+            "Answer the questions (the board, or \"agboard message answer\"), then send again.",
         ),
         (
             "message Q-3 not found.",

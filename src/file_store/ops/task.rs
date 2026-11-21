@@ -7,9 +7,12 @@ mod create;
 mod delete;
 mod draft;
 mod edit;
+mod edit_images;
 mod result;
 mod result_text;
+mod saved;
 
+pub use edit_images::ImageChanges;
 pub use result::{MAX_RESULTS, RecordedResult, ResultInput};
 
 use std::path::Path;

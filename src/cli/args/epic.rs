@@ -30,20 +30,29 @@ pub enum EpicCommand {
     Edit(EpicEditArgs),
     /// Delete an epic (humans only; asks for confirmation)
     Rm(EpicIdArgs),
-    /// Start an AI draft epic and all its AI draft tasks
-    Start(EpicStartArgs),
+    /// Send the Backlog cards of an epic to Todo
+    Send(EpicSendArgs),
+    /// Deprecated alias of epic send
+    #[command(hide = true)]
+    Start(EpicSendArgs),
 }
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "The agent that wrote the plan starts it once every question about its tasks is answered and the plan is written up; a person can start it too. An open question on one of its tasks refuses the start (start_blocked_by_questions). Tasks that a person is drafting stay drafts.\n\nExamples:\n  agboard --project demo epic start FILE-SHARE --actor ai"
+    after_help = "Sends the Backlog cards of the epic to Todo in one save: all of them, or only those named by --tasks. Only a person sends (an agent is refused with human_only). If any card cannot be sent, none is: a card a person is editing (task_is_draft), or an open question (send_with_open_questions until the person confirms with --force). Cards that are not in the Backlog stay as they are.\n\nExamples:\n  agboard --project demo epic send FILE-SHARE --actor human\n  agboard --project demo epic send FILE-SHARE --actor human --tasks 12,13 --force"
 )]
-pub struct EpicStartArgs {
+pub struct EpicSendArgs {
     /// The epic's EPIC-ID
     pub id: String,
     /// Who is making this change
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
+    /// Only these cards, as task IDs joined by commas (for example 12,13); all Backlog cards when omitted
+    #[arg(long, value_name = "IDS")]
+    pub tasks: Option<String>,
+    /// Send even though a question about a card is open
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]

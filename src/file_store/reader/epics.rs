@@ -1,6 +1,6 @@
 //! Reading every epic folder of a project.
 
-use super::files::{parse_file, problem_of};
+use super::files::{parse_epic_file, problem_of};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -34,7 +34,7 @@ pub(in crate::file_store) fn read_epics(
         let json_path = folder.join("epic.json");
         let json_label = layout::shared_label(shared, &json_path);
         let file: EpicFile = match io::read_bytes(&json_path, &json_label)
-            .and_then(|bytes| parse_file::<EpicFile>(&bytes, &json_label))
+            .and_then(|bytes| parse_epic_file(&bytes, &json_label))
         {
             Ok(file) => file,
             Err(error) => {

@@ -3,7 +3,7 @@
 //! The first time a project is read or written, under its lock: every question that is still
 //! open (not answered, and its request not withdrawn) becomes `qa/Q-<n>/QA.md` with the same
 //! number; answered and withdrawn questions are dropped. A start approval is not carried over:
-//! the AI tasks that wait on it become AI drafts, which a person starts. References to the
+//! the AI tasks that wait on it move to the Backlog, which a person sends to Todo. References to the
 //! dropped questions leave the tasks, so no task waits for a question that no longer exists.
 //! After this only the new format exists.
 
@@ -15,7 +15,7 @@ use serde::Deserialize;
 
 use super::super::save::task_pair_changes;
 use super::message_change;
-use crate::domain::{Assignee, Column, Draft, ProjectId, RunState};
+use crate::domain::{Assignee, Column, ProjectId, RunState};
 use crate::error::AgboardError;
 use crate::file_store::frontmatter::{compose_questions, questions_of};
 use crate::file_store::model::{Choice, HistoryRecord};
@@ -174,14 +174,15 @@ pub(in crate::file_store) fn migrate_legacy_locked(
         }
         if drafted {
             let language = store.history_language(project, &task)?;
-            task.draft = Some(Draft::Ai);
+            task.task_status = Column::Backlog;
+            task.task_status_changed_at = at;
             task.updated_at = at;
             task.history.push(HistoryRecord {
                 at,
                 reason: language
                     .text(
-                        "A start approval that was waiting for an answer became an AI draft; it is started once its questions are answered.",
-                        "回答待ちだった開始の承認は AI のドラフトになりました。質問に回答したあとで開始します。",
+                        "A start approval that was waiting for an answer moved the task to the Backlog; a person sends it to Todo.",
+                        "回答待ちだった開始の承認により、タスクは Backlog に移りました。人が Todo へ送ります。",
                     )
                     .to_owned(),
             });

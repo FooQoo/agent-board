@@ -49,14 +49,14 @@ impl Fixture {
 
     fn ai_draft(&self, name: &str, body: &str) -> i64 {
         self.store
-            .create_task(
+            .create_task_in_backlog(
                 &self.project,
                 NewTask {
                     title: name.into(),
                     description: body.into(),
                     assignee: Assignee::Ai,
                     actor: Actor::Ai,
-                    draft: Some(crate::domain::Draft::Ai),
+                    draft: None,
                 },
                 at(1),
             )

@@ -1,13 +1,14 @@
-//! The board router and its routes. The Host guard and the write guard are in
-//! `guards`; the handlers live in the submodules, grouped as the routes are.
+//! The board router and its routes; the handlers live in the submodules, grouped as the routes are.
 
 mod archive;
 mod archive_page;
 mod detail;
 mod docs;
+mod draft_wire;
 mod epic_attachments;
 mod epics;
 mod guards;
+mod local;
 mod messages;
 mod monitor_connections;
 mod multipart;
@@ -16,6 +17,7 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
+mod send;
 mod sessions;
 mod summaries;
 mod summary;
@@ -47,10 +49,8 @@ use messages::*;
 use onboarding::*;
 use pages::*;
 use projects::*;
-use sessions::{
-    launch_session, list_sessions, session_log, session_models, set_autostart, stop_session,
-    touch_session,
-};
+use send::{send_epic, send_task};
+use sessions::list_sessions;
 use summaries::{dismiss_summary, list_summaries};
 use summary::summary;
 use task_acceptance::*;
@@ -73,32 +73,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         port: state.port,
         token: state.token.clone(),
     };
-    let local_only = monitor_connections::routes()
-        .route("/api/notify", post(notify))
-        .route(
-            "/api/projects/{project_id}/sessions/touch",
-            post(touch_session),
-        )
-        .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
-        .route(
-            "/api/projects/{project_id}/sessions/models",
-            get(session_models),
-        )
-        .route("/api/projects/{project_id}/sessions/log", get(session_log))
-        .route(
-            "/api/projects/{project_id}/sessions/launch",
-            post(launch_session),
-        )
-        .route(
-            "/api/projects/{project_id}/sessions/stop",
-            post(stop_session),
-        )
-        .route(
-            "/api/projects/{project_id}/sessions/autostart",
-            put(set_autostart),
-        );
     routes(get(index))
-        .merge(local_only)
+        .merge(local::routes())
         .layer(middleware::from_fn_with_state(
             guard_context.clone(),
             write_guard,
@@ -220,6 +196,14 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route(
             "/api/projects/{project_id}/tasks/{id}/draft",
             put(set_draft),
+        )
+        .route(
+            "/api/projects/{project_id}/tasks/{id}/send",
+            post(send_task),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}/send",
+            post(send_epic),
         )
         .route(
             "/api/projects/{project_id}/tasks/{id}/acceptance/{condition}",

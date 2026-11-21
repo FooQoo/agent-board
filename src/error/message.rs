@@ -35,14 +35,14 @@ impl AgboardError {
             AgboardError::TaskIsDraft { id } => {
                 format!("task #{id} is a draft and read-only for agents.")
             }
-            AgboardError::TaskIsAiDraft { id } => {
-                format!("task #{id} is a draft and read-only for agents.")
+            AgboardError::TaskInBacklog { id } => {
+                format!("task #{id} is in the Backlog and has not been sent to Todo.")
             }
             AgboardError::EpicIsDraft { id } => {
                 format!("epic {id} is a draft and read-only for the CLI.")
             }
-            AgboardError::AiDraftNeedsStart { target } => {
-                format!("{target} is an AI draft; a person starts it instead.")
+            AgboardError::SendWithOpenQuestions { ids } => {
+                format!("the plan has open questions: {}.", ids.join(", "))
             }
             AgboardError::HumanOnly { action } => format!("{action} is for a person only."),
             AgboardError::AiOnly { action } => format!("{action} is for an agent only."),
@@ -67,7 +67,7 @@ impl AgboardError {
                 format!("{} withdrawn.", ids.join(", "))
             }
             AgboardError::StartBlockedByQuestions { ids } => {
-                format!("cannot start while {} has no answer.", ids.join(", "))
+                format!("cannot send while {} has no answer.", ids.join(", "))
             }
             AgboardError::MessageNotFound { id } => format!("message {id} not found."),
             AgboardError::MessageClosed { id } => {

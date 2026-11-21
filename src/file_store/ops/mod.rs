@@ -10,6 +10,7 @@ mod agent;
 mod agent_stopped;
 
 mod attachment;
+mod backlog_migrate;
 mod completion;
 mod epic;
 mod history_event;
@@ -17,18 +18,19 @@ mod onboarding;
 mod qa;
 mod request_create;
 mod save;
-mod start;
+mod send;
 mod task;
 mod text;
 
+pub(in crate::file_store) use backlog_migrate::migrate_ai_drafts_locked;
 pub(in crate::file_store) use qa::migrate_legacy_locked;
 use qa::task_waits;
 pub use qa::{Accepted, AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
-pub use start::EpicStarted;
-pub use task::{MAX_RESULTS, RecordedResult, ResultInput};
+pub use send::EpicSent;
+pub use task::{ImageChanges, MAX_RESULTS, RecordedResult, ResultInput};
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};
-use self::save::{save_task, save_task_with_markdown};
+use self::save::{save_task, save_task_text, save_task_with_markdown};
 use self::text::{write_parts, write_text};
 
 use std::path::{Path, PathBuf};
@@ -70,6 +72,7 @@ pub(crate) fn lock_project(
     let lock = WriteLock::acquire(&layout::write_lock(&dir))?;
     transaction::recover_locked(&dir)?;
     migrate_legacy_locked(shared, project, &dir)?;
+    migrate_ai_drafts_locked(shared, project, &dir)?;
     Ok((dir, lock))
 }
 

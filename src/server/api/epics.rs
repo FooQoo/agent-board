@@ -6,7 +6,7 @@ use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 use crate::domain::{Changed, Draft};
 use crate::error::AgboardError;
@@ -41,9 +41,9 @@ pub(super) struct EpicPatchInput {
     name: Option<String>,
     #[serde(default)]
     color: Option<String>,
-    /// `"human"` or `null` sets or clears a person's draft; `"ai"` returns it to
-    /// the AI draft it was. An absent field keeps the draft.
-    #[serde(default, deserialize_with = "present_draft")]
+    /// `"human"` or `null` sets or clears a person's draft (`"ai"` of older clients
+    /// clears it too). An absent field keeps the draft.
+    #[serde(default, deserialize_with = "super::draft_wire::present_draft")]
     draft: Option<Option<Draft>>,
     #[serde(default)]
     document: Option<String>,
@@ -52,13 +52,6 @@ pub(super) struct EpicPatchInput {
     /// The task order of the epic as waves. Replaces the stored order.
     #[serde(default)]
     waves: Option<Vec<Vec<i64>>>,
-}
-
-/// A `draft` that is present, `null` included, is `Some`; an absent one is `None`.
-pub(super) fn present_draft<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<Option<Draft>>, D::Error> {
-    Option::<Draft>::deserialize(deserializer).map(Some)
 }
 
 /// The error for giving a whole file and its parts in one request.
@@ -157,9 +150,6 @@ pub(super) async fn create_epic(
         Ok(document) => document,
         Err(error) => return agboard_error_response(&error),
     };
-    if let Err(error) = super::tasks::person_draft(input.draft) {
-        return agboard_error_response(&error);
-    }
     let new = NewEpic {
         id: input.id,
         name: input.name,
