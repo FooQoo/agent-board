@@ -27,6 +27,34 @@ cat <path> | agboard --project "<name>" message ask --actor ai --task <id> --que
 - The command prints one JSON line per event. The first line is `registered`, with the question IDs (`Q-<n>`); keep them. While it waits it prints a short `waiting` line every 60 seconds. The last line is `answered` with all answers (exit 0), `timeout` (exit 5), `withdrawn` (exit 6), or `error`.
 - The task must be an AI task in `todo` or `doing`. While it waits, `state <id> running` is refused with `questions_unanswered`.
 
+## Ask about the reading, not only the details
+
+A short request often names a feeling or a gesture, not the change. Before you plan around your first reading, write the reading back in your own words and ask whether it is right. Cover:
+
+- **The target.** What the request acts on: a card or a lane, one item or many, this screen or every screen.
+- **The purpose.** What the person wants to stop doing or be able to do. The purpose often picks the design for you.
+- **The nearest existing behavior.** Name a behavior the product already has that works the same way, so the person can say "yes, like that".
+- **Words with two meanings.** When a word reads two ways (for example "select all" or "start selecting"), ask which one.
+
+Put the reading in the body and offer the likely readings as choices, with your recommendation:
+
+```json
+{
+  "questions": [
+    {
+      "body": "I read \"a right swipe in the Backlog lane\" as a lane gesture: swiping right past the lane's first edge starts selecting cards, like the Done lane's swipe that archives all. It saves scrolling to the Select button at the bottom. Is that right?",
+      "choices": [
+        { "id": "lane-select", "label": "Yes: a lane swipe that starts selecting" },
+        { "id": "card-move", "label": "No: a card swipe that moves that card" }
+      ],
+      "recommendedChoiceId": "lane-select"
+    }
+  ]
+}
+```
+
+Do not make the choices variations of your own first reading: include the readings that differ in target or purpose. When you delegate the work, pass the confirmed reading and its purpose to the subagent, not only the request text.
+
 ## Wait for the answers
 
 Keep the command running until its last line, with the default 600-second limit. Run it in the background where your agent can and is told when it ends (Claude Code); otherwise run it in the foreground (Codex reads a long command in chunks and does not cut it off). After `timeout`, the questions stay open: wait again with `agboard --project "<name>" message wait <Q-id> [<Q-id>...] --json`, the same way, for as long as the answer is needed. Never ask the same questions a second time. `withdrawn` means no question is open any more and some were withdrawn. After an `error` such as `board_unavailable`, wait again with `message wait`. None of these is an answer, and dependent work waits for the actual answer. A command that waits starts the server itself; do not start `agboard serve` first. Use `--no-wait` only when the user explicitly asks to register a question and return immediately.
