@@ -6,6 +6,7 @@
 //! owner's JSON. The limits are per owner: 20 images, 50 MiB in total, and
 //! 10 MiB per image (see `domain::validate_attachment`).
 
+pub(super) mod locked;
 mod owner;
 
 use std::fs;
@@ -25,7 +26,8 @@ use crate::domain::{
 };
 use crate::error::AgboardError;
 
-use self::owner::{load, save};
+use self::locked::{add_image_locked, delete_image_locked};
+use self::owner::load;
 
 /// The file of an image: `assets/<id>.<ext>` below the owner's folder. The
 /// ID is checked by the layout functions before a path exists.
@@ -144,23 +146,15 @@ impl FileStore {
     ) -> Result<Attachment, AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut loaded = load(shared, project, owner)?;
-        loaded.ensure_writable(block_drafts)?;
-        let (metadata, path) = write_image(
+        add_image_locked(
             shared,
             &project_dir,
+            project,
             owner,
-            loaded.attachments(),
-            &input,
-            stamp(now),
-        )?;
-        loaded.attachments_mut().push(metadata.clone());
-        loaded.touch(metadata.created_at);
-        if let Err(error) = save(shared, &project_dir, &loaded) {
-            let _ = fs::remove_file(&path);
-            return Err(error);
-        }
-        Ok(metadata)
+            input,
+            now,
+            block_drafts,
+        )
     }
 
     /// Remove an image from the agent side (the CLI). A draft task refuses it.
@@ -197,36 +191,15 @@ impl FileStore {
     ) -> Result<(), AgboardError> {
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let mut loaded = load(shared, project, owner)?;
-        loaded.ensure_writable(block_drafts)?;
-        let index = loaded
-            .attachments()
-            .iter()
-            .position(|a| a.id == attachment_id)
-            .ok_or_else(|| AgboardError::AttachmentNotFound {
-                id: attachment_id.to_string(),
-            })?;
-        if let Some(version) = loaded.result_using(attachment_id) {
-            return Err(AgboardError::InvalidValue {
-                field: "attachmentId".into(),
-                reason: format!("Result version {version} uses this image."),
-            });
-        }
-        let media_type = loaded.attachments()[index].media_type.clone();
-        let path = asset_file(&project_dir, owner, attachment_id, &media_type)?;
-        let label = layout::shared_label(shared, &path);
-        if layout::has_symlink_below(&project_dir, &path).map_err(|e| io::write_error(&label, e))? {
-            return Err(io::write_error(&label, "a symbolic link is in the way"));
-        }
-
-        loaded.attachments_mut().remove(index);
-        loaded.touch(stamp(now));
-        save(shared, &project_dir, &loaded)?;
-        match fs::remove_file(&path) {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(io::write_error(&label, e)),
-        }
+        delete_image_locked(
+            shared,
+            &project_dir,
+            project,
+            owner,
+            attachment_id,
+            now,
+            block_drafts,
+        )
     }
 
     /// The image's metadata and file path. An image that is not recorded for

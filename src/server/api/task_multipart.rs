@@ -9,9 +9,9 @@ use axum::response::Response;
 use super::multipart::parse_multipart;
 use super::parse_task_id;
 use crate::domain::{Actor, Changed, NewTask, validate_attachment};
-use crate::file_store::DraftSave;
 use crate::file_store::model::AttachmentOwner;
 use crate::file_store::model::SimpleRequestInput;
+use crate::file_store::{DraftSave, ImageChanges};
 use crate::server::AppState;
 use crate::server::response::{agboard_error_response, error_response, json_response};
 use crate::server::store::{parse_project_id, refresh_index, with_request_files};
@@ -73,26 +73,17 @@ pub(super) async fn edit_task_multipart(
     let title = payload.meta.title;
     let description = payload.meta.description;
     let removed = payload.meta.remove_attachment_ids;
-    let additions = payload.additions;
-    let attachments_changed = !removed.is_empty() || !additions.is_empty();
+    let added = payload.additions;
+    let attachments_changed = !removed.is_empty() || !added.is_empty();
     let result = with_request_files(&state, &headers, move |store| {
         let now = chrono::Utc::now();
-        // Images first, then the text and the draft flag.
-        let owner = AttachmentOwner::Task(id);
-        // A save that will be refused must not change the images first.
-        store.ensure_legacy_release_allowed(&project_id, id, finalize.legacy_ai)?;
-        for attachment_id in &removed {
-            store.delete_attachment_for_user(&project_id, &owner, attachment_id, now)?;
-        }
-        for input in additions {
-            store.add_attachment_for_user(&project_id, &owner, input, now)?;
-        }
-        store.edit_draft_task_to(
+        // The images and the text are saved under one lock, after every refusal.
+        store.edit_draft_task_with_images(
             &project_id,
             id,
-            title.as_deref(),
-            description.as_deref(),
+            (title.as_deref(), description.as_deref()),
             finalize,
+            ImageChanges { removed, added },
             now,
         )
     })
