@@ -8,7 +8,7 @@ Remote access opens the board from another device when you are away from your de
 
 ## What the monitor shows
 
-The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
+The monitor shows one project at a time. The address names it (`?project=`), and the project switcher in the header lists every project, as on the PC. The screen shows one lane at a time, Todo, Doing, or Done, and you move between them as described in [Switch lanes](#switch-lanes). A card shows its number, title, state, and the time of its last change; it does not repeat the project name, which the header already shows. AI-owned tasks show their agent state inline; Pending questions in Todo or Doing show an **Answer the question** button on the task, which opens an answer sheet from the bottom.
 
 A bar at the bottom of the screen holds the main places, left to right: **Board**, **Messages**, **Ask**, **Archive**, and **Settings**. It stays clear of the home indicator. **Ask** is in the middle and a little stronger than the rest. Everything except **Board** opens a drawer that slides up over the board, and **Board** closes it.
 
