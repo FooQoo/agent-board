@@ -6,6 +6,8 @@ export const DOUBLE_TAP_SCALE = 2.5;
 /** How long (ms) and how far (px) apart two taps may be to count as a double tap. */
 export const DOUBLE_TAP_MS = 300;
 export const DOUBLE_TAP_SLOP = 30;
+/** A dblclick this soon (ms) after a touch double tap toggled the zoom is the same gesture. */
+export const TOUCH_DBLCLICK_MS = 500;
 /** Within this of 1x, a zoom counts as not zoomed, so tiny drift does not leave the picture zoomed. */
 const SNAP_EPSILON = 0.01;
 
@@ -96,4 +98,24 @@ export function isDoubleTap(
     now - previous.time <= DOUBLE_TAP_MS &&
     distance(previous.at, at) <= DOUBLE_TAP_SLOP
   );
+}
+
+/** What a pinch remembers from the moment the second finger went down. */
+export interface PinchStart {
+  distance: number;
+  mid: Point;
+  zoom: ZoomState;
+}
+
+/**
+ * The zoom for fingers now at `a` and `b`: the picture point that was under the starting midpoint
+ * stays under the current midpoint, so the picture follows the fingers as they drift as well as spread.
+ */
+export function pinchTransform(start: PinchStart, a: Point, b: Point, frame: ZoomFrame): ZoomState {
+  const scale = clampScale(start.zoom.scale * (distance(a, b) / start.distance));
+  const ratio = scale / start.zoom.scale;
+  const now = midpoint(a, b);
+  const tx = now.x - frame.cx - (start.mid.x - frame.cx - start.zoom.tx) * ratio;
+  const ty = now.y - frame.cy - (start.mid.y - frame.cy - start.zoom.ty) * ratio;
+  return clampPan({ scale, tx, ty }, frame);
 }

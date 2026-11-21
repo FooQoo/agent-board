@@ -3,9 +3,12 @@ import {
   clampPan,
   DOUBLE_TAP_SCALE,
   distance,
+  midpoint,
   IDENTITY,
   isDoubleTap,
-  midpoint,
+  TOUCH_DBLCLICK_MS,
+  type PinchStart,
+  pinchTransform,
   type Point,
   type ZoomFrame,
   type ZoomState,
@@ -24,7 +27,7 @@ export interface ZoomHandlers {
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
   onPointerCancel: (event: PointerEvent) => void;
-  onDoubleClick: (event: { clientX: number; clientY: number }) => void;
+  onDoubleClick: (event: { clientX: number; clientY: number; timeStamp?: number }) => void;
 }
 
 /**
@@ -41,7 +44,8 @@ export function useImageZoom(
   const [zoom, setZoom] = useState<ZoomState>(IDENTITY);
   const zoomRef = useRef(zoom);
   const pointers = useRef(new Map<number, Point>());
-  const pinch = useRef<{ distance: number; scale: number } | null>(null);
+  const pinch = useRef<PinchStart | null>(null);
+  const lastTouchToggle = useRef<number | null>(null);
   const lastTap = useRef<{ time: number; at: Point } | null>(null);
 
   const apply = useCallback((next: ZoomState) => {
@@ -53,6 +57,7 @@ export function useImageZoom(
     pinch.current = null;
     pointers.current.clear();
     lastTap.current = null;
+    lastTouchToggle.current = null;
     apply(IDENTITY);
   }, [resetKey, apply]);
 
@@ -116,7 +121,11 @@ export function useImageZoom(
     pointers.current.set(event.pointerId, local(event.clientX, event.clientY));
     const pair = firstTwo(pointers.current);
     if (pair && pointers.current.size === 2) {
-      pinch.current = { distance: distance(pair[0], pair[1]), scale: zoomRef.current.scale };
+      pinch.current = {
+        distance: distance(pair[0], pair[1]),
+        mid: midpoint(pair[0], pair[1]),
+        zoom: zoomRef.current,
+      };
       lastTap.current = null;
     }
     if (pointers.current.size >= 2 || zoomRef.current.scale > 1) {
@@ -136,9 +145,7 @@ export function useImageZoom(
     if (!f) return;
     const pair = firstTwo(pointers.current);
     if (pair && pinch.current) {
-      const [a, b] = pair;
-      const ratio = distance(a, b) / pinch.current.distance;
-      apply(zoomAt(zoomRef.current, pinch.current.scale * ratio, midpoint(a, b), f));
+      apply(pinchTransform(pinch.current, pair[0], pair[1], f));
     } else if (pointers.current.size === 1 && zoomRef.current.scale > 1) {
       const { scale, tx, ty } = zoomRef.current;
       apply(clampPan({ scale, tx: tx + at.x - before.x, ty: ty + at.y - before.y }, f));
@@ -155,6 +162,8 @@ export function useImageZoom(
     if (Math.hypot(at.x - start.x, at.y - start.y) >= SWIPE_SLOP) return;
     if (isDoubleTap(lastTap.current, event.timeStamp, at)) {
       lastTap.current = null;
+      // The browser may follow a touch double tap with a dblclick; onDoubleClick skips that one.
+      lastTouchToggle.current = event.timeStamp;
       toggleAt(at);
     } else {
       lastTap.current = { time: event.timeStamp, at };
@@ -164,7 +173,12 @@ export function useImageZoom(
     pointers.current.delete(event.pointerId);
     pinch.current = null;
   };
-  const onDoubleClick = (event: { clientX: number; clientY: number }) => {
+  const onDoubleClick = (event: { clientX: number; clientY: number; timeStamp?: number }) => {
+    const toggled = lastTouchToggle.current;
+    lastTouchToggle.current = null;
+    if (toggled !== null && (event.timeStamp ?? performance.now()) - toggled <= TOUCH_DBLCLICK_MS) {
+      return;
+    }
     toggleAt(local(event.clientX, event.clientY));
   };
 

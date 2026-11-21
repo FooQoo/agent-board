@@ -61,6 +61,25 @@ describe('ImageViewer zoom', () => {
     expect(scaleOf('First')).toBeGreaterThan(1);
   });
 
+  it('toggles once when a touch double tap is followed by a dblclick', () => {
+    render(<ImageViewer images={IMAGES} index={0} onIndexChange={() => {}} />);
+    const slide = slideAt(0);
+    const tap = () => {
+      const init = { pointerType: 'touch', pointerId: 7, clientX: 30, clientY: 30 };
+      fireEvent.pointerDown(slide, init);
+      fireEvent.pointerUp(slide, init);
+    };
+    tap();
+    tap();
+    const zoomed = scaleOf('First');
+    expect(zoomed).toBeGreaterThan(1);
+    fireEvent.doubleClick(slide, { clientX: 30, clientY: 30 });
+    expect(scaleOf('First')).toBe(zoomed);
+    // A later mouse double click still toggles.
+    fireEvent.doubleClick(slide, { clientX: 30, clientY: 30 });
+    expect(scaleOf('First')).toBe(1);
+  });
+
   it('zooms with a trackpad pinch (ctrl + wheel) without zooming the page', () => {
     render(<ImageViewer images={IMAGES} index={0} onIndexChange={() => {}} />);
     const slide = slideAt(0);

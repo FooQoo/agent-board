@@ -7,6 +7,7 @@ import {
   isDoubleTap,
   MAX_SCALE,
   midpoint,
+  pinchTransform,
   type ZoomFrame,
   zoomAt,
 } from './pinchZoom';
@@ -54,5 +55,23 @@ describe('pinchZoom', () => {
     expect(isDoubleTap({ time: 0, at }, DOUBLE_TAP_MS, { x: 20, y: 12 })).toBe(true);
     expect(isDoubleTap({ time: 0, at }, DOUBLE_TAP_MS + 1, at)).toBe(false);
     expect(isDoubleTap({ time: 0, at }, 100, { x: 200, y: 10 })).toBe(false);
+  });
+
+  it('keeps the picture under the fingers when the pinch midpoint moves', () => {
+    const start = { distance: 100, mid: { x: 150, y: 200 }, zoom: IDENTITY };
+    // The second finger travels from x=200 to x=400: scale 3, and the midpoint moves from 150 to 250.
+    const next = pinchTransform(start, { x: 100, y: 200 }, { x: 400, y: 200 }, frame);
+    expect(next.scale).toBeCloseTo(3);
+    expect(next.tx).toBeCloseTo(100);
+    // The picture point under the starting midpoint is now under the current midpoint.
+    expect((250 - frame.cx - next.tx) / next.scale).toBeCloseTo(150 - frame.cx);
+  });
+
+  it('matches a fixed-midpoint zoom when the midpoint does not move', () => {
+    const start = { distance: 100, mid: { x: 250, y: 200 }, zoom: IDENTITY };
+    const next = pinchTransform(start, { x: 200, y: 200 }, { x: 300, y: 200 }, frame);
+    expect(next).toEqual(IDENTITY);
+    const wider = pinchTransform(start, { x: 150, y: 200 }, { x: 350, y: 200 }, frame);
+    expect(wider).toEqual(zoomAt(IDENTITY, 2, { x: 250, y: 200 }, frame));
   });
 });
