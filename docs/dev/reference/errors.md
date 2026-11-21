@@ -11,10 +11,11 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_not_found` | The task ID does not exist in the project. | 3 | 404 |
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
-| `task_is_draft` | An AI `edit` or `history add` targets a person's draft (`human`), or an AI `mv` or `state` targets any draft. The `reason` for a person's draft says to wait for the user to finalize it; for an AI draft it points to `agboard start`. | 1 | 409 |
-| `epic_is_draft` | A CLI `epic edit`, or `epic edit --waves`, targets a person's draft epic; or an epic in a person's draft is started. | 1 | 409 |
-| `ai_draft_needs_start` | A finalize or a `draft: null` is asked of an AI draft task or epic. Only starting it clears the draft. | 1 | 409 |
-| `human_only` | An agent withdraws a request. Only a person can. | 1 | 403 |
+| `task_is_draft` | An AI `edit`, `history add`, `mv`, or `state` targets a person's draft (`human`); or a person's `send` targets one. The `reason` says to wait for the user to finalize it. | 1 | 409 |
+| `task_in_backlog` | An agent's `mv` or `state`, or a person's Web move to Doing or Done, targets a Backlog task. Send it to Todo first. | 1 | 409 |
+| `send_with_open_questions` | A person's `send`, `epic send`, or Web move to Todo targets a plan with open questions and no confirmation (`--force`, or `ack: true` in the API). Nothing is saved; the message lists the question IDs. After a confirmed send the question stays and the task is pending until it is answered. | 1 | 409 |
+| `epic_is_draft` | A CLI `epic edit`, or `epic edit --waves`, targets a person's draft epic; or a person sends an epic in a person's draft. | 1 | 409 |
+| `human_only` | An agent withdraws a request, or runs `send`, `epic send`, `start`, `epic start`, or `mv ... backlog`. Only a person can. | 1 | 403 |
 | `task_not_draft` | A web edit targets a task that is not a draft. | 1 | 409 |
 | `task_is_done` | An AI change targets a Done task. The first `result add --final` on a Done task with no final result is the one change allowed. | 1 | 409 |
 | `acceptance_unmet` | An AI moves a task to Done while a condition is unmet or the frontmatter is invalid. | 2 | n/a |
@@ -30,7 +31,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `questions_unanswered` | An agent tried to set a task to Running, or to move it to Done, while the task waits for a person. | 1 | 409 |
 | `question_answered` | An answer names a question that already has a reply. Nothing is saved; the output includes the recorded questions. | 1 | 409 |
 | `question_withdrawn` | An answer names a question that was withdrawn. Nothing is saved. | 1 | 409 |
-| `start_blocked_by_questions` | `start` or `epic start` was run on a task, or an epic, while a question about that task (or about an AI-draft task of the epic) has no reply. Nothing is saved; the message names the questions. | 1 | 409 |
+| `start_blocked_by_questions` | Kept for compatibility. `send` no longer returns it; a plan with open questions gives `send_with_open_questions` instead. | 1 | 409 |
 | `message_not_found` | The question or request ID does not exist in the project. | 3 | 404 |
 | `message_closed` | A withdrawal names a question that already has a reply, or a request that was already accepted. | 1 | 409 |
 | `message_type_mismatch` | A command or request for one kind names the other: for example, `answer` with a request ID. | 2 | 422 |
@@ -65,7 +66,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |
-| `format_unsupported` | A shared file has a `formatVersion` other than 1. | 1 | 500 |
+| `format_unsupported` | A shared file has a `formatVersion` other than 1 or 2 (the message says "Only formatVersion 2 is supported"). | 1 | 500 |
 | `file_unreadable` | A shared file cannot be read. | 1 | 500 |
 | `file_error` | A shared file cannot be written, or a journal cannot be recovered. | 1 | 500 |
 | `database_busy` | The project write lock was not free within 5 seconds. | 1 | 503 |

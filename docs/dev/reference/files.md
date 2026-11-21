@@ -15,10 +15,10 @@ A task is one unit of work on the board. A task's state lives in `task.json`; it
 | `acceptance`, `acceptanceError` | The acceptance items from frontmatter (empty when invalid), and whether `acceptance` or the YAML syntax is invalid. |
 | `assignee` | `ai` or `human`. Set at creation and fixed afterwards. |
 | `epicId` | An EPIC-ID in the same project, or `null`. |
-| `taskStatus` | The lane: `todo`, `doing`, or `done`. |
+| `taskStatus` | The lane: `backlog`, `todo`, `doing`, or `done`. The Backlog holds settled plans that must not be started yet; only a person sends a card to Todo. |
 | `position` | Positive integer, unique among unarchived tasks in the same lane. |
 | `agentStatus` | The AI run state. `task.json` stores `idle` or `running`; reads return `pending` while an AI task in Todo or Doing waits for a person (see [Messages](../concepts/history-and-decisions.md#messages)). A stored `pending` reads as `idle`. |
-| `draft` | `null`, `"human"`, or `"ai"`. `human` is a draft a person is writing in the browser; `ai` is a proposal an agent created, which the agent starts once its questions are answered (a person can start it too). Files of earlier versions hold `isDraft`: `true` reads as `human` and `false` as `null`; writing uses `draft` only. For an epic, the CLI `epic edit` refuses a `human` draft with `epic_is_draft`. |
+| `draft` | `null` or `"human"`. `human` is a draft a person is writing in the browser, an edit lock. Files of earlier versions hold `isDraft`: `true` reads as `human` and `false` as `null`; writing uses `draft` only. For an epic, the CLI `epic edit` refuses a `human` draft with `epic_is_draft`. |
 | `questions` | In `TASK.md` frontmatter: the IDs of the project questions the task refers to, such as `[Q-12, Q-15]`. Omitted, `null`, and empty all mean none; duplicates are rejected. |
 | `requestAnswers` | Answers recorded by earlier versions of Agent Board, kept as a record. Nothing adds to it. |
 | `archivedAt` | `null`, or the archive time. |
@@ -67,7 +67,7 @@ The data area is `.agent-board/` in the home directory on every OS, or a non-emp
 ```
 
 - JSON is UTF-8, camelCase, two-space indented, with one trailing newline. Unknown fields are rejected.
-- `workspace.json` is `{"format":"agboard-files","formatVersion":1}`. `project.json` and `epic.json` have `formatVersion: 1`; `task.json` has `formatVersion: 1` too. Every file uses version 1; any other version is rejected with `format_unsupported`, reported, and left untouched. There is no migration or fallback.
+- `workspace.json` is `{"format":"agboard-files","formatVersion":1}`. `project.json` has `formatVersion: 1`. A `task.json` or `epic.json` that uses the Backlog has `formatVersion: 2`; the files of ordinary cards stay at `formatVersion: 1`, and both are read. Any other version is rejected with `format_unsupported`, reported, and left untouched. An earlier version of `agboard` cannot read a version-2 file. Old AI drafts are converted once, automatically (see [Saving and recovery](../concepts/saving-and-recovery.md#format-versions-and-the-backlog-migration)).
 - Names starting with `.` are not source files. `README.md` describes the folder and its editing rules; the product writes it at creation.
 - Images live in the owner's `assets/`. Bodies reference images as `assets/<attachment-id>.<ext>` (or the older `attachment:<id>`). Images are PNG, JPEG, WebP, or GIF; at most 10 MiB each, 20 per owner, and 50 MiB in total.
 - `bindings.json` and `serve.json` are machine-local. `serve.json` tells the CLI where to notify and `wait` where to connect; it never holds a token. `agboard stop` finds the server through it.

@@ -30,7 +30,7 @@ Choose **Ask AI** in the board's header and ask for a piece of work that is more
 
 Choose **Send request**. The request counts under **Your requests** in the **Messages** band until an agent takes it. A session that waits on the board takes it at once: one you keep there with `/agent-board:wait`, or a resident agent started from **Settings** (see [Working with agents](./delegate/agents)). You can also ask in the agent's chat instead.
 
-You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a plan at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. None of them starts yet, because everything the agent creates is an AI draft until it is started. On the board the tasks are ordinary cards in Todo with a **Draft** badge. Open them to read the plan while the agent asks about it.
+You do not set up tasks or conditions. The agent reads the board, and for a request of this size it registers a plan at once: an epic with its goal and scope, and the tasks in the order they will be done, each with its acceptance conditions. If you asked for the plan only, the cards wait in the Backlog, which means "do not start", so none of them starts yet. On the board they are ordinary cards in Todo with a **Draft** badge for now. Open them to read the plan while the agent asks about it.
 
 ## 3. Answer the questions
 
@@ -40,7 +40,7 @@ The agent changes the plan as your answers say, and may ask a little more. If it
 
 ## 4. The agent starts the plan
 
-Once your questions are answered and the agent has written the plan up, it starts the plan itself with `agboard epic start <EPIC-ID> --actor ai`. The epic and all its AI drafts start together, and the history records that the agent wrote the plan up and started the task. An open question on one of the tasks refuses the start, so the agent waits for your answer first. No task starts before then, and you do not approve the start. If you want something changed, send the agent a request with **Ask AI** or tell it in the chat. You can also start the plan yourself with `agboard epic start <EPIC-ID> --actor human`.
+Once your questions are answered and you are happy with the plan, you send it to Todo yourself with `agboard epic send <EPIC-ID> --actor human`; an agent cannot send it. If a question is still open, the send is refused until you confirm it with `--force`. The history records that a person sent the task to Todo. If you want something changed first, send the agent a request with **Ask AI** or tell it in the chat.
 
 ## 5. Watch it run
 

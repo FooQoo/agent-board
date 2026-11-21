@@ -1,6 +1,6 @@
 # Tasks and states
 
-What a project and a task are, which lane and run-state combinations are valid, and how epics, drafts, and archiving fit in. For every field, see [Shared files](../reference/files.md).
+What a project and a task are, which lane and run-state combinations are valid, and how the Backlog, epics, drafts, and archiving fit in. For every field, see [Shared files](../reference/files.md).
 
 ## Projects
 
@@ -20,13 +20,15 @@ A task's lane says where the work is; its run state says what the agent is doing
 
 | Assignee | Lane | Valid run states |
 | --- | --- | --- |
+| ai | backlog | idle only |
 | ai | todo | idle, pending |
 | ai | doing | idle, running, pending |
 | ai | done | idle only |
-| human | any | idle only |
+| human | any (including backlog) | idle only |
 
 - **Running** is self-reported, not liveness monitoring. It is never reset automatically, and agents do not change it just because a session started or paused.
 - **Pending** means the task refers to a project question that has no reply yet, or to a message file that cannot be read; the agent may continue other tasks meanwhile. Pending is never stored: `task.json` holds Idle or Running, and readers derive Pending from the task's `questions` (see [Messages](./history-and-decisions.md#messages)).
+- **Backlog** (`taskStatus: backlog`) holds settled plans that must not be started yet. It means "do not start": a Backlog task is always Idle, and nextTasks, `wait`, the hook, the resident session, and automatic Done only consider Todo and Doing. See [Backlog and send](#backlog-and-send).
 - Invalid combinations are never saved. A draft task is Idle or Pending in any lane.
 
 How operations move a task between states:
@@ -38,7 +40,7 @@ How operations move a task between states:
 - **Epic membership** sets or clears `epicId`; only real changes append history. People can change it on draft and archived tasks.
 - **Delete** removes the task folder. The web UI deletes only archived tasks; the CLI asks for terminal confirmation.
 
-Ordinary updates are last-write-wins: there is no content check or edit lock. Only answers, AI writes to drafts, writes to archived tasks, and bulk-archive targets are validated against the latest `task.json` under the write lock.
+Ordinary updates are last-write-wins: there is no content check or edit lock. Only answers, AI writes to a person's drafts, writes to archived tasks, and bulk-archive targets are validated against the latest `task.json` under the write lock.
 
 ## Epics and waves
 
@@ -49,7 +51,7 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 | `id` | EPIC-ID: 1 to 64 characters matching `[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*`. Lowercase input is uppercased. Immutable. |
 | `name` | 1 to 100 characters after trimming, one line. |
 | `color` | `#RRGGBB`, uppercased. Random at creation when omitted. |
-| `draft` | `null`, `"human"`, or `"ai"`, as for a task. A person's draft epic (`human`) is refused by CLI `epic edit` and `--waves` with `epic_is_draft`; an AI draft epic is edited by agents as usual. Member tasks and `epic attachment` are not affected. |
+| `draft` | `null` or `"human"`, as for a task. A person's draft epic (`human`) is refused by CLI `epic edit` and `--waves` with `epic_is_draft`. Member tasks and `epic attachment` are not affected. An epic has no lane; `progress` has an optional `backlog` count. |
 | `document`, `body` | The whole `EPIC.md` text, frontmatter included (0 to 100,000 characters), and the body without frontmatter. |
 | `waves`, `wavesError` | The member tasks in work order as waves (a list of task ID lists), and whether reading the stored order failed. |
 
@@ -62,13 +64,24 @@ An epic is a management unit that groups tasks and sets their work order. Its de
 
 ## Drafts
 
-A draft is a task or epic that is not put to work yet. `draft` says who still owns it: `null` (a normal task), `"human"` (a person is writing it in the browser), or `"ai"` (an agent proposed it, and it is started once its questions are answered). The stored field is described in [Shared files](../reference/files.md). Drafts never expire, and `wait` and automatic Done skip every draft.
+A draft is a task or epic a person is still writing. `draft` is `null` (a normal task) or `"human"` (a person is writing it in the browser, an edit lock). The stored field is described in [Shared files](../reference/files.md). Drafts never expire, and `wait` and automatic Done skip every draft. There is no AI draft: a plan an agent proposes is a Backlog task (see [Backlog and send](#backlog-and-send)).
 
-- A task or epic an agent creates (CLI `add` and `epic add`, whoever it is assigned to) is an AI draft. What a person creates is `null`, or `human` when the browser creates it as a draft.
-- The preview enters a person's draft at its first real change: `PUT /tasks/{id}/draft` with `draft: "human"` for a task, and `PATCH /epics/{id}` with `draft: "human"` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either. A person who edits an AI proposal enters `human` the same way and saves with `draft: "ai"`, which returns it to the proposal.
-- A `human` draft: CLI `edit`, `mv`, `state`, and `history add` check `draft` under the write lock and fail with `task_is_draft`; CLI `epic edit` and `epic edit --waves` fail with `epic_is_draft`. An `ai` draft: `edit`, `history add`, and `epic edit` work, while `mv` and `state` fail with `task_is_draft`. Reads, `add`, `epic attachment`, and membership changes are not affected. The web `PATCH` on an epic does not refuse a draft.
-- Web editing accepts only draft tasks. With `finalize`, the body, title, `draft: null`, and a history entry are committed as one pair. Discard sends `discard: true` with `draft: null` instead, and the history records `Discarded draft changes.` An epic has no history, so its discard is only `draft: null` on `PATCH /epics/{id}`. An AI draft is never finalized this way: it fails with `ai_draft_needs_start`.
-- **Start.** The agent that wrote the plan starts its own AI drafts once its questions are answered and the plan is written up; a person can start them too. `agboard start <id> --actor ai` clears one task's AI draft. `agboard epic start <EPIC-ID> --actor ai` clears the epic and every non-archived task of it that is an AI draft in one save (a batch that rolls back as a whole). There is no web route and no button for starting: the web UI only shows the draft badge. Each cleared task records `The agent wrote the plan up and started the task.` for `--actor ai` or `A person started the task.` for `--actor human`; an epic keeps no history. A person's own (`human`) drafts are not cleared, and a task that is not a draft changes nothing. One function, `ensure_startable` in `src/file_store/ops/start.rs`, is the place for the rules that refuse a start. It refuses while a question without a reply names the task being started (task start), or any AI-draft task the epic start would clear (epic start), with `start_blocked_by_questions` over the CLI and the API; the answer may change the plan, so the question is answered first and the plan is started afterwards. A question about a task outside the epic, or one that is answered or withdrawn, does not block.
+- A task or epic an agent creates (CLI `add` and `epic add`) has `draft: null`. What a person creates is `null`, or `human` when the browser creates it as a draft.
+- The preview enters a person's draft at its first real change: `PUT /tasks/{id}/draft` with `draft: "human"` for a task, and `PATCH /epics/{id}` with `draft: "human"` for an epic. Only Idle or Pending tasks can become drafts; Running is refused with `invalid_state_for_draft`. A real change appends history but not `updatedAt`. Entering or leaving an epic draft does not change `updatedAt` either. A client of an earlier version that sends `draft: "ai"` is accepted and the value is treated as `null` (the edit lock is released); creating a task with `draft: "ai"` is refused.
+- A `human` draft: CLI `edit`, `mv`, `state`, and `history add` check `draft` under the write lock and fail with `task_is_draft`; CLI `epic edit` and `epic edit --waves` fail with `epic_is_draft`. Reads, `add`, `epic attachment`, and membership changes are not affected. The web `PATCH` on an epic does not refuse a draft.
+- Web editing accepts only draft tasks. With `finalize`, the body, title, `draft: null`, and a history entry are committed as one pair. Discard sends `discard: true` with `draft: null` instead, and the history records `Discarded draft changes.` An epic has no history, so its discard is only `draft: null` on `PATCH /epics/{id}`.
+- The product cannot stop direct edits of a draft's `TASK.md`; the README and the agent skill tell agents not to.
+
+## Backlog and send
+
+The Backlog lane holds settled plans that must not be started yet; it means the same as "do not start". Plans are corrected through chat or requests to the AI; there is no Backlog-specific editing, and normal card editing is unchanged. A file that uses the Backlog has `formatVersion: 2` (see [Saving and recovery](./saving-and-recovery.md#format-versions-and-the-backlog-migration)).
+
+- **Create.** `agboard add ... --actor ai --backlog` creates a card in the Backlog; an agent uses it for a request for the plan only. Without `--backlog` an agent's `add` creates an ordinary Todo task (open questions make it pending as before). `epic add` has no lane: an agent's epic is an ordinary epic, and a plan-only epic is one whose cards are created with `--backlog --epic <ID>`.
+- **Send.** Only a person sends Backlog to Todo: `agboard send <id> --actor human [--force]`, and `agboard epic send <EPIC-ID> --actor human [--tasks 1,2] [--force]` for a whole epic or selected cards, in one all-or-nothing save. The web routes are `POST /tasks/{id}/send` and `POST /epics/{epicId}/send` (see [Web API](../reference/web-api.md)); the web UI has no send button yet. An agent that tries gets `human_only`; `agboard start` and `agboard epic start` remain as hidden deprecated aliases with the same behavior. A card sent to Todo is put at the end of Todo; sending a card already out of the Backlog changes nothing, so a retry is safe. A card a person is editing (`draft: human`) cannot be sent (`task_is_draft`). The history records `A person sent the task to Todo.`
+- **Open questions.** A plan with open questions is refused with `send_with_open_questions` (409; the message lists the question IDs) until the person confirms with `--force` (CLI) or `ack: true` (API). After the send the question stays and the card is pending until it is answered.
+- **Moves.** An agent's `mv` and `state` on a Backlog card fail with `task_in_backlog`. A person's Web move to Todo is a send without `ack`; a move to Doing or Done is `task_in_backlog`. `agboard mv <id> backlog --actor human` takes an unstarted Todo card (Idle, no results) back to the Backlog; an agent gets `human_only`.
+- **Agent surfaces.** nextTasks, `wait`, the hook, the resident session, auto-Done, and the progress table candidates ignore the Backlog. A Backlog card in an epic still keeps later waves waiting, because it is not Done. The epic's `progress` has an optional `backlog` count, left out when 0.
+- **Rules in one place.** The rules for a send are in `src/file_store/ops/send.rs`; its `check_sender` and `open_questions` refuse an agent and an unconfirmed plan with open questions, for the task or for every card the epic send would move.
 - The product cannot stop direct edits of a draft's `TASK.md`; the README and the agent skill tell agents not to.
 
 ## Archive
