@@ -52,6 +52,10 @@ pub(in crate::file_store) fn migrate_ai_drafts_locked(
 
     for task_id in reader::task_ids(project_dir)? {
         let json = layout::task_json(&layout::task_dir(project_dir, task_id));
+        // A folder with no task.json is not a task yet (as the epic loop skips one).
+        if !json.is_file() {
+            continue;
+        }
         let label = layout::shared_label(shared, &json);
         let Some(raw) = legacy_json(&json, &label)? else {
             continue;

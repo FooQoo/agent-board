@@ -175,6 +175,7 @@ pub(in crate::file_store) fn migrate_legacy_locked(
         if drafted {
             let language = store.history_language(project, &task)?;
             task.task_status = Column::Backlog;
+            task.task_status_changed_at = at;
             task.updated_at = at;
             task.history.push(HistoryRecord {
                 at,

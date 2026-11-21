@@ -6,7 +6,7 @@ When a request, or a user's chat message, asks for more than one task, such as a
 2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. `epic add` has no lane. For a plan only, create each task in the Backlog with `--backlog`, in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions.
 
    ```sh
-   agboard --project "<name>" add --title "Plan the work" --assignee ai --actor ai --backlog --epic <EPIC-ID>
+   agboard --project "<name>" add "Plan the work" --assignee ai --actor ai --backlog --epic <EPIC-ID>
    ```
 
    A Backlog task means "do not start": agents never start it. For a request to carry out the work, create the tasks without `--backlog`; they are ordinary Todo tasks, and open questions make them pending as usual.
