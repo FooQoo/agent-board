@@ -93,11 +93,20 @@ If a draft is left behind, for example because a save failed and you closed the 
 
 ### Backlog plans {#backlog-plans}
 
-When you ask an agent for a plan only, it puts the plan in the Backlog: settled plans that must not be started yet. The Backlog means "do not start", and agents never start it. Until the Backlog lane of a later release arrives, the board shows a Backlog plan as an ordinary card in Todo with a **Draft** badge, and the lane header counts it like any other task. You can open it, read the plan, and answer the questions about it. The agent cannot move it or change its state.
+When you ask an agent for a plan only, it puts the plan in the Backlog: settled plans that must not be started yet. The Backlog is the first lane of the board, before Todo. It means "do not start", and agents never start it. Its header shows its own count, and its cards have a dashed outline and a **Backlog** label in their details, so they are easy to tell from Todo. A card with an open question carries an **Open question** mark. You can open a plan, read it, answer the questions about it, and edit it like any other card; the Backlog has no editor of its own. The agent cannot move it or change its state.
 
 Plans are corrected through chat or requests to the AI: send the agent a request with **Ask AI**. A request to carry out the work, instead of a plan, creates ordinary Todo cards.
 
-Only you send a plan to Todo. There is no button yet, so use the command line: `agboard send <id> --actor human` for a card, or `agboard epic send <EPIC-ID> --actor human` for an epic (see [CLI](../reference/cli)). If the plan still has open questions, the send is refused until you confirm it with `--force`.
+Only you send a plan to Todo, and a card sent to Todo goes to the end of its lane. You can do it in four ways, from the board or on the phone:
+
+- **Send several cards.** Choose the select button in the Backlog header (on the phone, **Select cards** at the bottom of the lane, or swipe a card to the left and choose its select button). A circle appears at the left of each card. Choose the cards you want, or tap a card, and then choose **Send to Todo (N)** in the bar under the lane (on the phone, the bar at the bottom of the screen, with **Cancel** beside it in a button of the same width). The bar is also the way to send with the keyboard or a screen reader.
+- **Drag them on the board.** In the selection mode, grab one of the selected cards and drop it on the Todo lane. All the selected cards move together; a badge on the card shows how many. A card you drag without selecting goes alone.
+- **From the details.** A plan's details have a **Send to Todo** button.
+- **A whole epic.** The details of an epic with cards in the Backlog have a button that sends all of them in one save (see [Epics and progress](./epics)).
+
+If a card you send still has an open question, a window (on the phone, a sheet) names those cards and asks you to confirm that the questions stay open. The send waits for the check; **Cancel** changes nothing. After the question is answered the card can start. When the cards have gone, a notice shows how many moved and the counts of Backlog and Todo before and after. Doing and Done cannot be reached from the Backlog: a card moves on from Todo.
+
+You can also send a plan from the command line: `agboard send <id> --actor human` for a card, or `agboard epic send <EPIC-ID> --actor human` for an epic (see [CLI](../reference/cli)). With open questions, the command is refused until you confirm it with `--force`.
 
 ## Archive
 
@@ -114,7 +123,7 @@ The details of an archived task use the same layout as an active task. **Restore
 
 ## Narrow windows and phones {#narrow-windows-and-phones}
 
-When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and a bottom bar with **Board**, **Messages**, **Ask**, **Archive**, and **Settings**; **Messages** shows the number of questions that wait on you and opens the list. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, swipe left past the end of the Done lane to archive every completed task, and use **Archive** in the bottom bar to review archived tasks and restore one by swiping it left. The project switcher stays in the header; settings are in the bottom bar. Adding and editing tasks are for a wider window.
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Backlog, Todo, Doing, and Done with their counts, one lane at a time under them, and a bottom bar with **Board**, **Messages**, **Ask**, **Archive**, and **Settings**; **Messages** shows the number of questions that wait on you and opens the list. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it (in the Backlog the swipe offers the select button for sending plans to Todo, see [Backlog plans](#backlog-plans)), swipe left past the end of the Done lane to archive every completed task, and use **Archive** in the bottom bar to review archived tasks and restore one by swiping it left. The project switcher stays in the header; settings are in the bottom bar. Adding and editing tasks are for a wider window.
 
 The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Remote access](./remote-access).
 
@@ -162,9 +171,9 @@ The first-run guide runs in your browser, on the PC board and on the phone scree
 The guide has five steps. At each one, the cards are drawn in a frame at the top of the lane the step is about, over the dimmed board. On a phone, the screen switches to that lane for you. They are not part of your board: they are not saved, they do not change the counts, and agents never see them. While the guide is on screen the rest of the board is covered, so you cannot open or move cards until the guide ends.
 
 1. **Ask AI.** The real **Ask AI** window (on a phone, its bottom sheet) opens with a sample request already written. Press **Send request**. The request is not sent anywhere. If you close the window, **Open Ask AI** brings it back.
-2. **A plan.** The request becomes an epic and cards in To do. For a plan-only request the cards wait in the Backlog (shown as **Draft** for now), and each shows how many acceptance conditions it has.
+2. **A plan.** The request becomes an epic and cards in To do. For a plan-only request the cards wait in the Backlog, and each shows how many acceptance conditions it has.
 3. **A question.** Before it starts, the agent asks a question on the first card. Choose **Answer the question** on the card to open the same answer dialog (on a phone, the same bottom sheet) that real questions use, choose an option, and send it. The answer only moves the guide on; it is not sent to the server. While the answer sheet is open on a phone, the explanation shrinks to a slim strip at the top of the screen.
-4. **The plan starts.** The drafts become ordinary cards, and the first one moves to In progress with its acceptance conditions being checked.
+4. **The plan starts.** The plan is sent to Todo, and the first card moves to In progress with its acceptance conditions being checked.
 5. **Done.** The cards reach Done by themselves once all their acceptance conditions are checked.
 
 If the window width changes in the middle of the guide, it continues from the same step. Any number of browser tabs can show the guide at the same time. See [Before you start](../quickstart.md#before-you-start-the-first-run-guide).
