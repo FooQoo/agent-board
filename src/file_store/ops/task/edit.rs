@@ -1,5 +1,7 @@
 //! Editing a task's title and body, and editing a draft.
 
+use std::path::Path;
+
 use chrono::{DateTime, Utc};
 
 use crate::domain::{Actor, Changed, Draft, ProjectId, validate_title};
@@ -135,6 +137,28 @@ impl FileStore {
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
+        self.edit_draft_locked(
+            &project_dir,
+            project,
+            id,
+            (title, description),
+            finalize,
+            now,
+        )
+    }
+
+    /// `edit_draft_task_to` for a caller that holds the project lock, with the
+    /// title and description already validated.
+    pub(super) fn edit_draft_locked(
+        &self,
+        project_dir: &Path,
+        project: &ProjectId,
+        id: i64,
+        (title, description): (Option<String>, Option<String>),
+        finalize: DraftSave,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        let shared = self.shared_dir();
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
             return Err(AgboardError::TaskArchived { id });
@@ -146,7 +170,7 @@ impl FileStore {
         let current = Some(owner);
         let target = resolve_finalize(finalize.target, owner);
         let (text_changed, markdown) =
-            write_text(shared, project, &project_dir, &mut task, title, description)?;
+            write_text(shared, project, project_dir, &mut task, title, description)?;
         if !text_changed && target == current {
             return Ok(Changed {
                 value: view(shared, project, id)?,
@@ -172,7 +196,7 @@ impl FileStore {
                 },
             )?);
         }
-        save_task_with_markdown(shared, &project_dir, &task, markdown.as_deref())?;
+        save_task_with_markdown(shared, project_dir, &task, markdown.as_deref())?;
         Ok(Changed {
             value: view(shared, project, id)?,
             changed: true,

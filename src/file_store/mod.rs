@@ -39,8 +39,8 @@ use crate::domain::{Draft, ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 use model::TaskView;
 pub use ops::{
-    Accepted, AnswerItem, AskInput, AskQuestion, EpicSent, MAX_RESULTS, RecordedResult,
-    RequestImage, ResultInput, SendRequestInput,
+    Accepted, AnswerItem, AskInput, AskQuestion, EpicSent, ImageChanges, MAX_RESULTS,
+    RecordedResult, RequestImage, ResultInput, SendRequestInput,
 };
 use reader::ProjectSnapshot;
 
