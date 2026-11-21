@@ -13,24 +13,6 @@ use super::super::{HistoryKind, Transition, lock_project, save_task, stamp, tran
 use super::view;
 
 impl FileStore {
-    /// Check, before anything else is changed, that a save an older client made with
-    /// `draft: "ai"` is not refused by `refuse_legacy_release_in_todo`, so a rejected
-    /// save has no side effect (such as removed attachments). The save checks again.
-    pub fn ensure_legacy_release_allowed(
-        &self,
-        project: &ProjectId,
-        id: i64,
-        legacy_ai: bool,
-    ) -> Result<(), AgboardError> {
-        if !legacy_ai {
-            return Ok(());
-        }
-        let shared = self.shared_dir();
-        let (_project_dir, _lock) = lock_project(shared, project)?;
-        let task = reader::read_task_strict(shared, project, id)?;
-        refuse_legacy_release_in_todo(&task, true)
-    }
-
     /// Take or release the edit lock: `Some(Draft::Human)` makes the task a
     /// person's draft (a Backlog card too, while a person edits the plan), and
     /// `None` finalizes it. Finalizing keeps the lane: a Backlog card stays in

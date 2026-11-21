@@ -9,10 +9,12 @@ mod qa;
 use std::fs;
 use std::path::PathBuf;
 
-use agent_board::domain::{Actor, Assignee, ChangeContext, Column, Draft, NewTask, ProjectId};
-use agent_board::file_store::model::NewEpic;
+use agent_board::domain::{
+    Actor, Assignee, AttachmentInput, ChangeContext, Column, Draft, NewTask, ProjectId,
+};
+use agent_board::file_store::model::{AttachmentOwner, NewEpic};
 use agent_board::file_store::validate::EpicId;
-use agent_board::file_store::{DraftSave, FileStore};
+use agent_board::file_store::{DraftSave, FileStore, ImageChanges};
 use chrono::{TimeZone, Utc};
 use serde_json::{Value, json};
 
@@ -814,19 +816,114 @@ fn an_old_client_releasing_the_draft_of_a_plan_with_ai_never_leaves_it_ready_in_
     assert_eq!(released.value.draft, None);
 }
 
-#[test]
-fn a_refused_legacy_release_is_checked_before_anything_else_changes() {
-    let f = fx();
-    let todo = f.human_task("Card");
+fn png() -> Vec<u8> {
+    vec![
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240,
+        31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ]
+}
+
+const IMAGE_ID: &str = "00000000000000000000000000000001";
+
+/// A task with one image, left as a person's draft.
+fn draft_with_image(f: &Fx) -> (i64, AttachmentOwner) {
+    let id = f.human_task("Card");
+    let owner = AttachmentOwner::Task(id);
     f.store
-        .set_draft(&f.project, todo, Some(Draft::Human), false, now())
+        .set_draft(&f.project, id, Some(Draft::Human), false, now())
         .unwrap();
+    f.store
+        .add_attachment_for_user(
+            &f.project,
+            &owner,
+            AttachmentInput {
+                id: IMAGE_ID.into(),
+                name: "a.png".into(),
+                bytes: png(),
+            },
+            now(),
+        )
+        .unwrap();
+    (id, owner)
+}
+
+fn removing_the_image() -> ImageChanges {
+    ImageChanges {
+        removed: vec![IMAGE_ID.into()],
+        added: Vec::new(),
+    }
+}
+
+#[test]
+fn a_refused_legacy_release_keeps_the_images() {
+    let f = fx();
+    let (todo, owner) = draft_with_image(&f);
     let refused = f
         .store
-        .ensure_legacy_release_allowed(&f.project, todo, true)
+        .edit_draft_task_with_images(
+            &f.project,
+            todo,
+            (None, Some("new text")),
+            DraftSave {
+                target: Some(None),
+                legacy_ai: true,
+            },
+            removing_the_image(),
+            now(),
+        )
         .unwrap_err();
     assert_eq!(refused.code(), "invalid_value");
     f.store
-        .ensure_legacy_release_allowed(&f.project, todo, false)
+        .attachment_path(&f.project, &owner, IMAGE_ID)
         .unwrap();
+}
+
+#[test]
+fn a_save_refused_as_not_a_draft_keeps_the_images() {
+    let f = fx();
+    let (id, owner) = draft_with_image(&f);
+    f.store
+        .set_draft(&f.project, id, None, false, now())
+        .unwrap();
+    let refused = f
+        .store
+        .edit_draft_task_with_images(
+            &f.project,
+            id,
+            (None, None),
+            DraftSave::default(),
+            removing_the_image(),
+            now(),
+        )
+        .unwrap_err();
+    assert_eq!(refused.code(), "task_not_draft");
+    f.store
+        .attachment_path(&f.project, &owner, IMAGE_ID)
+        .unwrap();
+}
+
+#[test]
+fn a_draft_save_removes_the_images_and_saves_the_text_together() {
+    let f = fx();
+    let (id, owner) = draft_with_image(&f);
+    let saved = f
+        .store
+        .edit_draft_task_with_images(
+            &f.project,
+            id,
+            (None, Some("new text")),
+            DraftSave::default(),
+            removing_the_image(),
+            now(),
+        )
+        .unwrap();
+    assert!(saved.changed);
+    assert_eq!(
+        f.store
+            .attachment_path(&f.project, &owner, IMAGE_ID)
+            .unwrap_err()
+            .code(),
+        "attachment_not_found"
+    );
 }
