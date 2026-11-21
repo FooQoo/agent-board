@@ -52,7 +52,7 @@ landing:
       - title: 要望 → 計画
         steps:
           - { actor: human, title: 要望, text: やりたいことを、普通の言葉でエージェントに伝えます。 }
-          - { actor: ai, title: 計画, text: 完了条件つきの計画をAI下書きとしてボードに置き、質問をします。 }
+          - { actor: ai, title: 計画, text: 完了条件つきの計画をボードに置き、質問をします。 }
       - title: 回答
         steps:
           - { actor: human, title: 回答, text: 質問に答えます。未回答がなくなると、エージェントが計画を開始します。 }

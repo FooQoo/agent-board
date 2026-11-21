@@ -7,13 +7,15 @@
 | 症状 | 原因 | 対処 |
 | --- | --- | --- |
 | `database_busy` | ほかのコマンドかサーバーが、プロジェクトの書き込みロックを5秒を超えて保持した。 | コマンドをもう一度実行します。続くなら、ロックを保持しているプロセスを探します。[保存と復旧](./concepts/saving-and-recovery.md#ロック)を参照。 |
-| `task_is_draft` | タスクが下書きで、エージェントは人の下書きを変更できず、どの下書きも動かせない。 | 人にWeb画面で下書きを確定してもらい、その間はほかのタスクを進めます。`TASK.md`は編集しません。 |
+| `task_is_draft` | タスクが人の下書きで、エージェントは変更できず、送信も断られる。 | 人にWeb画面で下書きを確定してもらい、その間はほかのタスクを進めます。`TASK.md`は編集しません。 |
+| `task_in_backlog` | タスクがBacklogにあり、エージェントは動かすことも実行することもできない。 | そのままにします。Todoへ送れるのは人だけです（`agboard send <id> --actor human`）。ほかのタスクを進めます。 |
+| `send_with_open_questions` | 計画に未回答の質問があるため、人の送信を断った。 | 示された質問に答えるか、`--force`（CLI）または`ack: true`（API）で確認して送ります。 |
 | `epic_is_draft` | エピックが下書きで、CLIはその詳細や作業順序を変更できない。 | 人が保存か破棄をするまで待つか、確定を頼みます。`epic attachment`と所属の変更は使えます。`EPIC.md`は編集しません。 |
 | `task_is_done` | タスクがDoneで、エージェントは変更できない。 | 人に再開してもらいます。 |
 | `acceptance_unmet` | 完了条件が未達成、またはfrontmatterが不正なタスクを、エージェントがDoneへ移そうとした。 | 条件を検証して`done: true`にするか（サーバーが自動で移します）、frontmatterを直します。 |
 | `questions_unanswered` | 人の判断待ちのタスクを、エージェントがRunningにしようとした、またはDoneへ移そうとした。 | `message wait <question-id>`で回答を待つか、人にボードで回答してもらいます。 |
 | `question_answered`・`question_withdrawn` | 質問にすでに回答がある、または取り下げられた。最初の回答が確定です。 | 質問を読み直し（`message show <question-id>`）、記録済みの回答に従います。 |
-| `start_blocked_by_questions` | ドラフトについての質問に返事がないため、開始を断った。 | 示された質問に答えて（`message answer`、またはボード上で）、もう一度開始します。 |
+| `start_blocked_by_questions` | 互換性のために残しているコード。`send`はもう返しません。 | 上の`send_with_open_questions`を使います。 |
 | `folder_unbound`・`bound_project_missing` | 作業フォルダがプロジェクトに紐付いていない、またはプロジェクトが削除された。 | `--project`でプロジェクトを明示するか、利用者にフォルダの紐付けを頼みます。 |
 | `confirmation_required` | 削除に、端末での人のy/Nが必要。 | 人に実行してもらいます。確認を省くオプションはありません。 |
 
