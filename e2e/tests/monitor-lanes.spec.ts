@@ -73,6 +73,10 @@ test.beforeAll(async () => {
     { title: 'Bulk done two', lane: 'done' },
     { title: 'Bulk done three', lane: 'done' },
   ]);
+  seed('BulkAfterSwipe', [
+    { title: 'After swipe one', lane: 'done' },
+    { title: 'After swipe two', lane: 'done' },
+  ]);
   seed('Quiet', [{ title: 'Quiet todo', lane: 'todo' }]);
   entrance = await startPhoneEntrance(home);
 });
@@ -373,6 +377,42 @@ test('the done lane archives all its cards at once, and the button is gone when 
   expect(show('Bulk', 'Bulk todo')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
   await expect(tab(page, 'Done 0', true)).toBeVisible();
   await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(shown(page).getByRole('article')).toHaveCount(0);
+  await expect(bulk).toHaveCount(0);
+});
+
+// #627: a swipe on the done lane that opens nothing (too short, or a cancelled confirmation) must not
+// swallow the next tap on the button.
+test('the Archive all button still works after a short swipe on the done lane, and archives the cards', async ({ page }) => {
+  await openPhone(page, 'BulkAfterSwipe');
+  await tab(page, 'Done 2').tap();
+  const bulk = page.getByRole('button', { name: 'Archive all' });
+  await expect(bulk).toBeEnabled();
+  // A swipe left that is too short to open the confirmation springs back and opens nothing.
+  const b = await box(swipeCard(page, 'After swipe one'));
+  const y = b.y + b.height / 2;
+  await finger(page, { x: b.x + b.width * 0.6, y }, { x: b.x + b.width * 0.6 - 40, y });
+  const dialog = page.getByRole('dialog', { name: 'Archive completed tasks' });
+  await expect(dialog).toHaveCount(0);
+  await expect(tab(page, 'Done 2', true)).toBeVisible();
+
+  await bulk.tap();
+  await expect(dialog).toContainText('Archive 2 completed tasks');
+  // Cancel, swipe far enough to open it again, cancel, and the button must still answer.
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
+  await swipeOver(page, swipeCard(page, 'After swipe one'), -1);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
+  for (const title of ['After swipe one', 'After swipe two']) expect(show('BulkAfterSwipe', title).archivedAt).toBeNull();
+
+  await bulk.tap();
+  await dialog.getByRole('button', { name: 'Archive 2 tasks' }).click();
+  await expect(dialog).toHaveCount(0);
+  for (const title of ['After swipe one', 'After swipe two'])
+    await expect.poll(() => show('BulkAfterSwipe', title).archivedAt).not.toBeNull();
+  await expect(tab(page, 'Done 0', true)).toBeVisible();
   await expect(shown(page).getByRole('article')).toHaveCount(0);
   await expect(bulk).toHaveCount(0);
 });
