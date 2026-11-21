@@ -45,20 +45,11 @@ The first time a project is read or written, under its lock, Agent Board convert
 
 Only the `TASK.md`/`task.json` pair, and a message change with the task pairs it touches, are atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
 
-## Format versions and the Backlog migration
+## Format versions and the draft mark
 
 A `task.json` or `epic.json` that uses the Backlog has `formatVersion: 2`; the files of ordinary cards stay at `formatVersion: 1`, and both are read. Any other version is `format_unsupported`, and the message says "Only formatVersion 2 is supported". An earlier version of `agboard` cannot read a version-2 file.
 
-Old AI drafts (`draft: ai`) are converted once by `src/file_store/ops/backlog_migrate.rs`, under the project lock, at the first write of a project or at `agboard serve` start. The marker `.internal/backlog-migrated` records it, all files are saved in one atomic batch, and running it again changes nothing.
-
-| Before | After |
-| --- | --- |
-| Task with `draft: ai` in Todo or Doing, not archived | `taskStatus: backlog`, `draft: null`, run state Idle, `formatVersion: 2`, and the history entry `Moved the AI draft from <lane> to the Backlog.` |
-| Task with `draft: ai` that is Done or archived | Only `draft: null` |
-| Epic with `draft: ai` | `draft: null` |
-| `draft: human`, the old `isDraft`, and ordinary cards | Unchanged |
-
-Read-only commands (`show`, `ls`) read an old AI draft as Backlog in memory and write nothing, in `src/file_store/legacy_draft.rs`. The update alone never makes an old plan startable: only a person can send it.
+`draft` is `null` or `"human"`. A `draft: "ai"` is not a valid value: that `task.json` or `epic.json` fails to parse like any other invalid file, so it is reported in `problems`, left out of the board, and never rewritten. Nothing else in the project is affected.
 
 ## Creating and deleting
 

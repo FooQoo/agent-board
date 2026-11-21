@@ -16,7 +16,6 @@ pub mod image_size;
 pub mod index;
 pub mod io;
 pub mod layout;
-mod legacy_draft;
 pub mod lock;
 pub mod message;
 pub mod model;
@@ -52,11 +51,10 @@ pub struct TaskTextParts<'a> {
 }
 
 /// How a saved draft ends: `target` is the draft it leaves (`None` keeps it, `Some(None)`
-/// finalizes it), and `legacy_ai` is set when an older client asked for it with `"ai"`.
+/// finalizes it).
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DraftSave {
     pub target: Option<Option<Draft>>,
-    pub legacy_ai: bool,
 }
 
 impl DraftSave {
@@ -64,7 +62,6 @@ impl DraftSave {
     pub fn from_finalize(finalize: bool) -> Self {
         Self {
             target: finalize.then_some(None),
-            legacy_ai: false,
         }
     }
 }

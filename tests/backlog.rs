@@ -574,201 +574,44 @@ fn an_epic_waits_for_a_plan_that_is_still_in_the_backlog() {
     );
 }
 
-/// Rewrite the `task.json` of a task as an earlier version stored it.
-fn legacy_task(f: &Fx, id: i64, lane: &str, archived: bool, draft: Value) {
-    let path = f.dir.join(format!("tasks/{id}/task.json"));
+/// A file holding `draft: "ai"` is invalid: the board reports it, keeps the other
+/// work, and never rewrites the file.
+#[test]
+fn a_file_with_the_old_ai_draft_is_reported_invalid_and_left_unchanged() {
+    let f = fx();
+    let old = f.human_task("Old plan");
+    let kept = f.human_task("Kept");
+    let path = f.dir.join(format!("tasks/{old}/task.json"));
     let mut json: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-    json["taskStatus"] = json!(lane);
-    json["draft"] = draft;
-    json["formatVersion"] = json!(1);
-    if archived {
-        json["archivedAt"] = json!("2026-11-01T00:00:00Z");
-    }
+    json["draft"] = json!("ai");
     fs::write(&path, serde_json::to_string_pretty(&json).unwrap()).unwrap();
-}
+    let before = fs::read(&path).unwrap();
 
-fn marker(f: &Fx) -> PathBuf {
-    f.dir.join(".internal/backlog-migrated")
-}
-
-/// Every file of the project the migration may write, with its bytes.
-fn files(f: &Fx) -> Vec<(String, Vec<u8>)> {
-    let mut out = Vec::new();
-    for entry in walk(&f.dir.join("tasks"))
-        .into_iter()
-        .chain(walk(&f.dir.join("epics")))
-    {
-        let rel = entry.strip_prefix(&f.dir).unwrap().display().to_string();
-        out.push((rel, fs::read(&entry).unwrap()));
-    }
-    out.sort();
-    out
-}
-
-fn walk(dir: &std::path::Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    if let Ok(read) = fs::read_dir(dir) {
-        for entry in read.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                out.extend(walk(&path));
-            } else {
-                out.push(path);
-            }
-        }
-    }
-    out
-}
-
-struct Legacy {
-    todo: i64,
-    doing: i64,
-    done: i64,
-    archived: i64,
-    in_epic: i64,
-    human_draft: i64,
-    ordinary_todo: i64,
-    ordinary_doing: i64,
-    ordinary_done: i64,
-    epic: EpicId,
-    _plain_epic: EpicId,
-}
-
-/// A project as the previous version left it: AI drafts in every lane, an AI draft epic, a
-/// person's draft, and ordinary cards.
-fn legacy_project(f: &Fx) -> Legacy {
-    let ids: Vec<i64> = (0..9).map(|n| f.human_task(&format!("Task {n}"))).collect();
-    let epic = f.epic("OLD");
-    let plain_epic = f.epic("PLAIN");
-    f.join(ids[4], &epic);
-    legacy_task(f, ids[0], "todo", false, json!("ai"));
-    legacy_task(f, ids[1], "doing", false, json!("ai"));
-    legacy_task(f, ids[2], "done", false, json!("ai"));
-    legacy_task(f, ids[3], "todo", true, json!("ai"));
-    legacy_task(f, ids[4], "todo", false, json!("ai"));
-    legacy_task(f, ids[5], "todo", false, json!("human"));
-    legacy_task(f, ids[6], "todo", false, Value::Null);
-    legacy_task(f, ids[7], "doing", false, Value::Null);
-    legacy_task(f, ids[8], "done", false, Value::Null);
-    let path = f.dir.join("epics/OLD/epic.json");
-    let mut stored: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-    stored["draft"] = json!("ai");
-    fs::write(&path, serde_json::to_string_pretty(&stored).unwrap()).unwrap();
-    // The project is as the previous version left it: nothing has checked it yet.
-    let _ = fs::remove_file(marker(f));
-    Legacy {
-        todo: ids[0],
-        doing: ids[1],
-        done: ids[2],
-        archived: ids[3],
-        in_epic: ids[4],
-        human_draft: ids[5],
-        ordinary_todo: ids[6],
-        ordinary_doing: ids[7],
-        ordinary_done: ids[8],
-        epic,
-        _plain_epic: plain_epic,
-    }
-}
-
-#[test]
-fn a_read_shows_an_old_ai_draft_as_the_backlog_and_writes_nothing() {
-    let f = fx();
-    let l = legacy_project(&f);
-    let before = files(&f);
-
-    let lane = |id: i64| f.store.task(&f.project, id).unwrap().task_status;
-    assert_eq!(lane(l.todo), Column::Backlog);
-    assert_eq!(lane(l.doing), Column::Backlog);
-    assert_eq!(lane(l.done), Column::Done);
-    assert_eq!(lane(l.ordinary_todo), Column::Todo);
-    let task = f.store.task(&f.project, l.todo).unwrap();
-    assert_eq!(task.draft, None);
-    let after = files(&f);
-    for (name, bytes) in &before {
-        assert!(
-            after.iter().any(|(n, b)| n == name && b == bytes),
-            "{name} was rewritten by a read"
-        );
-    }
-    assert!(!marker(&f).exists());
-}
-
-#[test]
-fn the_first_write_moves_every_old_ai_draft_once_and_a_second_run_changes_nothing() {
-    let f = fx();
-    let l = legacy_project(&f);
-
-    // Any change of the project is the first write.
-    f.store
-        .add_history(&f.project, l.ordinary_todo, Some("note"), now())
-        .unwrap();
-
-    let view = |id: i64| f.store.task(&f.project, id).unwrap();
-    // Todo and Doing drafts become plans in the Backlog and record the move.
-    for id in [l.todo, l.doing] {
-        let task = view(id);
-        assert_eq!(task.task_status, Column::Backlog, "#{id}");
-        assert_eq!(task.draft, None);
-        assert!(
-            task.history.last().unwrap().reason.contains("Backlog"),
-            "{:?}",
-            task.history.last()
-        );
-        assert_eq!(f.task_json(id)["formatVersion"], 2);
-        assert_eq!(f.task_json(id)["draft"], Value::Null);
-    }
-    assert_eq!(view(l.in_epic).task_status, Column::Backlog);
-    // Done and archived keep their place and only lose the AI draft.
-    assert_eq!(view(l.done).task_status, Column::Done);
-    assert_eq!(view(l.done).draft, None);
-    let archived = view(l.archived);
-    assert_eq!(archived.task_status, Column::Todo);
-    assert!(archived.archived_at.is_some());
-    assert_eq!(archived.draft, None);
-    // The epic loses its AI draft.
-    assert_eq!(f.store.epic(&f.project, &l.epic).unwrap().draft, None);
-    // A person's draft and the ordinary cards are not changed.
-    assert_eq!(view(l.human_draft).draft, Some(Draft::Human));
-    assert_eq!(view(l.human_draft).task_status, Column::Todo);
-    assert_eq!(view(l.ordinary_todo).task_status, Column::Todo);
-    assert_eq!(view(l.ordinary_doing).task_status, Column::Doing);
-    assert_eq!(view(l.ordinary_done).task_status, Column::Done);
-    assert_eq!(f.task_json(l.ordinary_todo)["formatVersion"], 1);
-    assert!(marker(&f).exists());
-
-    // A past plan is not startable by the update alone: an agent cannot send it.
-    assert_eq!(
-        f.store
-            .send_task(&f.project, l.todo, Actor::Ai, false, now())
-            .unwrap_err()
-            .code(),
-        "human_only"
-    );
-    let table = agent_board::progress::build(&f.store.board(&f.project).unwrap(), &f.shared, now());
+    let board = f.store.board(&f.project).unwrap();
+    assert!(board.tasks.iter().all(|t| t.id != old));
+    assert!(board.tasks.iter().any(|t| t.id == kept));
     assert!(
-        table
-            .next_tasks
+        board
+            .problems
             .iter()
-            .all(|t| t.id != l.todo && t.id != l.doing)
+            .any(|p| p.file.contains(&format!("tasks/{old}/task.json"))),
+        "{:?}",
+        board.problems
     );
-
-    // Running it again, even with the marker gone, finds no AI draft and changes nothing.
-    let after_first = files(&f);
-    fs::remove_file(marker(&f)).unwrap();
+    assert!(f.store.task(&f.project, old).is_err());
+    // A write elsewhere does not touch it, and there is no marker or conversion.
     f.store
-        .add_history(&f.project, l.ordinary_doing, Some("again"), now())
+        .add_history(&f.project, kept, Some("note"), now())
         .unwrap();
-    let after_second: Vec<_> = files(&f)
-        .into_iter()
-        .filter(|(name, _)| !name.contains(&format!("tasks/{}/", l.ordinary_doing)))
-        .collect();
-    let expected: Vec<_> = after_first
-        .into_iter()
-        .filter(|(name, _)| !name.contains(&format!("tasks/{}/", l.ordinary_doing)))
-        .collect();
-    assert_eq!(after_second, expected);
-    assert!(marker(&f).exists());
+    assert_eq!(fs::read(&path).unwrap(), before);
+    assert!(!f.dir.join(".internal/backlog-migrated").exists());
+
+    let epic = f.epic("OLD");
+    let epic_path = f.dir.join("epics/OLD/epic.json");
+    let mut stored: Value = serde_json::from_str(&fs::read_to_string(&epic_path).unwrap()).unwrap();
+    stored["draft"] = json!("ai");
+    fs::write(&epic_path, serde_json::to_string_pretty(&stored).unwrap()).unwrap();
+    assert!(f.store.epic(&f.project, &epic).is_err());
 }
 
 #[test]
@@ -782,101 +625,6 @@ fn a_newer_file_format_is_left_out_like_any_other_unsupported_version() {
     let board = f.store.board(&f.project).unwrap();
     assert!(board.tasks.is_empty());
     assert!(board.problems.iter().any(|p| p.field == "formatVersion"));
-}
-
-#[test]
-fn a_backup_folder_in_epics_does_not_stop_the_migration() {
-    let f = fx();
-    let l = legacy_project(&f);
-    // A copy of an old AI-draft epic that is not a valid epic id stays as it is.
-    let backup = f.dir.join("epics/OLD.bak");
-    fs::create_dir_all(&backup).unwrap();
-    fs::copy(f.dir.join("epics/OLD/epic.json"), backup.join("epic.json")).unwrap();
-    let kept = fs::read(backup.join("epic.json")).unwrap();
-
-    f.store
-        .add_history(&f.project, l.ordinary_todo, Some("note"), now())
-        .unwrap();
-
-    assert!(marker(&f).exists(), "the migration ran");
-    assert_eq!(f.lane(l.todo), Column::Backlog);
-    assert_eq!(fs::read(backup.join("epic.json")).unwrap(), kept);
-}
-
-#[test]
-fn an_old_client_handing_a_plan_back_to_the_ai_never_leaves_it_ready_in_todo() {
-    let f = fx();
-    let plan = f.plan("Plan");
-    let todo = f.human_task("Card");
-    for id in [plan, todo] {
-        f.store
-            .set_draft(&f.project, id, Some(Draft::Human), false, now())
-            .unwrap();
-    }
-    // A plan from before the Backlog that a person was editing, still in Todo.
-    let refused = f
-        .store
-        .edit_draft_task_to(
-            &f.project,
-            todo,
-            Some("New"),
-            None,
-            DraftSave {
-                target: Some(None),
-                legacy_ai: true,
-            },
-            now(),
-        )
-        .unwrap_err();
-    assert_eq!(refused.code(), "invalid_value");
-    let task = f.store.task(&f.project, todo).unwrap();
-    assert_eq!(task.task_status, Column::Todo);
-    assert_eq!(task.draft, Some(Draft::Human), "nothing was saved");
-
-    // In the Backlog the same save releases the edit lock and does not move the card.
-    let saved = f
-        .store
-        .edit_draft_task_to(
-            &f.project,
-            plan,
-            Some("New"),
-            None,
-            DraftSave {
-                target: Some(None),
-                legacy_ai: true,
-            },
-            now(),
-        )
-        .unwrap();
-    assert_eq!(saved.value.task_status, Column::Backlog);
-    assert_eq!(saved.value.draft, None);
-}
-
-#[test]
-fn an_old_client_releasing_the_draft_of_a_plan_with_ai_never_leaves_it_ready_in_todo() {
-    let f = fx();
-    let plan = f.plan("Plan");
-    let todo = f.human_task("Card");
-    for id in [plan, todo] {
-        f.store
-            .set_draft(&f.project, id, Some(Draft::Human), false, now())
-            .unwrap();
-    }
-    let refused = f
-        .store
-        .set_draft_from(&f.project, todo, None, false, true, now())
-        .unwrap_err();
-    assert_eq!(refused.code(), "invalid_value");
-    let task = f.store.task(&f.project, todo).unwrap();
-    assert_eq!(task.task_status, Column::Todo);
-    assert_eq!(task.draft, Some(Draft::Human), "nothing was written");
-
-    let released = f
-        .store
-        .set_draft_from(&f.project, plan, None, false, true, now())
-        .unwrap();
-    assert_eq!(released.value.task_status, Column::Backlog);
-    assert_eq!(released.value.draft, None);
 }
 
 fn png() -> Vec<u8> {
@@ -916,30 +664,6 @@ fn removing_the_image() -> ImageChanges {
         removed: vec![IMAGE_ID.into()],
         added: Vec::new(),
     }
-}
-
-#[test]
-fn a_refused_legacy_release_keeps_the_images() {
-    let f = fx();
-    let (todo, owner) = draft_with_image(&f);
-    let refused = f
-        .store
-        .edit_draft_task_with_images(
-            &f.project,
-            todo,
-            (None, Some("new text")),
-            DraftSave {
-                target: Some(None),
-                legacy_ai: true,
-            },
-            removing_the_image(),
-            now(),
-        )
-        .unwrap_err();
-    assert_eq!(refused.code(), "invalid_value");
-    f.store
-        .attachment_path(&f.project, &owner, IMAGE_ID)
-        .unwrap();
 }
 
 #[test]

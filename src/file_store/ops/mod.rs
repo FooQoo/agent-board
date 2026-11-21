@@ -10,7 +10,6 @@ mod agent;
 mod agent_stopped;
 
 mod attachment;
-mod backlog_migrate;
 mod completion;
 mod epic;
 mod history_event;
@@ -22,7 +21,6 @@ mod send;
 mod task;
 mod text;
 
-pub(in crate::file_store) use backlog_migrate::migrate_ai_drafts_locked;
 pub(in crate::file_store) use qa::migrate_legacy_locked;
 use qa::task_waits;
 pub use qa::{Accepted, AnswerItem, AskInput, AskQuestion, RequestImage, SendRequestInput};
@@ -72,7 +70,6 @@ pub(crate) fn lock_project(
     let lock = WriteLock::acquire(&layout::write_lock(&dir))?;
     transaction::recover_locked(&dir)?;
     migrate_legacy_locked(shared, project, &dir)?;
-    migrate_ai_drafts_locked(shared, project, &dir)?;
     Ok((dir, lock))
 }
 

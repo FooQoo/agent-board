@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Changed, Column, Draft, ProjectId, RunState};
+use crate::domain::{Changed, Draft, ProjectId, RunState};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::history_language::HistoryLanguage;
@@ -28,21 +28,6 @@ impl FileStore {
         discard: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.set_draft_from(project, id, draft, discard, false, now)
-    }
-
-    /// Like `set_draft`. `legacy_ai` is set when an older client asked for `draft: null`
-    /// with `"ai"`: a card in Todo or Doing is then refused (see
-    /// `refuse_legacy_release_in_todo`) and a card in the Backlog only loses the edit lock.
-    pub fn set_draft_from(
-        &self,
-        project: &ProjectId,
-        id: i64,
-        draft: Option<Draft>,
-        discard: bool,
-        legacy_ai: bool,
-        now: DateTime<Utc>,
-    ) -> Result<Changed<TaskView>, AgboardError> {
         if draft == Some(Draft::Human) && discard {
             return Err(AgboardError::InvalidArgument {
                 message: "discard cannot be combined with draft: \"human\".".to_string(),
@@ -61,7 +46,6 @@ impl FileStore {
                 changed: false,
             });
         }
-        refuse_legacy_release_in_todo(&task, legacy_ai)?;
         if draft == Some(Draft::Human) && task.agent_status == RunState::Running {
             return Err(AgboardError::InvalidStateForDraft {
                 id,
@@ -82,27 +66,6 @@ impl FileStore {
             changed: true,
         })
     }
-}
-
-/// An older client names `draft: "ai"` to hand a plan back to the AI. A plan is in the
-/// Backlog now, where that only releases the edit lock. In Todo it would leave an
-/// unsent card the agent can pick up, so the save is refused until a person takes the
-/// card back to the Backlog. Checked under the project lock, with the lane just read.
-pub(super) fn refuse_legacy_release_in_todo(
-    task: &TaskFile,
-    legacy_ai: bool,
-) -> Result<(), AgboardError> {
-    if legacy_ai && matches!(task.task_status, Column::Todo | Column::Doing) {
-        return Err(AgboardError::InvalidValue {
-            field: "draft".into(),
-            reason: format!(
-                "Task #{} is not in the Backlog, so handing it back to the AI would leave \
-                 it ready to start. Take it back to the Backlog first, then save.",
-                task.id
-            ),
-        });
-    }
-    Ok(())
 }
 
 /// A draft history event. The statuses are the task's current ones.

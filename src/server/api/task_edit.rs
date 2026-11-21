@@ -30,18 +30,16 @@ pub(super) struct EditTaskInput {
     acceptance: Option<Vec<AcceptanceItem>>,
     #[serde(default)]
     finalize: bool,
-    /// `"human"` keeps the draft after the save; `"ai"` of older clients, like
-    /// `finalize`, releases the edit lock.
+    /// `"human"` keeps the draft after the save.
     #[serde(default, deserialize_with = "super::draft_wire::named_draft")]
-    draft: super::draft_wire::NamedDraft,
+    draft: Option<Option<crate::domain::Draft>>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct DraftInput {
-    /// `"human"` makes the task a person's draft, `null` finalizes it (`"ai"` of
-    /// older clients does the same).
-    #[serde(default, deserialize_with = "super::draft_wire::present_named_draft")]
-    draft: super::draft_wire::NamedDraft,
+    /// `"human"` makes the task a person's draft, `null` finalizes it.
+    #[serde(default, deserialize_with = "super::draft_wire::present_draft")]
+    draft: Option<Option<crate::domain::Draft>>,
     /// Leaving the draft discards its changes instead of confirming them.
     #[serde(default)]
     discard: bool,
@@ -67,7 +65,7 @@ pub(super) async fn edit_task(
         && input.body.is_none()
         && input.acceptance.is_none()
         && !input.finalize
-        && input.draft.target.is_none()
+        && input.draft.is_none()
     {
         return agboard_error_response(&AgboardError::InvalidArgument {
             message: "Nothing to change.".to_string(),
@@ -75,8 +73,7 @@ pub(super) async fn edit_task(
         });
     }
     let finalize = DraftSave {
-        target: finalize_target(input.finalize, input.draft.target),
-        legacy_ai: input.draft.legacy_ai,
+        target: finalize_target(input.finalize, input.draft),
     };
     let result = with_request_files(&state, &headers, move |store| {
         if input.body.is_some() || input.acceptance.is_some() {
@@ -124,23 +121,16 @@ pub(super) async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let Some(draft) = input.draft.target else {
+    let Some(draft) = input.draft else {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
             "request body is invalid.",
-            "draft is required (\"human\", \"ai\", or null).",
+            "draft is required (\"human\" or null).",
         );
     };
     let result = with_request_files(&state, &headers, move |store| {
-        store.set_draft_from(
-            &project_id,
-            id,
-            draft,
-            input.discard,
-            input.draft.legacy_ai,
-            chrono::Utc::now(),
-        )
+        store.set_draft(&project_id, id, draft, input.discard, chrono::Utc::now())
     })
     .await;
     changed_task_response(&state, result)

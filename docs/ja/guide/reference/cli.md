@@ -132,7 +132,7 @@ agboard --project "My project" epic send LAUNCH --actor human
 agboard --project "My project" epic send LAUNCH --actor human --tasks 1,2
 ```
 
-`send`は1枚のカードを送ります。`epic send`は、エピック全体、または`--tasks`で指定したカードだけを、全部移すか何も移さないかの一回の保存で送ります。エージェントがどちらを実行しても`human_only`になります。`start`と`epic start`は、まったく同じ動作の非推奨の隠しエイリアスとして残っています。すでにBacklogを出たカードを送っても何も変わらないので、再試行しても安全です。ブラウザで人が編集中のカード（`draft: human`）は送れません（`task_is_draft`）。履歴には「人が Todo へ送りました。」と残ります。
+`send`は1枚のカードを送ります。`epic send`は、エピック全体、または`--tasks`で指定したカードだけを、全部移すか何も移さないかの一回の保存で送ります。エージェントがどちらを実行しても`human_only`になります。すでにBacklogを出たカードを送っても何も変わらないので、再試行しても安全です。ブラウザで人が編集中のカード（`draft: human`）は送れません（`task_is_draft`）。履歴には「人が Todo へ送りました。」と残ります。
 
 計画に未回答の質問があると、送信は`send_with_open_questions`（終了コード1）で断られ、メッセージに質問のIDが並びます。`--force`を付けると、そのまま送ります。質問は未回答のまま残り、回答があるまでカードはPendingです。
 

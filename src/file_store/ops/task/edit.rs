@@ -15,7 +15,7 @@ use super::super::{
     ensure_ai_task_not_done, lock_project, save_task_text, save_task_with_markdown, stamp,
     write_parts, write_text,
 };
-use super::draft::{draft_event, refuse_legacy_release_in_todo};
+use super::draft::draft_event;
 use super::saved::SavedDraft;
 use super::{normalize_description, view};
 
@@ -171,7 +171,6 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
-        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
         let target = resolve_finalize(finalize.target, owner);
         let (text_changed, markdown) =
@@ -246,7 +245,6 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
-        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
         let target = resolve_finalize(finalize.target, owner);
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);

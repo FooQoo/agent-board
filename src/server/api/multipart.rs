@@ -20,10 +20,9 @@ pub(super) struct MultipartMeta {
     pub(super) epic_id: Option<String>,
     #[serde(default)]
     pub(super) finalize: bool,
-    /// A new task takes `"human"` or null. An edit takes `"human"` to keep the draft;
-    /// `"ai"` of older clients releases the edit lock, as on the JSON routes.
+    /// A new task takes `"human"` or null. An edit takes `"human"` to keep the draft.
     #[serde(default, deserialize_with = "super::draft_wire::named_draft")]
-    pub(super) draft: super::draft_wire::NamedDraft,
+    pub(super) draft: Option<Option<crate::domain::Draft>>,
     #[serde(default)]
     pub(super) title: Option<String>,
     #[serde(default)]

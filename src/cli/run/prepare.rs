@@ -36,8 +36,7 @@ fn access(command: &Command) -> Access {
             EpicCommand::Add(_)
             | EpicCommand::Edit(_)
             | EpicCommand::Rm(_)
-            | EpicCommand::Send(_)
-            | EpicCommand::Start(_) => Access::ChangeProject,
+            | EpicCommand::Send(_) => Access::ChangeProject,
         },
         Command::Project(args) => match args.command {
             ProjectCommand::Ls => Access::ReadCatalog,
@@ -61,7 +60,6 @@ fn access(command: &Command) -> Access {
         | Command::Mv(_)
         | Command::State(_)
         | Command::Send(_)
-        | Command::Start(_)
         | Command::History(_)
         | Command::Rm(_) => Access::ChangeProject,
         Command::Progress(_) | Command::Open(_) => Access::ReadBoundProject,
@@ -134,7 +132,7 @@ fn dispatch(ctx: &mut Context, command: &Command) -> Result<Outcome, AgboardErro
         Command::Edit(args) => commands::edit::run(ctx, args),
         Command::Mv(args) => commands::mv::run(ctx, args),
         Command::State(args) => commands::state::run(ctx, args),
-        Command::Send(args) | Command::Start(args) => commands::send::run(ctx, args),
+        Command::Send(args) => commands::send::run(ctx, args),
         Command::History(args) => commands::history::run(ctx, args),
         Command::Rm(args) => commands::rm::run(ctx, args),
         Command::Ls(args) => commands::ls::run(ctx, args),
