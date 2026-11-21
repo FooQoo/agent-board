@@ -83,8 +83,7 @@ done
 
 function addSamples(home, id, text, more) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
-  run('edit', String(more.editorTask + 1), '--desc',
-    markdown(more.editorBody, more.editorChecks, 1));
+  run('edit', String(more.editorTask + 1), `--desc=${markdown(more.editorBody, more.editorChecks, 1)}`);
   for (const title of more.archived) {
     const added = run('add', title, '--assignee', 'human', '--actor', 'human', '--epic', 'DESIGN');
     run('mv', String((added.task ?? added).id), 'done', '--actor', 'human', '--reason', 'Sample work completed');

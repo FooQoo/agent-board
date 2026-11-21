@@ -61,7 +61,7 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
 });
 
 test('a count in the band opens the list on its own tab', async ({ page }) => {
-  agboardOk(mainProject, ['message', 'send', '--actor', 'human', '--text', 'Add a reset link to the login page.']);
+  agboardOk(mainProject, ['message', 'send', '--actor', 'human', `--text=Add a reset link to the login page.`]);
   await readBoardAfterReset(page);
 
   await messageBand(page).getByRole('button', { name: /^Your requests/ }).click();
@@ -76,7 +76,7 @@ test('a count in the band opens the list on its own tab', async ({ page }) => {
 test('the pictures sent with a request show in its detail from the message attachment route', async ({ page }) => {
   const picture = path.join(mainHome(), 'login.png');
   writeFileSync(picture, png);
-  agboardOk(mainProject, ['message', 'send', '--actor', 'human', '--text', 'The login page looks like this:\n\n![login](attachments/login.png)', '--image', picture]);
+  agboardOk(mainProject, ['message', 'send', '--actor', 'human', `--text=The login page looks like this:\n\n![login](attachments/login.png)`, '--image', picture]);
   await readBoardAfterReset(page);
 
   const [request] = messages('request');

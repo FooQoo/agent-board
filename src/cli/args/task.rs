@@ -16,7 +16,7 @@ use crate::error::{AgboardError, FileAction};
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
     /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 body characters; on edit, latest history is retained; use "-" for standard input
-    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    #[arg(long, value_name = "TEXT")]
     pub desc: Option<String>,
     /// Read the whole TASK.md text, frontmatter included (up to 50,000 body characters), from a file; on edit, latest history is retained
     #[arg(long, value_name = "PATH")]
@@ -90,12 +90,7 @@ pub struct StateArgs {
     /// Run state to report: idle or running
     pub state: ReportStateArg,
     /// Optional explanation. Use - to read UTF-8 from stdin
-    #[arg(
-        long,
-        value_name = "TEXT",
-        allow_hyphen_values = true,
-        group = "reason_source"
-    )]
+    #[arg(long, value_name = "TEXT", group = "reason_source")]
     pub reason: Option<String>,
     /// Read the explanation from a UTF-8 file
     #[arg(long, value_name = "PATH", group = "reason_source")]

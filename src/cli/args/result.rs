@@ -34,16 +34,16 @@ pub struct ResultAddArgs {
     /// ID of the task
     pub task_id: i64,
     /// Heading of the result (1 to 80 characters, one line); without it the first sentence of the summary is used
-    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    #[arg(long, value_name = "TEXT")]
     pub title: Option<String>,
     /// Short text that says what the requester can look at (1 to 2000 characters)
-    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    #[arg(long, value_name = "TEXT")]
     pub summary: String,
     /// Image of the result (PNG, JPEG, WebP, or GIF), stored as an attachment of the task; repeat it to put several images (up to 20, in order) on one result
     #[arg(long, value_name = "PATH")]
     pub file: Vec<PathBuf>,
     /// Link or storage location of the main artifact
-    #[arg(long, value_name = "URL_OR_PATH", allow_hyphen_values = true)]
+    #[arg(long, value_name = "URL_OR_PATH")]
     pub link: Option<String>,
     /// Mark the result as the final one; without it the result is in progress
     #[arg(long = "final")]
