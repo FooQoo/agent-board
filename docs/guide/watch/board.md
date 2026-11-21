@@ -108,7 +108,7 @@ Archive finished tasks to clear the board without deleting anything.
 
 ![Archive screen listing five archived tasks with a Back to board button](../../images/guide/archive.png){.screenshot}
 
-The Archive screen lists archived tasks with their ID, title, owner, date, and the epic they belonged to, if any. Select a task to see its details.
+The Archive screen lists archived tasks with their ID, title, owner, date, and the epic they belonged to, if any. The list is ordered by the time each task was archived, newest first; tasks archived at the same time appear with the higher ID first, and a task with no recorded archive time comes last. The phone's archive list uses the same order. Select a task to see its details.
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
 

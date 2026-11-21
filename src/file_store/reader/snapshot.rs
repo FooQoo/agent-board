@@ -41,6 +41,19 @@ pub struct ProjectSnapshot {
     pub requests: Vec<RequestView>,
 }
 
+/// Orders archived tasks for the archive list: newest `archivedAt` first, a task
+/// without an archive time after all the others, and the higher id first when
+/// the times are equal (or both missing), so the order never depends on read order.
+pub fn sort_archived_newest_first(tasks: &mut [&TaskView]) {
+    tasks.sort_by(|a, b| {
+        b.archived_at
+            .is_some()
+            .cmp(&a.archived_at.is_some())
+            .then_with(|| b.archived_at.cmp(&a.archived_at))
+            .then_with(|| b.id.cmp(&a.id))
+    });
+}
+
 impl ProjectSnapshot {
     /// The same snapshot without the archived tasks (the board and the CLI snapshot).
     pub fn without_archived(mut self) -> ProjectSnapshot {

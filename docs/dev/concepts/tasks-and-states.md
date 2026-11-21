@@ -75,7 +75,7 @@ A draft is a task or epic that is not put to work yet. `draft` says who still ow
 
 - Archiving keeps the lane, `draft`, `epicId`, and position; resets the stored run state to Idle; keeps the task's question references; and updates `updatedAt`. The lane and `taskStatusChangedAt` do not change. Web archive and restore record the fixed reasons `Archived by user.` and `Restored by user.`
 - Restoring places the task at the end of the lane it was archived from, with the run state Idle. Archiving always stores Idle, so a restored task has the run state it had at archive time, and the lane and Idle are always a valid pair under the work model; no fallback is needed. The phone's archive list restores through the same `POST …/tasks/{id}/restore` as the PC.
-- Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images remain readable. The archive list is sorted by `archivedAt`, newest first.
+- Normal snapshots, `ls`, and the hook return unarchived tasks only; `show ID` also shows archived ones. Writes to archived tasks fail with `task_archived`, but their images remain readable. The archive list is sorted by `archivedAt`, newest first, with the higher task ID first for equal times and tasks without a readable `archivedAt` last. `GET …/archive` sorts with `sort_archived_newest_first` (`src/file_store/reader/snapshot.rs`), and the web UI applies `sortArchivedNewestFirst` (`web/src/features/tasks/api/read.ts`) again, so the PC list and the phone's list share one order.
 
 ## Ordering and time
 
