@@ -197,3 +197,28 @@ fn an_edit_refuses_the_draft_flag_and_changes_nothing() {
     assert_eq!(after["title"], "Editable");
     assert_eq!(after["draft"], serde_json::Value::Null);
 }
+
+#[test]
+fn a_multipart_add_with_the_ai_draft_mark_is_refused_and_creates_nothing() {
+    let home = tempfile::tempdir().unwrap();
+    demo_project(home.path());
+    let pid = project_id(home.path());
+    let server = Running::start(home.path());
+    let before = board_tasks(&server, &pid).len();
+    let metadata = task_with_image_metadata(Some("ai"));
+    let body = multipart(
+        BOUNDARY,
+        &[("metadata", &metadata)],
+        &[("file", "shot.png", &png())],
+    );
+
+    let reply = server.write_multipart(
+        "POST",
+        &format!("/api/projects/{pid}/tasks/multipart"),
+        body,
+        BOUNDARY,
+    );
+
+    assert_eq!(reply.status, 422, "{}", reply.body);
+    assert_eq!(board_tasks(&server, &pid).len(), before);
+}

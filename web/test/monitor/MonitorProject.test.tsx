@@ -122,7 +122,7 @@ describe('MonitorProject', () => {
     await user.click(screen.getByRole('button', { name: 't1' }));
     await tick();
     expect(screen.queryByRole('button', { name: 'Refresh', hidden: true })).toBeNull();
-    const list = document.querySelector('[data-lane="todo"] .monitor-lane__scroll') as HTMLElement;
+    const list = document.querySelector('[data-lane="doing"] .monitor-lane__scroll') as HTMLElement;
     // The drawer makes the page inert for the user, so pull through the DOM.
     const finger = (type: 'touchStart' | 'touchMove' | 'touchEnd', y: number) => {
       const point = { clientX: 100, clientY: y, identifier: 1, target: list };

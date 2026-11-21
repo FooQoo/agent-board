@@ -216,9 +216,9 @@ function LanesStory({
         data: {
           project: makeProject({ id: SAMPLE_PROJECT, name: LANE_PROJECT_NAME }),
           version: 'v1',
-          cursor: 'c1',
           tasks: archived,
           epics: [],
+          total: archived.length,
         },
         status: 'ready',
       }}

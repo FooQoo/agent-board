@@ -22,6 +22,8 @@ function messages(type: 'question' | 'request'): Listed[] {
   return JSON.parse(out).messages;
 }
 
+test.use({ deviceScaleFactor: process.env.AB_SHOTS ? 2 : 1 });
+
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   await page.goto('/');
@@ -41,15 +43,18 @@ test('a request sent with Ask AI waits in the Messages band until it is picked u
   await dialog.getByRole('button', { name: 'Send request' }).click();
   await expect(dialog).toBeHidden();
 
-  // The band counts it as the person's own request, waiting for an AI; it is a message, not a task.
-  await expect(mine).toContainText('1');
+  // It is a message, not a task. The open list covers the band, so the list below shows it waiting for an AI.
   const [request] = messages('request');
   expect(request).toMatchObject({ body: expect.stringContaining('Add a reset link to the login page.'), status: 'open' });
   expect(listTasks(mainProject).some((task) => task.title.includes('reset link'))).toBe(false);
 
-  // The list shows it on its own tab, and its detail offers Withdraw.
-  const list = await openMessageList(page);
-  await list.getByRole('tab', { name: /^Your requests/ }).click();
+  // Sending opens the Messages list on "Your requests", where the sent request is listed; its detail offers Withdraw.
+  const list = messageList(page);
+  await expect(list.getByRole('tab', { name: /^Your requests/ })).toHaveAttribute('aria-selected', 'true');
+  if (process.env.AB_SHOTS) {
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${process.env.AB_SHOTS}/pc-after-send.png` });
+  }
   await expect(listRow(page, /^Request You → AI/)).toContainText('Waiting to be picked up');
   await listRow(page, /^Request You → AI/).click();
   await expect(answerDialog(page)).toContainText('Add a reset link to the login page.');

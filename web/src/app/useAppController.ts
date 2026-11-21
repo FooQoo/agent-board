@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useBoard } from '../pages/board/model/useBoard';
-import { useArchive } from '../pages/archive/model/useArchive';
+import { useArchivePages } from '../features/tasks/model/useArchivePages';
 import { useProjects } from '../features/projects/model/useProjects';
 import { useTaskLifecycle } from '../features/tasks/model/useTaskLifecycle';
 import { useBuildReload } from './model/useBuildReload';
@@ -46,7 +46,7 @@ export function useAppController(initial: AppInitial | undefined): AppController
   const core = useDataCore();
   const { adapter, serverBuild, streamDown } = usePcConnection();
   const board = useBoard(known ? activeId : null);
-  const archive = useArchive(session.viewMode === 'archive' && known ? activeId : null);
+  const archive = useArchivePages(session.viewMode === 'archive' && known ? activeId : null);
   const archiveLifecycle = useTaskLifecycle(operations);
   const [restoreFailure, setRestoreFailure] = useState<{
     projectId: ProjectId;

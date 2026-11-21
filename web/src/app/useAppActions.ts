@@ -27,6 +27,7 @@ export function useAppActions(model: AppControllerModel) {
     viewMode,
   } = model;
 
+  const openMessages = model.messages.panel.open;
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
   const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
 
@@ -139,11 +140,16 @@ export function useAppActions(model: AppControllerModel) {
         refreshProject(projectId);
       });
     },
-    onCloseDetails: () =>
+    onCloseDetails: () => {
       dispatch({
         type: viewMode === 'archive' ? 'SELECT_ARCHIVE_CARD' : 'SELECT_CARD',
         id: null,
-      }),
+      });
+      // The link that opened the task ends with it, so the same link can open it again; a task
+      // opened from a summary result gives the Summary list back where it was left.
+      model.clearResultLink?.();
+      model.messages.panel.returnToList();
+    },
   };
 
   const submitDialog = useCallback(
@@ -157,6 +163,8 @@ export function useAppActions(model: AppControllerModel) {
           text: data.requestText ?? '',
           attachments: data.attachments ?? [],
         });
+        // The sent request is shown where it waits: the Messages list on "Your requests".
+        openMessages({ tab: 'fromYou' });
       } else if (dialog.kind === 'edit') {
         if (data.attachments || data.removedAttachmentIds?.length)
           await editTaskMultipart(projectId, dialog.task.id, {
@@ -178,7 +186,7 @@ export function useAppActions(model: AppControllerModel) {
       }
       refreshProject(projectId);
     },
-    [refreshProject, session.dialog, session.operation],
+    [refreshProject, openMessages, session.dialog, session.operation],
   );
 
   const confirmBulkArchive = useCallback(async () => {

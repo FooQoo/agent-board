@@ -4,9 +4,12 @@ import { useTranslation } from 'react-i18next';
 import type { ArchiveResponse } from '../../../features/tasks/api/read';
 import { Button } from '@/shared/ui/button';
 import { Surface } from '../../../shared/ui/surface/Surface';
+import { ArchiveListFooter } from '../../../features/tasks/archive/ArchiveListFooter';
 import { ArchiveVirtualList } from './ArchiveVirtualList';
 import './archive-sheet.css';
 import { Spinner } from '@/shared/ui/spinner/Spinner';
+
+const noop = () => {};
 
 /** What the sheet shows of the archive: the read the phone made when the sheet opened. */
 export interface ArchiveSheetData {
@@ -14,6 +17,12 @@ export interface ArchiveSheetData {
   status: 'loading' | 'ready' | 'error';
   fetchFailed?: boolean;
   onRetry?: () => void;
+  /** The next page: more follow, one is on its way, the last request failed, and how to ask. Absent when the list is whole. */
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  loadMoreFailed?: boolean;
+  loadMore?: () => void;
+  retryMore?: () => void;
 }
 
 export interface ArchiveListSheetProps extends ArchiveSheetData {
@@ -27,7 +36,7 @@ export interface ArchiveListSheetProps extends ArchiveSheetData {
 }
 
 /**
- * The phone's archive list: a bottom drawer with every archived task, newest first. Each row is the
+ * The phone's archive list: a bottom drawer with the archived tasks, newest first, read a page at a time as the list scrolls. Each row is the
  * card the lanes use. A left swipe on a row uncovers Restore at once, and pressing it returns the
  * task to the lane and run state it was archived with. A tap outside the open row closes it.
  */
@@ -36,6 +45,11 @@ export function ArchiveListSheet({
   status,
   fetchFailed = false,
   onRetry,
+  hasMore = false,
+  loadingMore = false,
+  loadMoreFailed = false,
+  loadMore,
+  retryMore,
   onRestore,
   onClose,
   projectName,
@@ -129,6 +143,14 @@ export function ArchiveListSheet({
           busy={busy}
           onRevealChange={onRevealChange}
           onRestore={onRestoreRow}
+          pages={{ hasMore, loadingMore, loadMoreFailed, loadMore: loadMore ?? noop }}
+        />
+        <ArchiveListFooter
+          className="archive-sheet__footer"
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          loadMoreFailed={loadMoreFailed}
+          onRetry={retryMore ?? noop}
         />
       </>
     );

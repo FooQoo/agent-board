@@ -6,7 +6,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '../helpers
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard, taskBody, askArgs, decisionJson } from '../helpers/agboard';
 import { resetPreferences, setPreferences } from '../helpers/preferences';
 import { closeMessages } from '../helpers/answer-flow';
-import { answerButton, fillAnswer, openAnswer, pressSend, send, sendAnswer } from '../helpers/answer';
+import { messageList, answerButton, fillAnswer, openAnswer, pressSend, send, sendAnswer } from '../helpers/answer';
 
 // The settings dialog, the 24 color themes, the language, and the board operations that must keep
 // working with them. The worker's Rust serve is real; only the browser storage and a few request
@@ -687,6 +687,10 @@ test('a request that fails keeps what was typed, shows the reason, and can be se
   mode = 'pass';
   await sendRequest(ask);
   expect(requestsText()).toContain('Typed request');
+  // A saved request opens the Messages list on "Your requests", over the board; close it before using the board again.
+  await expect(messageList(page).getByRole('tab', { name: /^Your requests/ })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(messageList(page)).toBeHidden();
 
   // Moving: a refused move leaves the card where it was and says so.
   let moveFails = true;
