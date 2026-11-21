@@ -194,6 +194,21 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--summary-result-links",
+              "states": [
+                "tab: summary",
+                "result row is a link",
+                "version label",
+                "line without a version"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-result-links-phone",
+              "states": ["bottom sheet", "tab: summary", "result row is a link", "version label"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--summary-tab-empty",
               "states": ["tab: summary", "no summaries", "english"],
               "interaction": true

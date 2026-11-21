@@ -32,9 +32,26 @@ describe('parseSummaries', () => {
         id: 's-1',
         from: entry.from,
         to: entry.to,
-        results: [{ taskId: 552, title: 'Pull to refresh' }],
+        results: [{ taskId: 552, version: null, title: 'Pull to refresh' }],
       },
     ]);
+  });
+
+  it('reads the version of a result, and none for a line written before versions', () => {
+    const [summary] = parseSummaries({
+      summaries: [
+        {
+          ...entry,
+          results: [
+            { taskId: 1, version: 3, title: 'new' },
+            { taskId: 2, title: 'old' },
+            { taskId: 3, version: 0, title: 'zero' },
+            { taskId: 4, version: '2', title: 'text' },
+          ],
+        },
+      ],
+    });
+    expect(summary?.results.map((r) => r.version)).toEqual([3, null, null, null]);
   });
 
   it('leaves out a dismissed entry and one that is not well formed', () => {

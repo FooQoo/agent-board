@@ -70,7 +70,9 @@ A request you sent with **Ask AI** shows in the **Your requests** tab as **Waiti
 
 The **Summary** tab lists the periodic summaries the board records of the results in the project (see [Notification settings](../watch/remote-access) for the interval). Its count is the number of summaries you have not deleted. Nothing is marked read or unread, and the **Messages** count in the phone's bottom bar still counts questions only.
 
-Each item shows the window it covers in your local time, such as `11/20 09:00–10:00`, and one row for every result recorded in it: the task number and the result's title. Newest windows come first. A window without results has no item.
+Each item shows the window it covers in your local time, such as `11/20 09:00–10:00`, and one row for every result recorded in it: the task number, the result's title, and its version such as `Result v2`. Newest windows come first. A window without results has no item.
+
+Each result row is a link. Select it to open that task's **Results** tab, scrolled to the result and highlighted. The row has a border, a chevron on the right, and a hover and pressed color, and you can reach it with the keyboard and open it with Enter. A summary recorded before the board kept versions shows `Results` instead of a version; its row opens the **Results** tab without highlighting a result.
 
 To delete a summary from the list, press the trash button at the right end of the item's heading on the PC. On a phone, swipe the item to the left, or tap it, to show the trash tile on its right, then tap the tile. Only a swipe to the left moves an item: a swipe to the right that starts on an item is left to the tab swipe and switches to the previous tab. An item that already shows its trash tile can be swiped back to the right to close it. A deleted summary disappears at once, and the board keeps its record on disk. If the board cannot delete it, the item comes back with a notice. The list also updates by itself when a new summary is recorded.
 

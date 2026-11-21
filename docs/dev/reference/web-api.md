@@ -279,7 +279,7 @@ A malformed JSON body is 400. An empty body, an unknown field, or a missing fiel
 
 ### Periodic summaries
 
-`GET /api/projects/{projectId}/summaries` returns `{"summaries": [...]}`, newest first (by the end of the window). Each entry is one line of the project's `notify/` files (see [Periodic summaries](./files.md#periodic-summaries)): `id`, `dismissed`, `from`, `to`, and `results` (`taskId`, `title`, `at`). Dismissed summaries are left out; `?dismissed=include` lists them too. The files are read on each request, so a hand edit shows at once. Never cached.
+`GET /api/projects/{projectId}/summaries` returns `{"summaries": [...]}`, newest first (by the end of the window). Each entry is one line of the project's `notify/` files (see [Periodic summaries](./files.md#periodic-summaries)): `id`, `dismissed`, `from`, `to`, and `results` (`taskId`, `version`, `title`, `at`; `version` is absent on a line written before it was recorded). Dismissed summaries are left out; `?dismissed=include` lists them too. The files are read on each request, so a hand edit shows at once. Never cached.
 
 `POST /api/projects/{projectId}/summaries/{summaryId}/dismiss` sets `dismissed` on the summary's line and returns `{"summary": {...}}`. It takes no body, is safe to repeat, and never removes the line. An unknown summary is 404 `message_not_found`, an unknown project 404 `project_not_found`, and a project ID that is not well formed 422 `invalid_value`. Both routes are on the board router, so the ngrok entrance serves them behind the session, and the write guards are those of every other change.
 

@@ -49,6 +49,19 @@ export function historyLinkQuery(projectId: string, taskId: number): string | nu
 }
 
 /**
+ * The query of a link to the results tab of a task as a whole:
+ * `?project=<ProjectId>&task=<id>&tab=results`. No version is highlighted.
+ */
+export function resultsTabLinkQuery(projectId: string, taskId: number): string | null {
+  if (!isProjectIdValue(projectId) || !isPositiveInteger(taskId)) return null;
+  const params = new URLSearchParams();
+  params.set('project', projectId);
+  params.set('task', String(taskId));
+  params.set('tab', 'results');
+  return `?${params.toString()}`;
+}
+
+/**
  * The address of one result at the public origin of the connection, for a notification to open.
  * Gives nothing for a bad ProjectId, task, or version, or an origin that is not http(s).
  */
@@ -88,6 +101,9 @@ export function parseResultTarget(search: string | URLSearchParams): ResultLinkT
   // A result that is present but damaged is no target; only a link without one may name the history.
   if (params.get('result') === null && params.get('tab') === 'history')
     return { projectId, taskId, version: null, tab: 'history' };
+  // The results tab as a whole, with no version to highlight (a summary line written before versions were recorded).
+  if (params.get('result') === null && params.get('tab') === 'results')
+    return { projectId, taskId, version: null, tab: 'results' };
   const questionId = params.get('question') ?? '';
   if (params.get('result') === null && isQuestionId(questionId))
     return { projectId, taskId, version: null, questionId, tab: 'question' };

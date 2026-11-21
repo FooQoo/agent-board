@@ -147,6 +147,8 @@ export interface AnswerItem {
 /** One result line of a periodic summary. */
 export interface SummaryResult {
   taskId: number;
+  /** The version of the result in the task's results; null for a line written before it was recorded. */
+  version: number | null;
   title: string;
 }
 
@@ -179,7 +181,14 @@ export function parseSummaries(value: unknown): PeriodicSummary[] {
       to: entry.to,
       results: (entry.results as Record<string, unknown>[])
         .filter((r) => typeof r?.taskId === 'number' && typeof r.title === 'string')
-        .map((r) => ({ taskId: r.taskId as number, title: r.title as string })),
+        .map((r) => ({
+          taskId: r.taskId as number,
+          version:
+            typeof r.version === 'number' && Number.isSafeInteger(r.version) && r.version > 0
+              ? r.version
+              : null,
+          title: r.title as string,
+        })),
     });
   }
   return out;

@@ -279,7 +279,7 @@ JSONとして読めない本文は400です。空の本文、未知の項目、�
 
 ### 定期サマリー
 
-`GET /api/projects/{projectId}/summaries`は、`{"summaries": [...]}`を新しい順（期間の終わりの順）に返します。各要素は、プロジェクトの`notify/`のファイルの1行です（[定期サマリー](./files.md#定期サマリー)を参照）。`id`・`dismissed`・`from`・`to`・`results`（`taskId`・`title`・`at`）を持ちます。片付けたサマリーは含めません。`?dismissed=include`を付けると、それも返します。要求のたびにファイルを読むので、手で編集した内容はすぐに見えます。キャッシュしません。
+`GET /api/projects/{projectId}/summaries`は、`{"summaries": [...]}`を新しい順（期間の終わりの順）に返します。各要素は、プロジェクトの`notify/`のファイルの1行です（[定期サマリー](./files.md#定期サマリー)を参照）。`id`・`dismissed`・`from`・`to`・`results`（`taskId`・`version`・`title`・`at`。`version`は、記録される前に書いた行にはありません）を持ちます。片付けたサマリーは含めません。`?dismissed=include`を付けると、それも返します。要求のたびにファイルを読むので、手で編集した内容はすぐに見えます。キャッシュしません。
 
 `POST /api/projects/{projectId}/summaries/{summaryId}/dismiss`は、そのサマリーの行に`dismissed`を立て、`{"summary": {...}}`を返します。本文は取らず、繰り返しても安全で、行を消すことはありません。未知のサマリーは404 `message_not_found`、未知のプロジェクトは404 `project_not_found`、形式の誤ったプロジェクトIDは422 `invalid_value`です。どちらの経路もボードのルーターにあるので、ngrokの入口もsessionの背後で提供します。書き込みの保護はほかの変更と同じです。
 
