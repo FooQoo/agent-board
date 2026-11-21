@@ -1,21 +1,32 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { expect, test, type Locator, type Page } from '../helpers/fixtures';
-import { agboard, agboardCatalogOk, projectId, skipGuide, taskBody } from '../helpers/agboard';
-import { startPhoneEntrance, type PhoneEntrance } from '../helpers/monitor';
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { expect, test, type Locator, type Page } from "../helpers/fixtures";
+import {
+	agboard,
+	agboardCatalogOk,
+	projectId,
+	skipGuide,
+	taskBody,
+} from "../helpers/agboard";
+import { startPhoneEntrance, type PhoneEntrance } from "../helpers/monitor";
 
 // The phone monitor's lane view through the phone entrance, driven with a finger: one lane on screen,
 // lane tabs, a horizontal swipe between lanes, a card chosen by a long press and slid open for its
 // action buttons, and the done lane's bulk archive. Each test reads its own project, and every result
 // is also read back from the shared files through the CLI, not only from the screen.
-test.describe.configure({ mode: 'serial' });
-test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, locale: 'en-US', timezoneId: 'UTC' });
+test.describe.configure({ mode: "serial" });
+test.use({
+	viewport: { width: 375, height: 812 },
+	hasTouch: true,
+	locale: "en-US",
+	timezoneId: "UTC",
+});
 
-type Lane = 'backlog' | 'todo' | 'doing' | 'done';
+type Lane = "backlog" | "todo" | "doing" | "done";
 interface Seed {
-  title: string;
-  lane: Lane;
+	title: string;
+	lane: Lane;
 }
 
 let home: string;
@@ -23,874 +34,1192 @@ let entrance: PhoneEntrance;
 const ids = new Map<string, number>();
 
 function cli(project: string, args: string[]): string {
-  const result = agboard(project, args, home);
-  if (result.code !== 0) throw new Error(`agboard ${args.join(' ')} failed: ${result.stderr}`);
-  return result.stdout;
+	const result = agboard(project, args, home);
+	if (result.code !== 0)
+		throw new Error(`agboard ${args.join(" ")} failed: ${result.stderr}`);
+	return result.stdout;
 }
 
 function seed(project: string, cards: Seed[]): void {
-  agboardCatalogOk(['project', 'create', project], home);
-  for (const { title, lane } of cards) {
-    const added = JSON.parse(
-      cli(project, ['add', title, `--desc=${taskBody(`${title} body.`)}`, '--assignee', 'ai', '--actor', 'human', '--json', ...(lane === 'backlog' ? ['--backlog'] : [])]),
-    ) as { task: { id: number } };
-    ids.set(`${project}:${title}`, added.task.id);
-    if (lane === 'doing' || lane === 'done') cli(project, ['mv', String(added.task.id), 'doing', '--actor', 'ai', '--reason', 'Start']);
-    if (lane === 'done') cli(project, ['mv', String(added.task.id), 'done', '--actor', 'ai', '--reason', 'Finish']);
-  }
+	agboardCatalogOk(["project", "create", project], home);
+	for (const { title, lane } of cards) {
+		const added = JSON.parse(
+			cli(project, [
+				"add",
+				title,
+				`--desc=${taskBody(`${title} body.`)}`,
+				"--assignee",
+				"ai",
+				"--actor",
+				"human",
+				"--json",
+				...(lane === "backlog" ? ["--backlog"] : []),
+			]),
+		) as { task: { id: number } };
+		ids.set(`${project}:${title}`, added.task.id);
+		if (lane === "doing" || lane === "done")
+			cli(project, [
+				"mv",
+				String(added.task.id),
+				"doing",
+				"--actor",
+				"ai",
+				"--reason",
+				"Start",
+			]);
+		if (lane === "done")
+			cli(project, [
+				"mv",
+				String(added.task.id),
+				"done",
+				"--actor",
+				"ai",
+				"--reason",
+				"Finish",
+			]);
+	}
 }
 
-function show(project: string, title: string): { taskStatus: Lane; archivedAt: string | null } {
-  const id = ids.get(`${project}:${title}`);
-  return JSON.parse(cli(project, ['show', String(id), '--json'])).task;
+function show(
+	project: string,
+	title: string,
+): { taskStatus: Lane; archivedAt: string | null } {
+	const id = ids.get(`${project}:${title}`);
+	return JSON.parse(cli(project, ["show", String(id), "--json"])).task;
 }
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000);
-  home = mkdtempSync(path.join(os.tmpdir(), 'agent-board-lanes-'));
-  skipGuide(home);
-  seed('Switch', [
-    { title: 'Switch todo A', lane: 'todo' },
-    { title: 'Switch todo B', lane: 'todo' },
-    { title: 'Switch doing', lane: 'doing' },
-    { title: 'Switch done', lane: 'done' },
-  ]);
-  seed('Scroll', Array.from({ length: 12 }, (_, i) => ({ title: `Scroll card ${i + 1}`, lane: 'todo' as const })));
-  seed('Move', [
-    { title: 'Move forward', lane: 'todo' },
-    { title: 'Move finish', lane: 'doing' },
-    { title: 'Move back', lane: 'doing' },
-    { title: 'Move reopen', lane: 'done' },
-    { title: 'Move bystander', lane: 'todo' },
-  ]);
-  seed('Archive', [
-    { title: 'Archive target', lane: 'todo' },
-    { title: 'Archive kept', lane: 'todo' },
-  ]);
-  seed('Bulk', [
-    { title: 'Bulk todo', lane: 'todo' },
-    { title: 'Bulk done one', lane: 'done' },
-    { title: 'Bulk done two', lane: 'done' },
-    { title: 'Bulk done three', lane: 'done' },
-  ]);
-  seed('BulkAfterSwipe', [
-    { title: 'After swipe one', lane: 'done' },
-    { title: 'After swipe two', lane: 'done' },
-  ]);
-  seed('TileAfterSwipe', [
-    { title: 'Tile target', lane: 'todo' },
-    { title: 'Tile bystander', lane: 'todo' },
-  ]);
-  seed('RestoreAfterSwipe', [
-    { title: 'Restore one', lane: 'done' },
-    { title: 'Restore two', lane: 'done' },
-  ]);
-  seed('ArchiveOrder', [
-    { title: 'Order one', lane: 'done' },
-    { title: 'Order two', lane: 'done' },
-    { title: 'Order three', lane: 'done' },
-  ]);
-  seed('Quiet', [{ title: 'Quiet todo', lane: 'todo' }]);
-  seed('Return', [
-    { title: 'Return plain', lane: 'todo' },
-    { title: 'Return started', lane: 'todo' },
-  ]);
-  cli('Return', ['result', 'add', String(ids.get('Return:Return started')), '--summary=Work began.', '--actor', 'ai']);
-  seed('Plans', [
-    { title: 'Plan plain', lane: 'backlog' },
-    { title: 'Plan asked', lane: 'backlog' },
-    { title: 'Plan bystander', lane: 'backlog' },
-  ]);
-  cli('Plans', [
-    'message', 'ask', '--actor', 'ai', '--no-wait', '--task', String(ids.get('Plans:Plan asked')),
-    '--questions-json', JSON.stringify({ questions: [{ body: 'Which release name should the plan use?' }] }),
-  ]);
-  seed('Edge', [
-    { title: 'Edge plan one', lane: 'backlog' },
-    { title: 'Edge plan two', lane: 'backlog' },
-    { title: 'Edge plan three', lane: 'backlog' },
-    { title: 'Edge todo', lane: 'todo' },
-  ]);
-  seed('Instant', [
-    { title: 'Instant one', lane: 'backlog' },
-    { title: 'Instant two', lane: 'backlog' },
-  ]);
-  seed('Pick', [
-    { title: 'Pick one', lane: 'backlog' },
-    { title: 'Pick two', lane: 'backlog' },
-    { title: 'Pick three', lane: 'backlog' },
-  ]);
-  entrance = await startPhoneEntrance(home);
+	test.setTimeout(240_000);
+	home = mkdtempSync(path.join(os.tmpdir(), "agent-board-lanes-"));
+	skipGuide(home);
+	seed("Switch", [
+		{ title: "Switch todo A", lane: "todo" },
+		{ title: "Switch todo B", lane: "todo" },
+		{ title: "Switch doing", lane: "doing" },
+		{ title: "Switch done", lane: "done" },
+	]);
+	seed(
+		"Scroll",
+		Array.from({ length: 12 }, (_, i) => ({
+			title: `Scroll card ${i + 1}`,
+			lane: "todo" as const,
+		})),
+	);
+	seed("Move", [
+		{ title: "Move forward", lane: "todo" },
+		{ title: "Move finish", lane: "doing" },
+		{ title: "Move back", lane: "doing" },
+		{ title: "Move reopen", lane: "done" },
+		{ title: "Move bystander", lane: "todo" },
+	]);
+	seed("Archive", [
+		{ title: "Archive target", lane: "todo" },
+		{ title: "Archive kept", lane: "todo" },
+	]);
+	seed("Bulk", [
+		{ title: "Bulk todo", lane: "todo" },
+		{ title: "Bulk done one", lane: "done" },
+		{ title: "Bulk done two", lane: "done" },
+		{ title: "Bulk done three", lane: "done" },
+	]);
+	seed("BulkAfterSwipe", [
+		{ title: "After swipe one", lane: "done" },
+		{ title: "After swipe two", lane: "done" },
+	]);
+	seed("TileAfterSwipe", [
+		{ title: "Tile target", lane: "todo" },
+		{ title: "Tile bystander", lane: "todo" },
+	]);
+	seed("RestoreAfterSwipe", [
+		{ title: "Restore one", lane: "done" },
+		{ title: "Restore two", lane: "done" },
+	]);
+	seed("ArchiveOrder", [
+		{ title: "Order one", lane: "done" },
+		{ title: "Order two", lane: "done" },
+		{ title: "Order three", lane: "done" },
+	]);
+	seed("Quiet", [{ title: "Quiet todo", lane: "todo" }]);
+	seed("Return", [
+		{ title: "Return plain", lane: "todo" },
+		{ title: "Return started", lane: "todo" },
+	]);
+	cli("Return", [
+		"result",
+		"add",
+		String(ids.get("Return:Return started")),
+		"--summary=Work began.",
+		"--actor",
+		"ai",
+	]);
+	seed("Plans", [
+		{ title: "Plan plain", lane: "backlog" },
+		{ title: "Plan asked", lane: "backlog" },
+		{ title: "Plan bystander", lane: "backlog" },
+	]);
+	cli("Plans", [
+		"message",
+		"ask",
+		"--actor",
+		"ai",
+		"--no-wait",
+		"--task",
+		String(ids.get("Plans:Plan asked")),
+		"--questions-json",
+		JSON.stringify({
+			questions: [{ body: "Which release name should the plan use?" }],
+		}),
+	]);
+	seed("Edge", [
+		{ title: "Edge plan one", lane: "backlog" },
+		{ title: "Edge plan two", lane: "backlog" },
+		{ title: "Edge plan three", lane: "backlog" },
+		{ title: "Edge todo", lane: "todo" },
+	]);
+	seed("Instant", [
+		{ title: "Instant one", lane: "backlog" },
+		{ title: "Instant two", lane: "backlog" },
+	]);
+	seed("Pick", [
+		{ title: "Pick one", lane: "backlog" },
+		{ title: "Pick two", lane: "backlog" },
+		{ title: "Pick three", lane: "backlog" },
+	]);
+	entrance = await startPhoneEntrance(home);
 });
 
 test.afterAll(async () => {
-  await entrance?.stop();
-  if (home) rmSync(home, { recursive: true, force: true });
+	await entrance?.stop();
+	if (home) rmSync(home, { recursive: true, force: true });
 });
 
 /** Opens the phone board. It starts on Doing, so unless `initial` is asked for, the Todo tab is chosen. */
-async function openPhone(page: Page, project: string, initial: 'default' | 'todo' = 'todo'): Promise<void> {
-  await entrance.open(page, `${entrance.phoneOrigin}/?project=${projectId(project, home)}`);
-  await expect(page.getByRole('tablist', { name: 'Lanes' })).toBeVisible();
-  if (initial === 'todo') {
-    await page.getByRole('tab', { name: /^Todo/ }).click();
-    await expect(page.getByRole('tab', { name: /^Todo/, selected: true })).toBeVisible();
-  }
+async function openPhone(
+	page: Page,
+	project: string,
+	initial: "default" | "todo" = "todo",
+): Promise<void> {
+	await entrance.open(
+		page,
+		`${entrance.phoneOrigin}/?project=${projectId(project, home)}`,
+	);
+	await expect(page.getByRole("tablist", { name: "Lanes" })).toBeVisible();
+	if (initial === "todo") {
+		await page.getByRole("tab", { name: /^Todo/ }).click();
+		await expect(
+			page.getByRole("tab", { name: /^Todo/, selected: true }),
+		).toBeVisible();
+	}
 }
 
 const tab = (page: Page, name: string | RegExp, selected?: boolean) =>
-  page.getByRole('tab', { name, selected });
+	page.getByRole("tab", { name, selected });
 
 /** The lane on screen: the other two lanes are inert, so only this panel takes a finger or a screen reader. */
 const shown = (page: Page) => page.locator('[role="tabpanel"]:not([inert])');
 
 /** The element a finger lands on for a card: its swipe wrapper (the buttons sit beside the article). */
 const swipeCard = (page: Page, title: string) =>
-  page.locator('[data-swipe-card]').filter({ has: page.getByRole('article', { name: new RegExp(title) }) });
+	page
+		.locator("[data-swipe-card]")
+		.filter({ has: page.getByRole("article", { name: new RegExp(title) }) });
 
 interface Point {
-  x: number;
-  y: number;
+	x: number;
+	y: number;
 }
 
 /**
  * One finger: press at `from`, optionally run `afterPress` (a long press waits for the card to be
  * chosen), move to `to` in steps, and lift.
  */
-async function finger(page: Page, from: Point, to: Point, afterPress?: () => Promise<void>): Promise<void> {
-  const cdp = await page.context().newCDPSession(page);
-  try {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
-    await afterPress?.();
-    const steps = 12;
-    for (let i = 1; i <= steps; i += 1) {
-      await cdp.send('Input.dispatchTouchEvent', {
-        type: 'touchMove',
-        touchPoints: [{ x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps }],
-      });
-    }
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  } finally {
-    await cdp.detach();
-  }
+async function finger(
+	page: Page,
+	from: Point,
+	to: Point,
+	afterPress?: () => Promise<void>,
+): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	try {
+		await cdp.send("Input.dispatchTouchEvent", {
+			type: "touchStart",
+			touchPoints: [from],
+		});
+		await afterPress?.();
+		const steps = 12;
+		for (let i = 1; i <= steps; i += 1) {
+			await cdp.send("Input.dispatchTouchEvent", {
+				type: "touchMove",
+				touchPoints: [
+					{
+						x: from.x + ((to.x - from.x) * i) / steps,
+						y: from.y + ((to.y - from.y) * i) / steps,
+					},
+				],
+			});
+		}
+		await cdp.send("Input.dispatchTouchEvent", {
+			type: "touchEnd",
+			touchPoints: [],
+		});
+	} finally {
+		await cdp.detach();
+	}
 }
 
 /** Measure an element once the lane slide has stopped moving it. */
 async function box(locator: Locator) {
-  let last = '';
-  await expect
-    .poll(async () => {
-      const now = JSON.stringify(await locator.boundingBox());
-      const still = now === last;
-      last = now;
-      return still;
-    })
-    .toBe(true);
-  const b = await locator.boundingBox();
-  if (!b) throw new Error('Could not measure the element.');
-  return b;
+	let last = "";
+	await expect
+		.poll(async () => {
+			const now = JSON.stringify(await locator.boundingBox());
+			const still = now === last;
+			last = now;
+			return still;
+		})
+		.toBe(true);
+	const b = await locator.boundingBox();
+	if (!b) throw new Error("Could not measure the element.");
+	return b;
 }
 
 /** Swipe sideways across a card (`direction` -1 is to the left) without holding it first. */
-async function swipeOver(page: Page, card: Locator, direction: -1 | 1): Promise<void> {
-  const b = await box(card);
-  const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * (direction < 0 ? 0.8 : 0.2), y }, { x: b.x + b.width * (direction < 0 ? 0.2 : 0.8), y });
+async function swipeOver(
+	page: Page,
+	card: Locator,
+	direction: -1 | 1,
+): Promise<void> {
+	const b = await box(card);
+	const y = b.y + b.height / 2;
+	await finger(
+		page,
+		{ x: b.x + b.width * (direction < 0 ? 0.8 : 0.2), y },
+		{ x: b.x + b.width * (direction < 0 ? 0.2 : 0.8), y },
+	);
 }
 
 /** Hold a card until it is chosen, then slide it sideways without lifting. */
-async function holdAndSwipe(page: Page, card: Locator, direction: -1 | 1): Promise<void> {
-  const b = await box(card);
-  const y = b.y + b.height / 2;
-  await finger(
-    page,
-    { x: b.x + b.width * (direction < 0 ? 0.8 : 0.2), y },
-    { x: b.x + b.width * (direction < 0 ? 0.2 : 0.8), y },
-    () => expect(card).toHaveAttribute('data-armed', 'true'),
-  );
+async function holdAndSwipe(
+	page: Page,
+	card: Locator,
+	direction: -1 | 1,
+): Promise<void> {
+	const b = await box(card);
+	const y = b.y + b.height / 2;
+	await finger(
+		page,
+		{ x: b.x + b.width * (direction < 0 ? 0.8 : 0.2), y },
+		{ x: b.x + b.width * (direction < 0 ? 0.2 : 0.8), y },
+		() => expect(card).toHaveAttribute("data-armed", "true"),
+	);
 }
 
 // #447
-test('the phone board opens on the Doing lane, and a tap on another tab still switches', async ({ page }) => {
-  await openPhone(page, 'Switch', 'default');
-  await expect(tab(page, 'Doing 1', true)).toBeVisible();
-  await expect(tab(page, 'Todo 2', false)).toBeVisible();
-  await expect(shown(page).getByRole('article')).toHaveCount(1);
-  await expect(shown(page).getByRole('article', { name: /Switch doing/ })).toBeVisible();
-  await tab(page, 'Done 1').click();
-  await expect(tab(page, 'Done 1', true)).toBeVisible();
-  await expect(shown(page).getByRole('article', { name: /Switch done/ })).toBeVisible();
+test("the phone board opens on the Doing lane, and a tap on another tab still switches", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch", "default");
+	await expect(tab(page, "Doing 1", true)).toBeVisible();
+	await expect(tab(page, "Todo 2", false)).toBeVisible();
+	await expect(shown(page).getByRole("article")).toHaveCount(1);
+	await expect(
+		shown(page).getByRole("article", { name: /Switch doing/ }),
+	).toBeVisible();
+	await tab(page, "Done 1").click();
+	await expect(tab(page, "Done 1", true)).toBeVisible();
+	await expect(
+		shown(page).getByRole("article", { name: /Switch done/ }),
+	).toBeVisible();
 });
 
-test('a horizontal swipe, even one that starts on a card, and the tabs switch between the three lanes', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
-  await expect(tab(page, 'Doing 1')).toBeVisible();
-  await expect(tab(page, 'Done 1')).toBeVisible();
-  // One lane is on screen, and the other two are inert.
-  await expect(shown(page)).toHaveCount(1);
-  await expect(shown(page).getByRole('article')).toHaveCount(2);
-  await expect(shown(page).getByRole('article', { name: /Switch todo A/ })).toBeVisible();
+test("a horizontal swipe, even one that starts on a card, and the tabs switch between the three lanes", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
+	await expect(tab(page, "Doing 1")).toBeVisible();
+	await expect(tab(page, "Done 1")).toBeVisible();
+	// One lane is on screen, and the other two are inert.
+	await expect(shown(page)).toHaveCount(1);
+	await expect(shown(page).getByRole("article")).toHaveCount(2);
+	await expect(
+		shown(page).getByRole("article", { name: /Switch todo A/ }),
+	).toBeVisible();
 
-  // A swipe that starts over a card that was not held moves the lanes, and slides no card.
-  const first = swipeCard(page, 'Switch todo A');
-  await swipeOver(page, first, -1);
-  await expect(tab(page, 'Doing 1', true)).toBeVisible();
-  await expect(shown(page).getByRole('article')).toHaveCount(1);
-  await expect(shown(page).getByRole('article', { name: /Switch doing/ })).toBeVisible();
-  await expect(page.locator('[data-swipe-card][data-revealed]')).toHaveCount(0);
+	// A swipe that starts over a card that was not held moves the lanes, and slides no card.
+	const first = swipeCard(page, "Switch todo A");
+	await swipeOver(page, first, -1);
+	await expect(tab(page, "Doing 1", true)).toBeVisible();
+	await expect(shown(page).getByRole("article")).toHaveCount(1);
+	await expect(
+		shown(page).getByRole("article", { name: /Switch doing/ }),
+	).toBeVisible();
+	await expect(page.locator("[data-swipe-card][data-revealed]")).toHaveCount(0);
 
-  await swipeOver(page, swipeCard(page, 'Switch doing'), -1);
-  await expect(tab(page, 'Done 1', true)).toBeVisible();
-  await expect(page.getByRole('article', { name: /Switch done/ })).toBeVisible();
+	await swipeOver(page, swipeCard(page, "Switch doing"), -1);
+	await expect(tab(page, "Done 1", true)).toBeVisible();
+	await expect(
+		page.getByRole("article", { name: /Switch done/ }),
+	).toBeVisible();
 
-  // The done lane is the last: a swipe further left stays on it and opens the bulk-archive drawer.
-  await expect(page.getByRole('heading', { level: 2, name: /^Done/ })).toHaveCount(0);
-  await swipeOver(page, swipeCard(page, 'Switch done'), -1);
-  const bulk = page.getByRole('dialog', { name: 'Archive completed tasks' });
-  await expect(bulk).toBeVisible();
-  await bulk.getByRole('button', { name: 'Cancel' }).click();
-  await expect(bulk).toHaveCount(0);
-  await expect(tab(page, 'Done 1', true)).toBeVisible();
-  // The button after the last done card asks for the same drawer.
-  await expect(page.getByRole('button', { name: 'Archive all' })).toBeEnabled();
+	// The done lane is the last: a swipe further left stays on it and opens the bulk-archive drawer.
+	await expect(
+		page.getByRole("heading", { level: 2, name: /^Done/ }),
+	).toHaveCount(0);
+	await swipeOver(page, swipeCard(page, "Switch done"), -1);
+	const bulk = page.getByRole("dialog", { name: "Archive completed tasks" });
+	await expect(bulk).toBeVisible();
+	await bulk.getByRole("button", { name: "Cancel" }).click();
+	await expect(bulk).toHaveCount(0);
+	await expect(tab(page, "Done 1", true)).toBeVisible();
+	// The button after the last done card asks for the same drawer.
+	await expect(page.getByRole("button", { name: "Archive all" })).toBeEnabled();
 
-  // Back to the right, across the cards, to the first lane.
-  await swipeOver(page, swipeCard(page, 'Switch done'), 1);
-  await expect(tab(page, 'Doing 1', true)).toBeVisible();
-  await swipeOver(page, swipeCard(page, 'Switch doing'), 1);
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
-  await expect(shown(page).getByRole('article', { name: /Switch todo B/ })).toBeVisible();
+	// Back to the right, across the cards, to the first lane.
+	await swipeOver(page, swipeCard(page, "Switch done"), 1);
+	await expect(tab(page, "Doing 1", true)).toBeVisible();
+	await swipeOver(page, swipeCard(page, "Switch doing"), 1);
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
+	await expect(
+		shown(page).getByRole("article", { name: /Switch todo B/ }),
+	).toBeVisible();
 
-  // Tapping a tab switches too, in any order.
-  await tab(page, 'Done 1').tap();
-  await expect(tab(page, 'Done 1', true)).toBeVisible();
-  await expect(shown(page).getByRole('article', { name: /Switch done/ })).toBeVisible();
-  await tab(page, 'Doing 1').tap();
-  await expect(tab(page, 'Doing 1', true)).toBeVisible();
-  await tab(page, 'Todo 2').tap();
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
-  await expect(shown(page).getByRole('article', { name: /Switch todo A/ })).toBeVisible();
+	// Tapping a tab switches too, in any order.
+	await tab(page, "Done 1").tap();
+	await expect(tab(page, "Done 1", true)).toBeVisible();
+	await expect(
+		shown(page).getByRole("article", { name: /Switch done/ }),
+	).toBeVisible();
+	await tab(page, "Doing 1").tap();
+	await expect(tab(page, "Doing 1", true)).toBeVisible();
+	await tab(page, "Todo 2").tap();
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
+	await expect(
+		shown(page).getByRole("article", { name: /Switch todo A/ }),
+	).toBeVisible();
 });
 
 // #447, #448: scrolling is not a lane switch
-test('a vertical scroll over the cards scrolls the lane and does not switch lanes', async ({ page }) => {
-  await openPhone(page, 'Scroll');
-  await expect(tab(page, 'Todo 12', true)).toBeVisible();
-  const scroller = page.locator('.monitor-lane[data-lane="todo"] .monitor-lane__scroll');
-  const lane = await box(scroller);
-  const x = lane.x + lane.width / 2;
-  const top = lane.y + lane.height - 40;
-  const before = await scroller.evaluate((el) => el.scrollTop);
-  // Slightly diagonal, as a real thumb is, but clearly more vertical than horizontal.
-  await finger(page, { x: x + 10, y: top }, { x: x - 10, y: lane.y + 40 });
-  await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(before);
-  await expect(tab(page, 'Todo 12', true)).toBeVisible();
-  await expect(tab(page, 'Doing 0', true)).toHaveCount(0);
+test("a vertical scroll over the cards scrolls the lane and does not switch lanes", async ({
+	page,
+}) => {
+	await openPhone(page, "Scroll");
+	await expect(tab(page, "Todo 12", true)).toBeVisible();
+	const scroller = page.locator(
+		'.monitor-lane[data-lane="todo"] .monitor-lane__scroll',
+	);
+	const lane = await box(scroller);
+	const x = lane.x + lane.width / 2;
+	const top = lane.y + lane.height - 40;
+	const before = await scroller.evaluate((el) => el.scrollTop);
+	// Slightly diagonal, as a real thumb is, but clearly more vertical than horizontal.
+	await finger(page, { x: x + 10, y: top }, { x: x - 10, y: lane.y + 40 });
+	await expect
+		.poll(() => scroller.evaluate((el) => el.scrollTop))
+		.toBeGreaterThan(before);
+	await expect(tab(page, "Todo 12", true)).toBeVisible();
+	await expect(tab(page, "Doing 0", true)).toHaveCount(0);
 });
 
 // #448
-test('a long-pressed card swipes open and moves forward and back, and the files change', async ({ page }) => {
-  await openPhone(page, 'Move');
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
+test("a long-pressed card swipes open and moves forward and back, and the files change", async ({
+	page,
+}) => {
+	await openPhone(page, "Move");
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
 
-  // An unselected card only switches lanes: nothing opens, and no confirmation appears.
-  await swipeOver(page, swipeCard(page, 'Move forward'), -1);
-  await expect(tab(page, 'Doing 2', true)).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await tab(page, 'Todo 2').tap();
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
+	// An unselected card only switches lanes: nothing opens, and no confirmation appears.
+	await swipeOver(page, swipeCard(page, "Move forward"), -1);
+	await expect(tab(page, "Doing 2", true)).toBeVisible();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await tab(page, "Todo 2").tap();
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
 
-  // Todo -> Doing: the long press chooses the card, the left swipe shows the lane to its right and the archive.
-  const forward = swipeCard(page, 'Move forward');
-  await holdAndSwipe(page, forward, -1);
-  await expect(forward).toHaveAttribute('data-revealed', 'right');
-  await expect(page.getByRole('button', { name: /^Move #\d+ to Doing$/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Move #\d+ to Todo$/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Move #\d+ to Done$/ })).toHaveCount(0);
-  // The move is made at once: no dialog asks, and the file changes.
-  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect.poll(() => show('Move', 'Move forward').taskStatus).toBe('doing');
-  // The saved move stays on screen: the counts follow it.
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  await expect(tab(page, 'Doing 3')).toBeVisible();
+	// Todo -> Doing: the long press chooses the card, the left swipe shows the lane to its right and the archive.
+	const forward = swipeCard(page, "Move forward");
+	await holdAndSwipe(page, forward, -1);
+	await expect(forward).toHaveAttribute("data-revealed", "right");
+	await expect(
+		page.getByRole("button", { name: /^Move #\d+ to Doing$/ }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: /^Archive #\d+$/ }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: /^Move #\d+ to Todo$/ }),
+	).toHaveCount(0);
+	await expect(
+		page.getByRole("button", { name: /^Move #\d+ to Done$/ }),
+	).toHaveCount(0);
+	// The move is made at once: no dialog asks, and the file changes.
+	await page.getByRole("button", { name: /^Move #\d+ to Doing$/ }).tap();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect
+		.poll(() => show("Move", "Move forward").taskStatus)
+		.toBe("doing");
+	// The saved move stays on screen: the counts follow it.
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	await expect(tab(page, "Doing 3")).toBeVisible();
 
-  // Doing -> Done by the same left swipe.
-  await tab(page, 'Doing 3').tap();
-  const finish = swipeCard(page, 'Move finish');
-  await holdAndSwipe(page, finish, -1);
-  await expect(finish).toHaveAttribute('data-revealed', 'right');
-  await page.getByRole('button', { name: /^Move #\d+ to Done$/ }).tap();
-  await expect.poll(() => show('Move', 'Move finish').taskStatus).toBe('done');
-  await expect(tab(page, 'Doing 2')).toBeVisible();
-  await expect(tab(page, 'Done 2')).toBeVisible();
+	// Doing -> Done by the same left swipe.
+	await tab(page, "Doing 3").tap();
+	const finish = swipeCard(page, "Move finish");
+	await holdAndSwipe(page, finish, -1);
+	await expect(finish).toHaveAttribute("data-revealed", "right");
+	await page.getByRole("button", { name: /^Move #\d+ to Done$/ }).tap();
+	await expect.poll(() => show("Move", "Move finish").taskStatus).toBe("done");
+	await expect(tab(page, "Doing 2")).toBeVisible();
+	await expect(tab(page, "Done 2")).toBeVisible();
 
-  // The other direction: a right swipe shows only the lane to its left. Doing -> Todo.
-  const back = swipeCard(page, 'Move back');
-  await holdAndSwipe(page, back, 1);
-  await expect(back).toHaveAttribute('data-revealed', 'left');
-  await expect(page.getByRole('button', { name: /^Move #\d+ to Todo$/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Move #\d+ to Done$/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toHaveCount(0);
-  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  await expect.poll(() => show('Move', 'Move back').taskStatus).toBe('todo');
+	// The other direction: a right swipe shows only the lane to its left. Doing -> Todo.
+	const back = swipeCard(page, "Move back");
+	await holdAndSwipe(page, back, 1);
+	await expect(back).toHaveAttribute("data-revealed", "left");
+	await expect(
+		page.getByRole("button", { name: /^Move #\d+ to Todo$/ }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: /^Move #\d+ to Done$/ }),
+	).toHaveCount(0);
+	await expect(
+		page.getByRole("button", { name: /^Archive #\d+$/ }),
+	).toHaveCount(0);
+	await page.getByRole("button", { name: /^Move #\d+ to Todo$/ }).tap();
+	await expect.poll(() => show("Move", "Move back").taskStatus).toBe("todo");
 
-  // Done -> Doing.
-  await tab(page, 'Done 2').tap();
-  const reopen = swipeCard(page, 'Move reopen');
-  await holdAndSwipe(page, reopen, 1);
-  await expect(reopen).toHaveAttribute('data-revealed', 'left');
-  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  await expect.poll(() => show('Move', 'Move reopen').taskStatus).toBe('doing');
+	// Done -> Doing.
+	await tab(page, "Done 2").tap();
+	const reopen = swipeCard(page, "Move reopen");
+	await holdAndSwipe(page, reopen, 1);
+	await expect(reopen).toHaveAttribute("data-revealed", "left");
+	await page.getByRole("button", { name: /^Move #\d+ to Doing$/ }).tap();
+	await expect.poll(() => show("Move", "Move reopen").taskStatus).toBe("doing");
 
-  // The card nobody touched is where it was.
-  expect(show('Move', 'Move bystander').taskStatus).toBe('todo');
-  await expect(tab(page, 'Todo 2')).toBeVisible();
-  await expect(tab(page, 'Doing 2')).toBeVisible();
-  await expect(tab(page, 'Done 1')).toBeVisible();
+	// The card nobody touched is where it was.
+	expect(show("Move", "Move bystander").taskStatus).toBe("todo");
+	await expect(tab(page, "Todo 2")).toBeVisible();
+	await expect(tab(page, "Doing 2")).toBeVisible();
+	await expect(tab(page, "Done 1")).toBeVisible();
 });
 
 // #673: a Todo card nobody started goes back to the Backlog with a right swipe; a started one is refused with the reason.
-test('a held Todo card swipes right to the Backlog, and a started card is refused with the reason', async ({ page }) => {
-  await openPhone(page, 'Return');
-  const plain = swipeCard(page, 'Return plain');
-  await holdAndSwipe(page, plain, 1);
-  await expect(plain).toHaveAttribute('data-revealed', 'left');
-  await page.getByRole('button', { name: /^Move #\d+ to Backlog$/ }).tap();
-  await expect.poll(() => show('Return', 'Return plain').taskStatus).toBe('backlog');
-  await expect(tab(page, 'Backlog 1')).toBeVisible();
+test("a held Todo card swipes right to the Backlog, and a started card is refused with the reason", async ({
+	page,
+}) => {
+	await openPhone(page, "Return");
+	const plain = swipeCard(page, "Return plain");
+	await holdAndSwipe(page, plain, 1);
+	await expect(plain).toHaveAttribute("data-revealed", "left");
+	await page.getByRole("button", { name: /^Move #\d+ to Backlog$/ }).tap();
+	await expect
+		.poll(() => show("Return", "Return plain").taskStatus)
+		.toBe("backlog");
+	await expect(tab(page, "Backlog 1")).toBeVisible();
 
-  const started = swipeCard(page, 'Return started');
-  await holdAndSwipe(page, started, 1);
-  await page.getByRole('button', { name: /^Move #\d+ to Backlog$/ }).tap();
-  await expect(page.locator('.transient-notice')).toContainText('Only a Todo card that has not been started can go back to the Backlog.');
-  expect(show('Return', 'Return started').taskStatus).toBe('todo');
+	const started = swipeCard(page, "Return started");
+	await holdAndSwipe(page, started, 1);
+	await page.getByRole("button", { name: /^Move #\d+ to Backlog$/ }).tap();
+	await expect(page.locator(".transient-notice")).toContainText(
+		"Only a Todo card that has not been started can go back to the Backlog.",
+	);
+	expect(show("Return", "Return started").taskStatus).toBe("todo");
 });
 
 // #675: a right swipe on a Backlog card shows the Todo tile, which sends it like the selection mode does, and says nothing when it went.
-test('a held Backlog card swipes right to Todo; one with an open question asks first, and no notice follows', async ({ page }) => {
-  await openPhone(page, 'Plans', 'default');
-  await tab(page, /^Backlog/).click();
-  const plain = swipeCard(page, 'Plan plain');
-  await holdAndSwipe(page, plain, 1);
-  await expect(plain).toHaveAttribute('data-revealed', 'left');
-  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  await expect.poll(() => show('Plans', 'Plan plain').taskStatus).toBe('todo');
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  await expect(page.locator('.transient-notice')).toHaveCount(0);
+test("a held Backlog card swipes right to Todo; one with an open question asks first, and no notice follows", async ({
+	page,
+}) => {
+	await openPhone(page, "Plans", "default");
+	await tab(page, /^Backlog/).click();
+	const plain = swipeCard(page, "Plan plain");
+	await holdAndSwipe(page, plain, 1);
+	await expect(plain).toHaveAttribute("data-revealed", "left");
+	await page.getByRole("button", { name: /^Move #\d+ to Todo$/ }).tap();
+	await expect.poll(() => show("Plans", "Plan plain").taskStatus).toBe("todo");
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	await expect(page.locator(".transient-notice")).toHaveCount(0);
 
-  const asked = swipeCard(page, 'Plan asked');
-  await holdAndSwipe(page, asked, 1);
-  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  const sheet = page.getByRole('dialog', { name: 'Send to Todo' });
-  await expect(sheet.getByRole('alert')).toContainText(`#${ids.get('Plans:Plan asked')}`);
-  expect(show('Plans', 'Plan asked').taskStatus).toBe('backlog');
-  await sheet.getByRole('checkbox').check();
-  await sheet.getByRole('button', { name: 'Send to Todo' }).tap();
-  await expect.poll(() => show('Plans', 'Plan asked').taskStatus).toBe('todo');
-  await expect(page.locator('.transient-notice')).toHaveCount(0);
-  expect(show('Plans', 'Plan bystander').taskStatus).toBe('backlog');
+	const asked = swipeCard(page, "Plan asked");
+	await holdAndSwipe(page, asked, 1);
+	await page.getByRole("button", { name: /^Move #\d+ to Todo$/ }).tap();
+	const sheet = page.getByRole("dialog", { name: "Send to Todo" });
+	await expect(sheet.getByRole("alert")).toContainText(
+		`#${ids.get("Plans:Plan asked")}`,
+	);
+	expect(show("Plans", "Plan asked").taskStatus).toBe("backlog");
+	await sheet.getByRole("checkbox").check();
+	await sheet.getByRole("button", { name: "Send to Todo" }).tap();
+	await expect.poll(() => show("Plans", "Plan asked").taskStatus).toBe("todo");
+	await expect(page.locator(".transient-notice")).toHaveCount(0);
+	expect(show("Plans", "Plan bystander").taskStatus).toBe("backlog");
 });
 
 /** A tap on the body of a card in the selection mode, which picks it. */
 async function swipeCardlessTap(page: Page, title: string): Promise<void> {
-  await page.locator('.monitor-pick-row__card').filter({ hasText: title }).tap();
+	await page
+		.locator(".monitor-pick-row__card")
+		.filter({ hasText: title })
+		.tap();
 }
 
 // #675: the Backlog lane has the Done lane's overscroll gesture, mirrored: a swipe to the right past its start is a
 // shortcut for the Select cards button at the foot of the lane. It starts the selection mode with nothing picked, wherever
 // the lane is scrolled, and sends nothing.
-test('a swipe to the right past the Backlog lane starts the selection mode with nothing picked', async ({ page }) => {
-  await openPhone(page, 'Edge', 'default');
-  await tab(page, /^Backlog/).click();
-  const drawer = page.getByRole('region', { name: 'Send selected cards' });
-  await expect(drawer).toHaveCount(0);
-  await swipeOver(page, swipeCard(page, 'Edge plan one'), 1);
-  await expect(drawer).toBeVisible();
-  // The mode is on and nothing is picked: the send button waits, as it does after Select cards.
-  await expect(page.getByRole('checkbox')).toHaveCount(3);
-  for (const checkbox of await page.getByRole('checkbox').all()) await expect(checkbox).not.toBeChecked();
-  await expect(drawer.getByRole('status')).toHaveText('0 selected');
-  await expect(drawer.getByRole('button', { name: 'Send to Todo (0)' })).toBeDisabled();
-  await expect(drawer.getByRole('button', { name: 'Cancel' })).toBeEnabled();
-  for (const title of ['Edge plan one', 'Edge plan two', 'Edge plan three']) expect(show('Edge', title).taskStatus).toBe('backlog');
-  // The cards are tapped to pick them, and closing the drawer ends the mode.
-  await page.getByRole('checkbox', { name: `Select #${ids.get('Edge:Edge plan two')}` }).tap();
-  await expect(drawer.getByRole('button', { name: 'Send to Todo (1)' })).toBeEnabled();
-  await drawer.getByRole('button', { name: 'Cancel' }).tap();
-  await expect(drawer).toHaveCount(0);
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
-  // A short swipe does not count.
-  const card = await box(swipeCard(page, 'Edge plan one'));
-  const y = card.y + card.height / 2;
-  await finger(page, { x: card.x + 40, y }, { x: card.x + 90, y });
-  await expect(drawer).toHaveCount(0);
+test("a swipe to the right past the Backlog lane starts the selection mode with nothing picked", async ({
+	page,
+}) => {
+	await openPhone(page, "Edge", "default");
+	await tab(page, /^Backlog/).click();
+	const drawer = page.getByRole("region", { name: "Send selected cards" });
+	await expect(drawer).toHaveCount(0);
+	await swipeOver(page, swipeCard(page, "Edge plan one"), 1);
+	await expect(drawer).toBeVisible();
+	// The mode is on and nothing is picked: the send button waits, as it does after Select cards.
+	await expect(page.getByRole("checkbox")).toHaveCount(3);
+	for (const checkbox of await page.getByRole("checkbox").all())
+		await expect(checkbox).not.toBeChecked();
+	await expect(drawer.getByRole("status")).toHaveText("0 selected");
+	await expect(
+		drawer.getByRole("button", { name: "Send to Todo (0)" }),
+	).toBeDisabled();
+	await expect(drawer.getByRole("button", { name: "Cancel" })).toBeEnabled();
+	for (const title of ["Edge plan one", "Edge plan two", "Edge plan three"])
+		expect(show("Edge", title).taskStatus).toBe("backlog");
+	// The cards are tapped to pick them, and closing the drawer ends the mode.
+	await page
+		.getByRole("checkbox", { name: `Select #${ids.get("Edge:Edge plan two")}` })
+		.tap();
+	await expect(
+		drawer.getByRole("button", { name: "Send to Todo (1)" }),
+	).toBeEnabled();
+	await drawer.getByRole("button", { name: "Cancel" }).tap();
+	await expect(drawer).toHaveCount(0);
+	await expect(page.getByRole("checkbox")).toHaveCount(0);
+	// A short swipe does not count.
+	const card = await box(swipeCard(page, "Edge plan one"));
+	const y = card.y + card.height / 2;
+	await finger(page, { x: card.x + 40, y }, { x: card.x + 90, y });
+	await expect(drawer).toHaveCount(0);
 });
 
-test('an ordinary swipe to the right on another lane still changes lanes, and the Backlog gesture does not fire', async ({ page }) => {
-  await openPhone(page, 'Edge', 'todo');
-  await swipeOver(page, swipeCard(page, 'Edge todo'), 1);
-  await expect(tab(page, /^Backlog/, true)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Send selected cards' })).toHaveCount(0);
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
+test("an ordinary swipe to the right on another lane still changes lanes, and the Backlog gesture does not fire", async ({
+	page,
+}) => {
+	await openPhone(page, "Edge", "todo");
+	await swipeOver(page, swipeCard(page, "Edge todo"), 1);
+	await expect(tab(page, /^Backlog/, true)).toBeVisible();
+	await expect(
+		page.getByRole("region", { name: "Send selected cards" }),
+	).toHaveCount(0);
+	await expect(page.getByRole("checkbox")).toHaveCount(0);
 });
 
 // #675: a swipe-tile move of one Backlog card is a normal lane move, apart from the multi-select: the card is in Todo
 // before the server answers, one request goes for that card, and a refusal puts it back and says why.
-test('a Backlog card moved by its tile is in Todo before the server answers; a refusal puts it back', async ({ page }) => {
-  await openPhone(page, 'Instant', 'default');
-  await tab(page, /^Backlog/).click();
-  let release: () => void = () => {};
-  const gate = new Promise<void>((resolve) => (release = resolve));
-  const seen: string[] = [];
-  await page.route(/\/tasks\/\d+\/send$/, async (route) => {
-    seen.push(route.request().url());
-    await gate;
-    await route.continue();
-  });
-  const one = swipeCard(page, 'Instant one');
-  await holdAndSwipe(page, one, 1);
-  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  // The request is held, and the tabs already count the card in Todo.
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  await expect(tab(page, 'Backlog 1')).toBeVisible();
-  expect(show('Instant', 'Instant one').taskStatus).toBe('backlog');
-  // No selection drawer, no batch: just that card's request.
-  await expect(page.getByRole('region', { name: 'Send selected cards' })).toHaveCount(0);
-  release();
-  await expect.poll(() => show('Instant', 'Instant one').taskStatus).toBe('todo');
-  expect(seen).toHaveLength(1);
-  await expect(page.locator('.transient-notice')).toHaveCount(0);
+test("a Backlog card moved by its tile is in Todo before the server answers; a refusal puts it back", async ({
+	page,
+}) => {
+	await openPhone(page, "Instant", "default");
+	await tab(page, /^Backlog/).click();
+	let release: () => void = () => {};
+	const gate = new Promise<void>((resolve) => (release = resolve));
+	const seen: string[] = [];
+	await page.route(/\/tasks\/\d+\/send$/, async (route) => {
+		seen.push(route.request().url());
+		await gate;
+		await route.continue();
+	});
+	const one = swipeCard(page, "Instant one");
+	await holdAndSwipe(page, one, 1);
+	await page.getByRole("button", { name: /^Move #\d+ to Todo$/ }).tap();
+	// The request is held, and the tabs already count the card in Todo.
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	await expect(tab(page, "Backlog 1")).toBeVisible();
+	expect(show("Instant", "Instant one").taskStatus).toBe("backlog");
+	// No selection drawer, no batch: just that card's request.
+	await expect(
+		page.getByRole("region", { name: "Send selected cards" }),
+	).toHaveCount(0);
+	release();
+	await expect
+		.poll(() => show("Instant", "Instant one").taskStatus)
+		.toBe("todo");
+	expect(seen).toHaveLength(1);
+	await expect(page.locator(".transient-notice")).toHaveCount(0);
 
-  await page.unroute(/\/tasks\/\d+\/send$/);
-  await page.route(/\/tasks\/\d+\/send$/, (route) =>
-    route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'conflict', message: 'Refused for the test.' } }) }),
-  );
-  const two = swipeCard(page, 'Instant two');
-  await holdAndSwipe(page, two, 1);
-  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
-  await expect(page.locator('.transient-notice')).toBeVisible();
-  await expect(tab(page, 'Backlog 1')).toBeVisible();
-  expect(show('Instant', 'Instant two').taskStatus).toBe('backlog');
+	await page.unroute(/\/tasks\/\d+\/send$/);
+	await page.route(/\/tasks\/\d+\/send$/, (route) =>
+		route.fulfill({
+			status: 409,
+			contentType: "application/json",
+			body: JSON.stringify({
+				error: { code: "conflict", message: "Refused for the test." },
+			}),
+		}),
+	);
+	const two = swipeCard(page, "Instant two");
+	await holdAndSwipe(page, two, 1);
+	await page.getByRole("button", { name: /^Move #\d+ to Todo$/ }).tap();
+	await expect(page.locator(".transient-notice")).toBeVisible();
+	await expect(tab(page, "Backlog 1")).toBeVisible();
+	expect(show("Instant", "Instant two").taskStatus).toBe("backlog");
 });
 
 // #675: the selection mode is a short bottom drawer, not a modal; pulling it down, or closing it, ends the mode.
-test('the selection sheet sends the picked cards, and a swipe down or Cancel ends the selection', async ({ page }) => {
-  await openPhone(page, 'Pick', 'default');
-  await tab(page, /^Backlog/).click();
-  const sheet = page.getByRole('region', { name: 'Send selected cards' });
-  await expect(sheet).toHaveCount(0);
+test("the selection sheet sends the picked cards, and a swipe down or Cancel ends the selection", async ({
+	page,
+}) => {
+	await openPhone(page, "Pick", "default");
+	await tab(page, /^Backlog/).click();
+	const sheet = page.getByRole("region", { name: "Send selected cards" });
+	await expect(sheet).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Select cards' }).tap();
-  await expect(sheet).toBeVisible();
-  const [first, second] = [ids.get('Pick:Pick one'), ids.get('Pick:Pick two')];
-  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
-  await expect(sheet.getByRole('button', { name: 'Send to Todo (1)' })).toBeVisible();
-  await expect(sheet.getByRole('status')).toHaveText('1 selected');
-  // The drawer is not modal: a tap on the cards behind it, or on the page around them, keeps it open, and
-  // a tap on a card's body toggles that card instead of opening its details.
-  await swipeCardlessTap(page, 'Pick two');
-  await expect(page.getByRole('checkbox', { name: `Select #${second}` })).toBeChecked();
-  await expect(sheet.getByRole('button', { name: 'Send to Todo (2)' })).toBeVisible();
-  await page.getByRole('checkbox', { name: `Select #${second}` }).tap();
-  await expect(page.getByRole('checkbox', { name: `Select #${second}` })).not.toBeChecked();
-  await expect(sheet).toBeVisible();
-  await page.getByRole('tablist', { name: 'Lanes' }).tap({ position: { x: 4, y: 4 } });
-  await expect(sheet).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Send to Todo (1)' })).toBeVisible();
-  // The sheet is short: its handle, the two buttons and the strip under the bottom bar, with no heading block.
-  expect((await sheet.boundingBox())?.height ?? 999).toBeLessThan(200);
+	await page.getByRole("button", { name: "Select cards" }).tap();
+	await expect(sheet).toBeVisible();
+	const [first, second] = [ids.get("Pick:Pick one"), ids.get("Pick:Pick two")];
+	await page.getByRole("checkbox", { name: `Select #${first}` }).tap();
+	await expect(
+		sheet.getByRole("button", { name: "Send to Todo (1)" }),
+	).toBeVisible();
+	await expect(sheet.getByRole("status")).toHaveText("1 selected");
+	// The drawer is not modal: a tap on the cards behind it, or on the page around them, keeps it open, and
+	// a tap on a card's body toggles that card instead of opening its details.
+	await swipeCardlessTap(page, "Pick two");
+	await expect(
+		page.getByRole("checkbox", { name: `Select #${second}` }),
+	).toBeChecked();
+	await expect(
+		sheet.getByRole("button", { name: "Send to Todo (2)" }),
+	).toBeVisible();
+	await page.getByRole("checkbox", { name: `Select #${second}` }).tap();
+	await expect(
+		page.getByRole("checkbox", { name: `Select #${second}` }),
+	).not.toBeChecked();
+	await expect(sheet).toBeVisible();
+	await page
+		.getByRole("tablist", { name: "Lanes" })
+		.tap({ position: { x: 4, y: 4 } });
+	await expect(sheet).toBeVisible();
+	await expect(
+		sheet.getByRole("button", { name: "Send to Todo (1)" }),
+	).toBeVisible();
+	// The sheet is short: its handle, the two buttons and the strip under the bottom bar, with no heading block.
+	expect((await sheet.boundingBox())?.height ?? 999).toBeLessThan(200);
 
-  // Pulling the sheet down by its handle ends the mode and clears the picks.
-  const handle = await box(sheet.getByRole('button', { name: /swipe down/i }));
-  const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
-  await finger(page, start, { x: start.x, y: start.y + 220 });
-  await expect(sheet).toHaveCount(0);
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Select cards' }).tap();
-  await expect(page.getByRole('checkbox', { name: `Select #${first}` })).not.toBeChecked();
+	// Pulling the sheet down by its handle ends the mode and clears the picks.
+	const handle = await box(sheet.getByRole("button", { name: /swipe down/i }));
+	const start = {
+		x: handle.x + handle.width / 2,
+		y: handle.y + handle.height / 2,
+	};
+	await finger(page, start, { x: start.x, y: start.y + 220 });
+	await expect(sheet).toHaveCount(0);
+	await expect(page.getByRole("checkbox")).toHaveCount(0);
+	// The drawer may still be sliding away, so tap again until the mode starts.
+	await expect(async () => {
+		await page.getByRole("button", { name: "Select cards" }).tap();
+		await expect(
+			page.getByRole("checkbox", { name: `Select #${first}` }),
+		).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
+	await expect(
+		page.getByRole("checkbox", { name: `Select #${first}` }),
+	).not.toBeChecked();
 
-  // Cancel also ends the mode.
-  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
-  await sheet.getByRole('button', { name: 'Cancel' }).tap();
-  await expect(sheet).toHaveCount(0);
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
+	// Cancel also ends the mode.
+	await page.getByRole("checkbox", { name: `Select #${first}` }).tap();
+	await sheet.getByRole("button", { name: "Cancel" }).tap();
+	await expect(sheet).toHaveCount(0);
+	await expect(page.getByRole("checkbox")).toHaveCount(0);
 
-  // Send closes the sheet once the cards went, with no notice.
-  await page.getByRole('button', { name: 'Select cards' }).tap();
-  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
-  await page.getByRole('checkbox', { name: `Select #${second}` }).tap();
-  await sheet.getByRole('button', { name: 'Send to Todo (2)' }).tap();
-  await expect.poll(() => [show('Pick', 'Pick one').taskStatus, show('Pick', 'Pick two').taskStatus]).toEqual(['todo', 'todo']);
-  await expect(sheet).toHaveCount(0);
-  await expect(page.locator('.transient-notice')).toHaveCount(0);
-  expect(show('Pick', 'Pick three').taskStatus).toBe('backlog');
+	// Send closes the sheet once the cards went, with no notice.
+	await page.getByRole("button", { name: "Select cards" }).tap();
+	await page.getByRole("checkbox", { name: `Select #${first}` }).tap();
+	await page.getByRole("checkbox", { name: `Select #${second}` }).tap();
+	await sheet.getByRole("button", { name: "Send to Todo (2)" }).tap();
+	await expect
+		.poll(() => [
+			show("Pick", "Pick one").taskStatus,
+			show("Pick", "Pick two").taskStatus,
+		])
+		.toEqual(["todo", "todo"]);
+	await expect(sheet).toHaveCount(0);
+	await expect(page.locator(".transient-notice")).toHaveCount(0);
+	expect(show("Pick", "Pick three").taskStatus).toBe("backlog");
 });
 
 // #449
-test('a chosen card is archived from its left-swipe button after a confirmation', async ({ page }) => {
-  await openPhone(page, 'Archive');
-  const target = swipeCard(page, 'Archive target');
-  await holdAndSwipe(page, target, -1);
-  await expect(target).toHaveAttribute('data-revealed', 'right');
-  await page.getByRole('button', { name: /^Archive #\d+$/ }).tap();
+test("a chosen card is archived from its left-swipe button after a confirmation", async ({
+	page,
+}) => {
+	await openPhone(page, "Archive");
+	const target = swipeCard(page, "Archive target");
+	await holdAndSwipe(page, target, -1);
+	await expect(target).toHaveAttribute("data-revealed", "right");
+	await page.getByRole("button", { name: /^Archive #\d+$/ }).tap();
 
-  const dialog = page.getByRole('dialog', { name: 'Archive task' });
-  await expect(dialog).toContainText('Archive target');
-  // Cancel: nothing is archived.
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(show('Archive', 'Archive target').archivedAt).toBeNull();
+	const dialog = page.getByRole("dialog", { name: "Archive task" });
+	await expect(dialog).toContainText("Archive target");
+	// Cancel: nothing is archived.
+	await dialog.getByRole("button", { name: "Cancel" }).click();
+	await expect(dialog).toHaveCount(0);
+	expect(show("Archive", "Archive target").archivedAt).toBeNull();
 
-  // The tap on Cancel was outside the card, which let it go; hold it and slide it open again.
-  await holdAndSwipe(page, target, -1);
-  await expect(target).toHaveAttribute('data-revealed', 'right');
-  await page.getByRole('button', { name: /^Archive #\d+$/ }).tap();
-  await dialog.getByRole('button', { name: 'Archive', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect.poll(() => show('Archive', 'Archive target').archivedAt).not.toBeNull();
-  await expect(shown(page).getByRole('article', { name: /Archive target/ })).toHaveCount(0);
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  expect(show('Archive', 'Archive kept').archivedAt).toBeNull();
+	// The tap on Cancel was outside the card, which let it go; hold it and slide it open again.
+	await holdAndSwipe(page, target, -1);
+	await expect(target).toHaveAttribute("data-revealed", "right");
+	await page.getByRole("button", { name: /^Archive #\d+$/ }).tap();
+	await dialog.getByRole("button", { name: "Archive", exact: true }).click();
+	await expect(dialog).toHaveCount(0);
+	await expect
+		.poll(() => show("Archive", "Archive target").archivedAt)
+		.not.toBeNull();
+	await expect(
+		shown(page).getByRole("article", { name: /Archive target/ }),
+	).toHaveCount(0);
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	expect(show("Archive", "Archive kept").archivedAt).toBeNull();
 });
 
 // #449
-test('swiping a chosen card back, or tapping outside it, closes its buttons without a change', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  const card = swipeCard(page, 'Switch todo A');
+test("swiping a chosen card back, or tapping outside it, closes its buttons without a change", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	const card = swipeCard(page, "Switch todo A");
 
-  // Swipe back.
-  await holdAndSwipe(page, card, -1);
-  await expect(card).toHaveAttribute('data-revealed', 'right');
-  const b = await box(card);
-  const y = b.y + b.height / 2;
-  // Only far enough to close: a Todo card also has the Backlog tile on its left side.
-  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.65, y });
-  await expect(card).not.toHaveAttribute('data-revealed', /.*/);
-  await expect(page.getByRole('button', { name: /^Archive #\d+$/ })).toHaveCount(0);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+	// Swipe back.
+	await holdAndSwipe(page, card, -1);
+	await expect(card).toHaveAttribute("data-revealed", "right");
+	const b = await box(card);
+	const y = b.y + b.height / 2;
+	// Only far enough to close: a Todo card also has the Backlog tile on its left side.
+	await finger(
+		page,
+		{ x: b.x + b.width * 0.3, y },
+		{ x: b.x + b.width * 0.65, y },
+	);
+	await expect(card).not.toHaveAttribute("data-revealed", /.*/);
+	await expect(
+		page.getByRole("button", { name: /^Archive #\d+$/ }),
+	).toHaveCount(0);
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // The card is still chosen, so it can open again; a tap outside lets it go and closes it.
-  await swipeOver(page, card, -1);
-  await expect(card).toHaveAttribute('data-revealed', 'right');
-  const other = await box(swipeCard(page, 'Switch todo B'));
-  await page.touchscreen.tap(other.x + other.width / 2, other.y + other.height + 30);
-  await expect(card).not.toHaveAttribute('data-revealed', /.*/);
-  await expect(card).not.toHaveAttribute('data-armed', /.*/);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+	// The card is still chosen, so it can open again; a tap outside lets it go and closes it.
+	await swipeOver(page, card, -1);
+	await expect(card).toHaveAttribute("data-revealed", "right");
+	const other = await box(swipeCard(page, "Switch todo B"));
+	await page.touchscreen.tap(
+		other.x + other.width / 2,
+		other.y + other.height + 30,
+	);
+	await expect(card).not.toHaveAttribute("data-revealed", /.*/);
+	await expect(card).not.toHaveAttribute("data-armed", /.*/);
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  expect(show('Switch', 'Switch todo A')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
-  await expect(tab(page, 'Todo 2', true)).toBeVisible();
+	expect(show("Switch", "Switch todo A")).toMatchObject({
+		taskStatus: "todo",
+		archivedAt: null,
+	});
+	await expect(tab(page, "Todo 2", true)).toBeVisible();
 });
 
 // #660: the phone's Archive drawer lists the newest archive first, whatever order the server's list arrives in.
-test('the Archive drawer lists the newest archived task first', async ({ page }) => {
-  await openPhone(page, 'ArchiveOrder');
-  await tab(page, 'Done 3').tap();
-  await page.getByRole('button', { name: 'Archive all' }).tap();
-  await page.getByRole('dialog', { name: 'Archive completed tasks' }).getByRole('button', { name: 'Archive 3 tasks' }).click();
-  for (const title of ['Order one', 'Order two', 'Order three'])
-    await expect.poll(() => show('ArchiveOrder', title).archivedAt).not.toBeNull();
-  const [one, two, three] = ['Order one', 'Order two', 'Order three'].map((t) => ids.get(`ArchiveOrder:${t}`)!);
+test("the Archive drawer lists the newest archived task first", async ({
+	page,
+}) => {
+	await openPhone(page, "ArchiveOrder");
+	await tab(page, "Done 3").tap();
+	await page.getByRole("button", { name: "Archive all" }).tap();
+	await page
+		.getByRole("dialog", { name: "Archive completed tasks" })
+		.getByRole("button", { name: "Archive 3 tasks" })
+		.click();
+	for (const title of ["Order one", "Order two", "Order three"])
+		await expect
+			.poll(() => show("ArchiveOrder", title).archivedAt)
+			.not.toBeNull();
+	const [one, two, three] = ["Order one", "Order two", "Order three"].map(
+		(t) => ids.get(`ArchiveOrder:${t}`)!,
+	);
 
-  // Hand the drawer the archive in a scrambled order with spread-out archive times.
-  await page.route('**/api/projects/*/archive?*', async (route) => {
-    const response = await route.fetch();
-    const body = await response.json();
-    const times = new Map([
-      [one, '2026-10-02T09:00:00Z'],
-      [two, '2026-10-03T09:00:00Z'],
-      [three, '2026-10-01T09:00:00Z'],
-    ]);
-    body.tasks = body.tasks
-      .map((task: { id: number }) => ({ ...task, archivedAt: times.get(task.id) }))
-      .sort((a: { id: number }, b: { id: number }) => a.id - b.id);
-    await route.fulfill({ response, json: body });
-  });
-  await bottomBar(page).getByRole('button', { name: 'Archived tasks' }).tap();
-  const list = page.getByRole('dialog', { name: 'Archived tasks' });
-  await expect(list.locator('[data-swipe-card]')).toHaveCount(3);
-  const shownIds = await list
-    .locator('[data-archive-row]')
-    .evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-archive-row'))));
-  expect(shownIds).toEqual([two, one, three]);
+	// Hand the drawer the archive in a scrambled order with spread-out archive times.
+	await page.route("**/api/projects/*/archive?*", async (route) => {
+		const response = await route.fetch();
+		const body = await response.json();
+		const times = new Map([
+			[one, "2026-10-02T09:00:00Z"],
+			[two, "2026-10-03T09:00:00Z"],
+			[three, "2026-10-01T09:00:00Z"],
+		]);
+		body.tasks = body.tasks
+			.map((task: { id: number }) => ({
+				...task,
+				archivedAt: times.get(task.id),
+			}))
+			.sort((a: { id: number }, b: { id: number }) => a.id - b.id);
+		await route.fulfill({ response, json: body });
+	});
+	await bottomBar(page).getByRole("button", { name: "Archived tasks" }).tap();
+	const list = page.getByRole("dialog", { name: "Archived tasks" });
+	await expect(list.locator("[data-swipe-card]")).toHaveCount(3);
+	const shownIds = await list
+		.locator("[data-archive-row]")
+		.evaluateAll((nodes) =>
+			nodes.map((node) => Number(node.getAttribute("data-archive-row"))),
+		);
+	expect(shownIds).toEqual([two, one, three]);
 });
 
 // #450
-test('the done lane archives all its cards at once, and the button is gone when the lane is empty', async ({ page }) => {
-  await openPhone(page, 'Bulk');
-  await tab(page, 'Done 3').tap();
-  const bulk = page.getByRole('button', { name: 'Archive all' });
-  await expect(bulk).toBeEnabled();
-  // The button ends the list, so the cards keep their place whether or not it shows.
-  const lastCard = await box(swipeCard(page, 'Bulk done one'));
-  const bulkBox = await box(bulk);
-  expect(bulkBox.y).toBeGreaterThanOrEqual(lastCard.y + lastCard.height);
-  await bulk.tap();
+test("the done lane archives all its cards at once, and the button is gone when the lane is empty", async ({
+	page,
+}) => {
+	await openPhone(page, "Bulk");
+	await tab(page, "Done 3").tap();
+	const bulk = page.getByRole("button", { name: "Archive all" });
+	await expect(bulk).toBeEnabled();
+	// The button ends the list, so the cards keep their place whether or not it shows.
+	const lastCard = await box(swipeCard(page, "Bulk done one"));
+	const bulkBox = await box(bulk);
+	expect(bulkBox.y).toBeGreaterThanOrEqual(lastCard.y + lastCard.height);
+	await bulk.tap();
 
-  const dialog = page.getByRole('dialog', { name: 'Archive completed tasks' });
-  await expect(dialog).toContainText('Archive 3 completed tasks');
-  // Cancel first: nothing is archived.
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  for (const title of ['Bulk done one', 'Bulk done two', 'Bulk done three']) expect(show('Bulk', title).archivedAt).toBeNull();
+	const dialog = page.getByRole("dialog", { name: "Archive completed tasks" });
+	await expect(dialog).toContainText("Archive 3 completed tasks");
+	// Cancel first: nothing is archived.
+	await dialog.getByRole("button", { name: "Cancel" }).click();
+	await expect(dialog).toHaveCount(0);
+	for (const title of ["Bulk done one", "Bulk done two", "Bulk done three"])
+		expect(show("Bulk", title).archivedAt).toBeNull();
 
-  await bulk.tap();
-  await dialog.getByRole('button', { name: 'Archive 3 tasks' }).click();
-  await expect(dialog).toHaveCount(0);
-  for (const title of ['Bulk done one', 'Bulk done two', 'Bulk done three'])
-    await expect.poll(() => show('Bulk', title).archivedAt).not.toBeNull();
-  // Only the done cards went; the saved result stays on screen and the lane is empty.
-  expect(show('Bulk', 'Bulk todo')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
-  await expect(tab(page, 'Done 0', true)).toBeVisible();
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  await expect(shown(page).getByRole('article')).toHaveCount(0);
-  await expect(bulk).toHaveCount(0);
+	await bulk.tap();
+	await dialog.getByRole("button", { name: "Archive 3 tasks" }).click();
+	await expect(dialog).toHaveCount(0);
+	for (const title of ["Bulk done one", "Bulk done two", "Bulk done three"])
+		await expect.poll(() => show("Bulk", title).archivedAt).not.toBeNull();
+	// Only the done cards went; the saved result stays on screen and the lane is empty.
+	expect(show("Bulk", "Bulk todo")).toMatchObject({
+		taskStatus: "todo",
+		archivedAt: null,
+	});
+	await expect(tab(page, "Done 0", true)).toBeVisible();
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	await expect(shown(page).getByRole("article")).toHaveCount(0);
+	await expect(bulk).toHaveCount(0);
 });
 
 // #627: a swipe on the done lane that opens nothing (too short, or a cancelled confirmation) must not
 // swallow the next tap on the button.
-test('the Archive all button still works after a short swipe on the done lane, and archives the cards', async ({ page }) => {
-  await openPhone(page, 'BulkAfterSwipe');
-  await tab(page, 'Done 2').tap();
-  const bulk = page.getByRole('button', { name: 'Archive all' });
-  await expect(bulk).toBeEnabled();
-  // A swipe left that is too short to open the confirmation springs back and opens nothing.
-  const b = await box(swipeCard(page, 'After swipe one'));
-  const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * 0.6, y }, { x: b.x + b.width * 0.6 - 40, y });
-  const dialog = page.getByRole('dialog', { name: 'Archive completed tasks' });
-  await expect(dialog).toHaveCount(0);
-  await expect(tab(page, 'Done 2', true)).toBeVisible();
+test("the Archive all button still works after a short swipe on the done lane, and archives the cards", async ({
+	page,
+}) => {
+	await openPhone(page, "BulkAfterSwipe");
+	await tab(page, "Done 2").tap();
+	const bulk = page.getByRole("button", { name: "Archive all" });
+	await expect(bulk).toBeEnabled();
+	// A swipe left that is too short to open the confirmation springs back and opens nothing.
+	const b = await box(swipeCard(page, "After swipe one"));
+	const y = b.y + b.height / 2;
+	await finger(
+		page,
+		{ x: b.x + b.width * 0.6, y },
+		{ x: b.x + b.width * 0.6 - 40, y },
+	);
+	const dialog = page.getByRole("dialog", { name: "Archive completed tasks" });
+	await expect(dialog).toHaveCount(0);
+	await expect(tab(page, "Done 2", true)).toBeVisible();
 
-  await bulk.tap();
-  await expect(dialog).toContainText('Archive 2 completed tasks');
-  // Cancel, swipe far enough to open it again, cancel, and the button must still answer.
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  await swipeOver(page, swipeCard(page, 'After swipe one'), -1);
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  for (const title of ['After swipe one', 'After swipe two']) expect(show('BulkAfterSwipe', title).archivedAt).toBeNull();
+	await bulk.tap();
+	await expect(dialog).toContainText("Archive 2 completed tasks");
+	// Cancel, swipe far enough to open it again, cancel, and the button must still answer.
+	await dialog.getByRole("button", { name: "Cancel" }).click();
+	await expect(dialog).toHaveCount(0);
+	await swipeOver(page, swipeCard(page, "After swipe one"), -1);
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole("button", { name: "Cancel" }).click();
+	await expect(dialog).toHaveCount(0);
+	for (const title of ["After swipe one", "After swipe two"])
+		expect(show("BulkAfterSwipe", title).archivedAt).toBeNull();
 
-  await bulk.tap();
-  await dialog.getByRole('button', { name: 'Archive 2 tasks' }).click();
-  await expect(dialog).toHaveCount(0);
-  for (const title of ['After swipe one', 'After swipe two'])
-    await expect.poll(() => show('BulkAfterSwipe', title).archivedAt).not.toBeNull();
-  await expect(tab(page, 'Done 0', true)).toBeVisible();
-  await expect(shown(page).getByRole('article')).toHaveCount(0);
-  await expect(bulk).toHaveCount(0);
+	await bulk.tap();
+	await dialog.getByRole("button", { name: "Archive 2 tasks" }).click();
+	await expect(dialog).toHaveCount(0);
+	for (const title of ["After swipe one", "After swipe two"])
+		await expect
+			.poll(() => show("BulkAfterSwipe", title).archivedAt)
+			.not.toBeNull();
+	await expect(tab(page, "Done 0", true)).toBeVisible();
+	await expect(shown(page).getByRole("article")).toHaveCount(0);
+	await expect(bulk).toHaveCount(0);
 });
 
 // #628: the card's tiles carry `data-swipe-action`, which the shared swipe hook ignores. A tile pressed after
 // an earlier swipe back, a cancelled confirmation or a re-opened card must still act, and the file must change.
-test('a card tile still acts after a swipe back and a cancelled archive, and the file changes', async ({ page }) => {
-  await openPhone(page, 'TileAfterSwipe');
-  const card = swipeCard(page, 'Tile target');
-  await holdAndSwipe(page, card, -1);
-  await expect(card).toHaveAttribute('data-revealed', 'right');
-  // Swipe it closed, then open it again with a plain swipe (the card is still chosen).
-  const b = await box(card);
-  const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.65, y });
-  await expect(card).not.toHaveAttribute('data-revealed', /.*/);
-  await swipeOver(page, card, -1);
-  await expect(card).toHaveAttribute('data-revealed', 'right');
+test("a card tile still acts after a swipe back and a cancelled archive, and the file changes", async ({
+	page,
+}) => {
+	await openPhone(page, "TileAfterSwipe");
+	const card = swipeCard(page, "Tile target");
+	await holdAndSwipe(page, card, -1);
+	await expect(card).toHaveAttribute("data-revealed", "right");
+	// Swipe it closed, then open it again with a plain swipe (the card is still chosen).
+	const b = await box(card);
+	const y = b.y + b.height / 2;
+	await finger(
+		page,
+		{ x: b.x + b.width * 0.3, y },
+		{ x: b.x + b.width * 0.65, y },
+	);
+	await expect(card).not.toHaveAttribute("data-revealed", /.*/);
+	await swipeOver(page, card, -1);
+	await expect(card).toHaveAttribute("data-revealed", "right");
 
-  // The Archive tile answers, and cancelling its confirmation changes nothing.
-  await page.getByRole('button', { name: /^Archive #\d+$/ }).tap();
-  const dialog = page.getByRole('dialog', { name: 'Archive task' });
-  await expect(dialog).toContainText('Tile target');
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(show('TileAfterSwipe', 'Tile target')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
+	// The Archive tile answers, and cancelling its confirmation changes nothing.
+	await page.getByRole("button", { name: /^Archive #\d+$/ }).tap();
+	const dialog = page.getByRole("dialog", { name: "Archive task" });
+	await expect(dialog).toContainText("Tile target");
+	await dialog.getByRole("button", { name: "Cancel" }).click();
+	await expect(dialog).toHaveCount(0);
+	expect(show("TileAfterSwipe", "Tile target")).toMatchObject({
+		taskStatus: "todo",
+		archivedAt: null,
+	});
 
-  // After all of that, the Move tile still moves the card.
-  await holdAndSwipe(page, card, -1);
-  await expect(card).toHaveAttribute('data-revealed', 'right');
-  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
-  await expect.poll(() => show('TileAfterSwipe', 'Tile target').taskStatus).toBe('doing');
-  expect(show('TileAfterSwipe', 'Tile bystander')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
-  await expect(tab(page, 'Todo 1')).toBeVisible();
-  await expect(tab(page, 'Doing 1')).toBeVisible();
+	// After all of that, the Move tile still moves the card.
+	await holdAndSwipe(page, card, -1);
+	await expect(card).toHaveAttribute("data-revealed", "right");
+	await page.getByRole("button", { name: /^Move #\d+ to Doing$/ }).tap();
+	await expect
+		.poll(() => show("TileAfterSwipe", "Tile target").taskStatus)
+		.toBe("doing");
+	expect(show("TileAfterSwipe", "Tile bystander")).toMatchObject({
+		taskStatus: "todo",
+		archivedAt: null,
+	});
+	await expect(tab(page, "Todo 1")).toBeVisible();
+	await expect(tab(page, "Doing 1")).toBeVisible();
 });
 
 // #628: the Restore tile of the Archive drawer is also a `data-swipe-action`, pressed here after a short swipe
 // and a swipe back, and the restored task is read back from the files.
-test('the Restore tile in the Archive drawer restores the task after a swipe open and a swipe back', async ({ page }) => {
-  await openPhone(page, 'RestoreAfterSwipe');
-  await tab(page, 'Done 2').tap();
-  await page.getByRole('button', { name: 'Archive all' }).tap();
-  await page.getByRole('dialog', { name: 'Archive completed tasks' }).getByRole('button', { name: 'Archive 2 tasks' }).click();
-  for (const title of ['Restore one', 'Restore two'])
-    await expect.poll(() => show('RestoreAfterSwipe', title).archivedAt).not.toBeNull();
+test("the Restore tile in the Archive drawer restores the task after a swipe open and a swipe back", async ({
+	page,
+}) => {
+	await openPhone(page, "RestoreAfterSwipe");
+	await tab(page, "Done 2").tap();
+	await page.getByRole("button", { name: "Archive all" }).tap();
+	await page
+		.getByRole("dialog", { name: "Archive completed tasks" })
+		.getByRole("button", { name: "Archive 2 tasks" })
+		.click();
+	for (const title of ["Restore one", "Restore two"])
+		await expect
+			.poll(() => show("RestoreAfterSwipe", title).archivedAt)
+			.not.toBeNull();
 
-  await bottomBar(page).getByRole('button', { name: 'Archived tasks' }).tap();
-  const list = page.getByRole('dialog', { name: 'Archived tasks' });
-  await expect(list).toBeVisible();
-  const row = list.locator('[data-swipe-card]').filter({ hasText: 'Restore one' });
-  await expect(row).toBeVisible();
+	await bottomBar(page).getByRole("button", { name: "Archived tasks" }).tap();
+	const list = page.getByRole("dialog", { name: "Archived tasks" });
+	await expect(list).toBeVisible();
+	const row = list
+		.locator("[data-swipe-card]")
+		.filter({ hasText: "Restore one" });
+	await expect(row).toBeVisible();
 
-  // A short swipe already opens the narrow Restore tile; a swipe back closes it, and a full swipe opens it again.
-  const b = await box(row);
-  const y = b.y + b.height / 2;
-  await finger(page, { x: b.x + b.width * 0.6, y }, { x: b.x + b.width * 0.6 - 40, y });
-  await expect(row).toHaveAttribute('data-revealed', 'right');
-  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.9, y });
-  await expect(row).not.toHaveAttribute('data-revealed', /.*/);
-  await swipeOver(page, row, -1);
-  await expect(row).toHaveAttribute('data-revealed', 'right');
+	// A short swipe already opens the narrow Restore tile; a swipe back closes it, and a full swipe opens it again.
+	const b = await box(row);
+	const y = b.y + b.height / 2;
+	await finger(
+		page,
+		{ x: b.x + b.width * 0.6, y },
+		{ x: b.x + b.width * 0.6 - 40, y },
+	);
+	await expect(row).toHaveAttribute("data-revealed", "right");
+	await finger(
+		page,
+		{ x: b.x + b.width * 0.3, y },
+		{ x: b.x + b.width * 0.9, y },
+	);
+	await expect(row).not.toHaveAttribute("data-revealed", /.*/);
+	await swipeOver(page, row, -1);
+	await expect(row).toHaveAttribute("data-revealed", "right");
 
-  await row.getByRole('button', { name: /^Restore #\d+$/ }).tap();
-  await expect.poll(() => show('RestoreAfterSwipe', 'Restore one').archivedAt).toBeNull();
-  expect(show('RestoreAfterSwipe', 'Restore one').taskStatus).toBe('done');
-  expect(show('RestoreAfterSwipe', 'Restore two').archivedAt).not.toBeNull();
-  await expect(list.locator('[data-swipe-card]').filter({ hasText: 'Restore one' })).toHaveCount(0);
-  await expect(list.locator('[data-swipe-card]').filter({ hasText: 'Restore two' })).toHaveCount(1);
+	await row.getByRole("button", { name: /^Restore #\d+$/ }).tap();
+	await expect
+		.poll(() => show("RestoreAfterSwipe", "Restore one").archivedAt)
+		.toBeNull();
+	expect(show("RestoreAfterSwipe", "Restore one").taskStatus).toBe("done");
+	expect(show("RestoreAfterSwipe", "Restore two").archivedAt).not.toBeNull();
+	await expect(
+		list.locator("[data-swipe-card]").filter({ hasText: "Restore one" }),
+	).toHaveCount(0);
+	await expect(
+		list.locator("[data-swipe-card]").filter({ hasText: "Restore two" }),
+	).toHaveCount(1);
 });
 
 // #450
-test('the bulk archive button is not offered while the done lane is empty', async ({ page }) => {
-  await openPhone(page, 'Quiet');
-  await tab(page, 'Done 0').tap();
-  await expect(tab(page, 'Done 0', true)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Archive all' })).toHaveCount(0);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+test("the bulk archive button is not offered while the done lane is empty", async ({
+	page,
+}) => {
+	await openPhone(page, "Quiet");
+	await tab(page, "Done 0").tap();
+	await expect(tab(page, "Done 0", true)).toBeVisible();
+	await expect(page.getByRole("button", { name: "Archive all" })).toHaveCount(
+		0,
+	);
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test('pulling a lane down from its top refreshes the board, a short pull does not, and no refresh button is left', async ({ page }) => {
-  await openPhone(page, 'Quiet');
-  await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
-  const summaries: string[] = [];
-  page.on('request', (request) => {
-    if (/\/api\/projects\/[^/]+\/summary/.test(request.url())) summaries.push(request.url());
-  });
-  const card = swipeCard(page, 'Quiet todo');
-  const b = await box(card);
-  const from = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+test("pulling a lane down from its top refreshes the board, a short pull does not, and no refresh button is left", async ({
+	page,
+}) => {
+	await openPhone(page, "Quiet");
+	await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
+	const summaries: string[] = [];
+	page.on("request", (request) => {
+		if (/\/api\/projects\/[^/]+\/summary/.test(request.url()))
+			summaries.push(request.url());
+	});
+	const card = swipeCard(page, "Quiet todo");
+	const b = await box(card);
+	const from = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 
-  // A short pull shows the hint at most and refreshes nothing.
-  await finger(page, from, { x: from.x, y: from.y + 40 });
-  await page.waitForTimeout(500);
-  expect(summaries).toHaveLength(0);
+	// A short pull shows the hint at most and refreshes nothing.
+	await finger(page, from, { x: from.x, y: from.y + 40 });
+	await page.waitForTimeout(500);
+	expect(summaries).toHaveLength(0);
 
-  // A long pull releases into a refresh: the board asks for its Summary again.
-  await finger(page, from, { x: from.x, y: from.y + 140 });
-  await expect.poll(() => summaries.length).toBeGreaterThan(0);
-  await expect(page.locator('.monitor-pull')).toHaveCount(0);
-  await expect(tab(page, 'Todo 1', true)).toBeVisible();
+	// A long pull releases into a refresh: the board asks for its Summary again.
+	await finger(page, from, { x: from.x, y: from.y + 140 });
+	await expect.poll(() => summaries.length).toBeGreaterThan(0);
+	await expect(page.locator(".monitor-pull")).toHaveCount(0);
+	await expect(tab(page, "Todo 1", true)).toBeVisible();
 });
 
-const bottomBar = (page: Page) => page.getByRole('navigation', { name: 'Main navigation' });
+const bottomBar = (page: Page) =>
+	page.getByRole("navigation", { name: "Main navigation" });
 
-test('the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in the middle, and clears the home indicator', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  const bar = bottomBar(page);
-  await expect(bar).toBeVisible();
-  const items = bar.getByRole('button');
-  expect(await items.evaluateAll((all) => all.map((item) => item.textContent?.replace(/^\d+/, '')))).toEqual([
-    'Board',
-    'Messages',
-    'Ask',
-    'Archive',
-    'Settings',
-  ]);
-  // The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
-  await expect(page.getByRole('region', { name: 'Messages' })).toHaveCount(0);
-  await expect(page.locator('.header__settings')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Refresh' })).toHaveCount(0);
-  await expect(bar.locator('.phone-nav__badge')).toHaveCount(0);
-  const ask = await items.nth(2).boundingBox();
-  const barBox = await bar.boundingBox();
-  if (!ask || !barBox) throw new Error('the bar has no box');
-  expect(Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
+test("the bottom bar has Board, Messages, Ask, Archive and Settings, with Ask in the middle, and clears the home indicator", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	const bar = bottomBar(page);
+	await expect(bar).toBeVisible();
+	const items = bar.getByRole("button");
+	expect(
+		await items.evaluateAll((all) =>
+			all.map((item) => item.textContent?.replace(/^\d+/, "")),
+		),
+	).toEqual(["Board", "Messages", "Ask", "Archive", "Settings"]);
+	// The entry points the bar took over are gone from the strip and the header; no message waits, so no number shows.
+	await expect(page.getByRole("region", { name: "Messages" })).toHaveCount(0);
+	await expect(page.locator(".header__settings")).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
+	await expect(bar.locator(".phone-nav__badge")).toHaveCount(0);
+	const ask = await items.nth(2).boundingBox();
+	const barBox = await bar.boundingBox();
+	if (!ask || !barBox) throw new Error("the bar has no box");
+	expect(
+		Math.abs(ask.x + ask.width / 2 - (barBox.x + barBox.width / 2)),
+	).toBeLessThanOrEqual(2);
 
-  // On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
-  await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
-  const margin = await bar.evaluate((element) => parseFloat(getComputedStyle(element).marginBottom));
-  expect(margin).toBeGreaterThanOrEqual(34);
-  const after = await bar.boundingBox();
-  const viewport = page.viewportSize();
-  if (!after || !viewport) throw new Error('the bar has no box');
-  expect(after.y + after.height).toBeLessThanOrEqual(viewport.height - 34 + 1);
+	// On an iPhone with a home indicator the dock floats above it: its bottom margin is at least the inset.
+	await page.evaluate(() =>
+		document.documentElement.style.setProperty("--safe-bottom", "34px"),
+	);
+	const margin = await bar.evaluate((element) =>
+		parseFloat(getComputedStyle(element).marginBottom),
+	);
+	expect(margin).toBeGreaterThanOrEqual(34);
+	const after = await bar.boundingBox();
+	const viewport = page.viewportSize();
+	if (!after || !viewport) throw new Error("the bar has no box");
+	expect(after.y + after.height).toBeLessThanOrEqual(viewport.height - 34 + 1);
 });
 
-test('Messages opens the messages drawer without an Ask entry, and Ask opens the request form directly', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
-  const list = page.getByRole('dialog', { name: 'Messages' });
-  await expect(list).toBeVisible();
-  await expect(list.getByRole('tab')).toHaveCount(3);
-  await expect(list.getByRole('button', { name: /Ask/ })).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await expect(list).toBeHidden();
+test("Messages opens the messages drawer without an Ask entry, and Ask opens the request form directly", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	await bottomBar(page).getByRole("button", { name: "Messages" }).tap();
+	const list = page.getByRole("dialog", { name: "Messages" });
+	await expect(list).toBeVisible();
+	await expect(list.getByRole("tab")).toHaveCount(3);
+	await expect(list.getByRole("button", { name: /Ask/ })).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(list).toBeHidden();
 
-  await bottomBar(page).getByRole('button', { name: 'Ask AI' }).tap();
-  await expect(page.getByRole('dialog', { name: 'Ask AI' })).toBeVisible();
+	await bottomBar(page).getByRole("button", { name: "Ask AI" }).tap();
+	await expect(page.getByRole("dialog", { name: "Ask AI" })).toBeVisible();
 });
 
-test('the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  // The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
-  const bar = page.locator('.phone-nav');
-  const item = (name: string) => bar.locator('button', { hasText: name });
-  await bottomBar(page).getByRole('button', { name: 'Messages' }).tap();
-  const messages = page.getByRole('dialog', { name: 'Messages' });
-  await expect(messages).toBeVisible();
-  await page.waitForTimeout(500);
+test("the bottom bar stays in front of an open sheet, the sheet runs behind it and its content ends above it, and its items switch sheets", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	// The dialog marks the page behind it aria-hidden, so the bar is found by its class while a sheet is open.
+	const bar = page.locator(".phone-nav");
+	const item = (name: string) => bar.locator("button", { hasText: name });
+	await bottomBar(page).getByRole("button", { name: "Messages" }).tap();
+	const messages = page.getByRole("dialog", { name: "Messages" });
+	await expect(messages).toBeVisible();
+	await page.waitForTimeout(500);
 
-  const sheetBox = await messages.boundingBox();
-  const barBox = await bar.boundingBox();
-  if (!sheetBox || !barBox) throw new Error('the sheet or the bar has no box');
-  // The sheet's surface runs to the bottom of the screen, behind the bar, and its content ends at the bar.
-  const viewportHeight = page.viewportSize()?.height ?? 0;
-  expect(Math.abs(sheetBox.y + sheetBox.height - viewportHeight)).toBeLessThanOrEqual(1);
-  const contentBox = await messages.locator('.mobile-drawer__content').boundingBox();
-  if (!contentBox) throw new Error('the sheet has no content box');
-  expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
-  expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
-  // What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
-  const topmost = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.phone-nav') !== null, [
-    barBox.x + barBox.width / 2,
-    barBox.y + barBox.height / 2,
-  ]);
-  expect(topmost).toBe(true);
+	const sheetBox = await messages.boundingBox();
+	const barBox = await bar.boundingBox();
+	if (!sheetBox || !barBox) throw new Error("the sheet or the bar has no box");
+	// The sheet's surface runs to the bottom of the screen, behind the bar, and its content ends at the bar.
+	const viewportHeight = page.viewportSize()?.height ?? 0;
+	expect(
+		Math.abs(sheetBox.y + sheetBox.height - viewportHeight),
+	).toBeLessThanOrEqual(1);
+	const contentBox = await messages
+		.locator(".mobile-drawer__content")
+		.boundingBox();
+	if (!contentBox) throw new Error("the sheet has no content box");
+	expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(barBox.y + 1);
+	expect(contentBox.y + contentBox.height).toBeGreaterThan(barBox.y - 3);
+	// What a finger lands on in the middle of the bar is the bar, not the sheet or its backdrop.
+	const topmost = await page.evaluate(
+		([x, y]) => document.elementFromPoint(x, y)?.closest(".phone-nav") !== null,
+		[barBox.x + barBox.width / 2, barBox.y + barBox.height / 2],
+	);
+	expect(topmost).toBe(true);
 
-  // Another item replaces the sheet at once, with one dialog on screen; Board closes it.
-  await item('Settings').tap();
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(1);
-  await item('Board').tap();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+	// Another item replaces the sheet at once, with one dialog on screen; Board closes it.
+	await item("Settings").tap();
+	await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+	await expect(page.getByRole("dialog")).toHaveCount(1);
+	await item("Board").tap();
+	await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test('Settings opens as a drawer, Archive lists archived tasks in a drawer, and the bulk archive asks in a drawer that cancels without a change', async ({ page }) => {
-  await openPhone(page, 'Switch');
-  await bottomBar(page).getByRole('button', { name: 'Settings' }).tap();
-  const settings = page.getByRole('dialog', { name: 'Settings' });
-  await expect(settings).toBeVisible();
-  await expect(settings).toHaveAttribute('data-slot', 'drawer-popup');
-  await page.keyboard.press('Escape');
-  await expect(settings).toBeHidden();
+test("Settings opens as a drawer, Archive lists archived tasks in a drawer, and the bulk archive asks in a drawer that cancels without a change", async ({
+	page,
+}) => {
+	await openPhone(page, "Switch");
+	await bottomBar(page).getByRole("button", { name: "Settings" }).tap();
+	const settings = page.getByRole("dialog", { name: "Settings" });
+	await expect(settings).toBeVisible();
+	await expect(settings).toHaveAttribute("data-slot", "drawer-popup");
+	await page.keyboard.press("Escape");
+	await expect(settings).toBeHidden();
 
-  await bottomBar(page).getByRole('button', { name: 'Archived tasks' }).tap();
-  const list = page.getByRole('dialog', { name: 'Archived tasks' });
-  await expect(list).toBeVisible();
-  await expect(list).toHaveAttribute('data-slot', 'drawer-popup');
-  await page.keyboard.press('Escape');
-  await expect(list).toBeHidden();
+	await bottomBar(page).getByRole("button", { name: "Archived tasks" }).tap();
+	const list = page.getByRole("dialog", { name: "Archived tasks" });
+	await expect(list).toBeVisible();
+	await expect(list).toHaveAttribute("data-slot", "drawer-popup");
+	await page.keyboard.press("Escape");
+	await expect(list).toBeHidden();
 
-  await tab(page, 'Done 1').tap();
-  await page.getByRole('button', { name: 'Archive all' }).tap();
-  const drawer = page.getByRole('dialog', { name: 'Archive completed tasks' });
-  await expect(drawer).toBeVisible();
-  await expect(drawer).toHaveAttribute('data-slot', 'drawer-popup');
-  await expect(drawer.getByRole('row')).toHaveCount(2);
-  await drawer.getByRole('button', { name: 'Cancel' }).tap();
-  await expect(drawer).toBeHidden();
-  expect(show('Switch', 'Switch done').archivedAt).toBeNull();
+	await tab(page, "Done 1").tap();
+	await page.getByRole("button", { name: "Archive all" }).tap();
+	const drawer = page.getByRole("dialog", { name: "Archive completed tasks" });
+	await expect(drawer).toBeVisible();
+	await expect(drawer).toHaveAttribute("data-slot", "drawer-popup");
+	await expect(drawer.getByRole("row")).toHaveCount(2);
+	await drawer.getByRole("button", { name: "Cancel" }).tap();
+	await expect(drawer).toBeHidden();
+	expect(show("Switch", "Switch done").archivedAt).toBeNull();
 });
