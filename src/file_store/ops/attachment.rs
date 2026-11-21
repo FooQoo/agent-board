@@ -8,6 +8,7 @@
 
 pub(super) mod locked;
 mod owner;
+pub(super) mod staged;
 
 use std::fs;
 use std::path::{Path, PathBuf};

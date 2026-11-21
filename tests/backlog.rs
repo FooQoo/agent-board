@@ -927,3 +927,99 @@ fn a_draft_save_removes_the_images_and_saves_the_text_together() {
         "attachment_not_found"
     );
 }
+
+const OTHER_ID: &str = "00000000000000000000000000000002";
+const THIRD_ID: &str = "00000000000000000000000000000003";
+
+fn new_image(id: &str) -> AttachmentInput {
+    AttachmentInput {
+        id: id.into(),
+        name: "b.png".into(),
+        bytes: png(),
+    }
+}
+
+#[test]
+fn a_save_whose_addition_collides_keeps_every_image_and_the_text() {
+    let f = fx();
+    let (id, owner) = draft_with_image(&f);
+    f.store
+        .add_attachment_for_user(&f.project, &owner, new_image(OTHER_ID), now())
+        .unwrap();
+    let before = f.store.task(&f.project, id).unwrap().description;
+    let refused = f
+        .store
+        .edit_draft_task_with_images(
+            &f.project,
+            id,
+            (None, Some("new text")),
+            DraftSave::default(),
+            ImageChanges {
+                removed: vec![IMAGE_ID.into()],
+                added: vec![new_image(OTHER_ID)],
+            },
+            now(),
+        )
+        .unwrap_err();
+    assert_eq!(refused.code(), "invalid_value");
+    for kept in [IMAGE_ID, OTHER_ID] {
+        f.store.attachment_path(&f.project, &owner, kept).unwrap();
+    }
+    assert_eq!(f.store.task(&f.project, id).unwrap().description, before);
+}
+
+#[test]
+fn a_save_that_reuses_a_removed_id_is_refused_and_keeps_the_image() {
+    let f = fx();
+    let (id, owner) = draft_with_image(&f);
+    let refused = f
+        .store
+        .edit_draft_task_with_images(
+            &f.project,
+            id,
+            (None, None),
+            DraftSave::default(),
+            ImageChanges {
+                removed: vec![IMAGE_ID.into()],
+                added: vec![new_image(IMAGE_ID)],
+            },
+            now(),
+        )
+        .unwrap_err();
+    assert_eq!(refused.code(), "invalid_value");
+    f.store
+        .attachment_path(&f.project, &owner, IMAGE_ID)
+        .unwrap();
+}
+
+#[test]
+fn a_draft_save_swaps_images_and_saves_the_text() {
+    let f = fx();
+    let (id, owner) = draft_with_image(&f);
+    let saved = f
+        .store
+        .edit_draft_task_with_images(
+            &f.project,
+            id,
+            (None, Some("new text")),
+            DraftSave::default(),
+            ImageChanges {
+                removed: vec![IMAGE_ID.into()],
+                added: vec![new_image(THIRD_ID)],
+            },
+            now(),
+        )
+        .unwrap();
+    assert!(saved.changed);
+    assert!(saved.value.description.contains("new text"));
+    f.store
+        .attachment_path(&f.project, &owner, THIRD_ID)
+        .unwrap();
+    assert_eq!(
+        f.store
+            .attachment_path(&f.project, &owner, IMAGE_ID)
+            .unwrap_err()
+            .code(),
+        "attachment_not_found"
+    );
+}
