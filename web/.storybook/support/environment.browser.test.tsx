@@ -2,7 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { StoryEnvironment, type StoryGlobals } from './decorators';
-import { assertNoProductRequests, blockedRequests } from './network-guard';
+import { assertNoUnhandledRequests, resetHandlers, useMockServer } from './msw';
 
 const globals = (overrides: Partial<StoryGlobals> = {}): StoryGlobals => ({
   locale: 'en',
@@ -96,16 +96,36 @@ describe('story environment', () => {
   });
 });
 
-describe('product request guard', () => {
-  it('fails a request to the product API and records it', async () => {
-    await expect(fetch('/api/projects')).rejects.toThrow('product request');
-    expect(blockedRequests).toEqual(['GET /api/projects']);
-    expect(() => assertNoProductRequests()).toThrow('/api/projects');
-    expect(blockedRequests).toEqual([]);
+describe('product requests through MSW', () => {
+  afterEach(() => {
+    resetHandlers();
+    // Each test checks its own record; the setup file would otherwise fail on the next one.
+    try {
+      assertNoUnhandledRequests();
+    } catch {
+      // Recorded by a test that expected it.
+    }
   });
 
-  it('refuses the live event stream of the product', () => {
-    expect(() => new EventSource('/api/events')).toThrow('product request');
-    expect(() => assertNoProductRequests()).toThrow('/api/events');
+  it('fails a request to the product API that no handler answers, and records it', async () => {
+    await expect(fetch('/api/projects')).rejects.toThrow();
+    expect(() => assertNoUnhandledRequests()).toThrow('GET');
+    expect(() => assertNoUnhandledRequests()).not.toThrow();
+  });
+
+  it('answers the API and the event stream from the sample-data server', async () => {
+    useMockServer();
+    const response = await fetch('/api/projects', { headers: { 'X-Agboard-Token': 'mock-token' } });
+    expect(response.status).toBe(200);
+    const source = new EventSource('/api/events');
+    await new Promise((resolve) => source.addEventListener('ready', resolve, { once: true }));
+    source.close();
+    expect(() => assertNoUnhandledRequests()).not.toThrow();
+  });
+
+  it('lets requests outside the product API pass', async () => {
+    const response = await fetch('/sample-attachment.png');
+    expect(response.status).toBe(200);
+    expect(() => assertNoUnhandledRequests()).not.toThrow();
   });
 });

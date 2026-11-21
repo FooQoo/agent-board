@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!!**/dist-demo", "!!**/coverage"]
+    "includes": ["**", "!!**/dist", "!!**/dist-demo", "!!**/coverage", "!!**/mockServiceWorker.js"]
   },
   "formatter": {
     "enabled": true,

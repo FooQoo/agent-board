@@ -44,7 +44,7 @@ describe('Storybook configuration', () => {
       '.storybook/support/fixtures.ts',
       '.storybook/support/adapters.ts',
       '.storybook/support/decorators.tsx',
-      '.storybook/support/network-guard.ts',
+      '.storybook/support/msw.ts',
       '.storybook/support/coverage.ts',
       'vitest.storybook.config.ts',
       'tsconfig.storybook.json',

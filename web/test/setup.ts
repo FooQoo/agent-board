@@ -1,4 +1,17 @@
-import { afterEach, beforeAll } from 'vitest';
+import './support/web-streams';
+import { EventSource } from 'eventsource';
+import { afterAll, afterEach, beforeAll } from 'vitest';
+import { failOnUnhandledProductRequest, mswServer } from './support/msw';
+
+// Node and jsdom have no `EventSource`; this one reads the stream with `fetch`, which MSW answers.
+if (typeof globalThis.EventSource === 'undefined')
+  globalThis.EventSource = EventSource as unknown as typeof globalThis.EventSource;
+
+// Product requests are answered by MSW handlers that a test adds with `useMockServer`; one that no
+// handler answers fails, so a test never reaches a real server by accident.
+beforeAll(() => mswServer.listen({ onUnhandledFrame: failOnUnhandledProductRequest }));
+afterEach(() => mswServer.resetHandlers());
+afterAll(() => mswServer.close());
 
 // Files marked `// @vitest-environment node` have no DOM: they get none of the browser stubs
 // below, nor Testing Library's cleanup or the page code preloaded for dialogs.

@@ -75,7 +75,7 @@
 - `web/src/shared/ui/lightbox/`: 画像や図の拡大表示です。`Lightbox`はダイアログの枠（図にも使います）、`ImageViewer`はスワイプで切り替えるビューア（スライドは`ZoomSlide`で、`useImageZoom`と`web/src/shared/lib/gesture/pinchZoom.ts`が拡大縮小を担います）、`ImageLightbox`はその2つを組み合わせたものです。スタイルは`web/src/shared/styles/lightbox.css`にあります。
 - `web/src/features/notification-settings/`: 設定ダイアログの「通知」の行と、それが開くダイアログ。読み取りと保存、およびサーバーと同じ種類と既定値を持ちます。
 - `web/src/shared/preferences/`: ブラウザ側の保存した言語とカラーテーマ。読み取りと保存、ブラウザの最初の描画用の控え、`preferences`イベントを扱います。[サーバーと画面](../concepts/server-and-ui.md)を参照してください。
-- `web/.storybook/`: Storybookの設定、架空のfixture、decorator、通信ガード、共通部分のテストを置きます。UIのStoryと対応台帳は、説明するソースの近くに置きます。詳しくは[Storybookのセットアップと台帳](../getting-started/setup.md#storybook)を参照してください。
+- `web/.storybook/`: Storybookの設定、架空のfixture、decorator、StoryのためのMSWワーカーとそのハンドラ、共通部分のテストを置きます。UIのStoryと対応台帳は、説明するソースの近くに置きます。詳しくは[Storybookのセットアップと台帳](../getting-started/setup.md#storybook)を参照してください。
 - `tests/`: Rustの結合テストとCLIのテストを置きます。
 - `e2e/`: Playwrightのテストと、スクリーンショット・動画の生成スクリプトを置きます。
 - `docs/`: このドキュメントサイトです。
@@ -126,6 +126,7 @@
 ### ブラウザのデモ
 
 - `web/src/app/development/mock-server/`: Node APIを使わないサンプルデータのサーバー。サンプルデータモード（`web/mock-api.ts`）とデモで共有します。`sampleJa.ts`はサンプルのボードの日本語の文です。
+- `web/src/app/development/mocks/`: サンプルデータサーバーを包むMSWハンドラ。単体テストとStorybookで共有します（[モックハンドラ](../getting-started/setup.md#モックハンドラ)を参照）。
 - `web/src/app/development/demo/`: デモの開始（`install.ts`）、`fetch`と`EventSource`の差し替え（`transport.ts`）、画像の書き換え（`images.ts`）、始めの言語の判定（`locale.ts`）。
 - `web/demo-build.ts`: `demo`モードのViteプラグイン、ベースパス、ページに渡すサンプルデータ。
 - `e2e/playwright.demo.config.ts`と`e2e/demo/`: ビルド済みのドキュメントサイトを相手にするデモのスイート。[ブラウザのデモ](../concepts/demo.md)を参照してください。

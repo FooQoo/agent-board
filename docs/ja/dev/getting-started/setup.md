@@ -106,13 +106,22 @@ TZ=UTC pnpm --dir web test:storybook
 
 Storybookのビルドはアプリのビルドと分けています。Storybookは専用のViteの設定（`web/.storybook/vite.config.ts`）を使うため、アプリのモック、実APIへの接続、チャンクの設定は適用されません。出力先も異なり、Storybookは`web/storybook-static/`、アプリは`web/dist/`です。
 
-製品のコードからStoryや`web/.storybook/`の内容をimportしてはいけません。Storyとテストだけが共通の部分を使えます。`pnpm --dir web check`がこの規則を確認します。300行の上限は`web/src`の製品のファイルだけに適用され、Storyとテストはこの上限の対象外です。また、Storyは製品のAPIとイベントストリームへのリクエストを拒否するため、それらを呼ぶStoryは失敗します。
+製品のコードからStoryや`web/.storybook/`の内容をimportしてはいけません。Storyとテストだけが共通の部分を使えます。`pnpm --dir web check`がこの規則を確認します。300行の上限は`web/src`の製品のファイルだけに適用され、Storyとテストはこの上限の対象外です。製品へのリクエストはMSWを通ります。詳しくは[モックハンドラ](#モックハンドラ)を参照してください。
+
+## モックハンドラ
+
+`web/src/app/development/mock-server/`のサンプルデータサーバーが、ボード、ルート、変更を持ちます。[MSW](https://mswjs.io/)はその通信経路にすぎません。`web/src/app/development/mocks/handlers.ts`の`mockHandlers(server)`は、`/api/*`と`/__mock/*`向けの`http.all`ハンドラと、`ready`に続いて各`changed`イベントを送る`sse('/api/events')`ハンドラを返します。前者は受けたリクエストを`MockServer.handle()`に渡します。パスは相対パスなので、ページのオリジンに一致します。
+
+- **単体テスト**では、`web/test/setup.ts`が`setupServer()`を起動します。既定ではハンドラを持たず、どのハンドラも答えない`/api/`・`/__mock/`へのリクエストはテストを失敗させます。テストは`web/test/support/msw.ts`の`useMockServer(server)`でハンドラを追加し、テストの終了後に取り除かれます。Nodeとjsdomには`EventSource`がないため、セットアップが`eventsource`パッケージをグローバルとして入れます。これはストリームを`fetch`で読むので、MSWが応答できます。
+- **Storybook**ではブラウザ用のワーカーが動き、スクリプトは`web/.storybook/static/mockServiceWorker.js`です。Storyは`web/.storybook/support/msw.ts`の`useMockServer()`で同じハンドラを追加し、Storyの終了時に取り除かれます。どのハンドラも答えない`/api/`・`/__mock/`へのリクエストは失敗として記録され、そのリクエストを出したテストは終了時に失敗します。画像、ページ遷移、アセットのリクエストは通ります。
+
+`mockServiceWorker.js`は`pnpm --dir web exec msw init <フォルダ> --no-save`で生成します。`msw`パッケージは固定バージョンです。更新したときに再生成して、新しいファイルをコミットしてください。BiomeとCodeRabbitはこのファイルを対象外にします。
 
 Storyで使う架空の画像は`web/.storybook/static/`にあります。Storybookとテストはこのフォルダをルートから配信するため、Storyは設定なしに`/sample-attachment.png`のようなURLを使えます。
 
 各部品の`*.stories.tsx`、焦点を絞った`*.test.tsx`、専用スタイル、`story-coverage*.json`は、その部品の近くに置きます。画面Storyでは、部品を組み合わせたページ全体と主要な画面状態を確認します。部品自身の振る舞いを持つStoryの代わりにはなりません。たとえば`Pages/Board/Board`と`ThreeLanes`の組み合わせから、`pages-board-board--three-lanes`というIDが作られます。型付きの`Meta`/`StoryObj`と安定したfixtureを使い、操作が重要な場合は`play`関数を追加します。Storyを重複して作らず、対象部品の既存ファイルを拡張してください。
 
-各フォルダの`story-coverage.json`には、ソースのexport、表示するStory、各Storyが扱う状態を記録します。同じフォルダに複数の台帳が必要な場合は`story-coverage.<name>.json`を使います。台帳は対象部品の隣に置き、Story IDもそのフォルダの`*.stories.tsx`が登録するものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。Nodeの検査は台帳の記載と配置を検証します。現在のexport台帳はまだ部分的で、UI exportのすべてが記載済みであることは保証しません。`test:storybook`の共通部品テストは、登録されたStory IDと台帳に記載されたStory IDが双方向で一致することを確認します。全UI exportの棚卸しは別の最終ゲートです。Storyには共通fixtureとadapterを使い、製品APIやイベントストリームへのアクセスを拒否する通信ガードの対象にします。
+各フォルダの`story-coverage.json`には、ソースのexport、表示するStory、各Storyが扱う状態を記録します。同じフォルダに複数の台帳が必要な場合は`story-coverage.<name>.json`を使います。台帳は対象部品の隣に置き、Story IDもそのフォルダの`*.stories.tsx`が登録するものに限ります。形式と規則は`web/.storybook/support/component-coverage.json`にあります。Nodeの検査は台帳の記載と配置を検証します。現在のexport台帳はまだ部分的で、UI exportのすべてが記載済みであることは保証しません。`test:storybook`の共通部品テストは、登録されたStory IDと台帳に記載されたStory IDが双方向で一致することを確認します。全UI exportの棚卸しは別の最終ゲートです。Storyには共通fixtureとadapterを使い、製品APIが必要なStoryは、実サーバーを呼ばずに共通のMSWハンドラを追加します。
 
 ## リリースをビルドする {#build-release}
 

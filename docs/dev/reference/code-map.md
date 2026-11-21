@@ -75,7 +75,7 @@ The main files and directories outside `src/` are:
 - `web/src/shared/ui/lightbox/`: the enlarged view of a picture. `Lightbox` is the dialog frame (also used for diagrams), `ImageViewer` is the swipe viewer (its slides are `ZoomSlide`, driven by `useImageZoom` and `web/src/shared/lib/gesture/pinchZoom.ts`), and `ImageLightbox` joins the two. Its styles are in `web/src/shared/styles/lightbox.css`.
 - `web/src/features/notification-settings/`: the "Notifications" row of the settings dialog and the dialog it opens, with its reads, saves, and the same kinds and defaults as the server.
 - `web/src/shared/preferences/`: the saved language and color theme on the web side: the reads and saves, the browser's first-paint copy, and the `preferences` event. See [Server and web UI](../concepts/server-and-ui.md).
-- `web/.storybook/`: Storybook configuration, synthetic fixtures, decorators, network guards, and support tests. UI Stories and coverage ledgers live beside the source they describe; see [Storybook setup and coverage](../getting-started/setup.md#storybook).
+- `web/.storybook/`: Storybook configuration, synthetic fixtures, decorators, the MSW worker and its handlers for Stories, and support tests. UI Stories and coverage ledgers live beside the source they describe; see [Storybook setup and coverage](../getting-started/setup.md#storybook).
 - `tests/`: Rust integration and CLI tests.
 - `e2e/`: Playwright tests and the screenshot and video scripts.
 - `docs/`: this documentation site.
@@ -126,6 +126,7 @@ The main files and directories outside `src/` are:
 ### Browser demo
 
 - `web/src/app/development/mock-server/`: the sample-data server without Node APIs, shared by the sample-data mode (`web/mock-api.ts`) and the demo. `sampleJa.ts` holds the Japanese text of the sample boards.
+- `web/src/app/development/mocks/`: the MSW handlers over the sample-data server, shared by unit tests and Storybook (see [Mock handlers](../getting-started/setup.md#mock-handlers)).
 - `web/src/app/development/demo/`: the demo's start (`install.ts`), the `fetch` and `EventSource` replacement (`transport.ts`), and the image rewrite (`images.ts`), and the starting language (`locale.ts`).
 - `web/demo-build.ts`: the `demo` mode's Vite plugin, its base path, and the sample data it gives the page.
 - `e2e/playwright.demo.config.ts` and `e2e/demo/`: the demo suite, run against the built documentation site. See [The browser demo](../concepts/demo.md).
