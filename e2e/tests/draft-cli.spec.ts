@@ -128,32 +128,43 @@ test('a draft is read-only for edit, mv, and state, and everything else still wo
   expect(show(13)).toMatchObject({ title: 'Changed by an agent', taskStatus: 'done' });
 });
 
-test('an AI draft takes edits and history from the AI but not mv or state, and the AI starts it itself', async () => {
+test('a plan in the Backlog takes AI edits and history but not mv, state, or send; a person sends it', async () => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Proposed by the AI', '--assignee', 'ai', '--actor', 'ai']);
-  expect(show(id)).toMatchObject({ draft: 'ai', taskStatus: 'todo' });
-  expect(agboardOk(mainProject, ['ls']).stdout).toContain(`#${id} Proposed by the AI [AI] [AI draft]`);
+  agboardOk(mainProject, [
+    'add',
+    'Proposed by the AI',
+    '--assignee',
+    'ai',
+    '--actor',
+    'ai',
+    '--backlog',
+  ]);
+  expect(show(id)).toMatchObject({ draft: null, taskStatus: 'backlog' });
+  expect(agboardOk(mainProject, ['ls']).stdout).toMatch(
+    new RegExp(`Backlog\\n\\s+#${id} Proposed by the AI \\[AI\\]`),
+  );
 
-  // The AI can keep shaping its own proposal.
+  // The AI can keep shaping its own plan.
   agboardOk(mainProject, ['edit', String(id), '--title', 'Proposed again']);
   agboardOk(mainProject, ['history', 'add', String(id), '--reason', 'Refined the plan.']);
-  expect(show(id)).toMatchObject({ title: 'Proposed again', draft: 'ai' });
+  expect(show(id)).toMatchObject({ title: 'Proposed again', taskStatus: 'backlog' });
 
-  // It cannot move or run it, and nothing changes.
+  // It cannot move, run, or send it, and nothing changes.
   const before = board();
-  for (const args of [
-    ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.'],
-    ['state', String(id), 'running', '--actor', 'ai', '--reason', 'Go.'],
-  ]) {
+  for (const [args, code] of [
+    [['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.'], 'task_in_backlog'],
+    [['state', String(id), 'running', '--actor', 'ai', '--reason', 'Go.'], 'task_in_backlog'],
+    [['send', String(id), '--actor', 'ai'], 'human_only'],
+  ] as const) {
     const refused = agboard(mainProject, [...args, '--json']);
     expect(refused.code, args[0]).toBe(1);
-    expect(JSON.parse(refused.stderr || refused.stdout).error.code, args[0]).toBe('task_is_draft');
+    expect(JSON.parse(refused.stderr || refused.stdout).error.code, args[0]).toBe(code);
   }
   expect(board()).toBe(before);
 
-  // The AI starts its own draft once it is ready.
-  agboardOk(mainProject, ['start', String(id), '--actor', 'ai']);
-  expect(show(id).draft).toBeNull();
+  // A person sends it to Todo, and then the AI can work on it.
+  agboardOk(mainProject, ['send', String(id), '--actor', 'human']);
+  expect(show(id).taskStatus).toBe('todo');
   agboardOk(mainProject, ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Go.']);
   expect(show(id).taskStatus).toBe('doing');
 });

@@ -9,6 +9,7 @@ use axum::response::Response;
 use super::multipart::parse_multipart;
 use super::parse_task_id;
 use crate::domain::{Actor, Changed, NewTask, validate_attachment};
+use crate::file_store::DraftSave;
 use crate::file_store::model::AttachmentOwner;
 use crate::file_store::model::SimpleRequestInput;
 use crate::server::AppState;
@@ -57,7 +58,7 @@ pub(super) async fn edit_task_multipart(
             "requestId is required.",
         );
     }
-    if payload.meta.draft == Some(Some(crate::domain::Draft::Human)) {
+    if payload.meta.draft.target == Some(Some(crate::domain::Draft::Human)) {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -65,7 +66,10 @@ pub(super) async fn edit_task_multipart(
             "draft \"human\" is only accepted when a task is added.",
         );
     }
-    let finalize = super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft);
+    let finalize = DraftSave {
+        target: super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft.target),
+        legacy_ai: payload.meta.draft.legacy_ai,
+    };
     let title = payload.meta.title;
     let description = payload.meta.description;
     let removed = payload.meta.remove_attachment_ids;
@@ -134,7 +138,7 @@ pub(super) async fn create_task_multipart(
     if payload.meta.request_kind.as_deref() == Some("simple") {
         if payload.meta.title.is_some()
             || payload.meta.assignee.is_some()
-            || payload.meta.draft.is_some()
+            || payload.meta.draft.target.is_some()
             || payload.meta.finalize
             || !payload.meta.remove_attachment_ids.is_empty()
         {
@@ -209,7 +213,7 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
-    let draft = payload.meta.draft.flatten();
+    let draft = payload.meta.draft.target.flatten();
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
