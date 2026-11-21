@@ -16,12 +16,12 @@
 // The obsolete marker `.internal/backlog-migrated` is removed.
 //
 // Usage: node scripts/migrate-ai-drafts.mjs [--dry-run] [DATA_DIR]
-// DATA_DIR defaults to $AGBOARD_HOME, then ~/.agent-board. Stop `agboard serve` first.
+// DATA_DIR defaults to $AGBOARD_HOME, then ~/.agent-board. Stop `agboard serve` first (--dry-run may run while it is up).
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const TASK_ID = /^[0-9]+$/;
 const EPIC_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -136,7 +136,10 @@ export function migrate(dataDir, { dryRun = false, now = new Date() } = {}) {
   const projectsDir = path.join(shared, 'projects');
   if (!fs.existsSync(projectsDir)) throw new Error(`No projects folder at ${projectsDir}.`);
   const pid = serverPid(dataDir);
-  if (pid !== null) {
+  if (pid !== null && dryRun) {
+    // A preview only reads, and the server saves by rename, so it is safe to look.
+    console.warn(`warning: agboard serve is running (pid ${pid}); the preview may be stale. Stop it before the real run.`);
+  } else if (pid !== null) {
     throw new Error(`agboard serve is running (pid ${pid}). Stop it first so no write races this script.`);
   }
   const result = { tasks: [], epics: [], markers: [], problems: [] };
@@ -223,6 +226,16 @@ function main(argv) {
   return result.problems.length > 0 ? 1 : 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Compare real paths: a symlinked start path (macOS /tmp is /private/tmp) must still run.
+function isEntrypoint() {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint()) {
   process.exitCode = main(process.argv);
 }

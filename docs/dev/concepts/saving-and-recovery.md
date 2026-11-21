@@ -51,7 +51,7 @@ A `task.json` or `epic.json` that uses the Backlog has `formatVersion: 2`; the f
 
 The `draft: "ai"` mark of earlier versions is no longer read. The board does not convert it: a `task.json` or `epic.json` that still holds it fails to parse like any other invalid file, so it is reported in `problems` (and by `agboard show`/`ls` for a single file), left out of the board, and never rewritten. Nothing else in the project is affected.
 
-The conversion is a one-shot script, `scripts/migrate-ai-drafts.mjs`, run by hand while `agboard serve` is stopped. It refuses to run while `serve.json` names a live process or while a project has an unfinished save in `.internal/transactions`. It writes each file through a temporary file in the same folder and a rename, and a second run changes nothing. `--dry-run` lists what would change. It also removes the unused `.internal/backlog-migrated` marker of the earlier automatic conversion.
+The conversion is a one-shot script, `scripts/migrate-ai-drafts.mjs`, run by hand while `agboard serve` is stopped. It refuses a real run while `serve.json` names a live process (`--dry-run` only warns) or while a project has an unfinished save in `.internal/transactions`. It writes each file through a temporary file in the same folder and a rename, and a second run changes nothing. `--dry-run` lists what would change. It also removes the unused `.internal/backlog-migrated` marker of the earlier automatic conversion.
 
 | Before | After |
 | --- | --- |

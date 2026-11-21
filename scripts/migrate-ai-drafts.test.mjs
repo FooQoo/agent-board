@@ -127,6 +127,8 @@ test('refuses to run while agboard serve is running', () => {
   const before = snapshot(project);
   assert.throws(() => migrate(data, { now: NOW }), /agboard serve is running/);
   assert.deepEqual(snapshot(project), before);
+  // A dry run only reads, so it may run beside a server.
+  assert.equal(migrate(data, { dryRun: true, now: NOW }).tasks.length, 4);
   // A stale serve.json (no such process) does not block.
   fs.writeFileSync(path.join(data, 'serve.json'), JSON.stringify({ pid: 2 ** 22 + 12345, port: 1, started_at: 'now' }));
   assert.equal(migrate(data, { dryRun: true, now: NOW }).tasks.length, 4);
@@ -137,4 +139,15 @@ test('appendHistory handles empty and indented histories', () => {
   assert.equal(empty, '---\nhistory:\n- at: 2026-11-21T00:00:00Z\n  reason: "x"\n---\nbody\n');
   const indented = appendHistory('---\nhistory:\n  - at: a\n    reason: b\nquestions: [Q-1]\n---\nbody', 'T', 'x');
   assert.equal(indented, '---\nhistory:\n  - at: a\n    reason: b\n  - at: T\n    reason: "x"\nquestions: [Q-1]\n---\nbody');
+});
+
+test('the CLI runs when started through a symlink to the script', () => {
+  const { data, project } = fixture();
+  const before = snapshot(project);
+  const link = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'agb-link-')), 'migrate-ai-drafts.mjs');
+  fs.symlinkSync(script, link);
+  const run = spawnSync(process.execPath, [link, '--dry-run', data], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /Would move task p1\/#1 "Task 1": todo -> backlog/);
+  assert.deepEqual(snapshot(project), before);
 });

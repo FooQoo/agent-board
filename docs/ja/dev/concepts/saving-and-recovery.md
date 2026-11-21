@@ -51,7 +51,7 @@ Backlogを使う`task.json`・`epic.json`は`formatVersion: 2`で、通常のカ
 
 以前のバージョンの`draft: "ai"`の印は、もう読みません。ボードは変換せず、この印が残る`task.json`・`epic.json`は、ほかの不正なファイルと同じく解析に失敗します。`problems`に報告され、ボードからは除かれ、書き換えられません。プロジェクトのほかの部分には影響しません。
 
-変換は一度だけの手作業のスクリプト`scripts/migrate-ai-drafts.mjs`で行い、`agboard serve`を止めた状態で実行します。`serve.json`が生きているプロセスを指しているとき、またはプロジェクトの`.internal/transactions`に未完了の保存があるときは、実行を拒否します。各ファイルは同じフォルダの一時ファイルに書いてからrenameで置き換え、もう一度実行しても何も変わりません。`--dry-run`は変更される内容を一覧します。以前の自動変換が残した、使われなくなった`.internal/backlog-migrated`も削除します。
+変換は一度だけの手作業のスクリプト`scripts/migrate-ai-drafts.mjs`で行い、`agboard serve`を止めた状態で実行します。`serve.json`が生きているプロセスを指しているとき（`--dry-run`は警告だけ）、またはプロジェクトの`.internal/transactions`に未完了の保存があるときは、実行を拒否します。各ファイルは同じフォルダの一時ファイルに書いてからrenameで置き換え、もう一度実行しても何も変わりません。`--dry-run`は変更される内容を一覧します。以前の自動変換が残した、使われなくなった`.internal/backlog-migrated`も削除します。
 
 | 変換前 | 変換後 |
 | --- | --- |
