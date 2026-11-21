@@ -1,4 +1,6 @@
-import { PencilIcon, Trash2Icon } from 'lucide-react';
+import { PencilIcon, SendIcon, Trash2Icon } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
+import '../../../shared/styles/backlog.css';
 import { useEffect, useRef, useState } from 'react';
 import { useEpicDetail } from '../../../shared/data/react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +28,11 @@ export interface EpicDetailPanelProps {
   onFinalize?: () => Promise<void>;
   operations?: OperationControls;
   onClose: () => void;
+  /** How many cards of the epic wait in the Backlog. */
+  backlogCount?: number;
+  /** Sends them to Todo in one save; the app confirms a warning and shows the result. */
+  onSendBacklog?: () => void;
+  sendBusy?: boolean;
 }
 
 /** The detail column while no epic is selected: the same empty state the archive shows. */
@@ -47,6 +54,9 @@ export function EpicDetailPanel({
   onFinalize,
   operations = noOperations,
   onClose,
+  backlogCount = 0,
+  onSendBacklog,
+  sendBusy,
 }: EpicDetailPanelProps) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
@@ -166,6 +176,25 @@ export function EpicDetailPanel({
       <h2 className="detail__title" id="epic-detail-title">
         {epic.name}
       </h2>
+      {backlogCount > 0 && onSendBacklog && (
+        <section
+          className="backlog-detail backlog-detail--epic"
+          aria-label={t('backlog.detail.heading')}
+        >
+          <p className="backlog-detail__text">{t('backlog.detail.text')}</p>
+          <Button
+            type="button"
+            size="s"
+            className="detail-btn"
+            disabled={sendBusy}
+            aria-label={t('backlog.epic.sendLabel', { count: backlogCount })}
+            onClick={onSendBacklog}
+          >
+            <SendIcon aria-hidden="true" />
+            {t('backlog.epic.send', { count: backlogCount })}
+          </Button>
+        </section>
+      )}
       {epic.draft !== null && onFinalize !== undefined && (
         <DraftBanner
           busy={finalizing}

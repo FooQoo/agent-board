@@ -21,9 +21,9 @@ export const EMPTY_OVERLAY: LaneOverlay = { moved: new Map(), hidden: new Set() 
 export function applyOverlay(lanes: Lanes, overlay: LaneOverlay, now: string): Lanes {
   const { moved, hidden } = overlay;
   if (moved.size === 0 && hidden.size === 0) return lanes;
-  const all = [...lanes.todo, ...lanes.doing, ...lanes.done];
-  const next: Lanes = { todo: [], doing: [], done: [] };
-  for (const name of ['todo', 'doing', 'done'] as const) {
+  const all = [...lanes.backlog, ...lanes.todo, ...lanes.doing, ...lanes.done];
+  const next: Lanes = { backlog: [], todo: [], doing: [], done: [] };
+  for (const name of ['backlog', 'todo', 'doing', 'done'] as const) {
     next[name] = lanes[name].filter(
       (item) => !hidden.has(item.task.id) && !moved.has(item.task.id),
     );
@@ -48,6 +48,7 @@ export function applyOverlay(lanes: Lanes, overlay: LaneOverlay, now: string): L
       },
     });
   }
+  next.backlog = sortLane(next.backlog);
   next.todo = sortLane(next.todo);
   next.doing = sortLane(next.doing);
   next.done = sortDone(next.done);

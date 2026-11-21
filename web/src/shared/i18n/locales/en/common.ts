@@ -33,6 +33,7 @@ export const commonEn = {
     },
   },
   column: {
+    backlog: 'Backlog',
     todo: 'Todo',
     doing: 'Doing',
     done: 'Done',
@@ -90,6 +91,7 @@ export const commonEn = {
     delete: 'Delete epic',
     countsLabel: 'Tasks by state',
     counts: {
+      backlog: 'Backlog',
       todo: 'Todo',
       doing: 'Doing',
       done: 'Done',

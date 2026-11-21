@@ -13,6 +13,7 @@ import { guideLayer } from './onboarding/lazyGuide';
 import { NotificationDialogHost } from './notificationSlot';
 import { ResidentDialogHost } from './residentSlot';
 import { isProjectId } from './model/projectSession';
+import { SendConfirm } from '../features/backlog/SendConfirm';
 
 /** The phone layout loads when the window is first narrow, so the PC board's first load stays as it was. */
 const MobileBoard = lazy(() => import('./mobile/MobileBoard'));
@@ -91,6 +92,16 @@ function AppScreen({ initial }: AppProps) {
       <ResidentDialogHost projectId={known && isProjectId(activeId) ? activeId : null} />
       <NotificationDialogHost />
       <TransientNotice message={actions.moveNotice} onDismiss={actions.dismissMoveNotice} />
+      {actions.backlogSend.confirming ? (
+        <SendConfirm
+          kind={narrow ? 'sheet' : 'dialog'}
+          count={actions.backlogSend.confirming.ids.length}
+          warned={actions.backlogSend.confirming.warned}
+          busy={actions.backlogSend.busy}
+          onConfirm={actions.backlogSend.confirm}
+          onCancel={actions.backlogSend.cancel}
+        />
+      ) : null}
       <AppDialogs
         model={model}
         onSubmit={actions.submitDialog}

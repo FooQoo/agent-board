@@ -5,7 +5,7 @@ import { EpicTaskCounts } from './EpicTaskCounts';
 const meta = {
   title: 'Epic/Summary/EpicTaskCounts',
   component: EpicTaskCounts,
-  args: { counts: { todo: 2, doing: 1, done: 4, archived: 3, total: 10 } },
+  args: { counts: { backlog: 0, todo: 2, doing: 1, done: 4, archived: 3, total: 10 } },
 } satisfies Meta<typeof EpicTaskCounts>;
 export default meta;
 type Story = StoryObj<typeof meta>;

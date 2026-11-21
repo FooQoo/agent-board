@@ -1,16 +1,16 @@
 import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useOpenOnSend } from './useOpenOnSend';
 import { MessagesSurface } from '../../features/tasks/messages/MessagesSurface';
 import { countMessages, firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
-import type { ColumnName, ProjectId } from '../../shared/api/contracts';
-import { TaskStatusChangedError } from '../../features/tasks/api/lifecycle';
+import type { ProjectId } from '../../shared/api/contracts';
+import { BacklogSendLayer } from '../../features/backlog/BacklogSendLayer';
+import { useBacklogSend } from '../../features/backlog/useBacklogSend';
 import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
 import { savingSettingsSlot, sheetSettingsSlot } from '../../features/settings/ui/settingsSlot';
-import type { MonitorTask, MonitorViewProps } from './contracts';
+import type { MonitorViewProps } from './contracts';
 import { LaneTabs } from './components/LaneTabs';
 import { PhoneNav } from './components/PhoneNav';
 import { MonitorLanes } from './components/MonitorLanes';
@@ -28,6 +28,7 @@ import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { useReportOpen } from './hooks/useReportOpen';
+import { useLaneWrites } from './hooks/useLaneWrites';
 import { useSummaryLinkOpen } from './hooks/useSummaryLinkOpen';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
@@ -42,7 +43,6 @@ const detailDrawer = preloadable(() =>
 export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
-  const { t } = useTranslation();
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences, settings: given } = props;
   const settings = useMemo(
@@ -68,7 +68,7 @@ export function MonitorView(props: MonitorViewProps) {
             ? null
             : attachments(projectId as ProjectId, message.tasks[0], id)
       : undefined;
-  const { todo, doing, done, freshness, guideLink } = props;
+  const { backlog, todo, doing, done, freshness, guideLink } = props;
   // A guide step is about the cards of one lane: that lane comes on screen.
   const guideLane = usePhoneGuideLane(guideLink);
   useEffect(() => {
@@ -76,13 +76,18 @@ export function MonitorView(props: MonitorViewProps) {
   }, [guideLane]);
   // Kept between renders, so the lanes see a new order only when the project is read again.
   const read = useMemo(
-    () => ({ todo: sortLane(todo), doing: sortLane(doing), done: sortDone(done) }),
-    [todo, doing, done],
+    () => ({
+      backlog: sortLane(backlog),
+      todo: sortLane(todo),
+      doing: sortLane(doing),
+      done: sortDone(done),
+    }),
+    [backlog, todo, doing, done],
   );
   // What this phone saved stays on screen until a read shows it, so nothing jumps back and forth.
   const overlay = useLaneOverlay(read);
   const ordered = overlay.lanes;
-  const tasks = [...ordered.todo, ...ordered.doing, ...ordered.done];
+  const tasks = [...ordered.backlog, ...ordered.todo, ...ordered.doing, ...ordered.done];
   const detail = useMonitorDetailDrawer(tasks);
   const { resultLink, onResultLinkClose } = props;
   useResultLinkDrawer(
@@ -136,24 +141,19 @@ export function MonitorView(props: MonitorViewProps) {
     onWritten,
     overlay.unhide,
   );
-  const [notice, setNotice] = useState<string | null>(null);
-  const dismissNotice = useCallback(() => setNotice(null), []);
-  // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
-  const moveNow = async (item: MonitorTask, target: ColumnName) => {
-    if (!writes) return;
-    try {
-      await writes.move(projectId, item.task.id, target, item.task.taskStatus);
-      overlay.move(item.task.id, target);
-    } catch (cause) {
-      setNotice(
-        cause instanceof TaskStatusChangedError
-          ? t('moveNotice.statusChanged', { status: t(`column.${cause.current}`) })
-          : t('moveNotice.failed'),
-      );
-    } finally {
-      onWritten?.();
-    }
-  };
+  const backlogSend = useBacklogSend(
+    writes ? (projectId as ProjectId) : null,
+    tasks.map((item) => item.task),
+    () => onWritten?.(),
+  );
+  const { moveNow, archiveOne, archiveAll, notice, dismissNotice } = useLaneWrites({
+    writes,
+    projectId,
+    overlay,
+    doneItems: ordered.done,
+    closePending,
+    onWritten,
+  });
   return (
     <main className="monitor-shell">
       <Header {...props.header} withSettings={false} />
@@ -177,6 +177,7 @@ export function MonitorView(props: MonitorViewProps) {
         lane={lane}
         controlsId={lanesId}
         counts={{
+          backlog: ordered.backlog.length,
           todo: ordered.todo.length,
           doing: ordered.doing.length,
           done: ordered.done.length,
@@ -197,6 +198,8 @@ export function MonitorView(props: MonitorViewProps) {
         }}
         onRefresh={props.onRefresh}
         refreshing={props.refreshing}
+        onSend={writes ? backlogSend.request : undefined}
+        sendBusy={backlogSend.busy}
         onBulkArchive={
           writes
             ? () =>
@@ -217,34 +220,16 @@ export function MonitorView(props: MonitorViewProps) {
         }
       />
       <TransientNotice message={notice} onDismiss={dismissNotice} />
+      <BacklogSendLayer send={backlogSend} kind="sheet" />
       {writes && (
         <MonitorLaneDialogs
           pending={pending}
           projectName={props.projectName ?? ''}
           doneItems={ordered.done}
           onCancel={closePending}
-          onArchive={async (item) => {
-            try {
-              await writes.archive(projectId, item.task.id);
-            } catch {
-              return false;
-            }
-            overlay.hide([item.task.id]);
-            closePending();
-            onWritten?.();
-            return true;
-          }}
+          onArchive={archiveOne}
           {...archiveSheet}
-          onBulkArchive={async () => {
-            try {
-              const ids = ordered.done.map((item) => item.task.id);
-              await writes.archiveDone(projectId, ids);
-              overlay.hide(ids);
-            } finally {
-              onWritten?.();
-            }
-            closePending();
-          }}
+          onBulkArchive={archiveAll}
         />
       )}
       <Suspense fallback={null}>

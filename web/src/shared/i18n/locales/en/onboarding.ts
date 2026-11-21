@@ -28,7 +28,7 @@ export const onboardingEn = {
       },
       planned: {
         title: 'The agent made a plan',
-        body: 'The request became an epic and cards in To do. The cards are AI drafts, and each has acceptance conditions that say when it is done.',
+        body: 'The request became an epic and cards in the Backlog. The cards are plans that are not started yet, and each has acceptance conditions that say when it is done.',
       },
       question: {
         title: 'The agent needs your answer',
@@ -36,7 +36,7 @@ export const onboardingEn = {
       },
       started: {
         title: 'The agent started the plan',
-        body: 'The drafts became real cards and the first one moved to In progress. As the agent checks its acceptance conditions, you can follow the progress on the card.',
+        body: 'You sent the plans to Todo, and the first card moved to In progress. As the agent checks its acceptance conditions, you can follow the progress on the card.',
       },
       done: {
         title: 'The cards moved to Done',

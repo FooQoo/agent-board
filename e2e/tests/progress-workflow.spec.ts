@@ -131,7 +131,8 @@ test('project setup, progress hook, indefinite question, auto-Done, and AI write
     await readBoardAfterReset(page);
     const taskButton = page.getByRole('button', { name: new RegExp(`^#${publish}(?!\\d)`) });
     await expect(taskButton).toBeVisible();
-    await taskButton.click();
+    // The card is narrow beside the Backlog lane: its epic label can sit at its center, so press near the corner.
+    await taskButton.click({ position: { x: 12, y: 12 } });
     const answer = await openAnswer(page, publish);
     await expect(answer).toContainText('Which release plan should we use?');
     await page.screenshot({ path: testInfo.outputPath('pending-release-question.png') });

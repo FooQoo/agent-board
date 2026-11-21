@@ -22,6 +22,7 @@ export const monitorEn = {
     completedUnknown: 'Completion time unknown',
     lastFetched: 'Last updated {{time}}',
     status: {
+      backlog: 'Backlog',
       todo: 'Todo',
       doing: 'Doing',
       pending: 'Pending',
@@ -29,6 +30,7 @@ export const monitorEn = {
       done: 'Done',
     },
     empty: {
+      backlog: 'No plans waiting.',
       todo: 'No work to start.',
       doing: 'No work in progress.',
       done: 'No completed work.',

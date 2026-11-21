@@ -1,4 +1,4 @@
-import { Trash2Icon } from 'lucide-react';
+import { ListChecksIcon, Trash2Icon } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CardGestureOptions, useCardGesture } from '@/shared/lib/gesture/useCardGesture';
@@ -9,6 +9,7 @@ import {
   revealOffset,
   revealProgress,
   swipeActions,
+  type SwipeTile,
 } from '../model/lanes';
 
 import './monitor-lanes.css';
@@ -22,6 +23,8 @@ export interface SwipeableCardProps
   onMove: (target: MonitorSection) => void;
   /** The trash tile was tapped; the parent opens the archive confirmation. */
   onArchive: () => void;
+  /** The select tile of a Backlog card was tapped; the parent starts the selection mode with it. */
+  onSelect?: () => void;
   /** The card is in a lane that is not on screen. */
   inactive?: boolean;
   children: ReactNode;
@@ -39,6 +42,7 @@ export function SwipeableCard({
   lane,
   onMove,
   onArchive,
+  onSelect,
   inactive,
   children,
   revealed,
@@ -58,8 +62,24 @@ export function SwipeableCard({
   });
   const offset = drag ?? revealOffset(revealed, leftWidth, rightWidth);
 
-  const tile = (target: MonitorSection | 'archive', side: RevealSide) => {
+  const tile = (target: SwipeTile, side: RevealSide) => {
     const open = revealed === side;
+    if (target === 'select')
+      return (
+        <button
+          key="select"
+          type="button"
+          data-swipe-action
+          data-target="select"
+          className="swipe-card__tile"
+          tabIndex={open ? 0 : -1}
+          aria-hidden={!open}
+          aria-label={t('backlog.selectCard', { id: taskId })}
+          onClick={onSelect}
+        >
+          <ListChecksIcon aria-hidden="true" />
+        </button>
+      );
     if (target === 'archive')
       return (
         <button

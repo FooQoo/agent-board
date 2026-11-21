@@ -1,9 +1,9 @@
-export type ColumnName = 'todo' | 'doing' | 'done';
+export type ColumnName = 'backlog' | 'todo' | 'doing' | 'done';
 export type RunState = 'idle' | 'running' | 'pending';
 export type Assignee = 'ai' | 'human';
 export type Actor = 'ai' | 'human';
-/** Who still writes a card or epic: a person in the browser, or an AI proposal a person starts. */
-export type Draft = 'human' | 'ai';
+/** Who still writes a card or epic: a person in the browser (an edit lock). */
+export type Draft = 'human';
 
 /** One option of a decision request. */
 export interface Choice {
@@ -172,6 +172,8 @@ export interface ProjectList {
 
 /** How many of an epic's tasks are in each group. `total` is the sum of the four. */
 export interface EpicTaskCounts {
+  /** Plans that are not started: the Backlog. Left out when 0, as the server does. */
+  backlog?: number;
   todo: number;
   doing: number;
   done: number;

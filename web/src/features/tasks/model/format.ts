@@ -13,6 +13,7 @@ export function taskCountLabel(n: number, t?: TFunction): string {
 }
 
 const COLUMN_LABELS: Record<ColumnName, string> = {
+  backlog: 'Backlog',
   todo: 'Todo',
   doing: 'Doing',
   done: 'Done',

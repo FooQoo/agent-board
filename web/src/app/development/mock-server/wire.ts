@@ -68,7 +68,8 @@ function epicCounts(board: MockBoard): Record<string, EpicTaskCounts> {
   for (const task of board.tasks) {
     const entry = task.epic ? counts[task.epic.id] : undefined;
     if (!entry) continue;
-    entry[task.archivedAt ? 'archived' : task.taskStatus] += 1;
+    const group = task.archivedAt ? 'archived' : task.taskStatus;
+    entry[group] = (entry[group] ?? 0) + 1;
     entry.total += 1;
   }
   return counts;

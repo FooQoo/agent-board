@@ -476,6 +476,26 @@
           ]
         }
       ]
+    },
+    {
+      "file": "features/tasks/detail/BacklogBanner.tsx",
+      "exports": [
+        {
+          "name": "BacklogBanner",
+          "stories": [
+            {
+              "id": "task-detail-backlogbanner--default",
+              "states": ["Backlog label", "not started text", "send to Todo"],
+              "interaction": true
+            },
+            {
+              "id": "task-detail-backlogbanner--busy",
+              "states": ["send in progress", "button disabled"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
     }
   ]
 }

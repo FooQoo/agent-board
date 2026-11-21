@@ -42,7 +42,7 @@ const summary: Summary = summaryOfBoard({
       updatedAt: '',
     },
   ],
-  epicTaskCounts: { 'E-1': { todo: 1, doing: 0, done: 0, archived: 2, total: 3 } },
+  epicTaskCounts: { 'E-1': { backlog: 0, todo: 1, doing: 0, done: 0, archived: 2, total: 3 } },
 });
 
 const [withEpic, plain] = summary.tasks as [SummaryTask, SummaryTask];

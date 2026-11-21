@@ -23,9 +23,9 @@ describe('parseStoredWidth', () => {
 });
 
 describe('maxWidthFor', () => {
-  it('computes the room left after three minimum lanes', () => {
-    expect(maxWidthFor({ bodyWidth: 1024, paddingLeft: 24, paddingRight: 24, gap: 12 })).toBe(352);
-    expect(maxWidthFor({ bodyWidth: 1280, paddingLeft: 64, paddingRight: 40, gap: 12 })).toBe(552);
+  it('computes the room left after four minimum lanes', () => {
+    expect(maxWidthFor({ bodyWidth: 1024, paddingLeft: 24, paddingRight: 24, gap: 12 })).toBe(152);
+    expect(maxWidthFor({ bodyWidth: 1280, paddingLeft: 64, paddingRight: 40, gap: 12 })).toBe(352);
   });
 });
 

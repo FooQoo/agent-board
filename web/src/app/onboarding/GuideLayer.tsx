@@ -25,7 +25,7 @@ import { phoneItemOf, usePhoneLaneRect } from './phoneTarget';
 import { SampleAnswer } from './SampleAnswer';
 import { useGuide } from './useGuide';
 
-type Column = 'todo' | 'doing' | 'done';
+type Column = 'backlog' | 'todo' | 'doing' | 'done';
 
 const noop = () => {};
 

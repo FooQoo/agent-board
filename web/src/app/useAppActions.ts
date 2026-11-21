@@ -8,6 +8,7 @@ import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
 import type { ColumnName } from '../shared/api/contracts';
+import { useBacklogSend } from '../features/backlog/useBacklogSend';
 import { isProjectId } from './model/projectSession';
 
 export function useAppActions(model: AppControllerModel) {
@@ -30,6 +31,11 @@ export function useAppActions(model: AppControllerModel) {
   const openMessages = model.messages.panel.open;
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
   const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
+  // Sending Backlog cards to Todo: the confirmation of open questions and the result notice.
+  const sendProjectId = isProjectId(activeId) ? activeId : null;
+  const backlogSend = useBacklogSend(sendProjectId, tasks, () => {
+    if (sendProjectId) refreshProject(sendProjectId);
+  });
 
   const workspace: AppWorkspaceActions = {
     onSelectProject: (projectId) => {
@@ -66,6 +72,16 @@ export function useAppActions(model: AppControllerModel) {
         })
         .finally(() => refreshProject(projectId));
     },
+    sendBusy: backlogSend.busy,
+    onSendEpic: (epicId) =>
+      session.operation === null &&
+      backlogSend.request(
+        tasks
+          .filter((task) => task.taskStatus === 'backlog' && task.epic?.id === epicId)
+          .map((task) => task.id),
+        epicId,
+      ),
+    onSend: (ids) => (session.operation === null ? backlogSend.request(ids) : false),
     onReorder: (task, beforeId) => {
       if (!isProjectId(activeId)) return;
       const projectId = activeId;
@@ -248,8 +264,9 @@ export function useAppActions(model: AppControllerModel) {
 
   return {
     workspace,
-    moveNotice,
-    dismissMoveNotice,
+    moveNotice: backlogSend.notice ?? moveNotice,
+    dismissMoveNotice: backlogSend.notice ? backlogSend.dismissNotice : dismissMoveNotice,
+    backlogSend,
     submitDialog,
     confirmBulkArchive,
     cancelBulkArchive,

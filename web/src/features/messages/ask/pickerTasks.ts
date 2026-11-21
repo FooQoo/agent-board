@@ -8,9 +8,14 @@ export interface PickerTask {
   taskStatusChangedAt?: string;
 }
 
-const LANE_ORDER: Record<ColumnName, number> = { doing: 0, todo: 1, done: 2 };
+const LANE_ORDER: Record<ColumnName, number> = {
+  doing: 0,
+  todo: 1,
+  backlog: 2,
+  done: 3,
+};
 
-/** Active work first, then what is waiting, then what is done; the most recently moved first. */
+/** Active work first, then what is waiting (Todo, then the Backlog), then what is done; the most recently moved first. */
 export function orderPickerTasks(tasks: readonly PickerTask[]): PickerTask[] {
   return [...tasks].sort(
     (a, b) =>

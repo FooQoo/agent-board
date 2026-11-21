@@ -25,7 +25,8 @@ function Screen() {
   return (
     <>
       <MonitorView
-        summary={{ todo: 0, doing: 0, done: 0 }}
+        summary={{ backlog: 0, todo: 0, doing: 0, done: 0 }}
+        backlog={[]}
         todo={[]}
         doing={[]}
         done={[]}

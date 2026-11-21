@@ -23,7 +23,8 @@ function props(): MonitorViewProps {
     }),
   });
   return {
-    summary: { todo: 1, doing: 3, done: 1 },
+    summary: { backlog: 0, todo: 1, doing: 3, done: 1 },
+    backlog: [],
     todo: [item(1, 'todo', 'idle')],
     doing: [item(2, 'doing', 'running'), item(4, 'doing', 'pending'), item(5, 'doing', 'idle')],
     done: [item(3, 'done', 'idle')],
@@ -54,7 +55,7 @@ describe('MonitorView', () => {
     const { container } = render(<Connected />);
     expect(container.querySelector('header.header')).toBeTruthy();
     const tabs = screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'));
-    expect(tabs).toEqual(['Todo 1', 'Doing 3', 'Done 1']);
+    expect(tabs).toEqual(['Backlog 0', 'Todo 1', 'Doing 3', 'Done 1']);
     expect(screen.getAllByRole('article', { name: /^#4 / })).toHaveLength(1);
     const pendingTask = screen.getByRole('article', { name: /^#4 Doing Pending / });
     expect(pendingTask.querySelector('.status-label')?.textContent).toBe('Pending');
@@ -90,8 +91,8 @@ describe('MonitorView', () => {
   it('changes lane tab and run state labels with the locale', () => {
     render(<MonitorView {...props()} />);
     const tabs = {
-      en: ['Todo 1', 'Doing 3', 'Done 1'],
-      ja: ['未着手 1件', '進行中 3件', '完了 1件'],
+      en: ['Backlog 0', 'Todo 1', 'Doing 3', 'Done 1'],
+      ja: ['Backlog 0件', '未着手 1件', '進行中 3件', '完了 1件'],
     };
     for (const locale of ['en', 'ja', 'en'] as const) {
       act(() => {

@@ -25,6 +25,7 @@ async function box(locator: ReturnType<Page['locator']>): Promise<Box> {
 }
 
 const lanes = async (page: Page) => ({
+  backlog: await box(page.getByRole('region', { name: 'Backlog' })),
   todo: await box(page.getByRole('region', { name: 'Todo' })),
   doing: await box(page.getByRole('region', { name: 'Doing' })),
   done: await box(page.getByRole('region', { name: 'Done' })),
@@ -44,7 +45,7 @@ for (const width of [1024, 1280, 1920]) {
     }
   });
 
-  test(`${width}px: three lanes, the panel at the right between the header and the footer`, async ({ page }) => {
+  test(`${width}px: four lanes, the panel at the right between the header and the footer`, async ({ page }) => {
     for (const selectId of [undefined, 8]) {
       await open(page, width, selectId);
       const panel = await box(page.getByRole('complementary', { name: 'Task details' }));
@@ -58,14 +59,17 @@ for (const width of [1024, 1280, 1920]) {
       expect(panel.y).toBeCloseTo(header.y + header.height, 0);
       expect(panel.y + panel.height).toBeCloseTo(footer.y, 0);
 
-      const { todo, doing, done } = await lanes(page);
+      const { backlog, todo, doing, done } = await lanes(page);
+      expect(backlog.y).toBe(todo.y);
+      expect(backlog.x).toBeLessThan(todo.x);
       expect(todo.y).toBe(doing.y);
       expect(doing.y).toBe(done.y);
       expect(todo.x).toBeLessThan(doing.x);
       expect(doing.x).toBeLessThan(done.x);
-      expect(done.x + done.width).toBeLessThanOrEqual(panel.x);
+      // At 1024px the four lanes scroll sideways inside the board.
+      if (width >= 1280) expect(done.x + done.width).toBeLessThanOrEqual(panel.x);
       // The lanes are as tall as the area between the header and the footer.
-      expect(new Set([todo.height, doing.height, done.height]).size).toBe(1);
+      expect(new Set([backlog.height, todo.height, doing.height, done.height]).size).toBe(1);
     }
   });
 }

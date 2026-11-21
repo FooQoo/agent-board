@@ -8,6 +8,8 @@ import { TaskCard } from '../../../features/tasks/card/TaskCard';
 import { LaneHeader } from './LaneHeader';
 import { useDroppable } from '@dnd-kit/react';
 import type { ProjectId } from '../../../shared/api/contracts';
+import { BacklogBar } from '../../../features/backlog/BacklogBar';
+import type { BacklogSelection } from '../../../features/backlog/useSelection';
 
 export interface LaneProps {
   column: ColumnName;
@@ -18,6 +20,14 @@ export interface LaneProps {
   onOpenEpic?: (epicId: string) => void;
   projectId?: ProjectId;
   onAnswer?: (taskId: number) => void;
+  /** The Backlog lane: the selection mode and the send of the picked cards. */
+  backlog?: {
+    selection: BacklogSelection;
+    busy: boolean;
+    onSend: (ids: number[]) => void;
+    /** The picked cards are being dragged: the card under the pointer. */
+    draggingId: number | null;
+  };
 }
 
 export function Lane({
@@ -29,6 +39,7 @@ export function Lane({
   onOpenEpic,
   projectId,
   onAnswer,
+  backlog,
 }: LaneProps) {
   const { t } = useTranslation();
   const listRef = useRef<HTMLDivElement>(null);
@@ -46,6 +57,7 @@ export function Lane({
       onClick={() => onOpenEpic?.(epic.id)}
     />
   );
+  const picking = backlog?.selection.selecting === true;
   return (
     <section
       ref={ref}
@@ -54,16 +66,48 @@ export function Lane({
       data-drop-target={isDropTarget ? 'true' : 'false'}
       aria-label={columnLabel(column, t)}
     >
-      <LaneHeader column={column} count={tasks.length} onArchive={onArchive} />
+      <LaneHeader
+        column={column}
+        count={tasks.length}
+        onArchive={onArchive}
+        selecting={backlog?.selection.selecting}
+        onToggleSelect={
+          backlog
+            ? backlog.selection.selecting
+              ? backlog.selection.leave
+              : backlog.selection.enter
+            : undefined
+        }
+      />
       <div className="lane__scroll" data-more={more ? 'true' : 'false'}>
         <div className="lane__cards" ref={listRef}>
+          {tasks.length === 0 && column === 'backlog' && (
+            <p className="lane__empty">{t('backlog.empty')}</p>
+          )}
           {tasks.map((task, index) => (
             <TaskCard
               key={task.id}
               task={task}
               index={index}
               selected={task.id === selectedId}
-              onSelect={onSelect}
+              onSelect={picking ? backlog.selection.toggle : onSelect}
+              selection={
+                picking
+                  ? {
+                      checked: backlog.selection.picked.includes(task.id),
+                      onToggle: () => backlog.selection.toggle(task.id),
+                      drag:
+                        backlog.draggingId !== null &&
+                        backlog.selection.picked.includes(backlog.draggingId) &&
+                        backlog.selection.picked.includes(task.id)
+                          ? {
+                              count: backlog.selection.picked.length,
+                              lead: task.id === backlog.draggingId,
+                            }
+                          : undefined,
+                    }
+                  : undefined
+              }
               renderEpic={renderEpic}
               projectId={projectId}
               onAnswer={onAnswer}
@@ -71,6 +115,15 @@ export function Lane({
           ))}
         </div>
       </div>
+      {picking && (
+        <BacklogBar
+          variant="lane"
+          count={backlog.selection.picked.length}
+          busy={backlog.busy}
+          onCancel={backlog.selection.leave}
+          onSend={() => backlog.onSend(backlog.selection.picked)}
+        />
+      )}
     </section>
   );
 }

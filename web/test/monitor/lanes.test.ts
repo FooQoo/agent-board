@@ -10,11 +10,12 @@ import {
 
 describe('lane order', () => {
   it('finds the neighbour of a lane, and none past the ends', () => {
-    expect(laneIndex('doing')).toBe(1);
+    expect(laneIndex('doing')).toBe(2);
     expect(neighbourLane('todo', 1)).toBe('doing');
     expect(neighbourLane('doing', -1)).toBe('todo');
     expect(neighbourLane('done', 1)).toBeNull();
-    expect(neighbourLane('todo', -1)).toBeNull();
+    expect(neighbourLane('backlog', -1)).toBeNull();
+    expect(neighbourLane('todo', -1)).toBe('backlog');
   });
 });
 
@@ -23,6 +24,7 @@ const LEFT = actionsWidth(1);
 
 describe('card swipe', () => {
   it('offers the lane on the right and the archive to the left, the lane on the left to the right', () => {
+    expect(swipeActions('backlog')).toEqual({ left: [], right: ['select', 'archive'] });
     expect(swipeActions('todo')).toEqual({ left: [], right: ['doing', 'archive'] });
     expect(swipeActions('doing')).toEqual({ left: ['todo'], right: ['done', 'archive'] });
     expect(swipeActions('done')).toEqual({ left: ['doing'], right: ['archive'] });

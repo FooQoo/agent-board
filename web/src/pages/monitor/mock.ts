@@ -134,7 +134,7 @@ export function createMonitorFixture(): MonitorFixture {
     draft: null,
     waves: [],
     wavesError: false,
-    progress: { todo: 1, doing: 0, done: 0, archived: 0, total: 1 },
+    progress: { backlog: 0, todo: 1, doing: 0, done: 0, archived: 0, total: 1 },
     detailVersions: { document: 'e1' },
   };
   return {
@@ -197,11 +197,13 @@ export function createMonitorFixtureProps(
 ): MonitorViewProps {
   const items = monitorTasksOf(fixture.summary);
   const by = (status: ColumnName) => items.filter((item) => item.task.taskStatus === status);
+  const backlog = by('backlog');
   const todo = by('todo');
   const doing = by('doing');
   const done = by('done');
   return {
-    summary: { todo: todo.length, doing: doing.length, done: done.length },
+    summary: { backlog: backlog.length, todo: todo.length, doing: doing.length, done: done.length },
+    backlog,
     todo,
     doing,
     done,

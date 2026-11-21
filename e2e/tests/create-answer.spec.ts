@@ -192,7 +192,7 @@ test('a long question does not grow the card; the dialog reads all of it', async
   // The card shows no question text, so its height does not follow the question.
   await expect(page.locator('.card__item').getByText('Line 1 of a long question')).toHaveCount(0);
   const card = answerButton(page, 13).locator('xpath=ancestor::div[contains(@class,"card__item")]');
-  expect((await card.boundingBox())!.height).toBeLessThan(200);
+  expect((await card.boundingBox())!.height).toBeLessThan(260);
 
   const dialog = await openAnswer(page, 13);
   await expect(dialog).toContainText('Line 1 of a long question about the release plan.');

@@ -34,7 +34,7 @@ describe('groupCards', () => {
   });
 
   it('returns empty lists for an empty board', () => {
-    expect(groupTasks([])).toEqual({ todo: [], doing: [], done: [] });
+    expect(groupTasks([])).toEqual({ backlog: [], todo: [], doing: [], done: [] });
   });
 
   it('does not mutate its input', () => {
