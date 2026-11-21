@@ -77,6 +77,14 @@ test.beforeAll(async () => {
     { title: 'After swipe one', lane: 'done' },
     { title: 'After swipe two', lane: 'done' },
   ]);
+  seed('TileAfterSwipe', [
+    { title: 'Tile target', lane: 'todo' },
+    { title: 'Tile bystander', lane: 'todo' },
+  ]);
+  seed('RestoreAfterSwipe', [
+    { title: 'Restore one', lane: 'done' },
+    { title: 'Restore two', lane: 'done' },
+  ]);
   seed('Quiet', [{ title: 'Quiet todo', lane: 'todo' }]);
   entrance = await startPhoneEntrance(home);
 });
@@ -415,6 +423,73 @@ test('the Archive all button still works after a short swipe on the done lane, a
   await expect(tab(page, 'Done 0', true)).toBeVisible();
   await expect(shown(page).getByRole('article')).toHaveCount(0);
   await expect(bulk).toHaveCount(0);
+});
+
+// #628: the card's tiles carry `data-swipe-action`, which the shared swipe hook ignores. A tile pressed after
+// an earlier swipe back, a cancelled confirmation or a re-opened card must still act, and the file must change.
+test('a card tile still acts after a swipe back and a cancelled archive, and the file changes', async ({ page }) => {
+  await openPhone(page, 'TileAfterSwipe');
+  const card = swipeCard(page, 'Tile target');
+  await holdAndSwipe(page, card, -1);
+  await expect(card).toHaveAttribute('data-revealed', 'right');
+  // Swipe it closed, then open it again with a plain swipe (the card is still chosen).
+  const b = await box(card);
+  const y = b.y + b.height / 2;
+  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.9, y });
+  await expect(card).not.toHaveAttribute('data-revealed', /.*/);
+  await swipeOver(page, card, -1);
+  await expect(card).toHaveAttribute('data-revealed', 'right');
+
+  // The Archive tile answers, and cancelling its confirmation changes nothing.
+  await page.getByRole('button', { name: /^Archive #\d+$/ }).tap();
+  const dialog = page.getByRole('dialog', { name: 'Archive task' });
+  await expect(dialog).toContainText('Tile target');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(show('TileAfterSwipe', 'Tile target')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
+
+  // After all of that, the Move tile still moves the card.
+  await holdAndSwipe(page, card, -1);
+  await expect(card).toHaveAttribute('data-revealed', 'right');
+  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
+  await expect.poll(() => show('TileAfterSwipe', 'Tile target').taskStatus).toBe('doing');
+  expect(show('TileAfterSwipe', 'Tile bystander')).toMatchObject({ taskStatus: 'todo', archivedAt: null });
+  await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(tab(page, 'Doing 1')).toBeVisible();
+});
+
+// #628: the Restore tile of the Archive drawer is also a `data-swipe-action`, pressed here after a short swipe
+// and a swipe back, and the restored task is read back from the files.
+test('the Restore tile in the Archive drawer restores the task after a swipe open and a swipe back', async ({ page }) => {
+  await openPhone(page, 'RestoreAfterSwipe');
+  await tab(page, 'Done 2').tap();
+  await page.getByRole('button', { name: 'Archive all' }).tap();
+  await page.getByRole('dialog', { name: 'Archive completed tasks' }).getByRole('button', { name: 'Archive 2 tasks' }).click();
+  for (const title of ['Restore one', 'Restore two'])
+    await expect.poll(() => show('RestoreAfterSwipe', title).archivedAt).not.toBeNull();
+
+  await bottomBar(page).getByRole('button', { name: 'Archived tasks' }).tap();
+  const list = page.getByRole('dialog', { name: 'Archived tasks' });
+  await expect(list).toBeVisible();
+  const row = list.locator('[data-swipe-card]').filter({ hasText: 'Restore one' });
+  await expect(row).toBeVisible();
+
+  // A short swipe already opens the narrow Restore tile; a swipe back closes it, and a full swipe opens it again.
+  const b = await box(row);
+  const y = b.y + b.height / 2;
+  await finger(page, { x: b.x + b.width * 0.6, y }, { x: b.x + b.width * 0.6 - 40, y });
+  await expect(row).toHaveAttribute('data-revealed', 'right');
+  await finger(page, { x: b.x + b.width * 0.3, y }, { x: b.x + b.width * 0.9, y });
+  await expect(row).not.toHaveAttribute('data-revealed', /.*/);
+  await swipeOver(page, row, -1);
+  await expect(row).toHaveAttribute('data-revealed', 'right');
+
+  await row.getByRole('button', { name: /^Restore #\d+$/ }).tap();
+  await expect.poll(() => show('RestoreAfterSwipe', 'Restore one').archivedAt).toBeNull();
+  expect(show('RestoreAfterSwipe', 'Restore one').taskStatus).toBe('done');
+  expect(show('RestoreAfterSwipe', 'Restore two').archivedAt).not.toBeNull();
+  await expect(list.locator('[data-swipe-card]').filter({ hasText: 'Restore one' })).toHaveCount(0);
+  await expect(list.locator('[data-swipe-card]').filter({ hasText: 'Restore two' })).toHaveCount(1);
 });
 
 // #450
