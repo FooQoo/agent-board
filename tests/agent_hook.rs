@@ -189,7 +189,9 @@ fn hook_omits_long_descriptions_from_the_progress_table() {
         let snapshot: Value = serde_json::from_str(context.split_once('\n').unwrap().1).unwrap();
         assert!(snapshot.get("tasks").is_none());
         assert!(!context.contains(&ten_kb));
-        assert!(!context.contains("bbbb"));
+        // Versions and IDs are hex, so a short run such as "bbbb" can appear
+        // by chance; a run longer than any hash shows the body leaked.
+        assert!(!context.contains(&"b".repeat(64)));
     }
 }
 
