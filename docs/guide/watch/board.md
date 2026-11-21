@@ -10,6 +10,7 @@ The board is where you watch the work and step in while the agent keeps going. Y
 
 1. Select a project in the header and choose **Ask AI**.
 2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and it counts under **Your requests** in the band above the lanes, where the list shows it as **Waiting to be picked up**, until an agent receives it.
+3. When the request is sent, the Messages list opens on the **Your requests** tab, on the PC and on the phone, so you see the request at once. If sending fails, the form stays open with your text and images.
 
 On a phone, choosing another item in the bottom bar while the request form is open closes the form and shows that item. If you have typed text or attached an image, the board asks before discarding them, and choosing to keep editing leaves you on the form.
 

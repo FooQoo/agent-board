@@ -132,6 +132,7 @@ export function MonitorScreen({
   const [messagesOpen, setMessagesOpen] = useState(false);
   // The phone band's "Ask AI" sheet.
   const [asking, setAsking] = useState(false);
+  const [requestSent, setRequestSent] = useState(0);
   const askGuard = useRef<((after: () => void) => void) | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
@@ -189,6 +190,7 @@ export function MonitorScreen({
     onAsk: () => setAsking(true),
     onAskClose: (then) => (askGuard.current ? askGuard.current(then) : then()),
     asking,
+    requestSent,
     readResolvers,
     preferences,
     settings,
@@ -216,7 +218,10 @@ export function MonitorScreen({
           projectId={projectId}
           closeGuard={askGuard}
           onClose={() => setAsking(false)}
-          onSent={() => void summary.refresh()}
+          onSent={() => {
+            setRequestSent((count) => count + 1);
+            void summary.refresh();
+          }}
         />
       )}
     </>
