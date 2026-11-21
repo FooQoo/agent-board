@@ -56,23 +56,26 @@ impl FileStore {
             now,
         )?;
         let attachments = touched.then(|| staged.attachments.clone());
-        let saved = self.edit_draft_locked(
+        // `Err` here means nothing was committed, so the new files are taken back.
+        // After the commit they stay, because the saved task lists them.
+        let changed = match self.save_draft_locked(
             &project_dir,
             project,
             id,
             (title, description),
             (finalize, attachments),
             now,
-        );
-        match saved {
-            Ok(saved) => {
-                staged.finish();
-                Ok(saved)
-            }
+        ) {
+            Ok(changed) => changed,
             Err(error) => {
                 staged.discard();
-                Err(error)
+                return Err(error);
             }
-        }
+        };
+        staged.finish();
+        Ok(Changed {
+            value: reader::read_task_locked(shared, project, id)?,
+            changed,
+        })
     }
 }
