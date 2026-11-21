@@ -946,7 +946,7 @@ test.describe('long names and many projects', () => {
     home = makeHome('multi-many');
     agboardCatalogOk(['project', 'create', longName], home);
     for (const name of many) agboardCatalogOk(['project', 'create', name], home);
-    agboardOk(longName, ['add', 'A task in the long project', '--desc', 'x'], home);
+    agboardOk(longName, ['add', 'A task in the long project', `--desc=x`], home);
     agboardOk(many[41], ['add', 'A task in project 042'], home);
     return home;
   });

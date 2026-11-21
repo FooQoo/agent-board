@@ -530,7 +530,7 @@ test('the answer dialog takes the focus and gives it back', async ({ page }) => 
 test('changing the language does not translate or alter what was entered', async ({ page }) => {
   await openFresh(page);
   // Enter a card in English, move it, and answer a decision request.
-  agboardOk(mainProject, ['add', 'Draft the release note', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Line one\n\nLine two')]);
+  agboardOk(mainProject, ['add', 'Draft the release note', '--assignee', 'human', '--actor', 'human', `--desc=${taskBody('Line one\n\nLine two')}`]);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Draft the release note `) })).toBeVisible();
   await dragTaskTo(page, fresh, 'Doing');
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh} `) })).toBeVisible();
@@ -580,7 +580,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   });
 
   // A task added from the CLI appears on the board.
-  agboardOk(mainProject, ['add', 'Review the themes', '--assignee', 'ai', '--actor', 'human', '--desc', taskBody('Check all 24 themes.')]);
+  agboardOk(mainProject, ['add', 'Review the themes', '--assignee', 'ai', '--actor', 'human', `--desc=${taskBody('Check all 24 themes.')}`]);
   const created = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Review the themes Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) });
   await expect(created).toBeVisible();
   await expect(lane(page, 'Todo').getByText('4', { exact: true })).toBeVisible();
@@ -624,7 +624,7 @@ test('create, move with a reason, answer, archive, and live updates work with a 
   expect(listTasks(mainProject).map(({ id }) => id)).not.toContain(fresh);
 
   // Changes made outside the page arrive without a reload (server-sent events).
-  agboardOk(mainProject, ['add', 'Added by the CLI', '--desc', 'Live']);
+  agboardOk(mainProject, ['add', 'Added by the CLI', `--desc=Live`]);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Added by the CLI `) })).toBeVisible();
   agboardOk(mainProject, ['mv', String(fresh + 1), 'doing']);
   await expect(lane(page, 'Doing').getByRole('button', { name: new RegExp(`^#${fresh + 1} AI Idle Added by the CLI `) })).toBeVisible();

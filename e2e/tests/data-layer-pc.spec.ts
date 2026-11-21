@@ -102,7 +102,7 @@ test('a task nobody opened is not read, and opening a task reads its epic once, 
   writeFileSync(plan, 'The epic plan.');
   agboardOk(mainProject, ['epic', 'add', 'TEST-EPIC', '--name', 'Test epic', '--color', '#2563EB', '--actor', 'human']);
   agboardOk(mainProject, ['epic', 'edit', 'TEST-EPIC', '--document-file', plan]);
-  agboardOk(mainProject, ['add', 'In an epic', '--desc', 'Body.', '--epic', 'TEST-EPIC']);
+  agboardOk(mainProject, ['add', 'In an epic', `--desc=Body.`, '--epic', 'TEST-EPIC']);
   await readBoardAfterReset(page);
   expect(seen.filter((r) => r.path.includes('/detail'))).toEqual([]);
   // Opening the task reads its epic too, once, so the Epic tab shows at once.

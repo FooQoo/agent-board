@@ -283,7 +283,7 @@ test('after setup, a CLI project hands out a shared folder whose TASK.md can be 
 	expect(workspace.folder.startsWith(path.join(dataRoot, 'shared') + path.sep)).toBe(true);
 
 	const added = JSON.parse(
-		cliOk(['--project', name, 'add', 'Check the shared folder', '--assignee', 'ai', '--actor', 'human', '--desc', TASK_TEXT, '--json']).stdout,
+		cliOk(['--project', name, 'add', 'Check the shared folder', '--assignee', 'ai', '--actor', 'human', `--desc=${TASK_TEXT}`, '--json']).stdout,
 	) as { task: { id: number } };
 	const task = path.join(workspace.tasks, String(added.task.id), 'TASK.md');
 	expect(readFileSync(task, 'utf8')).toContain('First body.');

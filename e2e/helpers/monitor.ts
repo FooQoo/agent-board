@@ -31,7 +31,7 @@ function run(home: string, args: string[]): string {
 
 function task(home: string, project: string, title: string, description: string): number {
   const value = JSON.parse(
-    run(home, ['--project', project, 'add', title, '--desc', taskBody(description), '--assignee', 'ai', '--actor', 'human', '--json']),
+    run(home, ['--project', project, 'add', title, `--desc=${taskBody(description)}`, '--assignee', 'ai', '--actor', 'human', '--json']),
   ) as { task: { id: number } };
   return value.task.id;
 }
@@ -80,9 +80,9 @@ export function createMonitorHome(): string {
     run(home, ['--project', 'Alpha', 'attachment', 'add', '4', '--file', image, '--actor', 'ai', '--json']),
   ) as { attachment: { id: string } };
   run(home, [
-    '--project', 'Alpha', 'edit', '4', '--desc', taskBody(
+    '--project', 'Alpha', 'edit', '4', `--desc=${taskBody(
       `A shared read-only detail with an owned image and Mermaid diagram.\n\n![monitor.png](attachment:${attachment.attachment.id})\n\n\`\`\`mermaid\ngraph TD\n  A[Monitor] --> B[Shared files]\n\`\`\``,
-    ), '--json',
+    )}`, '--json',
   ]);
   move(home, 'Alpha', firstCompleted, 'done', 'Complete work');
   for (let index = 1; index < 8; index++) {
