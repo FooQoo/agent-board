@@ -137,19 +137,24 @@ impl FileStore {
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        self.edit_draft_locked(
+        let changed = self.save_draft_locked(
             &project_dir,
             project,
             id,
             (title, description),
             (finalize, None),
             now,
-        )
+        )?;
+        Ok(Changed {
+            value: view(shared, project, id)?,
+            changed,
+        })
     }
 
     /// `edit_draft_task_to` for a caller that holds the project lock, with the
     /// title and description already validated; `images` replaces the image list.
-    pub(super) fn edit_draft_locked(
+    /// It reads no view: `Err` means nothing was committed, `Ok` says if it changed.
+    pub(super) fn save_draft_locked(
         &self,
         project_dir: &Path,
         project: &ProjectId,
@@ -157,7 +162,7 @@ impl FileStore {
         (title, description): (Option<String>, Option<String>),
         (finalize, images): (DraftSave, Option<Vec<Attachment>>),
         now: DateTime<Utc>,
-    ) -> Result<Changed<TaskView>, AgboardError> {
+    ) -> Result<bool, AgboardError> {
         let shared = self.shared_dir();
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
@@ -172,10 +177,7 @@ impl FileStore {
         let (text_changed, markdown) =
             write_text(shared, project, project_dir, &mut task, title, description)?;
         if !text_changed && target == current && images.is_none() {
-            return Ok(Changed {
-                value: view(shared, project, id)?,
-                changed: false,
-            });
+            return Ok(false);
         }
         let at = stamp(now);
         if text_changed || images.is_some() {
@@ -200,10 +202,7 @@ impl FileStore {
             )?);
         }
         save_task_with_markdown(shared, project_dir, &task, markdown.as_deref())?;
-        Ok(Changed {
-            value: view(shared, project, id)?,
-            changed: true,
-        })
+        Ok(true)
     }
 
     /// Edit a draft against the latest TASK.md and finalize in one pair save.
