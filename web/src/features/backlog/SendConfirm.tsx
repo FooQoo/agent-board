@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { DialogActions } from '@/shared/ui/dialog-actions';
 import type { TaskSummary } from '../../shared/api/contracts';
+import type { BacklogTarget } from './send';
 import { Surface } from '../../shared/ui/surface/Surface';
 import '../../shared/styles/backlog.css';
 
@@ -14,6 +15,7 @@ import '../../shared/styles/backlog.css';
  */
 export function SendConfirm({
   kind,
+  to = 'todo',
   count,
   warned,
   busy,
@@ -21,6 +23,8 @@ export function SendConfirm({
   onCancel,
 }: {
   kind: 'dialog' | 'sheet';
+  /** The lane the cards go to; the texts name it. */
+  to?: BacklogTarget;
   count: number;
   warned: readonly TaskSummary[];
   busy: boolean;
@@ -30,10 +34,12 @@ export function SendConfirm({
   const { t } = useTranslation();
   const [ack, setAck] = useState(false);
   const ackId = useId();
+  const lane = t(`column.${to}`);
+  const k = to === 'todo' ? 'backlog' : 'backlog.move';
   return (
     <Surface
       kind={kind}
-      title={t('backlog.confirmTitle')}
+      title={t(`${k}.confirmTitle`, { lane })}
       closeLabel={t('dialog.close')}
       onClose={() => !busy && onCancel()}
       dismissible={!busy}
@@ -44,12 +50,14 @@ export function SendConfirm({
             {t('backlog.cancel')}
           </Button>
           <Button type="button" disabled={!ack || busy} onClick={onConfirm}>
-            {busy ? t('backlog.sending') : t('backlog.sendConfirm')}
+            {busy
+              ? t('backlog.sending')
+              : t(to === 'todo' ? 'backlog.sendConfirm' : 'backlog.move.confirm', { lane })}
           </Button>
         </DialogActions>
       }
     >
-      <p className="backlog-send__scope">{t('backlog.confirmScope', { count })}</p>
+      <p className="backlog-send__scope">{t(`${k}.confirmScope`, { count, lane })}</p>
       <div className="backlog-send__warn" role="alert">
         <AlertTriangleIcon aria-hidden="true" />
         <div>
@@ -61,7 +69,7 @@ export function SendConfirm({
               </li>
             ))}
           </ul>
-          <p>{t('backlog.warnBody')}</p>
+          <p>{t(`${k}.warnBody`)}</p>
           <div className="backlog-send__ack">
             <Checkbox
               id={ackId}

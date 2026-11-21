@@ -33,7 +33,7 @@ pub struct EpicSent {
 }
 
 /// The numbers of the open questions about any of `tasks`, lowest first.
-fn open_questions(
+pub(super) fn open_questions(
     shared: &Path,
     project: &ProjectId,
     tasks: &[i64],
@@ -52,7 +52,7 @@ fn open_questions(
 /// Only a person sends a plan. An open question is a warning they confirm
 /// with `ack`; the question stays, so no agent can run the card until it is
 /// answered.
-fn check_sender(actor: Actor, ack: bool, open: Vec<String>) -> Result<(), AgboardError> {
+pub(super) fn check_sender(actor: Actor, ack: bool, open: Vec<String>) -> Result<(), AgboardError> {
     if actor == Actor::Ai {
         return Err(AgboardError::HumanOnly {
             action: "sending a plan to Todo".into(),

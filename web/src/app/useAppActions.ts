@@ -81,7 +81,8 @@ export function useAppActions(model: AppControllerModel) {
           .map((task) => task.id),
         epicId,
       ),
-    onSend: (ids) => (session.operation === null ? backlogSend.request(ids) : false),
+    onSend: (ids, to) =>
+      session.operation === null ? backlogSend.request(ids, undefined, to) : false,
     onReorder: (task, beforeId) => {
       if (!isProjectId(activeId)) return;
       const projectId = activeId;

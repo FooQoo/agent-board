@@ -1,3 +1,4 @@
+import type { BacklogTarget } from '../features/backlog/send';
 import type { Dispatch, Ref, RefCallback } from 'react';
 import type { UseBoardResult } from '../pages/board/model/useBoard';
 import type {
@@ -121,8 +122,8 @@ export interface AppWorkspaceActions {
   onOpenEpic: (epicId: string) => void;
   onMove: (task: TaskSummary, column: ColumnName) => void;
   onReorder: (task: TaskSummary, beforeId: number | null) => void;
-  /** Sends Backlog cards to Todo. Returns whether it started without a confirmation. */
-  onSend: (ids: number[]) => boolean;
+  /** Sends Backlog cards to Todo, or moves them to Doing or Done. Returns whether it started without a confirmation. */
+  onSend: (ids: number[], to?: BacklogTarget) => boolean;
   sendBusy: boolean;
   /** Sends the Backlog cards of an epic to Todo, in one save. */
   onSendEpic: (epicId: string) => boolean;

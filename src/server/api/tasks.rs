@@ -49,6 +49,9 @@ pub(super) struct MoveInput {
     _actor: Option<serde_json::Value>,
     #[serde(default)]
     reason: String,
+    /// The person confirmed the warning about open questions of a Backlog card they move.
+    #[serde(default)]
+    ack: bool,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -133,6 +136,14 @@ pub(super) async fn move_task(
             reason: input.reason,
         };
         match input.from_status {
+            Some(from) if input.ack => store.move_work_task_for_user_confirmed(
+                &project_id,
+                id,
+                from,
+                input.task_status,
+                ctx,
+                chrono::Utc::now(),
+            ),
             Some(from) => store.move_work_task_for_user_from(
                 &project_id,
                 id,
