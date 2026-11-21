@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useOpenOnSend } from './useOpenOnSend';
 import { MessagesSurface } from '../../features/tasks/messages/MessagesSurface';
 import { countMessages, firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
@@ -115,6 +116,9 @@ export function MonitorView(props: MonitorViewProps) {
     }
   }, [summaryLink, props.messagesApi, openPanel, panelClosed, onSummaryLinkClose]);
   useReportOpen(panel.target !== null, props.onMessagesOpenChange);
+  // A sent request opens the list on "Your requests".
+  const openRequests = useCallback(() => openPanel({ tab: 'fromYou' }), [openPanel]);
+  useOpenOnSend(props.requestSent ?? 0, props.messagesApi !== undefined, openRequests);
   const { writes, onWritten } = props;
   // Without writes (the demo, sample data) a swipe asks nothing and changes nothing.
   const ask = (next: LanePending) => {
@@ -168,6 +172,8 @@ export function MonitorView(props: MonitorViewProps) {
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
           onClose={panel.close}
+          onRefresh={props.onRefresh}
+          refreshing={props.refreshing}
           resolveAttachment={resolveAttachment}
         />
       )}

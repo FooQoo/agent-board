@@ -11,7 +11,7 @@ const summary = (id: string): PeriodicSummary => ({
   id,
   from: '2026-11-20T09:00:00Z',
   to: '2026-11-20T10:00:00Z',
-  results: [{ taskId: 1, title: 'x' }],
+  results: [{ taskId: 1, version: 1, title: 'x' }],
 });
 
 afterEach(cleanup);

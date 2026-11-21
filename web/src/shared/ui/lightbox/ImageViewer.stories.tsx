@@ -112,9 +112,34 @@ export const SingleImage: Story = {
   },
 };
 
+/** Sends one touch pointer event to the element, as a finger would. */
+const touch = (
+  element: Element,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  pointerId: number,
+  x: number,
+  y: number,
+) =>
+  element.dispatchEvent(
+    new PointerEvent(type, {
+      pointerId,
+      pointerType: 'touch',
+      clientX: x,
+      clientY: y,
+      bubbles: true,
+    }),
+  );
+
+const scaleOf = (slide: HTMLElement): number => {
+  const img = slide.querySelector('img') as HTMLImageElement;
+  const raw = img.getAttribute('data-zoom-scale');
+  return raw === null ? 1 : Number(raw);
+};
+
 /**
- * On a phone the pinch that zooms the page stays with the browser: the viewer and its slide allow
- * it next to the sideways and vertical scrolling, so a picture can be zoomed in as well as swiped.
+ * On a phone the picture zooms by itself: the pinch is the picture's, not the page's, so the slide
+ * does not allow the browser's pinch zoom. Two fingers spreading zoom in, one finger pans a zoomed
+ * picture, and a double tap goes back to 1x.
  */
 export const PinchZoomPhone: Story = {
   args: { images: ONE, startIndex: 0, label: () => 'Tall picture' },
@@ -123,10 +148,61 @@ export const PinchZoomPhone: Story = {
     const dialog = await openDialog();
     const viewer = dialog.querySelector('[data-viewer]') as HTMLElement;
     const slide = within(dialog).getByRole('group');
+    // The page's own pinch zoom is off, so the pinch reaches the picture.
     for (const element of [viewer, slide]) {
-      const action = getComputedStyle(element).touchAction;
-      // The browser reports pan-x, pan-y and pinch-zoom together as `manipulation`.
-      await expect(action).toMatch(/^(manipulation|.*pinch-zoom.*)$/);
+      await expect(getComputedStyle(element).touchAction).toBe('pan-x pan-y');
     }
+    const rect = slide.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    touch(slide, 'pointerdown', 1, cx - 40, cy);
+    touch(slide, 'pointerdown', 2, cx + 40, cy);
+    touch(slide, 'pointermove', 1, cx - 80, cy);
+    touch(slide, 'pointermove', 2, cx + 80, cy);
+    touch(slide, 'pointerup', 1, cx - 80, cy);
+    touch(slide, 'pointerup', 2, cx + 80, cy);
+    await waitFor(() => expect(scaleOf(slide)).toBeGreaterThan(1.5));
+    await expect(scaleOf(slide)).toBeLessThanOrEqual(5);
+    // Zoomed in, the slide hands the touch to the picture.
+    await expect(getComputedStyle(slide).touchAction).toBe('none');
+    // A finger drag pans the picture.
+    const img = slide.querySelector('img') as HTMLImageElement;
+    const before = img.getBoundingClientRect();
+    touch(slide, 'pointerdown', 3, cx, cy);
+    touch(slide, 'pointermove', 3, cx - 60, cy);
+    touch(slide, 'pointerup', 3, cx - 60, cy);
+    await waitFor(() => expect(img.getBoundingClientRect().left).toBeLessThan(before.left));
+    // Page and controls stay: the dialog and its close button are still there.
+    await expect(within(dialog).getByRole('button', { name: /Close/ })).toBeVisible();
+    // A double tap goes back to 1x.
+    for (let tap = 0; tap < 2; tap++) {
+      touch(slide, 'pointerdown', 4, cx, cy);
+      touch(slide, 'pointerup', 4, cx, cy);
+    }
+    await waitFor(() => expect(scaleOf(slide)).toBe(1));
+    await expect(getComputedStyle(slide).touchAction).toBe('pan-x pan-y');
+  },
+};
+
+/** Zoomed in, a step to the next picture shows it at 1x. */
+export const ZoomResetsOnStep: Story = {
+  args: { startIndex: 0 },
+  globals: { width: 'phone-375' },
+  play: async () => {
+    const dialog = await openDialog();
+    const [first, second] = within(dialog).getAllByRole('group') as [HTMLElement, HTMLElement];
+    const rect = first.getBoundingClientRect();
+    first.dispatchEvent(
+      new MouseEvent('dblclick', {
+        clientX: rect.left + 20,
+        clientY: rect.top + 20,
+        bubbles: true,
+      }),
+    );
+    await waitFor(() => expect(scaleOf(first)).toBeGreaterThan(1));
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(within(dialog).getByText('2 / 3')).toBeVisible());
+    await waitFor(() => expect(scaleOf(first)).toBe(1));
+    await expect(scaleOf(second)).toBe(1);
   },
 };

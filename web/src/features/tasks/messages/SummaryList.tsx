@@ -1,4 +1,4 @@
-import { Trash2Icon } from 'lucide-react';
+import { ChevronRightIcon, Trash2Icon } from 'lucide-react';
 import { type CSSProperties, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,29 +9,79 @@ import {
 } from '@/shared/lib/gesture/cardReveal';
 import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
 import { type PeriodicSummary, windowLabel } from './model/messages';
+import { summaryResultHref } from './summaryResultLink';
 import type { SummariesController } from './useSummaries';
 import '@/shared/styles/swipe-card.css';
 import './summary.css';
 
 type Variant = 'dialog' | 'sheet';
 
-function ResultList({ summary }: { summary: PeriodicSummary }) {
+/**
+ * The results of one summary. Each is a real link to the task's Results tab (see
+ * `summaryResultHref`), so Enter, a new-tab click, and the keyboard all work. A tap that ends a
+ * swipe is not a click on the link.
+ */
+function ResultList({
+  summary,
+  projectId,
+  consumesClick,
+}: {
+  summary: PeriodicSummary;
+  projectId: string;
+  consumesClick: () => boolean;
+}) {
   const { t } = useTranslation();
   return (
     <ul className="summary-results" aria-label={t('messages.summary.resultsLabel')}>
-      {summary.results.map((result, index) => (
+      {summary.results.map((result, index) => {
+        const href = summaryResultHref(projectId, result);
+        const version =
+          result.version === null
+            ? t('messages.summary.versionUnknown')
+            : t('messages.summary.version', { version: result.version });
         // A task can appear twice in a window (two results), so the position keeps the keys apart.
-        <li key={`${result.taskId}-${index}`} className="summary-result">
-          <span className="summary-result__id">#{result.taskId}</span>
-          <span className="summary-result__title">{result.title}</span>
-        </li>
-      ))}
+        return (
+          <li key={`${result.taskId}-${index}`} className="summary-result">
+            {href === null ? (
+              <>
+                <span className="summary-result__id">#{result.taskId}</span>
+                <span className="summary-result__title">{result.title}</span>
+              </>
+            ) : (
+              <a
+                className="summary-result__link"
+                href={href}
+                aria-label={
+                  result.version === null
+                    ? t('messages.summary.openResults', { id: result.taskId, title: result.title })
+                    : t('messages.summary.openResult', {
+                        id: result.taskId,
+                        version: result.version,
+                        title: result.title,
+                      })
+                }
+                onClick={(event) => {
+                  if (consumesClick()) event.preventDefault();
+                }}
+              >
+                <span className="summary-result__id">#{result.taskId}</span>
+                <span className="summary-result__text">
+                  <span className="summary-result__title">{result.title}</span>
+                  <span className="summary-result__meta">{version}</span>
+                </span>
+                <ChevronRightIcon className="summary-result__chevron" aria-hidden="true" />
+              </a>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 interface ItemProps {
   summary: PeriodicSummary;
+  projectId: string;
   variant: Variant;
   revealed: boolean;
   onReveal: (open: boolean) => void;
@@ -41,11 +91,11 @@ interface ItemProps {
 /**
  * One summary. On a phone it is the board card's own swipe: `useCardGesture` slides it left and
  * the trash tile grows from a dot, drawn with the card's `swipe-card__*` styles; a tap shows the
- * tile too. The gesture is always armed, so a sideways move that starts on an item belongs to the
- * item and never switches the tab. On a PC the trash button is always shown inside the card, at
+ * tile too. The gesture is always armed, so a leftward move that starts on an item belongs to the
+ * item, while a rightward one is left to the tab swipe. On a PC the trash button is always shown inside the card, at
  * the right end of its heading.
  */
-function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemProps) {
+function SummaryItem({ summary, projectId, variant, revealed, onReveal, onDismiss }: ItemProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const side: RevealSide | null = revealed ? 'right' : null;
@@ -58,6 +108,8 @@ function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemPr
     leftWidth: 0,
     rightWidth,
     disabled: variant !== 'sheet',
+    // A swipe to the right belongs to the tab swipe; only a swipe to the left opens the trash.
+    swipeRight: false,
   });
   const offset = drag ?? revealOffset(side, 0, rightWidth);
   const label = windowLabel(summary.from, summary.to);
@@ -90,7 +142,7 @@ function SummaryItem({ summary, variant, revealed, onReveal, onDismiss }: ItemPr
           </button>
         </div>
       )}
-      <ResultList summary={summary} />
+      <ResultList summary={summary} projectId={projectId} consumesClick={consumesClick} />
     </>
   );
   const itemProps = {
@@ -178,6 +230,7 @@ export function SummaryList({
             <SummaryItem
               key={summary.id}
               summary={summary}
+              projectId={controller.projectId}
               variant={variant}
               revealed={revealed === summary.id}
               onReveal={(open) => setRevealed(open ? summary.id : null)}

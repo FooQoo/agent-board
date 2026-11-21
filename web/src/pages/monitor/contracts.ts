@@ -112,6 +112,8 @@ export interface MonitorViewProps {
   onAskClose?(then: () => void): void;
   /** The Ask sheet is open, so the bar shows Ask as the open item. */
   asking?: boolean;
+  /** Counts the requests the Ask sheet sent; each one opens the list on "Your requests". */
+  requestSent?: number;
   /** Read-only resolvers used by the monitor drawer. */
   readResolvers?: MonitorReadResolvers;
   onOpenDetail?(target: MonitorTask, tab: MonitorDetailTab): void;
