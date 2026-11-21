@@ -42,7 +42,7 @@ Start the serial listener loop only when the user explicitly asks you to listen 
 
 ## 3. Find and edit the shared files
 
-Get the folder paths from the selected project's progress table; never assume or hard-code their location. Edit only `epics/<EPIC-ID>/EPIC.md` and the `tasks/<task-id>/TASK.md` of tasks that are not drafts, by writing a temporary file in the same folder and renaming it over the original, preserving history and unknown frontmatter. Use `history add` for progress instead.
+Get the folder paths from the selected project's progress table; never assume or hard-code their location. Edit only `epics/<EPIC-ID>/EPIC.md` and the `tasks/<task-id>/TASK.md` of tasks that are not drafts, by writing a temporary file in the same folder and renaming it over the original, preserving history and unknown frontmatter. To record a decision, use the decision rule in section 6: only a decision that matters later, through `history add` or a `--reason`, and no routine progress.
 
 - Never edit `project.json`, `epic.json`, `task.json`, or `.internal/`. Never delete a task or epic folder.
 - Keep machine-specific absolute paths out of shared files.

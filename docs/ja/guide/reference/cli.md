@@ -13,7 +13,7 @@ title: CLIリファレンス
 | タスクを追加する | `add` |
 | タスクやボードを読む | `show`、`ls`、`snapshot` |
 | タスクを移す、エージェントの状態を報告する | `mv`、`state` |
-| 進捗を記録する | `history add` |
+| 後で効く判断を記録する | `history add` |
 | タスクの本文を編集する | `edit` |
 | 画像を添付する | `attachment` |
 | 成果を依頼者に届ける | `result add`、`result ls` |

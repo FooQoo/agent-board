@@ -13,7 +13,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Add a task | `add` |
 | Read a task or the board | `show`, `ls`, `snapshot` |
 | Move a task or report what an agent is doing | `mv`, `state` |
-| Record progress | `history add` |
+| Record a decision that matters later | `history add` |
 | Change a task's text | `edit` |
 | Attach images | `attachment` |
 | Deliver a result to the requester | `result add`, `result ls` |
