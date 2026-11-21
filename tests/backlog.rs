@@ -813,3 +813,20 @@ fn an_old_client_releasing_the_draft_of_a_plan_with_ai_never_leaves_it_ready_in_
     assert_eq!(released.value.task_status, Column::Backlog);
     assert_eq!(released.value.draft, None);
 }
+
+#[test]
+fn a_refused_legacy_release_is_checked_before_anything_else_changes() {
+    let f = fx();
+    let todo = f.human_task("Card");
+    f.store
+        .set_draft(&f.project, todo, Some(Draft::Human), false, now())
+        .unwrap();
+    let refused = f
+        .store
+        .ensure_legacy_release_allowed(&f.project, todo, true)
+        .unwrap_err();
+    assert_eq!(refused.code(), "invalid_value");
+    f.store
+        .ensure_legacy_release_allowed(&f.project, todo, false)
+        .unwrap();
+}
