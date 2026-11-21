@@ -47,12 +47,12 @@
 }
 ```
 
-- 既定では、人の判断待ちでないTodoとDoingのタスクだけが載ります。タスクはエピックごとに`waves`の順で並び、エピックのないタスクは`unassigned`に入ります。
-- `nextTasks`は常に含まれ、今すぐ着手できるAI担当のタスクを最大3件並べます。各要素は`{ "id", "title", "epicId", "taskPath", "why" }`で、エピックのないタスクの`epicId`は`null`です。`why`は安定した値で、実行状態がIdleのDoingタスク（止まっている作業）は`resume`、実行状態がIdleのTodoタスクは`next_in_epic`です。Doingが先、次にTodoで、それぞれの中は進行表の順（エピックは表の順、エピック内は`waves`の順、エピックのないタスクは最後）です。Backlogのタスク、人の下書き、PendingとRunningのタスク、人が担当のタスク、Doneやアーカイブのタスクも載らず、該当がなければ空配列です。同じエピックの前のウェーブに、アーカイブされておらずDoneでないタスクが残っている間は、そのTodoのタスクは載りません。同じウェーブのタスクはまとめて載ります。それ以外の依存関係は`EPIC.md`の文章で書かれ、評価されないため、エージェントは着手前にエピックの文書を読みます。
-- `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちのTodo・DoingのタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象はTodoまたはDoingのタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
+- 既定では、人の判断待ちでない未着手と進行中のタスクだけが載ります。タスクはエピックごとに`waves`の順で並び、エピックのないタスクは`unassigned`に入ります。
+- `nextTasks`は常に含まれ、今すぐ着手できるAI担当のタスクを最大3件並べます。各要素は`{ "id", "title", "epicId", "taskPath", "why" }`で、エピックのないタスクの`epicId`は`null`です。`why`は安定した値で、実行状態がIdleのDoingタスク（止まっている作業）は`resume`、実行状態がIdleの未着手タスクは`next_in_epic`です。Doingが先、次に未着手で、それぞれの中は進行表の順（エピックは表の順、エピック内は`waves`の順、エピックのないタスクは最後）です。バックログのタスク、人の下書き、PendingとRunningのタスク、人が担当のタスク、Doneやアーカイブのタスクも載らず、該当がなければ空配列です。同じエピックの前のウェーブに、アーカイブされておらずDoneでないタスクが残っている間は、その未着手のタスクは載りません。同じウェーブのタスクはまとめて載ります。それ以外の依存関係は`EPIC.md`の文章で書かれ、評価されないため、エージェントは着手前にエピックの文書を読みます。
+- `progress`と`hook`に`--include-pending`と`--include-done COUNT`を付けると、表に`pending`配列と`done`配列が加わります。`pending`は判断待ちの未着手・進行中のタスクをID順に並べ、それぞれに、IDが最も小さい未回答の質問を200文字までにした`question`が付きます。`done`は直近に完了したタスクを新しい順に`COUNT`件並べ、対象は未着手または進行中のタスクがまだあるエピックに限ります。オプションがなければどちらのフィールドもありません。
 - 人が質問に回答し、まだどのエージェントも回答を受け取っていない（`reply`に`acceptedAt`がない）とき、表に`answers`配列がID順で加わります。各要素は`{"id":"Q-12","title":"…","tasks":[21,22],"choiceId":"keep","choiceLabel":"Keep","text":null,"answeredAt":"2026-11-17T09:00:00Z"}`に、人が添えた画像の絶対パス`imagePaths`（なければ省略）を加えた形で、`title`は依頼のタイトルと同じ規則、`tasks`はその質問を参照しているアーカイブされていないタスク、`choiceId`・`choiceLabel`・`text`は該当する部分がなければ`null`です。選択肢のある質問にメモだけで答えた場合は、`choiceId`と`choiceLabel`が`null`で`text`が設定されます。該当する回答がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で受け取ります。
 - 人からの依頼が未処理（受理も取り下げもされていない）のとき、表に`requests`配列がID順で加わります。各要素は`{"id":"Q-3","createdAt":"…","title":"…"}`で、`title`は依頼の最初の空でない行からMarkdownの記号（見出し・リスト・引用の記号、強調、コード、リンク）を除いたプレーンテキストの80文字までです（超える分は`…`で終わります）。未処理の依頼がなければフィールドはありません。エージェントは`message show`で全文を読み、`message accept`で依頼を引き受けます。
-- AIタスクに受け入れ条件が1件以上あり、そのすべてが完了していて、`--final`の成果がないとき、表に`finalResultMissing`配列がID順で加わります。最大5件で、各要素は`{"id":21,"title":"…","taskPath":"…/tasks/21/TASK.md"}`です。タスクがTodoまたはDoingにあるあいだと、レーンがDoneに変わってから24時間は一覧に残ります。エージェントが成果を書く前に自動Doneが起きても促せるようにするためです。Backlog、人の下書き、人のタスク、アーカイブ済み、条件が不正なタスクは含みません。エージェントは各要素について`result add --final`を記録し、記録すると要素は消えます。何かを止めたり遅らせたりはしません。自動Doneは成果を待ちません。該当するタスクがなければフィールドはありません。
+- AIタスクに受け入れ条件が1件以上あり、そのすべてが完了していて、`--final`の成果がないとき、表に`finalResultMissing`配列がID順で加わります。最大5件で、各要素は`{"id":21,"title":"…","taskPath":"…/tasks/21/TASK.md"}`です。タスクが未着手または進行中にあるあいだと、レーンがDoneに変わってから24時間は一覧に残ります。エージェントが成果を書く前に自動Doneが起きても促せるようにするためです。バックログ、人の下書き、人のタスク、アーカイブ済み、条件が不正なタスクは含みません。エージェントは各要素について`result add --final`を記録し、記録すると要素は消えます。何かを止めたり遅らせたりはしません。自動Doneは成果を待ちません。該当するタスクがなければフィールドはありません。
 - `epicsToClose`は、未アーカイブのタスクがすべて Done で、`EPIC.md`の本文に未チェックの`- [ ]`が残るエピック（`BUG`と`ENHANCEMENT`を除く）をID順に並べます。`[{"id":"SPEC-MIGRATION","name":"…","documentPath":"…/epics/SPEC-MIGRATION/EPIC.md"}]`の形で、該当がなければ出力されません。
 - 実行中の AI タスクには`lastActivityAt`（最新の履歴の時刻。履歴がなければ最後の実行状態の変更の時刻）が付きます。`{"id":98,…,"agentStatus":"running","lastActivityAt":"2026-11-20T03:12:00Z"}`のような形です。`--final`の成果がある Doing の AI タスクには`"hasFinalResult": true`が付きます。どちらも該当しなければ出力されません。`stale-running`と`conditions`のルールが読みます。
 - `reminders`は、この表だけを読む[忘れごとのルール](../concepts/agents.md#nudge-rules)が見つけたことの一覧です。`[{"rule":"final-result","kind":"definite","text":"Task #21 has all conditions met but no final result: record agboard result add 21 --final ...","taskId":21}]`のような形です。`rule`はルールのID、`kind`はルールが確かめた違反なら`definite`、エージェントが判断すべきことなら`check`、`text`はリマインダーの本文です。`taskId`、`messageId`、`epicId`は、リマインダーがそれらに関するときだけ付きます。並びは登録簿の順です。Hookは作業中に表を渡すので、コマンドを実行しなくてもリマインダーがエージェントに届きます。リマインダーがなければフィールドはありません。既存のフィールドは変わりません。
@@ -83,7 +83,7 @@
 
 `wait`は、プロジェクトのversionがcursorと違うまで待ちます。`wait_timeout`・`board_unavailable`・`cursor_invalid`・`project_not_found`のときは、スナップショットではなくエラーで終わります。どれも「回答された」という意味ではありません。[エラーコード](./errors.md)を参照してください。
 
-`wait --until task --idle-timeout <seconds> --json`は、待機を始める前から存在するタスクも含め、AI担当でTodoまたはDoing、かつIdleの対象タスクを一件選びます。エピックの前のウェーブにDoneでないタスクがある間、そのウェーブのTodoのタスクは選びません。順序は進行表と同じです。結果にはタスクと、その`TASK.md`、およびエピックがあれば`documentPath`（`EPIC.md`のパス）が含まれます。取得はタスクを占有したり編集したりしません。
+`wait --until task --idle-timeout <seconds> --json`は、待機を始める前から存在するタスクも含め、AI担当で未着手または進行中、かつIdleの対象タスクを一件選びます。エピックの前のウェーブにDoneでないタスクがある間、そのウェーブの未着手のタスクは選びません。順序は進行表と同じです。結果にはタスクと、その`TASK.md`、およびエピックがあれば`documentPath`（`EPIC.md`のパス）が含まれます。取得はタスクを占有したり編集したりしません。
 
 taskの項目を省略した例です。
 

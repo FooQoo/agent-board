@@ -92,7 +92,7 @@ describe('MonitorView', () => {
     render(<MonitorView {...props()} />);
     const tabs = {
       en: ['Backlog 0', 'Todo 1', 'Doing 3', 'Done 1'],
-      ja: ['Backlog 0件', '未着手 1件', '進行中 3件', '完了 1件'],
+      ja: ['バックログ 0件', '未着手 1件', '進行中 3件', '完了 1件'],
     };
     for (const locale of ['en', 'ja', 'en'] as const) {
       act(() => {

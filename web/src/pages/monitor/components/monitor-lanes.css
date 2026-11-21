@@ -88,6 +88,17 @@
     display: none;
   }
 }
+/* The Japanese name of the Backlog has five characters: on a phone the tab text steps down a little so it keeps room inside the marker. */
+@media (max-width: 480px) {
+  :lang(ja) .lane-tabs__tab {
+    gap: 2px;
+    font-size: 11px;
+  }
+  :lang(ja) .lane-tabs__count {
+    min-width: 16px;
+    padding: 1px 3px;
+  }
+}
 .lane-tabs__tab[aria-selected="true"] .lane-tabs__count {
   background: var(--r-accent-soft);
   color: var(--r-accent);
