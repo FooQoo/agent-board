@@ -8,7 +8,7 @@ test.afterEach(() => resetPreferences());
 
 const doneIds = () =>
 	listTasks(mainProject)
-		.filter((task) => task.taskStatus === "done" && !task.archivedAt)
+		.filter((task) => task.taskStatus === "done" && !(task as { archivedAt?: string | null }).archivedAt)
 		.map((task) => task.id);
 
 test("the PC board's bulk archive button archives the done cards and the board updates", async ({
