@@ -2,6 +2,7 @@
 
 mod agent;
 mod attachment;
+mod dash_hint;
 mod enums;
 mod epic;
 mod help;
@@ -203,7 +204,14 @@ pub fn parse(args: &[OsString]) -> Result<Parsed, AgboardError> {
                         | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
                             "a command is required.".to_string()
                         }
-                        _ => parser_message(&error.to_string()),
+                        _ => {
+                            let mut message = parser_message(&error.to_string());
+                            if let Some(hint) = dash_hint::dash_value_hint(&error, args) {
+                                message.push(' ');
+                                message.push_str(&hint);
+                            }
+                            message
+                        }
                     },
                     command: subcommand_in(args),
                 }),

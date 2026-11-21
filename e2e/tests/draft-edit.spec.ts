@@ -35,7 +35,7 @@ let id: number;
 test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Draft me', '--desc', SEED]);
+  agboardOk(mainProject, ['add', 'Draft me', `--desc=${SEED}`]);
   await page.goto('/');
   await waitForSync(page);
   await readBoardAfterReset(page);

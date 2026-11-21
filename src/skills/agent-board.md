@@ -87,7 +87,7 @@ Record progress automatically at the start of work, at meaningful progress, deci
 6. **Finish or interrupt.** Record a `result add <id> --final` for each task in `finalResultMissing`, the one change allowed on a Done task. Otherwise Done tasks are read-only for agents. If work stops before completion, record why.
 7. **Close the epic** when all its tasks are done, except `BUG` and `ENHANCEMENT`, whose bodies stay fixed.
 
-Keep history reasons concise, in Markdown where it helps. Put verification results in the TASK body, visual proof in image attachments, and never full test logs.
+Keep history reasons concise, in Markdown where it helps. An option value that starts with `-` (a Markdown list such as `- did X`) must be written `--reason="- did X"` with an equals sign, or passed with `--reason-file`; `--reason "- did X"` fails, and so does a forgotten value (`--reason --json`). The same holds for `--text`, `--desc`, `--summary`, `--title`, and `--link`; a whole `TASK.md` or `EPIC.md` starts with `---`, so give it with `--desc-file`, `--document-file`, or `-`. Put verification results in the TASK body, visual proof in image attachments, and never full test logs.
 
 While a question is open or something is pending, continue the tasks that do not depend on it, each change to a Git repository on its own branch in its own worktree.
 

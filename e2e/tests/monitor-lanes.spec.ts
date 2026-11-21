@@ -32,7 +32,7 @@ function seed(project: string, cards: Seed[]): void {
   agboardCatalogOk(['project', 'create', project], home);
   for (const { title, lane } of cards) {
     const added = JSON.parse(
-      cli(project, ['add', title, '--desc', taskBody(`${title} body.`), '--assignee', 'ai', '--actor', 'human', '--json']),
+      cli(project, ['add', title, `--desc=${taskBody(`${title} body.`)}`, '--assignee', 'ai', '--actor', 'human', '--json']),
     ) as { task: { id: number } };
     ids.set(`${project}:${title}`, added.task.id);
     if (lane !== 'todo') cli(project, ['mv', String(added.task.id), 'doing', '--actor', 'ai', '--reason', 'Start']);

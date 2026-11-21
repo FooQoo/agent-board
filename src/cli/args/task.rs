@@ -16,7 +16,7 @@ use crate::error::{AgboardError, FileAction};
 #[group(id = "description_source", multiple = false)]
 pub struct DescriptionArgs {
     /// Whole TASK.md text in Markdown, frontmatter included, up to 50,000 body characters; on edit, latest history is retained; use "-" for standard input
-    #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+    #[arg(long, value_name = "TEXT")]
     pub desc: Option<String>,
     /// Read the whole TASK.md text, frontmatter included (up to 50,000 body characters), from a file; on edit, latest history is retained
     #[arg(long, value_name = "PATH")]
@@ -29,7 +29,7 @@ pub struct InitArgs {}
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "Examples:\n  agboard --project demo add \"Write the setup guide\"\n  agboard --project demo add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\"\n  agboard --project demo add \"Plan the release\" --desc-file notes.txt\n  echo \"Details\" | agboard --project demo add \"Write the docs\" --desc -"
+    after_help = "Examples:\n  agboard --project demo add \"Write the setup guide\" --assignee ai --actor ai\n  agboard --project demo add \"Fix the login bug\" --desc \"Users cannot sign in on Safari\" --assignee ai --actor ai\n  agboard --project demo add \"Plan the release\" --desc-file notes.txt --assignee ai --actor ai\n  echo \"Details\" | agboard --project demo add \"Write the docs\" --desc - --assignee ai --actor ai"
 )]
 pub struct AddArgs {
     /// Title of the task (1 to 100 characters, one line)
@@ -69,7 +69,7 @@ pub struct EditArgs {
 
 #[derive(Args, Debug)]
 #[command(
-    after_help = "A draft task (draft: human or ai) is read-only for agents here: mv fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nExamples:\n  agboard --project demo mv 12 doing\n  agboard --project demo mv 12 done"
+    after_help = "A draft task (draft: human or ai) is read-only for agents here: mv fails with task_is_draft (exit code 1). Wait for the user to finalize or start it.\n\nExamples:\n  agboard --project demo mv 12 doing --actor ai --reason \"Starting\"\n  agboard --project demo mv 12 done --actor ai --reason \"Finished\""
 )]
 pub struct MvArgs {
     /// ID of the task
@@ -90,12 +90,7 @@ pub struct StateArgs {
     /// Run state to report: idle or running
     pub state: ReportStateArg,
     /// Optional explanation. Use - to read UTF-8 from stdin
-    #[arg(
-        long,
-        value_name = "TEXT",
-        allow_hyphen_values = true,
-        group = "reason_source"
-    )]
+    #[arg(long, value_name = "TEXT", group = "reason_source")]
     pub reason: Option<String>,
     /// Read the explanation from a UTF-8 file
     #[arg(long, value_name = "PATH", group = "reason_source")]

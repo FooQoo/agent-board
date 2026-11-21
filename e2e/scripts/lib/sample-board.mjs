@@ -88,19 +88,19 @@ export function seed(home, text) {
     const owner = i === 0 || i === 7 ? 'human' : 'ai';
     run('add', text.titles[i], '--assignee', owner, '--actor', 'human',
       '--epic', [0, 1, 7].includes(i) ? 'DESIGN' : 'LAUNCH',
-      '--desc', markdown(text.body, text.checks, done ? 3 : i === 1 ? 2 : 1));
+      `--desc=${markdown(text.body, text.checks, done ? 3 : i === 1 ? 2 : 1)}`);
   }
   for (const id of [2, 3, 7]) run('mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start sample work');
   run('state', '2', 'running', '--actor', 'ai', '--reason', 'Build the landing page');
-  run('history', 'add', '3', '--reason', text.workNote);
+  run('history', 'add', '3', `--reason=${text.workNote}`);
   run('message', 'ask', '--actor', 'ai', '--task', '3', '--no-wait', '--questions-json', JSON.stringify({
     questions: [{ body: text.question, choices: text.choices.map((label, i) => ({ id: `option-${i + 1}`, label })) }],
   }));
   // This is a disposable human-owned sample; AI card #6 completes automatically at server startup.
   run('mv', '8', 'done', '--actor', 'human', '--reason', 'Sample mobile review completed');
   const plan = (priority) => `---\npriority: ${JSON.stringify(priority)}\n---\n\n${text.plan}\n\n## ${text === copy.ja ? '参考条件' : 'Reference conditions'}\n\n${text.epicChecks.map((check, i) => `- [${i === 0 ? 'x' : ' '}] ${check}`).join('\n')}\n`;
-  run('epic', 'edit', 'LAUNCH', '--document', plan([3, 4, 7, 5, 6]));
-  run('epic', 'edit', 'DESIGN', '--document', plan([1, 2, 8]));
+  run('epic', 'edit', 'LAUNCH', `--document=${plan([3, 4, 7, 5, 6])}`);
+  run('epic', 'edit', 'DESIGN', `--document=${plan([1, 2, 8])}`);
   return meta.id;
 }
 
@@ -112,15 +112,15 @@ export function seedProposal(home, text) {
   const run = (...args) => cli(home, ['--project', project, ...args]);
   const { proposal } = text;
   run('epic', 'add', 'SUPPORT', '--name', proposal.epic, '--color', '#E11D48', '--actor', 'ai');
-  run('epic', 'edit', 'SUPPORT', '--document', `${proposal.goal}\n`);
+  run('epic', 'edit', 'SUPPORT', `--document=${`${proposal.goal}\n`}`);
   const first = run('add', proposal.tasks[0], '--assignee', 'ai', '--actor', 'ai', '--epic', 'SUPPORT',
-    '--desc', markdown(text.body, text.checks, 0));
+    `--desc=${markdown(text.body, text.checks, 0)}`);
   run('add', proposal.tasks[1], '--assignee', 'human', '--actor', 'ai', '--epic', 'SUPPORT',
-    '--desc', markdown(text.body, text.checks, 0));
+    `--desc=${markdown(text.body, text.checks, 0)}`);
   run('message', 'ask', '--actor', 'ai', '--task', String((first.task ?? first).id), '--no-wait', '--questions-json', JSON.stringify({
     questions: [{ body: proposal.question, choices: proposal.choices.map((label, i) => ({ id: `channel-${i + 1}`, label })) }],
   }));
-  run('message', 'send', '--actor', 'human', '--text', proposal.request);
+  run('message', 'send', '--actor', 'human', `--text=${proposal.request}`);
 }
 
 export async function freePort(preferred = 0) {

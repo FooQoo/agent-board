@@ -22,8 +22,7 @@ test('real archive detail preserves content, restores the lane, and permanently 
 	agboardOk(mainProject, [
 		'add',
 		keepTitle,
-		'--desc',
-		keepDescription,
+		`--desc=${keepDescription}`,
 		'--assignee',
 		'ai',
 		'--actor',

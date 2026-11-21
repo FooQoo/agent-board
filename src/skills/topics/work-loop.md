@@ -7,6 +7,8 @@ agboard --project "<name>" history add <id> --reason "<work performed and its ou
 agboard --project "<name>" history add <id> --reason-file <path>
 ```
 
+A reason that starts with `-` (a Markdown list such as `- did X`) must be written `--reason="- did X"` with an equals sign, or passed with `--reason-file`; `--reason "- did X"` is rejected, and a forgotten value (`--reason --json`) is an error rather than a reason. The same holds for every text option (`--text`, `--desc`, `--summary`, `--title`, `--link`).
+
 The CLI assigns the timestamp and applies AI write permissions; no event ID, kind, actor, or timestamp argument is needed. Omitting the reason or supplying a blank reason generates state-aware wording. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends must add only `at` and `reason`, preserve the existing entries, body, acceptance conditions, and unknown metadata, and respect the same write boundaries. Never rewrite the whole file solely to append history.
 
 Lane and run-state operations already append their own history. Do not add a second entry for the same operation or use `edit --desc-file` to append it. After writing progress, inspect a fresh `show <id> --json` when confirmation is needed.

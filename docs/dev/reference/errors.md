@@ -61,7 +61,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 
 | Code | When | Exit | HTTP |
 | --- | --- | --- | --- |
-| `invalid_argument` | A command argument is missing or malformed; for example, `message answer` with both `--text` and `--text-file`. | 2 | 422 |
+| `invalid_argument` | A command argument is missing or malformed; for example, `message answer` with both `--text` and `--text-file`, or a text option such as `--reason` whose next word is a flag or starts with `-` (the message then suggests the `--reason="..."` form or a file). | 2 | 422 |
 | `invalid_value` | A value breaks a rule (length, format, and so on). | 2 | 422 |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | 1 | n/a |
 | `file_invalid` | A shared file is malformed or breaks the format. | 1 | 422 |

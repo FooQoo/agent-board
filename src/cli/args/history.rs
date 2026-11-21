@@ -24,12 +24,7 @@ pub enum HistoryCommand {
 pub struct HistoryAddArgs {
     pub id: i64,
     /// Work note; omitted or blank generates a current-state description
-    #[arg(
-        long,
-        value_name = "TEXT",
-        allow_hyphen_values = true,
-        group = "reason_source"
-    )]
+    #[arg(long, value_name = "TEXT", group = "reason_source")]
     pub reason: Option<String>,
     #[arg(long, value_name = "PATH", group = "reason_source")]
     pub reason_file: Option<PathBuf>,
@@ -38,12 +33,7 @@ pub struct HistoryAddArgs {
 #[derive(Args, Debug)]
 pub struct ChangeArgs {
     /// Optional explanation; use - to read UTF-8 from stdin
-    #[arg(
-        long,
-        value_name = "TEXT",
-        allow_hyphen_values = true,
-        group = "reason_source"
-    )]
+    #[arg(long, value_name = "TEXT", group = "reason_source")]
     pub reason: Option<String>,
     /// Read the explanation from a UTF-8 file
     #[arg(long, value_name = "PATH", group = "reason_source")]
