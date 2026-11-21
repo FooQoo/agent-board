@@ -1,6 +1,14 @@
 # Plan a request: the Backlog, questions, then a person sends it
 
-When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, decide what it asks for. If it asks for the plan only, put the plan in the Backlog and let the person see and correct it. If it asks you to carry out the work, create ordinary Todo tasks. If the scope is unclear, ask with `message ask` (`agboard skills questions`) before you create the plan.
+When a request, or a user's chat message, asks for more than one task, such as a feature, a change across several areas, or a list of things to do, decide what it asks for. If it asks for the plan only, put the plan in the Backlog and let the person see and correct it. If it asks you to carry out the work, create ordinary Todo tasks. If it is unclear which of the two the request asks for, ask with `message ask` (`agboard skills questions`) before you create anything: a plan made in the wrong lane either starts work nobody asked for or leaves requested work waiting. The question's answer is on the board, so the same answer holds after a resident restart and in another session.
+
+| The request says | Place the tasks |
+| --- | --- |
+| "Make a plan for X", "break X down", "I want to review the plan first" | Backlog (`add --backlog`) |
+| "Do X", "implement X", "fix X and open a PR" | Todo (`add` without `--backlog`) |
+| "Look into X", "handle X", "X please" with nothing about plan or work | Ask first with choices "Plan only (Backlog)" and "Plan and carry it out (Todo)", recommending the one the context favors |
+
+Only Todo tasks that are ready are delivered to you: AI-owned, idle, not waiting on a question, and not held back by an earlier wave. Questions on Backlog tasks are answered and the plan is revised, but the tasks stay in the Backlog until a person sends them.
 
 1. **Read.** Read the progress table and the relevant epics and tasks, so the plan reuses what exists and creates no duplicates.
 2. **Place the plan.** Create the epic (or use an existing one) and write its `EPIC.md`: goal, scope, completion conditions, and the tasks in work order with their dependencies. `epic add` has no lane. For a plan only, create each task in the Backlog with `--backlog`, in that order, each with its owner (`ai` or `human`), plan, and acceptance conditions; keep each to one piece of work that can be reviewed on its own. Document updates the work needs belong in a task's acceptance conditions.

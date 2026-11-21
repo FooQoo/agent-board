@@ -76,9 +76,10 @@ Descriptions and drafts:
     read-only for you: `edit`, `mv`, `state`, and `history add` fail with
     task_is_draft (exit code 1) and change nothing. Do not retry. Wait for the
     user to finalize it, and work on other tasks meanwhile.
-  - A plan you are asked to make, not to carry out, goes to the Backlog: create its
-    tasks with `add --backlog`. You can `edit` a Backlog task and add `history`;
-    `mv` and `state` fail with task_in_backlog. Ask what you cannot settle with
-    `message ask` and write the answers into the plan. Only a person sends it to
-    Todo (`send`, `epic send`); they fail for you with human_only. A request to
-    carry out the work needs no Backlog: create ordinary Todo tasks.";
+  - The Backlog (taskStatus backlog) holds a plan that must not be started yet.
+    Create it with `add --actor ai --backlog` only when a request asks for the
+    plan only; a request to carry out the work gets ordinary Todo tasks. When it is
+    unclear which one a request asks for, ask with `message ask` before you plan.
+    You can `edit` a Backlog task and add `history`; `mv`, `state`, `send`, and
+    `start` fail (task_in_backlog or human_only). Only a person sends it to Todo.
+    `add`, `show`, `ls`, `snapshot`, and `wait` still work.";

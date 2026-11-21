@@ -137,7 +137,7 @@ pub fn next_task(facts: &Facts) -> Vec<Finding> {
     };
     vec![
         Finding::new(format!(
-            "No AI task is running and task #{id} is next: pick it up (read its epic and `TASK.md`, then set it running).",
+            "No AI task is running and task #{id} is next: pick it up (read its epic and `TASK.md`, then `mv <id> doing --actor ai` and `state <id> running --actor ai`; a plan in the Backlog is never next).",
             id = next.id
         ))
         .task(next.id),
