@@ -188,7 +188,7 @@ export function workspace(project: string, home: string = mainHome()): Workspace
 export interface TaskJson {
   id: number;
   title: string;
-  taskStatus: 'todo' | 'doing' | 'done';
+  taskStatus: 'backlog' | 'todo' | 'doing' | 'done';
   taskStatusChangedAt: string;
   assignee: 'ai' | 'human';
   agentStatus: 'idle' | 'running' | 'pending';
@@ -291,7 +291,7 @@ interface FixtureTask {
   description: string;
   position: number;
   assignee: 'ai' | 'human';
-  taskStatus: 'todo' | 'doing' | 'done';
+  taskStatus: 'backlog' | 'todo' | 'doing' | 'done';
   taskStatusChangedAt: string;
   agentStatus: 'idle' | 'running' | 'pending';
   pendingReason: string | null;
