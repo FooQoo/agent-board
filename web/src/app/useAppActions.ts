@@ -33,7 +33,6 @@ export function useAppActions(model: AppControllerModel) {
   const openMessages = model.messages.panel.open;
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
   const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
-  // Sending Backlog cards to Todo: the confirmation of open questions and the result notice.
   const sendProjectId = isProjectId(activeId) ? activeId : null;
   const backlogSend = useBacklogSend(sendProjectId, tasks, () => {
     if (sendProjectId) refreshProject(sendProjectId);

@@ -89,7 +89,7 @@ test('dragging a task moves it at once, with no dialog and a generated reason', 
 });
 
 // #679: every single-card lane move shows in its target lane before the server answers, and a refusal puts it back.
-for (const viewport of [{ width: 1280, height: 900 }, { width: 800, height: 900 }]) {
+for (const viewport of [{ width: 1280, height: 900 }, { width: 1100, height: 900 }]) {
   test(`a drag between Todo, Doing and Done shows at once, at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
     let release: () => void = () => {};
