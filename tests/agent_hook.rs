@@ -643,13 +643,18 @@ fn hook_takes_no_plugin_version_but_accepts_the_one_of_an_older_plugin() {
         let run = hook(home.path(), &bound, extra, &input);
         assert_eq!(run.status, 0, "{}", run.stderr);
         let parsed: Value = serde_json::from_str(&run.stdout).unwrap();
-        parsed["hookSpecificOutput"]["additionalContext"]
+        let text = parsed["hookSpecificOutput"]["additionalContext"]
             .as_str()
-            .unwrap()
-            .to_string()
+            .unwrap();
+        // `fetchedAt` has second precision, so runs that straddle a second differ.
+        let body = text
+            .strip_prefix("AGBOARD_PROGRESS\n")
+            .expect("progress prefix");
+        let mut snapshot: Value = serde_json::from_str(body).unwrap();
+        snapshot.as_object_mut().unwrap().remove("fetchedAt");
+        format!("AGBOARD_PROGRESS\n{snapshot}")
     };
     let plain = context(&[]);
-    assert!(plain.starts_with("AGBOARD_PROGRESS\n"));
     // Hook commands of an installed plugin that predates this release.
     assert_eq!(context(&["--plugin-version", "0.0.1"]), plain);
     assert_eq!(
