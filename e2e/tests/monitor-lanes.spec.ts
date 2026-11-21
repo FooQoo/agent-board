@@ -115,6 +115,11 @@ test.beforeAll(async () => {
     { title: 'Instant one', lane: 'backlog' },
     { title: 'Instant two', lane: 'backlog' },
   ]);
+  seed('Optimistic', [
+    { title: 'Opt todo', lane: 'todo' },
+    { title: 'Opt doing', lane: 'doing' },
+    { title: 'Opt refused', lane: 'todo' },
+  ]);
   seed('Pick', [
     { title: 'Pick one', lane: 'backlog' },
     { title: 'Pick two', lane: 'backlog' },
@@ -474,6 +479,51 @@ test('a Backlog card moved by its tile is in Todo before the server answers; a r
   await expect(page.locator('.transient-notice')).toBeVisible();
   await expect(tab(page, 'Backlog 1')).toBeVisible();
   expect(show('Instant', 'Instant two').taskStatus).toBe('backlog');
+});
+
+// #679: every single-card lane move is in its target lane before the server answers, and a refusal puts the card back.
+test('a Todo to Doing and a Doing to Done move show at once on the phone; a refusal puts the card back with its notice', async ({ page }) => {
+  await openPhone(page, 'Optimistic');
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const seen: string[] = [];
+  await page.route(/\/tasks\/\d+\/move$/, async (route) => {
+    seen.push(route.request().url());
+    await gate;
+    await route.continue();
+  });
+  // Todo -> Doing: the tabs count the card in Doing while the request is held.
+  await expect(tab(page, 'Todo 2')).toBeVisible();
+  await holdAndSwipe(page, swipeCard(page, 'Opt todo'), -1);
+  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
+  await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(tab(page, 'Doing 2')).toBeVisible();
+  expect(show('Optimistic', 'Opt todo').taskStatus).toBe('todo');
+  // Doing -> Done, while the first request is still open.
+  await tab(page, 'Doing 2').tap();
+  await holdAndSwipe(page, swipeCard(page, 'Opt doing'), -1);
+  await page.getByRole('button', { name: /^Move #\d+ to Done$/ }).tap();
+  await expect(tab(page, 'Doing 1')).toBeVisible();
+  await expect(tab(page, 'Done 1')).toBeVisible();
+  expect(show('Optimistic', 'Opt doing').taskStatus).toBe('doing');
+  release();
+  await expect.poll(() => [show('Optimistic', 'Opt todo').taskStatus, show('Optimistic', 'Opt doing').taskStatus]).toEqual(['doing', 'done']);
+  await expect(tab(page, 'Doing 1')).toBeVisible();
+  await expect(tab(page, 'Done 1')).toBeVisible();
+  await expect(page.locator('.transient-notice')).toHaveCount(0);
+
+  // A refused move: the card is back in Todo, and the notice says it stayed.
+  await page.unroute(/\/tasks\/\d+\/move$/);
+  await page.route(/\/tasks\/\d+\/move$/, (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { reason: 'The move was refused.' } }) }),
+  );
+  await tab(page, /^Todo/).tap();
+  await holdAndSwipe(page, swipeCard(page, 'Opt refused'), -1);
+  await page.getByRole('button', { name: /^Move #\d+ to Doing$/ }).tap();
+  await expect(page.locator('.transient-notice')).toHaveText('Could not move the task. It stays where it was.');
+  await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(tab(page, 'Doing 1')).toBeVisible();
+  expect(show('Optimistic', 'Opt refused').taskStatus).toBe('todo');
 });
 
 // #675: the selection mode is a short bottom drawer, not a modal; pulling it down, or closing it, ends the mode.

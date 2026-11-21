@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ColumnName, ProjectId } from '../../../shared/api/contracts';
 import { moveFailureNotice } from '../../../features/tasks/api/lifecycle';
+import { useLaneMove } from '../../../features/tasks/useLaneMove';
 import type { MonitorTask, MonitorWrites } from '../contracts';
 import type { useLaneOverlay } from './useLaneOverlay';
 
@@ -28,17 +29,21 @@ export function useLaneWrites({
   const { t } = useTranslation();
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
-  // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
+  // A move by a person is made at once, with no dialog: the card shows in its new lane before the
+  // server answers, and a refusal takes it back. A task that moved meanwhile is not moved.
+  const move = useLaneMove({
+    write: async (id, target, from) => {
+      if (writes) await writes.move(projectId as ProjectId, id, target, from);
+    },
+    apply: overlay.move,
+    revert: overlay.unmove,
+    onDone: () => onWritten?.(),
+    notify: setNotice,
+    refusal: (cause) => moveFailureNotice(cause, t),
+  });
   const moveNow = async (item: MonitorTask, target: ColumnName) => {
     if (!writes) return;
-    try {
-      await writes.move(projectId as ProjectId, item.task.id, target, item.task.taskStatus);
-      overlay.move(item.task.id, target);
-    } catch (cause) {
-      setNotice(moveFailureNotice(cause, t));
-    } finally {
-      onWritten?.();
-    }
+    await move(item.task.id, item.task.taskStatus, target);
   };
   const archiveOne = async (item: MonitorTask) => {
     try {

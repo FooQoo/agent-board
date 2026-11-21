@@ -7,7 +7,8 @@ import { sendMessageRequest } from '../features/messages/ask/sendRequest';
 import { epicApi } from '../features/epics/editor/epicApi';
 import { groupTasks } from '../features/tasks/model/board';
 import type { ActionDialogData } from '../features/tasks/model/actionData';
-import type { ColumnName } from '../shared/api/contracts';
+import type { ColumnName, ProjectId } from '../shared/api/contracts';
+import { useLaneMove } from '../features/tasks/useLaneMove';
 import { useBacklogMove } from '../features/backlog/useBacklogMove';
 import { useBacklogSend } from '../features/backlog/useBacklogSend';
 import { isProjectId } from './model/projectSession';
@@ -38,14 +39,24 @@ export function useAppActions(model: AppControllerModel) {
     if (sendProjectId) refreshProject(sendProjectId);
   });
 
-  // One Backlog card moved by a plain drag or the details' button: a normal move, apart from the
-  // batch send of picked cards above.
+  // One Backlog card moved by a plain drag or the details' button, apart from the batch send above.
   const backlogMove = useBacklogMove(sendProjectId, tasks, {
     apply: model.moveCard,
     revert: model.unmoveCard,
     onDone: () => {
       if (sendProjectId) refreshProject(sendProjectId);
     },
+    refusal: (cause) => moveFailureNotice(cause, t),
+  });
+
+  const moveLane = useLaneMove({
+    write: (id, to, from) => moveTask(sendProjectId as ProjectId, id, to, from),
+    apply: model.moveCard,
+    revert: model.unmoveCard,
+    onDone: () => {
+      if (sendProjectId) refreshProject(sendProjectId);
+    },
+    notify: setMoveNotice,
     refusal: (cause) => moveFailureNotice(cause, t),
   });
 
@@ -70,15 +81,9 @@ export function useAppActions(model: AppControllerModel) {
         if (loaded) model.openDialog({ kind: 'epic', epic: loaded });
       });
     },
-    // A move by a person is made at once, with no dialog. A task that moved meanwhile is not moved.
     onMove: (task, column) => {
       if (!isProjectId(activeId) || session.operation !== null) return;
-      const projectId = activeId;
-      void moveTask(projectId, task.id, column as ColumnName, task.taskStatus)
-        .catch((cause: unknown) => {
-          setMoveNotice(moveFailureNotice(cause, t));
-        })
-        .finally(() => refreshProject(projectId));
+      void moveLane(task.id, task.taskStatus, column as ColumnName);
     },
     onMoveBacklog: (id, to) => {
       if (session.operation === null) backlogMove.request(id, to);

@@ -62,9 +62,9 @@ On a touch screen the buttons, tabs, and theme tiles are at least 44 px high, an
 
 In a window narrower than 1024 px, **Docs**, **Epics**, and **Archive** in the header show only their icons, all at the same width, so the project name keeps its room.
 
-Drag a task to another column to move it. The move is made at once, with no confirmation, and the history records a reason generated from the move.
+Drag a task to another column to move it. The move is made at once, with no confirmation: the card is in its new column before the server answers, and the history records a reason generated from the move.
 
-If an agent or another browser moved the task after the board last showed it, the move is not made. The card goes back to the column it is in now, and a short notice names that column. Drag it again to move it from there.
+If an agent or another browser moved the task after the board last showed it, the move is not made. The card goes back to the column it was in (the one it is in now), and a short notice names that column. If the move fails for any other reason, the card also goes back and a notice says it stays where it was. Drag it again to move it from there.
 
 The columns mean:
 

@@ -22,8 +22,13 @@ test.beforeEach(async ({ page }) => {
 const lane = (page: Page, name: 'Todo' | 'Doing' | 'Done') => page.getByRole('region', { name });
 const task = (page: Page, id: number) => page.getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
 
-async function dragToLane(page: Page, id: number, targetLane: 'Todo' | 'Doing' | 'Done'): Promise<void> {
-  const sourceTask = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
+async function dragToLane(
+  page: Page,
+  id: number,
+  targetLane: 'Todo' | 'Doing' | 'Done',
+  sourceLane: 'Todo' | 'Doing' | 'Done' = 'Todo',
+): Promise<void> {
+  const sourceTask = lane(page, sourceLane).getByRole('button', { name: new RegExp(`^#${id}(?!\\d)`) });
   await expect(sourceTask).toBeVisible();
   const source = await sourceTask.boundingBox();
   const target = await lane(page, targetLane).boundingBox();
@@ -82,6 +87,57 @@ test('dragging a task moves it at once, with no dialog and a generated reason', 
   await expect(detail.getByRole('listitem').first()).toContainText('Moved task from Todo to Doing');
   await notReloaded(page);
 });
+
+// #679: every single-card lane move shows in its target lane before the server answers, and a refusal puts it back.
+for (const viewport of [{ width: 1280, height: 900 }, { width: 800, height: 900 }]) {
+  test(`a drag between Todo, Doing and Done shows at once, at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api/projects/*/tasks/16/move', async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await dragToLane(page, 16, 'Doing');
+    // The request is held, and the card is already in Doing.
+    await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
+    await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toHaveCount(0);
+    expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.taskStatus).toBe('todo');
+    release();
+    await expect.poll(() => JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.taskStatus).toBe('doing');
+    await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toBeVisible();
+    await expect(page.locator('.transient-notice')).toHaveCount(0);
+
+    // Doing -> Done, held again.
+    let releaseDone: () => void = () => {};
+    const doneGate = new Promise<void>((resolve) => (releaseDone = resolve));
+    await page.unroute('**/api/projects/*/tasks/16/move');
+    await page.route('**/api/projects/*/tasks/16/move', async (route) => {
+      await doneGate;
+      await route.continue();
+    });
+    await dragToLane(page, 16, 'Done', 'Doing');
+    await expect(lane(page, 'Done').getByRole('button', { name: /^#16 / })).toBeVisible();
+    await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toHaveCount(0);
+    expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.taskStatus).toBe('doing');
+    releaseDone();
+    await expect.poll(() => JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.taskStatus).toBe('done');
+    await expect(lane(page, 'Done').getByRole('button', { name: /^#16 / })).toBeVisible();
+    await notReloaded(page);
+  });
+
+  test(`a refused drag puts the card back and says so, at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.route('**/api/projects/*/tasks/16/move', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { reason: 'The move was refused.' } }) }),
+    );
+    await dragToLane(page, 16, 'Doing');
+    await expect(page.locator('.transient-notice')).toHaveText('Could not move the task. It stays where it was.');
+    await expect(lane(page, 'Todo').getByRole('button', { name: /^#16 / })).toBeVisible();
+    await expect(lane(page, 'Doing').getByRole('button', { name: /^#16 / })).toHaveCount(0);
+    expect(JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.taskStatus).toBe('todo');
+  });
+}
 
 test('a move after an external lane change is refused, the card returns to its lane, and a notice says so', async ({ page }) => {
   const before = JSON.parse(agboardOk(mainProject, ['show', '16', '--json']).stdout).task.history.length;
