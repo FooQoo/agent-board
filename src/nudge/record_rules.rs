@@ -21,7 +21,7 @@ pub(super) fn history(facts: &Facts) -> Vec<Finding> {
         return Vec::new();
     }
     vec![Finding::new(
-        "Record meaningful progress (commits, verification, decisions) with `agboard history add`: this turn made a commit, ran tests, pushed, or opened a pull request and recorded nothing.",
+        "Record a decision that matters later once: this turn made a commit, ran tests, pushed, or opened a pull request and recorded nothing. A decision that changes state belongs in the `--reason` of `mv` or `state`; one that does not, such as keeping a card in Todo, goes in `agboard history add` with the grounds, the decision, and when known the condition for reconsidering. Skip it when there is no such decision.",
     )]
 }
 

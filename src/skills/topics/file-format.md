@@ -1,8 +1,8 @@
 # TASK.md and EPIC.md format
 
-**All task progress and operation history lives only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
+**All task operation history and recorded decisions live only in the top-level `history` YAML frontmatter of `TASK.md`.** Each entry has exactly two keys: `at` (timestamp) and `reason` (content). Do not store chronological history in the Markdown body, an execution log section, or `task.json`.
 
-The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record concise chronological progress in history. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use `waves` frontmatter for task order.
+The completion conditions of a task (`TASK.md`) are in `acceptance` frontmatter and the board reads them. The body holds the task plan, acceptance verification results, and artifact references; no heading is required. Record decisions and their grounds in history, as the history rules describe. `EPIC.md` has no history. Its reference conditions remain ordinary Markdown in its body, without acceptance frontmatter or a separate conditions editor. It may use `waves` frontmatter for task order.
 
 Templates for a new task and a new epic: `agboard skills task-template` and `agboard skills epic-template`.
 
@@ -44,14 +44,14 @@ history:
 
 Agent Board appends history automatically for task operations, including UI or CLI lane and state changes, questions and answers, and archive or restore actions. Missing or blank reasons generate wording from the current state. The browser's reason field is optional.
 
-Agents automatically record meaningful work progress with:
+A lane or state change takes its decision and grounds in the `--reason` of `mv` or `state`; that entry is the record. For a decision that changes no state but matters later (for example keeping a card in Todo), an agent adds one entry with the grounds, the decision, and when known the condition for reconsidering:
 
 ```sh
-agboard --project "<name>" history add <id> --reason "<actual work and verification outcome>"
+agboard --project "<name>" history add <id> --reason "<grounds, decision, and when to reconsider>"
 agboard --project "<name>" history add <id> --reason-file <path>
 ```
 
-Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
+Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change or by `result add`; reading the list needs no entry. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
 
 Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation, and it also keeps the stored `questions` refs (`history` and `questions` in its input are ignored; use `message link`/`message unlink` to change refs). Read history in the board or with `show`/`snapshot`.
 
@@ -63,7 +63,7 @@ If frontmatter cannot be read, the board reports the file, item, and reason as a
 
 ## Rules
 
-- Set `done: true` only after verification succeeds. Keep the result in the task body and record the verification in history before saving the final completed condition. Attach images when a visual result is useful.
+- Set `done: true` only after verification succeeds. Keep the verification result in the task body, and save it before the final completed condition. Attach images when a visual result is useful.
 - Add a condition with the next free number. Do not renumber items.
 - When every condition is `done: true`, the board automatically moves an eligible AI-owned, non-draft Todo/Doing task to Done. A task that waits for an answer is skipped until the answer arrives. Do not manually move an AI task to Done in the normal work loop; people can still move tasks themselves.
-- Keep task plans, verified results, and references in the body; keep all chronological progress and operation history only in the `history` frontmatter.
+- Keep task plans, verified results, and references in the body; keep the history of operations and decisions only in the `history` frontmatter.

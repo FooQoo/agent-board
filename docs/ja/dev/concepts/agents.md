@@ -14,9 +14,9 @@
 | `wait` | `src/agent/wait.rs`、`src/agent/task_wait.rs` | プロジェクトが変わるか、次のタスクが用意できるまで待つ。 |
 | `message ask`、`message wait` | `src/cli/commands/message/`、`src/agent/message_wait.rs` | ユーザーに質問し、開いている質問がなくなるまで待つ。 |
 
-スキルの名前は`agent-board`、実行ファイルは`agboard`です。典型的な流れは次のとおりです。Hookが進行表を見せる → エージェントは必要な`EPIC.md`と`TASK.md`だけを読む → タイトルが分かりにくければ原依頼を保持して`agboard edit --title`で整理する → タスクをDoingとRunningにする → `history add`で進捗を記録する → ユーザーの判断が必要になったら`message ask`で質問して回答を待つ → 条件を満たしていき、自動Doneがタスクを完了させる。タイトル整理は、通常の作業の流れとリッスンに共通するスキルの指示であり、サーバーによる自動要約機能ではありません。
+スキルの名前は`agent-board`、実行ファイルは`agboard`です。典型的な流れは次のとおりです。Hookが進行表を見せる → エージェントは必要な`EPIC.md`と`TASK.md`だけを読む → タイトルが分かりにくければ原依頼を保持して`agboard edit --title`で整理する → タスクをDoingとRunningにする → 後で効く判断があるときだけ`history add`で記録する → ユーザーの判断が必要になったら`message ask`で質問して回答を待つ → 条件を満たしていき、自動Doneがタスクを完了させる。タイトル整理は、通常の作業の流れとリッスンに共通するスキルの指示であり、サーバーによる自動要約機能ではありません。
 
-エージェントは、開始・意味のある進捗・判断・検証・中断・再開のときに、項目ごとの承認なしで進捗を追加し、操作時に自動で記録された履歴は重複して追加しません。本文には計画と簡潔な検証結果を記録します。見た目の確認が有用な場合は画像を添付できます。
+履歴には判断と根拠を残します。状態を変える判断は`mv`や`state`の`--reason`に書き、状態を変えないが後で効く判断は`history add`で一度だけ追加します。一覧を見ただけの場合と`result add`には追記せず、項目ごとの承認は求めません。本文には計画と簡潔な検証結果を記録します。見た目の確認が有用な場合は画像を添付できます。
 
 スキルでは、`BUG`と`ENHANCEMENT`を継続的な分類用エピックとし、本文を固定する例外を設けます。正本の本文は、`agboard skills`のトピック`bug-epic-template`と`enhancement-epic-template`です。ボードの言語で一度だけ初期設定し、その後の通常の作業とリッスンでは、計画と結果を各タスクだけに記録します。空でない本文の置き換えにはユーザーの明示的な依頼を必要とし、有用な旧本文は関連するタスクの本文に残します。優先順のfrontmatterは引き続き変更できます。サーバー側の編集禁止機能ではありません。
 
@@ -67,13 +67,13 @@ Hookは、入力の`cwd`（なければプロセスのcwd）に最も近い登�
   - **`request`**（State、Both、Definite）。`requests`の各項目について、`message show`で読み、`message accept`で受け付けて、計画するよう求めます。
   - **`conditions`**（State、Both、Check）。Doingの AI タスクに`--final`の成果が記録されているのに、完了済みの完了条件が総数に満たない場合に、確認結果を記録して`TASK.md`の完了条件を完了にするよう求めます。
   - **`epic-close`**（State、Both、Definite）。`epicsToClose`の各項目（`BUG`と`ENHANCEMENT`以外で、タスクが1つ以上あり、すべて Done で、`EPIC.md`の本文に未チェックの`- [ ]`が残るエピック）について、参照条件を確認して結果を記録するよう求めます。
-  - **`stale-running`**（State、Both、Check）。AI タスクが Running で、最新の履歴（履歴がなければ最後の実行状態の変更）が30分より前の場合に（`src/nudge/state_rules.rs`の`STALE_RUNNING_MINUTES`）、作業が止まっているなら`state`で idle に戻し、続いているなら`history add`で進捗を記録するよう求めます。
+  - **`stale-running`**（State、Both、Check）。AI タスクが Running で、最新の履歴（履歴がなければ最後の実行状態の変更）が30分より前の場合に（`src/nudge/state_rules.rs`の`STALE_RUNNING_MINUTES`）、作業が止まっているなら`state`で idle に戻し、続いているなら、後で効く判断があるときだけ`history add`で記録し、なければ記録しないよう求めます。
   - **`next-task`**（State、Both、Check）。`nextTasks`が空でなく、Running の AI タスクがない場合に、先頭の次のタスクに着手するよう求めます。
   - **`draft-moved`**（State、Both、Definite）。AI の下書きが Doing にある（人が移した）場合に、`start <id> --actor ai`で開始するよう求めます。
   - **`drafts`**（State、Both、Check）。未回答の質問がない AI の下書き（質問がある下書きは待機中で一覧に出ません）ごとに、ID、題名、レーンを示して1件ずつ求めます。下書きは計画が固まっていないことを意味します。計画が固まっているなら開始し（順序はエピックの priority に、依存関係は`EPIC.md`に書き、待たせるために下書きのまま残さない）、固まっていないなら固めるための質問をします。
   - **`result-pr`**（Turn、TurnEnd、Definite）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中に`agboard ... result add`がなく、`gh pr create`があったとき。プルリクエストを作ったのに成果がありません。
   - **`result-artifact`**（Turn、TurnEnd、Check）。同じ条件で`gh pr create`がなく、`git push`か画像の書き出し（拡張子が`.png`、`.jpg`、`.jpeg`、`.gif`、`.webp`の画像、またはスクリーンショット）があったとき。見せられるものなら`result add`で記録するよう求めます。
-  - **`history`**（Turn、TurnEnd、Check）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中にコミット、テスト実行（`cargo test`、`pnpm ... test`、`npm test`、`vitest`、`playwright test`など）、プッシュ、プルリクエストの作成のいずれかがあり、`agboard ... history add`、`state`、`mv`、`result add`のどれもなかったとき。意味のある進捗を`history add`で記録するよう求めます。
+  - **`history`**（Turn、TurnEnd、Check）。プロジェクトにDoingかつRunningのAIタスクがあり、ターン中にコミット、テスト実行（`cargo test`、`pnpm ... test`、`npm test`、`vitest`、`playwright test`など）、プッシュ、プルリクエストの作成のいずれかがあり、`agboard ... history add`、`state`、`mv`、`result add`のどれもなかったとき。後で効く判断があれば、状態を変えるなら`mv`や`state`の`--reason`に、変えないなら`history add`で一度だけ記録するよう促します。該当する判断がなければ何も記録しません。
   - **`conditions-after-merge`**（Turn、TurnEnd、Check）。ターン中に`gh pr merge`があり、Doingの AI タスクに未達の完了条件があるとき。該当するタスクごとに、マージで確認できたなら検証内容をタスク本文に記録して完了条件を済みにするよう求めます（プルリクエストとタスクは結び付いていないため、どのタスクかはエージェントが判断します）。
   - **`start-task`**（Turn、TurnEnd、Definite）。ターン中にファイルを編集（パス付きのEditかWrite、`apply_patch`、`git commit`）し、DoingかつRunningのAIタスクがないとき。`/tmp`とAgent Boardのデータフォルダだけの編集は無視します。タスクの着手（`agboard mv <id> doing`、`agboard state <id> running`）か新規作成を求めます。
 
@@ -193,7 +193,7 @@ pusherが見るとき。ボードが変わったとき（サーバーが変更�
 - エピックも変えるCLIの編集は、すべての変更を適用した後に評価します。AI向けのCLIとFileStoreの入口は、Doneの制限を適用します。
 - 人の判断待ちのタスクは飛ばし、回答の後に評価し直します。Doneのタスクが自動で再開することはありません。
 - 自動Doneには動いているサーバーが必要です。Hookがサーバーを起動し、監視が捉えたファイルの変更も「使われている」に数えるので、エージェントが編集を続ける間に自動のサーバーが止まることはありません。
-- エージェントは、検証を履歴に記録し、簡潔な結果を本文に書いてから、最後の条件を`done: true`にします。
+- エージェントは、簡潔な検証結果を本文に書いてから、最後の条件を`done: true`にします。
 - 新しい版の`serve`を起動すると、条件を満たした既存のタスクが完了します。通常の利用に導入する前に、対象のタスクを一覧にしてバックアップを取ってください。
 
 この制限は、ルールに従うエージェントの誤操作を防ぐためのものです。ファイルの直接編集やactorの偽装を防ぐ認証機能ではありません。

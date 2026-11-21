@@ -116,7 +116,7 @@ pub fn stale_running(facts: &Facts) -> Vec<Finding> {
             let idle = facts.now - t.last_activity_at?;
             (idle > limit).then(|| {
                 Finding::new(format!(
-                    "Task #{id} has been running for {minutes} minutes with no history entry: if the work stopped, set it back with `agboard state {id} idle --actor ai`; otherwise record progress with `agboard history add {id}`.",
+                    "Task #{id} has been running for {minutes} minutes with no history entry: if the work stopped, set it back with `agboard state {id} idle --actor ai`; otherwise record only a decision that matters later with `agboard history add {id}`, and skip it when there is none.",
                     id = t.id,
                     minutes = idle.num_minutes()
                 ))

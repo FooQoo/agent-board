@@ -13,7 +13,7 @@ Use the browser to review and edit work, and `agboard` for agent updates and pro
 | Add a task | `add` |
 | Read a task or the board | `show`, `ls`, `snapshot` |
 | Move a task or report what an agent is doing | `mv`, `state` |
-| Record progress | `history add` |
+| Record a decision that matters later | `history add` |
 | Change a task's text | `edit` |
 | Attach images | `attachment` |
 | Deliver a result to the requester | `result add`, `result ls` |
@@ -51,14 +51,14 @@ agboard --project "My project" state 1 running --actor ai --reason "Writing and 
 
 Moves and state changes accept an optional `--reason` of up to 10,000 Unicode characters. A missing or blank reason is generated from the current state. These operations add history by themselves; do not add a second entry for the same change. A question can be up to 5,000 characters, and an answer note up to 2,000 characters.
 
-Record meaningful progress that does not change the column or state:
+Record a decision that does not change the column or state but matters later, such as keeping a card in Todo:
 
 ```sh
-agboard --project "My project" history add 1 --reason "Checked the installation links and recorded the result in the task body"
+agboard --project "My project" history add 1 --reason "The public wording depends on the result of checking on a real device, so the card stays in Todo until that check is done."
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
-The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write concise reasons based on actual work and verification, at meaningful progress, decisions, verification, interruption, or resumption. A missing or blank reason produces a default that matches the state. An AI cannot append history to a person's drafts, archived tasks, or Done tasks.
+The command assigns the timestamp and applies AI write permissions; it needs no actor, event ID, kind, or time. Write the grounds, the decision, and when known the condition for reconsidering. Reading the list needs no entry, and `result add` records itself. A missing or blank reason produces a default that matches the state. An AI cannot append history to a person's drafts, archived tasks, or Done tasks.
 
 An option that takes text takes the next word as its value only if that word does not start with `-`. A missing value, as in `--reason --json`, is an `invalid_argument` error instead of recording the next flag as the text. To pass text that starts with `-`, such as a Markdown list item, join it to the option with `=` (`--reason="- Checked the links"`) or give it in a file (`--reason-file`, `--text-file`, `--desc-file`, `--document-file`) or on standard input (`--desc -`, `--questions-json -`). A lone `-` is still read as standard input where the option allows it. A whole `TASK.md` or `EPIC.md` starts with `---`, so give it with `--desc-file` or `--document-file`, or on standard input. The options affected are `--reason`, `--text`, `--desc`, `--document`, `--questions-json`, `--title`, `--summary`, and `--link`.
 
