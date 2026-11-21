@@ -7,6 +7,7 @@ import {
   taskDetailEvents,
 } from '../boardWire.ts';
 import type { DetailEvent } from '../../../shared/data/api/contracts.ts';
+import { pageArchive } from './archivePage.ts';
 import type { Routes } from './types.ts';
 import { boardView, error, json, ndjsonResponse, projectNotFound, wireBoard } from './wire.ts';
 
@@ -26,15 +27,22 @@ export const readRoutes: Routes = (context, request) => {
   const { page } = request;
 
   if (rest === 'archive') {
-    const archive = wireBoard(
-      found,
-      found.tasks.filter((task) => task.archivedAt),
+    const limit = Number(request.url.searchParams.get('limit')) || 50;
+    const archived = found.tasks.filter((task) => task.archivedAt);
+    const { tasks, nextCursor, total } = pageArchive(
+      archived,
+      limit,
+      request.url.searchParams.get('cursor'),
     );
+    const archive = wireBoard(found, tasks);
+    const used = new Set(tasks.map((task) => task.epic?.id));
     return json(200, {
       project: archive.project,
       version: archive.version,
-      cursor: archive.cursor,
       tasks: archive.tasks,
+      epics: archive.epics.filter((epic) => used.has(epic.id)),
+      total,
+      nextCursor,
     });
   }
 

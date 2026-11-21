@@ -382,7 +382,7 @@ describe('which project is shown', () => {
       [PROJECT_C.id]: [],
     };
     backend.gate = (url) =>
-      url === `/api/projects/${PROJECT_A.id}/archive` ? gate.promise : undefined;
+      url.startsWith(`/api/projects/${PROJECT_A.id}/archive`) ? gate.promise : undefined;
     const app = renderApp(urlOf(PROJECT_A.id));
     await screen.findByRole('region', { name: 'Todo' });
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
