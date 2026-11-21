@@ -11,9 +11,9 @@ use super::epics::whole_or_parts;
 use super::{changed_task_response, parse_task_id};
 use crate::domain::{Actor, Draft};
 use crate::error::AgboardError;
-use crate::file_store::TaskTextParts;
 use crate::file_store::frontmatter::AcceptanceItem;
 use crate::file_store::validate::EpicId;
+use crate::file_store::{DraftSave, TaskTextParts};
 use crate::server::AppState;
 use crate::server::request::StrictJson;
 use crate::server::response::{agboard_error_response, error_response};
@@ -33,7 +33,7 @@ pub(super) struct EditTaskInput {
     /// `"human"` keeps the draft after the save; `"ai"` of older clients, like
     /// `finalize`, releases the edit lock.
     #[serde(default, deserialize_with = "super::draft_wire::named_draft")]
-    draft: Option<Option<Draft>>,
+    draft: super::draft_wire::NamedDraft,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -67,14 +67,17 @@ pub(super) async fn edit_task(
         && input.body.is_none()
         && input.acceptance.is_none()
         && !input.finalize
-        && input.draft.is_none()
+        && input.draft.target.is_none()
     {
         return agboard_error_response(&AgboardError::InvalidArgument {
             message: "Nothing to change.".to_string(),
             command: None,
         });
     }
-    let finalize = finalize_target(input.finalize, input.draft);
+    let finalize = DraftSave {
+        target: finalize_target(input.finalize, input.draft.target),
+        legacy_ai: input.draft.legacy_ai,
+    };
     let result = with_request_files(&state, &headers, move |store| {
         if input.body.is_some() || input.acceptance.is_some() {
             if input.description.is_some() {

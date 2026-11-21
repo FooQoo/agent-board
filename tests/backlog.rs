@@ -10,9 +10,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use agent_board::domain::{Actor, Assignee, ChangeContext, Column, Draft, NewTask, ProjectId};
-use agent_board::file_store::FileStore;
 use agent_board::file_store::model::NewEpic;
 use agent_board::file_store::validate::EpicId;
+use agent_board::file_store::{DraftSave, FileStore};
 use chrono::{TimeZone, Utc};
 use serde_json::{Value, json};
 
@@ -717,4 +717,72 @@ fn a_newer_file_format_is_left_out_like_any_other_unsupported_version() {
     let board = f.store.board(&f.project).unwrap();
     assert!(board.tasks.is_empty());
     assert!(board.problems.iter().any(|p| p.field == "formatVersion"));
+}
+
+#[test]
+fn a_backup_folder_in_epics_does_not_stop_the_migration() {
+    let f = fx();
+    let l = legacy_project(&f);
+    // A copy of an old AI-draft epic that is not a valid epic id stays as it is.
+    let backup = f.dir.join("epics/OLD.bak");
+    fs::create_dir_all(&backup).unwrap();
+    fs::copy(f.dir.join("epics/OLD/epic.json"), backup.join("epic.json")).unwrap();
+    let kept = fs::read(backup.join("epic.json")).unwrap();
+
+    f.store
+        .add_history(&f.project, l.ordinary_todo, Some("note"), now())
+        .unwrap();
+
+    assert!(marker(&f).exists(), "the migration ran");
+    assert_eq!(f.lane(l.todo), Column::Backlog);
+    assert_eq!(fs::read(backup.join("epic.json")).unwrap(), kept);
+}
+
+#[test]
+fn an_old_client_handing_a_plan_back_to_the_ai_never_leaves_it_ready_in_todo() {
+    let f = fx();
+    let plan = f.plan("Plan");
+    let todo = f.human_task("Card");
+    for id in [plan, todo] {
+        f.store
+            .set_draft(&f.project, id, Some(Draft::Human), false, now())
+            .unwrap();
+    }
+    // A plan from before the Backlog that a person was editing, still in Todo.
+    let refused = f
+        .store
+        .edit_draft_task_to(
+            &f.project,
+            todo,
+            Some("New"),
+            None,
+            DraftSave {
+                target: Some(None),
+                legacy_ai: true,
+            },
+            now(),
+        )
+        .unwrap_err();
+    assert_eq!(refused.code(), "invalid_value");
+    let task = f.store.task(&f.project, todo).unwrap();
+    assert_eq!(task.task_status, Column::Todo);
+    assert_eq!(task.draft, Some(Draft::Human), "nothing was saved");
+
+    // In the Backlog the same save releases the edit lock and does not move the card.
+    let saved = f
+        .store
+        .edit_draft_task_to(
+            &f.project,
+            plan,
+            Some("New"),
+            None,
+            DraftSave {
+                target: Some(None),
+                legacy_ai: true,
+            },
+            now(),
+        )
+        .unwrap();
+    assert_eq!(saved.value.task_status, Column::Backlog);
+    assert_eq!(saved.value.draft, None);
 }

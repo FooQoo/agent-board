@@ -2,12 +2,12 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Actor, Changed, Draft, ProjectId, validate_title};
+use crate::domain::{Actor, Changed, Column, Draft, ProjectId, validate_title};
 use crate::error::AgboardError;
 use crate::file_store::history_language::HistoryLanguage;
-use crate::file_store::model::TaskView;
+use crate::file_store::model::{TaskFile, TaskView};
 use crate::file_store::reader;
-use crate::file_store::{FileStore, TaskTextParts};
+use crate::file_store::{DraftSave, FileStore, TaskTextParts};
 
 use super::super::{
     ensure_ai_task_not_done, lock_project, save_task_with_markdown, stamp, write_parts, write_text,
@@ -115,7 +115,7 @@ impl FileStore {
             id,
             title,
             description,
-            finalize.then_some(None),
+            DraftSave::from_finalize(finalize),
             now,
         )
     }
@@ -128,7 +128,7 @@ impl FileStore {
         id: i64,
         title: Option<&str>,
         description: Option<&str>,
-        finalize: Option<Option<Draft>>,
+        finalize: DraftSave,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
@@ -142,8 +142,9 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
+        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
-        let target = resolve_finalize(finalize, owner);
+        let target = resolve_finalize(finalize.target, owner);
         let (text_changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !text_changed && target == current {
@@ -188,7 +189,14 @@ impl FileStore {
         finalize: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.edit_draft_task_parts_to(project, id, title, parts, finalize.then_some(None), now)
+        self.edit_draft_task_parts_to(
+            project,
+            id,
+            title,
+            parts,
+            DraftSave::from_finalize(finalize),
+            now,
+        )
     }
 
     /// `edit_draft_task_to` for body and acceptance parts.
@@ -198,7 +206,7 @@ impl FileStore {
         id: i64,
         title: Option<&str>,
         parts: TaskTextParts<'_>,
-        finalize: Option<Option<Draft>>,
+        finalize: DraftSave,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         let title = title.map(validate_title).transpose()?;
@@ -211,8 +219,9 @@ impl FileStore {
         let Some(owner) = task.draft else {
             return Err(AgboardError::TaskNotDraft { id });
         };
+        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let current = Some(owner);
-        let target = resolve_finalize(finalize, owner);
+        let target = resolve_finalize(finalize.target, owner);
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
             shared,
@@ -256,6 +265,24 @@ impl FileStore {
             changed: true,
         })
     }
+}
+
+/// An older client names `draft: "ai"` to hand a plan back to the AI. A plan is in the
+/// Backlog now, where that only releases the edit lock. In Todo it would leave an
+/// unsent card the agent can pick up, so the save is refused until a person takes the
+/// card back to the Backlog. Checked under the project lock, with the lane just read.
+fn refuse_legacy_release_in_todo(task: &TaskFile, legacy_ai: bool) -> Result<(), AgboardError> {
+    if legacy_ai && matches!(task.task_status, Column::Todo | Column::Doing) {
+        return Err(AgboardError::InvalidValue {
+            field: "draft".into(),
+            reason: format!(
+                "Task #{} is not in the Backlog, so handing it back to the AI would leave \
+                 it ready to start. Take it back to the Backlog first, then save.",
+                task.id
+            ),
+        });
+    }
+    Ok(())
 }
 
 /// The draft a saved edit leaves: the current one when `finalize` is `None`.
