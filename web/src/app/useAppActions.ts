@@ -140,11 +140,16 @@ export function useAppActions(model: AppControllerModel) {
         refreshProject(projectId);
       });
     },
-    onCloseDetails: () =>
+    onCloseDetails: () => {
       dispatch({
         type: viewMode === 'archive' ? 'SELECT_ARCHIVE_CARD' : 'SELECT_CARD',
         id: null,
-      }),
+      });
+      // The link that opened the task ends with it, so the same link can open it again; a task
+      // opened from a summary result gives the Summary list back where it was left.
+      model.clearResultLink?.();
+      model.messages.panel.returnToList();
+    },
   };
 
   const submitDialog = useCallback(

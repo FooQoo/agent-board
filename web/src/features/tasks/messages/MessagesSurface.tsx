@@ -11,7 +11,7 @@ import { Surface } from '@/shared/ui/surface/Surface';
 import { DecisionAnswerFields } from '../answer/DecisionAnswerFields';
 import { DecisionQuestion } from '../answer/DecisionQuestion';
 import type { DecisionAnswerView } from '../answer/decisionAnswerView';
-import { BackButton, DetailState, failureKey } from './MessageDetailParts';
+import { BackButton, BlocksNote, DetailState, failureKey } from './MessageDetailParts';
 import { MessageList } from './MessageRows';
 import {
   canSendAnswer,
@@ -38,6 +38,11 @@ export interface MessagesSurfaceProps {
   /** An answer or a withdrawal was saved; the screen reads the project again at once. */
   onChanged: () => void;
   onClose: () => void;
+  /**
+   * A summary result was opened in the page. The list gives way to the task and comes back when
+   * it closes (the host remembers the scroll position); without this the list just closes.
+   */
+  onLeaveForResult?: (scrollTop: number) => void;
   /** Pulling the list down from its top reads the messages again. */
   onRefresh?: () => void;
   /** The refresh the person asked for is running. */
@@ -62,6 +67,7 @@ export function MessagesSurface({
   api,
   onChanged,
   onClose,
+  onLeaveForResult,
   onRefresh,
   refreshing,
   previewPull,
@@ -88,9 +94,9 @@ export function MessagesSurface({
     if (openId !== null && listed === null && !busy) setOpenId(null);
   }, [openId, listed, busy]);
 
-  const bodyRef = useScrollToTop<HTMLDivElement>(openId);
-
   const summaries = useSummaries(api.summaries, projectId);
+  // Back from a summary result, the list returns to the scroll position it was left at.
+  const bodyRef = useScrollToTop<HTMLDivElement>(openId, target.scrollTop, !summaries.loading);
 
   const { detail, state, reload } = useMessageDetail(
     api.read,
@@ -178,14 +184,9 @@ export function MessagesSurface({
 
   // On the PC a message opened from the list offers the way back at the top of its body; a phone
   // sheet puts it in the footer instead (below), so the body starts with the message itself.
-  const goBack = () => show(null);
   const phoneBack = kind === 'sheet' && fromList && opened !== null;
-  const back = fromList && kind === 'dialog' ? <BackButton onBack={goBack} /> : null;
-  const blocks = opened && opened.tasks.length > 0 && (
-    <p className="message-detail__blocks">
-      {t('messages.detail.blocks', { tasks: opened.tasks.map((id) => `#${id}`).join(' ') })}
-    </p>
-  );
+  const back = fromList && kind === 'dialog' ? <BackButton onBack={() => show(null)} /> : null;
+  const blocks = opened && opened.tasks.length > 0 && <BlocksNote tasks={opened.tasks} />;
 
   let body: React.ReactNode;
   if (opened === null) {
@@ -200,6 +201,7 @@ export function MessagesSurface({
         refreshing={refreshing}
         previewPull={previewPull}
         summaries={api.summaries ? summaries : undefined}
+        onOpenResult={onLeaveForResult ?? onClose}
         onOpen={(message) => {
           setFromList(true);
           show(message.id);
@@ -323,7 +325,7 @@ export function MessagesSurface({
         (answering || phoneBack) && (
           <div className="message-bar">
             {phoneBack ? (
-              <Button type="button" variant="outline" disabled={busy} onClick={goBack}>
+              <Button type="button" variant="outline" disabled={busy} onClick={() => show(null)}>
                 {t('messages.detail.back')}
               </Button>
             ) : (

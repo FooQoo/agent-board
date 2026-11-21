@@ -50,3 +50,10 @@ export function BackButton({ onBack }: { onBack: () => void }) {
     </Button>
   );
 }
+
+/** The tasks an open message holds back. */
+export function BlocksNote({ tasks }: { tasks: readonly number[] }) {
+  const { t } = useTranslation();
+  const ids = tasks.map((id) => `#${id}`).join(' ');
+  return <p className="message-detail__blocks">{t('messages.detail.blocks', { tasks: ids })}</p>;
+}

@@ -9,7 +9,8 @@ import {
 } from '@/shared/lib/gesture/cardReveal';
 import { useCardGesture } from '@/shared/lib/gesture/useCardGesture';
 import { type PeriodicSummary, windowLabel } from './model/messages';
-import { summaryResultHref } from './summaryResultLink';
+import { scrollerOf } from './useScrollToTop';
+import { isPlainPrimaryClick, openInPage, summaryResultHref } from './summaryResultLink';
 import type { SummariesController } from './useSummaries';
 import '@/shared/styles/swipe-card.css';
 import './summary.css';
@@ -25,10 +26,12 @@ function ResultList({
   summary,
   projectId,
   consumesClick,
+  onOpenResult,
 }: {
   summary: PeriodicSummary;
   projectId: string;
   consumesClick: () => boolean;
+  onOpenResult?: (scrollTop: number) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -61,7 +64,18 @@ function ResultList({
                       })
                 }
                 onClick={(event) => {
-                  if (consumesClick()) event.preventDefault();
+                  if (consumesClick()) {
+                    event.preventDefault();
+                    return;
+                  }
+                  // A plain click opens the task here, with no page load; a modified click or a
+                  // middle click is left to the browser (new tab, new window).
+                  if (!isPlainPrimaryClick(event)) return;
+                  event.preventDefault();
+                  openInPage(href);
+                  // The list's scroll position, so closing the task comes back to the same place.
+                  const scroller = scrollerOf(event.currentTarget);
+                  onOpenResult?.(scroller?.scrollTop ?? 0);
                 }}
               >
                 <span className="summary-result__id">#{result.taskId}</span>
@@ -86,6 +100,7 @@ interface ItemProps {
   revealed: boolean;
   onReveal: (open: boolean) => void;
   onDismiss: () => void;
+  onOpenResult?: (scrollTop: number) => void;
 }
 
 /**
@@ -95,7 +110,15 @@ interface ItemProps {
  * item, while a rightward one is left to the tab swipe. On a PC the trash button is always shown inside the card, at
  * the right end of its heading.
  */
-function SummaryItem({ summary, projectId, variant, revealed, onReveal, onDismiss }: ItemProps) {
+function SummaryItem({
+  summary,
+  projectId,
+  variant,
+  revealed,
+  onReveal,
+  onDismiss,
+  onOpenResult,
+}: ItemProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const side: RevealSide | null = revealed ? 'right' : null;
@@ -142,7 +165,12 @@ function SummaryItem({ summary, projectId, variant, revealed, onReveal, onDismis
           </button>
         </div>
       )}
-      <ResultList summary={summary} projectId={projectId} consumesClick={consumesClick} />
+      <ResultList
+        summary={summary}
+        projectId={projectId}
+        consumesClick={consumesClick}
+        onOpenResult={onOpenResult}
+      />
     </>
   );
   const itemProps = {
@@ -204,9 +232,12 @@ function SummaryItem({ summary, projectId, variant, revealed, onReveal, onDismis
 export function SummaryList({
   controller,
   variant,
+  onOpenResult,
 }: {
   controller: SummariesController;
   variant: Variant;
+  /** A result was opened in the page; the list that holds the summaries closes. */
+  onOpenResult?: (scrollTop: number) => void;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState<string | null>(null);
@@ -232,6 +263,7 @@ export function SummaryList({
               summary={summary}
               projectId={controller.projectId}
               variant={variant}
+              onOpenResult={onOpenResult}
               revealed={revealed === summary.id}
               onReveal={(open) => setRevealed(open ? summary.id : null)}
               onDismiss={() => {

@@ -77,7 +77,12 @@ export function useLinkedTaskSelection(
   const opened = useRef<string | null>(null);
   const { activeProjectId, viewMode } = session;
   useEffect(() => {
-    if (resultLink === null || boardData === null || viewMode !== 'board') return;
+    if (resultLink === null) {
+      // The link ended (the drawer was closed), so the same link can open the task again.
+      opened.current = null;
+      return;
+    }
+    if (boardData === null || viewMode !== 'board') return;
     if (activeProjectId !== resultLink.projectId) return;
     const key = `${activeProjectId}:${linkKey(resultLink)}`;
     if (opened.current === key || findTask(boardData.tasks, resultLink.taskId) === null) return;
