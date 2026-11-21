@@ -34,6 +34,7 @@ function epic(id: string, name: string): Epic {
 }
 
 const counts = (total: number): EpicTaskCounts => ({
+  backlog: 0,
   todo: total,
   doing: 0,
   done: 0,

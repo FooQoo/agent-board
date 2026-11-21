@@ -1,5 +1,8 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { ArchiveXIcon } from 'lucide-react';
+import { ArchiveXIcon, ListChecksIcon } from 'lucide-react';
+import { Checkbox } from '@/shared/ui/checkbox';
+import { BacklogBar } from '../../../features/backlog/BacklogBar';
+import { useBacklogSelection } from '../../../features/backlog/useSelection';
 import { useTranslation } from 'react-i18next';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
@@ -33,6 +36,12 @@ export interface MonitorLanesProps {
    * follows the finger and uncovers an Archive all tile. Without it neither is offered.
    */
   onBulkArchive?: () => void;
+  /**
+   * The Backlog cards were picked and sent to Todo. Returns whether the send started without a
+   * confirmation, which ends the selection mode. Without it the Backlog lane offers no selection.
+   */
+  onSend?: (ids: number[]) => boolean;
+  sendBusy?: boolean;
   id?: string;
   /** The tab bar: its marker follows the slide between lanes. */
   tabsRef?: RefObject<HTMLElement | null>;
@@ -65,6 +74,8 @@ export function MonitorLanes({
   onOpenDetail,
   onOpenAnswer,
   onBulkArchive,
+  onSend,
+  sendBusy = false,
   id,
   tabsRef,
   previewRevealed,
@@ -80,6 +91,12 @@ export function MonitorLanes({
 
   // The card a hold chose: it shows a focus ring, and a sideways swipe on it opens its tiles.
   const [armed, setArmed] = useState<number | null>(previewRevealed ?? null);
+
+  const selection = useBacklogSelection(lanes.backlog.map((item) => item.task.id));
+  const canSelect = onSend !== undefined && lanes.backlog.length > 0;
+  const send = (ids: number[]) => {
+    if (onSend?.(ids)) selection.leave();
+  };
 
   const changeLane = (next: MonitorSection) => {
     setRevealed(null);
@@ -143,6 +160,28 @@ export function MonitorLanes({
                 {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
                 {laneEmpty ? (
                   <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
+                ) : name === 'backlog' && selection.selecting ? (
+                  items.map((item) => (
+                    <div key={keyOf(item)} className="monitor-pick-row">
+                      <Checkbox
+                        className="monitor-pick-row__check"
+                        checked={selection.picked.includes(item.task.id)}
+                        aria-label={t('backlog.selectCard', { id: item.task.id })}
+                        onCheckedChange={() => selection.toggle(item.task.id)}
+                      />
+                      {/* A tap on the card picks it; the details are not opened while picking. */}
+                      <div
+                        className="monitor-pick-row__card"
+                        onClickCapture={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          selection.toggle(item.task.id);
+                        }}
+                      >
+                        <MonitorTask item={item} section={name} />
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   items.map((item) => (
                     <SwipeableCard
@@ -164,6 +203,16 @@ export function MonitorLanes({
                         setRevealed(side === null ? null : { id: item.task.id, side })
                       }
                       onArchive={() => onArchive(item)}
+                      onSelect={
+                        canSelect
+                          ? () => {
+                              setRevealed(null);
+                              setArmed(null);
+                              selection.enter();
+                              selection.toggle(item.task.id);
+                            }
+                          : undefined
+                      }
                     >
                       <MonitorTask
                         item={item}
@@ -173,6 +222,26 @@ export function MonitorLanes({
                       />
                     </SwipeableCard>
                   ))
+                )}
+                {name === 'backlog' && canSelect && !selection.selecting && (
+                  <button
+                    type="button"
+                    className="monitor-lane__bulk"
+                    data-lane-ignore=""
+                    onClick={selection.enter}
+                  >
+                    <ListChecksIcon aria-hidden="true" />
+                    {t('backlog.selectCards')}
+                  </button>
+                )}
+                {name === 'backlog' && selection.selecting && (
+                  <BacklogBar
+                    variant="phone"
+                    count={selection.picked.length}
+                    busy={sendBusy}
+                    onCancel={selection.leave}
+                    onSend={() => send(selection.picked)}
+                  />
                 )}
                 {name === 'done' && canBulk && (
                   <button

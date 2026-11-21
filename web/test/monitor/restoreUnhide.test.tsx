@@ -21,7 +21,7 @@ const item = (id: number): MonitorTask => ({
   task: { ...makeTask({ id }), taskStatus: 'done', position: id },
 });
 // The same read stays applied: it was requested before the archive committed, so it still holds the task.
-const lanes: Lanes = { todo: [], doing: [], done: [item(7), item(8)] };
+const lanes: Lanes = { backlog: [], todo: [], doing: [], done: [item(7), item(8)] };
 const doneIds = (shown: Lanes) => shown.done.map((entry) => entry.task.id);
 
 /** The overlay and the archive sheet wired as the phone's view wires them. */

@@ -2,7 +2,7 @@ import { ArchiveIcon, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { EpicTaskCounts as Counts } from '../../../shared/api/contracts';
 
-const GROUPS = ['todo', 'doing', 'done', 'archived'] as const;
+const GROUPS = ['backlog', 'todo', 'doing', 'done', 'archived'] as const;
 
 /** The icon that a status count carries before its name, if the design gives it one. */
 const GROUP_ICONS: Partial<Record<(typeof GROUPS)[number], typeof CheckIcon>> = {
@@ -25,7 +25,7 @@ export function EpicTaskCounts({ counts }: { counts: Counts | undefined }) {
           <span key={group} className={`epic-counts__item epic-counts__item--${group}`}>
             {Icon && <Icon aria-hidden="true" focusable="false" />}
             <span className="epic-counts__name">{t(`epics.counts.${group}`)}</span>
-            <span className="epic-counts__value">{counts[group]}</span>
+            <span className="epic-counts__value">{counts[group] ?? 0}</span>
           </span>
         );
       })}

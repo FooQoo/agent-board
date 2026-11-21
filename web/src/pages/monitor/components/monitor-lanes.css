@@ -6,7 +6,7 @@
   position: relative;
   display: grid;
   flex: none;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
   border-radius: 10px;
@@ -14,8 +14,11 @@
   /* Where the marker rests without a carousel; the carousel writes the value while it slides. */
   --lane-progress: 0;
 }
+.lane-tabs[data-lane="todo"] {
+  --lane-progress: 0.3333;
+}
 .lane-tabs[data-lane="doing"] {
-  --lane-progress: 0.5;
+  --lane-progress: 0.6667;
 }
 .lane-tabs[data-lane="done"] {
   --lane-progress: 1;
@@ -27,12 +30,12 @@
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 14px) / 3);
+  width: calc((100% - 18px) / 4);
   border: 1px solid var(--r-accent);
   border-radius: 8px;
   background: var(--r-surface);
   box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
-  transform: translateX(calc(var(--lane-progress) * (200% + 8px)));
+  transform: translateX(calc(var(--lane-progress) * (300% + 12px)));
   pointer-events: none;
 }
 .lane-tabs__tab {
@@ -42,13 +45,13 @@
   min-height: var(--btn-l-h);
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 6px;
+  gap: 4px;
+  padding: 0 2px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--r-text2);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }

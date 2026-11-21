@@ -4,6 +4,7 @@ import type { MonitorTask } from '../contracts';
 export function selectMonitorTasks(tasks: readonly MonitorTask[]) {
   const active = tasks.filter(({ task }) => !task.archivedAt);
   return {
+    backlog: active.filter(({ task }) => task.taskStatus === 'backlog'),
     todo: active.filter(({ task }) => task.taskStatus === 'todo'),
     doing: active.filter(({ task }) => task.taskStatus === 'doing'),
     done: active.filter(({ task }) => task.taskStatus === 'done'),

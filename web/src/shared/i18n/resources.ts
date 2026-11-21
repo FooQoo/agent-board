@@ -1,3 +1,4 @@
+import { backlogEn } from './locales/en/backlog';
 import { commonEn } from './locales/en/common';
 import { dataLayerConnectionEn } from './locales/en/data-layer-connection';
 import { dataLayerDetailEn } from './locales/en/data-layer-detail';
@@ -12,6 +13,7 @@ import { pushEn } from './locales/en/push';
 import { questionsEn } from './locales/en/questions';
 import { notificationsEn } from './locales/en/notifications';
 import { residentEn } from './locales/en/resident';
+import { backlogJa } from './locales/ja/backlog';
 import { commonJa } from './locales/ja/common';
 import { dataLayerConnectionJa } from './locales/ja/data-layer-connection';
 import { dataLayerDetailJa } from './locales/ja/data-layer-detail';
@@ -32,6 +34,7 @@ export const resources = {
   en: {
     translation: {
       ...commonEn,
+      ...backlogEn,
       ...detailEn,
       ...docsEntryEn,
       ...editEn,
@@ -51,6 +54,7 @@ export const resources = {
   ja: {
     translation: {
       ...commonJa,
+      ...backlogJa,
       ...detailJa,
       ...docsEntryJa,
       ...editJa,

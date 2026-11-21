@@ -127,7 +127,7 @@ describe('useGuide', () => {
     expect(result.current.phase).toBe('planned');
     expect(result.current.samples.map((card) => card.id)).toEqual([...SAMPLE_IDS]);
     expect(
-      result.current.samples.every((card) => card.taskStatus === 'todo' && card.draft === 'ai'),
+      result.current.samples.every((card) => card.taskStatus === 'backlog' && card.draft === null),
     ).toBe(true);
     expect(result.current.samples.every((card) => card.epic?.id === 'SAMPLE-1')).toBe(true);
     expect(

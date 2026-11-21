@@ -4,7 +4,8 @@ import type { ColumnName, TaskSummary } from '../../../shared/api/contracts';
  * Groups cards by column in display order: Todo and Doing oldest first, Done newest first.
  */
 export function groupTasks<T extends TaskSummary>(tasks: T[]): Record<ColumnName, T[]> {
-  const groups: Record<ColumnName, T[]> = { todo: [], doing: [], done: [] };
+  const groups: Record<ColumnName, T[]> = { backlog: [], todo: [], doing: [], done: [] };
+  groups.backlog.sort((a, b) => a.position - b.position);
   for (const task of tasks) groups[task.taskStatus].push(task);
   groups.todo.sort((a, b) => a.position - b.position);
   groups.doing.sort((a, b) => a.position - b.position);

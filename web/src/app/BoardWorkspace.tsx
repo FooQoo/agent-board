@@ -161,6 +161,8 @@ export function BoardWorkspace({
             onMove={actions.onMove}
             onReorder={actions.onReorder}
             onArchiveDone={actions.onArchiveDone}
+            onSend={actions.onSend}
+            sendBusy={actions.sendBusy}
           />
         )}
         {epicsVisible && activeId ? (
@@ -177,6 +179,9 @@ export function BoardWorkspace({
                 operations={model.operations}
                 onDelete={actions.onDeleteEpic}
                 onClose={actions.onCloseEpic}
+                backlogCount={boardData?.epicTaskCounts[selectedEpic.id]?.backlog ?? 0}
+                onSendBacklog={() => actions.onSendEpic(selectedEpic.id)}
+                sendBusy={actions.sendBusy}
               />
             )}
           </>
@@ -224,6 +229,8 @@ export function BoardWorkspace({
               onOpenEpic={actions.onOpenEpic}
               renderEpicLabel={renderEpicLabel}
               onChanged={actions.onTaskChanged}
+              onSend={(id) => actions.onSend([id])}
+              sendBusy={actions.sendBusy}
               archived={archiveVisible}
               operationSaving={operation?.saving ?? false}
               restoreFailed={Boolean(

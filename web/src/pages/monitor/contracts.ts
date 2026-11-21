@@ -13,7 +13,7 @@ export interface MonitorTask {
   task: Task;
 }
 
-export type MonitorSummary = { todo: number; doing: number; done: number } | null;
+export type MonitorSummary = { backlog: number; todo: number; doing: number; done: number } | null;
 export type MonitorDetailTab = 'description' | 'acceptance' | 'results' | 'history' | 'epic';
 export type MonitorFreshnessState = 'loading' | 'syncing' | 'fresh' | 'stale' | 'partial' | 'error';
 
@@ -83,6 +83,7 @@ export interface MonitorViewProps {
   /** The project switcher in the header; the monitor app names its project in its address. */
   header?: MonitorHeaderProps;
   summary: MonitorSummary;
+  backlog: MonitorTask[];
   todo: MonitorTask[];
   doing: MonitorTask[];
   done: MonitorTask[];

@@ -67,11 +67,12 @@ export function sampleQuestion(locale: GuideLocale) {
 }
 
 /** The lane the step is about; `null` while the request is still being written. */
-export function focusColumn(phase: GuidePhase): 'todo' | 'doing' | 'done' | null {
+export function focusColumn(phase: GuidePhase): 'backlog' | 'todo' | 'doing' | 'done' | null {
   switch (phase) {
     case 'request':
       return null;
     case 'planned':
+      return 'backlog';
     case 'question':
       return 'todo';
     case 'started':
@@ -108,9 +109,10 @@ export function sampleCards(locale: GuideLocale, phase: GuidePhase, at: string):
       done: met[position] ?? false,
     })),
   });
+  // The plan waits in the Backlog until the person sends it to Todo.
   const draft = (index: 0 | 1 | 2): TaskSummary => ({
     ...card(index, [false, false]),
-    draft: 'ai',
+    taskStatus: 'backlog',
   });
   switch (phase) {
     case 'request':
@@ -120,7 +122,8 @@ export function sampleCards(locale: GuideLocale, phase: GuidePhase, at: string):
     case 'question':
       return [
         {
-          ...draft(0),
+          // The person sent the first plan to Todo, where the agent asks before it starts.
+          ...card(0, [false, false]),
           agentStatus: 'pending',
           pendingReason: text.question,
           pendingRequestId: QUESTION_ID,

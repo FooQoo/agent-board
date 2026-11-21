@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "owner": "U12",
+  "files": [
+    {
+      "file": "features/backlog/BacklogBar.tsx",
+      "exports": [
+        {
+          "name": "BacklogBar",
+          "stories": [
+            {
+              "id": "backlog-send--bar",
+              "states": ["selected count", "equal-width Cancel and Send buttons", "send", "cancel"],
+              "interaction": true
+            },
+            {
+              "id": "backlog-send--bar-with-nothing-picked",
+              "states": ["nothing picked", "send disabled"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/backlog/SendConfirm.tsx",
+      "exports": [
+        {
+          "name": "SendConfirm",
+          "stories": [
+            {
+              "id": "backlog-send--confirm-dialog",
+              "states": ["open question warning", "named cards", "acknowledgement required"],
+              "interaction": true
+            },
+            {
+              "id": "backlog-send--confirm-sheet",
+              "states": ["phone sheet", "named cards"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "features/backlog/BacklogSendLayer.tsx",
+      "exports": [
+        {
+          "name": "BacklogSendLayer",
+          "stories": [],
+          "exclusion": "BacklogSendLayer only places the result notice and SendConfirm; both have their own Stories, and the send itself is tested in backlogSend.test.tsx."
+        }
+      ]
+    }
+  ]
+}

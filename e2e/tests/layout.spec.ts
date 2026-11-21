@@ -138,15 +138,17 @@ for (const width of [1024, 1280, 1920]) {
     expect((await computed(page, '.card__title', ['font-size']))['font-size']).toBe('14px');
     expect((await computed(page, '.lane', ['padding-left']))['padding-left']).toBe('12px');
 
-    // Three lanes side by side, the detail column on the right, the handle and the close button usable.
+    // Four lanes side by side (the Backlog first), the detail column on the right, the handle and the close button usable.
     const boxes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
-    expect(boxes).toHaveLength(3);
+    expect(boxes).toHaveLength(4);
     expect(boxes[0].x).toBeLessThan(boxes[1].x);
     expect(boxes[1].x).toBeLessThan(boxes[2].x);
+    expect(boxes[2].x).toBeLessThan(boxes[3].x);
     for (const lane of boxes) expect(lane.width).toBeGreaterThanOrEqual(200);
     const panelBox = await box(panel(page));
     expect(panelBox.x + panelBox.width).toBe(width);
-    expect(boxes[2].x + boxes[2].width).toBeLessThanOrEqual(panelBox.x);
+    // At 1024px the four lanes scroll sideways inside the board, so only the wider windows show them all.
+    if (width >= 1280) expect(boxes[3].x + boxes[3].width).toBeLessThanOrEqual(panelBox.x);
     await expect(handle(page)).toBeVisible();
     await task(page, 8).click();
     await expect(panel(page).getByRole('button', { name: 'Close details' })).toBeVisible();
@@ -155,9 +157,9 @@ for (const width of [1024, 1280, 1920]) {
   });
 }
 
-test('1024px: the default width yields to the lanes (each stays at least 200px)', async ({ page }) => {
+test('1024px: the default width fits beside four lanes (each stays at least 200px)', async ({ page }) => {
   await open(page, 1024);
-  // The panel opens at its default width and then yields to the lanes once they are measured.
+  // Four lanes of 200px do not fit beside the default width: the panel shrinks to its smallest width (344px) and the lanes scroll.
   await expect.poll(() => panelWidth(page)).toBe(344);
   const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
   for (const w of lanes) expect(w).toBeGreaterThanOrEqual(200);
@@ -179,7 +181,7 @@ test('1920px: the extra width goes to the lanes and the panel keeps its width', 
   await open(page, 1920);
   expect(await panelWidth(page)).toBe(360);
   const lanes = await page.locator('.lane').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
-  for (const w of lanes) expect(w).toBeCloseTo((1920 - 360 - 48 - 32) / 3, 0);
+  for (const w of lanes) expect(w).toBeCloseTo((1920 - 360 - 48 - 48) / 4, 0);
 });
 
 // ---------------------------------------------------------------- Scroll cue
@@ -202,30 +204,30 @@ test('1280px: an overflowing Done lane shows the fade and a scrollbar until the 
   fillDone();
   await open(page, 1280);
   // The board follows the files a moment after they change, so the lane is measured once all 16 cards are shown.
-  await expect(page.locator('.lane__cards').nth(2).locator('.card')).toHaveCount(16);
-  const done = await cue(page, 2);
+  await expect(page.locator('.lane__cards').nth(3).locator('.card')).toHaveCount(16);
+  const done = await cue(page, 3);
   expect(done.overflows).toBe(true);
   expect(done.more).toBe('true');
   expect(done.bar).toBeGreaterThan(0);
   expect(done.fade).toBe(72);
-  for (const index of [0, 1]) {
+  for (const index of [0, 1, 2]) {
     const lane = await cue(page, index);
     expect(lane.more).toBe('false');
     expect(lane.bar).toBe(0);
     expect(lane.fade).toBe(0);
   }
-  await page.locator('.lane__cards').nth(2).evaluate((el) => {
+  await page.locator('.lane__cards').nth(3).evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
-  await expect.poll(async () => (await cue(page, 2)).more).toBe('false');
-  expect((await cue(page, 2)).fade).toBe(0);
+  await expect.poll(async () => (await cue(page, 3)).more).toBe('false');
+  expect((await cue(page, 3)).fade).toBe(0);
 });
 
 test('1920px: a lane that fits its tasks shows neither fade nor scrollbar', async ({ page }) => {
   await open(page, 1920, 1200);
   // The board follows the reset files a moment later; the fixture's lanes are measured once they are shown.
-  await expect(page.locator('.lane__cards').nth(2).locator('.card')).toHaveCount(2);
-  for (const index of [0, 1, 2]) {
+  await expect(page.locator('.lane__cards').nth(3).locator('.card')).toHaveCount(2);
+  for (const index of [0, 1, 2, 3]) {
     const lane = await cue(page, index);
     expect(lane.more).toBe('false');
     expect(lane.bar).toBe(0);
@@ -353,7 +355,7 @@ test('evidence screenshots at 1280x900', async ({ page }, testInfo) => {
   fillDone(3);
   await open(page, 1280);
   await task(page, 8).click();
-  await page.locator('.lane__cards').nth(2).evaluate((el) => {
+  await page.locator('.lane__cards').nth(3).evaluate((el) => {
     el.scrollTop = 0;
   });
   await page.screenshot({ path: testInfo.outputPath('scroll-cue.png') });

@@ -176,6 +176,7 @@ export function MonitorScreen({
       data === null || freshness.state === 'partial'
         ? null
         : {
+            backlog: visible.backlog.length,
             todo: visible.todo.length,
             doing: visible.doing.length,
             done: visible.done.length,

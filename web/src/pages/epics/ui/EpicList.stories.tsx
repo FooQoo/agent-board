@@ -9,7 +9,7 @@ const epics = [
   makeEpic({ id: 'EPIC-BETA', name: 'Beta delivery', draft: 'human' }),
 ];
 const counts: Record<string, EpicTaskCounts> = {
-  'EPIC-ALPHA': { todo: 2, doing: 1, done: 4, archived: 1, total: 8 },
+  'EPIC-ALPHA': { backlog: 1, todo: 2, doing: 1, done: 4, archived: 1, total: 9 },
 };
 const meta = {
   title: 'Pages/Epics/EpicList',

@@ -104,6 +104,7 @@ export function MonitorLanesScreen({
         lane={lane}
         controlsId={lanesId}
         counts={{
+          backlog: lanes.backlog.length,
           todo: lanes.todo.length,
           doing: lanes.doing.length,
           done: lanes.done.length,

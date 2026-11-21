@@ -121,6 +121,11 @@ export interface AppWorkspaceActions {
   onOpenEpic: (epicId: string) => void;
   onMove: (task: TaskSummary, column: ColumnName) => void;
   onReorder: (task: TaskSummary, beforeId: number | null) => void;
+  /** Sends Backlog cards to Todo. Returns whether it started without a confirmation. */
+  onSend: (ids: number[]) => boolean;
+  sendBusy: boolean;
+  /** Sends the Backlog cards of an epic to Todo, in one save. */
+  onSendEpic: (epicId: string) => boolean;
   onArchiveDone: () => void;
   onCloseEpic: () => void;
   onEditEpic: () => void;

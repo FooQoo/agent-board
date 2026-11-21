@@ -20,7 +20,7 @@ const noop = () => {};
 const AT = new Date(2026, 9, 22, 8, 15).toISOString();
 
 /** The frame of each lane; its height follows the cards it holds. */
-const FRAME_X = { todo: 30, doing: 326, done: 622 } as const;
+const FRAME_X = { backlog: 30, doing: 326, done: 622 } as const;
 
 const renderEpic = (epic: EpicRef) => (
   <EpicLabel epic={epic} className="card__epic" stopPropagation onClick={noop} />
@@ -61,14 +61,16 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
   const phase: GuidePhase = kind === 'complete' ? 'done' : kind;
   const cards = sampleCards(locale, phase, AT);
   const lanes = {
-    todo: cards.filter((card) => card.taskStatus === 'todo'),
+    // The mock draws three lanes: its first one holds the Backlog plans, then the cards sent to Todo.
+    backlog: cards.filter((card) => card.taskStatus === 'backlog' || card.taskStatus === 'todo'),
     doing: cards.filter((card) => card.taskStatus === 'doing'),
     done: cards.filter((card) => card.taskStatus === 'done'),
   };
   const board = (
     <MockBoard
       count={cards.length}
-      todo={lanes.todo.map(sampleCard)}
+      todo={lanes.backlog.map(sampleCard)}
+      firstLane={phase === 'planned' ? t('column.backlog') : undefined}
       doing={lanes.doing.map(sampleCard)}
       done={lanes.done.map(sampleCard)}
     />
@@ -82,9 +84,16 @@ export function OnboardingMockScreen({ kind }: { kind: ScreenKind }) {
     );
   }
   const column = focusColumn(phase);
-  const framed = column ? lanes[column] : [];
+  // The mock draws three lanes: Todo shares the first with the Backlog.
+  const mockLane = column === 'todo' ? 'backlog' : column;
+  const framed = mockLane ? lanes[mockLane] : [];
   const target: SpotlightRect | null = column
-    ? { x: FRAME_X[column], y: 126, width: 268, height: 18 + framed.length * CARD_PITCH }
+    ? {
+        x: FRAME_X[mockLane as keyof typeof FRAME_X],
+        y: 126,
+        width: 268,
+        height: 18 + framed.length * CARD_PITCH,
+      }
     : null;
   const index = ['request', 'planned', 'question', 'started', 'done'].indexOf(phase) + 1;
   const waiting = phase === 'question';

@@ -34,7 +34,7 @@ const ANSWER_TITLE = 'API refactoring';
 function questionCard(
   id: number,
   title: string,
-  taskStatus: 'todo' | 'doing' | 'done',
+  taskStatus: 'backlog' | 'todo' | 'doing' | 'done',
   messages: readonly Message[],
 ) {
   const open = messages
@@ -74,12 +74,13 @@ function QuestionScreen({ variant }: { variant: MonitorGalleryVariant }) {
   const messagesApi = useMemo(() => sampleMessagesApi(i18n.language), [i18n.language]);
   const data = useMemo(() => createMonitorFixture(), []);
   const base = useMemo(() => createMonitorFixtureProps(data), [data]);
-  const card = (id: number, title: string, status: 'todo' | 'doing' | 'done') =>
+  const card = (id: number, title: string, status: 'backlog' | 'todo' | 'doing' | 'done') =>
     makeMonitorTask(questionCard(id, title, status, messages), project);
   const single = variant === 'answer';
   const lists = single
-    ? { todo: [], doing: [card(11, ANSWER_TITLE, 'doing')], done: [] }
+    ? { backlog: [], todo: [], doing: [card(11, ANSWER_TITLE, 'doing')], done: [] }
     : {
+        backlog: [card(31, 'Plan the release notes', 'backlog')],
         todo: [
           card(14, 'Prepare the Windows build', 'todo'),
           card(15, 'Write the setup guide', 'todo'),
@@ -98,7 +99,12 @@ function QuestionScreen({ variant }: { variant: MonitorGalleryVariant }) {
   const props: MonitorViewProps = {
     ...base,
     ...lists,
-    summary: { todo: lists.todo.length, doing: lists.doing.length, done: lists.done.length },
+    summary: {
+      backlog: lists.backlog.length,
+      todo: lists.todo.length,
+      doing: lists.doing.length,
+      done: lists.done.length,
+    },
     projectId: SAMPLE_PROJECT,
     messages: single ? undefined : messages,
     messagesApi,
@@ -129,7 +135,14 @@ function MonitorGallery({ variant = 'loaded' }: { variant?: MonitorGalleryVarian
 
   let props: MonitorViewProps = fixture;
   if (variant === 'empty') {
-    props = { ...fixture, summary: { todo: 0, doing: 0, done: 0 }, todo: [], doing: [], done: [] };
+    props = {
+      ...fixture,
+      summary: { backlog: 0, todo: 0, doing: 0, done: 0 },
+      backlog: [],
+      todo: [],
+      doing: [],
+      done: [],
+    };
   } else if (variant === 'loading') {
     props = {
       ...fixture,

@@ -1,0 +1,230 @@
+/* The Backlog lane, its selection mode, and the send confirmation. */
+
+.lane[data-column="backlog"] {
+  border-style: dashed;
+}
+
+.card[data-lane="backlog"] {
+  border-style: dashed;
+}
+
+.card__open-question {
+  padding: 1px 6px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--r-pend-tx);
+  background: var(--r-pend-bg);
+}
+
+.lane-header__select {
+  /* Overlap the header padding like the Done lane's archive button. */
+  margin-block: calc((19px - var(--btn-s-icon)) / 2);
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-s-icon);
+  height: var(--btn-s-icon);
+  border: 0;
+  border-radius: 5px;
+  color: var(--r-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.lane-header__select:hover:not(:disabled),
+.lane-header__select[aria-pressed="true"] {
+  color: var(--r-accent);
+  background: var(--r-accent-soft);
+}
+
+.lane-header__select:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lane-header__select svg {
+  width: 15px;
+  height: 15px;
+}
+
+.card__item--selecting {
+  position: relative;
+}
+
+.card__item--selecting > .card {
+  box-sizing: border-box;
+  width: calc(100% - 30px);
+  margin-left: 30px;
+}
+
+.card__pick.card__pick {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+.card--picked {
+  border-color: var(--r-accent);
+  box-shadow: 0 0 0 2px var(--r-accent-soft);
+}
+
+.card--group-drag {
+  opacity: 0.45;
+}
+
+/* The count badge on the card under the pointer while the selected cards are dragged. */
+.card[data-drag-count]::after {
+  content: attr(data-drag-count);
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--r-accent-fg, #fff);
+  background: var(--r-accent);
+}
+
+.lane[data-drop-target="true"][data-column="todo"] {
+  outline: 2px dashed var(--r-accent);
+  outline-offset: -2px;
+}
+
+.backlog-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface, var(--r-bg));
+}
+
+.backlog-bar__count {
+  font-size: 12px;
+  color: var(--r-accent);
+}
+
+.backlog-bar__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.backlog-bar__actions > * {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+
+.backlog-bar[data-variant="phone"] {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+.backlog-send__scope {
+  margin: 0 0 12px;
+}
+
+.backlog-send__warn {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--r-pend-tx);
+  background: var(--r-pend-bg);
+}
+
+.backlog-send__warn > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.backlog-send__list {
+  margin: 4px 0 6px;
+  padding-left: 18px;
+}
+
+.backlog-send__id {
+  color: var(--r-muted);
+}
+
+.backlog-send__ack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.backlog-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--r-border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.backlog-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.backlog-detail__text {
+  margin: 0;
+  color: var(--r-muted);
+}
+
+.backlog-select-fab {
+  margin: 8px 12px;
+  align-self: center;
+}
+
+.lane__empty {
+  margin: 12px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--r-muted);
+}
+
+.monitor-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.monitor-pick-row__check.monitor-pick-row__check {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.monitor-pick-row__card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* In the narrow Backlog lane the two buttons of the bar stack. */
+.backlog-bar[data-variant="lane"] .backlog-bar__actions {
+  grid-template-columns: 1fr;
+}

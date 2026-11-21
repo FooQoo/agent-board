@@ -13,14 +13,11 @@ import type {
 } from './contracts';
 import { bool, exact, fail, int, list, nullableStr, oneOf, str } from './guards';
 
-const STATUSES = ['todo', 'doing', 'done'] as const;
-// The lanes of the stored data. The board has no Backlog lane yet, so a plan in the Backlog is
-// shown in Todo with the draft badge a plan an agent made always had.
-const STORED_STATUSES = ['backlog', ...STATUSES] as const;
+const STATUSES = ['backlog', 'todo', 'doing', 'done'] as const;
 const RUN_STATES = ['idle', 'running', 'pending'] as const;
 const ASSIGNEES = ['ai', 'human'] as const;
 const RESOURCES = ['task', 'epic', 'project', 'messages'] as const;
-const DRAFTS = ['human', 'ai'] as const;
+const DRAFTS = ['human'] as const;
 const FACETS = ['summary', 'request', 'document', 'history', 'deleted'] as const;
 
 const TASK_FIELDS = [
@@ -51,10 +48,10 @@ function parseTask(value: unknown, path: string): SummaryTask {
   const task: SummaryTask = {
     id: int(o.id, `${path}.id`, 1),
     title: str(o.title, `${path}.title`),
-    taskStatus: boardLane(oneOf(o.taskStatus, `${path}.taskStatus`, STORED_STATUSES)),
+    taskStatus: oneOf(o.taskStatus, `${path}.taskStatus`, STATUSES),
     agentStatus: oneOf(o.agentStatus, `${path}.agentStatus`, RUN_STATES),
     assignee: oneOf(o.assignee, `${path}.assignee`, ASSIGNEES),
-    draft: draft(o.draft, `${path}.draft`) ?? (o.taskStatus === 'backlog' ? 'ai' : null),
+    draft: draft(o.draft, `${path}.draft`),
     position: int(o.position, `${path}.position`, Number.MIN_SAFE_INTEGER),
     epicId: nullableStr(o.epicId, `${path}.epicId`),
     acceptance: {
@@ -91,11 +88,6 @@ function parseTask(value: unknown, path: string): SummaryTask {
   return task;
 }
 
-/** The lane a card is shown in: a plan in the Backlog is shown in Todo. */
-function boardLane(lane: (typeof STORED_STATUSES)[number]): (typeof STATUSES)[number] {
-  return lane === 'backlog' ? 'todo' : lane;
-}
-
 /** The owner of a draft, or `null` when the card or epic is not a draft. */
 function draft(value: unknown, path: string) {
   return value === null ? null : oneOf(value, path, DRAFTS);
@@ -127,10 +119,8 @@ function parseEpic(value: unknown, path: string): SummaryEpic {
     waves: list(o.waves, `${path}.waves`, (wave, p) => list(wave, p, (v, q) => int(v, q, 1))),
     wavesError: bool(o.wavesError, `${path}.wavesError`),
     progress: {
-      // Plans in the Backlog count with Todo, where the board shows them.
-      todo:
-        int(p.todo, `${path}.progress.todo`) +
-        (p.backlog === undefined ? 0 : int(p.backlog, `${path}.progress.backlog`)),
+      ...(p.backlog === undefined ? {} : { backlog: int(p.backlog, `${path}.progress.backlog`) }),
+      todo: int(p.todo, `${path}.progress.todo`),
       doing: int(p.doing, `${path}.progress.doing`),
       done: int(p.done, `${path}.progress.done`),
       archived: int(p.archived, `${path}.progress.archived`),

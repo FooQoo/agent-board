@@ -10,6 +10,7 @@ import { useSortable } from '@dnd-kit/react/sortable';
 import { DecisionAnswerButton } from '../answer/DecisionAnswerButton';
 import type { ProjectId } from '../../../shared/api/contracts';
 import { cardSensors } from '../../../shared/lib/gesture/sortableDrag';
+import { Checkbox } from '@/shared/ui/checkbox';
 import './card-answer.css';
 
 export interface TaskCardProps {
@@ -23,6 +24,16 @@ export interface TaskCardProps {
   projectId?: ProjectId;
   /** Opens the answer dialog at the card's first question; the dialog lives above the board. */
   onAnswer?: (taskId: number) => void;
+  /** The selection mode of the Backlog lane: a circle at the left of the card. */
+  selection?: CardSelection;
+}
+
+/** The circle that picks a card for the send to Todo, and the drag of the picked cards. */
+export interface CardSelection {
+  checked: boolean;
+  onToggle: () => void;
+  /** The selected cards are being dragged: how many, on the card under the pointer; the others dim. */
+  drag?: { count: number; lead: boolean };
 }
 
 export interface TaskCardViewProps {
@@ -33,6 +44,7 @@ export interface TaskCardViewProps {
   cardRef?: RefCallback<HTMLDivElement>;
   renderEpic?: (epic: EpicRef) => ReactNode;
   showPendingReason?: boolean;
+  selection?: CardSelection;
   children?: ReactNode;
 }
 
@@ -101,6 +113,7 @@ export function TaskCardView({
   cardRef,
   renderEpic,
   showPendingReason = task.agentStatus === 'pending',
+  selection,
   children,
 }: TaskCardViewProps) {
   const { t } = useTranslation();
@@ -111,18 +124,34 @@ export function TaskCardView({
     pending ? 'card--pending' : '',
     selected ? 'card--selected' : '',
     isDragging ? 'card--dragging' : '',
+    selection?.checked ? 'card--picked' : '',
+    selection?.drag && !selection.drag.lead ? 'card--group-drag' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
-    <div className="card__item" role="group" tabIndex={-1}>
+    <div
+      className={selection ? 'card__item card__item--selecting' : 'card__item'}
+      role="group"
+      tabIndex={-1}
+    >
+      {selection && (
+        <Checkbox
+          className="card__pick"
+          checked={selection.checked}
+          aria-label={t('backlog.selectCard', { id: task.id })}
+          onCheckedChange={selection.onToggle}
+        />
+      )}
       <div
         ref={cardRef}
         className={className}
         role="button"
         tabIndex={0}
         aria-current={selected ? 'true' : 'false'}
+        data-lane={task.taskStatus}
+        data-drag-count={selection?.drag?.lead ? selection.drag.count : undefined}
         onClick={() => onSelect(task.id)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && event.target === event.currentTarget) onSelect(task.id);
@@ -136,6 +165,9 @@ export function TaskCardView({
           {task.id > 0 && <span className="card__id">#{task.id}</span>}
           <AssigneeLabel assignee={task.assignee} />
           {task.draft !== null && <span className="card__draft">{t('draft.label')}</span>}
+          {task.taskStatus === 'backlog' && (task.openQuestionIds?.length ?? 0) > 0 && (
+            <span className="card__open-question">{t('backlog.openQuestion')}</span>
+          )}
           <span className="card__spacer" />
           {showsState && <StatusLabel kind="agent" status={task.agentStatus} />}
         </span>
@@ -167,6 +199,7 @@ export function TaskCard({
   renderEpic,
   projectId,
   onAnswer,
+  selection,
 }: TaskCardProps) {
   const { t } = useTranslation();
   const showsState = stateLabel(task, t) !== null;
@@ -188,6 +221,7 @@ export function TaskCard({
       cardRef={ref}
       renderEpic={renderEpic}
       showPendingReason
+      selection={selection}
     >
       {projectId && onAnswer && showInlineAnswer && (
         <div className="card__answer">

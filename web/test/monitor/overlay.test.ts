@@ -15,6 +15,7 @@ const item = (id: number, lane: 'todo' | 'doing' | 'done', position: number): Mo
   task: { ...makeTask({ id }), taskStatus: lane, position },
 });
 const lanes = (todo: number[], doing: number[] = [], done: number[] = []): Lanes => ({
+  backlog: [],
   todo: todo.map((id, index) => item(id, 'todo', index + 1)),
   doing: doing.map((id, index) => item(id, 'doing', index + 1)),
   done: done.map((id, index) => item(id, 'done', index + 1)),

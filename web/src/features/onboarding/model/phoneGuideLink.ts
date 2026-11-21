@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react';
 
 /** A lane of the phone screen. */
-export type PhoneGuideLane = 'todo' | 'doing' | 'done';
+export type PhoneGuideLane = 'backlog' | 'todo' | 'doing' | 'done';
 
 export interface PhoneGuideLink {
   /** The guide asks the phone screen to show the lane its step is about, or `null` for none. */

@@ -6,6 +6,7 @@ import { MonitorView } from '../../src/pages/monitor/View';
 
 const props: MonitorViewProps = {
   summary: null,
+  backlog: [],
   todo: [],
   doing: [],
   done: [],

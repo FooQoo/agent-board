@@ -18,10 +18,10 @@ export function parseStoredWidth(raw: string | null): number | null {
   return value >= MIN_WIDTH && value <= MAX_WIDTH ? value : null;
 }
 
-/** The widest detail panel that still leaves each of the `lanes` columns MIN_LANE_WIDTH: three lanes on the board, one list on the epic list. */
+/** The widest detail panel that still leaves each of the `lanes` columns MIN_LANE_WIDTH: four lanes on the board, one list on the epic list. */
 export function maxWidthFor(
   { bodyWidth, paddingLeft, paddingRight, gap }: LayoutMetrics,
-  lanes = 3,
+  lanes = 4,
 ): number {
   return bodyWidth - paddingLeft - paddingRight - 2 * gap - lanes * MIN_LANE_WIDTH;
 }

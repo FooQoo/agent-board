@@ -38,7 +38,7 @@ describe('desktop layout', () => {
     expect(rule(css, '.board__lanes')).toMatch(/padding:\s*24px/);
     expect(rule(css, '.board__lanes')).toMatch(/gap:\s*16px/);
     expect(rule(css, '.board__lanes')).toMatch(
-      /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/,
+      /grid-template-columns:\s*repeat\(4, minmax\(200px, 1fr\)\)/,
     );
     expect(rule(css, '.lane')).toMatch(/padding:\s*12px/);
     expect(rule(css, '.lane')).toMatch(/border-radius:\s*var\(--radius-lane\)/);

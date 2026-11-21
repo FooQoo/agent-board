@@ -29,12 +29,28 @@
               "interaction": true
             },
             {
-              "id": "pages-board-board--drafts-in-todo",
+              "id": "pages-board-board--person-draft-in-todo",
+              "states": ["person draft card in Todo", "lane count includes drafts"],
+              "interaction": true
+            },
+            {
+              "id": "pages-board-board--backlog-lane",
               "states": [
-                "AI draft card in Todo",
-                "person draft card in Todo",
-                "lane count includes drafts"
+                "Backlog lane",
+                "Backlog count",
+                "open question mark",
+                "no AI draft badge"
               ],
+              "interaction": true
+            },
+            {
+              "id": "pages-board-board--selection-and-send",
+              "states": ["selection mode", "picked cards", "send bar", "selection ends after send"],
+              "interaction": true
+            },
+            {
+              "id": "pages-board-board--send-waits-for-confirmation",
+              "states": ["send with confirmation", "selection kept"],
               "interaction": true
             }
           ]

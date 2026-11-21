@@ -31,7 +31,8 @@ function item(task: MonitorTask['task']): MonitorTask {
 
 function props(overrides: Partial<MonitorViewProps> = {}): MonitorViewProps {
   return {
-    summary: { todo: 1, doing: 2, done: 1 },
+    summary: { backlog: 0, todo: 1, doing: 2, done: 1 },
+    backlog: [],
     todo: [
       item(
         makeTask({
@@ -167,6 +168,7 @@ describe('remote access lanes and task actions', () => {
     render(<Connected />);
 
     expect(screen.getAllByRole('tab').map((tab) => tab.getAttribute('aria-label'))).toEqual([
+      'Backlog 0',
       'Todo 1',
       'Doing 2',
       'Done 1',

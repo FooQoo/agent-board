@@ -25,15 +25,16 @@ describe('summary', () => {
     expect(parseSummary(original)).toEqual(original);
   });
 
-  it('shows a plan in the Backlog in Todo as a draft and counts it with Todo', () => {
+  it('keeps a plan in the Backlog in its own lane, and the Backlog count of its epic', () => {
     const original = JSON.parse(read('summary.json'));
     original.tasks[0].taskStatus = 'backlog';
     original.tasks[0].draft = null;
     original.epics[0].progress = { ...original.epics[0].progress, backlog: 2 };
     const summary = parseSummary(original);
-    expect(summary.tasks[0]?.taskStatus).toBe('todo');
-    expect(summary.tasks[0]?.draft).toBe('ai');
-    expect(summary.epics[0]?.progress.todo).toBe(original.epics[0].progress.todo + 2);
+    expect(summary.tasks[0]?.taskStatus).toBe('backlog');
+    expect(summary.tasks[0]?.draft).toBeNull();
+    expect(summary.epics[0]?.progress.backlog).toBe(2);
+    expect(summary.epics[0]?.progress.todo).toBe(original.epics[0].progress.todo);
   });
 
   it('carries versions and no full text', () => {

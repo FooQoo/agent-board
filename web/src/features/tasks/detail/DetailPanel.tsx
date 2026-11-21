@@ -1,7 +1,7 @@
 import { ArchiveRestoreIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { setAcceptance, setDraft } from '../api/edit';
+import { setAcceptance } from '../api/edit';
 import { noOperations, type OperationControls } from '../../../shared/lib/operations/operations';
 import type { ReactNode } from 'react';
 import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/api/contracts';
@@ -11,6 +11,8 @@ import { DeleteConfirm } from '../delete/DeleteConfirm';
 import type { DetailTab } from './DetailTabs';
 import { TaskDetailView } from './TaskDetailView';
 import { DraftBanner } from './DraftBanner';
+import { useFinalizeDraft } from './useFinalizeDraft';
+import { BacklogBanner } from './BacklogBanner';
 import { PreviewAction } from './PreviewAction';
 import './detail.css';
 
@@ -55,6 +57,9 @@ export interface DetailPanelProps {
   focusResultVersion?: number | null;
   /** A history link: the panel opens its history tab. */
   focusHistory?: boolean;
+  /** Sends this Backlog card to Todo; the app confirms a warning and shows the result. */
+  onSend?: (id: number) => void;
+  sendBusy?: boolean;
 }
 
 export function DetailPanel({
@@ -81,6 +86,8 @@ export function DetailPanel({
   onRetryEpics,
   focusResultVersion = null,
   focusHistory = false,
+  onSend,
+  sendBusy,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (task === null || projectId === null) {
@@ -120,6 +127,8 @@ export function DetailPanel({
       attachmentUrl={attachmentUrl}
       focusResultVersion={focusResultVersion}
       focusHistory={focusHistory}
+      onSend={onSend}
+      sendBusy={sendBusy}
     />
   );
 }
@@ -157,6 +166,8 @@ function DetailBody({
   onRetryEpics,
   focusResultVersion = null,
   focusHistory = false,
+  onSend,
+  sendBusy,
 }: DetailBodyProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<DetailTab>(
@@ -171,9 +182,6 @@ function DetailBody({
     if (focusHistory) setTab('history');
   }, [focusHistory]);
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
-  const [draftSaving, setDraftSaving] = useState(false);
-  const [draftFailed, setDraftFailed] = useState(false);
-  const draftBusy = useRef(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const operationsRef = useRef(operations);
@@ -200,21 +208,11 @@ function DetailBody({
     }
   }, [confirm]);
 
-  const finalizeDraft = async () => {
-    if (draftBusy.current) return;
-    draftBusy.current = true;
-    setDraftSaving(true);
-    setDraftFailed(false);
-    try {
-      await setDraft(projectId, task.id, null);
-      onChanged?.();
-    } catch {
-      setDraftFailed(true);
-    } finally {
-      draftBusy.current = false;
-      setDraftSaving(false);
-    }
-  };
+  const { draftSaving, draftFailed, finalizeDraft } = useFinalizeDraft(
+    projectId,
+    task.id,
+    onChanged,
+  );
 
   // The person may check and uncheck conditions on any task that is not archived.
   const toggleCondition = async (conditionId: string, done: boolean) => {
@@ -283,6 +281,9 @@ function DetailBody({
       problems={problems}
       attachmentUrl={attachmentUrl}
     >
+      {task.taskStatus === 'backlog' && !archived && (
+        <BacklogBanner busy={sendBusy} onSend={onSend ? () => onSend(task.id) : undefined} />
+      )}
       {task.draft !== null && !archived && (
         <DraftBanner
           busy={draftSaving}

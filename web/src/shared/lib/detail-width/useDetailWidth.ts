@@ -35,7 +35,7 @@ export function useDetailWidth(
   /** Changes when the content of the body changes (the lanes appear, a state message takes their place). */
   contentKey: string | boolean,
   /** The columns beside the detail panel that keep their minimum width: three lanes on the board, one list on the epic list. */
-  lanes = 3,
+  lanes = 4,
 ): DetailWidth {
   const [preferred, setPreferred] = useState(() => readStoredWidth() ?? DEFAULT_WIDTH);
   const [layoutMax, setLayoutMax] = useState(Number.POSITIVE_INFINITY);

@@ -13,7 +13,7 @@ export {
 } from '@/shared/lib/gesture/cardReveal';
 
 /** The lanes in the order the phone shows them, left to right. */
-export const LANES: readonly MonitorSection[] = ['todo', 'doing', 'done'];
+export const LANES: readonly MonitorSection[] = ['backlog', 'todo', 'doing', 'done'];
 
 /**
  * The tiles a swipe shows, by the side they appear on. A swipe to the left shows the lane on the
@@ -22,12 +22,18 @@ export const LANES: readonly MonitorSection[] = ['todo', 'doing', 'done'];
  */
 export function swipeActions(lane: MonitorSection): {
   left: MonitorSection[];
-  right: (MonitorSection | 'archive')[];
+  right: SwipeTile[];
 } {
-  const before = neighbourLane(lane, -1);
+  // A plan in the Backlog is sent to Todo from the selection mode, which the first tile starts; a
+  // card in Todo cannot be taken back to the Backlog from the screen.
+  if (lane === 'backlog') return { left: [], right: ['select', 'archive'] };
+  const before = lane === 'todo' ? null : neighbourLane(lane, -1);
   const after = neighbourLane(lane, 1);
   return { left: before ? [before] : [], right: [...(after ? [after] : []), 'archive'] };
 }
+
+/** What a swipe tile does: moves the card to a lane, archives it, or starts the selection mode. */
+export type SwipeTile = MonitorSection | 'archive' | 'select';
 
 export type Direction = -1 | 1;
 

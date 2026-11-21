@@ -127,7 +127,7 @@ function editedTask(task: Task, input: Record<string, unknown>, at: string): Tas
   };
 }
 
-/** A `draft` of a request body: `human`, `ai`, or none. */
+/** A `draft` of a request body: `human`, or none. */
 function asDraft(value: unknown): Draft | null {
-  return value === 'human' || value === 'ai' ? value : null;
+  return value === 'human' ? value : null;
 }

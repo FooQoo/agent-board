@@ -34,6 +34,7 @@ export function MockBoard({
   done = [],
   count = 0,
   emptyHint,
+  firstLane,
 }: {
   todo?: ReactNode[];
   doing?: ReactNode[];
@@ -42,9 +43,12 @@ export function MockBoard({
   count?: number;
   /** The board's empty message, shown where the mock places it. */
   emptyHint?: string;
+  /** The first lane's name when it is the Backlog, where the mock draws three lanes only. */
+  firstLane?: string;
 }) {
   const { i18n } = useTranslation();
-  const names = i18n.language === 'ja' ? RESULT_LANE_NAMES.ja : RESULT_LANE_NAMES.en;
+  const base = i18n.language === 'ja' ? RESULT_LANE_NAMES.ja : RESULT_LANE_NAMES.en;
+  const names = firstLane ? [firstLane, base[1], base[2]] : base;
   const lanes = [todo, doing, done];
   return (
     <div

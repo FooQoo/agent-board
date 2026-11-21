@@ -76,8 +76,8 @@ describe('useDetailWidth', () => {
       late.current = body;
       result.current.observeBody(body);
     });
-    // 1000 - 24 - 24 - 2 * 12 - 3 * 200
-    expect(result.current.width).toBe(328);
+    // 1000 - 24 - 24 - 2 * 12 - 4 * 200 leaves 128: the panel keeps its smallest width.
+    expect(result.current.width).toBe(280);
   });
 
   it('keeps the dragged width when saving fails', () => {
@@ -98,7 +98,7 @@ describe('useDetailWidth', () => {
     const { result } = renderHook(() => useDetailWidth(ref, layoutRef, true));
     expect(result.current.width).toBe(500);
     setWidth(1024);
-    expect(result.current.width).toBe(352);
+    expect(result.current.width).toBe(280);
     expect(window.localStorage.getItem('agboard.detailWidth')).toBe('500');
     setWidth(1600);
     expect(result.current.width).toBe(500);

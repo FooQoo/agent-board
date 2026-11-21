@@ -1,10 +1,11 @@
-import { CheckIcon, CircleDashedIcon, CircleIcon } from 'lucide-react';
+import { CheckIcon, CircleDashedIcon, CircleDotDashedIcon, CircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 
-export type MonitorSection = 'todo' | 'doing' | 'done';
+export type MonitorSection = 'backlog' | 'todo' | 'doing' | 'done';
 /** The mark of each lane, shared by the lane headers, the lane tabs, and the swipe tiles. */
 export const SECTION_ICONS: Record<MonitorSection, LucideIcon> = {
+  backlog: CircleDotDashedIcon,
   todo: CircleIcon,
   doing: CircleDashedIcon,
   done: CheckIcon,

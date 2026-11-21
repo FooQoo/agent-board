@@ -32,11 +32,13 @@ The agent skill treats these two IDs as ongoing classification epics with fixed 
 
 ## Browse all epics
 
-Open **Epics** in the header to see every epic in the project, in ID order, including epics with no tasks and epics whose tasks are all done. Each row shows the number of tasks in each state: Todo, Doing, Done, and Archived. Archived tasks count only as archived, so the four numbers add up to the total at the top right of the row.
+Open **Epics** in the header to see every epic in the project, in ID order, including epics with no tasks and epics whose tasks are all done. Each row shows the number of tasks in each state: Backlog, Todo, Doing, Done, and Archived. Archived tasks count only as archived, so the five numbers add up to the total at the top right of the row.
 
 ![Epic list showing each epic's task counts, with the details of the selected epic beside it](../../images/guide/epic-list.png){.screenshot}
 
 Select an epic to read its name, details, and images in the details column beside the list. The column stays in place, as it does in the archive, and reads "Select an epic to see its cards and details." until you select one. The pencil button in the detail header (**Edit epic**) opens the same preview as the epic label. The trash button next to it (**Delete epic**) opens a confirmation in the details column, as the task details do, and then deletes the epic with its details and images. Nothing is deleted while a task still belongs to the epic, archived tasks included; the confirmation says so, and you move or clear those tasks first. The edit, delete, and close icons use the same style and spacing as task and archive details. Close the details or select the row again to return to the prompt. **Back to board** returns to the board.
+
+The details of an epic that has cards in the Backlog show a **Send N to Todo** button. It sends all of those cards in one save: either every card goes, or none does. If a card still has an open question, a window asks you to confirm it first, as when you send cards from the board (see [Backlog plans](./board#backlog-plans)).
 
 ## Order the work
 

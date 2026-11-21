@@ -1,4 +1,4 @@
-import type { Board, Epic, Task } from '../../shared/api/contracts.ts';
+import type { Board, Epic, EpicTaskCounts, Task } from '../../shared/api/contracts.ts';
 import type {
   DetailEvent,
   DetailSection,
@@ -105,13 +105,7 @@ export function summaryOfBoard(board: Board): Summary {
       draft: epic.draft,
       waves: epic.waves,
       wavesError: epic.wavesError,
-      progress: board.epicTaskCounts[epic.id] ?? {
-        todo: 0,
-        doing: 0,
-        done: 0,
-        archived: 0,
-        total: 0,
-      },
+      progress: progressOf(board.epicTaskCounts[epic.id]),
       detailVersions: { document: epicVersion(epic) },
     })),
     problems: board.problems,
@@ -179,3 +173,9 @@ export function epicDetailEvents(projectId: string, epic: Epic): DetailEvent[] {
 
 export const ndjson = (events: DetailEvent[]): string =>
   `${events.map((event) => JSON.stringify(event)).join('\n')}\n`;
+
+/** The counts as the server writes them: `backlog` is left out when it is 0. */
+function progressOf(counts: EpicTaskCounts | undefined) {
+  const { backlog, ...rest } = counts ?? { todo: 0, doing: 0, done: 0, archived: 0, total: 0 };
+  return backlog ? { backlog, ...rest } : rest;
+}

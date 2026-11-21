@@ -91,7 +91,7 @@ export function summaryOf(
       draft: null,
       waves: [],
       wavesError: false,
-      progress: { todo: 0, doing: 0, done: 0, archived: 0, total: 0 },
+      progress: { backlog: 0, todo: 0, doing: 0, done: 0, archived: 0, total: 0 },
       detailVersions: { document: e.document },
     })),
     problems: [],

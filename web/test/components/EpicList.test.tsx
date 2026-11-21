@@ -29,6 +29,7 @@ function epic(id: string, overrides: Partial<Epic> = {}): Epic {
 }
 
 const counts = (todo: number, doing: number, done: number, archived: number): EpicTaskCounts => ({
+  backlog: 0,
   todo,
   doing,
   done,

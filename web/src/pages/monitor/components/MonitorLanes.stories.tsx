@@ -74,6 +74,10 @@ function useLaneFixture(
   const [lanes, setLanes] = useState<LaneItems>(() => {
     const waits = [firstQuestionOfTask(messages, 11)?.id ?? ''].filter(Boolean);
     return {
+      backlog: [
+        card(project, 31, 'Plan the release notes', 'backlog'),
+        card(project, 32, 'Plan the migration guide', 'backlog', {}, ['Q-31']),
+      ],
       todo: [
         card(project, 14, 'Prepare the Windows build', 'todo', { assignee: 'human' }),
         card(project, 15, 'Write the setup guide', 'todo'),
@@ -187,6 +191,7 @@ function LanesStory({
             ? { kind: 'archive', item: target }
             : null;
   const without = (id: number) => ({
+    backlog: lanes.backlog.filter((item) => item.task.id !== id),
     todo: lanes.todo.filter((item) => item.task.id !== id),
     doing: lanes.doing.filter((item) => item.task.id !== id),
     done: lanes.done.filter((item) => item.task.id !== id),

@@ -290,7 +290,7 @@ ol {
 
 .board__lanes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
   align-items: stretch;
   gap: 16px;
   height: 100%;
@@ -299,6 +299,13 @@ ol {
 }
 
 /* The band of messages sits above the lanes; the lanes take the height left. */
+/* Four lanes of at least 200px: a window narrower than that scrolls the lanes sideways inside the board. */
+@media (max-width: 1279px) {
+  .board__lanes {
+    overflow-x: auto;
+  }
+}
+
 .board--with-band {
   display: flex;
   flex-direction: column;

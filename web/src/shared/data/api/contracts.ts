@@ -64,6 +64,8 @@ export interface SummaryTask {
 }
 
 export interface SummaryEpicProgress {
+  /** Plans in the Backlog; the server leaves it out when 0. */
+  backlog?: number;
   todo: number;
   doing: number;
   done: number;

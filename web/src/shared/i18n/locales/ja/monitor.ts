@@ -22,6 +22,7 @@ export const monitorJa = {
     completedUnknown: '完了日時不明',
     lastFetched: '最終取得 {{time}}',
     status: {
+      backlog: 'Backlog',
       todo: '未着手',
       doing: '進行中',
       pending: '待機中',
@@ -29,6 +30,7 @@ export const monitorJa = {
       done: '完了',
     },
     empty: {
+      backlog: '待機中の計画はありません。',
       todo: '未着手の作業はありません。',
       doing: '進行中の作業はありません。',
       done: '完了した作業はありません。',

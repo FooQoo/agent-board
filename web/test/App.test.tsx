@@ -225,7 +225,7 @@ describe('App', () => {
     setCurrent({
       ...current(),
       epics: [epic],
-      epicTaskCounts: { PLAN: { todo: 1, doing: 1, done: 0, archived: 0, total: 2 } },
+      epicTaskCounts: { PLAN: { backlog: 0, todo: 1, doing: 1, done: 0, archived: 0, total: 2 } },
       tasks: current().tasks.map((task) =>
         task.id === 11 || task.id === 12 ? { ...task, epic: ref } : task,
       ),
