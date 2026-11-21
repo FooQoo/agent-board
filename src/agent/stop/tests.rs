@@ -29,7 +29,7 @@ fn the_checklist_separates_found_items_from_checks() {
     assert!(found_part.contains("- NG: You opened a pull request"));
     assert!(!found_part.contains("[ ]"));
     assert!(check_part.contains("- [ ] Does your question wait"));
-    assert!(check_part.contains("- [ ] Record meaningful progress"));
+    assert!(check_part.contains("- [ ] Record a decision that matters later"));
     assert!(!check_part.contains("NG:"));
 }
 

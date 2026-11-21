@@ -51,14 +51,14 @@ agboard --project "My project" state 1 running --actor ai --reason "Writing and 
 
 列の移動や状態の変更では、`--reason`で理由を指定できます。指定は任意で、上限は10,000 Unicode文字です。理由を省略するか空白にすると、現在の状態から生成します。これらの操作は履歴を自動で追加するので、同じ操作の履歴を重複して追加しないでください。質問は5,000文字まで、回答のメモは2,000文字までです。
 
-列や状態を変えない、意味のある進捗を記録します。
+列や状態を変えないが、後で効く判断（カードをTODOに据え置くなど）を記録します。
 
 ```sh
-agboard --project "My project" history add 1 --reason "Checked the installation links and recorded the result in the task body"
+agboard --project "My project" history add 1 --reason "公開文面は実機確認の結果で変わるため、確認が終わるまでTODOに置く"
 agboard --project "My project" history add 1 --reason-file progress.txt
 ```
 
-コマンドが時刻を付け、AIの書き込み権限を適用します。actor・イベントID・種別・時刻の指定は要りません。意味のある進捗、判断、検証、中断、再開のときに、実際の作業と検証に基づく簡潔な理由を書きます。理由を省略するか空白にすると、状態に合った既定の文を生成します。AIは、下書き・アーカイブ済み・完了のタスクに履歴を追加できません。
+コマンドが時刻を付け、AIの書き込み権限を適用します。actor・イベントID・種別・時刻の指定は要りません。根拠・判断・分かっていれば再検討の条件を書きます。一覧を見ただけでは追記せず、`result add`は自動で記録されます。理由を省略するか空白にすると、状態に合った既定の文を生成します。AIは、下書き・アーカイブ済み・完了のタスクに履歴を追加できません。
 
 テキストを受け取るオプションは、次の語が`-`で始まらない場合にだけ、それを値として受け取ります。`--reason --json`のように値を書き忘れると、次のフラグが本文として記録されるのではなく、`invalid_argument`のエラーになります。Markdownの箇条書きのように`-`で始まるテキストを渡すには、`=`でオプションにつなげる（`--reason="- Checked the links"`）か、ファイル（`--reason-file`、`--text-file`、`--desc-file`、`--document-file`）または標準入力（`--desc -`、`--questions-json -`）で渡します。標準入力を使えるオプションでは、単独の`-`はこれまでどおり標準入力を表します。`TASK.md`や`EPIC.md`の全文は`---`で始まるので、`--desc-file`・`--document-file`か標準入力で渡します。対象のオプションは`--reason`、`--text`、`--desc`、`--document`、`--questions-json`、`--title`、`--summary`、`--link`です。
 

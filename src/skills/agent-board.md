@@ -7,7 +7,7 @@ How the board is used:
 - An **epic** is a management unit that groups tasks and sets their order. Its `EPIC.md` states the goal, the scope, the completion conditions, and how the work proceeds. A task's `epicId` is the only record of its membership.
 - A **task** is the plan for one piece of work. Its `TASK.md` states what to do, its completion conditions, and verification results.
 - The **shared folder** of the project is the source of truth for both. Do not keep a separate plan document elsewhere and copy it onto the board.
-- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`, with exactly `at` and `reason` per entry. Task operations append automatically; agents also append meaningful work progress automatically with `history add`. Never keep a chronological execution log in the body or duplicate history in `task.json`. `EPIC.md` has no history. Details: `agboard skills work-loop`.
+- **History** is stored only in the top-level `history` frontmatter of each `TASK.md`, with exactly `at` and `reason` per entry. Task operations append automatically; a decision that changes no state but matters later is added once with `history add`. Never keep a chronological execution log in the body or duplicate history in `task.json`. `EPIC.md` has no history. Details: `agboard skills work-loop`.
 
 The details of each part below are in topics: run `agboard skills <topic>` when the section says so.
 
@@ -77,11 +77,15 @@ Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing;
 
 ## 6. Work loop
 
-Record progress automatically at the start of work, at meaningful progress, decisions, verification, interruptions, and resumptions, with `history add <id> --reason "<work performed and its outcome>"`. Do not ask the user to approve each record, and do not invent results. Lane and run-state operations already append their own history; do not add a second entry for them.
+History keeps the decisions and grounds a reader needs later, not a log of every step. Do not ask the user to approve a record, and do not invent results.
+
+- A decision that changes the lane or run state goes in the `--reason` of that `mv` or `state`. The entry the operation appends is the one record; do not add a `history add` for it.
+- A decision that changes no state but matters later, such as keeping a card in Todo, is recorded once with `history add <id> --reason "<grounds, the decision, and when known the condition for reconsidering>"`. Example: "The public wording depends on the result of checking on a real device, so the card stays in Todo until that check is done."
+- Reading the list or the candidates needs no record. A result delivered with `result add` already appends its own history; do not add a work note for it. Verification evidence stays in the task body, the result in `result add`, and a question for the person in `message ask`.
 
 1. **Choose** a ready AI task from the progress table and its `nextTasks`, respecting the epic's task order; read its `EPIC.md` and `TASK.md` first.
 2. **Start**: `mv <id> doing --actor ai` and `state <id> running --actor ai`, each with a concise `--reason`.
-3. **Work and record** meaningful progress with `history add`. As soon as the first thing the requester can look at is ready, record it with `result add` and keep working (`agboard skills results`).
+3. **Work and record.** State changes record themselves through their `--reason`; use `history add` only for a decision that changes no state but matters later. As soon as the first thing the requester can look at is ready, record it with `result add` and keep working (`agboard skills results`).
 4. **Check conditions.** Set an item's `done` to `true` only after verification succeeded, and record the verification in history before saving the last completed condition. A running `agboard serve` completes an eligible AI task automatically; do not manually move a task to Done during the normal work loop.
 5. **Ask when blocked** (section 7). Do not wait idle: continue other independent work while the question is open.
 6. **Finish or interrupt.** Record a `result add <id> --final` for each task in `finalResultMissing`, the one change allowed on a Done task. Otherwise Done tasks are read-only for agents. If work stops before completion, record why.
@@ -104,7 +108,7 @@ After the start, call the user only when:
 - An action **cannot be undone**: deleting, publishing, sending anything outside.
 - The **scope** grows beyond the request.
 
-Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later, and record the decision in history.
+Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later, and record the decision once: in the `--reason` of the `mv` or `state` when it changes state, otherwise with `history add`.
 
 Every question goes on the board with `message ask`, never only in chat. Permission ("may I...?"), a question ending a progress report, and confirming an action a subagent was denied are questions too. Before ending a turn, re-read your reply: if it still asks anything that waits on the user, put it on the board now. Each question is its own message (`Q-<n>`) and belongs to the project; the task shows as `pending` while any question it refers to is open. Never answer a question yourself, and use `--actor human` only to record the user's own chat answer. If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead.
 

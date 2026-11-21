@@ -44,14 +44,14 @@ history:
 
 Agent Board appends history automatically for task operations, including UI or CLI lane and state changes, questions and answers, and archive or restore actions. Missing or blank reasons generate wording from the current state. The browser's reason field is optional.
 
-Agents automatically record meaningful work progress with:
+A lane or state change takes its decision and grounds in the `--reason` of `mv` or `state`; that entry is the record. For a decision that changes no state but matters later (for example keeping a card in Todo), an agent adds one entry with the grounds, the decision, and when known the condition for reconsidering:
 
 ```sh
-agboard --project "<name>" history add <id> --reason "<actual work and verification outcome>"
+agboard --project "<name>" history add <id> --reason "<grounds, decision, and when to reconsider>"
 agboard --project "<name>" history add <id> --reason-file <path>
 ```
 
-Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
+Use `--reason-file` for a reason with several lines, such as one with a table or an image. The timestamp is automatic and AI write permissions apply. Omitting or blanking the reason generates state-aware wording. Do not manually duplicate the history already added by a lane or state change or by `result add`; reading the list needs no entry. AI history writes are forbidden for drafts, archived tasks, and Done tasks. Prefer the CLI for atomic appends and timestamps. Direct Markdown appends may add entries with only `at` and `reason` while preserving current history, the body, acceptance conditions, and unknown metadata; do not replace the whole file solely to append history.
 
 Ordinary body and acceptance edits preserve the latest history; `edit --desc-file` is not a history append operation, and it also keeps the stored `questions` refs (`history` and `questions` in its input are ignored; use `message link`/`message unlink` to change refs). Read history in the board or with `show`/`snapshot`.
 
