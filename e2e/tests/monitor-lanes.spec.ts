@@ -559,7 +559,11 @@ test('the selection sheet sends the picked cards, and a swipe down or Cancel end
   await finger(page, start, { x: start.x, y: start.y + 220 });
   await expect(sheet).toHaveCount(0);
   await expect(page.getByRole('checkbox')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Select cards' }).tap();
+  // The drawer may still be sliding away, so tap again until the mode starts.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Select cards' }).tap();
+    await expect(page.getByRole('checkbox', { name: `Select #${first}` })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
   await expect(page.getByRole('checkbox', { name: `Select #${first}` })).not.toBeChecked();
 
   // Cancel also ends the mode.

@@ -108,6 +108,8 @@ After the start, call the user only when:
 - An action **cannot be undone**: deleting, publishing, sending anything outside.
 - The **scope** grows beyond the request.
 
+When a short request can be read more than one way, restate your reading before you act on it: what it acts on, what the person wants to achieve, and which existing behavior it resembles. Ask that reading as a choice; do not guess and hand the work on. Details: `agboard skills questions`.
+
 Decide everything else yourself, such as technical choices with a reasonable default or anything easy to change later. Record such a decision only when it matters later, once: in the `--reason` of the `mv` or `state` when it changes state, otherwise with `history add`.
 
 Every question goes on the board with `message ask`, never only in chat. Permission ("may I...?"), a question ending a progress report, and confirming an action a subagent was denied are questions too. Before ending a turn, re-read your reply: if it still asks anything that waits on the user, put it on the board now. Each question is its own message (`Q-<n>`) and belongs to the project; the task shows as `pending` while any question it refers to is open. Never answer a question yourself, and use `--actor human` only to record the user's own chat answer. If the board is unavailable, report the connection problem and leave dependent work blocked; do not ask only in the chat instead.
