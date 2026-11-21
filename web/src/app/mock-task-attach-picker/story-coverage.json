@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-task-attach-picker/TaskAttachScreen.tsx",
+      "exports": [
+        {
+          "name": "TaskAttachScreen",
+          "stories": [
+            {
+              "id": "mocks-taskattachpicker-desktop--sheet-popover-composer",
+              "states": ["option A composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--sheet-popover-picker",
+              "states": ["option A picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--sheet-popover-result",
+              "states": ["option A result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--inline-hash-composer",
+              "states": ["option B composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--inline-hash-picker",
+              "states": ["option B picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--inline-hash-result",
+              "states": ["option B result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--full-screen-composer",
+              "states": ["option C composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--full-screen-picker",
+              "states": ["option C picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--full-screen-result",
+              "states": ["option C result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-desktop--reedit-replaces-line",
+              "states": ["re-opening replaces the existing last line"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--sheet-popover-composer",
+              "states": ["option A composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--sheet-popover-picker",
+              "states": ["option A picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--sheet-popover-result",
+              "states": ["option A result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--inline-hash-composer",
+              "states": ["option B composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--inline-hash-picker",
+              "states": ["option B picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--inline-hash-result",
+              "states": ["option B result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--full-screen-composer",
+              "states": ["option C composer with Attach task button"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--full-screen-picker",
+              "states": ["option C picker open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--full-screen-result",
+              "states": ["option C result with last line #552 #651"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-taskattachpicker-phone--reedit-replaces-line",
+              "states": ["re-opening replaces the existing last line"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
