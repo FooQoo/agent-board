@@ -16,24 +16,27 @@ pub(super) struct SavedDraft {
 }
 
 impl SavedDraft {
-    /// The saved state: `markdown` is the text a save writes, or `None` when the
-    /// stored TASK.md stays as it is, which is then read here, before any commit.
-    pub fn capture(
+    /// A save that wrote nothing: the stored TASK.md, read before any commit.
+    pub fn unchanged(
         shared: &Path,
         project: &ProjectId,
         task: TaskFile,
-        markdown: Option<String>,
-        changed: bool,
     ) -> Result<Self, AgboardError> {
-        let description = match markdown {
-            Some(text) => text,
-            None => reader::read_body(shared, project, task.id)?,
-        };
+        let description = reader::read_body(shared, project, task.id)?;
         Ok(Self {
             task,
             description,
-            changed,
+            changed: false,
         })
+    }
+
+    /// A committed save: `description` is the TASK.md text the commit wrote.
+    pub fn committed(task: TaskFile, description: String) -> Self {
+        Self {
+            task,
+            description,
+            changed: true,
+        }
     }
 
     /// The view of the saved state, with no read that can fail the edit: the
@@ -82,8 +85,7 @@ mod tests {
             .unwrap()
             .id;
         let task = reader::read_task_strict(&shared, &project, id).unwrap();
-        let saved =
-            SavedDraft::capture(&shared, &project, task, Some("Saved text".into()), true).unwrap();
+        let saved = SavedDraft::committed(task, "Saved text".into());
         // A folder that does not exist: every read after the commit would fail.
         let changed = saved.into_changed(&shared, &root.path().join("gone"));
         assert!(changed.changed);
