@@ -2,6 +2,49 @@
 
 What changed in each published version of Agent Board, newest first. Each version also has a [GitHub Release](https://github.com/FooQoo/agent-board/releases) with its downloads.
 
+## v1.7.0
+
+A release that adds the Backlog lane for plans only a person can start, pages the archive, lets you attach tasks to a request, and polishes the phone board.
+
+### Changes
+
+- **A Backlog lane holds the AI's plans.** When you ask the AI only to plan, it puts the plan in the new Backlog lane, the first lane of the board on the PC and the phone, and never starts it. The lane shows its own count and marks cards that still have an open question. If the AI cannot tell whether you want a plan or the work done, it asks you first. A request to do the work still creates ordinary Todo tasks.
+- **Only a person sends a plan to Todo.** Select cards in the Backlog and send them together, drag them onto a lane, send one card or a whole epic from its details, or use the commands below. A card with an open question is named in a confirmation before it moves, and a notice appears only when a send fails. A person can also drop Backlog cards on Doing or Done, which follows the same rules. The AI cannot move, start, or send a Backlog card.
+- **Moves show at once.** Moving one card between lanes, by a drag on the PC, a swipe tile on the phone, or the details, shows it in its new lane right away. If the board refuses the move, the card goes back and a notice says why.
+- **Phone Backlog selection drawer.** On the phone, selecting Backlog cards opens a small drawer that leaves the board usable behind it. Pull it down or close it to end the selection. Swipe the Backlog lane to the right past its start, like the Done lane's swipe for archiving, to start selecting without scrolling to the bottom.
+- **Send a card back to the Backlog.** A person can move a Todo card the AI has not started back to the Backlog, by dragging it on the PC or holding it and swiping right on the phone.
+- **New commands for the Backlog.** `agboard send <id>` sends a card to Todo, `agboard epic send <EPIC-ID> [--tasks 1,2]` sends an epic's cards in one all-or-nothing step, and `agboard add --backlog` creates a card in the Backlog. `--force` on the send commands confirms open questions. `agboard mv <id> backlog --actor human` takes an unstarted Todo card back.
+- **The Japanese UI says バックログ and 未着手.** The Backlog lane is バックログ, and Todo is written 未着手 in the Japanese screens and pages.
+- **The archive loads as you scroll.** The archive list on the PC and in the phone Archive drawer is shown newest first by the time of archiving and loads more cards as you scroll, so a long archive opens quickly.
+- **Attach tasks to a request.** The Ask AI dialog and sheet have an **Attach task** button. Search tasks by number or title, check the ones you mean, and their numbers are added to the end of the request.
+- **Ask AI opens your requests.** After you send a request, the Messages list opens on the Your requests tab.
+- **Summary results link to the task's result.** Each result in a Summary is a link that opens the task's Results tab at that version, in the same page, on the PC and the phone. Closing the task returns to the Summary where you left it. Ctrl or Command click still opens a new tab. Summary windows now end on clean clock times, such as every hour on the hour, instead of depending on when the server started.
+- **Phone board refinements.** The phone board opens on the Doing lane, and its cards no longer repeat the project name. Pull down to refresh the Messages list. A Summary card only swipes to the left, so a swipe to the right changes tabs. In the enlarged image view you can pinch, pan, and double-tap to zoom.
+- **Agents record less history.** The skill and the reminder now ask agents to record only the decisions and grounds a reader needs later, instead of every step.
+
+### Fixes
+
+- **The phone bottom bar hides with the keyboard.** The navigation bar no longer stays above the keyboard when you type in a question's answer note.
+- **Message tabs fit their content.** Each message tab is as tall as its own content rather than as tall as the long Summary tab, and an opened message starts at the top after you answer or go back.
+- **The message loading spinner is centered** on the PC and the phone.
+
+### Breaking changes
+
+- **AI drafts no longer exist; plans go to the Backlog.** The product does not convert old AI drafts. A task or epic file that still holds `"draft": "ai"` is reported as a problem, left off the board, and never rewritten. To keep such a plan, recreate it as a Backlog card with `agboard add --backlog`. The API accepts only `"human"` or `null` for `draft`.
+- **`agboard start` and `agboard epic start` are removed.** Use `agboard send` and `agboard epic send`. The errors `ai_draft_needs_start` and `task_is_ai_draft` are gone.
+- **The AI cannot move Backlog cards.** An agent's `mv`, `state`, or `send` on a Backlog card is refused with `task_in_backlog` or `human_only`. A Backlog card is also left out of the next-task list, reminders, `wait`, and the resident push.
+- **The archive API is paged.** `GET /api/projects/{id}/archive` now takes `limit` and `cursor` and returns one page with `nextCursor`. The old full-list response is removed.
+
+### Required update steps
+
+Update the command:
+
+```sh
+brew upgrade fooqoo/tap/agboard
+```
+
+Restart `agboard serve` after the upgrade. `agboard update` is not needed: this release changes no hook command, so the plugin updates itself at the first agent session after the upgrade.
+
 ## v1.6.1
 
 A release that fixes three command-line and phone board problems, and makes a missing option value an error instead of a wrong record.
