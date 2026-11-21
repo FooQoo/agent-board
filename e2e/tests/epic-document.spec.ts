@@ -194,7 +194,7 @@ test('the CLI, snapshot, progress, hook, wait, and API return document and docum
   waiter.stdout?.on('data', (chunk) => (waited += chunk));
   const waitExit = new Promise<number | null>((resolve) => waiter.once('exit', resolve));
   await new Promise((resolve) => setTimeout(resolve, 500));
-  agboardOk(PROJECT, ['epic', 'edit', 'GAMMA', '--document', 'Wakes the waiting command.\n'], fixture.home);
+  agboardOk(PROJECT, ['epic', 'edit', 'GAMMA', `--document=Wakes the waiting command.\n`], fixture.home);
   expect(await waitExit).toBe(0);
   const woken = JSON.parse(waited);
   expect(woken.epics.find((epic: { id: string }) => epic.id === 'GAMMA').document).toBe('Wakes the waiting command.\n');
@@ -229,7 +229,7 @@ test('the CLI stores the epic details from --document, standard input, and --doc
   writeFileSync(file, 'Document from a file.\n');
 
 
-  const text = agboard(PROJECT, ['epic', 'edit', 'BETA', '--document', '---\nwaves: [4, 5]\n---\n\nDocument from text.\n', '--json'], fixture.home);
+  const text = agboard(PROJECT, ['epic', 'edit', 'BETA', `--document=---\nwaves: [4, 5]\n---\n\nDocument from text.\n`, '--json'], fixture.home);
   expect(text.code, text.stderr).toBe(0);
   expect(JSON.parse(text.stdout).epic).toMatchObject({ body: 'Document from text.\n', waves: [[4], [5]] });
   expect(readFileSync(path.join(fixture.beta, 'EPIC.md'), 'utf8')).toContain('Document from text.');
@@ -247,7 +247,7 @@ test('the CLI stores the epic details from --document, standard input, and --doc
   expect(help.stdout).toContain('--document-file');
 
   // Put the epic back for the page scenarios.
-  agboardOk(PROJECT, ['epic', 'edit', 'BETA', '--document', DOC_BETA], fixture.home);
+  agboardOk(PROJECT, ['epic', 'edit', 'BETA', `--document=${DOC_BETA}`], fixture.home);
   agboardOk(PROJECT, ['epic', 'edit', 'GAMMA', '--document', ''], fixture.home);
 });
 

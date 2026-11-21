@@ -203,7 +203,7 @@ test('the phone bar counts the open questions; a question picked in its list is 
   // Ask sits in the middle of the bar.
   await expect(askItem(page)).toBeVisible();
 
-  const id: number = json(['add', 'Alpha band question', '--desc', 'Asked for the band.', '--assignee', 'ai', '--actor', 'human']).task.id;
+  const id: number = json(['add', 'Alpha band question', `--desc=Asked for the band.`, '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start'], home);
   const asked = agboard('Alpha', askArgs(String(id), decisionJson('Which plan for the band?')), home);
   expect(asked.code, asked.stderr).toBe(0);
@@ -231,7 +231,7 @@ test('the phone bar counts the open questions; a question picked in its list is 
 
 test('an image attached to the task shows in the sheet from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha image question', '--desc', 'A question with a picture.', '--assignee', 'ai', '--actor', 'human']).task.id;
+  const id: number = json(['add', 'Alpha image question', `--desc=A question with a picture.`, '--assignee', 'ai', '--actor', 'human']).task.id;
   agboard('Alpha', ['mv', String(id), 'doing', '--actor', 'ai', '--reason', 'Start review'], home);
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
@@ -256,7 +256,7 @@ test('an image attached to the task shows in the sheet from the attachment route
 
 test('an image in a history reason shows in the History tab from the attachment route of the board', async ({ page }) => {
   const json = (args: string[]) => JSON.parse(agboard('Alpha', [...args, '--json'], home).stdout);
-  const id: number = json(['add', 'Alpha history evidence', '--desc', 'A task with evidence.', '--assignee', 'ai', '--actor', 'human']).task.id;
+  const id: number = json(['add', 'Alpha history evidence', `--desc=A task with evidence.`, '--assignee', 'ai', '--actor', 'human']).task.id;
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==',
     'base64',
@@ -265,7 +265,7 @@ test('an image in a history reason shows in the History tab from the attachment 
   writeFileSync(file, png);
   const added = json(['attachment', 'add', String(id), '--file', file, '--actor', 'ai']);
   const reason = `Checked.\n\n| Screen | Result |\n| --- | --- |\n| Board | Passed |\n\n![the evidence](${added.path})`;
-  const noted = agboard('Alpha', ['history', 'add', String(id), '--reason', reason], home);
+  const noted = agboard('Alpha', ['history', 'add', String(id), `--reason=${reason}`], home);
   expect(noted.code, noted.stderr).toBe(0);
 
   await entrance.open(page, phoneUrl());

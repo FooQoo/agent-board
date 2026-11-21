@@ -111,7 +111,7 @@ test('a long Markdown task shows every section open, with counts, tables, checkl
 
 test('headings do not fold: every section stays open across tabs and tasks', async ({ page }) => {
   const id = await addLongTask();
-  agboardOk(mainProject, ['add', 'Second task', '--desc', 'No sections here.']);
+  agboardOk(mainProject, ['add', 'Second task', `--desc=No sections here.`]);
   await openTask(page, id);
   const panel = body(page);
   await expect(panel.getByText('first item')).toBeVisible();
@@ -134,7 +134,7 @@ test('headings do not fold: every section stays open across tabs and tasks', asy
 
 test('a body without H2 headings is shown whole, and an empty body says so', async ({ page }) => {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'Plain task', '--desc', '### Only a small heading\n\nBody text.\n\n- one\n- two']);
+  agboardOk(mainProject, ['add', 'Plain task', `--desc=### Only a small heading\n\nBody text.\n\n- one\n- two`]);
   await page.goto('/');
   await waitForSync(page);
   await readBoardAfterReset(page);

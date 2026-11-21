@@ -62,7 +62,7 @@ pub struct MessageAskArgs {
     #[arg(long, value_enum, required = true)]
     pub actor: ActorArg,
     /// The questions as JSON: {"questions":[{"body","choices","recommendedChoiceId","tasks","images"}]}; images lists image file paths (PNG, JPEG, WebP, GIF; up to 20, 50 MiB in all) stored with the question and shown by writing ![](attachments/NAME) in the body. Use - to read standard input
-    #[arg(long, value_name = "JSON", required = true, allow_hyphen_values = true)]
+    #[arg(long, value_name = "JSON", required = true)]
     pub questions_json: String,
     /// A task that waits on every question; repeat for more tasks
     #[arg(long = "task", value_name = "ID")]
@@ -130,12 +130,7 @@ pub struct MessageAnswerArgs {
     #[arg(long, value_name = "CHOICE_ID")]
     pub choice: Option<String>,
     /// A written answer
-    #[arg(
-        long,
-        value_name = "TEXT",
-        allow_hyphen_values = true,
-        group = "text_source"
-    )]
+    #[arg(long, value_name = "TEXT", group = "text_source")]
     pub text: Option<String>,
     /// Read the written answer from a UTF-8 file
     #[arg(long, value_name = "PATH", group = "text_source")]
@@ -222,7 +217,6 @@ pub struct MessageSendArgs {
     #[arg(
         long,
         value_name = "TEXT",
-        allow_hyphen_values = true,
         group = "text_source",
         required_unless_present = "text_file"
     )]

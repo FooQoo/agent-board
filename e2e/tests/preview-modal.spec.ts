@@ -39,7 +39,7 @@ function taskFile(id: number): string {
 
 function addTask(title: string): number {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', title, '--desc', BODY, '--assignee', 'ai', '--actor', 'human']);
+  agboardOk(mainProject, ['add', title, `--desc=${BODY}`, '--assignee', 'ai', '--actor', 'human']);
   return id;
 }
 
@@ -310,7 +310,7 @@ test('PM-6 the epic tab and the epic details open the epic preview; a draft epic
 }) => {
   agboardOk(mainProject, ['epic', 'add', 'PREVIEWEP', '--name', 'Preview epic', '--color', '#7C3AED', '--actor', 'human']);
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', 'In the preview epic', '--desc', BODY, '--assignee', 'ai', '--actor', 'human', '--epic', 'PREVIEWEP']);
+  agboardOk(mainProject, ['add', 'In the preview epic', `--desc=${BODY}`, '--assignee', 'ai', '--actor', 'human', '--epic', 'PREVIEWEP']);
   await openBoard(page);
   const epic = () => JSON.parse(agboardOk(mainProject, ['epic', 'show', 'PREVIEWEP', '--json']).stdout).epic as {
     name: string;

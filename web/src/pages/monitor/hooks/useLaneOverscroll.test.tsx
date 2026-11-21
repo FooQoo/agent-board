@@ -9,18 +9,27 @@ function Host({
   enabled,
   onOverscroll,
   chosen,
+  onIgnoredClick,
 }: {
   enabled: boolean;
   onOverscroll: () => void;
   chosen?: boolean;
+  onIgnoredClick?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const lane = useLaneOverscroll(ref, enabled, onOverscroll);
   return (
-    <div ref={ref} data-testid="lane" data-offset={lane.offset} {...lane.handlers}>
+    <div
+      ref={ref}
+      data-testid="lane"
+      data-offset={lane.offset}
+      onClickCapture={lane.onClickCapture}
+      {...lane.handlers}
+    >
       <div data-testid="plain" />
       {chosen && <div data-testid="chosen" data-swipe-card="" data-armed="" />}
       <button type="button" data-testid="tile" data-swipe-action />
+      <button type="button" data-testid="ignored" data-lane-ignore onClick={onIgnoredClick} />
     </div>
   );
 }
@@ -47,13 +56,23 @@ function swipe(target: Element, dx: number, dy = 0) {
 describe('useLaneOverscroll', () => {
   const setup = (enabled = true, chosen = false) => {
     const onOverscroll = vi.fn();
-    const view = render(<Host enabled={enabled} onOverscroll={onOverscroll} chosen={chosen} />);
+    const onIgnoredClick = vi.fn();
+    const view = render(
+      <Host
+        enabled={enabled}
+        onOverscroll={onOverscroll}
+        chosen={chosen}
+        onIgnoredClick={onIgnoredClick}
+      />,
+    );
     return {
       onOverscroll,
+      onIgnoredClick,
       lane: view.getByTestId('lane'),
       plain: view.getByTestId('plain'),
       chosen: view.queryByTestId('chosen'),
       tile: view.getByTestId('tile'),
+      ignored: view.getByTestId('ignored'),
     };
   };
 
@@ -62,6 +81,16 @@ describe('useLaneOverscroll', () => {
     swipe(plain, -OVERSCROLL_DISTANCE);
     expect(onOverscroll).toHaveBeenCalledOnce();
     expect(lane.dataset.offset).toBe('0');
+  });
+
+  // #627: the Archive all button is a control the hook ignores; an earlier swipe must not eat its tap.
+  it('lets a tap on an ignored control click after an earlier swipe', () => {
+    const { plain, ignored, onIgnoredClick } = setup();
+    swipe(plain, -(OVERSCROLL_DISTANCE - 10));
+    pointer(ignored, 'pointerdown', 200);
+    pointer(ignored, 'pointerup', 200);
+    fireEvent.click(ignored);
+    expect(onIgnoredClick).toHaveBeenCalledOnce();
   });
 
   it('follows the finger, then takes a quarter of the drag beyond the tile', () => {

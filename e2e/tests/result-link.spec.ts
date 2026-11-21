@@ -33,10 +33,10 @@ test.beforeAll(async () => {
     Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgaPj/HwAEggJ/59habAAAAABJRU5ErkJggg==', 'base64'),
   );
   // Task 1 of Alpha: a first text-only result, then a final one with a capture and a link that exists only on the PC.
-  agboardOk('Alpha', ['result', 'add', '1', '--summary', 'First draft of the notes is written.', '--actor', 'ai'], home);
+  agboardOk('Alpha', ['result', 'add', '1', `--summary=First draft of the notes is written.`, '--actor', 'ai'], home);
   agboardOk(
     'Alpha',
-    ['result', 'add', '1', '--summary', 'The notes are final; the full report is on the PC.', '--file', image, '--link', 'outputs/release-notes/report.html', '--final', '--actor', 'ai'],
+    ['result', 'add', '1', `--summary=The notes are final; the full report is on the PC.`, '--file', image, '--link', 'outputs/release-notes/report.html', '--final', '--actor', 'ai'],
     home,
   );
 });
