@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "owner": "U4",
+  "file": "shared/ui/pull/PullIndicator.tsx",
+  "exports": [
+    {
+      "name": "PullIndicator",
+      "stories": [
+        {
+          "id": "shared-ui-pullindicator--pulling",
+          "states": ["pulling"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-pullindicator--ready",
+          "states": ["ready to refresh"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-pullindicator--refreshing",
+          "states": ["refreshing"],
+          "interaction": true
+        },
+        {
+          "id": "shared-ui-pullindicator--idle",
+          "states": ["idle draws nothing"],
+          "interaction": true
+        }
+      ]
+    }
+  ]
+}

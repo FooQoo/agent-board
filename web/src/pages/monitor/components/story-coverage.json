@@ -444,31 +444,6 @@
       ]
     },
     {
-      "file": "pages/monitor/components/PullIndicator.tsx",
-      "exports": [
-        {
-          "name": "PullIndicator",
-          "stories": [
-            {
-              "id": "pages-monitor-components-monitorlanes--pull-to-refresh",
-              "states": ["pulling"],
-              "interaction": true
-            },
-            {
-              "id": "pages-monitor-components-monitorlanes--pull-ready",
-              "states": ["ready to refresh"],
-              "interaction": true
-            },
-            {
-              "id": "pages-monitor-components-monitorlanes--refreshing",
-              "states": ["refreshing"],
-              "interaction": true
-            }
-          ]
-        }
-      ]
-    },
-    {
       "file": "pages/monitor/components/PhoneNavBar.tsx",
       "exports": [
         {
