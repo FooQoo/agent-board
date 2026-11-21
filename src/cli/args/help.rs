@@ -76,9 +76,10 @@ Descriptions and drafts:
     read-only for you: `edit`, `mv`, `state`, and `history add` fail with
     task_is_draft (exit code 1) and change nothing. Do not retry. Wait for the
     user to finalize it, and work on other tasks meanwhile.
-  - Every task and epic you create is an AI draft (\"draft\": \"ai\"), also when it
-    is for the user. You can `edit` it and add `history`; `mv` and `state` fail
-    with task_is_draft. Ask what you cannot settle with `message ask`, write the
-    answers into the plan, then start it yourself (`start`, `epic start`). An open
-    question on the task refuses the start with start_blocked_by_questions. `add`,
-    `show`, `ls`, `snapshot`, and `wait` still work.";
+  - The Backlog (taskStatus backlog) holds a plan that must not be started yet.
+    Create it with `add --actor ai --backlog` only when a request asks for the
+    plan only; a request to carry out the work gets ordinary Todo tasks. When it is
+    unclear which one a request asks for, ask with `message ask` before you plan.
+    You can `edit` a Backlog task and add `history`; `mv`, `state`, `send`, and
+    `start` fail (task_in_backlog or human_only). Only a person sends it to Todo.
+    `add`, `show`, `ls`, `snapshot`, and `wait` still work.";

@@ -173,6 +173,29 @@ fn the_skill_plans_first_and_leaves_the_sending_to_the_person() {
 }
 
 #[test]
+fn the_skill_asks_before_planning_when_plan_or_execution_is_unclear() {
+    let skill = &full_skill();
+    assert!(
+        skill.contains(
+            "it is unclear which of the two the request asks for, ask with `message ask`"
+        ),
+        "the Skill must ask when it is unclear whether a request asks for a plan or for the work"
+    );
+    assert!(
+        !skill.contains("Do not ask the person what they meant by a request"),
+        "the Skill must not forbid asking about the scope of a request"
+    );
+    assert!(
+        skill.contains("You never take work from `backlog`"),
+        "the Skill must say an agent never takes work from the Backlog"
+    );
+    assert!(
+        !skill.contains("AI draft") && !skill.contains("start it yourself"),
+        "the Skill must not describe AI drafts any more"
+    );
+}
+
+#[test]
 fn the_skill_asks_on_the_board_and_in_the_chat() {
     let skill = &full_skill();
     assert!(

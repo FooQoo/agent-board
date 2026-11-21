@@ -19,7 +19,7 @@ To take one:
    The first acceptance is final. If it fails with `request_accepted`, another agent has it; leave it alone. A request the person withdrew cannot be accepted.
 3. Plan it as `agboard skills planning` describes. The acceptance carries no text and links to nothing, so tell the person what you did through the plan they will see, and through questions.
 
-Accept a request before you plan it, and plan only requests you have accepted. Do not ask the person what they meant by a request before you have put a plan on the board; ask about what you cannot settle after the plan exists.
+Accept a request before you plan it, and plan only requests you have accepted. Before you create anything, settle what the request asks for: the plan only (Backlog), or carrying out the work (Todo). When the request does not say, ask with `message ask` first, as `agboard skills planning` describes, and create nothing until it is answered. Ask about the rest of what you cannot settle after the plan exists.
 
 ## Take in an answer
 

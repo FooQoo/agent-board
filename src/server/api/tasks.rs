@@ -31,7 +31,7 @@ pub(super) struct CreateTaskInput {
     #[serde(default)]
     acceptance: Option<Vec<AcceptanceItem>>,
     assignee: Assignee,
-    /// `"human"` creates a person's draft; an AI draft is only made by an agent.
+    /// `"human"` creates a person's draft.
     #[serde(default)]
     draft: Option<Draft>,
     #[serde(rename = "actor", default)]
