@@ -49,3 +49,14 @@ pub(super) fn named_draft<'de, D: Deserializer<'de>>(
         target: wire.map(WireDraft::draft),
     })
 }
+
+/// Like `named_draft`, but a `null` is present: it is `Some(None)`. Only an absent
+/// field leaves `target` as `None`.
+pub(super) fn present_named_draft<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<NamedDraft, D::Error> {
+    Option::<WireDraft>::deserialize(deserializer).map(|wire| NamedDraft {
+        legacy_ai: matches!(wire, Some(WireDraft::Ai)),
+        target: Some(wire.and_then(WireDraft::draft)),
+    })
+}

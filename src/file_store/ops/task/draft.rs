@@ -28,6 +28,21 @@ impl FileStore {
         discard: bool,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
+        self.set_draft_from(project, id, draft, discard, false, now)
+    }
+
+    /// Like `set_draft`. `legacy_ai` is set when an older client asked for `draft: null`
+    /// with `"ai"`: a card in Todo or Doing is then refused (see
+    /// `refuse_legacy_release_in_todo`) and a card in the Backlog only loses the edit lock.
+    pub fn set_draft_from(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        draft: Option<Draft>,
+        discard: bool,
+        legacy_ai: bool,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
         if draft == Some(Draft::Human) && discard {
             return Err(AgboardError::InvalidArgument {
                 message: "discard cannot be combined with draft: \"human\".".to_string(),
@@ -46,6 +61,7 @@ impl FileStore {
                 changed: false,
             });
         }
+        super::edit::refuse_legacy_release_in_todo(&task, legacy_ai)?;
         if draft == Some(Draft::Human) && task.agent_status == RunState::Running {
             return Err(AgboardError::InvalidStateForDraft {
                 id,

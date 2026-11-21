@@ -40,8 +40,8 @@ pub(super) struct EditTaskInput {
 pub(super) struct DraftInput {
     /// `"human"` makes the task a person's draft, `null` finalizes it (`"ai"` of
     /// older clients does the same).
-    #[serde(default, deserialize_with = "super::draft_wire::present_draft")]
-    draft: Option<Option<Draft>>,
+    #[serde(default, deserialize_with = "super::draft_wire::present_named_draft")]
+    draft: super::draft_wire::NamedDraft,
     /// Leaving the draft discards its changes instead of confirming them.
     #[serde(default)]
     discard: bool,
@@ -124,7 +124,7 @@ pub(super) async fn set_draft(
         Ok(id) => id,
         Err(response) => return *response,
     };
-    let Some(draft) = input.draft else {
+    let Some(draft) = input.draft.target else {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -133,7 +133,14 @@ pub(super) async fn set_draft(
         );
     };
     let result = with_request_files(&state, &headers, move |store| {
-        store.set_draft(&project_id, id, draft, input.discard, chrono::Utc::now())
+        store.set_draft_from(
+            &project_id,
+            id,
+            draft,
+            input.discard,
+            input.draft.legacy_ai,
+            chrono::Utc::now(),
+        )
     })
     .await;
     changed_task_response(&state, result)
