@@ -6,12 +6,15 @@ import '../src/shared/styles/ui.css';
 import '../src/shared/styles/theme.css';
 import { ACCENTS, MODES } from '../src/shared/theme';
 import { withStoryEnvironment } from './support/decorators';
-import { installNetworkGuard } from './support/network-guard';
-
-// Product requests fail in every Story, in the static build and in the browser tests.
-installNetworkGuard();
+import { resetHandlers, startWorker } from './support/msw';
 
 const preview: Preview = {
+  // Product requests are answered by MSW handlers a Story adds, and fail otherwise, in the static
+  // build and in the browser tests.
+  beforeAll: async () => {
+    await startWorker();
+  },
+  beforeEach: () => resetHandlers,
   decorators: [withStoryEnvironment],
   globalTypes: {
     locale: {

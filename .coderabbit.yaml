@@ -78,3 +78,4 @@ reviews:
     - "!THIRD_PARTY_NOTICES.txt"
     - "!web/src/**/story-coverage.*.json"
     - "!**/__snapshots__/**"
+    - "!**/mockServiceWorker.js"
