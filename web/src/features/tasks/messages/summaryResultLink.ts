@@ -37,6 +37,9 @@ export function isPlainPrimaryClick(event: {
  */
 export function openInPage(href: string): void {
   window.history.pushState(null, '', href);
+  // The query state skips an address it believes it already shows (a link that was just cleared is
+  // such an address to it), so the page is told outright that the address changed.
+  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function summaryResultHref(projectId: string, result: SummaryResult): string | null {

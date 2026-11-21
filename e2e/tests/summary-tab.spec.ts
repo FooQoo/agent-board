@@ -211,6 +211,12 @@ test.describe('on a phone', () => {
     await expect(drawer).toBeVisible();
     await page.keyboard.press('Escape');
     await expectBackOnSummary(page, before);
+    // The same result opens again once the closed task has left the address.
+    await expect.poll(() => new URL(page.url()).searchParams.get('task')).toBeNull();
+    await messageList(page).getByRole('link', { name: /^Open result v1 of task #11: Scrolled result 3$/ }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(messageList(page)).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get('task')).toBe('11');
   });
 
   test('a tap shows the trash tile and tapping it dismisses the summary', async ({ page }) => {
