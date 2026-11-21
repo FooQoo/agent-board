@@ -5,6 +5,7 @@ export const backlogEn = {
     selectCard: 'Select #{{id}}',
     selected: '{{count}} selected',
     barLabel: 'Send selected cards',
+    sheetDismiss: 'Swipe down to stop selecting',
     cancel: 'Cancel',
     send: 'Send to Todo ({{count}})',
     selectCards: 'Select cards',
@@ -20,9 +21,6 @@ export const backlogEn = {
     warnAck: 'I know the questions are still open',
     sendConfirm: 'Send to Todo',
     sending: 'Sending…',
-    sentOne: 'Sent 1 card to Todo.',
-    sentMany: 'Sent {{count}} cards to Todo.',
-    counts: 'Backlog {{backlogBefore}} → {{backlogAfter}}, Todo {{todoBefore}} → {{todoAfter}}',
     partial: 'Sent {{sent}} of {{total}} cards. {{failed}} could not be sent.',
     failed: 'Could not send to Todo. Nothing was changed.',
     move: {
@@ -32,10 +30,6 @@ export const backlogEn = {
       warnBody:
         'The questions stay after the move, and the agent cannot work on the card until they are answered. Move anyway?',
       confirm: 'Move to {{lane}}',
-      one: 'Moved 1 card to {{lane}}.',
-      many: 'Moved {{count}} cards to {{lane}}.',
-      counts:
-        'Backlog {{backlogBefore}} → {{backlogAfter}}, {{lane}} {{targetBefore}} → {{targetAfter}}',
       partial: 'Moved {{sent}} of {{total}} cards. {{failed}} could not be moved.',
       failed: 'Could not move to {{lane}}. Nothing was changed.',
     },

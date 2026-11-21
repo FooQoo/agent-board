@@ -7,6 +7,7 @@ vi.mock('../src/shared/api/write', () => ({ postTask: (...args: unknown[]) => po
 
 const { sendTasks, withOpenQuestions } = await import('../src/features/backlog/send');
 const { useBacklogSend } = await import('../src/features/backlog/useBacklogSend');
+const { useBacklogMove } = await import('../src/features/backlog/useBacklogMove');
 const { useBacklogSelection } = await import('../src/features/backlog/useSelection');
 
 const PROJECT = 'a1b2c3d4e5f60718293a4b5c6d7e8f90' as ProjectId;
@@ -61,7 +62,7 @@ describe('sendTasks', () => {
 describe('useBacklogSend', () => {
   const tasks = [card(1, 'backlog'), card(2, 'backlog', ['Q-1']), card(3, 'todo')];
 
-  it('sends at once without a warning and tells the counts before and after', async () => {
+  it('sends at once without a warning and shows no notice', async () => {
     postTask.mockResolvedValue({});
     const onSent = vi.fn();
     const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, onSent));
@@ -70,9 +71,9 @@ describe('useBacklogSend', () => {
       started = result.current.request([1]);
     });
     expect(started).toBe(true);
-    await waitFor(() => expect(result.current.notice).toContain('Sent 1 card to Todo.'));
-    expect(result.current.notice).toContain('Backlog 2 → 1, Todo 1 → 2');
-    expect(onSent).toHaveBeenCalled();
+    await waitFor(() => expect(onSent).toHaveBeenCalled());
+    expect(postTask).toHaveBeenCalledTimes(1);
+    expect(result.current.notice).toBeNull();
   });
 
   it('asks for a confirmation when a card has an open question, and sends with the acknowledgement', async () => {
@@ -91,7 +92,9 @@ describe('useBacklogSend', () => {
       result.current.request([1, 2]);
     });
     act(() => result.current.confirm());
-    await waitFor(() => expect(result.current.notice).toContain('Sent 2 cards to Todo.'));
+    await waitFor(() => expect(postTask).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.notice).toBeNull();
     expect(postTask.mock.calls.every((call) => (call[1] as { ack: boolean }).ack)).toBe(true);
   });
 
@@ -143,14 +146,15 @@ describe('useBacklogSend to another lane', () => {
     card(5, 'done'),
   ];
 
-  it('moves cards to Doing with the move route and names the lane and its counts', async () => {
+  it('moves cards to Doing with the move route and shows no notice', async () => {
     postTask.mockResolvedValue({});
     const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, vi.fn()));
     act(() => {
       result.current.request([1], undefined, 'doing');
     });
-    await waitFor(() => expect(result.current.notice).toContain('Moved 1 card to Doing.'));
-    expect(result.current.notice).toContain('Backlog 2 → 1, Doing 2 → 3');
+    await waitFor(() => expect(postTask).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.notice).toBeNull();
     expect(postTask.mock.calls[0]?.[0]).toBe(`/api/projects/${PROJECT}/tasks/1/move`);
     expect(postTask.mock.calls[0]?.[1]).toEqual({
       taskStatus: 'doing',
@@ -168,8 +172,9 @@ describe('useBacklogSend to another lane', () => {
     expect(result.current.confirming?.to).toBe('done');
     expect(postTask).not.toHaveBeenCalled();
     act(() => result.current.confirm());
-    await waitFor(() => expect(result.current.notice).toContain('Moved 2 cards to Done.'));
-    expect(result.current.notice).toContain('Backlog 2 → 0, Done 1 → 3');
+    await waitFor(() => expect(postTask).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.notice).toBeNull();
     expect(postTask.mock.calls.map((call) => call[1])).toEqual([
       { taskStatus: 'done', fromStatus: 'backlog', ack: true },
       { taskStatus: 'done', fromStatus: 'backlog', ack: true },
@@ -185,6 +190,58 @@ describe('useBacklogSend to another lane', () => {
     await waitFor(() =>
       expect(result.current.notice).toBe('Could not move to Doing. Nothing was changed.'),
     );
+  });
+});
+
+describe('useBacklogMove', () => {
+  const tasks = [card(1, 'backlog'), card(2, 'backlog', ['Q-1'])];
+  const hooks = () => ({
+    apply: vi.fn(),
+    revert: vi.fn(),
+    onDone: vi.fn(),
+    refusal: () => 'refused',
+  });
+
+  it('shows the card in the target lane before the server answers, and says nothing when it went', async () => {
+    let answer: (value: unknown) => void = () => {};
+    postTask.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const callbacks = hooks();
+    const { result } = renderHook(() => useBacklogMove(PROJECT, tasks, callbacks));
+    act(() => result.current.request(1));
+    // Applied while the request is still open: the one request is the single-card send route.
+    expect(callbacks.apply).toHaveBeenCalledWith(1, 'todo');
+    expect(callbacks.onDone).not.toHaveBeenCalled();
+    expect(postTask).toHaveBeenCalledTimes(1);
+    expect(postTask.mock.calls[0]?.[0]).toBe(`/api/projects/${PROJECT}/tasks/1/send`);
+    await act(async () => answer({}));
+    await waitFor(() => expect(callbacks.onDone).toHaveBeenCalled());
+    expect(callbacks.revert).not.toHaveBeenCalled();
+    expect(result.current.notice).toBeNull();
+  });
+
+  it('puts the card back and says why when the server refuses', async () => {
+    postTask.mockRejectedValueOnce(new Error('no'));
+    const callbacks = hooks();
+    const { result } = renderHook(() => useBacklogMove(PROJECT, tasks, callbacks));
+    act(() => result.current.request(1, 'doing'));
+    await waitFor(() => expect(callbacks.revert).toHaveBeenCalledWith(1));
+    expect(callbacks.apply).toHaveBeenCalledWith(1, 'doing');
+    expect(result.current.notice).toBe('refused');
+  });
+
+  it('asks about an open question first, and moves only after the confirmation', async () => {
+    postTask.mockResolvedValue({});
+    const callbacks = hooks();
+    const { result } = renderHook(() => useBacklogMove(PROJECT, tasks, callbacks));
+    act(() => result.current.request(2));
+    expect(result.current.confirming?.warned.map((task) => task.id)).toEqual([2]);
+    expect(callbacks.apply).not.toHaveBeenCalled();
+    expect(postTask).not.toHaveBeenCalled();
+    act(() => result.current.confirm());
+    expect(callbacks.apply).toHaveBeenCalledWith(2, 'todo');
+    await waitFor(() => expect(result.current.confirming).toBeNull());
+    expect(postTask.mock.calls[0]?.[1]).toEqual({ ack: true });
+    expect(result.current.notice).toBeNull();
   });
 });
 

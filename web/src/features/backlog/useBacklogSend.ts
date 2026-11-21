@@ -13,7 +13,7 @@ export interface BacklogSend {
     to: BacklogTarget;
   } | null;
   busy: boolean;
-  /** The result of the last send, as a sentence for a notice, or `null`. */
+  /** The failure of the last send, as a sentence for a notice, or `null`. A send that went through has none. */
   notice: string | null;
   dismissNotice: () => void;
   /** Sends the cards, or asks for the confirmation first when one of them has an open question. */
@@ -25,7 +25,7 @@ export interface BacklogSend {
 /**
  * The send of Backlog cards, shared by the PC board and the phone: to Todo, or on the PC board to
  * Doing or Done. Cards with an open question are confirmed first (the warning names them and the
- * lane); the result is a notice with the counts of Backlog and the target lane before and after.
+ * lane); only a failure or a partial send shows a notice, because the cards moving is the answer.
  */
 export function useBacklogSend(
   projectId: ProjectId | null,
@@ -54,41 +54,18 @@ export function useBacklogSend(
       if (projectId === null || running.current || ids.length === 0) return;
       running.current = true;
       setBusy(true);
-      const count = (lane: TaskSummary['taskStatus']) =>
-        tasks.filter((task) => task.taskStatus === lane).length;
-      const backlogBefore = count('backlog');
-      const targetBefore = count(to);
       const lane = t(`column.${to}`);
       try {
         const { sent, failed } = epicId
           ? await sendEpicTasks(projectId, epicId, ids, ack)
           : await sendTasks(projectId, ids, ack, to);
         const k = to === 'todo' ? 'backlog' : 'backlog.move';
-        const counts = { backlogBefore, backlogAfter: backlogBefore - sent.length, lane };
         if (sent.length === 0) setNotice(t(`${k}.failed`, { lane }));
         else if (failed.length > 0)
           setNotice(
             t(`${k}.partial`, { sent: sent.length, total: ids.length, failed: failed.length }),
           );
-        else {
-          const done =
-            sent.length === 1
-              ? t(`${k}.${to === 'todo' ? 'sentOne' : 'one'}`, { lane })
-              : t(`${k}.${to === 'todo' ? 'sentMany' : 'many'}`, { count: sent.length, lane });
-          const tally =
-            to === 'todo'
-              ? t('backlog.counts', {
-                  ...counts,
-                  todoBefore: targetBefore,
-                  todoAfter: targetBefore + sent.length,
-                })
-              : t('backlog.move.counts', {
-                  ...counts,
-                  targetBefore,
-                  targetAfter: targetBefore + sent.length,
-                });
-          setNotice(`${done} ${tally}`);
-        }
+        // A send that went through shows no notice: the cards moving is the answer.
       } finally {
         running.current = false;
         setBusy(false);
@@ -96,7 +73,7 @@ export function useBacklogSend(
         onSent();
       }
     },
-    [projectId, tasks, onSent, t, setConfirming],
+    [projectId, onSent, t, setConfirming],
   );
 
   const request = useCallback(

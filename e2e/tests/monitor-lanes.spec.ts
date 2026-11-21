@@ -32,10 +32,10 @@ function seed(project: string, cards: Seed[]): void {
   agboardCatalogOk(['project', 'create', project], home);
   for (const { title, lane } of cards) {
     const added = JSON.parse(
-      cli(project, ['add', title, `--desc=${taskBody(`${title} body.`)}`, '--assignee', 'ai', '--actor', 'human', '--json']),
+      cli(project, ['add', title, `--desc=${taskBody(`${title} body.`)}`, '--assignee', 'ai', '--actor', 'human', '--json', ...(lane === 'backlog' ? ['--backlog'] : [])]),
     ) as { task: { id: number } };
     ids.set(`${project}:${title}`, added.task.id);
-    if (lane !== 'todo') cli(project, ['mv', String(added.task.id), 'doing', '--actor', 'ai', '--reason', 'Start']);
+    if (lane === 'doing' || lane === 'done') cli(project, ['mv', String(added.task.id), 'doing', '--actor', 'ai', '--reason', 'Start']);
     if (lane === 'done') cli(project, ['mv', String(added.task.id), 'done', '--actor', 'ai', '--reason', 'Finish']);
   }
 }
@@ -96,6 +96,24 @@ test.beforeAll(async () => {
     { title: 'Return started', lane: 'todo' },
   ]);
   cli('Return', ['result', 'add', String(ids.get('Return:Return started')), '--summary=Work began.', '--actor', 'ai']);
+  seed('Plans', [
+    { title: 'Plan plain', lane: 'backlog' },
+    { title: 'Plan asked', lane: 'backlog' },
+    { title: 'Plan bystander', lane: 'backlog' },
+  ]);
+  cli('Plans', [
+    'message', 'ask', '--actor', 'ai', '--no-wait', '--task', String(ids.get('Plans:Plan asked')),
+    '--questions-json', JSON.stringify({ questions: [{ body: 'Which release name should the plan use?' }] }),
+  ]);
+  seed('Instant', [
+    { title: 'Instant one', lane: 'backlog' },
+    { title: 'Instant two', lane: 'backlog' },
+  ]);
+  seed('Pick', [
+    { title: 'Pick one', lane: 'backlog' },
+    { title: 'Pick two', lane: 'backlog' },
+    { title: 'Pick three', lane: 'backlog' },
+  ]);
   entrance = await startPhoneEntrance(home);
 });
 
@@ -114,7 +132,7 @@ async function openPhone(page: Page, project: string, initial: 'default' | 'todo
   }
 }
 
-const tab = (page: Page, name: string, selected?: boolean) =>
+const tab = (page: Page, name: string | RegExp, selected?: boolean) =>
   page.getByRole('tab', { name, selected });
 
 /** The lane on screen: the other two lanes are inert, so only this panel takes a finger or a screen reader. */
@@ -343,6 +361,128 @@ test('a held Todo card swipes right to the Backlog, and a started card is refuse
   await page.getByRole('button', { name: /^Move #\d+ to Backlog$/ }).tap();
   await expect(page.locator('.transient-notice')).toContainText('Only a Todo card that has not been started can go back to the Backlog.');
   expect(show('Return', 'Return started').taskStatus).toBe('todo');
+});
+
+// #675: a right swipe on a Backlog card shows the Todo tile, which sends it like the selection mode does, and says nothing when it went.
+test('a held Backlog card swipes right to Todo; one with an open question asks first, and no notice follows', async ({ page }) => {
+  await openPhone(page, 'Plans', 'default');
+  await tab(page, /^Backlog/).click();
+  const plain = swipeCard(page, 'Plan plain');
+  await holdAndSwipe(page, plain, 1);
+  await expect(plain).toHaveAttribute('data-revealed', 'left');
+  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
+  await expect.poll(() => show('Plans', 'Plan plain').taskStatus).toBe('todo');
+  await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(page.locator('.transient-notice')).toHaveCount(0);
+
+  const asked = swipeCard(page, 'Plan asked');
+  await holdAndSwipe(page, asked, 1);
+  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
+  const sheet = page.getByRole('dialog', { name: 'Send to Todo' });
+  await expect(sheet.getByRole('alert')).toContainText(`#${ids.get('Plans:Plan asked')}`);
+  expect(show('Plans', 'Plan asked').taskStatus).toBe('backlog');
+  await sheet.getByRole('checkbox').check();
+  await sheet.getByRole('button', { name: 'Send to Todo' }).tap();
+  await expect.poll(() => show('Plans', 'Plan asked').taskStatus).toBe('todo');
+  await expect(page.locator('.transient-notice')).toHaveCount(0);
+  expect(show('Plans', 'Plan bystander').taskStatus).toBe('backlog');
+});
+
+/** A tap on the body of a card in the selection mode, which picks it. */
+async function swipeCardlessTap(page: Page, title: string): Promise<void> {
+  await page.locator('.monitor-pick-row__card').filter({ hasText: title }).tap();
+}
+
+// #675: a swipe-tile move of one Backlog card is a normal lane move, apart from the multi-select: the card is in Todo
+// before the server answers, one request goes for that card, and a refusal puts it back and says why.
+test('a Backlog card moved by its tile is in Todo before the server answers; a refusal puts it back', async ({ page }) => {
+  await openPhone(page, 'Instant', 'default');
+  await tab(page, /^Backlog/).click();
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const seen: string[] = [];
+  await page.route(/\/tasks\/\d+\/send$/, async (route) => {
+    seen.push(route.request().url());
+    await gate;
+    await route.continue();
+  });
+  const one = swipeCard(page, 'Instant one');
+  await holdAndSwipe(page, one, 1);
+  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
+  // The request is held, and the tabs already count the card in Todo.
+  await expect(tab(page, 'Todo 1')).toBeVisible();
+  await expect(tab(page, 'Backlog 1')).toBeVisible();
+  expect(show('Instant', 'Instant one').taskStatus).toBe('backlog');
+  // No selection drawer, no batch: just that card's request.
+  await expect(page.getByRole('region', { name: 'Send selected cards' })).toHaveCount(0);
+  release();
+  await expect.poll(() => show('Instant', 'Instant one').taskStatus).toBe('todo');
+  expect(seen).toHaveLength(1);
+  await expect(page.locator('.transient-notice')).toHaveCount(0);
+
+  await page.unroute(/\/tasks\/\d+\/send$/);
+  await page.route(/\/tasks\/\d+\/send$/, (route) =>
+    route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 'conflict', message: 'Refused for the test.' } }) }),
+  );
+  const two = swipeCard(page, 'Instant two');
+  await holdAndSwipe(page, two, 1);
+  await page.getByRole('button', { name: /^Move #\d+ to Todo$/ }).tap();
+  await expect(page.locator('.transient-notice')).toBeVisible();
+  await expect(tab(page, 'Backlog 1')).toBeVisible();
+  expect(show('Instant', 'Instant two').taskStatus).toBe('backlog');
+});
+
+// #675: the selection mode is a short bottom drawer, not a modal; pulling it down, or closing it, ends the mode.
+test('the selection sheet sends the picked cards, and a swipe down or Cancel ends the selection', async ({ page }) => {
+  await openPhone(page, 'Pick', 'default');
+  await tab(page, /^Backlog/).click();
+  const sheet = page.getByRole('region', { name: 'Send selected cards' });
+  await expect(sheet).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Select cards' }).tap();
+  await expect(sheet).toBeVisible();
+  const [first, second] = [ids.get('Pick:Pick one'), ids.get('Pick:Pick two')];
+  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
+  await expect(sheet.getByRole('button', { name: 'Send to Todo (1)' })).toBeVisible();
+  await expect(sheet.getByRole('status')).toHaveText('1 selected');
+  // The drawer is not modal: a tap on the cards behind it, or on the page around them, keeps it open, and
+  // a tap on a card's body toggles that card instead of opening its details.
+  await swipeCardlessTap(page, 'Pick two');
+  await expect(page.getByRole('checkbox', { name: `Select #${second}` })).toBeChecked();
+  await expect(sheet.getByRole('button', { name: 'Send to Todo (2)' })).toBeVisible();
+  await page.getByRole('checkbox', { name: `Select #${second}` }).tap();
+  await expect(page.getByRole('checkbox', { name: `Select #${second}` })).not.toBeChecked();
+  await expect(sheet).toBeVisible();
+  await page.getByRole('tablist', { name: 'Lanes' }).tap({ position: { x: 4, y: 4 } });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Send to Todo (1)' })).toBeVisible();
+  // The sheet is short: its handle, the two buttons and the strip under the bottom bar, with no heading block.
+  expect((await sheet.boundingBox())?.height ?? 999).toBeLessThan(200);
+
+  // Pulling the sheet down by its handle ends the mode and clears the picks.
+  const handle = await box(sheet.getByRole('button', { name: /swipe down/i }));
+  const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
+  await finger(page, start, { x: start.x, y: start.y + 220 });
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Select cards' }).tap();
+  await expect(page.getByRole('checkbox', { name: `Select #${first}` })).not.toBeChecked();
+
+  // Cancel also ends the mode.
+  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
+  await sheet.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+  // Send closes the sheet once the cards went, with no notice.
+  await page.getByRole('button', { name: 'Select cards' }).tap();
+  await page.getByRole('checkbox', { name: `Select #${first}` }).tap();
+  await page.getByRole('checkbox', { name: `Select #${second}` }).tap();
+  await sheet.getByRole('button', { name: 'Send to Todo (2)' }).tap();
+  await expect.poll(() => [show('Pick', 'Pick one').taskStatus, show('Pick', 'Pick two').taskStatus]).toEqual(['todo', 'todo']);
+  await expect(sheet).toHaveCount(0);
+  await expect(page.locator('.transient-notice')).toHaveCount(0);
+  expect(show('Pick', 'Pick three').taskStatus).toBe('backlog');
 });
 
 // #449

@@ -103,6 +103,17 @@ function AppScreen({ initial }: AppProps) {
           onCancel={actions.backlogSend.cancel}
         />
       ) : null}
+      {actions.backlogMove.confirming ? (
+        <SendConfirm
+          kind={narrow ? 'sheet' : 'dialog'}
+          to={actions.backlogMove.confirming.to}
+          count={1}
+          warned={actions.backlogMove.confirming.warned}
+          busy={actions.backlogMove.busy}
+          onConfirm={actions.backlogMove.confirm}
+          onCancel={actions.backlogMove.cancel}
+        />
+      ) : null}
       <AppDialogs
         model={model}
         onSubmit={actions.submitDialog}

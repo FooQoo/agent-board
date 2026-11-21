@@ -5,6 +5,9 @@ import { countMessages, firstQuestionOfTask } from '../../features/tasks/message
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
 import type { ProjectId } from '../../shared/api/contracts';
 import { BacklogSendLayer } from '../../features/backlog/BacklogSendLayer';
+import { useTranslation } from 'react-i18next';
+import { moveFailureNotice } from '../../features/tasks/api/lifecycle';
+import { useBacklogMove } from '../../features/backlog/useBacklogMove';
 import { useBacklogSend } from '../../features/backlog/useBacklogSend';
 import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
@@ -43,6 +46,7 @@ const detailDrawer = preloadable(() =>
 export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
+  const { t } = useTranslation();
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences, settings: given } = props;
   const settings = useMemo(
@@ -146,6 +150,17 @@ export function MonitorView(props: MonitorViewProps) {
     tasks.map((item) => item.task),
     () => onWritten?.(),
   );
+  // One Backlog card moved by its swipe tile is a normal lane move, apart from the picked cards' send above.
+  const backlogMove = useBacklogMove(
+    writes ? (projectId as ProjectId) : null,
+    tasks.map((item) => item.task),
+    {
+      apply: overlay.move,
+      revert: overlay.unmove,
+      onDone: () => onWritten?.(),
+      refusal: (cause) => moveFailureNotice(cause, t),
+    },
+  );
   const { moveNow, archiveOne, archiveAll, notice, dismissNotice } = useLaneWrites({
     writes,
     projectId,
@@ -190,7 +205,12 @@ export function MonitorView(props: MonitorViewProps) {
         lanes={ordered}
         lane={lane}
         onLaneChange={setLane}
-        onMove={(item, target) => void moveNow(item, target)}
+        onMove={(item, target) =>
+          // A Backlog card goes to Todo through the send, which confirms an open question first.
+          writes && item.task.taskStatus === 'backlog' && target === 'todo'
+            ? backlogMove.request(item.task.id)
+            : void moveNow(item, target)
+        }
         onArchive={(item) => ask({ kind: 'archive', item })}
         onOpenDetail={(item, tab) => {
           detail.show(item, tab);
@@ -221,6 +241,7 @@ export function MonitorView(props: MonitorViewProps) {
       />
       <TransientNotice message={notice} onDismiss={dismissNotice} />
       <BacklogSendLayer send={backlogSend} kind="sheet" />
+      <BacklogSendLayer send={backlogMove} kind="sheet" />
       {writes && (
         <MonitorLaneDialogs
           pending={pending}

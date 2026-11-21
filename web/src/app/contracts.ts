@@ -45,6 +45,9 @@ export interface AppControllerModel {
   /** The list of messages and where it is open. */
   messages: MessagesController;
   tasks: TaskSummary[];
+  /** Shows a card in another lane at once, before a write has been answered; `unmoveCard` takes it back. */
+  moveCard: (id: number, to: TaskSummary['taskStatus']) => void;
+  unmoveCard: (id: number) => void;
   selected: TaskSummary | null;
   archivedSelected: ArchivedTask | null;
   selectedEpic: Epic | null;
@@ -124,6 +127,8 @@ export interface AppWorkspaceActions {
   onReorder: (task: TaskSummary, beforeId: number | null) => void;
   /** Sends Backlog cards to Todo, or moves them to Doing or Done. Returns whether it started without a confirmation. */
   onSend: (ids: number[], to?: BacklogTarget) => boolean;
+  /** Moves one Backlog card to Todo (or Doing, Done) as a normal lane move: at once, with no notice but a refusal. */
+  onMoveBacklog: (id: number, to?: BacklogTarget) => void;
   sendBusy: boolean;
   /** Sends the Backlog cards of an epic to Todo, in one save. */
   onSendEpic: (epicId: string) => boolean;

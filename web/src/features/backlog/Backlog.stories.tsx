@@ -7,12 +7,12 @@ import { SendConfirm } from './SendConfirm';
 const meta = {
   title: 'Backlog/Send',
   component: BacklogBar,
-  args: { count: 2, busy: false, variant: 'phone', onCancel: fn(), onSend: fn() },
+  args: { count: 2, busy: false, onCancel: fn(), onSend: fn() },
 } satisfies Meta<typeof BacklogBar>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The bar of the selection mode: the count, and Cancel and Send in two buttons of the same width. */
+/** The PC lane's bar of the selection mode: the count, and Cancel and Send in two buttons of the same width. */
 export const Bar: Story = {
   play: async ({ canvasElement, args }) => {
     const bar = within(canvasElement).getByRole('region', { name: 'Send selected cards' });
@@ -29,7 +29,7 @@ export const Bar: Story = {
 
 /** Nothing is picked yet: the send button waits. */
 export const BarWithNothingPicked: Story = {
-  args: { count: 0, variant: 'lane' },
+  args: { count: 0 },
   play: async ({ canvasElement }) => {
     await expect(
       within(canvasElement).getByRole('button', { name: 'Send to Todo (0)' }),

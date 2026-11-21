@@ -1,7 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { ArchiveXIcon, ListChecksIcon } from 'lucide-react';
 import { Checkbox } from '@/shared/ui/checkbox';
-import { BacklogBar } from '../../../features/backlog/BacklogBar';
+import { BacklogSheet } from '../../../features/backlog/BacklogSheet';
 import { useBacklogSelection } from '../../../features/backlog/useSelection';
 import { useTranslation } from 'react-i18next';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
@@ -143,134 +143,146 @@ export function MonitorLanes({
     return () => document.removeEventListener('pointerdown', close, true);
   }, [armed]);
 
+  // Leaving the Backlog lane (a tab, a swipe) ends the selection mode and takes the sheet down.
+  const { selecting, leave } = selection;
+  useEffect(() => {
+    if (lane !== 'backlog' && selecting) leave();
+  }, [lane, selecting, leave]);
+
   return (
-    <div ref={viewport} id={id} className="monitor-lanes">
-      <div className="monitor-lanes__track">
-        {LANES.map((name) => {
-          const items = lanes[name];
-          const laneEmpty = items.length === 0;
-          const isLast = name === last;
-          return (
-            <section
-              key={name}
-              ref={isLast ? doneRef : undefined}
-              {...(isLast ? bulk.handlers : {})}
-              onClickCapture={isLast ? bulk.onClickCapture : undefined}
-              className="monitor-lane"
-              role="tabpanel"
-              aria-labelledby={`lane-tab-${name}`}
-              data-lane={name}
-              inert={name !== lane}
-            >
-              <div
-                className="monitor-lane__scroll"
-                data-dragging={(isLast && bulk.dragging) || undefined}
-                style={isLast ? { transform: `translate3d(${bulkOffset}px, 0, 0)` } : undefined}
+    <>
+      <div ref={viewport} id={id} className="monitor-lanes">
+        <div className="monitor-lanes__track">
+          {LANES.map((name) => {
+            const items = lanes[name];
+            const laneEmpty = items.length === 0;
+            const isLast = name === last;
+            return (
+              <section
+                key={name}
+                ref={isLast ? doneRef : undefined}
+                {...(isLast ? bulk.handlers : {})}
+                onClickCapture={isLast ? bulk.onClickCapture : undefined}
+                className="monitor-lane"
+                role="tabpanel"
+                aria-labelledby={`lane-tab-${name}`}
+                data-lane={name}
+                inert={name !== lane}
               >
-                {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
-                {laneEmpty ? (
-                  <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
-                ) : name === 'backlog' && selection.selecting ? (
-                  items.map((item) => (
-                    <div key={keyOf(item)} className="monitor-pick-row">
-                      <Checkbox
-                        className="monitor-pick-row__check"
-                        checked={selection.picked.includes(item.task.id)}
-                        aria-label={t('backlog.selectCard', { id: item.task.id })}
-                        onCheckedChange={() => selection.toggle(item.task.id)}
-                      />
-                      {/* A tap on the card picks it; the details are not opened while picking. */}
-                      <div
-                        className="monitor-pick-row__card"
-                        onClickCapture={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          selection.toggle(item.task.id);
-                        }}
-                      >
-                        <MonitorTask item={item} section={name} />
+                <div
+                  className="monitor-lane__scroll"
+                  data-dragging={(isLast && bulk.dragging) || undefined}
+                  style={isLast ? { transform: `translate3d(${bulkOffset}px, 0, 0)` } : undefined}
+                >
+                  {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
+                  {laneEmpty ? (
+                    <p className="monitor-empty">{t(`monitor.empty.${name}`)}</p>
+                  ) : name === 'backlog' && selection.selecting ? (
+                    items.map((item) => (
+                      <div key={keyOf(item)} className="monitor-pick-row">
+                        <Checkbox
+                          className="monitor-pick-row__check"
+                          checked={selection.picked.includes(item.task.id)}
+                          aria-label={t('backlog.selectCard', { id: item.task.id })}
+                          onCheckedChange={() => selection.toggle(item.task.id)}
+                        />
+                        {/* A tap on the card picks it; the details are not opened while picking. */}
+                        <div
+                          className="monitor-pick-row__card"
+                          onClickCapture={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            selection.toggle(item.task.id);
+                          }}
+                        >
+                          <MonitorTask item={item} section={name} />
+                        </div>
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  items.map((item) => (
-                    <SwipeableCard
-                      key={keyOf(item)}
-                      taskId={item.task.id}
-                      lane={name}
-                      onMove={(target) => {
-                        setRevealed(null);
-                        onMove(item, target);
-                      }}
-                      canReturn={item.task.agentStatus === 'idle'}
-                      inactive={name !== lane}
-                      revealed={revealed?.id === item.task.id ? revealed.side : null}
-                      armed={armed === item.task.id}
-                      onArm={() => {
-                        setRevealed(null);
-                        setArmed(item.task.id);
-                      }}
-                      onRevealChange={(side) =>
-                        setRevealed(side === null ? null : { id: item.task.id, side })
-                      }
-                      onArchive={() => onArchive(item)}
-                      onSelect={
-                        canSelect
-                          ? () => {
-                              setRevealed(null);
-                              setArmed(null);
-                              selection.enter();
-                              selection.toggle(item.task.id);
-                            }
-                          : undefined
-                      }
+                    ))
+                  ) : (
+                    items.map((item) => (
+                      <SwipeableCard
+                        key={keyOf(item)}
+                        taskId={item.task.id}
+                        lane={name}
+                        onMove={(target) => {
+                          setRevealed(null);
+                          onMove(item, target);
+                        }}
+                        canReturn={item.task.agentStatus === 'idle'}
+                        inactive={name !== lane}
+                        revealed={revealed?.id === item.task.id ? revealed.side : null}
+                        armed={armed === item.task.id}
+                        onArm={() => {
+                          setRevealed(null);
+                          setArmed(item.task.id);
+                        }}
+                        onRevealChange={(side) =>
+                          setRevealed(side === null ? null : { id: item.task.id, side })
+                        }
+                        onArchive={() => onArchive(item)}
+                        onSelect={
+                          canSelect
+                            ? () => {
+                                setRevealed(null);
+                                setArmed(null);
+                                selection.enter();
+                                selection.toggle(item.task.id);
+                              }
+                            : undefined
+                        }
+                      >
+                        <MonitorTask
+                          item={item}
+                          section={name}
+                          onOpenDetail={onOpenDetail}
+                          onOpenAnswer={onOpenAnswer}
+                        />
+                      </SwipeableCard>
+                    ))
+                  )}
+                  {name === 'backlog' && canSelect && !selection.selecting && (
+                    <button
+                      type="button"
+                      className="monitor-lane__bulk"
+                      data-lane-ignore=""
+                      onClick={selection.enter}
                     >
-                      <MonitorTask
-                        item={item}
-                        section={name}
-                        onOpenDetail={onOpenDetail}
-                        onOpenAnswer={onOpenAnswer}
-                      />
-                    </SwipeableCard>
-                  ))
-                )}
-                {name === 'backlog' && canSelect && !selection.selecting && (
-                  <button
-                    type="button"
-                    className="monitor-lane__bulk"
-                    data-lane-ignore=""
-                    onClick={selection.enter}
-                  >
-                    <ListChecksIcon aria-hidden="true" />
-                    {t('backlog.selectCards')}
-                  </button>
-                )}
-                {name === 'backlog' && selection.selecting && (
-                  <BacklogBar
-                    variant="phone"
-                    count={selection.picked.length}
-                    busy={sendBusy}
-                    onCancel={selection.leave}
-                    onSend={() => send(selection.picked)}
-                  />
-                )}
-                {name === 'done' && canBulk && (
-                  <button
-                    type="button"
-                    className="monitor-lane__bulk"
-                    data-lane-ignore=""
-                    onClick={onBulkArchive}
-                  >
-                    <ArchiveXIcon aria-hidden="true" />
-                    {t('monitor.lanes.bulkArchive')}
-                  </button>
-                )}
-              </div>
-              {isLast && canBulk && <BulkArchiveTile offset={bulkOffset} />}
-            </section>
-          );
-        })}
+                      <ListChecksIcon aria-hidden="true" />
+                      {t('backlog.selectCards')}
+                    </button>
+                  )}
+                  {/* Room under the last card for the selection sheet that stands over the lane's foot. */}
+                  {name === 'backlog' && selection.selecting && (
+                    <div className="monitor-lane__sheet-room" aria-hidden="true" />
+                  )}
+                  {name === 'done' && canBulk && (
+                    <button
+                      type="button"
+                      className="monitor-lane__bulk"
+                      data-lane-ignore=""
+                      onClick={onBulkArchive}
+                    >
+                      <ArchiveXIcon aria-hidden="true" />
+                      {t('monitor.lanes.bulkArchive')}
+                    </button>
+                  )}
+                </div>
+                {isLast && canBulk && <BulkArchiveTile offset={bulkOffset} />}
+              </section>
+            );
+          })}
+        </div>
       </div>
-    </div>
+      {canSelect && (
+        <BacklogSheet
+          open={selection.selecting}
+          count={selection.picked.length}
+          busy={sendBusy}
+          onCancel={selection.leave}
+          onSend={() => send(selection.picked)}
+        />
+      )}
+    </>
   );
 }

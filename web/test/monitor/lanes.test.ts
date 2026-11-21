@@ -24,7 +24,8 @@ const LEFT = actionsWidth(1);
 
 describe('card swipe', () => {
   it('offers the lane on the right and the archive to the left, the lane on the left to the right', () => {
-    expect(swipeActions('backlog')).toEqual({ left: [], right: ['select', 'archive'] });
+    // A Backlog card shows Todo on a right swipe (a normal move) and the selection on a left swipe.
+    expect(swipeActions('backlog')).toEqual({ left: ['todo'], right: ['select', 'archive'] });
     expect(swipeActions('todo')).toEqual({ left: ['backlog'], right: ['doing', 'archive'] });
     // A Todo card that has been started has no way back to the Backlog.
     expect(swipeActions('todo', false)).toEqual({ left: [], right: ['doing', 'archive'] });
