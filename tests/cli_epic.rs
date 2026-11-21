@@ -336,13 +336,7 @@ fn a_draft_epic_refuses_cli_edit_but_reads_and_member_work_still_work() {
     for args in [
         vec!["epic", "edit", "FILE-SHARE", "--name", "Renamed"],
         vec!["epic", "edit", "FILE-SHARE", "--color", "#222222"],
-        vec![
-            "epic",
-            "edit",
-            "FILE-SHARE",
-            "--document",
-            "---\n---\n\nx\n",
-        ],
+        vec!["epic", "edit", "FILE-SHARE", "--document=---\n---\n\nx\n"],
         vec!["epic", "edit", "FILE-SHARE", "--waves", "1"],
     ] {
         let mut full = vec!["--project", "Demo"];
