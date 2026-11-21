@@ -5,19 +5,13 @@ import { Header } from '../../shared/ui/app-header/Header';
 import type { AcceptanceItem } from '../../shared/api/contracts';
 import { buildFixture, countIn, type Fixture, type Lane, LANES, type MockCard } from './data';
 import { DetailPane } from './DetailPane';
-import { EditSurface } from './EditSurface';
-import { EpicPlan } from './EpicPlan';
 import { LaneBody, type LaneActions, type Notice, NoticeBar } from './LaneParts';
 import { SendSurface, type SendTarget } from './SendSurface';
 import { useIsJa, useMockText } from './text';
 import '../../pages/monitor/components/monitor-lanes.css';
 import './backlog-mock.css';
 
-export type Overlay =
-  | { kind: 'none' }
-  | { kind: 'plan'; epicId: string }
-  | { kind: 'edit'; id: number }
-  | { kind: 'send'; target: SendTarget };
+export type Overlay = { kind: 'none' } | { kind: 'send'; target: SendTarget };
 
 export interface Initial {
   overlay?: Overlay;
@@ -41,8 +35,7 @@ const patch = (cards: MockCard[], id: number, change: Partial<MockCard>) =>
 
 /**
  * The Backlog mock: the board (or the phone monitor) with a Backlog lane before Todo, the card detail,
- * the whole-epic plan, the plan editor and the "Send to Todo" confirmation. Data is fixed and held in
- * memory; nothing is saved.
+ * and the "Send to Todo" confirmation. Data is fixed and held in memory; nothing is saved.
  */
 export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScreenProps) {
   const ja = useIsJa();
@@ -146,7 +139,6 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
       setOpenId(id);
       setTab('description');
     },
-    onPlan: (epicId) => setOverlay({ kind: 'plan', epicId }),
     onSendEpic: sendEpic,
     onSendSelected: sendSelected,
     onSendOne: sendOne,
@@ -190,14 +182,11 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
             ),
           )
         }
-        onEdit={() => setOverlay({ kind: 'edit', id: open.id })}
         onSend={() => sendOne(open.id)}
         onBack={() => moveBack([open.id])}
-        onOpenEpic={(epicId) => setOverlay({ kind: 'plan', epicId })}
       />
     );
 
-  const editing = overlay.kind === 'edit' ? cards.find((c) => c.id === overlay.id) : null;
   return (
     <>
       {variant === 'desktop' ? (
@@ -269,32 +258,6 @@ export function BacklogScreen({ variant = 'desktop', initial = {} }: BacklogScre
             {detail('monitor')}
           </Drawer>
         </main>
-      )}
-      {overlay.kind === 'plan' && (
-        <EpicPlan
-          kind={kind}
-          fixture={fixture}
-          cards={cards}
-          epicId={overlay.epicId}
-          selected={selected}
-          onToggle={toggle}
-          onEdit={(id) => setOverlay({ kind: 'edit', id })}
-          onSendSelected={() => sendSelected(overlay.epicId)}
-          onSendEpic={() => sendEpic(overlay.epicId)}
-          onClose={close}
-        />
-      )}
-      {editing && (
-        <EditSurface
-          kind={kind}
-          card={editing}
-          onClose={close}
-          onSave={(change) => {
-            setCards((all) => patch(all, editing.id, { ...change, edited: true }));
-            setNotice({ kind: 'saved', id: editing.id });
-            close();
-          }}
-        />
       )}
       {overlay.kind === 'send' && overlay.target.ids.length > 0 && (
         <SendSurface

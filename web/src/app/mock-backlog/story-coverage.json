@@ -14,24 +14,9 @@
               "interaction": true
             },
             {
-              "id": "mocks-backlog-desktop--epic-plan-flow",
-              "states": ["epic plan open"],
-              "interaction": true
-            },
-            {
               "id": "mocks-backlog-desktop--backlog-card-detail",
               "states": ["detail open"],
               "interaction": false
-            },
-            {
-              "id": "mocks-backlog-desktop--conditions-tab",
-              "states": ["conditions tab"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-desktop--edit-plan",
-              "states": ["editor open"],
-              "interaction": true
             },
             {
               "id": "mocks-backlog-desktop--pick-some",
@@ -64,18 +49,8 @@
               "interaction": false
             },
             {
-              "id": "mocks-backlog-phone--epic-plan-sheet",
-              "states": ["plan sheet"],
-              "interaction": true
-            },
-            {
               "id": "mocks-backlog-phone--card-drawer",
               "states": ["card drawer"],
-              "interaction": false
-            },
-            {
-              "id": "mocks-backlog-phone--edit-sheet",
-              "states": ["edit sheet"],
               "interaction": false
             },
             {
@@ -164,54 +139,9 @@
               "interaction": false
             },
             {
-              "id": "mocks-backlog-desktop--conditions-tab",
-              "states": ["conditions tab"],
-              "interaction": false
-            },
-            {
               "id": "mocks-backlog-phone--card-drawer",
               "states": ["card drawer"],
               "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "file": "app/mock-backlog/EditSurface.tsx",
-      "exports": [
-        {
-          "name": "EditSurface",
-          "stories": [
-            {
-              "id": "mocks-backlog-desktop--edit-plan",
-              "states": ["editor open"],
-              "interaction": true
-            },
-            {
-              "id": "mocks-backlog-phone--edit-sheet",
-              "states": ["edit sheet"],
-              "interaction": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "file": "app/mock-backlog/EpicPlan.tsx",
-      "exports": [
-        {
-          "name": "EpicPlan",
-          "stories": [
-            {
-              "id": "mocks-backlog-desktop--epic-plan-flow",
-              "states": ["epic plan open"],
-              "interaction": true
-            },
-            {
-              "id": "mocks-backlog-phone--epic-plan-sheet",
-              "states": ["plan sheet"],
-              "interaction": true
             }
           ]
         }
@@ -253,7 +183,7 @@
         {
           "name": "Surface",
           "stories": [],
-          "exclusion": "Frame of the dialogs and sheets; the editor, plan and send Stories show it."
+          "exclusion": "Frame of the send dialog and sheet; the send Stories show it."
         }
       ]
     }

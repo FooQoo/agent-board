@@ -1,4 +1,4 @@
-import { PencilLineIcon, SendIcon, Undo2Icon } from 'lucide-react';
+import { SendIcon, Undo2Icon } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TaskDetailView } from '../../features/tasks/detail/TaskDetailView';
@@ -36,10 +36,8 @@ function Body({
   onTab,
   onClose,
   onToggleCondition,
-  onEdit,
   onSend,
   onBack,
-  onOpenEpic,
   statusLabels,
 }: Omit<DetailPaneProps, 'history'>) {
   const m = useMockText();
@@ -62,9 +60,8 @@ function Body({
       statusLabels={statusLabels}
       readOnlyDraft={false}
       onToggleCondition={async (id, done) => onToggleCondition(id, done)}
-      onOpenEpic={onOpenEpic}
       renderEpicLabel={(epic) => (
-        <EpicLabel epic={epic} className="card__epic" onClick={() => onOpenEpic?.(epic.id)} />
+        <EpicLabel epic={epic} className="card__epic" onClick={() => undefined} />
       )}
       toolbar={
         <div
@@ -73,16 +70,10 @@ function Body({
           aria-label={t('detail.toolbar')}
         >
           {backlog && (
-            <>
-              <Button type="button" size="s" variant="outline" onClick={onEdit}>
-                <PencilLineIcon aria-hidden="true" />
-                {m.edit}
-              </Button>
-              <Button type="button" size="s" onClick={onSend}>
-                <SendIcon aria-hidden="true" />
-                {m.sendCard}
-              </Button>
-            </>
+            <Button type="button" size="s" onClick={onSend}>
+              <SendIcon aria-hidden="true" />
+              {m.sendCard}
+            </Button>
           )}
           {card.lane === 'todo' && card.sent && (
             <Button type="button" size="s" variant="outline" onClick={onBack}>
@@ -97,7 +88,6 @@ function Body({
         <div className="bdetail__banner" data-lane="backlog">
           <strong>{m.detailBacklogTitle}</strong>
           <p>{m.detailBacklogBody}</p>
-          <p className="bdetail__tick">{m.detailTickNote}</p>
         </div>
       ) : (
         card.lane === 'todo' && (
@@ -118,16 +108,14 @@ export interface DetailPaneProps {
   onTab: (tab: DetailTab) => void;
   onClose: () => void;
   onToggleCondition: (conditionId: string, done: boolean) => void;
-  onEdit: () => void;
   onSend: () => void;
   onBack: () => void;
-  onOpenEpic: (epicId: string) => void;
   statusLabels?: 'pc' | 'monitor';
 }
 
 /**
  * The product's card detail (TaskDetailView with its tabs), reading the card from memory. The data
- * layer is re-created when the card's text changes, so a saved edit shows at once.
+ * layer is re-created when the card's text changes, so a ticked condition shows at once.
  */
 export function DetailPane(props: DetailPaneProps) {
   const { fixture, card, history } = props;
