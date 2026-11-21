@@ -33,7 +33,7 @@ export const commonJa = {
     },
   },
   column: {
-    backlog: 'Backlog',
+    backlog: 'バックログ',
     todo: '未着手',
     doing: '進行中',
     done: '完了',
@@ -91,7 +91,7 @@ export const commonJa = {
     delete: 'エピックを削除',
     countsLabel: '状態別のタスク',
     counts: {
-      backlog: 'Backlog',
+      backlog: 'バックログ',
       todo: '未着手',
       doing: '進行中',
       done: '完了',

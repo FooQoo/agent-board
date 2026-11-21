@@ -24,7 +24,7 @@
 
 AIタスクが人の判断待ちになるのは、回答のない質問を参照しているとき、読めないメッセージのファイルを参照しているとき、またはfrontmatterの`questions`を読めないときです。取り下げた質問では待ちになりません。すべてのメッセージのファイルが読める状態で、存在しないメッセージを指す参照も待ちにはならず、`problems`に載せます。
 
-`task.json`に保存するのは`idle`か`running`だけです。TodoかDoingのAIタスクが判断待ちのときは、Summary、snapshot、`show`、進捗表、hookのどれも`agentStatus`を`pending`として返し、`openQuestionIds`と、IDが最も小さい未回答の質問から`pendingReason`と`pendingChoices`を返します。判断待ちの間、AIによる`state <id> running`とDoneへの移動は`questions_unanswered`で失敗します。`idle`への変更と人の移動は通します。Done、アーカイブ済み、人のタスクは保存した状態を表示し、参照は記録として残ります。
+`task.json`に保存するのは`idle`か`running`だけです。未着手か進行中のAIタスクが判断待ちのときは、Summary、snapshot、`show`、進捗表、hookのどれも`agentStatus`を`pending`として返し、`openQuestionIds`と、IDが最も小さい未回答の質問から`pendingReason`と`pendingChoices`を返します。判断待ちの間、AIによる`state <id> running`とDoneへの移動は`questions_unanswered`で失敗します。`idle`への変更と人の移動は通します。Done、アーカイブ済み、人のタスクは保存した状態を表示し、参照は記録として残ります。
 
 ワークフロー情報を履歴の文章から推測することはありません。メッセージは`QA.md`から、参照はfrontmatterの`questions`から読むので、履歴を編集してもこれらは変わりません。
 
@@ -68,10 +68,10 @@ history: []
 - ほかのトップレベルのキーは保存時に保ちます（YAMLの書式は正規化されることがあります）。frontmatterのないファイルや、見出しと`- [ ] AC-n.`の行による旧形式は条件0件として読み、移行しません。
 - 本文には計画・簡潔な検証結果・成果物への参照を書き、判断と操作は`history`だけに書きます。
 
-**自動Done**: AI担当・下書きでない・未アーカイブのTodoかDoingのタスクで、有効な条件が1件以上あり、すべて`done: true`になると、タスクは自動でDoneに移ります。履歴に一件記録し、`taskStatusChangedAt`を更新します。人の判断待ちのタスクは飛ばし、回答が届いたら評価し直します。条件がない・不正なタスク、人間担当、下書きは対象外です。`serve`は起動時にも既存のタスクを評価します。
+**自動Done**: AI担当・下書きでない・未アーカイブの未着手か進行中のタスクで、有効な条件が1件以上あり、すべて`done: true`になると、タスクは自動でDoneに移ります。履歴に一件記録し、`taskStatusChangedAt`を更新します。人の判断待ちのタスクは飛ばし、回答が届いたら評価し直します。条件がない・不正なタスク、人間担当、下書きは対象外です。`serve`は起動時にも既存のタスクを評価します。
 
 **人によるチェック**: 人は、ボードかリモートアクセスから、条件を1件ずつ付け外しします（`PUT .../tasks/{id}/acceptance/{condition}`に`{"done": true|false}`を送ります。[Web API](../reference/web-api.md)を参照）。要求に版は含めません。FileStoreは、プロジェクトのロックの中で最新の`TASK.md`を読み、その条件だけを変え、履歴を一件足して保存します。そのため、読み込んだあとに加えられた変更より人の選択が優先され、本文・ほかの条件・エージェントのほかの編集は残ります。アーカイブ済みのタスクは拒否し（`task_archived`）、存在しない条件は`invalid_argument`です。そのあとwatcherが、ほかの変更と同じく自動Doneを評価します。そのため、対象のAIタスクで最後の条件にチェックが入るとDoneに移り、Doneのタスクで条件を外してもDoneのままです。
 
-**最終の成果のリマインド。** 自動Doneは最終の成果を待ちません。代わりに、進行表の`finalResultMissing`が、条件がすべて満たされていて`--final`の成果がないAIタスクを、TodoまたはDoingにあるあいだと、Doneに移ってから24時間のあいだ一覧にします。エージェントは`result add --final`で成果を記録します。これはDoneのタスクが受け付ける唯一のAIの変更で、最終の成果がまだないときだけです（途中の成果や2件目の最終の成果は、引き続き`task_is_done`で失敗します）。[エージェント向け出力](../reference/agent-output.md)を参照してください。
+**最終の成果のリマインド。** 自動Doneは最終の成果を待ちません。代わりに、進行表の`finalResultMissing`が、条件がすべて満たされていて`--final`の成果がないAIタスクを、未着手または進行中にあるあいだと、Doneに移ってから24時間のあいだ一覧にします。エージェントは`result add --final`で成果を記録します。これはDoneのタスクが受け付ける唯一のAIの変更で、最終の成果がまだないときだけです（途中の成果や2件目の最終の成果は、引き続き`task_is_done`で失敗します）。[エージェント向け出力](../reference/agent-output.md)を参照してください。
 
 DoneのタスクはAIの変更（編集・状態・エピック・履歴・画像）を拒否し、自動で再開することはありません。人は編集も再開もできます。未達成の条件が残る、またはfrontmatterが不正なとき、AIの列移動によるDoneへの移動は`acceptance_unmet`で、人の判断待ちのあいだは`questions_unanswered`で拒否します。条件0件のタスクと人の移動は止めません。評価の仕組みは[エージェント連携](./agents.md#自動done)にあります。

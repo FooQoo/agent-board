@@ -118,13 +118,13 @@ agboard --project "My project" epic edit LAUNCH --waves 3 1,2
 
 `--waves`は、エピックのタスクの順序を設定します。ウェーブごとに1つの値を渡し、値はタスクID、またはカンマでつないだ複数のタスクIDです。同じウェーブのタスクは並行して進められ、ウェーブは、その前のウェーブのタスクがすべてDoneになってから始まります。上の例では、タスク3が最初のウェーブ、タスク1と2が次のウェーブです。詳しくは[作業の順序を決める](../watch/epics#作業の順序を決める)を参照してください。
 
-エージェントの`add`は、通常のTodoのタスクを作ります。計画だけを頼まれたときは、`--backlog`を付けて、カードを代わりにBacklogに置きます。`epic add`にレーンはありません。エージェントのエピックは通常のエピックで、計画だけのエピックは、カードを`--backlog --epic <ID>`で作ったものです。
+エージェントの`add`は、通常の未着手のタスクを作ります。計画だけを頼まれたときは、`--backlog`を付けて、カードを代わりにバックログに置きます。`epic add`にレーンはありません。エージェントのエピックは通常のエピックで、計画だけのエピックは、カードを`--backlog --epic <ID>`で作ったものです。
 
 ```sh
 agboard --project "My project" add --title "Plan the launch" --assignee ai --actor ai --backlog --epic LAUNCH
 ```
 
-Backlogは、まだ始めてはいけない確定済みの計画を置く場所です。エージェントは始めず、Backlogのカードへのエージェントの`mv`と`state`は`task_in_backlog`（終了コード1）で失敗します。カードをTodoの末尾へ送れるのは人だけです。WebのUIにBacklogのレーンと送信のボタンはまだないので、コマンドラインを使います。
+バックログは、まだ始めてはいけない確定済みの計画を置く場所です。エージェントは始めず、バックログのカードへのエージェントの`mv`と`state`は`task_in_backlog`（終了コード1）で失敗します。カードを未着手の末尾へ送れるのは人だけです。WebのUIにバックログのレーンと送信のボタンはまだないので、コマンドラインを使います。
 
 ```sh
 agboard --project "My project" send 12 --actor human
@@ -132,7 +132,7 @@ agboard --project "My project" epic send LAUNCH --actor human
 agboard --project "My project" epic send LAUNCH --actor human --tasks 1,2
 ```
 
-`send`は1枚のカードを送ります。`epic send`は、エピック全体、または`--tasks`で指定したカードだけを、全部移すか何も移さないかの一回の保存で送ります。エージェントがどちらを実行しても`human_only`になります。すでにBacklogを出たカードを送っても何も変わらないので、再試行しても安全です。ブラウザで人が編集中のカード（`draft: human`）は送れません（`task_is_draft`）。履歴には「人が Todo へ送りました。」と残ります。
+`send`は1枚のカードを送ります。`epic send`は、エピック全体、または`--tasks`で指定したカードだけを、全部移すか何も移さないかの一回の保存で送ります。エージェントがどちらを実行しても`human_only`になります。すでにバックログを出たカードを送っても何も変わらないので、再試行しても安全です。ブラウザで人が編集中のカード（`draft: human`）は送れません（`task_is_draft`）。履歴には「人が Todo へ送りました。」と残ります。
 
 計画に未回答の質問があると、送信は`send_with_open_questions`（終了コード1）で断られ、メッセージに質問のIDが並びます。`--force`を付けると、そのまま送ります。質問は未回答のまま残り、回答があるまでカードはPendingです。
 
@@ -140,7 +140,7 @@ agboard --project "My project" epic send LAUNCH --actor human --tasks 1,2
 agboard --project "My project" send 12 --actor human --force
 ```
 
-人は、未着手のTodoのカード（Idleで成果なし）をBacklogへ戻せます。エージェントが行うと`human_only`です。
+人は、未着手の未着手のカード（Idleで成果なし）をバックログへ戻せます。エージェントが行うと`human_only`です。
 
 ```sh
 agboard --project "My project" mv 12 backlog --actor human

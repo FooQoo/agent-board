@@ -22,7 +22,7 @@ export const monitorJa = {
     completedUnknown: '完了日時不明',
     lastFetched: '最終取得 {{time}}',
     status: {
-      backlog: 'Backlog',
+      backlog: 'バックログ',
       todo: '未着手',
       doing: '進行中',
       pending: '待機中',
