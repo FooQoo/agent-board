@@ -17,7 +17,7 @@ Use this procedure only when the user explicitly asks you to listen for work. It
 
 ## Process one returned task
 
-The command returns a single task as soon as any eligible task exists, including tasks created before listening began. Eligible tasks are AI-owned, in Todo or Doing, with `agentStatus: idle`, not drafts (neither a person's nor an AI's), and not archived. The order matches the progress table: epics sorted by ID, saved waves within each epic then task ID, then ungrouped tasks by ID. It does not prioritize creation time.
+The command returns a single task as soon as any eligible task exists, including tasks created before listening began. Eligible tasks are AI-owned, in Todo or Doing, with `agentStatus: idle`, not in the Backlog, not a person's draft, and not archived. The order matches the progress table: epics sorted by ID, saved waves within each epic then task ID, then ungrouped tasks by ID. It does not prioritize creation time.
 
 The output includes `projectId`, `cursor`, the task, `taskPath`, and `documentPath` (the epic's `EPIC.md` path; null without an epic). It does not change task state or reserve the task. Before acting:
 
@@ -34,7 +34,7 @@ When the task is resolved or intentionally paused with its current state and rea
 - `{"kind":"idle_timeout", ...}` is a successful exit (code 0). Finish the listener loop and report that the chosen interval passed with no eligible task. It does not mean any earlier task succeeded.
 - `{"kind":"task", ...}` is a successful single-task result. Inspect and process it before calling wait again.
 - `{"kind":"answers", ...}` lists answers to your questions that no agent has taken in. Read each with `message show <id>`, act on it, and take it in with `message accept <id> --actor ai` (see Take in an answer in the main Skill, `agboard skills`) before calling wait again; until accepted, the next wait returns the same answer. Answers come before requests, and requests before tasks.
-- `{"kind":"requests", ...}` lists the open requests a person sent. Read one with `message show <id>`, take it with `message accept <id> --actor ai` (see Accept a request in the main Skill, `agboard skills`), plan it as AI drafts, and handle it before calling wait again; until accepted, the next wait returns the same request.
+- `{"kind":"requests", ...}` lists the open requests a person sent. Read one with `message show <id>`, take it with `message accept <id> --actor ai` (see Accept a request in the main Skill, `agboard skills`), plan it as `agboard skills planning` describes (a Backlog plan only when the request asks for the plan only), and handle it before calling wait again; until accepted, the next wait returns the same request.
 - `local_network_denied` means the environment does not allow local network connections. Stop and tell the user the reason it gives; do not retry.
 - `board_unavailable`, malformed project data, a mismatched server, or `project_not_found` is an error, not an empty board. Stop and report the error and its recovery step; do not start another wait as an automatic retry.
 - Invalid arguments are usage errors. Fix the command rather than interpreting them as idle completion.

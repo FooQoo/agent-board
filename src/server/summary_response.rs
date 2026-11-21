@@ -132,6 +132,7 @@ pub(crate) fn summary_of(projection: &Projection) -> Summary {
                 waves: epic.fields.waves.clone(),
                 waves_error: epic.fields.waves_error,
                 progress: SummaryEpicProgress {
+                    backlog: epic.progress.backlog,
                     todo: epic.progress.todo,
                     doing: epic.progress.doing,
                     done: epic.progress.done,

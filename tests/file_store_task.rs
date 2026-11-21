@@ -541,7 +541,7 @@ fn a_task_file_of_another_format_version_is_left_out_and_not_converted() {
     fx.create("one");
     let path = fx.task_dir(1).join("task.json");
     let mut json = fx.raw_task(1);
-    json["formatVersion"] = serde_json::json!(2);
+    json["formatVersion"] = serde_json::json!(3);
     json["history"] = fx.history(1);
     let text = serde_json::to_string_pretty(&json).unwrap();
     fs::write(&path, &text).unwrap();

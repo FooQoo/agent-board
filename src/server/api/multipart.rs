@@ -23,7 +23,7 @@ pub(super) struct MultipartMeta {
     /// A new task takes `"human"` or null. An edit takes `"ai"` only, to leave the
     /// task an AI draft after the save.
     #[serde(default)]
-    pub(super) draft: Option<crate::domain::Draft>,
+    pub(super) draft: Option<Option<crate::domain::Draft>>,
     #[serde(default)]
     pub(super) title: Option<String>,
     #[serde(default)]

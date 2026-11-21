@@ -115,7 +115,10 @@ pub struct TaskMetadata {
 impl From<&TaskFile> for TaskMetadata {
     fn from(task: &TaskFile) -> Self {
         Self {
-            format_version: crate::file_store::layout::FORMAT_VERSION,
+            format_version: crate::file_store::layout::entity_format_version(
+                task.format_version,
+                task.task_status == Column::Backlog,
+            ),
             id: task.id,
             title: task.title.clone(),
             assignee: task.assignee,

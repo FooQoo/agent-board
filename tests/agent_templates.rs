@@ -142,34 +142,26 @@ fn the_skill_sends_an_unbound_folder_to_the_users_own_setup_run() {
 }
 
 #[test]
-fn the_skill_plans_first_and_starts_its_drafts_after_the_questions() {
+fn the_skill_plans_first_and_leaves_the_sending_to_the_person() {
     let skill = &full_skill();
-    // A request is accepted first, then becomes a plan of AI drafts on the board before any question.
+    // A request is accepted first, then becomes a plan on the board before any question.
     assert!(
         skill.contains("## Accept a request") && skill.contains("message accept"),
         "the Skill must teach accepting a request"
     );
     assert!(
-        skill.contains("put a plan on the board as AI drafts"),
-        "the Skill must register the plan as AI drafts first"
+        skill.contains("put the plan in the Backlog") && skill.contains("--backlog"),
+        "the Skill must register a plan-only request in the Backlog"
     );
-    assert!(
-        skill.contains("Do not ask before registering it"),
-        "the Skill must not ask before registering the plan"
-    );
-    // Questions that change the plan come after the plan is placed; the agent then starts its drafts.
+    // Questions that change the plan come after the plan is placed; a person sends it.
     assert!(
         skill.contains("**Ask what you cannot settle.**")
-            && skill.contains("**Start the drafts.**")
-            && skill.find("**Ask what you cannot settle.**") < skill.find("**Start the drafts.**"),
-        "the Skill must ask before the start"
+            && skill.contains("**Leave the sending to the person.**")
+            && skill.find("**Ask what you cannot settle.**")
+                < skill.find("**Leave the sending to the person.**"),
+        "the Skill must ask before the person sends"
     );
-    assert!(skill.contains("start_blocked_by_questions"));
-    // The plan's tasks are AI drafts that the agent starts itself.
-    for needed in ["epic start <EPIC-ID> --actor ai", "start <ID> --actor ai"] {
-        assert!(skill.contains(needed), "the Skill omits {needed}");
-    }
-    // After the start, only four cases call the user.
+    // Once the work runs, only four cases call the user.
     for case in [
         "**Intent**",
         "**Preference**",

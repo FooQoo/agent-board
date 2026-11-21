@@ -1,9 +1,9 @@
-//! The board router and its routes. The Host guard and the write guard are in
-//! `guards`; the handlers live in the submodules, grouped as the routes are.
+//! The board router and its routes; the handlers live in the submodules, grouped as the routes are.
 
 mod archive;
 mod detail;
 mod docs;
+mod draft_wire;
 mod epic_attachments;
 mod epics;
 mod guards;
@@ -15,6 +15,7 @@ mod onboarding;
 mod pages;
 mod preferences;
 mod projects;
+mod send;
 mod sessions;
 mod summaries;
 mod summary;
@@ -45,6 +46,7 @@ use messages::*;
 use onboarding::*;
 use pages::*;
 use projects::*;
+use send::{send_epic, send_task};
 use sessions::{
     launch_session, list_sessions, session_log, session_models, set_autostart, stop_session,
     touch_session,
@@ -218,6 +220,14 @@ fn routes(index_page: axum::routing::MethodRouter<Arc<AppState>>) -> Router<Arc<
         .route(
             "/api/projects/{project_id}/tasks/{id}/draft",
             put(set_draft),
+        )
+        .route(
+            "/api/projects/{project_id}/tasks/{id}/send",
+            post(send_task),
+        )
+        .route(
+            "/api/projects/{project_id}/epics/{epic_id}/send",
+            post(send_epic),
         )
         .route(
             "/api/projects/{project_id}/tasks/{id}/acceptance/{condition}",

@@ -121,9 +121,7 @@ impl FileStore {
     }
 
     /// Like `edit_draft_task`, with the draft the task ends as: `None` saves and
-    /// keeps the draft, `Some(None)` finalizes it, and `Some(Some(Draft::Ai))`
-    /// returns a person's edit of an AI proposal to that proposal. An AI draft
-    /// cannot be finalized: it is started with `start_task`.
+    /// keeps the draft, `Some(None)` finalizes it.
     pub fn edit_draft_task_to(
         &self,
         project: &ProjectId,
@@ -145,7 +143,7 @@ impl FileStore {
             return Err(AgboardError::TaskNotDraft { id });
         };
         let current = Some(owner);
-        let target = resolve_finalize(id, owner, finalize)?;
+        let target = resolve_finalize(finalize, owner);
         let (text_changed, markdown) =
             write_text(shared, project, &project_dir, &mut task, title, description)?;
         if !text_changed && target == current {
@@ -214,7 +212,7 @@ impl FileStore {
             return Err(AgboardError::TaskNotDraft { id });
         };
         let current = Some(owner);
-        let target = resolve_finalize(id, owner, finalize)?;
+        let target = resolve_finalize(finalize, owner);
         let title_changed = title.as_ref().is_some_and(|value| *value != task.title);
         let markdown = write_parts(
             shared,
@@ -261,19 +259,6 @@ impl FileStore {
 }
 
 /// The draft a saved edit leaves: the current one when `finalize` is `None`.
-/// Finalizing an AI draft is refused, because only starting it clears it.
-fn resolve_finalize(
-    id: i64,
-    current: Draft,
-    finalize: Option<Option<Draft>>,
-) -> Result<Option<Draft>, AgboardError> {
-    match finalize {
-        None => Ok(Some(current)),
-        Some(None) if current == Draft::Ai => Err(AgboardError::AiDraftNeedsStart {
-            target: format!("task #{id}"),
-        }),
-        Some(None) => Ok(None),
-        Some(Some(Draft::Ai)) => Ok(Some(Draft::Ai)),
-        Some(Some(Draft::Human)) => Ok(Some(Draft::Human)),
-    }
+fn resolve_finalize(finalize: Option<Option<Draft>>, current: Draft) -> Option<Draft> {
+    finalize.unwrap_or(Some(current))
 }

@@ -13,11 +13,10 @@ use super::super::{HistoryKind, Transition, lock_project, save_task, stamp, tran
 use super::view;
 
 impl FileStore {
-    /// Change who owns the draft: `Some(Draft::Human)` makes the task a person's
-    /// draft (also from an AI draft, while a person edits the proposal),
-    /// `Some(Draft::Ai)` gives a person's draft back to the proposal it was, and
-    /// `None` finalizes a person's draft. An AI draft is created by an agent and
-    /// started with `start_task`, so neither is possible here. Only an idle or
+    /// Take or release the edit lock: `Some(Draft::Human)` makes the task a
+    /// person's draft (a Backlog card too, while a person edits the plan), and
+    /// `None` finalizes it. Finalizing keeps the lane: a Backlog card stays in
+    /// the Backlog, and only `send_task` hands it over. Only an idle or
     /// pending task can become a draft. The update time does not move; the history
     /// records the change. `discard` marks leaving the draft as a discard of its
     /// changes instead of a confirmation; it does not apply to turning it on.
@@ -46,20 +45,6 @@ impl FileStore {
                 value: view(shared, project, id)?,
                 changed: false,
             });
-        }
-        match (task.draft, draft) {
-            (Some(Draft::Ai), None) => {
-                return Err(AgboardError::AiDraftNeedsStart {
-                    target: format!("task #{id}"),
-                });
-            }
-            (None, Some(Draft::Ai)) => {
-                return Err(AgboardError::InvalidValue {
-                    field: "draft".into(),
-                    reason: "An AI draft is created by an agent.".into(),
-                });
-            }
-            _ => {}
         }
         if draft == Some(Draft::Human) && task.agent_status == RunState::Running {
             return Err(AgboardError::InvalidStateForDraft {
@@ -96,11 +81,6 @@ pub(super) fn draft_event(
         kind: HistoryKind::Draft,
         reason: Some(if draft == Some(Draft::Human) {
             language.text("Marked task as draft.", "タスクを下書きにしました。")
-        } else if draft == Some(Draft::Ai) {
-            language.text(
-                "Returned task to the AI draft.",
-                "タスクをAIの下書きに戻しました。",
-            )
         } else if discard {
             language.text("Discarded draft changes.", "下書きの変更を破棄しました。")
         } else {

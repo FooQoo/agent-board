@@ -4,7 +4,7 @@ use chrono::{Duration, Utc};
 
 use super::cases::{Case, case};
 use super::test_support::{Scenario, progress_with};
-use crate::domain::{Column, Draft, RunState};
+use crate::domain::{Column, RunState};
 use crate::progress::{EpicToClose, Progress, ProgressAnswer, ProgressRequest, ProgressTask};
 
 /// The table's only task, for a case to change.
@@ -37,14 +37,6 @@ fn running_since(minutes: i64) -> Scenario {
     with(|p| {
         doing(p, true);
         task(p).last_activity_at = Some(Utc::now() - Duration::minutes(minutes));
-    })
-}
-
-fn with_draft(lane: Column, draft: Option<Draft>) -> Scenario {
-    with(|p| {
-        let t = task(p);
-        t.draft = draft;
-        t.task_status = lane;
     })
 }
 
@@ -174,42 +166,6 @@ pub fn all() -> Vec<Case> {
                     why: crate::progress::NextReason::Resume,
                 });
             }),
-        ),
-        case(
-            "draft-moved",
-            "an AI draft in Doing",
-            true,
-            with_draft(Column::Doing, Some(Draft::Ai)),
-        ),
-        case(
-            "draft-moved",
-            "an AI draft in Todo",
-            false,
-            with_draft(Column::Todo, Some(Draft::Ai)),
-        ),
-        case(
-            "draft-moved",
-            "a person's draft in Doing",
-            false,
-            with_draft(Column::Doing, Some(Draft::Human)),
-        ),
-        case(
-            "drafts",
-            "an AI draft with no open question",
-            true,
-            with_draft(Column::Todo, Some(Draft::Ai)),
-        ),
-        case(
-            "drafts",
-            "an AI draft in Doing",
-            true,
-            with_draft(Column::Doing, Some(Draft::Ai)),
-        ),
-        case(
-            "drafts",
-            "a task that is no draft",
-            false,
-            with_draft(Column::Todo, None),
         ),
     ]
 }

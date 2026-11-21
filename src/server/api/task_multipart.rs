@@ -57,7 +57,7 @@ pub(super) async fn edit_task_multipart(
             "requestId is required.",
         );
     }
-    if payload.meta.draft == Some(crate::domain::Draft::Human) {
+    if payload.meta.draft == Some(Some(crate::domain::Draft::Human)) {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -209,10 +209,7 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
-    let draft = match super::tasks::person_draft(payload.meta.draft) {
-        Ok(draft) => draft,
-        Err(error) => return agboard_error_response(&error),
-    };
+    let draft = payload.meta.draft.flatten();
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,

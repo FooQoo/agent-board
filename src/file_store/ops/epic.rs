@@ -32,7 +32,7 @@ pub(super) fn read_epic_file(
     let path = layout::epic_file(&dir);
     let label = layout::shared_label(shared, &path);
     let bytes = io::read_bytes(&path, &label)?;
-    let file: EpicFile = reader::parse_file(&bytes, &label)?;
+    let file: EpicFile = reader::parse_epic_file(&bytes, &label)?;
     match validate::check_epic(&file, id.as_str()).into_iter().next() {
         None => Ok((dir, file)),
         Some(d) => Err(AgboardError::FileInvalid {

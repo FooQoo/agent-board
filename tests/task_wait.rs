@@ -542,7 +542,7 @@ fn task_wait_returns_a_request_that_arrives_while_listening() {
 }
 
 #[test]
-fn an_ai_draft_is_never_picked_by_task_wait_until_a_person_starts_it() {
+fn a_backlog_plan_is_never_picked_by_task_wait_until_a_person_sends_it() {
     let (home, _) = demo();
     let _server = serve(home.path());
     let draft = json(
@@ -556,6 +556,7 @@ fn an_ai_draft_is_never_picked_by_task_wait_until_a_person_starts_it() {
             "ai",
             "--actor",
             "ai",
+            "--backlog",
             "--json",
         ],
     )["task"]["id"]
@@ -570,7 +571,7 @@ fn an_ai_draft_is_never_picked_by_task_wait_until_a_person_starts_it() {
         &[
             "--project",
             "Demo",
-            "start",
+            "send",
             &draft.to_string(),
             "--actor",
             "human",

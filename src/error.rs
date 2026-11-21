@@ -89,18 +89,17 @@ pub enum AgboardError {
     TaskIsDraft {
         id: i64,
     },
-    /// The task is an AI draft: it waits for `agboard start`.
-    TaskIsAiDraft {
+    /// The task is in the Backlog: it must be sent to Todo before it is worked on.
+    TaskInBacklog {
         id: i64,
     },
     /// The epic is a draft: the CLI cannot change it.
     EpicIsDraft {
         id: String,
     },
-    /// A finalize was asked of an AI draft; only starting it clears the draft.
-    AiDraftNeedsStart {
-        /// The task or epic, as named to the reader: `task #5`, `epic EPIC-1`.
-        target: String,
+    /// A person sends a plan that has open questions; they confirm with `ack`.
+    SendWithOpenQuestions {
+        ids: Vec<String>,
     },
     /// An agent asked for something only a person may do.
     HumanOnly {

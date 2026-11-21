@@ -60,12 +60,15 @@ pub enum Command {
     Add(AddArgs),
     /// Change a task's title or description
     Edit(EditArgs),
-    /// Move a task to todo, doing, or done
+    /// Move a task to todo, doing, or done (a person can also take an unstarted Todo task back to backlog)
     Mv(MvArgs),
     /// Report a task's run state: idle or running
     State(StateArgs),
-    /// Start an AI draft task
-    Start(StartArgs),
+    /// Send a Backlog plan to Todo
+    Send(SendArgs),
+    /// Deprecated alias of send
+    #[command(hide = true)]
+    Start(SendArgs),
     /// Append a work note to a task history
     History(HistoryArgs),
     /// Ask the user questions, wait for the answers, and handle requests from the user
@@ -120,6 +123,7 @@ impl Command {
             Command::Edit(_) => "edit",
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
+            Command::Send(_) => "send",
             Command::Start(_) => "start",
             Command::History(_) => "history",
             Command::Message(_) => "message",

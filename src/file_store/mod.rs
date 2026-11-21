@@ -16,6 +16,7 @@ pub mod image_size;
 pub mod index;
 pub mod io;
 pub mod layout;
+mod legacy_draft;
 pub mod lock;
 pub mod message;
 pub mod model;
@@ -38,7 +39,7 @@ use crate::domain::{ProjectId, ProjectMeta};
 use crate::error::AgboardError;
 use model::TaskView;
 pub use ops::{
-    Accepted, AnswerItem, AskInput, AskQuestion, EpicStarted, MAX_RESULTS, RecordedResult,
+    Accepted, AnswerItem, AskInput, AskQuestion, EpicSent, MAX_RESULTS, RecordedResult,
     RequestImage, ResultInput, SendRequestInput,
 };
 use reader::ProjectSnapshot;

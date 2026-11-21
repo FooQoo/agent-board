@@ -47,7 +47,7 @@ agboard --project "<current project name>" wait --until task --idle-timeout 3600
 Then handle the result:
 
 - `{"kind":"answers", ...}`: read each answer with `message show <id>`, act on it, and take it in with `message accept <id> --actor ai` (Take in an answer, in the main Skill). Until accepted, the next wait returns it again.
-- `{"kind":"requests", ...}`: read each with `message show <id>`, take it with `message accept <id> --actor ai` (Accept a request, in the main Skill), and plan it as AI drafts as `agboard skills planning` describes. Ask the questions that change the plan with `message ask`.
+- `{"kind":"requests", ...}`: read each with `message show <id>`, take it with `message accept <id> --actor ai` (Accept a request, in the main Skill), and plan it as `agboard skills planning` describes (a Backlog plan only when the request asks for the plan only). Ask the questions that change the plan with `message ask`.
 - `{"kind":"task", ...}`: work the task as `agboard skills listening` describes under "Process one returned task": re-read it, check that it is still ready, move it to Doing and Running, work with history, verify, and record the result. Let Agent Board complete it; do not move it to Done by hand.
 - `{"kind":"idle_timeout", ...}`: nothing to do. This is not an ending.
 

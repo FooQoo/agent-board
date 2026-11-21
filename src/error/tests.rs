@@ -26,10 +26,10 @@ pub(super) fn all_errors() -> Vec<AgboardError> {
         },
         AgboardError::InvalidStateForAssignee,
         AgboardError::TaskIsDraft { id: 5 },
-        AgboardError::TaskIsAiDraft { id: 5 },
+        AgboardError::TaskInBacklog { id: 5 },
         AgboardError::EpicIsDraft { id: "E".into() },
-        AgboardError::AiDraftNeedsStart {
-            target: "task #5".into(),
+        AgboardError::SendWithOpenQuestions {
+            ids: vec!["Q-1".into()],
         },
         AgboardError::HumanOnly {
             action: "start".into(),
@@ -186,9 +186,9 @@ fn codes_and_exit_codes_follow_the_design_table() {
             ("invalid_state_for_column", 1),
             ("invalid_state_for_assignee", 2),
             ("task_is_draft", 1),
-            ("task_is_draft", 1),
+            ("task_in_backlog", 1),
             ("epic_is_draft", 1),
-            ("ai_draft_needs_start", 1),
+            ("send_with_open_questions", 1),
             ("human_only", 1),
             ("task_is_done", 1),
             ("acceptance_unmet", 2),

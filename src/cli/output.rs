@@ -99,6 +99,11 @@ pub fn state_text(state: RunState, reason: Option<&str>) -> String {
 pub fn ls_text(tasks: &[TaskView], columns: &[Column]) -> String {
     let mut out = String::new();
     for column in columns {
+        // The Backlog is shown only when it holds a plan, so a board without one
+        // reads as it always did.
+        if *column == Column::Backlog && !tasks.iter().any(|t| t.task_status == *column) {
+            continue;
+        }
         out.push_str(&format!("{}\n", column.label()));
         for task in tasks.iter().filter(|task| task.task_status == *column) {
             out.push_str(&format!("  #{} {}", task.id, task.title));
@@ -109,7 +114,6 @@ pub fn ls_text(tasks: &[TaskView], columns: &[Column]) -> String {
             if let Some(draft) = task.draft {
                 out.push_str(match draft {
                     crate::domain::Draft::Human => " [draft]",
-                    crate::domain::Draft::Ai => " [AI draft]",
                 });
             }
             if let Some(epic) = &task.epic_id {
@@ -150,7 +154,6 @@ pub fn show_text(task: &TaskView) -> String {
     if let Some(draft) = task.draft {
         out.push_str(match draft {
             crate::domain::Draft::Human => "Draft: human\n",
-            crate::domain::Draft::Ai => "Draft: ai\n",
         });
     }
     if let Some(archived_at) = task.archived_at {

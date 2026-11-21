@@ -4,7 +4,7 @@
 use chrono::Duration;
 
 use super::{Facts, Finding};
-use crate::domain::{Assignee, Column, Draft, RunState};
+use crate::domain::{Assignee, Column, RunState};
 use crate::progress::{Progress, ProgressTask};
 
 /// A running task with no history for this long may have stopped.
@@ -142,40 +142,4 @@ pub fn next_task(facts: &Facts) -> Vec<Finding> {
         ))
         .task(next.id),
     ]
-}
-
-/// A person moved an AI draft to Doing.
-pub fn draft_moved(facts: &Facts) -> Vec<Finding> {
-    let Some(progress) = facts.progress else {
-        return Vec::new();
-    };
-    tasks(progress)
-        .filter(|t| t.draft == Some(Draft::Ai) && t.task_status == Column::Doing)
-        .map(|t| {
-            Finding::new(format!(
-                "AI draft #{id} was moved to Doing by a person: start it with `agboard start {id} --actor ai`.",
-                id = t.id
-            ))
-            .task(t.id)
-        })
-        .collect()
-}
-
-/// AI drafts with no open question.
-pub fn drafts(facts: &Facts) -> Vec<Finding> {
-    let Some(progress) = facts.progress else {
-        return Vec::new();
-    };
-    tasks(progress)
-        .filter(|t| t.draft == Some(Draft::Ai))
-        .map(|t| {
-            Finding::new(format!(
-                "Draft #{id} \"{title}\" ({lane:?}) has no open question. A draft means its plan is not settled. If the plan is settled, start it (put its order in the epic priority and dependencies in EPIC.md; do not leave it as a draft to make it wait). If not, ask the question that settles it.",
-                id = t.id,
-                title = t.title,
-                lane = t.task_status
-            ))
-            .task(t.id)
-        })
-        .collect()
 }

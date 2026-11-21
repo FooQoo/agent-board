@@ -56,6 +56,9 @@ impl FileStore {
     /// so existing projects get them on the first start after the update. A
     /// project that fails is left unchanged and is tried again on the next start.
     pub fn seed_unseeded_projects(&self, now: DateTime<Utc>) {
+        // The start of a server is also the first write of an update: the old AI drafts
+        // move to the Backlog.
+        self.migrate_backlog();
         let Ok(projects) = self.projects() else {
             return;
         };

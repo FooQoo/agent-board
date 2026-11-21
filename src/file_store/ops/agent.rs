@@ -117,6 +117,41 @@ impl FileStore {
         if block_drafts && let Some(draft) = task.draft {
             return Err(draft_refusal(id, draft));
         }
+        if task.task_status == Column::Backlog && to != Column::Backlog {
+            // Leaving the Backlog is sending the plan to Todo: a person's move to
+            // Todo is the same operation as `send`; nothing else leaves it.
+            if ctx.actor == Actor::Human && to == Column::Todo {
+                return self.send_task_locked(
+                    project,
+                    &project_dir,
+                    task,
+                    Actor::Human,
+                    false,
+                    now,
+                );
+            }
+            return Err(AgboardError::TaskInBacklog { id });
+        }
+        if to == Column::Backlog && task.task_status != Column::Backlog {
+            // Taking a card back to the Backlog is a person's decision, and only
+            // for a card nobody has started.
+            if ctx.actor == Actor::Ai {
+                return Err(AgboardError::HumanOnly {
+                    action: "moving a card back to the Backlog".into(),
+                });
+            }
+            if task.task_status != Column::Todo
+                || task.agent_status != RunState::Idle
+                || !task.results.is_empty()
+            {
+                return Err(AgboardError::InvalidValue {
+                    field: "to".into(),
+                    reason:
+                        "Only a Todo card that has not been started can go back to the Backlog."
+                            .into(),
+                });
+            }
+        }
         if ctx.actor == Actor::Ai && to == Column::Done && task.task_status != Column::Done {
             ensure_acceptance_met(shared, project, id)?;
             if task_waits(shared, project, id)? {
@@ -184,6 +219,9 @@ impl FileStore {
         if let Some(draft) = task.draft {
             return Err(draft_refusal(id, draft));
         }
+        if task.task_status == Column::Backlog {
+            return Err(AgboardError::TaskInBacklog { id });
+        }
         check_work_state(task.assignee, task.task_status, state)?;
         if ctx.actor == Actor::Ai && state == RunState::Running && task_waits(shared, project, id)?
         {
@@ -219,10 +257,9 @@ impl FileStore {
 }
 
 /// The refusal of a move or state change on a draft: a person's own draft waits for its
-/// owner to finalize it, an AI draft waits for `agboard start`.
+/// owner to finalize it.
 fn draft_refusal(id: i64, draft: crate::domain::Draft) -> AgboardError {
     match draft {
         crate::domain::Draft::Human => AgboardError::TaskIsDraft { id },
-        crate::domain::Draft::Ai => AgboardError::TaskIsAiDraft { id },
     }
 }

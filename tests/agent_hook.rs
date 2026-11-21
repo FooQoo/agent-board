@@ -145,7 +145,7 @@ fn board_with_descriptions(descriptions: &[String]) -> (tempfile::TempDir, std::
                     title: format!("Task {index}"),
                     description: task_body(&description),
                     assignee: Assignee::Ai,
-                    actor: Actor::Ai,
+                    actor: Actor::Human,
                     draft: None,
                 },
                 now,

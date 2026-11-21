@@ -67,6 +67,10 @@ fn add(home: &Path, epic: Option<&str>, assignee: &str, actor: &str) -> i64 {
     if let Some(epic) = epic {
         args.extend(["--epic", epic]);
     }
+    if actor == "ai" {
+        // A plan an agent makes waits in the Backlog.
+        args.push("--backlog");
+    }
     agboard(home, &args)["task"]["id"].as_i64().unwrap()
 }
 
@@ -175,7 +179,7 @@ fn todo_follows_the_epic_waves_and_unassigned_comes_last() {
 }
 
 #[test]
-fn running_human_owned_and_draft_tasks_are_left_out() {
+fn running_human_owned_and_backlog_tasks_are_left_out() {
     let home = board(&["ALPHA"]);
     let run = ready(home.path(), Some("ALPHA"));
     doing(home.path(), run);

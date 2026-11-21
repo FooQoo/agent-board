@@ -6,7 +6,7 @@ use crate::file_store::reader::AllSnapshots;
 use crate::{domain::Column, error::AgboardError};
 use serde_json::json;
 
-const COLUMNS: [Column; 3] = [Column::Todo, Column::Doing, Column::Done];
+const COLUMNS: [Column; 4] = [Column::Backlog, Column::Todo, Column::Doing, Column::Done];
 
 fn keep(args: &LsArgs, task: &TaskView) -> bool {
     args.column.is_none_or(|c| task.task_status == c.column())

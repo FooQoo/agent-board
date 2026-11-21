@@ -14,17 +14,19 @@ pub fn run(ctx: &mut Context, args: &AddArgs) -> Result<Outcome, AgboardError> {
         ctx.files.epic(ctx.project_id()?, id)?;
     }
     let project = ctx.project_id()?.clone();
-    let mut task = ctx.files.create_task(
-        &project,
-        NewTask {
-            title: args.title.clone(),
-            description,
-            assignee: args.assignee.assignee(),
-            actor: args.actor.actor(),
-            draft: None,
-        },
-        ctx.clock.now(),
-    )?;
+    let new = NewTask {
+        title: args.title.clone(),
+        description,
+        assignee: args.assignee.assignee(),
+        actor: args.actor.actor(),
+        draft: None,
+    };
+    let mut task = if args.backlog {
+        ctx.files
+            .create_task_in_backlog(&project, new, ctx.clock.now())?
+    } else {
+        ctx.files.create_task(&project, new, ctx.clock.now())?
+    };
     if let Some(id) = &epic {
         task = ctx
             .files

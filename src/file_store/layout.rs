@@ -15,6 +15,20 @@ pub const FORMAT_NAME: &str = "agboard-files";
 /// The only `formatVersion` this build reads and writes.
 pub const FORMAT_VERSION: u32 = 1;
 
+/// The `formatVersion` of a `task.json` or `epic.json` that uses the Backlog: a
+/// `backlog` lane. Earlier versions cannot read such a file.
+pub const BACKLOG_FORMAT_VERSION: u32 = 2;
+
+/// The version a task or epic file is written with: the version it was read
+/// with, raised to `BACKLOG_FORMAT_VERSION` when it uses the Backlog.
+pub fn entity_format_version(current: u32, uses_backlog: bool) -> u32 {
+    if uses_backlog {
+        BACKLOG_FORMAT_VERSION.max(current)
+    } else {
+        current.max(FORMAT_VERSION)
+    }
+}
+
 pub fn workspace_file(shared: &Path) -> PathBuf {
     shared.join("workspace.json")
 }

@@ -76,7 +76,8 @@ fn write_new_task(
 }
 
 impl FileStore {
-    /// Create a task in the To Do lane at the end. The number is reserved in
+    /// Create a task at the end of its lane: Todo, or the Backlog for a task an
+    /// agent creates (which must say how far the work is handed over). The number is reserved in
     /// `project.json` before the task folder is written, so a failed write
     /// leaves a gap in the numbers and never reuses one. A body that is not
     /// given (empty or blank) gets the TASK.md template.
@@ -84,6 +85,27 @@ impl FileStore {
         &self,
         project: &ProjectId,
         new: NewTask,
+        now: DateTime<Utc>,
+    ) -> Result<TaskView, AgboardError> {
+        self.create_task_in(project, new, Column::Todo, now)
+    }
+
+    /// Create a task at the end of the Backlog: a plan that must not be started
+    /// until a person sends it to Todo.
+    pub fn create_task_in_backlog(
+        &self,
+        project: &ProjectId,
+        new: NewTask,
+        now: DateTime<Utc>,
+    ) -> Result<TaskView, AgboardError> {
+        self.create_task_in(project, new, Column::Backlog, now)
+    }
+
+    fn create_task_in(
+        &self,
+        project: &ProjectId,
+        new: NewTask,
+        lane: Column,
         now: DateTime<Utc>,
     ) -> Result<TaskView, AgboardError> {
         let title = validate_title(&new.title)?;
@@ -102,25 +124,24 @@ impl FileStore {
             &layout::task_md(&layout::task_dir(&project_dir, id)),
         );
         validate::ensure_task_body(&body, &label)?;
-        let position = lane_end(shared, project, Column::Todo)?;
+        let position = lane_end(shared, project, lane)?;
         let at = stamp(now);
         let language = self
             .history_language
             .unwrap_or_else(|| HistoryLanguage::infer(&body, &title));
         let task = TaskFile {
-            format_version: layout::FORMAT_VERSION,
+            format_version: layout::entity_format_version(
+                layout::FORMAT_VERSION,
+                lane == Column::Backlog,
+            ),
             id,
             title,
             assignee: new.assignee,
             epic_id: None,
-            task_status: Column::Todo,
+            task_status: lane,
             agent_status: RunState::Idle,
             position,
-            // A task an agent creates is a proposal until a person starts it.
-            draft: match new.actor {
-                crate::domain::Actor::Ai => Some(crate::domain::Draft::Ai),
-                crate::domain::Actor::Human => new.draft,
-            },
+            draft: new.draft,
             archived_at: None,
             request_answers: Vec::new(),
             created_at: at,
@@ -136,7 +157,7 @@ impl FileStore {
                 kind: HistoryKind::Created,
                 reason: None,
                 from_task: None,
-                to_task: Column::Todo,
+                to_task: lane,
                 from_agent: None,
                 to_agent: RunState::Idle,
                 at,

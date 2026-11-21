@@ -45,14 +45,15 @@ impl AgboardError {
             AgboardError::TaskIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
-            AgboardError::TaskIsAiDraft { .. } => {
-                "Start it once its questions are answered (agboard start), then try again.".into()
+            AgboardError::TaskInBacklog { .. } => {
+                "Send it to Todo first (agboard send), then try again.".into()
             }
             AgboardError::EpicIsDraft { .. } => {
                 "Wait for the user to finalize it, then try again.".into()
             }
-            AgboardError::AiDraftNeedsStart { .. } => {
-                "Start the task (or its epic) instead of finalizing it.".into()
+            AgboardError::SendWithOpenQuestions { .. } => {
+                "Check the questions, then send again with --force (the API takes ack: true)."
+                    .into()
             }
             AgboardError::HumanOnly { .. } => {
                 "Ask the user to do this in the web UI or run it with --actor human.".into()
@@ -82,7 +83,7 @@ impl AgboardError {
                 "A withdrawn question takes no answer. Ask a new question if one is still needed.".into()
             }
             AgboardError::StartBlockedByQuestions { .. } => {
-                "Answer the questions (the board, or \"agboard message answer\"), then start again.".into()
+                "Answer the questions (the board, or \"agboard message answer\"), then send again.".into()
             }
             AgboardError::MessageNotFound { .. } => {
                 "Run \"agboard message ls --status all\" to see the messages of the project.".into()

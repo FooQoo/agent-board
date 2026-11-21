@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Column {
+    /// A plan that is saved but not yet handed over to be worked on.
+    Backlog,
     Todo,
     Doing,
     Done,
@@ -14,6 +16,7 @@ impl Column {
     /// Lowercase machine form (`todo`).
     pub fn as_str(&self) -> &'static str {
         match self {
+            Column::Backlog => "backlog",
             Column::Todo => "todo",
             Column::Doing => "doing",
             Column::Done => "done",
@@ -23,6 +26,7 @@ impl Column {
     /// Capitalized display form (`Todo`).
     pub fn label(&self) -> &'static str {
         match self {
+            Column::Backlog => "Backlog",
             Column::Todo => "Todo",
             Column::Doing => "Doing",
             Column::Done => "Done",
@@ -35,6 +39,7 @@ impl FromStr for Column {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "backlog" => Ok(Column::Backlog),
             "todo" => Ok(Column::Todo),
             "doing" => Ok(Column::Doing),
             "done" => Ok(Column::Done),

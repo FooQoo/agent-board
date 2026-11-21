@@ -5,10 +5,10 @@ use std::io::{BufRead, Write};
 use serde_json::{Value, json};
 
 use crate::cli::args::{
-    EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs, EpicStartArgs,
+    EpicAddArgs, EpicArgs, EpicCommand, EpicEditArgs, EpicIdArgs, EpicSendArgs,
 };
 use crate::cli::{Context, Outcome};
-use crate::domain::{Actor, Draft};
+use crate::domain::Draft;
 use crate::error::AgboardError;
 use crate::file_store::model::{EpicUpdate, EpicView, NewEpic};
 use crate::file_store::reader::ProjectSnapshot;
@@ -21,7 +21,7 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> 
         EpicCommand::Ls => ls(ctx),
         EpicCommand::Show(args) => show(ctx, args),
         EpicCommand::Edit(args) => edit(ctx, args),
-        EpicCommand::Start(args) => start(ctx, args),
+        EpicCommand::Send(args) | EpicCommand::Start(args) => send(ctx, args),
         EpicCommand::Rm(args) => {
             ctx.interactive |= confirm::is_interactive(ctx.json);
             rm_with_io(
@@ -37,15 +37,13 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> 
 fn add(ctx: &mut Context, args: &EpicAddArgs) -> Result<Outcome, AgboardError> {
     // Epics keep no history, so the actor is only checked for presence; the
     // command line requires it.
-    let actor = args.actor.actor();
     let epic = ctx.files.create_epic(
         ctx.project_id()?,
         NewEpic {
             id: args.id.clone(),
             name: args.name.clone(),
             color: args.color.clone(),
-            // An epic an agent creates is a proposal until a person starts it.
-            draft: (actor == Actor::Ai).then_some(Draft::Ai),
+            draft: None,
             document: None,
         },
         ctx.clock.now(),
@@ -240,7 +238,6 @@ fn draft_label(draft: Option<Draft>) -> &'static str {
     match draft {
         None => "",
         Some(Draft::Human) => " [draft]",
-        Some(Draft::Ai) => " [AI draft]",
     }
 }
 
@@ -248,25 +245,43 @@ fn draft_name(draft: Option<Draft>) -> &'static str {
     match draft {
         None => "no",
         Some(Draft::Human) => "human",
-        Some(Draft::Ai) => "ai",
     }
 }
 
-fn start(ctx: &mut Context, args: &EpicStartArgs) -> Result<Outcome, AgboardError> {
+fn send(ctx: &mut Context, args: &EpicSendArgs) -> Result<Outcome, AgboardError> {
     let id = EpicId::normalize(&args.id)?;
     let project = ctx.project_id()?;
+    let actor = args.actor.actor();
+    let ack = super::send::ack_of(actor, args.force)?;
+    let only = args.tasks.as_deref().map(parse_task_ids).transpose()?;
     let result = ctx
         .files
-        .start_epic(project, &id, args.actor.actor(), ctx.clock.now())?;
-    let started = &result.value.started;
+        .send_epic(project, &id, only.as_deref(), actor, ack, ctx.clock.now())?;
+    let sent = &result.value.sent;
     let human = if result.changed {
-        format!("Started epic {} and {} task(s).\n", id, started.len())
+        format!("Sent {} task(s) of epic {} to Todo.\n", sent.len(), id)
     } else {
-        format!("Epic {id} has nothing to start.\n")
+        format!("Epic {id} has nothing to send.\n")
     };
     Ok(Outcome {
         changed: result.changed,
         human,
-        json: json!({"epic": result.value.epic, "started": started}),
+        json: json!({"epic": result.value.epic, "sent": sent}),
     })
+}
+
+/// `--tasks 12,13`: task numbers joined by commas.
+fn parse_task_ids(text: &str) -> Result<Vec<i64>, AgboardError> {
+    let invalid = || AgboardError::InvalidValue {
+        field: "tasks".into(),
+        reason: "Give task numbers joined by commas, for example 12,13.".into(),
+    };
+    let ids: Vec<i64> = text
+        .split(',')
+        .map(|part| part.trim().parse::<i64>().map_err(|_| invalid()))
+        .collect::<Result<_, _>>()?;
+    if ids.is_empty() || ids.iter().any(|n| *n < 1) {
+        return Err(invalid());
+    }
+    Ok(ids)
 }
