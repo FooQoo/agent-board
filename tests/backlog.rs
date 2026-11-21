@@ -511,9 +511,8 @@ fn an_epic_waits_for_a_plan_that_is_still_in_the_backlog() {
     );
 }
 
-/// A file still holding the `draft: "ai"` of earlier versions is not read: the board
-/// reports it as invalid, keeps the other work, and never rewrites the file. The
-/// one-shot script `scripts/migrate-ai-drafts.mjs` moves such plans to the Backlog.
+/// A file holding `draft: "ai"` is invalid: the board reports it, keeps the other
+/// work, and never rewrites the file.
 #[test]
 fn a_file_with_the_old_ai_draft_is_reported_invalid_and_left_unchanged() {
     let f = fx();

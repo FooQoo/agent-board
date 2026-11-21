@@ -73,8 +73,6 @@ jobs:
           pnpm --dir web build
       - run: cargo fmt --all -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
-      - name: Test the one-shot scripts
-        run: node --test scripts/*.test.mjs
       - run: cargo nextest run --locked --no-fail-fast
 
   web:

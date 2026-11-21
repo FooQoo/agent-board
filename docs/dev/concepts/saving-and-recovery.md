@@ -45,22 +45,11 @@ The first time a project is read or written, under its lock, Agent Board convert
 
 Only the `TASK.md`/`task.json` pair, and a message change with the task pairs it touches, are atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
 
-## Format versions and old AI drafts
+## Format versions and the draft mark
 
 A `task.json` or `epic.json` that uses the Backlog has `formatVersion: 2`; the files of ordinary cards stay at `formatVersion: 1`, and both are read. Any other version is `format_unsupported`, and the message says "Only formatVersion 2 is supported". An earlier version of `agboard` cannot read a version-2 file.
 
-The `draft: "ai"` mark of earlier versions is no longer read. The board does not convert it: a `task.json` or `epic.json` that still holds it fails to parse like any other invalid file, so it is reported in `problems` (and by `agboard show`/`ls` for a single file), left out of the board, and never rewritten. Nothing else in the project is affected.
-
-The conversion is a one-shot script, `scripts/migrate-ai-drafts.mjs`, run by hand while `agboard serve` is stopped. It refuses a real run while `serve.json` names a live process (`--dry-run` only warns) or while a project has an unfinished save in `.internal/transactions`. It writes each file through a temporary file in the same folder and a rename, and a second run changes nothing. `--dry-run` lists what would change. It also removes the unused `.internal/backlog-migrated` marker of the earlier automatic conversion.
-
-| Before | After |
-| --- | --- |
-| Task with `draft: ai` in Todo or Doing, not archived | `taskStatus: backlog`, `draft: null`, run state Idle, `formatVersion: 2`, and the history entry `Moved the AI draft from <lane> to the Backlog.` |
-| Task with `draft: ai` that is Done or archived | Only `draft: null` |
-| Epic with `draft: ai` | `draft: null` |
-| `draft: human`, the old `isDraft`, and ordinary cards | Unchanged |
-
-The script does not make an old plan startable: only a person can send it to Todo.
+`draft` is `null` or `"human"`. A `draft: "ai"` is not a valid value: that `task.json` or `epic.json` fails to parse like any other invalid file, so it is reported in `problems`, left out of the board, and never rewritten. Nothing else in the project is affected.
 
 ## Creating and deleting
 

@@ -55,14 +55,7 @@ Each project's `qa/` folder holds the messages: the questions agents asked, with
 
 Projects that were saved by an earlier build are converted once, the first time the project is read or written. Questions that were still unanswered and not withdrawn keep their numbers; answered and withdrawn ones are dropped. Unanswered start approvals are not carried over: the AI tasks that waited for one move to the Backlog, and a person sends them to Todo again. A folder that cannot be read is moved to `.internal/legacy-qa/`.
 
-A plan that an earlier version marked as an AI draft (`"draft": "ai"` in `task.json` or `epic.json`) is not converted by the board: the file is reported as invalid and left as it is. Move such plans to the Backlog once with the script `scripts/migrate-ai-drafts.mjs` from the repository, with `agboard serve` stopped:
-
-```sh
-node scripts/migrate-ai-drafts.mjs --dry-run   # list what would change
-node scripts/migrate-ai-drafts.mjs             # move them
-```
-
-It takes the data folder from `AGBOARD_HOME` (or `~/.agent-board`), or from an argument. Only a person can then send the moved plans to Todo.
+A `task.json` or `epic.json` that holds `"draft": "ai"` is an invalid file: the board reports it, leaves it out, and leaves it unchanged.
 
 Each project's `docs/` folder holds your own Markdown documents, which you read and edit from **Docs** in the board header. Agent Board creates the folder with a short `README.md`, but it does not treat the files as board data: changing them never changes the board. See [Project docs](../watch/docs).
 
