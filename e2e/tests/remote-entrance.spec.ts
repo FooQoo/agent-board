@@ -269,6 +269,8 @@ test('an image in a history reason shows in the History tab from the attachment 
   expect(noted.code, noted.stderr).toBe(0);
 
   await entrance.open(page, phoneUrl());
+  // The phone board opens on Doing; the new task is in Todo.
+  await page.getByRole('tab', { name: /^Todo/ }).click();
   await page.getByRole('button', { name: 'Alpha history evidence' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('tab', { name: /History/ }).click();

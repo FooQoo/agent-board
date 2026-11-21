@@ -99,9 +99,14 @@ test.afterAll(async () => {
   if (home) rmSync(home, { recursive: true, force: true });
 });
 
-async function openPhone(page: Page, project: string): Promise<void> {
+/** Opens the phone board. It starts on Doing, so unless `initial` is asked for, the Todo tab is chosen. */
+async function openPhone(page: Page, project: string, initial: 'default' | 'todo' = 'todo'): Promise<void> {
   await entrance.open(page, `${entrance.phoneOrigin}/?project=${projectId(project, home)}`);
   await expect(page.getByRole('tablist', { name: 'Lanes' })).toBeVisible();
+  if (initial === 'todo') {
+    await page.getByRole('tab', { name: /^Todo/ }).click();
+    await expect(page.getByRole('tab', { name: /^Todo/, selected: true })).toBeVisible();
+  }
 }
 
 const tab = (page: Page, name: string, selected?: boolean) =>
@@ -177,6 +182,17 @@ async function holdAndSwipe(page: Page, card: Locator, direction: -1 | 1): Promi
 }
 
 // #447
+test('the phone board opens on the Doing lane, and a tap on another tab still switches', async ({ page }) => {
+  await openPhone(page, 'Switch', 'default');
+  await expect(tab(page, 'Doing 1', true)).toBeVisible();
+  await expect(tab(page, 'Todo 2', false)).toBeVisible();
+  await expect(shown(page).getByRole('article')).toHaveCount(1);
+  await expect(shown(page).getByRole('article', { name: /Switch doing/ })).toBeVisible();
+  await tab(page, 'Done 1').click();
+  await expect(tab(page, 'Done 1', true)).toBeVisible();
+  await expect(shown(page).getByRole('article', { name: /Switch done/ })).toBeVisible();
+});
+
 test('a horizontal swipe, even one that starts on a card, and the tabs switch between the three lanes', async ({ page }) => {
   await openPhone(page, 'Switch');
   await expect(tab(page, 'Todo 2', true)).toBeVisible();
