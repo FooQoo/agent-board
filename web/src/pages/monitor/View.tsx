@@ -5,10 +5,6 @@ import { countMessages, firstQuestionOfTask } from '../../features/tasks/message
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
 import type { ProjectId } from '../../shared/api/contracts';
 import { BacklogSendLayer } from '../../features/backlog/BacklogSendLayer';
-import { useTranslation } from 'react-i18next';
-import { moveFailureNotice } from '../../features/tasks/api/lifecycle';
-import { useBacklogMove } from '../../features/backlog/useBacklogMove';
-import { useBacklogSend } from '../../features/backlog/useBacklogSend';
 import { TransientNotice } from '../../shared/ui/transient-notice/TransientNotice';
 import type { Message } from '../../shared/data/api/contracts';
 import { Header } from '../../shared/ui/app-header/Header';
@@ -31,8 +27,8 @@ import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { useReportOpen } from './hooks/useReportOpen';
-import { useLaneWrites } from './hooks/useLaneWrites';
 import { useSummaryLinkOpen } from './hooks/useSummaryLinkOpen';
+import { useMonitorWrites } from './hooks/useMonitorWrites';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
@@ -46,7 +42,6 @@ const detailDrawer = preloadable(() =>
 export const preloadMonitorDrawer = detailDrawer.preload;
 
 export function MonitorView(props: MonitorViewProps) {
-  const { t } = useTranslation();
   // Without an endpoint (the sample-data mode, the demo) the choices stay in this browser.
   const { preferences, settings: given } = props;
   const settings = useMemo(
@@ -145,30 +140,16 @@ export function MonitorView(props: MonitorViewProps) {
     onWritten,
     overlay.unhide,
   );
-  const backlogSend = useBacklogSend(
-    writes ? (projectId as ProjectId) : null,
-    tasks.map((item) => item.task),
-    () => onWritten?.(),
-  );
-  // One Backlog card moved by its swipe tile is a normal lane move, apart from the picked cards' send above.
-  const backlogMove = useBacklogMove(
-    writes ? (projectId as ProjectId) : null,
-    tasks.map((item) => item.task),
-    {
-      apply: overlay.move,
-      revert: overlay.unmove,
-      onDone: () => onWritten?.(),
-      refusal: (cause) => moveFailureNotice(cause, t),
-    },
-  );
-  const { moveNow, archiveOne, archiveAll, notice, dismissNotice } = useLaneWrites({
-    writes,
-    projectId,
-    overlay,
-    doneItems: ordered.done,
-    closePending,
-    onWritten,
-  });
+  const { backlogSend, backlogMove, moveNow, archiveOne, archiveAll, notice, dismissNotice } =
+    useMonitorWrites({
+      writes,
+      projectId,
+      overlay,
+      doneItems: ordered.done,
+      closePending,
+      onWritten,
+      tasks: tasks.map((item) => item.task),
+    });
   return (
     <main className="monitor-shell">
       <Header {...props.header} withSettings={false} />
