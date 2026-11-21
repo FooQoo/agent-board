@@ -101,12 +101,16 @@ export function useSideSwipe(ref: RefObject<HTMLElement | null>, options: SideSw
     handlers: {
       onPointerDown: (event: PointerEvent<HTMLElement>) => {
         const { disabled, ignore, onHold, holdMs = HOLD_MS, onPress } = latest.current;
-        if (disabled || !event.isPrimary || event.button !== 0 || phase.current !== 'idle') return;
+        if (!event.isPrimary || event.button !== 0 || phase.current !== 'idle') return;
+        // Every new press forgets the last one's slide or hold, even one that is not read (disabled or
+        // ignored). Otherwise a press on an ignored control, such as the Archive all button, would
+        // have its click swallowed as "the click that ends a slide" after any earlier swipe.
+        moved.current = false;
+        if (disabled) return;
         if (ignore && (event.target as Element).closest(ignore)) return;
         start.current = { x: event.clientX, y: event.clientY };
         last.current = { x: event.clientX, t: event.timeStamp };
         velocity.current = 0;
-        moved.current = false;
         onPress?.();
         if (active.current || !onHold) {
           phase.current = active.current ? 'press' : 'idle';
