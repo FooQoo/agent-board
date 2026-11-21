@@ -43,7 +43,7 @@ async function notReloaded(page: Page): Promise<void> {
 }
 
 test('agboard add shows a new task without reloading', async ({ page }) => {
-  agboardOk(mainProject, ['add', 'Added while open', '--desc', 'From the CLI']);
+  agboardOk(mainProject, ['add', 'Added while open', `--desc=From the CLI`]);
   await expect(lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} AI Added while open Updated \\d\\d\\/\\d\\d \\d\\d:\\d\\d$`) })).toBeVisible();
   await expect(page.getByRole('contentinfo')).toContainText('9 tasks');
   await expect(lane(page, 'Todo').getByText('4', { exact: true })).toBeVisible();
@@ -140,7 +140,7 @@ test('an open task follows its move to another lane while its details stay open'
 });
 
 test('a task for the user added from the CLI appears live and moves with a generated reason', async ({ page }) => {
-  agboardOk(mainProject, ['add', 'Review the release notes', '--assignee', 'human', '--actor', 'human', '--desc', taskBody('Check the wording with the release owner.')]);
+  agboardOk(mainProject, ['add', 'Review the release notes', '--assignee', 'human', '--actor', 'human', `--desc=${taskBody('Check the wording with the release owner.')}`]);
 
   const userTask = lane(page, 'Todo').getByRole('button', { name: new RegExp(`^#${fresh} User Review the release notes `) });
   await expect(userTask).toBeVisible();

@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   resetBoard(mainProject);
   disposable = nextTaskId(mainProject);
   ask = `Archive #${disposable} "Disposable task"? You can restore it from the archive.`;
-  agboardOk(mainProject, ['add', 'Disposable task', '--desc', 'Delete me']);
+  agboardOk(mainProject, ['add', 'Disposable task', `--desc=Delete me`]);
   await page.goto('/');
   await expect(page.getByRole('contentinfo').getByRole('status')).toHaveText(/^Synced/);
   await readBoardAfterReset(page);

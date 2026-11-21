@@ -48,7 +48,7 @@ function taskFile(id: number): string {
 /** A card the CLI writes with the given frontmatter and body; returns its ID. */
 function addTask(title: string, description: string): number {
   const id = nextTaskId(mainProject);
-  agboardOk(mainProject, ['add', title, '--desc', description]);
+  agboardOk(mainProject, ['add', title, `--desc=${description}`]);
   return id;
 }
 

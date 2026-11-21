@@ -79,7 +79,7 @@ function snapshot(): { cursor: string; tasks: TaskView[]; problems: { file: stri
 }
 
 function addTask(title: string, description = 'History E2E body.', assignee: 'ai' | 'human' = 'ai'): number {
-	const result = JSON.parse(cliOk(['add', title, '--desc', description, '--assignee', assignee, '--actor', 'human']));
+	const result = JSON.parse(cliOk(['add', title, `--desc=${description}`, '--assignee', assignee, '--actor', 'human']));
 	return result.task.id as number;
 }
 
@@ -212,7 +212,7 @@ test('a mobile answer updates TASK.md, resumes wait, and exposes the same answer
 	expect(recorded.question.reply).toMatchObject({ via: 'ui', choiceId: 'b', choiceLabel: 'Plan B', text: 'Ship the stable release.' });
 	expect(task.history.at(-1)?.reason).toContain('Plan B');
 	expect(readFileSync(taskFile(id), 'utf8')).toContain('Ship the stable release.');
-	const stale = cli(['message', 'answer', requestId!, '--actor', 'human', '--via', 'cli', '--text', 'Late answer', '--json']);
+	const stale = cli(['message', 'answer', requestId!, '--actor', 'human', '--via', 'cli', `--text=Late answer`, '--json']);
 	expect(stale.code).not.toBe(0);
 	await openPc(page);
 	await page.getByRole('button', { name: new RegExp(`^#${id} .*Pending history answer`) }).click();

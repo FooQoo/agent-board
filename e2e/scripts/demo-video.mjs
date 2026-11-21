@@ -227,7 +227,7 @@ async function record(browser, locale, tmp) {
     run('message', 'accept', request.id, '--actor', 'ai');
     run('epic', 'add', text.epic, '--name', text.epicName, '--color', '#008FCC', '--actor', 'ai');
     for (const title of text.plan) {
-      run('add', title, '--assignee', 'ai', '--actor', 'ai', '--epic', text.epic, '--desc', markdown(text, 0));
+      run('add', title, '--assignee', 'ai', '--actor', 'ai', '--epic', text.epic, `--desc=${markdown(text, 0)}`);
       await page.waitForTimeout(650);
     }
     await expect(task).toBeVisible();
@@ -280,7 +280,7 @@ async function record(browser, locale, tmp) {
     await expect(lanes.nth(1).getByRole('button', { name: new RegExp(`^#${heroId}(?!\\d)`) })).toBeVisible();
     await page.waitForTimeout(1600);
     for (let done = 1; done <= 3; done++) {
-      run('edit', String(heroId), '--desc', markdown(text, done));
+      run('edit', String(heroId), `--desc=${markdown(text, done)}`);
       if (done < 3) {
         await expect(task.locator('.acceptance-chip')).toContainText(`${done}/3`);
         await page.waitForTimeout(1300);
