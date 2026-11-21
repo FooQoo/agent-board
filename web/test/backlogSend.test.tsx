@@ -197,6 +197,7 @@ describe('useBacklogMove', () => {
   const tasks = [card(1, 'backlog'), card(2, 'backlog', ['Q-1'])];
   const hooks = () => ({
     apply: vi.fn(),
+    settle: vi.fn(),
     revert: vi.fn(),
     onDone: vi.fn(),
     refusal: () => 'refused',
@@ -210,6 +211,7 @@ describe('useBacklogMove', () => {
     act(() => result.current.request(1));
     // Applied while the request is still open: the one request is the single-card send route.
     expect(callbacks.apply).toHaveBeenCalledWith(1, 'todo');
+    expect(callbacks.settle).not.toHaveBeenCalled();
     expect(callbacks.onDone).not.toHaveBeenCalled();
     expect(postTask).toHaveBeenCalledTimes(1);
     expect(postTask.mock.calls[0]?.[0]).toBe(`/api/projects/${PROJECT}/tasks/1/send`);
@@ -226,6 +228,7 @@ describe('useBacklogMove', () => {
     act(() => result.current.request(1, 'doing'));
     await waitFor(() => expect(callbacks.revert).toHaveBeenCalledWith(1));
     expect(callbacks.apply).toHaveBeenCalledWith(1, 'doing');
+    expect(callbacks.settle).not.toHaveBeenCalled();
     expect(result.current.notice).toBe('refused');
   });
 

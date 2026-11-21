@@ -29,7 +29,7 @@ The tabs under the header are named **Todo**, **Doing**, and **Done**, and each 
 Moving and archiving start from a task you have chosen, so a stray swipe does not change anything.
 
 1. Press and hold a task until it shows an outline. That chooses it.
-2. Swipe the chosen task sideways. A swipe to the left shows a button for the next lane and the red **Archive** button with a trash can icon. A swipe to the right shows a button for the previous lane. The same press that chose the task can continue into the swipe. Each lane button shows the icon of its lane; a screen reader reads it as, for example, **Move #3 to Doing**.
+2. Swipe the chosen task sideways. A swipe to the left shows a button for the next lane and the red **Archive** button with a trash can icon. A swipe to the right shows a button for the previous lane. Pressing a lane button moves the task at once: it shows in the new lane before the server answers, and goes back with a notice if the move is refused. The same press that chose the task can continue into the swipe. Each lane button shows the icon of its lane; a screen reader reads it as, for example, **Move #3 to Doing**.
 3. Tap a button. A lane button moves the task at once, with no confirmation, and the history records a generated reason. If the task was moved meanwhile, it is not moved and a short notice names the lane it is in now. The archive button opens **Archive task**, where you choose **Archive**; **Cancel** leaves the task where it was.
 
 ![Remote access with a chosen task slid open, showing its move and archive buttons](../../images/mobile-swipe.png){.screenshot--narrow}

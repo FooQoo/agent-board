@@ -34,12 +34,15 @@ export function useBacklogMove(
   tasks: readonly TaskSummary[],
   {
     apply,
+    settle,
     revert,
     onDone,
     refusal,
   }: {
     /** Shows the card in the target lane before the server has answered. */
     apply: (id: number, to: BacklogTarget) => void;
+    /** The server accepted the move: the first newer read wins over the target lane. */
+    settle: (id: number) => void;
     /** Takes the card back to the Backlog when the server refused. */
     revert: (id: number) => void;
     /** The move ended, in any way: the screen reads the project again. */
@@ -65,6 +68,7 @@ export function useBacklogMove(
       apply(id, to);
       try {
         await sendTask(projectId, id, ack, to);
+        settle(id);
       } catch (cause) {
         revert(id);
         setNotice(refusal(cause));
@@ -72,7 +76,7 @@ export function useBacklogMove(
         onDone();
       }
     },
-    [projectId, apply, revert, onDone, refusal],
+    [projectId, apply, settle, revert, onDone, refusal],
   );
 
   const request = useCallback(
