@@ -765,6 +765,27 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
 }
 
 #[test]
+fn archive_api_lists_newest_archived_first_with_ties_by_higher_id() {
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    // Archived oldest-id-first at different times; tasks 1 and 3 share one time.
+    store.archive_task(&project, 1, t(20)).unwrap();
+    store.archive_task(&project, 2, t(30)).unwrap();
+    store.archive_task(&project, 3, t(20)).unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    let ids: Vec<i64> = archive["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].as_i64().unwrap())
+        .collect();
+    assert_eq!(ids, vec![2, 3, 1]);
+}
+
+#[test]
 fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
     use agent_board::file_store::model::NewEpic;
     use agent_board::file_store::validate::EpicId;
@@ -824,15 +845,13 @@ fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
     assert_eq!(tasks[0]["id"], 1);
     assert_eq!(tasks[0]["epicId"], "EPIC-1");
     let epics = archive["epics"].as_array().expect("archive lists epics");
-    // The two default epics come with the two created here.
-    assert_eq!(epics.len(), 4, "{archive}");
-    let names: Vec<&str> = epics.iter().map(|e| e["name"].as_str().unwrap()).collect();
-    assert!(names.contains(&"Archived epic"), "{archive}");
-    assert!(names.contains(&"Live epic"), "{archive}");
+    // Only the epic of a returned task comes with the page.
+    assert_eq!(epics.len(), 1, "{archive}");
+    assert_eq!(epics[0]["name"], "Archived epic", "{archive}");
 }
 
 #[test]
-fn archive_api_lists_the_default_epics_when_no_archived_task_uses_one() {
+fn archive_api_lists_no_epics_when_no_returned_task_uses_one() {
     let home = board_home();
     let server = Running::start(home.path(), 0).unwrap();
     let token = server.token();
@@ -846,7 +865,7 @@ fn archive_api_lists_the_default_epics_when_no_archived_task_uses_one() {
         .iter()
         .map(|epic| epic["id"].as_str().unwrap())
         .collect();
-    assert_eq!(ids, ["BUG", "ENHANCEMENT"], "{archive}");
+    assert!(ids.is_empty(), "{archive}");
 }
 
 /// Add a second project "other" that has a task with the same number as the
@@ -2087,4 +2106,213 @@ fn the_summary_counts_each_epic_tasks_by_lane_with_archived_counted_once() {
             .iter()
             .all(|task| task["id"] != 3)
     );
+}
+
+/// Makes `count` more tasks on the main board and returns their IDs, oldest first.
+fn add_tasks(home: &Path, count: usize) -> Vec<i64> {
+    let store = store_in(home);
+    let project = main_id(home);
+    (0..count)
+        .map(|i| {
+            store
+                .create_task(
+                    &project,
+                    NewTask {
+                        title: format!("Bulk {i}"),
+                        description: BODY.into(),
+                        assignee: Assignee::Human,
+                        actor: Actor::Human,
+                        draft: None,
+                    },
+                    t(2),
+                )
+                .unwrap()
+                .id
+        })
+        .collect()
+}
+
+fn archive_page(server: &Running, query: &str) -> serde_json::Value {
+    let reply = server.get(&server.api(&format!("/archive{query}")));
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    serde_json::from_str(&reply.body).unwrap()
+}
+
+fn page_ids(page: &serde_json::Value) -> Vec<i64> {
+    page["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].as_i64().unwrap())
+        .collect()
+}
+
+/// Archives `ids` one minute apart, in the order given, starting at `first`.
+fn archive_in_order(home: &Path, ids: &[i64], first: DateTime<Utc>) {
+    let store = store_in(home);
+    let project = main_id(home);
+    for (i, id) in ids.iter().enumerate() {
+        let at = first + chrono::Duration::minutes(i as i64);
+        store.archive_task(&project, *id, at).unwrap();
+    }
+}
+
+#[test]
+fn archive_api_pages_newest_first_by_keyset_with_the_total_and_a_final_null_cursor() {
+    let home = board_home();
+    let ids = add_tasks(home.path(), 57);
+    // 60 tasks in all (3 from the board); archive them oldest-id-first, a minute apart.
+    let all: Vec<i64> = [vec![1, 2, 3], ids].concat();
+    archive_in_order(home.path(), &all, t(0));
+    let server = Running::start(home.path(), 0).unwrap();
+
+    let mut seen = Vec::new();
+    let mut cursor = String::new();
+    let mut pages = 0;
+    loop {
+        let query = if cursor.is_empty() {
+            "?limit=25".to_string()
+        } else {
+            format!("?limit=25&cursor={cursor}")
+        };
+        let page = archive_page(&server, &query);
+        assert_eq!(page["total"], 60, "{page}");
+        seen.extend(page_ids(&page));
+        pages += 1;
+        match page["nextCursor"].as_str() {
+            Some(next) => cursor = next.to_string(),
+            None => break,
+        }
+    }
+    assert_eq!(pages, 3);
+    let expected: Vec<i64> = (1..=60).rev().collect();
+    assert_eq!(seen, expected);
+}
+
+#[test]
+fn archive_api_breaks_equal_times_by_the_higher_id_across_a_page_boundary() {
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    for id in [1, 2, 3] {
+        store.archive_task(&project, id, t(20)).unwrap();
+    }
+    let server = Running::start(home.path(), 0).unwrap();
+    let first = archive_page(&server, "?limit=1");
+    assert_eq!(page_ids(&first), vec![3]);
+    let cursor = first["nextCursor"].as_str().unwrap();
+    let second = archive_page(&server, &format!("?limit=1&cursor={cursor}"));
+    assert_eq!(page_ids(&second), vec![2]);
+    let cursor = second["nextCursor"].as_str().unwrap();
+    let last = archive_page(&server, &format!("?limit=1&cursor={cursor}"));
+    assert_eq!(page_ids(&last), vec![1]);
+    assert!(last["nextCursor"].is_null());
+}
+
+#[test]
+fn archive_api_cursor_survives_an_archive_and_a_restore_between_pages() {
+    let home = board_home();
+    let ids = add_tasks(home.path(), 7);
+    let all: Vec<i64> = [vec![1, 2, 3], ids].concat();
+    // 10 archived tasks; #10 is the newest.
+    archive_in_order(home.path(), &all[..9], t(0));
+    let server = Running::start(home.path(), 0).unwrap();
+    let first = archive_page(&server, "?limit=4");
+    assert_eq!(page_ids(&first), vec![9, 8, 7, 6]);
+    let cursor = first["nextCursor"].as_str().unwrap().to_string();
+
+    // Between the reads, #10 is archived (newest) and #8 (already read) is restored.
+    let store = store_in(home.path());
+    let project = main_id(home.path());
+    store
+        .archive_task(&project, 10, t(0) + chrono::Duration::minutes(30))
+        .unwrap();
+    store.restore_task(&project, 8, t(50)).unwrap();
+
+    let second = archive_page(&server, &format!("?limit=4&cursor={cursor}"));
+    // An offset would repeat #6 or skip #5; the keyset continues exactly after #6.
+    assert_eq!(page_ids(&second), vec![5, 4, 3, 2]);
+    let third = archive_page(
+        &server,
+        &format!("?limit=4&cursor={}", second["nextCursor"].as_str().unwrap()),
+    );
+    assert_eq!(page_ids(&third), vec![1]);
+    assert!(third["nextCursor"].is_null());
+}
+
+#[test]
+fn archive_api_returns_only_the_epics_of_the_rows_on_the_page() {
+    use agent_board::file_store::model::NewEpic;
+    use agent_board::file_store::validate::EpicId;
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    for (id, name) in [("epic-1", "Old epic"), ("epic-2", "New epic")] {
+        store
+            .create_epic(
+                &project,
+                NewEpic {
+                    id: id.into(),
+                    name: name.into(),
+                    color: Some("#3366cc".into()),
+                    draft: None,
+                    document: None,
+                },
+                t(12),
+            )
+            .unwrap();
+    }
+    for (task, epic) in [(1, "EPIC-1"), (2, "EPIC-2")] {
+        store
+            .set_task_epic(
+                &project,
+                task,
+                Some(&EpicId::normalize(epic).unwrap()),
+                Actor::Ai,
+                t(14),
+            )
+            .unwrap();
+    }
+    archive_in_order(home.path(), &[1, 2], t(20));
+    let server = Running::start(home.path(), 0).unwrap();
+    let first = archive_page(&server, "?limit=1");
+    assert_eq!(page_ids(&first), vec![2]);
+    let names: Vec<&str> = first["epics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|epic| epic["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["New epic"]);
+    let cursor = first["nextCursor"].as_str().unwrap();
+    let second = archive_page(&server, &format!("?limit=1&cursor={cursor}"));
+    assert_eq!(second["epics"][0]["name"], "Old epic");
+    assert_eq!(second["epics"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn archive_api_refuses_a_bad_limit_or_cursor() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    for query in [
+        "?limit=0",
+        "?limit=201",
+        "?limit=abc",
+        "?cursor=not-a-cursor",
+        "?cursor=eDp5",
+    ] {
+        let reply = server.get(&server.api(&format!("/archive{query}")));
+        assert_eq!(reply.status, 422, "{query}: {}", reply.body);
+        assert_eq!(error_code_of(&reply.body), "invalid_value", "{query}");
+    }
+}
+
+#[test]
+fn archive_api_answers_an_empty_archive_with_no_next_cursor() {
+    let home = board_home();
+    let server = Running::start(home.path(), 0).unwrap();
+    let page = archive_page(&server, "");
+    assert!(page_ids(&page).is_empty());
+    assert_eq!(page["total"], 0);
+    assert!(page["nextCursor"].is_null());
 }

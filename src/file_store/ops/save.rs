@@ -22,9 +22,21 @@ pub(super) fn save_task_with_markdown(
     task: &TaskFile,
     replacement: Option<&str>,
 ) -> Result<(), AgboardError> {
+    save_task_text(shared, project_dir, task, replacement).map(drop)
+}
+
+/// Like `save_task_with_markdown`, and returns the TASK.md text that was committed,
+/// with `task.history` composed in, so a caller needs no read after the commit.
+pub(super) fn save_task_text(
+    shared: &Path,
+    project_dir: &Path,
+    task: &TaskFile,
+    replacement: Option<&str>,
+) -> Result<String, AgboardError> {
     use crate::file_store::transaction::save_pair_locked;
     let (targets, old, new) = task_pair(shared, project_dir, task, replacement)?;
-    save_pair_locked(project_dir, &targets, &old, &new)
+    save_pair_locked(project_dir, &targets, &old, &new)?;
+    Ok(String::from_utf8(new.markdown).expect("the composed TASK.md is UTF-8"))
 }
 
 /// The two files of a task as one change of a batch.

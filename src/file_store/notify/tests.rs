@@ -80,6 +80,7 @@ fn summary(to: DateTime<Utc>, titles: &[&str]) -> Summary {
             .iter()
             .map(|t| SummaryResult {
                 task_id: 1,
+                version: Some(1),
                 title: (*t).into(),
                 at: to - chrono::Duration::minutes(5),
             })
@@ -104,6 +105,28 @@ fn a_window_lists_the_results_recorded_in_it_across_tasks() {
         .map(|r| (r.task_id, r.title.as_str()))
         .collect();
     assert_eq!(titles, [(a, "First"), (b, "Second")]);
+}
+
+#[test]
+fn each_result_line_records_the_version_of_its_result() {
+    let f = fixture();
+    let a = f.task("A");
+    f.result(a, "First", at(2, 10, 10));
+    f.result(a, "Second", at(2, 10, 20));
+    let s = Summary::for_window(&f.tasks(), at(2, 10, 0), at(2, 11, 0)).unwrap();
+    let versions: Vec<_> = s.results.iter().map(|r| r.version).collect();
+    assert_eq!(versions, [Some(1), Some(2)]);
+    let json = serde_json::to_value(&s).unwrap();
+    assert_eq!(json["results"][1]["version"], 2);
+}
+
+#[test]
+fn a_line_written_before_versions_were_recorded_still_reads_without_one() {
+    let line = r#"{"id":"s-20261102T110000Z","from":"2026-11-02T10:00:00Z","to":"2026-11-02T11:00:00Z","results":[{"taskId":4,"title":"old","at":"2026-11-02T10:30:00Z"}]}"#;
+    let s: Summary = serde_json::from_str(line).unwrap();
+    assert_eq!(s.results[0].version, None);
+    let back = serde_json::to_value(&s).unwrap();
+    assert!(back["results"][0].get("version").is_none());
 }
 
 #[test]

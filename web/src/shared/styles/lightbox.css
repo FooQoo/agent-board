@@ -99,9 +99,9 @@
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  /* Sideways swipes and vertical scrolls stay with the browser, and so does the pinch that zooms
-   * the page; no ancestor can switch the pinch off. */
-  touch-action: pan-x pan-y pinch-zoom;
+  /* Sideways swipes and vertical scrolls stay with the browser. The pinch belongs to the picture
+   * (see ZoomSlide), so the page itself is never zoomed from here. */
+  touch-action: pan-x pan-y;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
@@ -117,12 +117,21 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  touch-action: pan-x pan-y pinch-zoom;
+  touch-action: pan-x pan-y;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  /* The offset parent of the picture, so the zoom can read where the picture sits. */
+  position: relative;
+}
+
+/* Zoomed in: one finger pans the picture, so the slide neither scrolls nor lets the row swipe. */
+.lightbox__slide[data-zoomed] {
+  overflow: hidden;
+  touch-action: none;
 }
 
 .lightbox .lightbox__slide img {
+  transform-origin: center;
   flex: none;
   width: auto;
   max-width: 100%;

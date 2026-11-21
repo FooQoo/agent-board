@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../styles/lightbox.css';
+import type { ViewerImage } from './viewerImage';
+import { ZoomSlide } from './ZoomSlide';
 
-/** One picture of the viewer. `alt` is its accessible name. */
-export interface ViewerImage {
-  src: string;
-  alt: string;
-  referrerPolicy?: 'no-referrer';
-}
+export type { ViewerImage } from './viewerImage';
 
 /**
  * The enlarged pictures of one group: a row of full-width slides that snaps to one slide at a time.
  * The browser's own scrolling does the work: a sideways swipe moves between slides, and each slide
  * scrolls up and down by itself when its picture is taller than the viewer, so the two gestures
- * never compete. The left and right arrow keys step too. A single picture shows no position and
+ * never compete. A picture zooms with a pinch or a double tap and pans with one finger while
+ * zoomed (see `ZoomSlide`), and returns to 1x when another picture is shown. The left and right arrow keys step too. A single picture shows no position and
  * has nothing to swipe to.
  */
 export function ImageViewer({
@@ -67,21 +65,13 @@ export function ImageViewer({
     <div className="lightbox__zoom">
       <div className="lightbox__viewer" ref={track} onScroll={onScroll} data-viewer>
         {images.map((image, slide) => (
-          <div
+          <ZoomSlide
             key={`${slide}:${image.src}`}
-            className="lightbox__slide"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={t('lightbox.imagePosition', { index: slide + 1, count })}
-          >
-            <img
-              src={image.src}
-              alt={image.alt}
-              referrerPolicy={image.referrerPolicy}
-              loading={Math.abs(slide - index) <= 1 ? 'eager' : 'lazy'}
-              draggable={false}
-            />
-          </div>
+            image={image}
+            label={t('lightbox.imagePosition', { index: slide + 1, count })}
+            eager={Math.abs(slide - index) <= 1}
+            active={slide === index}
+          />
         ))}
       </div>
       {count > 1 && (

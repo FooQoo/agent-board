@@ -12,7 +12,8 @@ use crate::file_store::reader;
 use crate::file_store::{DraftSave, FileStore, TaskTextParts};
 
 use super::super::{
-    ensure_ai_task_not_done, lock_project, save_task_with_markdown, stamp, write_parts, write_text,
+    ensure_ai_task_not_done, lock_project, save_task_text, save_task_with_markdown, stamp,
+    write_parts, write_text,
 };
 use super::draft::{draft_event, refuse_legacy_release_in_todo};
 use super::saved::SavedDraft;
@@ -176,7 +177,7 @@ impl FileStore {
         let (text_changed, markdown) =
             write_text(shared, project, project_dir, &mut task, title, description)?;
         if !text_changed && target == current && images.is_none() {
-            return SavedDraft::capture(shared, project, task, None, false);
+            return SavedDraft::unchanged(shared, project, task);
         }
         let at = stamp(now);
         if text_changed || images.is_some() {
@@ -200,10 +201,9 @@ impl FileStore {
                 },
             )?);
         }
-        // The text is settled before the commit, so the response needs no later read.
-        let saved = SavedDraft::capture(shared, project, task, markdown.clone(), true)?;
-        save_task_with_markdown(shared, project_dir, &saved.task, markdown.as_deref())?;
-        Ok(saved)
+        // The commit returns the text it wrote, so the response needs no later read.
+        let description = save_task_text(shared, project_dir, &task, markdown.as_deref())?;
+        Ok(SavedDraft::committed(task, description))
     }
 
     /// Edit a draft against the latest TASK.md and finalize in one pair save.

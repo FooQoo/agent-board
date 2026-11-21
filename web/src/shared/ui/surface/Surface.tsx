@@ -20,6 +20,7 @@ export function Surface({
   className = '',
   dismissible = true,
   bodyRef,
+  returnFocusTo,
   children,
 }: {
   kind: 'dialog' | 'sheet';
@@ -37,6 +38,8 @@ export function Surface({
   dismissible?: boolean;
   /** The scrolling body, for a list that draws only the rows in view. */
   bodyRef?: Ref<HTMLDivElement>;
+  /** A sheet gives the focus to this element when it closes, instead of the one that had it on open. */
+  returnFocusTo?: () => HTMLElement | null;
   children: ReactNode;
 }) {
   // Where the focus was when the dialog opened (the button that opened it).
@@ -54,6 +57,7 @@ export function Surface({
         initialFocusSelector=".surface__body"
         fitKeyboard
         dismissible={dismissible}
+        returnFocusTo={returnFocusTo}
       >
         <div className="surface__body" tabIndex={-1} ref={bodyRef}>
           {children}

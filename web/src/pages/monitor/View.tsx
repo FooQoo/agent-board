@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useOpenOnSend } from './useOpenOnSend';
 import { MessagesSurface } from '../../features/tasks/messages/MessagesSurface';
 import { countMessages, firstQuestionOfTask } from '../../features/tasks/messages/model/messages';
 import { useMessagesPanel } from '../../features/tasks/messages/useMessagesPanel';
@@ -27,6 +28,7 @@ import { useMonitorDetailDrawer } from './hooks/useMonitorDetailDrawer';
 import { useResultLinkDrawer } from './hooks/useResultLinkDrawer';
 import { useLaneOverlay } from './hooks/useLaneOverlay';
 import { useReportOpen } from './hooks/useReportOpen';
+import { useSummaryLinkOpen } from './hooks/useSummaryLinkOpen';
 import { unconnectedMonitorReadResolvers } from './contracts';
 import { preloadable } from '../../shared/lib/lazy/preloadable';
 import { usePhoneGuideLane } from '../../features/onboarding/model/phoneGuideLink';
@@ -49,7 +51,7 @@ export function MonitorView(props: MonitorViewProps) {
   );
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [lane, setLane] = useState<MonitorSection>('todo');
+  const [lane, setLane] = useState<MonitorSection>('doing'); // opens on Doing, whatever lanes come before it
   const [pending, setPending] = useState<LanePending>(null);
   useEffect(() => {
     // A failed fetch is tried again when the drawer is first rendered.
@@ -97,24 +99,20 @@ export function MonitorView(props: MonitorViewProps) {
   const closeDrawer = (next: boolean) => {
     detail.close(next);
     if (!next && resultLink != null) onResultLinkClose?.();
+    if (!next) panel.returnToList(); // back to the Summary list a result was opened from
   };
   useReportOpen(detail.open, props.onDetailOpenChange);
-  // `?messages=summary` opens the list on the Summary tab once; closing it ends the request.
-  const { summaryLink, onSummaryLinkClose } = props;
-  const summaryOpened = useRef(false);
+  useSummaryLinkOpen(
+    panel,
+    props.summaryLink,
+    props.messagesApi !== undefined,
+    props.onSummaryLinkClose,
+  );
   const { open: openPanel } = panel;
-  const panelClosed = panel.target === null;
-  useEffect(() => {
-    if (!summaryLink || !props.messagesApi) return;
-    if (!summaryOpened.current) {
-      summaryOpened.current = true;
-      openPanel({ tab: 'summary' });
-    } else if (panelClosed) {
-      summaryOpened.current = false;
-      onSummaryLinkClose?.();
-    }
-  }, [summaryLink, props.messagesApi, openPanel, panelClosed, onSummaryLinkClose]);
   useReportOpen(panel.target !== null, props.onMessagesOpenChange);
+  // A sent request opens the list on "Your requests".
+  const openRequests = useCallback(() => openPanel({ tab: 'fromYou' }), [openPanel]);
+  useOpenOnSend(props.requestSent ?? 0, props.messagesApi !== undefined, openRequests);
   const { writes, onWritten } = props;
   // Without writes (the demo, sample data) a swipe asks nothing and changes nothing.
   const ask = (next: LanePending) => {
@@ -168,6 +166,9 @@ export function MonitorView(props: MonitorViewProps) {
           api={props.messagesApi}
           onChanged={props.onMessagesChanged ?? (() => {})}
           onClose={panel.close}
+          onLeaveForResult={panel.leaveForResult}
+          onRefresh={props.onRefresh}
+          refreshing={props.refreshing}
           resolveAttachment={resolveAttachment}
         />
       )}

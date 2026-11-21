@@ -74,7 +74,6 @@ export function MonitorTask({
         )}
       </TaskCardContent>
       <span className="monitor-card__meta">
-        <span>{item.projectName}</span>
         <span className="monitor-card__time">
           {when
             ? formatShort(when)

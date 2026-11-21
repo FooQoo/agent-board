@@ -3,14 +3,14 @@
 //! kind is on, tells the phones that a summary arrived.
 //!
 //! Nothing here reads a model: a summary is the list of results the board already holds. The
-//! interval counts from the last window, or from the start of the server when there has not been
-//! one, so a restart does not write one at once. A window that no result falls in writes nothing
+//! window ends on a clean boundary of the local clock (every hour on the hour for a 60-minute
+//! interval), so a restart does not write one at once and the times read the same on every run. A window that no result falls in writes nothing
 //! and sends nothing. The next window of a project begins where its newest stored summary ends,
 //! so a restart never reports a result twice.
 
 use std::time::Duration;
 
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local, NaiveTime, TimeZone, Timelike, Utc};
 
 use super::message::{Lang, Payload, shorten};
 use crate::domain::ProjectId;
@@ -25,8 +25,44 @@ const CHECK_EVERY: Duration = Duration::from_secs(30);
 const MAX_TITLES: usize = 3;
 const TITLE_CHARS: usize = 40;
 
-/// When the next window ends.
+/// The latest clean boundary at or before `at`, on the wall clock of `zone`: a multiple of
+/// `minutes` after local midnight, so a 60-minute interval gives windows on the hour and a
+/// 240-minute one gives 00:00, 04:00, 08:00, and so on. Every offered interval divides a day, so
+/// the boundaries restart at each local midnight and never drift across a day or a zone change.
+/// Across a daylight-saving change the wall clock is kept: a boundary that does not exist is
+/// moved back to the last one that does, and a repeated one takes the later of its two instants
+/// that is not after `at`.
+pub(super) fn clock_floor<Tz: TimeZone>(
+    at: DateTime<Utc>,
+    minutes: u32,
+    zone: &Tz,
+) -> DateTime<Utc> {
+    let step = i64::from(minutes.max(1));
+    let local = at.with_timezone(zone).naive_local();
+    let since_midnight = i64::from(local.time().num_seconds_from_midnight()) / 60;
+    let mut naive = local.date().and_time(NaiveTime::MIN)
+        + chrono::Duration::minutes(since_midnight - since_midnight % step);
+    // A wall-clock time the zone skips has no instant; step back to the one before the gap.
+    loop {
+        let found = zone
+            .from_local_datetime(&naive)
+            .earliest()
+            .into_iter()
+            .chain(zone.from_local_datetime(&naive).latest())
+            .map(|d| d.with_timezone(&Utc))
+            .filter(|d| *d <= at)
+            .max();
+        if let Some(d) = found {
+            return d;
+        }
+        naive -= chrono::Duration::minutes(step);
+    }
+}
+
+/// When the next window ends. Windows end on clean boundaries of the local clock (see
+/// [`clock_floor`]), not an interval after the start of the server.
 pub(super) struct Schedule {
+    /// The end of the last window, always a clean boundary.
     last: Option<DateTime<Utc>>,
     started: DateTime<Utc>,
 }
@@ -36,22 +72,49 @@ impl Schedule {
         Self { last, started }
     }
 
-    fn interval(minutes: u32) -> chrono::Duration {
-        chrono::Duration::minutes(i64::from(minutes))
+    /// The end of the newest window, or the boundary the server started in.
+    fn edge<Tz: TimeZone>(&self, minutes: u32, zone: &Tz) -> DateTime<Utc> {
+        self.last
+            .unwrap_or_else(|| clock_floor(self.started, minutes, zone))
     }
 
-    pub(super) fn due(&self, now: DateTime<Utc>, minutes: u32) -> bool {
-        now >= self.last.unwrap_or(self.started) + Self::interval(minutes)
+    /// The boundary a window ends on now, when one has passed since the last window.
+    pub(super) fn due_in<Tz: TimeZone>(
+        &self,
+        now: DateTime<Utc>,
+        minutes: u32,
+        zone: &Tz,
+    ) -> Option<DateTime<Utc>> {
+        let end = clock_floor(now, minutes, zone);
+        (end > self.edge(minutes, zone)).then_some(end)
     }
 
-    /// The start of the window that ends now: the end of the last one, or, for the first, one
-    /// interval before the start of the server.
+    /// The start of the window: the end of the last one, or, for the first, the boundary before
+    /// the one the server started in, so the interval before the start is covered.
+    pub(super) fn since_in<Tz: TimeZone>(&self, minutes: u32, zone: &Tz) -> DateTime<Utc> {
+        self.last.unwrap_or_else(|| {
+            let edge = clock_floor(self.started, minutes, zone);
+            clock_floor(edge - chrono::Duration::seconds(1), minutes, zone)
+        })
+    }
+
+    pub(super) fn due(&self, now: DateTime<Utc>, minutes: u32) -> Option<DateTime<Utc>> {
+        self.due_in(now, minutes, &Local)
+    }
+
     pub(super) fn since(&self, minutes: u32) -> DateTime<Utc> {
-        self.last.unwrap_or(self.started - Self::interval(minutes))
+        self.since_in(minutes, &Local)
     }
 
-    pub(super) fn mark(&mut self, now: DateTime<Utc>) {
-        self.last = Some(now);
+    /// Record the window that ended on `end`.
+    pub(super) fn mark(&mut self, end: DateTime<Utc>) {
+        self.last = Some(end);
+    }
+
+    /// Counting starts again from `now`, as when the summary is switched back on.
+    pub(super) fn restart(&mut self, now: DateTime<Utc>) {
+        self.last = None;
+        self.started = now;
     }
 }
 

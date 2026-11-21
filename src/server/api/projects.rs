@@ -1,9 +1,8 @@
-//! The catalog, a project's archive, and the local-only health and
-//! notify routes.
+//! The catalog and the local-only health and notify routes.
 
 use std::sync::Arc;
 
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::Response;
 use serde::Serialize;
@@ -11,7 +10,7 @@ use serde::Serialize;
 use crate::docs::DocsRoot;
 use crate::server::AppState;
 use crate::server::response::{agboard_error_response, json_response};
-use crate::server::store::{indexed_view, parse_project_id, with_files};
+use crate::server::store::with_files;
 
 /// The catalog: every project by name, without tasks. Read in one transaction.
 pub(super) async fn projects(State(state): State<Arc<AppState>>) -> Response {
@@ -48,29 +47,6 @@ pub(super) async fn projects(State(state): State<Arc<AppState>>) -> Response {
             };
             json_response(StatusCode::OK, &listed)
         }
-        Err(error) => agboard_error_response(&error),
-    }
-}
-
-pub(super) async fn archive(
-    State(state): State<Arc<AppState>>,
-    Path(raw_project): Path<String>,
-) -> Response {
-    let project_id = match parse_project_id(&raw_project) {
-        Ok(id) => id,
-        Err(error) => return agboard_error_response(&error),
-    };
-    match indexed_view(&state, &project_id) {
-        Ok(view) => json_response(
-            StatusCode::OK,
-            &serde_json::json!({
-                "project": view.project,
-                "version": view.version,
-                "cursor": view.cursor,
-                "tasks": view.tasks.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
-                "epics": &view.epics,
-            }),
-        ),
         Err(error) => agboard_error_response(&error),
     }
 }
