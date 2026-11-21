@@ -173,18 +173,23 @@
   outline-offset: 2px;
 }
 
-/* The Done lane slides left with the finger to uncover the Archive all tile on its right. */
-.monitor-lane[data-lane="done"] {
+/* The Done lane slides left with the finger to uncover the Archive all tile on its right; the Backlog lane
+   slides right to uncover the Select all tile on its left. */
+.monitor-lane[data-lane="done"],
+.monitor-lane[data-lane="backlog"] {
   position: relative;
 }
-.monitor-lane[data-lane="done"] .monitor-lane__scroll {
+.monitor-lane[data-lane="done"] .monitor-lane__scroll,
+.monitor-lane[data-lane="backlog"] .monitor-lane__scroll {
   transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.monitor-lane[data-lane="done"] .monitor-lane__scroll[data-dragging] {
+.monitor-lane[data-lane="done"] .monitor-lane__scroll[data-dragging],
+.monitor-lane[data-lane="backlog"] .monitor-lane__scroll[data-dragging] {
   transition: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .monitor-lane[data-lane="done"] .monitor-lane__scroll {
+  .monitor-lane[data-lane="done"] .monitor-lane__scroll,
+  .monitor-lane[data-lane="backlog"] .monitor-lane__scroll {
     transition: none;
   }
 }

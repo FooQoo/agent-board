@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { makeTask } from '../../../.storybook/support/fixtures';
 import { BacklogBar } from './BacklogBar';
+import { BacklogSheet } from './BacklogSheet';
 import { SendConfirm } from './SendConfirm';
 
 const meta = {
@@ -83,5 +84,28 @@ export const ConfirmSheet: Story = {
   play: async () => {
     const sheet = await within(document.body).findByRole('dialog', { name: 'Send to Todo' });
     await expect(within(sheet).getByRole('alert')).toHaveTextContent('Plan the migration guide');
+  },
+};
+
+/** The phone's selection mode: a short, non-modal drawer with only Cancel and the send button. */
+export const SelectionDrawer: Story = {
+  render: (args) => (
+    <div>
+      <button type="button">A card behind the drawer</button>
+      <BacklogSheet open count={args.count} onCancel={args.onCancel} onSend={args.onSend} />
+    </div>
+  ),
+  play: async ({ canvasElement, args }) => {
+    const drawer = await within(document.body).findByRole('region', {
+      name: 'Send selected cards',
+    });
+    await expect(within(drawer).getByRole('status')).toHaveTextContent('2 selected');
+    // The page behind stays usable: a tap on it does not close the drawer.
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /behind the drawer/ }));
+    await expect(drawer).toBeVisible();
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Send to Todo (2)' }));
+    await expect(args.onSend).toHaveBeenCalledOnce();
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Cancel' }));
+    await expect(args.onCancel).toHaveBeenCalledOnce();
   },
 };

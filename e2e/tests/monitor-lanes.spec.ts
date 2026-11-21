@@ -105,6 +105,12 @@ test.beforeAll(async () => {
     'message', 'ask', '--actor', 'ai', '--no-wait', '--task', String(ids.get('Plans:Plan asked')),
     '--questions-json', JSON.stringify({ questions: [{ body: 'Which release name should the plan use?' }] }),
   ]);
+  seed('Edge', [
+    { title: 'Edge plan one', lane: 'backlog' },
+    { title: 'Edge plan two', lane: 'backlog' },
+    { title: 'Edge plan three', lane: 'backlog' },
+    { title: 'Edge todo', lane: 'todo' },
+  ]);
   seed('Instant', [
     { title: 'Instant one', lane: 'backlog' },
     { title: 'Instant two', lane: 'backlog' },
@@ -392,6 +398,44 @@ test('a held Backlog card swipes right to Todo; one with an open question asks f
 async function swipeCardlessTap(page: Page, title: string): Promise<void> {
   await page.locator('.monitor-pick-row__card').filter({ hasText: title }).tap();
 }
+
+// #675: the Backlog lane has the Done lane's overscroll gesture, mirrored: a swipe to the right past its start is a
+// shortcut for the Select cards button at the foot of the lane. It starts the selection mode with nothing picked, wherever
+// the lane is scrolled, and sends nothing.
+test('a swipe to the right past the Backlog lane starts the selection mode with nothing picked', async ({ page }) => {
+  await openPhone(page, 'Edge', 'default');
+  await tab(page, /^Backlog/).click();
+  const drawer = page.getByRole('region', { name: 'Send selected cards' });
+  await expect(drawer).toHaveCount(0);
+  await swipeOver(page, swipeCard(page, 'Edge plan one'), 1);
+  await expect(drawer).toBeVisible();
+  // The mode is on and nothing is picked: the send button waits, as it does after Select cards.
+  await expect(page.getByRole('checkbox')).toHaveCount(3);
+  for (const checkbox of await page.getByRole('checkbox').all()) await expect(checkbox).not.toBeChecked();
+  await expect(drawer.getByRole('status')).toHaveText('0 selected');
+  await expect(drawer.getByRole('button', { name: 'Send to Todo (0)' })).toBeDisabled();
+  await expect(drawer.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+  for (const title of ['Edge plan one', 'Edge plan two', 'Edge plan three']) expect(show('Edge', title).taskStatus).toBe('backlog');
+  // The cards are tapped to pick them, and closing the drawer ends the mode.
+  await page.getByRole('checkbox', { name: `Select #${ids.get('Edge:Edge plan two')}` }).tap();
+  await expect(drawer.getByRole('button', { name: 'Send to Todo (1)' })).toBeEnabled();
+  await drawer.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  // A short swipe does not count.
+  const card = await box(swipeCard(page, 'Edge plan one'));
+  const y = card.y + card.height / 2;
+  await finger(page, { x: card.x + 40, y }, { x: card.x + 90, y });
+  await expect(drawer).toHaveCount(0);
+});
+
+test('an ordinary swipe to the right on another lane still changes lanes, and the Backlog gesture does not fire', async ({ page }) => {
+  await openPhone(page, 'Edge', 'todo');
+  await swipeOver(page, swipeCard(page, 'Edge todo'), 1);
+  await expect(tab(page, /^Backlog/, true)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Send selected cards' })).toHaveCount(0);
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+});
 
 // #675: a swipe-tile move of one Backlog card is a normal lane move, apart from the multi-select: the card is in Todo
 // before the server answers, one request goes for that card, and a refusal puts it back and says why.

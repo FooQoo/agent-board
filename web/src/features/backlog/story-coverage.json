@@ -23,6 +23,21 @@
       ]
     },
     {
+      "file": "features/backlog/BacklogSheet.tsx",
+      "exports": [
+        {
+          "name": "BacklogSheet",
+          "stories": [
+            {
+              "id": "backlog-send--selection-drawer",
+              "states": ["selected count", "non-modal", "send", "cancel"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "file": "features/backlog/SendConfirm.tsx",
       "exports": [
         {
@@ -48,7 +63,7 @@
         {
           "name": "BacklogSendLayer",
           "stories": [],
-          "exclusion": "BacklogSendLayer only places the result notice and SendConfirm; both have their own Stories, and the send itself is tested in backlogSend.test.tsx."
+          "exclusion": "BacklogSendLayer only places the result notice and SendConfirm; both have their own Stories, and the send is tested in backlogSend.test.tsx."
         }
       ]
     }

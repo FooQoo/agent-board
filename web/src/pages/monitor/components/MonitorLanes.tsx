@@ -15,6 +15,7 @@ import {
 import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { BulkArchiveTile } from './BulkArchiveTile';
+import { SelectModeTile } from './SelectModeTile';
 import { MonitorTask } from './MonitorTask';
 import { PullIndicator } from '@/shared/ui/pull/PullIndicator';
 import { SwipeableCard } from './SwipeableCard';
@@ -118,6 +119,15 @@ export function MonitorLanes({
   const doneRef = useRef<HTMLElement | null>(null);
   const bulk = useLaneOverscroll(doneRef, lane === last && canBulk, () => onBulkArchive?.());
   const bulkOffset = previewBulkDrag === undefined ? bulk.offset : -previewBulkDrag;
+  // The mirror of the Done lane's gesture: a swipe to the right past the Backlog's start is a shortcut for the
+  // Select cards button at the foot of the lane. It starts the selection mode with nothing picked.
+  const backlogRef = useRef<HTMLElement | null>(null);
+  const pickAll = useLaneOverscroll(
+    backlogRef,
+    lane === 'backlog' && canSelect && !selection.selecting,
+    selection.enter,
+    1,
+  );
   const pull = usePullToRefresh({
     container: viewportRef,
     scroller: (root) =>
@@ -157,12 +167,15 @@ export function MonitorLanes({
             const items = lanes[name];
             const laneEmpty = items.length === 0;
             const isLast = name === last;
+            // The two end lanes follow an overscroll swipe: Done to the left, the Backlog to the right.
+            const edge = isLast ? bulk : name === 'backlog' ? pickAll : null;
+            const edgeOffset = isLast ? bulkOffset : pickAll.offset;
             return (
               <section
                 key={name}
-                ref={isLast ? doneRef : undefined}
-                {...(isLast ? bulk.handlers : {})}
-                onClickCapture={isLast ? bulk.onClickCapture : undefined}
+                ref={isLast ? doneRef : name === 'backlog' ? backlogRef : undefined}
+                {...(edge ? edge.handlers : {})}
+                onClickCapture={edge?.onClickCapture}
                 className="monitor-lane"
                 role="tabpanel"
                 aria-labelledby={`lane-tab-${name}`}
@@ -171,8 +184,8 @@ export function MonitorLanes({
               >
                 <div
                   className="monitor-lane__scroll"
-                  data-dragging={(isLast && bulk.dragging) || undefined}
-                  style={isLast ? { transform: `translate3d(${bulkOffset}px, 0, 0)` } : undefined}
+                  data-dragging={edge?.dragging || undefined}
+                  style={edge ? { transform: `translate3d(${edgeOffset}px, 0, 0)` } : undefined}
                 >
                   {name === lane && <PullIndicator state={shown.state} offset={shown.offset} />}
                   {laneEmpty ? (
@@ -269,6 +282,7 @@ export function MonitorLanes({
                   )}
                 </div>
                 {isLast && canBulk && <BulkArchiveTile offset={bulkOffset} />}
+                {name === 'backlog' && canSelect && <SelectModeTile offset={pickAll.offset} />}
               </section>
             );
           })}
