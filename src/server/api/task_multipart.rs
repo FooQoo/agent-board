@@ -79,6 +79,8 @@ pub(super) async fn edit_task_multipart(
         let now = chrono::Utc::now();
         // Images first, then the text and the draft flag.
         let owner = AttachmentOwner::Task(id);
+        // A save that will be refused must not change the images first.
+        store.ensure_legacy_release_allowed(&project_id, id, finalize.legacy_ai)?;
         for attachment_id in &removed {
             store.delete_attachment_for_user(&project_id, &owner, attachment_id, now)?;
         }

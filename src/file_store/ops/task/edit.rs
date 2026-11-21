@@ -16,6 +16,24 @@ use super::draft::draft_event;
 use super::{normalize_description, view};
 
 impl FileStore {
+    /// Check, before anything else is changed, that a save an older client made with
+    /// `draft: "ai"` is not refused by `refuse_legacy_release_in_todo`, so a rejected
+    /// save has no side effect (such as removed attachments). The save checks again.
+    pub fn ensure_legacy_release_allowed(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        legacy_ai: bool,
+    ) -> Result<(), AgboardError> {
+        if !legacy_ai {
+            return Ok(());
+        }
+        let shared = self.shared_dir();
+        let (_project_dir, _lock) = lock_project(shared, project)?;
+        let task = reader::read_task_strict(shared, project, id)?;
+        refuse_legacy_release_in_todo(&task, true)
+    }
+
     /// Change the title and/or the body of a task that is neither archived nor
     /// a person's draft. An AI draft can be edited. An unchanged value changes nothing and writes nothing.
     pub fn edit_task(
