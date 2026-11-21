@@ -609,6 +609,41 @@ export const PhoneQuestion: Story = {
   },
 };
 
+/** The question's detail is still loading: the spinner sits in the middle of the body, PC and phone. */
+const loadingDetail: HarnessProps['read'] = () => new Promise(() => {});
+
+function expectSpinnerCentred(root: HTMLElement) {
+  const spinner = root.querySelector('.message-detail__state [role="status"]');
+  const body = root.querySelector('.surface__body');
+  if (!spinner || !body) throw new Error('The loading detail has no spinner or body.');
+  const s = spinner.getBoundingClientRect();
+  const b = body.getBoundingClientRect();
+  expect(Math.abs(s.left + s.width / 2 - (b.left + b.width / 2))).toBeLessThanOrEqual(24);
+  // The body may be taller than its content; the spinner is in the middle third, not at the top.
+  expect(s.top + s.height / 2).toBeGreaterThan(b.top + b.height / 3);
+  expect(s.top + s.height / 2).toBeLessThan(b.top + (b.height * 2) / 3);
+}
+
+export const DetailLoading: Story = {
+  args: { initial: { tab: 'fromAi', openId: 'Q-12' }, read: loadingDetail },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(dialog).findByRole('status', { name: 'メッセージを読み込んでいます…' });
+    expectSpinnerCentred(dialog);
+  },
+};
+
+export const PhoneDetailLoading: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi', openId: 'Q-12' }, read: loadingDetail },
+  parameters: phone,
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(sheet).findByRole('status', { name: 'メッセージを読み込んでいます…' });
+    expectSpinnerCentred(sheet);
+  },
+};
+
 /** The phone: an open request, English and dark. */
 export const PhoneRequestEnDark: Story = {
   args: { variant: 'phone', initial: { tab: 'fromYou', openId: 'Q-14' } },
