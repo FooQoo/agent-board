@@ -15,6 +15,7 @@ use super::super::{
     ensure_ai_task_not_done, lock_project, save_task_with_markdown, stamp, write_parts, write_text,
 };
 use super::draft::{draft_event, refuse_legacy_release_in_todo};
+use super::saved::SavedDraft;
 use super::{normalize_description, view};
 
 impl FileStore {
@@ -137,23 +138,21 @@ impl FileStore {
         let description = description.map(normalize_description).transpose()?;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
-        let changed = self.save_draft_locked(
-            &project_dir,
-            project,
-            id,
-            (title, description),
-            (finalize, None),
-            now,
-        )?;
-        Ok(Changed {
-            value: view(shared, project, id)?,
-            changed,
-        })
+        Ok(self
+            .save_draft_locked(
+                &project_dir,
+                project,
+                id,
+                (title, description),
+                (finalize, None),
+                now,
+            )?
+            .into_changed(shared, &project_dir))
     }
 
     /// `edit_draft_task_to` for a caller that holds the project lock, with the
     /// title and description already validated; `images` replaces the image list.
-    /// It reads no view: `Err` means nothing was committed, `Ok` says if it changed.
+    /// `Err` means nothing was committed; `Ok` holds the saved state.
     pub(super) fn save_draft_locked(
         &self,
         project_dir: &Path,
@@ -162,7 +161,7 @@ impl FileStore {
         (title, description): (Option<String>, Option<String>),
         (finalize, images): (DraftSave, Option<Vec<Attachment>>),
         now: DateTime<Utc>,
-    ) -> Result<bool, AgboardError> {
+    ) -> Result<SavedDraft, AgboardError> {
         let shared = self.shared_dir();
         let mut task = reader::read_task_strict(shared, project, id)?;
         if task.archived_at.is_some() {
@@ -177,7 +176,7 @@ impl FileStore {
         let (text_changed, markdown) =
             write_text(shared, project, project_dir, &mut task, title, description)?;
         if !text_changed && target == current && images.is_none() {
-            return Ok(false);
+            return SavedDraft::capture(shared, project, task, None, false);
         }
         let at = stamp(now);
         if text_changed || images.is_some() {
@@ -201,8 +200,10 @@ impl FileStore {
                 },
             )?);
         }
-        save_task_with_markdown(shared, project_dir, &task, markdown.as_deref())?;
-        Ok(true)
+        // The text is settled before the commit, so the response needs no later read.
+        let saved = SavedDraft::capture(shared, project, task, markdown.clone(), true)?;
+        save_task_with_markdown(shared, project_dir, &saved.task, markdown.as_deref())?;
+        Ok(saved)
     }
 
     /// Edit a draft against the latest TASK.md and finalize in one pair save.
