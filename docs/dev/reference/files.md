@@ -326,7 +326,7 @@ Every project keeps its periodic summaries in `shared/projects/<projectId>/notif
 Each line is one JSON object:
 
 ```json
-{"id":"s-20261102T110000Z","dismissed":false,"from":"2026-11-02T10:00:00Z","to":"2026-11-02T11:00:00Z","results":[{"taskId":3,"title":"Added the export button","at":"2026-11-02T10:12:00Z"}]}
+{"id":"s-20261102T110000Z","dismissed":false,"from":"2026-11-02T10:00:00Z","to":"2026-11-02T11:00:00Z","results":[{"taskId":3,"version":2,"title":"Added the export button","at":"2026-11-02T10:12:00Z"}]}
 ```
 
 | Field | Rule |
@@ -334,7 +334,7 @@ Each line is one JSON object:
 | `id` | `s-` and the end of the window as `YYYYMMDDTHHMMSSZ`, so a window written twice is stored once. |
 | `dismissed` | `false` when written, and optional: a line without it reads as `false`. The trash action in the UI sets it to `true`. |
 | `from`, `to` | The window, as UTC RFC 3339 with second precision. A result belongs to it when `from < at <= to`. The next window of a project starts where its newest stored summary ends, so a restart never reports a result twice. |
-| `results` | One entry per result recorded in the window, oldest first: `taskId`, the result's `title` (see [Results](#results)), and `at`, the time it was recorded. |
+| `results` | One entry per result recorded in the window, oldest first: `taskId`, the result's `version` (so the web UI can link to that result; a line written before it was recorded has none and links to the task's results as a whole), the result's `title` (see [Results](#results)), and `at`, the time it was recorded. |
 
 The files are a permanent record: no line is ever removed, and dismissing a summary only sets `dismissed` on its line. A change takes the project's write lock, reads the file as it is now, changes only its line, and replaces the file atomically (a line that cannot be read is kept as it is). The list reads the files each time, so editing a file by hand is reflected: a hand-written line is listed when it has `id`, `from`, `to`, and `results`, and a line that cannot be read is skipped. The watcher treats the `notify/` folder like `docs/`: it is never loaded as board data and never changes the project's `version`, but any change in it sends `changed` with a `messages` resource (the project ID) and the `summary` facet, so a client reads the list again. The code is `src/file_store/notify.rs`; the schedule is `src/server/push_delivery/summary.rs`.
 

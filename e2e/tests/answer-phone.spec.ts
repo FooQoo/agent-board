@@ -142,6 +142,8 @@ test('the answer sheet fills the visible area above the keyboard with its footer
   const strip = (y: number) => page.screenshot({ clip: { x: 8, y, width: 374, height: 12 } });
   expect((await strip(sheetBottom + 40)).equals(await strip(sheetBottom + 40 + 150))).toBe(true);
 
+  // Dismissing the keyboard blurs the field, which gives the phone bar and its strip back.
+  await sheet.getByRole('textbox', { name: 'メモ' }).blur();
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
   await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(tolerance);
 });

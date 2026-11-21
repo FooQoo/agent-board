@@ -31,18 +31,19 @@ for (const mode of ["light", "dark"] as const) {
 					}));
 					await route.fulfill({ json: summary });
 				});
-				await page.route("**/api/projects/*/archive", async (route) => {
+				await page.route("**/api/projects/*/archive?*", async (route) => {
 					// The archive lists whole cards with their conditions; the Summary only counts them, so the
 					// conditions are rebuilt from the counts.
 					const summaryUrl = route
 						.request()
 						.url()
-						.replace(/\/archive$/, "/summary");
+						.replace(/\/archive\?.*$/, "/summary");
 					const summary = await (await page.request.get(summaryUrl)).json();
 					await route.fulfill({
 						json: {
 							...summary,
-							cursor: summary.version,
+							total: 3,
+							nextCursor: null,
 							tasks: summary.tasks.slice(0, 3).map(
 								(task: { acceptance: { done: number; total: number } }) => ({
 									...task,
@@ -382,11 +383,11 @@ test("archive empty state matches the Pen guidance and shared detail placeholder
 	resetBoard(mainProject);
 	await page.setViewportSize({ width: 1280, height: 900 });
 	await setPreferences({ locale: "ja", theme: { mode: "light", accent: "blue" } });
-	await page.route("**/api/projects/*/archive", async (route) => {
+	await page.route("**/api/projects/*/archive?*", async (route) => {
 		const response = await route.fetch();
 		await route.fulfill({
 			response,
-			json: { ...(await response.json()), tasks: [] },
+			json: { ...(await response.json()), tasks: [], total: 0, nextCursor: null },
 		});
 	});
 	await page.goto("/");

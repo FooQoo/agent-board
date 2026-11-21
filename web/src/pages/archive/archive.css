@@ -93,3 +93,19 @@
     padding: 10px 12px;
   }
 }
+
+/* The virtual column: rows are placed by `translateY`, and the container holds the full height. */
+.archive-rows {
+  position: relative;
+  width: 100%;
+}
+
+.archive-rows > .archive-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* The gap under a row, inside the measured box. */
+  padding-bottom: 8px;
+  box-sizing: border-box;
+}

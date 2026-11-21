@@ -1,5 +1,5 @@
 import { ImageIcon, SendIcon } from 'lucide-react';
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/button';
 import { ComposerThumbs } from '@/shared/ui/editor/ComposerThumbs';
@@ -16,6 +16,7 @@ export function AskAiToolbar({
   onFiles,
   onRemove,
   onSend,
+  attach,
 }: {
   images: readonly EditorAttachment[];
   error: string;
@@ -25,6 +26,8 @@ export function AskAiToolbar({
   onFiles: (files: File[]) => void;
   onRemove: (id: string) => void;
   onSend: () => void;
+  /** The "Attach task" button, drawn right of the image button. */
+  attach?: ReactNode;
 }) {
   const { t } = useTranslation();
   const picker = useRef<HTMLInputElement>(null);
@@ -45,34 +48,35 @@ export function AskAiToolbar({
         />
       )}
       <div className="ask-ai__toolbar">
-        {canAddImages ? (
-          <>
-            <input
-              ref={picker}
-              className="ask-ai__picker"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              multiple
-              tabIndex={-1}
-              aria-hidden="true"
-              onChange={(event) => {
-                onFiles(Array.from(event.currentTarget.files ?? []));
-                event.currentTarget.value = '';
-              }}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={saving}
-              onClick={() => picker.current?.click()}
-            >
-              <ImageIcon aria-hidden="true" />
-              {t('askAi.image')}
-            </Button>
-          </>
-        ) : (
-          <span />
-        )}
+        <div className="ask-ai__tools">
+          {canAddImages && (
+            <>
+              <input
+                ref={picker}
+                className="ask-ai__picker"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={(event) => {
+                  onFiles(Array.from(event.currentTarget.files ?? []));
+                  event.currentTarget.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saving}
+                onClick={() => picker.current?.click()}
+              >
+                <ImageIcon aria-hidden="true" />
+                {t('askAi.image')}
+              </Button>
+            </>
+          )}
+          {attach}
+        </div>
         <Button type="button" disabled={saving || !canSend} onClick={onSend} {...keepFocusOnPress}>
           <SendIcon aria-hidden="true" />
           {t('askAi.submit')}

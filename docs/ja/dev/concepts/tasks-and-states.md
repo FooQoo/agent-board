@@ -75,7 +75,7 @@
 
 - アーカイブでは、レーン・`draft`・`epicId`・positionを保ち、保存した稼働状態をIdleに戻し、質問の参照を保ち、`updatedAt`を更新します。レーンと`taskStatusChangedAt`は変わりません。Web画面のアーカイブと復元は、固定の理由`Archived by user.`と`Restored by user.`を記録します。
 - 復元したタスクは、アーカイブしたときのレーンの末尾に、稼働状態Idleで置きます。アーカイブでは必ずIdleを保存するので、復元したタスクはアーカイブ時点の稼働状態になり、レーンとIdleの組み合わせは常に作業モデルで有効です。フォールバックは要りません。スマホのアーカイブ一覧も、PCと同じ`POST …/tasks/{id}/restore`で復元します。
-- 通常のスナップショット・`ls`・Hookは未アーカイブのタスクだけを返し、`show ID`はアーカイブ済みも表示します。アーカイブ済みへの書き込みは`task_archived`で失敗しますが、画像は読めます。アーカイブ一覧は`archivedAt`の新しい順です。
+- 通常のスナップショット・`ls`・Hookは未アーカイブのタスクだけを返し、`show ID`はアーカイブ済みも表示します。アーカイブ済みへの書き込みは`task_archived`で失敗しますが、画像は読めます。アーカイブ一覧は`archivedAt`の新しい順で、同じ時刻ならタスクIDの大きいほうが先、読み取れる`archivedAt`のないタスクは最後です。`GET …/archive`は`sort_archived_newest_first`（`src/file_store/reader/snapshot.rs`）で並べ、Web UIも`sortArchivedNewestFirst`（`web/src/features/tasks/api/read.ts`）で同じ順に並べ直すため、PCの一覧とスマートフォンの一覧は同じ順序になります。
 
 ## 並び順と日時
 

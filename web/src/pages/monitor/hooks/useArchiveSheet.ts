@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback } from 'react';
 import type { ProjectId } from '../../../shared/api/contracts';
 import type { ArchiveSheetData } from '../components/ArchiveListSheet';
 import type { MonitorWrites } from '../contracts';
-import { fetchArchive } from '../../../features/tasks/api/read';
-import { useProjectResource } from '../../../features/projects/model/useProjectResource';
+import { useArchivePages } from '../../../features/tasks/model/useArchivePages';
 
 /**
- * What the phone's archive list needs: the archive is read once each time the list opens. A restored
- * task leaves the list at once and the archive is not read again; closing the list forgets which
- * tasks were restored, so the next opening reads fresh. Without writes there is nothing to restore, so the list is not offered.
+ * What the phone's archive list needs: the archive is read a page at a time each time the list
+ * opens, and the next page is read as the list scrolls. A restored task leaves the list at once and
+ * the archive is not read again; closing the list forgets what was read, so the next opening reads
+ * fresh. Without writes there is nothing to restore, so the list is not offered.
  */
 export function useArchiveSheet(
   open: boolean,
@@ -17,43 +17,33 @@ export function useArchiveSheet(
   onWritten?: () => void,
   onRestored?: (taskId: number) => void,
 ): { archive?: ArchiveSheetData; onRestore?: (taskId: number) => Promise<void> } {
-  const resource = useProjectResource(
-    open && projectId ? (projectId as ProjectId) : null,
-    fetchArchive,
-  );
-  const { reload } = resource;
-  const [restored, setRestored] = useState<ReadonlySet<number>>(() => new Set());
-  useEffect(() => {
-    if (!open) setRestored((current) => (current.size === 0 ? current : new Set()));
-  }, [open]);
-  const source = resource.data;
-  const data = useMemo(
-    () =>
-      source && restored.size > 0
-        ? { ...source, tasks: source.tasks.filter((task) => !restored.has(task.id)) }
-        : source,
-    [source, restored],
-  );
+  const pages = useArchivePages(open && projectId ? (projectId as ProjectId) : null);
+  const { remove } = pages;
   const restore = useCallback(
     async (taskId: number) => {
       if (!writes) return;
       try {
         await writes.restore(projectId, taskId);
-        setRestored((current) => new Set(current).add(taskId));
+        remove(taskId);
         onRestored?.(taskId);
       } finally {
         onWritten?.();
       }
     },
-    [writes, projectId, onWritten, onRestored],
+    [writes, projectId, onWritten, onRestored, remove],
   );
   if (!writes) return {};
   return {
     archive: {
-      data,
-      status: resource.status,
-      fetchFailed: resource.fetchFailed,
-      onRetry: reload,
+      data: pages.data,
+      status: pages.status,
+      fetchFailed: pages.fetchFailed,
+      onRetry: pages.reload,
+      hasMore: pages.hasMore,
+      loadingMore: pages.loadingMore,
+      loadMoreFailed: pages.loadMoreFailed,
+      loadMore: pages.loadMore,
+      retryMore: pages.retryMore,
     },
     onRestore: restore,
   };
