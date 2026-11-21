@@ -765,6 +765,27 @@ fn archive_api_has_separate_reads_bulk_operation_restore_and_delete_guard() {
 }
 
 #[test]
+fn archive_api_lists_newest_archived_first_with_ties_by_higher_id() {
+    let home = board_home();
+    let project = main_id(home.path());
+    let store = store_in(home.path());
+    // Archived oldest-id-first at different times; tasks 1 and 3 share one time.
+    store.archive_task(&project, 1, t(20)).unwrap();
+    store.archive_task(&project, 2, t(30)).unwrap();
+    store.archive_task(&project, 3, t(20)).unwrap();
+    let server = Running::start(home.path(), 0).unwrap();
+    let archive: serde_json::Value =
+        serde_json::from_str(&server.get(&server.api("/archive")).body).unwrap();
+    let ids: Vec<i64> = archive["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].as_i64().unwrap())
+        .collect();
+    assert_eq!(ids, vec![2, 3, 1]);
+}
+
+#[test]
 fn archive_api_resolves_the_epics_of_archived_tasks_in_the_same_response() {
     use agent_board::file_store::model::NewEpic;
     use agent_board::file_store::validate::EpicId;

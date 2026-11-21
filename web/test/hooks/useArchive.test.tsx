@@ -68,10 +68,32 @@ describe('useArchive', () => {
     const { result } = renderHook(() => useArchive(PROJECT_A.id));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    const [inEpic, noEpic] = result.current.data?.tasks ?? [];
+    const tasks = result.current.data?.tasks ?? [];
+    const inEpic = tasks.find((task) => task.id === 2);
+    const noEpic = tasks.find((task) => task.id === 3);
     expect(inEpic?.epic).toEqual({ id: 'EPIC-1', name: 'Archived epic', color: '#3366CC' });
     expect(noEpic?.epic).toBeNull();
     expect(result.current.data?.epics.map((epic) => epic.id)).toEqual(['EPIC-1']);
+  });
+
+  it('lists the archive newest first, equal times by higher id and untimed cards last', async () => {
+    const backend = fakeBackend();
+    const at = (id: number, archivedAt: string | null) =>
+      ({ ...makeTask({ id }), archivedAt }) as unknown as Task;
+    backend.archives = {
+      ...backend.archives,
+      [PROJECT_A.id]: [
+        at(1, '2026-10-01T10:00:00Z'),
+        at(2, null),
+        at(3, '2026-10-03T10:00:00Z'),
+        at(4, '2026-10-01T10:00:00Z'),
+      ],
+    };
+    stubBackend(backend);
+    const { result } = renderHook(() => useArchive(PROJECT_A.id));
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.data?.tasks.map((task) => task.id)).toEqual([3, 4, 1, 2]);
   });
 
   it('drops the old archive immediately and ignores a late response after switching projects', async () => {

@@ -14,6 +14,26 @@ function archivedCard(task: Task): ArchivedTask {
   };
 }
 
+/**
+ * The archive list's order: newest `archivedAt` first, a card without a readable archive time after
+ * all the others, and the higher id first when times are equal. The server sends this order; the page
+ * applies it again so the list never depends on how the response was built.
+ */
+export function sortArchivedNewestFirst<T extends { id: number; archivedAt?: string | null }>(
+  tasks: readonly T[],
+): T[] {
+  const time = (task: T) => (task.archivedAt ? Date.parse(task.archivedAt) : Number.NaN);
+  return [...tasks].sort((a, b) => {
+    const left = time(a);
+    const right = time(b);
+    const leftKnown = !Number.isNaN(left);
+    const rightKnown = !Number.isNaN(right);
+    if (leftKnown !== rightKnown) return leftKnown ? -1 : 1;
+    if (leftKnown && left !== right) return right - left;
+    return b.id - a.id;
+  });
+}
+
 export interface ArchiveResponse {
   project: Project;
   version: string;
@@ -28,5 +48,10 @@ export async function fetchArchive(projectId: ProjectId): Promise<ArchiveRespons
   const wire = await getJson<Omit<ArchiveResponse, 'tasks'> & { tasks: WireTask[] }>(
     `${projectPath(projectId)}/archive`,
   );
-  return { ...wire, tasks: wire.tasks.map((task) => archivedCard(toTask(task, wire.epics))) };
+  return {
+    ...wire,
+    tasks: sortArchivedNewestFirst(
+      wire.tasks.map((task) => archivedCard(toTask(task, wire.epics))),
+    ),
+  };
 }

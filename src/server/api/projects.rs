@@ -9,6 +9,7 @@ use axum::response::Response;
 use serde::Serialize;
 
 use crate::docs::DocsRoot;
+use crate::file_store::reader::sort_archived_newest_first;
 use crate::server::AppState;
 use crate::server::response::{agboard_error_response, json_response};
 use crate::server::store::{indexed_view, parse_project_id, with_files};
@@ -61,16 +62,24 @@ pub(super) async fn archive(
         Err(error) => return agboard_error_response(&error),
     };
     match indexed_view(&state, &project_id) {
-        Ok(view) => json_response(
-            StatusCode::OK,
-            &serde_json::json!({
-                "project": view.project,
-                "version": view.version,
-                "cursor": view.cursor,
-                "tasks": view.tasks.iter().filter(|c| c.archived_at.is_some()).collect::<Vec<_>>(),
-                "epics": &view.epics,
-            }),
-        ),
+        Ok(view) => {
+            let mut tasks: Vec<_> = view
+                .tasks
+                .iter()
+                .filter(|c| c.archived_at.is_some())
+                .collect();
+            sort_archived_newest_first(&mut tasks);
+            json_response(
+                StatusCode::OK,
+                &serde_json::json!({
+                    "project": view.project,
+                    "version": view.version,
+                    "cursor": view.cursor,
+                    "tasks": tasks,
+                    "epics": &view.epics,
+                }),
+            )
+        }
         Err(error) => agboard_error_response(&error),
     }
 }
