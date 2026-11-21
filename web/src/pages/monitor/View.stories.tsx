@@ -263,7 +263,7 @@ export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
     await expect(getComputedStyle(nav).display).not.toBe('none');
     await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height')).not.toBe('0px');
     try {
-      for (const marker of ['data-keyboard', 'data-visual-keyboard']) {
+      for (const marker of ['data-keyboard', 'data-visual-keyboard', 'data-text-focus']) {
         root.setAttribute(marker, '');
         await expect(getComputedStyle(nav).display).toBe('none');
         await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height').trim()).toBe(
@@ -281,6 +281,7 @@ export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
     } finally {
       root.removeAttribute('data-keyboard');
       root.removeAttribute('data-visual-keyboard');
+      root.removeAttribute('data-text-focus');
     }
   },
 };

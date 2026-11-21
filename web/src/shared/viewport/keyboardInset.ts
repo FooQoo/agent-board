@@ -33,9 +33,14 @@ export function keyboardOpen(
   return !zoomed && layoutHeight - visual.height >= MIN_PANNED_KEYBOARD_PX;
 }
 
+/** Whether the primary input is a finger, so a focused text field means an on-screen keyboard. */
+function touchScreen(target: Window): boolean {
+  return target.matchMedia?.('(pointer: coarse)').matches ?? false;
+}
+
 /**
  * Keeps `--keyboard-inset`, `--visual-vh` and `--visual-top` on the root up to date from the visual
- * viewport, for as long as it runs (the app starts it once), and marks the root with `data-visual-keyboard`
+ * viewport, for as long as it runs (the app starts it once), and marks the root with `data-text-focus` while a text field has the focus on a touch screen, and with `data-visual-keyboard`
  * while the keyboard covers the page. The keyboard is only open while a text field has the focus, so
  * a visual viewport that is smaller for another reason (a pinch zoom, the browser's toolbar) does not
  * mark the root and does not move centered dialogs to the top. A sheet that must stay above the keyboard reads them in CSS:
@@ -56,6 +61,12 @@ export function watchKeyboardInset(target: Window = window): () => void {
       keyboardOpen(root.clientHeight, viewport) && editingText(target.document.activeElement),
     );
     if (now && !was) revealFocusedField(target);
+    // A touch device shows a keyboard for any text field, whatever its viewport did: iOS may resize
+    // the layout viewport too, so no height gap shows. The phone bar goes on the focus alone.
+    root.toggleAttribute(
+      'data-text-focus',
+      touchScreen(target) && editingText(target.document.activeElement),
+    );
   };
   update();
   viewport.addEventListener('resize', update);
@@ -75,5 +86,6 @@ export function watchKeyboardInset(target: Window = window): () => void {
     root.style.removeProperty('--visual-vh');
     root.style.removeProperty('--visual-top');
     root.removeAttribute('data-visual-keyboard');
+    root.removeAttribute('data-text-focus');
   };
 }

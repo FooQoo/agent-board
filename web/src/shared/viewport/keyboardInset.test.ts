@@ -101,4 +101,48 @@ describe('watchKeyboardInset', () => {
     stop();
     field.remove();
   });
+
+  it('marks a text focus on a touch screen even when the viewport does not shrink', () => {
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 });
+    const target = Object.assign(new EventTarget(), {
+      visualViewport: viewport,
+      document,
+      matchMedia: () => ({ matches: true }),
+    }) as unknown as Window;
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      value: 800,
+      configurable: true,
+    });
+    const field = document.body.appendChild(document.createElement('textarea'));
+    const stop = watchKeyboardInset(target);
+    const root = document.documentElement;
+    expect(root.hasAttribute('data-text-focus')).toBe(false);
+    field.focus();
+    expect(root.hasAttribute('data-text-focus')).toBe(true);
+    expect(root.hasAttribute('data-visual-keyboard')).toBe(false);
+    field.blur();
+    expect(root.hasAttribute('data-text-focus')).toBe(false);
+    stop();
+    field.remove();
+  });
+
+  it('marks no text focus with a mouse', () => {
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 });
+    const target = Object.assign(new EventTarget(), {
+      visualViewport: viewport,
+      document,
+      matchMedia: () => ({ matches: false }),
+    }) as unknown as Window;
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      value: 800,
+      configurable: true,
+    });
+    const field = document.body.appendChild(document.createElement('textarea'));
+    const stop = watchKeyboardInset(target);
+    const root = document.documentElement;
+    field.focus();
+    expect(root.hasAttribute('data-text-focus')).toBe(false);
+    stop();
+    field.remove();
+  });
 });
