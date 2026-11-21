@@ -786,3 +786,30 @@ fn an_old_client_handing_a_plan_back_to_the_ai_never_leaves_it_ready_in_todo() {
     assert_eq!(saved.value.task_status, Column::Backlog);
     assert_eq!(saved.value.draft, None);
 }
+
+#[test]
+fn an_old_client_releasing_the_draft_of_a_plan_with_ai_never_leaves_it_ready_in_todo() {
+    let f = fx();
+    let plan = f.plan("Plan");
+    let todo = f.human_task("Card");
+    for id in [plan, todo] {
+        f.store
+            .set_draft(&f.project, id, Some(Draft::Human), false, now())
+            .unwrap();
+    }
+    let refused = f
+        .store
+        .set_draft_from(&f.project, todo, None, false, true, now())
+        .unwrap_err();
+    assert_eq!(refused.code(), "invalid_value");
+    let task = f.store.task(&f.project, todo).unwrap();
+    assert_eq!(task.task_status, Column::Todo);
+    assert_eq!(task.draft, Some(Draft::Human), "nothing was written");
+
+    let released = f
+        .store
+        .set_draft_from(&f.project, plan, None, false, true, now())
+        .unwrap();
+    assert_eq!(released.value.task_status, Column::Backlog);
+    assert_eq!(released.value.draft, None);
+}
