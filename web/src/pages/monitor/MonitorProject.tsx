@@ -216,6 +216,7 @@ export function MonitorScreen({
       {asking && (
         <AskAiSheet
           projectId={projectId}
+          tasks={tasks.map((entry) => entry.task)}
           closeGuard={askGuard}
           onClose={() => setAsking(false)}
           onSent={() => {

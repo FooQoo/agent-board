@@ -23,6 +23,7 @@ export function Drawer({
   className,
   fitKeyboard = false,
   dismissible = true,
+  returnFocusTo,
   children,
 }: {
   open: boolean;
@@ -42,6 +43,8 @@ export function Drawer({
   fitKeyboard?: boolean;
   /** False while a save blocks closing: the swipe-down drag is off, so the sheet is never left pulled down. */
   dismissible?: boolean;
+  /** Where the focus goes when the sheet closes, instead of what had it when the sheet opened. */
+  returnFocusTo?: () => HTMLElement | null;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -112,7 +115,7 @@ export function Drawer({
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            returnFocus.current?.focus();
+            (returnFocusTo?.() ?? returnFocus.current)?.focus();
             returnFocus.current = null;
           }}
         >

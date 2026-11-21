@@ -1,0 +1,116 @@
+/* The "Attach task" picker: a popover above the button on the board, the body of a sheet on a phone. */
+
+[data-slot="popover-content"].task-picker--popover {
+  z-index: 60;
+  display: flex;
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(360px, calc(var(--stable-vh, 100svh) - 160px));
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 0;
+  overflow: hidden;
+  background: var(--r-surface);
+}
+
+.task-picker__title {
+  margin: 0;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.task-picker__search {
+  position: relative;
+  margin: 0 12px;
+}
+
+.task-picker-sheet .task-picker__search {
+  margin: 0 0 8px;
+}
+
+.task-picker__search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  translate: 0 -50%;
+  color: var(--r-muted);
+  pointer-events: none;
+}
+
+/* 16px so iOS does not zoom in when the field gets the focus. */
+.task-picker__search input {
+  padding-left: 36px;
+  font-size: 16px;
+}
+
+.task-picker__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.task-picker__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--r-border);
+  cursor: pointer;
+}
+
+.task-picker-sheet .task-picker__row {
+  padding-inline: 0;
+}
+
+.task-picker__row [data-slot="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.task-picker__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-picker__name {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.task-picker__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-picker__id {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--r-accent);
+}
+
+.task-picker__empty {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--r-muted);
+}
+
+.task-picker__foot {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--r-border);
+}
+
+.task-picker__confirm {
+  width: 100%;
+}

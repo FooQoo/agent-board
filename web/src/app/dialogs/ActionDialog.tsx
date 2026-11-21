@@ -74,6 +74,7 @@ export function ActionDialog({
     case 'request':
       return (
         <AskAiDialog
+          tasks={tasks}
           onClose={onClose}
           onSavingChange={onSavingChange}
           onSubmit={(input) =>
