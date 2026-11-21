@@ -27,6 +27,7 @@ export function useAppActions(model: AppControllerModel) {
     viewMode,
   } = model;
 
+  const openMessages = model.messages.panel.open;
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
   const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
 
@@ -157,6 +158,8 @@ export function useAppActions(model: AppControllerModel) {
           text: data.requestText ?? '',
           attachments: data.attachments ?? [],
         });
+        // The sent request is shown where it waits: the Messages list on "Your requests".
+        openMessages({ tab: 'fromYou' });
       } else if (dialog.kind === 'edit') {
         if (data.attachments || data.removedAttachmentIds?.length)
           await editTaskMultipart(projectId, dialog.task.id, {
@@ -178,7 +181,7 @@ export function useAppActions(model: AppControllerModel) {
       }
       refreshProject(projectId);
     },
-    [refreshProject, session.dialog, session.operation],
+    [refreshProject, openMessages, session.dialog, session.operation],
   );
 
   const confirmBulkArchive = useCallback(async () => {
