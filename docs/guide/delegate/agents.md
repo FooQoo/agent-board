@@ -4,7 +4,7 @@ title: Working with agents
 
 # Working with agents
 
-This is how you hand work to an agent. You ask in the chat; the agent turns the request into a plan of AI drafts on the board, asks what it cannot settle, starts the plan once you have answered, and works through the tasks, stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
+This is how you hand work to an agent. You ask in the chat; the agent turns the request into a plan on the board (in the Backlog when you ask for the plan only), asks what it cannot settle, and works through the tasks once a person has sent the plan to Todo (or at once when you asked for the work itself), stopping for you only when it must. A hook gives the agent a short progress table, and it reports what it does, asks when a decision is yours, and waits for the answer. This page shows how to set up an agent and what the work loop and the delegation flow look like. You can walk through the flow once in the [Quickstart](../quickstart), and the ideas behind it are in [The work model](../work-model).
 
 ## Set up your agents {#set-up-your-agents}
 
@@ -109,12 +109,12 @@ After reading an editable AI task, the agent shortens an unclear title to descri
 
 ### Break a request into tasks
 
-When you ask an agent for work that is more than one task, it puts a plan of AI drafts on the board right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Everything an agent creates is an AI draft, so nothing starts until the draft is started (see [Drafts and errors](#drafts-and-errors)). The tasks show as ordinary Todo cards with a **Draft** badge, and you can open them and read the plan while the agent asks about it.
+When you ask an agent for work that is more than one task, it decides what you asked for. If you ask for the plan only, it puts a plan in the Backlog right away, without asking first: an epic with its goal, scope, and completion conditions, and the tasks in the order they will be done. Backlog cards mean "do not start", so nothing starts until you send them to Todo (see [Backlog and errors](#backlog-and-errors)). If you ask it to carry out the work, it creates ordinary Todo tasks. If the scope is unclear, it asks first. Until the Backlog lane of a later release arrives, a Backlog card shows as an ordinary Todo card with a **Draft** badge, and you can open it and read the plan while the agent asks about it.
 
 1. **Questions about the plan.** The agent asks what it cannot settle itself, as ordinary questions with choices and a recommendation. A task that refers to an open question shows **Pending** until you answer.
 2. **Revisions.** The agent changes the epic and the tasks as your answers say, and asks more questions if something is still open.
-3. **Start.** Once your questions are answered and the agent has written the plan up, it starts the plan itself with `agboard epic start <EPIC-ID> --actor ai` for the epic and all its drafts, or `agboard start <id> --actor ai` for one task. You do not approve the start, and a person can run the same commands with `--actor human`. An open question on one of the tasks refuses the start (`start_blocked_by_questions`), so the agent waits for the answer first. The history records "The agent wrote the plan up and started the task."
-4. **Work.** After the start, the agent works through the tasks in the epic's order without asking each time.
+3. **Send.** Only you send a Backlog plan to Todo, with `agboard epic send <EPIC-ID> --actor human` for the epic or `agboard send <id> --actor human` for one task. An agent that tries gets `human_only`. If a question on one of the tasks is still open, the send is refused (`send_with_open_questions`) until you confirm it with `--force`. The history records "A person sent the task to Todo."
+4. **Work.** After the send, the agent works through the tasks in the epic's order without asking each time.
 
 After the start, the agent calls you only when:
 
@@ -184,11 +184,11 @@ Instead of starting an agent yourself, the board can start a headless Claude Cod
 
 Only the board on your own computer can start or stop these sessions. The phone connection cannot. The agent's output is written to `resident/<tool>.log` in the data folder; each launch starts a new file, and the four before it stay as `<tool>.1.log` to `<tool>.4.log`. When the agent stops or exits, the server records the time and the reason in its standard error, which is `serve.log` in the data folder for a background server (`serve -d`) and the terminal for a foreground one; such as your stop, a restart, a model change, the server closing, or an unexpected exit.
 
-## Drafts and errors
+## Backlog and errors
 
 A draft a person is writing (`draft: "human"`) is read-only for agents: `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
 
-Every task and epic an agent creates is an AI draft (`draft: "ai"`), also when it is for the user. An agent can still edit it and add history, but `mv` and `state` fail with `task_is_draft` until the draft is started: `agboard start <id> --actor ai` for one task, or `agboard epic start <EPIC-ID> --actor ai` for an epic and all its AI drafts. The agent starts its own drafts after its questions are answered and the plan is written up. While a question about the draft is open, the start fails with `start_blocked_by_questions`. A person can run the same commands with `--actor human`.
+A Backlog card is read-only for agents' moves: `mv` and `state` fail with `task_in_backlog`, while `edit` and `history add` work. An agent creates a Backlog card with `add --actor ai --backlog` only for a request for the plan; without `--backlog` its `add` creates an ordinary Todo task, also when it is for the user. Only a person sends a card to Todo (`send`, `epic send`); an agent's `send`, `epic send`, `start`, and `epic start` fail with `human_only`.
 
 On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or an interrupted wait does not answer or expire a question. For causes and fixes, see [Troubleshooting](../operations/troubleshooting).
 

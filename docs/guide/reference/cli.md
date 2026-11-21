@@ -117,14 +117,33 @@ agboard --project "My project" epic edit LAUNCH --waves 3 1,2
 
 `--waves` sets the order of the epic's tasks. Give one value per wave, either a task ID or task IDs joined by commas. Tasks in one wave can run in parallel, and a wave starts when every task of the waves before it is Done. The example above puts task 3 in the first wave and tasks 1 and 2 in the second. See [Order the work](../watch/epics#order-the-work).
 
-Everything an agent creates (`add`, `epic add`) starts as an AI draft. An agent can edit it, but `mv` and `state` fail with `task_is_draft` until the draft is started:
+An agent's `add` creates an ordinary Todo task. For a request for the plan only, it adds `--backlog` to put the card in the Backlog instead. `epic add` has no lane: an agent's epic is an ordinary epic, and a plan-only epic is one whose cards are created with `--backlog --epic <ID>`:
 
 ```sh
-agboard --project "My project" start 12 --actor ai
-agboard --project "My project" epic start LAUNCH --actor ai
+agboard --project "My project" add --title "Plan the launch" --assignee ai --actor ai --backlog --epic LAUNCH
 ```
 
-`start` clears the AI draft of one task. `epic start` clears the epic and every AI draft task of it in one step, and leaves tasks that a person is still drafting. The agent that wrote the plan starts it once its questions are answered and the plan is written up, and a person can run the same commands with `--actor human`. An open question linked to the task, or to an AI draft task of the epic, refuses the start with `start_blocked_by_questions` (exit code 1). Each started task records who started it: "The agent wrote the plan up and started the task." or "A person started the task."
+The Backlog holds settled plans that must not be started yet. An agent never starts them, and its `mv` and `state` on a Backlog card fail with `task_in_backlog` (exit code 1). Only a person sends a card to Todo, at the end of the lane. The Web UI has no Backlog lane or send button yet, so use the command line:
+
+```sh
+agboard --project "My project" send 12 --actor human
+agboard --project "My project" epic send LAUNCH --actor human
+agboard --project "My project" epic send LAUNCH --actor human --tasks 1,2
+```
+
+`send` sends one card. `epic send` sends the whole epic, or only the cards given with `--tasks`, in one save that either moves all of them or none. An agent that runs either gets `human_only`. `start` and `epic start` remain as hidden, deprecated aliases with exactly the same behavior. Sending a card that is already out of the Backlog changes nothing, so a retry is safe, and a card a person is editing in the browser (`draft: human`) cannot be sent (`task_is_draft`). The history records "A person sent the task to Todo."
+
+If the plan has open questions, the send is refused with `send_with_open_questions` (exit code 1) and the message lists the question IDs. Add `--force` to send anyway; the questions stay open and the card is pending until they are answered:
+
+```sh
+agboard --project "My project" send 12 --actor human --force
+```
+
+A person can take an unstarted Todo card (Idle, no results) back to the Backlog; an agent gets `human_only`:
+
+```sh
+agboard --project "My project" mv 12 backlog --actor human
+```
 
 While a person has an epic in draft in the browser, `epic edit` fails with `epic_is_draft` (exit code 1) and changes nothing, `--waves` included. Wait until the person saves or discards it, or ask them to finalize a draft that was left behind. `epic attachment` and changing a task's epic still work.
 
@@ -132,6 +151,7 @@ While a person has an epic in draft in the browser, `epic edit` fails with `epic
 
 ```sh
 agboard --project "My project" ls --column doing --json
+agboard --project "My project" ls --column backlog --json
 agboard --project "My project" ls --state pending --json
 agboard ls --all-projects --json
 ```

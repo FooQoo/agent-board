@@ -83,7 +83,6 @@ To edit a task or put it in an epic, choose **Open full screen** in the details 
 
 A draft is a task that agents must leave alone while you write it. Agents cannot change a draft, including its `TASK.md` file.
 
-- Tasks that agents create start as AI drafts.
 - To change an existing task, open its preview. Your first change makes it a draft, and **Save** releases it, so agents can work on the task again. The editor has no Draft checkbox.
 - To drop your changes, choose **Cancel** and then **Discard and close**. The text returns to the saved version, and the history records `Discarded draft changes.`
 - A running task opens read-only and cannot become a draft.
@@ -92,11 +91,13 @@ A draft is marked with a **Draft** chip on its card. If you forget to finalize, 
 
 If a draft is left behind, for example because a save failed and you closed the browser, choose **Finalize** in the task's details to release it. The **Finalize** button appears only on a draft.
 
-### AI drafts {#ai-drafts}
+### Backlog plans {#backlog-plans}
 
-Everything an agent creates is an AI draft. It is an ordinary task or epic card in Todo, with a **Draft** badge, and the lane header counts it like any other task. You can open it, read the plan, and answer the questions about it. While it is a draft, the agent cannot move it or change its state.
+When you ask an agent for a plan only, it puts the plan in the Backlog: settled plans that must not be started yet. The Backlog means "do not start", and agents never start it. Until the Backlog lane of a later release arrives, the board shows a Backlog plan as an ordinary card in Todo with a **Draft** badge, and the lane header counts it like any other task. You can open it, read the plan, and answer the questions about it. The agent cannot move it or change its state.
 
-There is no button to start an AI draft and nothing to approve. Once its questions are answered and the plan is written up, the agent starts the draft itself, the badge goes away, and the task is an ordinary task. A question about the task that is still open keeps it a draft. A person can also start it from the command line with `agboard start <id> --actor human`, or an epic with `agboard epic start <EPIC-ID> --actor human`. If you want something changed first, send the agent a request with **Ask AI**. A draft you write yourself is different: only you finalize it (see above).
+Plans are corrected through chat or requests to the AI: send the agent a request with **Ask AI**. A request to carry out the work, instead of a plan, creates ordinary Todo cards.
+
+Only you send a plan to Todo. There is no button yet, so use the command line: `agboard send <id> --actor human` for a card, or `agboard epic send <EPIC-ID> --actor human` for an epic (see [CLI](../reference/cli)). If the plan still has open questions, the send is refused until you confirm it with `--force`.
 
 ## Archive
 
@@ -161,7 +162,7 @@ The first-run guide runs in your browser, on the PC board and on the phone scree
 The guide has five steps. At each one, the cards are drawn in a frame at the top of the lane the step is about, over the dimmed board. On a phone, the screen switches to that lane for you. They are not part of your board: they are not saved, they do not change the counts, and agents never see them. While the guide is on screen the rest of the board is covered, so you cannot open or move cards until the guide ends.
 
 1. **Ask AI.** The real **Ask AI** window (on a phone, its bottom sheet) opens with a sample request already written. Press **Send request**. The request is not sent anywhere. If you close the window, **Open Ask AI** brings it back.
-2. **A plan.** The request becomes an epic and cards in To do. The cards are AI drafts, marked **Draft**, and each shows how many acceptance conditions it has.
+2. **A plan.** The request becomes an epic and cards in To do. For a plan-only request the cards wait in the Backlog (shown as **Draft** for now), and each shows how many acceptance conditions it has.
 3. **A question.** Before it starts, the agent asks a question on the first card. Choose **Answer the question** on the card to open the same answer dialog (on a phone, the same bottom sheet) that real questions use, choose an option, and send it. The answer only moves the guide on; it is not sent to the server. While the answer sheet is open on a phone, the explanation shrinks to a slim strip at the top of the screen.
 4. **The plan starts.** The drafts become ordinary cards, and the first one moves to In progress with its acceptance conditions being checked.
 5. **Done.** The cards reach Done by themselves once all their acceptance conditions are checked.

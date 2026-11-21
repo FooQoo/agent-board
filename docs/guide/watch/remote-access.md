@@ -16,7 +16,7 @@ A bar at the bottom of the screen holds the main places, left to right: **Board*
 - **Ask** opens the request form (see [Ask AI](./editing#ask-ai)). It has no number.
 - **Archive** and **Settings** are described under [Review and restore archived tasks](#review-and-restore-archived-tasks) and in [Open it on the phone](#open-it-on-the-phone). Archiving every done task starts from the Done lane; see [Archive all done tasks](#archive-all-done-tasks).
 
-AI drafts show as ordinary cards in the Todo lane with a **Draft** badge, and the Todo tab counts them. The agent starts them itself once its questions are answered (see [Drafts](./board#drafts)).
+Backlog plans show as ordinary cards in the Todo lane with a **Draft** badge for now, and the Todo tab counts them. Only a person sends a plan to Todo (see [Backlog plans](./board#backlog-plans)).
 
 ![Remote access showing the Doing lane with its tab bar, the bottom bar, and three tasks](../../images/mobile-cards.png){.screenshot--narrow}
 

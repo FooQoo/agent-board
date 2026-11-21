@@ -52,7 +52,7 @@ landing:
       - title: Request → Plan
         steps:
           - { actor: human, title: Request, text: Tell your agent what you want, in plain words. }
-          - { actor: ai, title: Plan, text: Puts a plan of AI drafts on the board, with acceptance conditions, and asks its questions. }
+          - { actor: ai, title: Plan, text: Puts a plan on the board, with acceptance conditions, and asks its questions. }
       - title: Answer
         steps:
           - { actor: human, title: Answer, text: Answer the questions. The agent starts the plan once none is open. }

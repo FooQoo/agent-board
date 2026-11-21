@@ -41,9 +41,24 @@ Everything that changes a task goes through this path: state changes, answers, d
 
 Asking, answering, accepting, withdrawing, and linking messages can change several `QA.md` files and several task pairs at once. These are committed as one change through a journal in `.internal/batches/` that lists every target file with its old and new contents (none for a file that does not exist before or after). The phases and recovery match the task journal: `prepared` rolls back to the old files, `committed` keeps the new ones, and bytes that no longer match block recovery rather than overwrite a direct edit. A request sent from the board is published with one rename of `qa/Q-<n>/`, so it is never seen without its images. The message numbers are reserved in `project.json` before the files are written, so a failed ask can leave numbers unused. An answer writes its images before the batch and removes them only when the batch fails before its commit point; once `committed` is written, recovery keeps the replies, so the images they name stay.
 
-The first time a project is read or written, under its lock, Agent Board converts data left by an earlier format once. Questions that were still open become `qa/Q-<n>/QA.md` with the same number, and answered and withdrawn ones are dropped. A start approval is not carried over: the AI tasks that waited on it become AI drafts, and they are started again with `agboard start`. References to dropped questions leave the tasks. A `qa/` folder that cannot be read is moved to `.internal/legacy-qa/`. After that only the current format is read.
+The first time a project is read or written, under its lock, Agent Board converts data left by an earlier format once. Questions that were still open become `qa/Q-<n>/QA.md` with the same number, and answered and withdrawn ones are dropped. A start approval is not carried over: the AI tasks that waited on it move to the Backlog, and a person sends them to Todo again. References to dropped questions leave the tasks. A `qa/` folder that cannot be read is moved to `.internal/legacy-qa/`. After that only the current format is read.
 
 Only the `TASK.md`/`task.json` pair, and a message change with the task pairs it touches, are atomic. Images, `EPIC.md`, and `epic.json` are saved separately; if a task save fails after its images were saved, the response states what was saved and the UI keeps the input. A web save of a task composes the whole `TASK.md` from frontmatter and body, validates it, and writes it once; if validation fails nothing is written. Unknown keys are preserved, key order follows the YAML writer, and comments are not preserved.
+
+## Format versions and the Backlog migration
+
+A `task.json` or `epic.json` that uses the Backlog has `formatVersion: 2`; the files of ordinary cards stay at `formatVersion: 1`, and both are read. Any other version is `format_unsupported`, and the message says "Only formatVersion 2 is supported". An earlier version of `agboard` cannot read a version-2 file.
+
+Old AI drafts (`draft: ai`) are converted once by `src/file_store/ops/backlog_migrate.rs`, under the project lock, at the first write of a project or at `agboard serve` start. The marker `.internal/backlog-migrated` records it, all files are saved in one atomic batch, and running it again changes nothing.
+
+| Before | After |
+| --- | --- |
+| Task with `draft: ai` in Todo or Doing, not archived | `taskStatus: backlog`, `draft: null`, run state Idle, `formatVersion: 2`, and the history entry `Moved the AI draft from <lane> to the Backlog.` |
+| Task with `draft: ai` that is Done or archived | Only `draft: null` |
+| Epic with `draft: ai` | `draft: null` |
+| `draft: human`, the old `isDraft`, and ordinary cards | Unchanged |
+
+Read-only commands (`show`, `ls`) read an old AI draft as Backlog in memory and write nothing, in `src/file_store/legacy_draft.rs`. The update alone never makes an old plan startable: only a person can send it.
 
 ## Creating and deleting
 
@@ -72,7 +87,7 @@ The product never repairs files on its own. It reports what is wrong, keeps show
 | --- | --- |
 | Unreadable file | `file_unreadable` with the relative path; nothing is written. |
 | Invalid `task.json` | That task is left out of `tasks` and listed in `problems`; writes to it fail with `file_invalid`. |
-| `formatVersion` other than 1 | Listed as `format_unsupported` and left out; the file is never converted, deleted, or rewritten. |
+| `formatVersion` other than 1 or 2 | Listed as `format_unsupported` and left out; the file is never converted, deleted, or rewritten. |
 | Invalid `project.json` | The whole read of that project fails with `file_invalid`. |
 | Unparsable YAML in `TASK.md` | The text after the closing line (or the whole file) is shown as the body, with empty `acceptance` and `acceptanceError: true`. Updates are refused for every actor. |
 | Invalid `acceptance` only | Body and history still work. AI moves to Done are refused because unmet conditions cannot be ruled out; people's moves still work. |

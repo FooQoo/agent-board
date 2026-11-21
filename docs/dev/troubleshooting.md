@@ -7,13 +7,15 @@ Find the symptom, read the cause, and do what the last column says. Error codes 
 | Symptom | Cause | What to do |
 | --- | --- | --- |
 | `database_busy` | Another command or the server held the project write lock for more than 5 seconds. | Run the command again. If it keeps happening, look for a stuck process holding the project. See [Saving and recovery](./concepts/saving-and-recovery.md#locks). |
-| `task_is_draft` | The task is a draft: agents may not change a person's draft, and may not move or run any draft. | Ask the person to finalize the draft in the web UI, and work on another task. Do not edit its `TASK.md`. |
+| `task_is_draft` | The task is a person's draft: agents may not change it, and a send is refused. | Ask the person to finalize the draft in the web UI, and work on another task. Do not edit its `TASK.md`. |
+| `task_in_backlog` | The task is in the Backlog, which an agent may not move or run. | Leave it: only a person sends it to Todo (`agboard send <id> --actor human`). Work on another task. |
+| `send_with_open_questions` | A person's send was refused because the plan has open questions. | Answer the named questions, or confirm the send with `--force` (CLI) or `ack: true` (API). |
 | `epic_is_draft` | The epic is marked as a draft; the CLI may not edit its details or task order. | Wait for the person to save or discard the draft, or ask them to finalize it. `epic attachment` and membership changes still work. Do not edit its `EPIC.md`. |
 | `task_is_done` | The task is Done; agents may not change it. | Ask the person to reopen it. |
 | `acceptance_unmet` | An agent tried to move a task to Done while an acceptance condition is unmet or the frontmatter is invalid. | Verify the conditions and set `done: true` (the server then moves the task by itself), or fix the frontmatter. |
 | `questions_unanswered` | An agent tried to set a task to Running, or move it to Done, while it waits for a person. | Wait for the answers with `message wait <question-id>`, or ask the person to answer on the board. |
 | `question_answered` or `question_withdrawn` | The question already has an answer, or it was withdrawn. The first answer is final. | Read the question again (`message show <question-id>`) and use the recorded answer. |
-| `start_blocked_by_questions` | A start was refused because a question about the draft has no reply. | Answer the named questions (`message answer`, or on the board), then start again. |
+| `start_blocked_by_questions` | Kept for compatibility; `send` no longer returns it. | Use `send_with_open_questions` above. |
 | `folder_unbound` or `bound_project_missing` | The working folder is not bound to a project, or the project was deleted. | Name the project explicitly with `--project`, or ask the user to bind the folder. |
 | `confirmation_required` | A deletion needs a human y/N in a terminal. | Ask a person to run it. There is no option to skip the question. |
 
