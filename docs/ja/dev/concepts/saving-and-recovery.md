@@ -45,20 +45,22 @@
 
 原子的なのは、`TASK.md`と`task.json`の組と、メッセージの変更とそれが触れるタスクの組だけです。画像・`EPIC.md`・`epic.json`は別に保存するので、画像を保存した後にタスクの保存が失敗した場合、応答で保存できた範囲を示し、画面は入力を保持します。Webでのタスクの保存は、frontmatterと本文から`TASK.md`全体を組み立てて検証し、一度だけ書きます。検証に失敗すれば何も書きません。未知のキーは保ち、キーの順序はYAMLの書き出しに従い、コメントは保ちません。
 
-## 形式のバージョンとBacklogへの移行
+## 形式のバージョンと古いAI下書き
 
 Backlogを使う`task.json`・`epic.json`は`formatVersion: 2`で、通常のカードのファイルは`formatVersion: 1`のままです。どちらも読めます。ほかのバージョンは`format_unsupported`で、メッセージは「Only formatVersion 2 is supported」と伝えます。以前のバージョンの`agboard`はバージョン2のファイルを読めません。
 
-古いAI下書き（`draft: ai`）は、`src/file_store/ops/backlog_migrate.rs`が、プロジェクトのロックの中で、プロジェクトの最初の書き込み時または`agboard serve`の起動時に一度だけ変換します。`.internal/backlog-migrated`に記録を残し、すべてのファイルを一回の原子的なまとまりで保存し、もう一度実行しても何も変わりません。
+以前のバージョンの`draft: "ai"`の印は、もう読みません。ボードは変換せず、この印が残る`task.json`・`epic.json`は、ほかの不正なファイルと同じく解析に失敗します。`problems`に報告され、ボードからは除かれ、書き換えられません。プロジェクトのほかの部分には影響しません。
+
+変換は一度だけの手作業のスクリプト`scripts/migrate-ai-drafts.mjs`で行い、`agboard serve`を止めた状態で実行します。`serve.json`が生きているプロセスを指しているとき、またはプロジェクトの`.internal/transactions`に未完了の保存があるときは、実行を拒否します。各ファイルは同じフォルダの一時ファイルに書いてからrenameで置き換え、もう一度実行しても何も変わりません。`--dry-run`は変更される内容を一覧します。以前の自動変換が残した、使われなくなった`.internal/backlog-migrated`も削除します。
 
 | 変換前 | 変換後 |
 | --- | --- |
-| Todo・Doingの`draft: ai`のタスク（アーカイブ済みを除く） | `taskStatus: backlog`、`draft: null`、稼働状態はIdle、`formatVersion: 2`。履歴に`AI の下書き(<lane>)を Backlog に移しました。` |
+| Todo・Doingの`draft: ai`のタスク（アーカイブ済みを除く） | `taskStatus: backlog`、`draft: null`、稼働状態はIdle、`formatVersion: 2`。履歴に`Moved the AI draft from <lane> to the Backlog.` |
 | DoneまたはアーカイブのAI下書きのタスク | `draft: null`だけ |
 | `draft: ai`のエピック | `draft: null` |
 | `draft: human`、古い`isDraft`、通常のカード | 変更なし |
 
-読み取り専用のコマンド（`show`・`ls`）は、古いAI下書きをメモリー上でBacklogとして読み、何も書きません（`src/file_store/legacy_draft.rs`）。更新しただけで古い計画が開始できるようになることはなく、送れるのは人だけです。
+スクリプトは古い計画を開始できる状態にはしません。Todoへ送れるのは人だけです。
 
 ## 作成と削除
 

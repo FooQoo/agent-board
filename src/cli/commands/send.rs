@@ -1,4 +1,4 @@
-//! `send` (and its deprecated alias `start`): send a Backlog plan to Todo.
+//! `send`: send a Backlog plan to Todo.
 
 use serde_json::json;
 

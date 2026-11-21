@@ -40,7 +40,7 @@ Inside `file_store`, the pieces you will touch most often are:
 | `reader` | Combines JSON and Markdown into snapshots and `problems`. |
 | `projection` | The Summary of a project, built from a parsed snapshot, and the change sets between two projections. It holds the versions of each task and epic. |
 | `detail` | The data of one Detail stream, copied from a snapshot, and the NDJSON events built from it. Only the image headers are read from files. |
-| `ops/` | Task, run state, message (`qa/`: ask, answer, send, accept, withdraw, link, read, and the one-time conversion of the old format, `migrate.rs`), a person's acceptance check, epic, image, automatic completion operations, `send.rs` (the person's send of Backlog tasks to Todo, one task or a whole epic or a selection, in one save), and `backlog_migrate.rs` (the one-time conversion of old AI drafts to the Backlog). `src/file_store/legacy_draft.rs` reads old `draft: ai` files as Backlog in memory. |
+| `ops/` | Task, run state, message (`qa/`: ask, answer, send, accept, withdraw, link, read, and the one-time conversion of the old format, `migrate.rs`), a person's acceptance check, epic, image, automatic completion operations, `send.rs` (the person's send of Backlog tasks to Todo, one task or a whole epic or a selection, in one save). |
 | `io`, `lock` | Replace-by-rename saves; `write.lock` and `lifecycle.lock`. |
 | `project`, `bindings` | The project catalog and folder bindings. |
 | `index`, `watch` | The in-memory index inside `serve`, and OS event watching. |
@@ -114,7 +114,7 @@ The main files and directories outside `src/` are:
 
 - `src/file_store/onboarding_state.rs`: the state file, which records only whether the guide was seen.
 - `src/server/api/onboarding.rs`: the guide's two routes.
-- `src/server/api/send.rs` and `src/server/api/draft_wire.rs`: the two send routes (a task and an epic), and the reading of the `draft` field that treats an older client's `"ai"` as `null`.
+- `src/server/api/send.rs` and `src/server/api/draft_wire.rs`: the two send routes (a task and an epic), and the reading of the `draft` field of a request (`"human"` or `null`).
 - `web/src/app/onboarding/`: the request client, the controller, the sample cards and question, the sample answer form, and the layer.
 - `web/src/app/development/mock-server/guide.ts`: the demo's two guide routes.
 - `web/src/features/onboarding/ui/`: the view parts.

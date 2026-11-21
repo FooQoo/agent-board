@@ -41,8 +41,7 @@ pub(super) struct EpicPatchInput {
     name: Option<String>,
     #[serde(default)]
     color: Option<String>,
-    /// `"human"` or `null` sets or clears a person's draft (`"ai"` of older clients
-    /// clears it too). An absent field keeps the draft.
+    /// `"human"` or `null` sets or clears a person's draft . An absent field keeps the draft.
     #[serde(default, deserialize_with = "super::draft_wire::present_draft")]
     draft: Option<Option<Draft>>,
     #[serde(default)]

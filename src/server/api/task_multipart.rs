@@ -58,7 +58,7 @@ pub(super) async fn edit_task_multipart(
             "requestId is required.",
         );
     }
-    if payload.meta.draft.target == Some(Some(crate::domain::Draft::Human)) {
+    if payload.meta.draft == Some(Some(crate::domain::Draft::Human)) {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,
             "invalid_value",
@@ -67,8 +67,7 @@ pub(super) async fn edit_task_multipart(
         );
     }
     let finalize = DraftSave {
-        target: super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft.target),
-        legacy_ai: payload.meta.draft.legacy_ai,
+        target: super::task_edit::finalize_target(payload.meta.finalize, payload.meta.draft),
     };
     let title = payload.meta.title;
     let description = payload.meta.description;
@@ -131,7 +130,7 @@ pub(super) async fn create_task_multipart(
     if payload.meta.request_kind.as_deref() == Some("simple") {
         if payload.meta.title.is_some()
             || payload.meta.assignee.is_some()
-            || payload.meta.draft.target.is_some()
+            || payload.meta.draft.is_some()
             || payload.meta.finalize
             || !payload.meta.remove_attachment_ids.is_empty()
         {
@@ -206,15 +205,7 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
-    if payload.meta.draft.legacy_ai {
-        return error_response(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "invalid_value",
-            "request body is invalid.",
-            "draft \"ai\" is not accepted when a task is added.",
-        );
-    }
-    let draft = payload.meta.draft.target.flatten();
+    let draft = payload.meta.draft.flatten();
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(
             StatusCode::UNPROCESSABLE_ENTITY,

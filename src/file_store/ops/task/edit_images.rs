@@ -10,7 +10,6 @@ use crate::file_store::{DraftSave, FileStore};
 
 use super::super::attachment::staged::stage_images;
 use super::super::lock_project;
-use super::draft::refuse_legacy_release_in_todo;
 use super::normalize_description;
 
 /// The images a save removes and adds.
@@ -45,7 +44,6 @@ impl FileStore {
         if task.draft.is_none() {
             return Err(AgboardError::TaskNotDraft { id });
         }
-        refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
         let touched = !images.removed.is_empty() || !images.added.is_empty();
         let staged = stage_images(
             shared,

@@ -21,7 +21,7 @@ pub fn run(ctx: &mut Context, args: &EpicArgs) -> Result<Outcome, AgboardError> 
         EpicCommand::Ls => ls(ctx),
         EpicCommand::Show(args) => show(ctx, args),
         EpicCommand::Edit(args) => edit(ctx, args),
-        EpicCommand::Send(args) | EpicCommand::Start(args) => send(ctx, args),
+        EpicCommand::Send(args) => send(ctx, args),
         EpicCommand::Rm(args) => {
             ctx.interactive |= confirm::is_interactive(ctx.json);
             rm_with_io(

@@ -188,7 +188,7 @@ Only the board on your own computer can start or stop these sessions. The phone 
 
 A draft a person is writing (`draft: "human"`) is read-only for agents: `edit`, `mv`, `state`, and `history add` fail with `task_is_draft`. Work on other tasks until the user finalizes it.
 
-A Backlog card is read-only for agents' moves: `mv` and `state` fail with `task_in_backlog`, while `edit` and `history add` work. An agent creates a Backlog card with `add --actor ai --backlog` only for a request for the plan; without `--backlog` its `add` creates an ordinary Todo task, also when it is for the user. Only a person sends a card to Todo (`send`, `epic send`); an agent's `send`, `epic send`, `start`, and `epic start` fail with `human_only`.
+A Backlog card is read-only for agents' moves: `mv` and `state` fail with `task_in_backlog`, while `edit` and `history add` work. An agent creates a Backlog card with `add --actor ai --backlog` only for a request for the plan; without `--backlog` its `add` creates an ordinary Todo task, also when it is for the user. Only a person sends a card to Todo (`send`, `epic send`); an agent's `send` and `epic send` fail with `human_only`.
 
 On `AGBOARD_ERROR`, a missing project, a technical connection failure, or an unreadable board, report the problem and stop board-dependent changes until a valid progress table is available. A timeout or an interrupted wait does not answer or expire a question. For causes and fixes, see [Troubleshooting](../operations/troubleshooting).
 

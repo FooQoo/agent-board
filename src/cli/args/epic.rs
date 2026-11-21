@@ -32,9 +32,6 @@ pub enum EpicCommand {
     Rm(EpicIdArgs),
     /// Send the Backlog cards of an epic to Todo
     Send(EpicSendArgs),
-    /// Deprecated alias of epic send
-    #[command(hide = true)]
-    Start(EpicSendArgs),
 }
 
 #[derive(Args, Debug)]

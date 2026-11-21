@@ -36,6 +36,7 @@ cargo build
 cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 TZ=UTC cargo nextest run
+node --test scripts/*.test.mjs   # the one-shot scripts under scripts/
 pnpm --dir web typecheck
 pnpm --dir web check
 TZ=UTC pnpm --dir web test
@@ -48,7 +49,7 @@ Run `pnpm --dir web format` to apply the web formatter. To measure coverage loca
 
 The [CI workflow](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml) runs the same checks on every pull request and every push to `main`:
 
-- The Rust job runs `cargo fmt`, `cargo clippy`, and `cargo nextest run` on Linux (`ubuntu-latest`).
+- The Rust job runs `cargo fmt`, `cargo clippy`, `cargo nextest run`, and the tests of the scripts under `scripts/` on Linux (`ubuntu-latest`).
 - The web job runs the type checks, the linter, the unit tests, and the Storybook tests and build. It runs in the official Playwright container image, which already holds Chromium and its system libraries, so the job installs no browser.
 - The E2E build job builds the web UI and the CLI once, plus the `monitor_phone_serve` test binary the phone specs use, and uploads them as an artifact. The E2E job then runs the Playwright app suite (`pnpm --dir e2e test`) on Linux, split into five shards that run side by side in the Playwright container image. Each shard downloads the artifact and sets `AGBOARD_E2E_PREBUILT=1`, so the global setup skips the build and uses the binaries named by `AGBOARD_E2E_BINARY` and `AGBOARD_E2E_PHONE_BACKEND`; the image has no Rust toolchain. The jobs run on every pull request, on pushes to `main`, and on manual runs.
 - The image tag (`mcr.microsoft.com/playwright:v<version>-noble`, pinned by digest) must match the Playwright version in `web/package.json` and `e2e/package.json`. When you update Playwright, update the tag in both container jobs of `ci.yml` in the same change.

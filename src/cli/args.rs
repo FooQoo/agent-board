@@ -66,9 +66,6 @@ pub enum Command {
     State(StateArgs),
     /// Send a Backlog plan to Todo
     Send(SendArgs),
-    /// Deprecated alias of send
-    #[command(hide = true)]
-    Start(SendArgs),
     /// Append a work note to a task history
     History(HistoryArgs),
     /// Ask the user questions, wait for the answers, and handle requests from the user
@@ -124,7 +121,6 @@ impl Command {
             Command::Mv(_) => "mv",
             Command::State(_) => "state",
             Command::Send(_) => "send",
-            Command::Start(_) => "start",
             Command::History(_) => "history",
             Command::Message(_) => "message",
             Command::Rm(_) => "rm",

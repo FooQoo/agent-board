@@ -64,12 +64,6 @@ fn creating_in_the_backlog_and_sending_to_todo_are_different_operations() {
         assert_eq!(code, 1);
         assert!(name == "human_only" || name == "task_in_backlog", "{name}");
     }
-    // The deprecated alias means the same and is just as safe.
-    let (_, name) = json_error(
-        home.path(),
-        &["--project", "Demo", "start", "1", "--actor", "ai", "--json"],
-    );
-    assert_eq!(name, "human_only");
 
     // A person sends it; the card is at the end of Todo.
     let sent = run(home.path(), &["send", "1", "--actor", "human"]);

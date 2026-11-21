@@ -36,6 +36,7 @@ cargo build
 cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 TZ=UTC cargo nextest run
+node --test scripts/*.test.mjs   # scripts/ の一度きりのスクリプトのテスト
 pnpm --dir web typecheck
 pnpm --dir web check
 TZ=UTC pnpm --dir web test
@@ -48,7 +49,7 @@ Webのフォーマットを適用するには`pnpm --dir web format`を実行し
 
 [CIのワークフロー](https://github.com/FooQoo/agent-board/blob/main/.github/workflows/ci.yml)は、プルリクエストと`main`へのpushのたびに、同じ確認を実行します。
 
-- Rustのジョブは、Linux（`ubuntu-latest`）で`cargo fmt`、`cargo clippy`、`cargo nextest run`を実行します。
+- Rustのジョブは、Linux（`ubuntu-latest`）で`cargo fmt`、`cargo clippy`、`cargo nextest run`、`scripts/`のスクリプトのテストを実行します。
 - Webのジョブは、型チェック、リンター、単体テスト、Storybookのテストとビルドを実行します。Chromiumとそのシステムライブラリがあらかじめ入っている公式Playwrightコンテナイメージの中で動くため、ブラウザのインストールはしません。
 - E2Eビルドのジョブは、WebのUIとCLI、およびスマホ向けのスペックが使うテスト用バイナリ`monitor_phone_serve`を一度だけビルドし、成果物としてアップロードします。続くE2Eのジョブは、LinuxでPlaywrightのアプリのスイート（`pnpm --dir e2e test`）を実行します。スイートは5つのシャードに分け、Playwrightのコンテナイメージの中で並行して実行します。各シャードは成果物をダウンロードして`AGBOARD_E2E_PREBUILT=1`を設定するため、グローバルセットアップはビルドを省き、`AGBOARD_E2E_BINARY`と`AGBOARD_E2E_PHONE_BACKEND`が指すバイナリを使います（イメージにRustのツールチェーンはありません）。どちらのジョブも、すべてのプルリクエスト、`main`へのpush、手動実行で動きます。
 - イメージのタグ（`mcr.microsoft.com/playwright:v<バージョン>-noble`、ダイジェストで固定）は、`web/package.json`と`e2e/package.json`のPlaywrightのバージョンと一致させます。Playwrightを更新するときは、同じ変更で`ci.yml`の2つのコンテナのジョブのタグも更新します。

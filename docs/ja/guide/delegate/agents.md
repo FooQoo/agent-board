@@ -188,7 +188,7 @@ agboard --project "My project" wait --until task --idle-timeout 300 --json
 
 人が書いている下書き（`draft: "human"`）は、エージェントからは読み取り専用です。`edit`・`mv`・`state`・`history add`は`task_is_draft`で失敗します。ユーザーが確定するまで、ほかのタスクを進めます。
 
-Backlogのカードに対して、エージェントの`mv`と`state`は`task_in_backlog`で失敗しますが、`edit`と`history add`は使えます。エージェントが`add --actor ai --backlog`でBacklogのカードを作るのは計画だけを頼まれたときで、`--backlog`なしの`add`は、ユーザー向けのものも含めて、通常のTodoのタスクを作ります。カードをTodoへ送れるのは人だけです（`send`・`epic send`）。エージェントの`send`・`epic send`・`start`・`epic start`は`human_only`で失敗します。
+Backlogのカードに対して、エージェントの`mv`と`state`は`task_in_backlog`で失敗しますが、`edit`と`history add`は使えます。エージェントが`add --actor ai --backlog`でBacklogのカードを作るのは計画だけを頼まれたときで、`--backlog`なしの`add`は、ユーザー向けのものも含めて、通常のTodoのタスクを作ります。カードをTodoへ送れるのは人だけです（`send`・`epic send`）。エージェントの`send`・`epic send`は`human_only`で失敗します。
 
 `AGBOARD_ERROR`が出た場合や、プロジェクトが見つからない・接続できない・ボードを読み込めない場合は、その問題を報告します。有効な進行表を取得できるまで、ボードの情報に依存する変更は行いません。待機が時間切れになったり中断されたりしても、質問は未回答のまま残ります。原因と対処は[トラブルシューティング](../operations/troubleshooting)を参照してください。
 

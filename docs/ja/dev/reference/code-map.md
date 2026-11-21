@@ -40,7 +40,7 @@
 | `reader` | JSONとMarkdownから、スナップショットと`problems`を組み立てる。 |
 | `projection` | 解析済みのスナップショットから作るプロジェクトのSummaryと、2つの投影の間の変更の組。タスクとエピックごとのversionを持つ。 |
 | `detail` | 1つのDetailストリームのデータ。スナップショットからコピーし、そこからNDJSONのイベントを作る。読むのは画像のヘッダーだけ。 |
-| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作・`send.rs`（人によるBacklogのタスクのTodoへの送信。1件、エピック全体、選んだ一部を一回の保存で）・`backlog_migrate.rs`（古いAI下書きをBacklogへ移す一度きりの変換）。`src/file_store/legacy_draft.rs`は、古い`draft: ai`のファイルをメモリー上でBacklogとして読みます。 |
+| `ops/` | タスク・稼働状態・メッセージ（`qa/`: 質問・回答・依頼の送信・受け付け・取り下げ・参照・読み出しと、旧形式の一度きりの変換`migrate.rs`）・人による完了条件のチェック・エピック・画像・自動完了の操作・`send.rs`（人によるBacklogのタスクのTodoへの送信。1件、エピック全体、選んだ一部を一回の保存で）。 |
 | `io`・`lock` | renameによる置き換え保存と、`write.lock`・`lifecycle.lock`。 |
 | `project`・`bindings` | プロジェクトの一覧と、フォルダの紐付け。 |
 | `index`・`watch` | `serve`内のメモリ上の索引と、OSイベントの監視。 |
@@ -114,7 +114,7 @@
 
 - `src/file_store/onboarding_state.rs`: 状態ファイル。案内を見たかどうかだけを記録します。
 - `src/server/api/onboarding.rs`: 案内の2つのルート。
-- `src/server/api/send.rs`と`src/server/api/draft_wire.rs`: 送信の2つのルート（タスクとエピック）と、古いクライアントの`"ai"`を`null`として扱う`draft`項目の読み取り。
+- `src/server/api/send.rs`と`src/server/api/draft_wire.rs`: 送信の2つのルート（タスクとエピック）と、リクエストの`draft`項目（`"human"`または`null`）の読み取り。
 - `web/src/app/onboarding/`: リクエスト、制御、サンプルカードと質問、サンプルの回答フォーム、層。
 - `web/src/app/development/mock-server/guide.ts`: デモの案内の2つのルート。
 - `web/src/features/onboarding/ui/`: 表示部品。

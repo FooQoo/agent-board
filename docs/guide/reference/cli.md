@@ -131,7 +131,7 @@ agboard --project "My project" epic send LAUNCH --actor human
 agboard --project "My project" epic send LAUNCH --actor human --tasks 1,2
 ```
 
-`send` sends one card. `epic send` sends the whole epic, or only the cards given with `--tasks`, in one save that either moves all of them or none. An agent that runs either gets `human_only`. `start` and `epic start` remain as hidden, deprecated aliases with exactly the same behavior. Sending a card that is already out of the Backlog changes nothing, so a retry is safe, and a card a person is editing in the browser (`draft: human`) cannot be sent (`task_is_draft`). The history records "A person sent the task to Todo."
+`send` sends one card. `epic send` sends the whole epic, or only the cards given with `--tasks`, in one save that either moves all of them or none. An agent that runs either gets `human_only`. Sending a card that is already out of the Backlog changes nothing, so a retry is safe, and a card a person is editing in the browser (`draft: human`) cannot be sent (`task_is_draft`). The history records "A person sent the task to Todo."
 
 If the plan has open questions, the send is refused with `send_with_open_questions` (exit code 1) and the message lists the question IDs. Add `--force` to send anyway; the questions stay open and the card is pending until they are answered:
 

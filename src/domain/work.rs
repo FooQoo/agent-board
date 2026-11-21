@@ -30,8 +30,8 @@ pub enum Draft {
 impl Draft {
     /// Read a stored `draft`. Files written before the owner was recorded hold
     /// `isDraft` as a boolean: `true` is a person's draft, `false` is none.
-    /// `"ai"`, written by earlier versions, is converted before the file is
-    /// parsed (see `file_store::legacy_draft`) and never reaches this reader.
+    /// `"ai"`, written by earlier versions, is not accepted: the file is
+    /// reported as invalid.
     pub fn deserialize_stored<'de, D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<Draft>, D::Error> {
