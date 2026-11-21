@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProjectId } from '@/shared/api/contracts';
 import { resolveMessageImage } from '@/shared/api/messageAttachment';
@@ -77,6 +77,13 @@ export function MessagesSurface({
   useEffect(() => {
     if (openId !== null && listed === null && !busy) setOpenId(null);
   }, [openId, listed, busy]);
+
+  // The body is one scroller shared by the list and every opened message, so it keeps the scroll
+  // position of whichever was shown before. Each switch starts at the top.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [openId]);
 
   const summaries = useSummaries(api.summaries, projectId);
 
@@ -304,6 +311,7 @@ export function MessagesSurface({
       title={t('messages.title')}
       closeLabel={t('messages.list.close')}
       onClose={onClose}
+      bodyRef={bodyRef}
       className={
         answering ? 'message-surface message-surface--answering decision-dialog' : 'message-surface'
       }
