@@ -210,7 +210,7 @@ export function MessagesSurface({
     );
   } else if (detail === null) {
     body = (
-      <div className="message-detail">
+      <div className="message-detail message-detail--state">
         {back}
         <DetailState state={state === 'failed' ? 'failed' : 'loading'} onReload={reload} />
       </div>

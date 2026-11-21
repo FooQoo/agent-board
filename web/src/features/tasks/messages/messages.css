@@ -371,10 +371,21 @@
 .message-detail__state {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  /* Takes the rest of the detail, so the spinner or the retry sits in the middle of it. */
+  flex: 1 1 auto;
+  text-align: center;
   font-size: 13px;
   color: var(--r-muted);
+}
+
+/* While the detail loads or fails, the wrapper fills the body (the PC modal's flex column, the
+   phone sheet's scroller) so the state can centre in it; the back button stays at the top. */
+.message-detail--state {
+  flex: 1 1 auto;
+  min-height: 100%;
 }
 
 .message-detail__state p {

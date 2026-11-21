@@ -29,7 +29,7 @@ export function DetailState({
           </Button>
         </>
       ) : (
-        <Spinner label={t('messages.detail.loading')} />
+        <Spinner size="lg" label={t('messages.detail.loading')} />
       )}
     </div>
   );

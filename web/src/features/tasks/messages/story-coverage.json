@@ -149,6 +149,16 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--detail-loading",
+              "states": ["detail loading", "spinner centred"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-detail-loading",
+              "states": ["phone", "detail loading", "spinner centred", "dark"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--phone-question-from-list",
               "states": [
                 "bottom sheet",
