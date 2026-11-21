@@ -8,6 +8,7 @@ mod draft_wire;
 mod epic_attachments;
 mod epics;
 mod guards;
+mod local;
 mod messages;
 mod monitor_connections;
 mod multipart;
@@ -49,10 +50,7 @@ use onboarding::*;
 use pages::*;
 use projects::*;
 use send::{send_epic, send_task};
-use sessions::{
-    launch_session, list_sessions, session_log, session_models, set_autostart, stop_session,
-    touch_session,
-};
+use sessions::list_sessions;
 use summaries::{dismiss_summary, list_summaries};
 use summary::summary;
 use task_acceptance::*;
@@ -75,32 +73,8 @@ pub(crate) fn router(state: Arc<AppState>) -> Router {
         port: state.port,
         token: state.token.clone(),
     };
-    let local_only = monitor_connections::routes()
-        .route("/api/notify", post(notify))
-        .route(
-            "/api/projects/{project_id}/sessions/touch",
-            post(touch_session),
-        )
-        .route("/api/projects/{project_id}/docs/open", post(open_docs_path))
-        .route(
-            "/api/projects/{project_id}/sessions/models",
-            get(session_models),
-        )
-        .route("/api/projects/{project_id}/sessions/log", get(session_log))
-        .route(
-            "/api/projects/{project_id}/sessions/launch",
-            post(launch_session),
-        )
-        .route(
-            "/api/projects/{project_id}/sessions/stop",
-            post(stop_session),
-        )
-        .route(
-            "/api/projects/{project_id}/sessions/autostart",
-            put(set_autostart),
-        );
     routes(get(index))
-        .merge(local_only)
+        .merge(local::routes())
         .layer(middleware::from_fn_with_state(
             guard_context.clone(),
             write_guard,
