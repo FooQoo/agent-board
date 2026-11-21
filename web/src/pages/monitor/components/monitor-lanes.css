@@ -88,13 +88,13 @@
     display: none;
   }
 }
-/* On the narrowest phones the Japanese name of the Backlog (5 characters) needs a little more room. */
-@media (max-width: 380px) {
-  .lane-tabs__tab {
+/* The Japanese name of the Backlog has five characters: on a phone the tab text steps down a little so it keeps room inside the marker. */
+@media (max-width: 480px) {
+  :lang(ja) .lane-tabs__tab {
     gap: 2px;
     font-size: 11px;
   }
-  .lane-tabs__count {
+  :lang(ja) .lane-tabs__count {
     min-width: 16px;
     padding: 1px 3px;
   }
