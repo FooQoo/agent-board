@@ -271,7 +271,10 @@ impl FileStore {
 /// Backlog now, where that only releases the edit lock. In Todo it would leave an
 /// unsent card the agent can pick up, so the save is refused until a person takes the
 /// card back to the Backlog. Checked under the project lock, with the lane just read.
-fn refuse_legacy_release_in_todo(task: &TaskFile, legacy_ai: bool) -> Result<(), AgboardError> {
+pub(super) fn refuse_legacy_release_in_todo(
+    task: &TaskFile,
+    legacy_ai: bool,
+) -> Result<(), AgboardError> {
     if legacy_ai && matches!(task.task_status, Column::Todo | Column::Doing) {
         return Err(AgboardError::InvalidValue {
             field: "draft".into(),
