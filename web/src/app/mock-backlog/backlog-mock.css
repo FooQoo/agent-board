@@ -1,0 +1,647 @@
+/*
+ * Styles of the Backlog mock (a throwaway sketch for Storybook only). It reuses the product's tokens
+ * and its card, lane, modal and drawer classes, and adds only what the Backlog screens need.
+ */
+
+.bapp {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: var(--stable-vh, 100svh);
+  background: var(--r-bg);
+}
+
+.bboard {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bboard__row {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* Four lanes: Backlog before Todo. */
+.bboard__lanes.board__lanes {
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 1.45fr) repeat(3, minmax(0, 1fr));
+  padding-top: 12px;
+}
+
+.bboard__detail {
+  flex: none;
+  width: 400px;
+  min-height: 0;
+  padding: 12px 24px 24px 0;
+  overflow: hidden;
+}
+
+.bboard__detail > .detail {
+  height: 100%;
+}
+
+/* ---- Backlog lane: dashed, no fill. It reads as "not started", against the filled Todo lane. ---- */
+
+.blane[data-lane="backlog"] {
+  background: transparent;
+  border: 1.5px dashed var(--r-border);
+}
+
+.blane__hint {
+  padding: 0 6px 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--r-muted);
+}
+
+.bgroup .bgroup__wide {
+  flex: 1 1 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: var(--btn-s-h, 28px);
+  padding-block: 4px;
+  justify-content: flex-start;
+  white-space: normal;
+  text-align: left;
+}
+
+.bmarks {
+  margin-top: -4px;
+}
+
+.blane__empty {
+  padding: 16px 6px;
+  font-size: 13px;
+  color: var(--r-muted);
+}
+
+.bgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--r-border);
+}
+
+.bgroup:last-child {
+  border-bottom: 0;
+}
+
+.bgroup__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bgroup__name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--r-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bgroup__actions,
+.bgroup__picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.bgroup__picked {
+  padding: 8px;
+  border: 1px solid var(--r-accent);
+  border-radius: 8px;
+  background: var(--r-accent-soft);
+  font-size: 12px;
+  color: var(--r-text);
+}
+
+.brow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.brow__check {
+  flex: none;
+  margin-top: 14px;
+}
+
+.brow__card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.brow[data-lane="backlog"] .card {
+  border-style: dashed;
+}
+
+.brow[data-sent="true"] .card {
+  border-color: var(--r-accent);
+  box-shadow: 0 0 0 2px var(--r-accent-soft);
+}
+
+.bmarks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.bmarks:empty {
+  display: none;
+}
+
+.bmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--r-border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--r-text2);
+}
+
+.bmark svg {
+  width: 12px;
+  height: 12px;
+}
+
+.bmark--sent {
+  border-color: var(--r-accent);
+  color: var(--r-accent);
+}
+
+/* ---- Notice (result of a send or a save) ---- */
+
+.bnotice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 24px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--r-accent);
+  border-radius: 10px;
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+  font-size: 13px;
+}
+
+.bnotice > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--r-accent);
+}
+
+.bnotice__text {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bnotice__text span {
+  color: var(--r-text2);
+}
+
+.bphone .bnotice {
+  margin: 8px 0 0;
+}
+
+/* ---- Phone ---- */
+
+.bphone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lane-tabs.btabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lane-tabs.btabs::before {
+  display: none;
+}
+
+.lane-tabs .btabs__tab[aria-selected="true"] {
+  border-radius: 8px;
+  background: var(--r-surface);
+  box-shadow: inset 0 0 0 1px var(--r-accent);
+}
+
+.btabs__tab[data-lane="backlog"] {
+  border: 1px dashed var(--r-border);
+  border-radius: 8px;
+}
+
+.bphone__hint {
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bphone__lane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-lane);
+  background: var(--r-lane);
+}
+
+.bphone__lane[data-lane="backlog"] {
+  background: transparent;
+}
+
+.bdrawer .detail {
+  height: 100%;
+}
+
+/* ---- Card detail additions ---- */
+
+.bdetail__toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.bdetail__banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--r-border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--r-text2);
+}
+
+.bdetail__banner[data-lane="todo"] {
+  border-style: solid;
+  border-color: var(--r-accent);
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+}
+
+.bdetail__banner strong {
+  color: var(--r-text);
+}
+
+.bdetail__tick {
+  color: var(--r-muted);
+}
+
+/* ---- Surfaces ---- */
+
+.modal.bsurface-modal,
+.modal.xmodal {
+  width: 720px;
+}
+
+.bsurface__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.bsurface__footer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-drawer.xsheet[data-slot="drawer-popup"] {
+  height: calc(var(--stable-vh, 100svh) - 56px);
+}
+
+.xsheet .bsurface__body {
+  flex: 1 1 0;
+  padding: 4px 16px 12px;
+}
+
+.xsheet .bsurface__footer {
+  padding: 10px 16px 18px;
+  border-top: 1px solid var(--r-border);
+  background: var(--r-surface);
+}
+
+.bsurface__footer .dialog-actions {
+  flex-wrap: wrap;
+}
+
+/* ---- Epic plan ---- */
+
+.bplan__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bplan__h {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--r-text);
+}
+
+.bplan__goal {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--r-lane);
+}
+
+.bplan__note {
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bplan__wave {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--r-text2);
+}
+
+.bplan__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bplan__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed var(--r-border);
+  border-radius: 8px;
+}
+
+.bplan__card[data-lane="todo"] {
+  border-style: solid;
+  background: var(--r-lane);
+}
+
+.bplan__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bplan__nocheck {
+  width: 16px;
+}
+
+.bplan__id {
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bplan__title {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.bplan__cond-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--r-text2);
+}
+
+.bplan__progress {
+  font-size: 12px;
+  color: var(--r-text2);
+}
+
+/* ---- Edit ---- */
+
+.bedit__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bedit__state {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  font-size: 13px;
+  color: var(--r-pend-tx);
+}
+
+.bedit__state svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.bedit__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bedit__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.bedit__hint {
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.bedit__textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.bedit__textarea:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 1px;
+}
+
+/* The wording of a condition is edited here; "achieved" is not, so its checkbox and the save note are hidden. */
+.bedit .acceptance-edit__controls [role="checkbox"],
+.bedit .acceptance-edit__note,
+.bedit .acceptance-edit__saved {
+  display: none;
+}
+
+/* ---- Send ---- */
+
+.bsend__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bsend__scope {
+  font-size: 14px;
+  color: var(--r-text);
+}
+
+.bsend__counts {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.bsend__count {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--r-border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--r-text2);
+}
+
+.bsend__count[data-after="true"] {
+  border-color: var(--r-accent);
+  background: var(--r-accent-soft);
+  color: var(--r-text);
+}
+
+.bsend__count-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--r-muted);
+}
+
+.bsend__arrow {
+  flex: none;
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  color: var(--r-muted);
+}
+
+.bsend__h {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--r-text);
+}
+
+.bsend__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bsend__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.bsend__id,
+.bsend__wave {
+  flex: none;
+  color: var(--r-muted);
+  font-size: 12px;
+}
+
+.bsend__title {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--r-text);
+}
+
+.bsend__need {
+  font-size: 12px;
+  color: var(--r-pend-tx);
+}
+
+.bwarn {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--r-pend-bd);
+  border-radius: 8px;
+  background: var(--r-pend-bg);
+  font-size: 13px;
+  color: var(--r-pend-tx);
+}
+
+.bwarn > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.bwarn p {
+  margin-top: 2px;
+}
+
+.bwarn__ack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.xsheet .bsurface__footer .dialog-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.xsheet .bsurface__footer .dialog-actions > * {
+  width: 100%;
+  white-space: normal;
+}
+
+.lane-tabs.btabs .btabs__tab {
+  gap: 3px;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
+.lane-tabs.btabs .lane-tabs__count {
+  min-width: 0;
+  padding: 1px 5px;
+}

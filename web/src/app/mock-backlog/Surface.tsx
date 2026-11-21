@@ -1,0 +1,74 @@
+import { XIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/dialog';
+import { Drawer } from '@/shared/ui/drawer';
+import '../../shared/styles/modal.css';
+import './backlog-mock.css';
+import { useMockText } from './text';
+
+/**
+ * Where a mock screen opens: a modal on the desktop board, a bottom sheet on a phone. The body scrolls
+ * and the footer (the buttons) stays in view.
+ */
+export function Surface({
+  kind,
+  title,
+  identity,
+  onClose,
+  footer,
+  className = '',
+  children,
+}: {
+  kind: 'dialog' | 'sheet';
+  title: string;
+  /** The small line above the title of a sheet. */
+  identity?: ReactNode;
+  onClose: () => void;
+  footer?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const m = useMockText();
+  if (kind === 'sheet') {
+    return (
+      <Drawer
+        open
+        onOpenChange={(open) => !open && onClose()}
+        identity={identity ?? ''}
+        title={title}
+        closeLabel={m.close}
+        className={`xsheet ${className}`.trim()}
+        initialFocusSelector=".bsurface__body"
+      >
+        <div className="bsurface__body" tabIndex={-1}>
+          {children}
+        </div>
+        {footer && <div className="bsurface__footer">{footer}</div>}
+      </Drawer>
+    );
+  }
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={`modal xmodal ${className}`.trim()}
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(event) => {
+          // The dialog itself takes the focus, so no button shows a ring on open.
+          event.preventDefault();
+          if (event.currentTarget instanceof HTMLElement)
+            event.currentTarget.focus({ preventScroll: true });
+        }}
+      >
+        <div className="modal__header">
+          <DialogTitle className="modal__title">{title}</DialogTitle>
+          <button type="button" className="modal__close" aria-label={m.close} onClick={onClose}>
+            <XIcon aria-hidden="true" />
+          </button>
+        </div>
+        <div className="bsurface__body">{children}</div>
+        {footer && <div className="bsurface__footer">{footer}</div>}
+      </DialogContent>
+    </Dialog>
+  );
+}

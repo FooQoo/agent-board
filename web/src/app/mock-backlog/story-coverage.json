@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "owner": "U9",
+  "files": [
+    {
+      "file": "app/mock-backlog/BacklogScreen.tsx",
+      "exports": [
+        {
+          "name": "BacklogScreen",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--board-with-backlog",
+              "states": ["backlog lane before todo"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-desktop--epic-plan-flow",
+              "states": ["epic plan open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-desktop--backlog-card-detail",
+              "states": ["detail open"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--conditions-tab",
+              "states": ["conditions tab"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--edit-plan",
+              "states": ["editor open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-desktop--pick-some",
+              "states": ["cards picked"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--send-selected-confirm",
+              "states": ["send some"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--send-epic-with-question",
+              "states": ["send epic with warning"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--after-send",
+              "states": ["after send"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--backlog-tab",
+              "states": ["phone backlog tab"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-phone--todo-tab",
+              "states": ["phone todo tab"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--epic-plan-sheet",
+              "states": ["plan sheet"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-phone--card-drawer",
+              "states": ["card drawer"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--edit-sheet",
+              "states": ["edit sheet"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--pick-some",
+              "states": ["cards picked"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--send-selected-sheet",
+              "states": ["send some sheet"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--send-epic-sheet",
+              "states": ["send epic sheet"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--after-send",
+              "states": ["after send sheet"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/LaneParts.tsx",
+      "exports": [
+        {
+          "name": "LaneBody",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--board-with-backlog",
+              "states": ["backlog lane before todo"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-desktop--pick-some",
+              "states": ["cards picked"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--backlog-tab",
+              "states": ["phone backlog tab"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-phone--todo-tab",
+              "states": ["phone todo tab"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--pick-some",
+              "states": ["cards picked"],
+              "interaction": false
+            }
+          ]
+        },
+        {
+          "name": "NoticeBar",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--after-send",
+              "states": ["after send"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--after-send",
+              "states": ["after send sheet"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/DetailPane.tsx",
+      "exports": [
+        {
+          "name": "DetailPane",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--backlog-card-detail",
+              "states": ["detail open"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--conditions-tab",
+              "states": ["conditions tab"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--card-drawer",
+              "states": ["card drawer"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/EditSurface.tsx",
+      "exports": [
+        {
+          "name": "EditSurface",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--edit-plan",
+              "states": ["editor open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-phone--edit-sheet",
+              "states": ["edit sheet"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/EpicPlan.tsx",
+      "exports": [
+        {
+          "name": "EpicPlan",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--epic-plan-flow",
+              "states": ["epic plan open"],
+              "interaction": true
+            },
+            {
+              "id": "mocks-backlog-phone--epic-plan-sheet",
+              "states": ["plan sheet"],
+              "interaction": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/SendSurface.tsx",
+      "exports": [
+        {
+          "name": "SendSurface",
+          "stories": [
+            {
+              "id": "mocks-backlog-desktop--send-selected-confirm",
+              "states": ["send some"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-desktop--send-epic-with-question",
+              "states": ["send epic with warning"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--send-selected-sheet",
+              "states": ["send some sheet"],
+              "interaction": false
+            },
+            {
+              "id": "mocks-backlog-phone--send-epic-sheet",
+              "states": ["send epic sheet"],
+              "interaction": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "app/mock-backlog/Surface.tsx",
+      "exports": [
+        {
+          "name": "Surface",
+          "stories": [],
+          "exclusion": "Frame of the dialogs and sheets; the editor, plan and send Stories show it."
+        }
+      ]
+    }
+  ]
+}
