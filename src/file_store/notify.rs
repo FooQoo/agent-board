@@ -35,6 +35,10 @@ const EXTENSION: &str = "ldjson";
 #[serde(rename_all = "camelCase")]
 pub struct SummaryResult {
     pub task_id: i64,
+    /// The version of the result in the task's results, so a client can open that result. A line
+    /// written before this field existed has none and links to the task's results as a whole.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
     pub title: String,
     #[serde(with = "crate::clock::serde_utc")]
     pub at: DateTime<Utc>,
@@ -77,6 +81,7 @@ impl Summary {
                     .filter(|r| r.at > from && r.at <= to)
                     .map(|r| SummaryResult {
                         task_id: t.id,
+                        version: Some(r.version),
                         title: r.title.clone(),
                         at: r.at,
                     })

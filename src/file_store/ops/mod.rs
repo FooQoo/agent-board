@@ -30,7 +30,7 @@ pub use send::EpicSent;
 pub use task::{ImageChanges, MAX_RESULTS, RecordedResult, ResultInput};
 
 use self::history_event::{HistoryKind, Transition, reason_or_default, transition_event};
-use self::save::{save_task, save_task_with_markdown};
+use self::save::{save_task, save_task_text, save_task_with_markdown};
 use self::text::{write_parts, write_text};
 
 use std::path::{Path, PathBuf};

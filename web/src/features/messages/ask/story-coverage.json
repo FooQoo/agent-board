@@ -112,6 +112,37 @@
               "id": "messages-askai--sheet-close-discards",
               "states": ["bottom sheet", "discard confirm", "discarded"],
               "interaction": true
+            },
+            {
+              "id": "messages-askai--attach-tasks-japanese",
+              "states": ["modal", "japanese", "attach task popover"],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--dialog-attach-tasks",
+              "states": [
+                "modal",
+                "attach task popover",
+                "last line written",
+                "reopen pre-checked",
+                "replaces line",
+                "deselect all removes line",
+                "escape closes picker only",
+                "focus back to button",
+                "mid-text reference ignored"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "messages-askai--sheet-attach-tasks",
+              "states": [
+                "bottom sheet",
+                "attach task sheet",
+                "last line written",
+                "reopen pre-checked",
+                "deselect all removes line"
+              ],
+              "interaction": true
             }
           ]
         }

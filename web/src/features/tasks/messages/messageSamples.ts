@@ -234,8 +234,13 @@ const summaryTitles: Record<number, { ja: string; en: string }> = {
 /** Sample periodic summaries of the Stories, newest first: four windows, none dismissed. */
 export function sampleSummaries(language: string): PeriodicSummary[] {
   const lang = language.startsWith('ja') ? 'ja' : 'en';
+  // Task 549 stands for a line written before versions were recorded: it has none.
   const results = (ids: number[]) =>
-    ids.map((taskId) => ({ taskId, title: summaryTitles[taskId]?.[lang] ?? '' }));
+    ids.map((taskId, index) => ({
+      taskId,
+      version: taskId === 549 ? null : index + 2,
+      title: summaryTitles[taskId]?.[lang] ?? '',
+    }));
   return [
     {
       id: 's-20261120T010000Z',

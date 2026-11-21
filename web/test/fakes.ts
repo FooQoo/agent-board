@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { pageArchive } from '../src/app/development/mock-server/archivePage';
 import type { Board, Epic, Task, Project, ProjectId } from '../src/shared/api/contracts';
 import {
   epicDetailEvents,
@@ -183,7 +184,7 @@ export function stubBackend(backend: FakeBackend) {
         return epic ? ndjson(epicDetailEvents(projectId, epic)) : null;
       });
     }
-    const archiveMatch = /^\/api\/projects\/([0-9a-f]{32})\/archive$/.exec(url);
+    const archiveMatch = /^\/api\/projects\/([0-9a-f]{32})\/archive(?:\?(.*))?$/.exec(url);
     if (archiveMatch?.[1]) {
       const projectId = archiveMatch[1];
       const project = Array.isArray(backend.projects)
@@ -191,13 +192,19 @@ export function stubBackend(backend: FakeBackend) {
         : undefined;
       if (!project) return errorResponse(404, 'project_not_found');
       const archiveAnswer = backend.archives?.[projectId] ?? [];
-      return answer(archiveAnswer, (tasks) => ({
-        project: project ?? { id: projectId, name: 'unknown', createdAt: '' },
-        revision: 1,
-        cursor: `${projectId}:1`,
-        tasks,
-        epics: backend.archiveEpics?.[projectId] ?? [],
-      }));
+      const query = new URLSearchParams(archiveMatch[2] ?? '');
+      return answer(archiveAnswer, (tasks) => {
+        const page = pageArchive(tasks, Number(query.get('limit')) || 50, query.get('cursor'));
+        const used = new Set(page.tasks.map((task) => (task as { epicId?: string }).epicId));
+        return {
+          project: project ?? { id: projectId, name: 'unknown', createdAt: '' },
+          version: 'v1',
+          tasks: page.tasks,
+          epics: (backend.archiveEpics?.[projectId] ?? []).filter((epic) => used.has(epic.id)),
+          total: page.total,
+          nextCursor: page.nextCursor,
+        };
+      });
     }
     return errorResponse(404, 'not_found');
   });

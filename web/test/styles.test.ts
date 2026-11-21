@@ -111,6 +111,13 @@ describe('source rules', () => {
   });
 });
 
+describe('message list tabs', () => {
+  it('lets a hidden tab page add no height, so each tab is as tall as its own content', () => {
+    const css = read('src/features/tasks/messages/messages.css');
+    expect(css).toMatch(/\.message-list__page\[aria-hidden="true"\]\s*\{[^}]*contain:\s*size/);
+  });
+});
+
 describe('index.html', () => {
   it('carries the session token placeholder for the server to replace', () => {
     expect(read('index.html')).toContain('<meta name="agboard-token" content="{{AGBOARD_TOKEN}}"');

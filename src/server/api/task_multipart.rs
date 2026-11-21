@@ -206,6 +206,14 @@ pub(super) async fn create_task_multipart(
             "assignee is required.",
         );
     };
+    if payload.meta.draft.legacy_ai {
+        return error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid_value",
+            "request body is invalid.",
+            "draft \"ai\" is not accepted when a task is added.",
+        );
+    }
     let draft = payload.meta.draft.target.flatten();
     if !payload.meta.remove_attachment_ids.is_empty() {
         return error_response(

@@ -22,28 +22,12 @@ fn summary(titles: &[&str]) -> Summary {
             .iter()
             .map(|t| SummaryResult {
                 task_id: 3,
+                version: Some(1),
                 title: (*t).into(),
                 at: at(10, 30),
             })
             .collect(),
     }
-}
-
-#[test]
-fn the_first_window_comes_one_interval_after_the_start_and_covers_the_interval_before_it() {
-    let schedule = Schedule::new(at(10, 0), None);
-    assert!(!schedule.due(at(10, 59), 60));
-    assert!(schedule.due(at(11, 0), 60));
-    assert_eq!(schedule.since(60), at(9, 0));
-}
-
-#[test]
-fn a_marked_window_starts_the_next_one_where_it_ended() {
-    let mut schedule = Schedule::new(at(10, 0), None);
-    schedule.mark(at(11, 5));
-    assert!(!schedule.due(at(11, 34), 30));
-    assert!(schedule.due(at(11, 35), 30));
-    assert_eq!(schedule.since(30), at(11, 5));
 }
 
 #[test]
@@ -189,4 +173,5 @@ fn a_result_saved_just_before_the_end_of_a_window_is_in_its_summary() {
     assert_eq!(summary.results[0].title, "Late");
 }
 
+mod schedule;
 mod window;
