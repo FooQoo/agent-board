@@ -10,6 +10,7 @@ The board is where you watch the work and step in while the agent keeps going. Y
 
 1. Select a project in the header and choose **Ask AI**.
 2. Write what you want done, attach images if they help, and choose **Send request**. The request is not a task: it goes to the agents as a message, and it counts under **Your requests** in the band above the lanes, where the list shows it as **Waiting to be picked up**, until an agent receives it.
+3. When the request is sent, the Messages list opens on the **Your requests** tab, on the PC and on the phone, so you see the request at once. If sending fails, the form stays open with your text and images.
 
 On a phone, choosing another item in the bottom bar while the request form is open closes the form and shows that item. If you have typed text or attached an image, the board asks before discarding them, and choosing to keep editing leaves you on the form.
 
@@ -107,13 +108,13 @@ Archive finished tasks to clear the board without deleting anything.
 
 ![Archive screen listing five archived tasks with a Back to board button](../../images/guide/archive.png){.screenshot}
 
-The Archive screen lists archived tasks with their ID, title, owner, date, and the epic they belonged to, if any. Select a task to see its details.
+The Archive screen lists archived tasks with their ID, title, owner, date, and the epic they belonged to, if any. The list is ordered by the time each task was archived, newest first; tasks archived at the same time appear with the higher ID first, and a task with no recorded archive time comes last. The phone's archive list uses the same order. The list loads 50 tasks at a time: when you scroll to the end of the rows, the next page loads, and a note under the last row says the list is complete. If a page cannot be loaded, the rows already shown stay and a **Retry** button appears under them. Select a task to see its details.
 
 The details of an archived task use the same layout as an active task. **Restore** and the trash icon for permanent deletion sit at the top right, next to the close button. Permanent deletion asks for confirmation first.
 
 ## Narrow windows and phones {#narrow-windows-and-phones}
 
-When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them, and a bottom bar with **Board**, **Messages**, **Ask**, **Archive**, and **Settings**; **Messages** shows the number of questions that wait on you and opens the list. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, swipe left past the end of the Done lane to archive every completed task, and use **Archive** in the bottom bar to review archived tasks and restore one by swiping it left. The project switcher stays in the header; settings are in the bottom bar. Adding and editing tasks are for a wider window.
+When the window is narrower than 768 pixels, and on a phone, the board shows the mobile layout instead of the lanes side by side: tabs for Todo, Doing, and Done with their counts, one lane at a time under them (the board opens on Doing), and a bottom bar with **Board**, **Messages**, **Ask**, **Archive**, and **Settings**; **Messages** shows the number of questions that wait on you and opens the list. Tap a tab or swipe sideways to change lanes. Choose a task to read it in a drawer, check its conditions, and answer a decision. Hold a task and swipe it to move it to the next lane or to archive it, swipe left past the end of the Done lane to archive every completed task, and use **Archive** in the bottom bar to review archived tasks and restore one by swiping it left. The project switcher stays in the header; settings are in the bottom bar. Adding and editing tasks are for a wider window.
 
 The layout follows the window as you resize it. The project you chose stays, and an answer you have entered but not yet sent is kept when you switch between the two layouts. The mobile layout is described in [Remote access](./remote-access).
 

@@ -178,6 +178,8 @@ export const ConnectedProject: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The screen opens on Doing; the pulled card is in Todo.
+    await userEvent.click(await canvas.findByRole('tab', { name: /Todo/ }));
     const card = await canvas.findByRole('button', { name: 'Todo work item 1' });
     await expect(card).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();
@@ -263,7 +265,7 @@ export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
     await expect(getComputedStyle(nav).display).not.toBe('none');
     await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height')).not.toBe('0px');
     try {
-      for (const marker of ['data-keyboard', 'data-visual-keyboard']) {
+      for (const marker of ['data-keyboard', 'data-visual-keyboard', 'data-text-focus']) {
         root.setAttribute(marker, '');
         await expect(getComputedStyle(nav).display).toBe('none');
         await expect(getComputedStyle(root).getPropertyValue('--phone-nav-height').trim()).toBe(
@@ -281,6 +283,7 @@ export const BarHiddenWithKeyboard: StoryObj<typeof WiredPhoneStory> = {
     } finally {
       root.removeAttribute('data-keyboard');
       root.removeAttribute('data-visual-keyboard');
+      root.removeAttribute('data-text-focus');
     }
   },
 };

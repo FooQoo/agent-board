@@ -14,10 +14,14 @@ function PopoverContent({
   className,
   align = 'center',
   sideOffset = 4,
+  container,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  /** Where to draw the popover; the page body unless given (a popover inside a dialog stays in it). */
+  container?: HTMLElement | null;
+}) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

@@ -194,6 +194,21 @@
               "interaction": true
             },
             {
+              "id": "task-messages-messagecenter--summary-result-links",
+              "states": [
+                "tab: summary",
+                "result row is a link",
+                "version label",
+                "line without a version"
+              ],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-result-links-phone",
+              "states": ["bottom sheet", "tab: summary", "result row is a link", "version label"],
+              "interaction": true
+            },
+            {
               "id": "task-messages-messagecenter--summary-tab-empty",
               "states": ["tab: summary", "no summaries", "english"],
               "interaction": true
@@ -206,6 +221,36 @@
             {
               "id": "task-messages-messagecenter--summary-tab-phone",
               "states": ["phone sheet", "tap reveals trash tile", "tile dismisses"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-pull-gesture",
+              "states": ["pull gesture refreshes on release"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-sideways-is-not-a-pull",
+              "states": ["sideways drag does not pull"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--summary-card-swipe-left-only",
+              "states": ["summary card slides left only; right swipe left to the tab swipe"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-pull-to-refresh",
+              "states": ["pulling the messages list"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-pull-ready",
+              "states": ["ready to refresh"],
+              "interaction": true
+            },
+            {
+              "id": "task-messages-messagecenter--phone-refreshing",
+              "states": ["refreshing"],
               "interaction": true
             }
           ]

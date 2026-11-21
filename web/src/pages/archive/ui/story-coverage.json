@@ -21,7 +21,11 @@
           "states": ["zero tasks"],
           "interaction": false
         },
-        { "id": "pages-archive-archivelist--loading", "states": ["loading"], "interaction": false },
+        {
+          "id": "pages-archive-archivelist--loading",
+          "states": ["loading"],
+          "interaction": false
+        },
         {
           "id": "pages-archive-archivelist--load-error-and-retry",
           "states": ["load error", "retry"],
@@ -30,6 +34,21 @@
         {
           "id": "pages-archive-archivelist--refresh-error-keeps-rows",
           "states": ["refresh error", "stale rows retained"],
+          "interaction": false
+        },
+        {
+          "id": "pages-archive-archivelist--loading-next-page",
+          "states": ["loading next page"],
+          "interaction": false
+        },
+        {
+          "id": "pages-archive-archivelist--next-page-failed-and-retry",
+          "states": ["next page error", "retry"],
+          "interaction": true
+        },
+        {
+          "id": "pages-archive-archivelist--end-of-list",
+          "states": ["end of list"],
           "interaction": false
         }
       ]

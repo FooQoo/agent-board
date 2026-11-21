@@ -1,20 +1,24 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArchiveResponse } from '../../src/features/tasks/api/read';
+import type { ArchivePage } from '../../src/features/tasks/api/read';
 import type { MonitorWrites } from '../../src/pages/monitor/contracts';
 import { useArchiveSheet } from '../../src/pages/monitor/hooks/useArchiveSheet';
 
 const fetchArchive = vi.hoisted(() => vi.fn());
-vi.mock('../../src/features/tasks/api/read', () => ({ fetchArchive }));
+vi.mock('../../src/features/tasks/api/read', async (original) => ({
+  ...(await original<typeof import('../../src/features/tasks/api/read')>()),
+  fetchArchivePage: fetchArchive,
+}));
 
-const response = (ids: number[]): ArchiveResponse =>
+const response = (ids: number[]): ArchivePage =>
   ({
     project: { id: 'p', name: 'p', createdAt: '2026-10-01T08:00:00.000Z' },
     version: 'v',
-    cursor: 'c',
     tasks: ids.map((id) => ({ id })),
     epics: [],
-  }) as unknown as ArchiveResponse;
+    total: ids.length,
+    nextCursor: null,
+  }) as unknown as ArchivePage;
 
 const ids = (result: { current: ReturnType<typeof useArchiveSheet> }) =>
   result.current.archive?.data?.tasks.map((task) => task.id);

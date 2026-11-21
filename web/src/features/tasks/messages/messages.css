@@ -196,6 +196,13 @@
   min-width: 0;
 }
 
+/* A page that is not shown adds no height to the track, so a long Summary tab does not stretch the
+   other tabs: each tab is as tall as its own content, and the hidden pages stretch to that height. */
+.message-list__page[aria-hidden="true"] {
+  contain: size;
+  overflow: hidden;
+}
+
 .message-tabs__tab:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--r-accent);
