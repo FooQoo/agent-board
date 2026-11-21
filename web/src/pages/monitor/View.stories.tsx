@@ -178,6 +178,8 @@ export const ConnectedProject: StoryObj<typeof ConnectedProjectStory> = {
   render: () => <ConnectedProjectStory />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The screen opens on Doing; the pulled card is in Todo.
+    await userEvent.click(await canvas.findByRole('tab', { name: /Todo/ }));
     const card = await canvas.findByRole('button', { name: 'Todo work item 1' });
     await expect(card).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Refresh' })).toBeNull();

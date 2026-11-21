@@ -50,7 +50,7 @@ export function MonitorView(props: MonitorViewProps) {
   );
   const lanesId = useId();
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [lane, setLane] = useState<MonitorSection>('todo');
+  const [lane, setLane] = useState<MonitorSection>('doing'); // opens on Doing, whatever lanes come before it
   const [pending, setPending] = useState<LanePending>(null);
   useEffect(() => {
     // A failed fetch is tried again when the drawer is first rendered.
