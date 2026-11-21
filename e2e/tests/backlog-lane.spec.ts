@@ -1,6 +1,6 @@
 import { expect, test } from "../helpers/fixtures";
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard } from "../helpers/agboard";
-import { resetPreferences } from "../helpers/preferences";
+import { resetPreferences, setPreferences } from "../helpers/preferences";
 
 // #634: the Backlog lane and the send-to-Todo operation, from the PC board and from the phone screen.
 test.beforeEach(() => resetPreferences());
@@ -128,4 +128,22 @@ for (const width of [767, 390]) {
 		await expect.poll(() => [laneOf(a), laneOf(b), laneOf(c)]).toEqual(["todo", "todo", "backlog"]);
 		await expect(page.getByRole("tab", { name: "Backlog 1" })).toBeVisible();
 	});
+}
+
+// The four lane tabs of the phone show their names in full, in both languages, down to 360px.
+for (const width of [390, 360]) {
+	for (const locale of ["en", "ja"] as const) {
+		test(`the phone lane tabs are not truncated at ${width}px in ${locale}`, async ({ page }) => {
+			resetBoard(mainProject);
+			await setPreferences({ locale });
+			await page.setViewportSize({ width, height: 800 });
+			await page.goto("/");
+			const names = page.locator(".lane-tabs__name");
+			await expect(names).toHaveCount(4);
+			const cut = await names.evaluateAll((els) => els.map((el) => el.scrollWidth > el.clientWidth));
+			expect(cut).toEqual([false, false, false, false]);
+			const tabs = await page.locator(".lane-tabs__tab").evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+			expect(new Set(tabs).size).toBe(1);
+		});
+	}
 }

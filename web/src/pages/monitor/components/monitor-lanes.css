@@ -73,14 +73,20 @@
   white-space: nowrap;
 }
 .lane-tabs__count {
-  min-width: 22px;
-  padding: 1px 6px;
+  min-width: 18px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: var(--r-bg);
   color: var(--r-text2);
   font-size: 11px;
   line-height: 16px;
   text-align: center;
+}
+/* Four tabs share a phone's width: the name must show in full, so the icon steps aside. */
+@media (max-width: 480px) {
+  .lane-tabs__icon {
+    display: none;
+  }
 }
 .lane-tabs__tab[aria-selected="true"] .lane-tabs__count {
   background: var(--r-accent-soft);
