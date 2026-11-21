@@ -95,6 +95,22 @@ describe('useBacklogSend', () => {
     expect(postTask.mock.calls.every((call) => (call[1] as { ack: boolean }).ack)).toBe(true);
   });
 
+  it('drops a pending confirmation when the project changes', () => {
+    const other = 'b1b2c3d4e5f60718293a4b5c6d7e8f90' as ProjectId;
+    const { result, rerender } = renderHook(
+      ({ project }) => useBacklogSend(project, tasks, vi.fn()),
+      { initialProps: { project: PROJECT } },
+    );
+    act(() => {
+      result.current.request([1, 2]);
+    });
+    expect(result.current.confirming).not.toBeNull();
+    rerender({ project: other });
+    expect(result.current.confirming).toBeNull();
+    act(() => result.current.confirm());
+    expect(postTask).not.toHaveBeenCalled();
+  });
+
   it('sends the cards of an epic with the epic route', async () => {
     postTask.mockResolvedValue({ sent: [1, 2] });
     const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, vi.fn()));

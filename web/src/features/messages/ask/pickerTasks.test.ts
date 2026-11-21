@@ -20,6 +20,18 @@ describe('orderPickerTasks', () => {
   });
 });
 
+describe('orderPickerTasks with the Backlog', () => {
+  it('lists the Backlog after Todo and before Done', () => {
+    const ordered = orderPickerTasks([
+      task(1, 'done', '2026-03-01'),
+      task(2, 'backlog', '2026-03-01'),
+      task(3, 'todo', '2026-01-01'),
+      task(4, 'doing', '2026-01-01'),
+    ]);
+    expect(ordered.map((entry) => entry.id)).toEqual([4, 3, 2, 1]);
+  });
+});
+
 describe('matchesPickerQuery', () => {
   it('matches everything for an empty query', () => {
     expect(matchesPickerQuery(task(1, 'todo'), '  ')).toBe(true);
