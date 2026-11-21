@@ -132,6 +132,42 @@ test("a single Backlog card with an open question is dropped on Done only after 
 	await expect.poll(() => laneOf(b)).toBe("done");
 });
 
+/** Drags the Todo card named `name` onto the Backlog lane and drops it. */
+async function dragTodoCardToBacklog(page: Page, name: RegExp) {
+	const source = await page.getByRole("region", { name: "Todo" }).getByRole("button", { name }).boundingBox();
+	const target = await page.getByRole("region", { name: "Backlog" }).boundingBox();
+	if (!source || !target) throw new Error("The lanes are not laid out.");
+	await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(source.x + source.width / 2 + 20, source.y + source.height / 2 + 20, { steps: 5 });
+	await page.mouse.move(target.x + target.width / 2, target.y + 200, { steps: 15 });
+	await page.mouse.up();
+}
+
+test("a Todo card that has not been started is dropped back on the Backlog lane", async ({ page }) => {
+	resetBoard(mainProject);
+	const id = nextTaskId(mainProject);
+	agboardOk(mainProject, ["add", "Return me", "--assignee", "ai", "--actor", "human"]);
+	expect(laneOf(id)).toBe("todo");
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await page.goto("/");
+	await dragTodoCardToBacklog(page, /Return me/);
+	await expect.poll(() => laneOf(id)).toBe("backlog");
+	await expect(page.getByRole("region", { name: "Backlog" }).getByRole("button", { name: /Return me/ })).toBeVisible();
+});
+
+test("a Todo card that has been started is refused with the server's reason and stays in Todo", async ({ page }) => {
+	resetBoard(mainProject);
+	const id = nextTaskId(mainProject);
+	agboardOk(mainProject, ["add", "Already started", "--assignee", "ai", "--actor", "human"]);
+	agboardOk(mainProject, ["result", "add", String(id), "--summary=Work began.", "--actor", "ai"]);
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await page.goto("/");
+	await dragTodoCardToBacklog(page, /Already started/);
+	await expect(page.locator(".transient-notice")).toContainText("Only a Todo card that has not been started can go back to the Backlog.");
+	expect(laneOf(id)).toBe("todo");
+});
+
 test("the card details say Backlog and send the plan to Todo", async ({ page }) => {
 	const [a] = seedBacklog();
 	await page.setViewportSize({ width: 1280, height: 900 });

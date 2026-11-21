@@ -202,6 +202,7 @@ export function MonitorLanes({
                         setRevealed(null);
                         onMove(item, target);
                       }}
+                      canReturn={item.task.agentStatus === 'idle'}
                       inactive={name !== lane}
                       revealed={revealed?.id === item.task.id ? revealed.side : null}
                       armed={armed === item.task.id}
