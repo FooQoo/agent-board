@@ -56,8 +56,9 @@ impl FileStore {
             now,
         )?;
         let attachments = touched.then(|| staged.attachments.clone());
-        // `Err` here means nothing was committed, so the new files are taken back.
-        // After the commit they stay, because the saved task lists them.
+        // After the commit the new files stay, because the saved task lists them. On `Err`
+        // they are taken back, unless the stored task lists them: an unresolved save
+        // can still be committed by recovery.
         let saved = match self.save_draft_locked(
             &project_dir,
             project,
@@ -68,7 +69,8 @@ impl FileStore {
         ) {
             Ok(saved) => saved,
             Err(error) => {
-                staged.discard();
+                let stored = reader::read_task_strict(shared, project, id).ok();
+                staged.discard_unlisted(stored.as_ref().map(|t| t.attachments.as_slice()));
                 return Err(error);
             }
         };

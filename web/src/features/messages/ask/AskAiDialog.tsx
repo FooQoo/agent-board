@@ -8,6 +8,8 @@ import { attachmentNoticeText } from '../../../shared/ui/editor/AttachmentPanel'
 import type { EditorAttachment } from '../../../shared/ui/editor/attachmentTypes';
 import { useAttachmentState } from '../../../shared/ui/editor/useAttachmentState';
 import { AskAiToolbar } from './AskAiToolbar';
+import { AttachTasks } from './AttachTasks';
+import type { PickerTask } from './pickerTasks';
 import './ask-ai.css';
 import { REQUEST_LIMIT } from './sendRequest';
 
@@ -33,6 +35,7 @@ export function AskAiDialog({
   onSavingChange,
   initialText = '',
   closeGuard,
+  tasks = [],
 }: {
   /** A modal on the board, a bottom sheet on a phone. */
   kind?: 'dialog' | 'sheet';
@@ -48,6 +51,8 @@ export function AskAiDialog({
    * entered, and calls `after` only once the dialog has closed; it does nothing while a send runs.
    */
   closeGuard?: MutableRefObject<((after: () => void) => void) | null>;
+  /** The project's tasks, for "Attach task"; the button is left out when there are none. */
+  tasks?: readonly PickerTask[];
 }) {
   const { t } = useTranslation();
   const field = useRef<HTMLTextAreaElement>(null);
@@ -65,7 +70,18 @@ export function AskAiDialog({
   // keyboard over the dialog.
   useEffect(() => {
     if (isTouchScreen()) return;
-    const frame = requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
+    const frame = requestAnimationFrame(() => {
+      // Someone who already pressed a control of the form keeps the focus there; taking it back would
+      // close a picker that has just opened.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        active.closest('[role="dialog"]') !== active &&
+        active !== document.body
+      )
+        return;
+      field.current?.focus({ preventScroll: true });
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
   const validate = (): string | null => {
@@ -134,6 +150,17 @@ export function AskAiDialog({
             onFiles={addImages}
             onRemove={images.remove}
             onSend={() => void submit()}
+            attach={
+              tasks.length > 0 ? (
+                <AttachTasks
+                  kind={kind}
+                  tasks={tasks}
+                  text={text}
+                  disabled={saving}
+                  onChange={setText}
+                />
+              ) : undefined
+            }
           />
         }
       >

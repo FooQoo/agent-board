@@ -8,7 +8,7 @@ import type { EpicRef, Problem, ProjectId, TaskSummary } from '../../../shared/a
 import { useEpicDetail, useTaskDetail } from '../../../shared/data/react';
 import { DeleteButton } from '../delete/DeleteButton';
 import { DeleteConfirm } from '../delete/DeleteConfirm';
-import type { DetailTab } from './DetailTabs';
+import { useLinkedTab } from './useLinkedTab';
 import { TaskDetailView } from './TaskDetailView';
 import { DraftBanner } from './DraftBanner';
 import { useFinalizeDraft } from './useFinalizeDraft';
@@ -60,6 +60,8 @@ export interface DetailPanelProps {
   /** Sends this Backlog card to Todo; the app confirms a warning and shows the result. */
   onSend?: (id: number) => void;
   sendBusy?: boolean;
+  /** A link to the results as a whole (no version): the panel opens its results tab. */
+  focusResults?: boolean;
 }
 
 export function DetailPanel({
@@ -88,6 +90,7 @@ export function DetailPanel({
   focusHistory = false,
   onSend,
   sendBusy,
+  focusResults = false,
 }: DetailPanelProps) {
   const { t } = useTranslation();
   if (task === null || projectId === null) {
@@ -129,6 +132,7 @@ export function DetailPanel({
       focusHistory={focusHistory}
       onSend={onSend}
       sendBusy={sendBusy}
+      focusResults={focusResults}
     />
   );
 }
@@ -168,19 +172,10 @@ function DetailBody({
   focusHistory = false,
   onSend,
   sendBusy,
+  focusResults = false,
 }: DetailBodyProps) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<DetailTab>(
-    focusResultVersion !== null ? 'results' : focusHistory ? 'history' : 'description',
-  );
-  // A link to another result of the same task opens the results tab again.
-  useEffect(() => {
-    if (focusResultVersion !== null) setTab('results');
-  }, [focusResultVersion]);
-  // A link to the history of a task opens the history tab.
-  useEffect(() => {
-    if (focusHistory) setTab('history');
-  }, [focusHistory]);
+  const [tab, setTab] = useLinkedTab(focusResultVersion, focusResults, focusHistory);
   const [confirm, setConfirm] = useState<ConfirmState>(initialConfirm ? 'initial' : 'closed');
   const deleteButton = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);

@@ -24,6 +24,8 @@ export interface ListPaneProps {
   loadError: string;
   refreshError: string;
   className?: string;
+  /** Under the rows, inside the scrolling column: a page loader or the end of the list. */
+  footer?: ReactNode;
   children?: ReactNode;
 }
 
@@ -46,6 +48,7 @@ export function ListPane({
   loadError,
   refreshError,
   className,
+  footer,
   children,
 }: ListPaneProps) {
   const { t } = useTranslation();
@@ -97,6 +100,8 @@ export function ListPane({
           {children}
         </div>
       )}
+
+      {status === 'ready' && hasRows && footer}
     </main>
   );
 }

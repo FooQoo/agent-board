@@ -5,7 +5,7 @@ import { requestField } from '../helpers/ask-ai';
 import { askItem } from '../helpers/answer';
 
 // An iPhone-sized touch screen. Chromium stands in for Safari here: see the note in the test.
-test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: process.env.AB_SHOTS ? 2 : 1 });
 
 test.afterEach(() => resetPreferences());
 
@@ -88,6 +88,8 @@ test('the sheet keeps its toolbar above the keyboard and its field at 16px', asy
   expect(near.equals(far)).toBe(true);
   await sheet.screenshot({ path: testInfo.outputPath('ask-ai-sheet-keyboard.png') });
 
+  // Dismissing the keyboard blurs the field, which gives the phone bar and its strip back.
+  await field.blur();
   await page.evaluate(() => (window as unknown as { setKeyboard: (height: number) => void }).setKeyboard(0));
   // Back where it was, give or take the subpixel rounding of the visual viewport.
   await expect.poll(async () => Math.abs(((await sheet.boundingBox())?.y ?? 0) - closed.y)).toBeLessThanOrEqual(tolerance);
@@ -115,4 +117,32 @@ test('closing the sheet with text asks first, and an empty sheet closes at once'
   await sheet.getByRole('button', { name: 'Close', exact: true }).click();
   await question.getByRole('button', { name: 'Discard and close' }).click();
   await expect(sheet).toHaveCount(0);
+});
+
+test('a sent request opens the Messages list on Your requests, and a refused one stays on the sheet', async ({ page }) => {
+  await page.goto('/');
+  await askItem(page).click();
+  const sheet = page.getByRole('dialog', { name: 'Ask AI' });
+  await requestField(sheet).fill('Show me where this went');
+
+  // A refused send keeps the text and does not leave the screen.
+  await page.route('**/messages/requests', (route) =>
+    route.fulfill({ status: 400, json: { error: { reason: 'The request could not be accepted.' } } }),
+  );
+  await sheet.getByRole('button', { name: 'Send request' }).click();
+  await expect(sheet.getByRole('alert')).toHaveText('The request could not be accepted.');
+  await expect(requestField(sheet)).toHaveValue('Show me where this went');
+  await expect(page.getByRole('dialog', { name: 'Messages' })).toHaveCount(0);
+
+  // A saved send closes the sheet and shows the request on its tab.
+  await page.unroute('**/messages/requests');
+  await sheet.getByRole('button', { name: 'Send request' }).click();
+  await expect(sheet).toBeHidden();
+  const list = page.getByRole('dialog', { name: 'Messages' });
+  await expect(list.getByRole('tab', { name: /^Your requests/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(list.getByRole('button', { name: /^Request You → AI/ })).toContainText('Show me where this went');
+  if (process.env.AB_SHOTS) {
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${process.env.AB_SHOTS}/phone-after-send.png` });
+  }
 });

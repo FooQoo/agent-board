@@ -2,8 +2,14 @@ import { CircleHelpIcon, SendIcon } from 'lucide-react';
 import { type RefObject, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Message } from '@/shared/data/api/contracts';
+import {
+  type PullState,
+  REFRESHING_HEIGHT,
+  usePullToRefresh,
+} from '@/shared/lib/gesture/usePullToRefresh';
 import { useSwipePages } from '@/shared/lib/gesture/useSwipePages';
 import { Badge } from '@/shared/ui/badge';
+import { PullIndicator } from '@/shared/ui/pull/PullIndicator';
 import { formatShort } from '../model/format';
 import { countMessages, type MessageKindTab, type MessageTab, tabOf } from './model/messages';
 import { SummaryList } from './SummaryList';
@@ -99,6 +105,7 @@ function SwipeRows({
   tabsRef,
   summaries,
   variant,
+  onOpenResult,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
@@ -108,6 +115,7 @@ function SwipeRows({
   tabsRef: RefObject<HTMLElement | null>;
   summaries?: SummariesController;
   variant: 'dialog' | 'sheet';
+  onOpenResult?: (scrollTop: number) => void;
 }) {
   const viewportRef = useSwipePages(tabs, tab, onTabChange, {
     progressTarget: tabsRef,
@@ -138,7 +146,9 @@ function SwipeRows({
             inert={id !== tab}
           >
             {id === 'summary' ? (
-              summaries && <SummaryList controller={summaries} variant={variant} />
+              summaries && (
+                <SummaryList controller={summaries} variant={variant} onOpenResult={onOpenResult} />
+              )
             ) : (
               <Rows rows={rowsOf(messages, id)} onOpen={onOpen} />
             )}
@@ -158,10 +168,16 @@ export function MessageList({
   swipe = false,
   summaries,
   kind = 'dialog',
+  onRefresh,
+  refreshing,
+  previewPull,
+  onOpenResult,
 }: {
   messages: readonly Message[];
   tab: MessageTab;
   onTabChange: (tab: MessageTab) => void;
+  /** A summary result was opened in the page (the list closes). */
+  onOpenResult?: (scrollTop: number) => void;
   /** A question or a request was chosen. */
   onOpen: (message: Message) => void;
   /** Switches the tabs by a sideways swipe (the phone sheet and the PC modal). */
@@ -170,8 +186,25 @@ export function MessageList({
   summaries?: SummariesController;
   /** A modal on the PC (trash button beside each summary) or a phone sheet (swipe to trash). */
   kind?: 'dialog' | 'sheet';
+  /** Pulling the list down from its top refreshes; without this the list cannot be pulled. */
+  onRefresh?: () => void;
+  /** The refresh the person asked for is running. */
+  refreshing?: boolean;
+  /** A story's still picture: the list shows this pull state. */
+  previewPull?: Exclude<PullState, 'idle'>;
 }) {
   const { t } = useTranslation();
+  const listRef = useRef<HTMLDivElement>(null);
+  const pull = usePullToRefresh({
+    container: listRef,
+    scroller: (root) => root.closest<HTMLElement>('.surface__body'),
+    onRefresh,
+    refreshing,
+  });
+  const shown =
+    previewPull === undefined
+      ? pull
+      : { state: previewPull, offset: previewPull === 'refreshing' ? REFRESHING_HEIGHT : 40 };
   const tabsRef = useRef<HTMLDivElement>(null);
   const tabs: { id: MessageTab; label: string }[] = [
     { id: 'fromAi', label: t('messages.list.tabFromAi') },
@@ -185,7 +218,7 @@ export function MessageList({
     summary: summaries?.summaries.length ?? 0,
   };
   return (
-    <div className="message-list">
+    <div className="message-list" ref={listRef}>
       <div
         className="message-tabs"
         data-swipe={swipe || undefined}
@@ -208,6 +241,7 @@ export function MessageList({
           </button>
         ))}
       </div>
+      <PullIndicator state={shown.state} offset={shown.offset} />
       {swipe ? (
         <SwipeRows
           messages={messages}
@@ -218,9 +252,12 @@ export function MessageList({
           tabsRef={tabsRef}
           summaries={summaries}
           variant={kind}
+          onOpenResult={onOpenResult}
         />
       ) : tab === 'summary' ? (
-        summaries && <SummaryList controller={summaries} variant={kind} />
+        summaries && (
+          <SummaryList controller={summaries} variant={kind} onOpenResult={onOpenResult} />
+        )
       ) : (
         <Rows rows={rowsOf(messages, tab)} onOpen={onOpen} />
       )}

@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { modalDocsParameters } from '../../../../.storybook/support/modal-docs';
-import { MessageCenter } from './MessageCenter';
+import { MessageCenter, type MessageCenterProps } from './MessageCenter';
 import {
   answeredSample,
   resolveSampleAttachment,
@@ -30,6 +30,10 @@ interface HarnessProps {
   empty?: boolean;
   /** Gives the list its Summary tab; the value is what the list returns (a list or a failing read). */
   summaries?: { dismiss: SummariesApi['dismiss']; none?: boolean };
+  /** The phone list's pull to refresh. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  previewPull?: MessageCenterProps['previewPull'];
 }
 
 /** The band and the list it opens, over the sample messages. */
@@ -43,6 +47,9 @@ function Harness({
   withAnswered,
   empty,
   summaries,
+  onRefresh,
+  refreshing,
+  previewPull,
 }: HarnessProps) {
   const { i18n } = useTranslation();
   const panel = useMessagesPanel();
@@ -88,6 +95,9 @@ function Harness({
         api={api}
         onChanged={() => {}}
         onAsk={onAsk}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        previewPull={previewPull}
         resolveAttachment={resolveSampleAttachment}
       />
     </div>
@@ -599,6 +609,41 @@ export const PhoneQuestion: Story = {
   },
 };
 
+/** The question's detail is still loading: the spinner sits in the middle of the body, PC and phone. */
+const loadingDetail: HarnessProps['read'] = () => new Promise(() => {});
+
+function expectSpinnerCentred(root: HTMLElement) {
+  const spinner = root.querySelector('.message-detail__state [role="status"]');
+  const body = root.querySelector('.surface__body');
+  if (!spinner || !body) throw new Error('The loading detail has no spinner or body.');
+  const s = spinner.getBoundingClientRect();
+  const b = body.getBoundingClientRect();
+  expect(Math.abs(s.left + s.width / 2 - (b.left + b.width / 2))).toBeLessThanOrEqual(24);
+  // The body may be taller than its content; the spinner is in the middle third, not at the top.
+  expect(s.top + s.height / 2).toBeGreaterThan(b.top + b.height / 3);
+  expect(s.top + s.height / 2).toBeLessThan(b.top + (b.height * 2) / 3);
+}
+
+export const DetailLoading: Story = {
+  args: { initial: { tab: 'fromAi', openId: 'Q-12' }, read: loadingDetail },
+  play: async () => {
+    const dialog = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(dialog).findByRole('status', { name: 'メッセージを読み込んでいます…' });
+    expectSpinnerCentred(dialog);
+  },
+};
+
+export const PhoneDetailLoading: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi', openId: 'Q-12' }, read: loadingDetail },
+  parameters: phone,
+  globals: { locale: 'ja', mode: 'dark', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    await within(sheet).findByRole('status', { name: 'メッセージを読み込んでいます…' });
+    expectSpinnerCentred(sheet);
+  },
+};
+
 /** The phone: an open request, English and dark. */
 export const PhoneRequestEnDark: Story = {
   args: { variant: 'phone', initial: { tab: 'fromYou', openId: 'Q-14' } },
@@ -710,6 +755,27 @@ export const SummaryTabDesktop: Story = {
   },
 };
 
+/**
+ * Each result of a summary is a link row (card row, chevron, "成果 vN") to the task's Results tab:
+ * a real link the keyboard reaches, named by its task and version. A line without a version
+ * (task 549) opens the tab with no highlight and shows no version.
+ */
+export const SummaryResultLinks: Story = {
+  args: { initial: { tab: 'summary' }, summaries: { dismiss: fn(async () => undefined) } },
+  play: async () => {
+    const list = await page().findByRole('dialog', { name: 'メッセージ' });
+    const link = await within(list).findByRole('link', {
+      name: /^タスク #552 の成果 v2 を開く: /,
+    });
+    await expect(link).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=552&result=2`);
+    await expect(link).toHaveTextContent('成果 v2');
+    const old = within(list).getByRole('link', { name: /^タスク #549 の成果を開く: / });
+    await expect(old).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=549&tab=results`);
+    link.focus();
+    await expect(link).toHaveFocus();
+  },
+};
+
 /** No summaries yet: the tab counts 0 and says what will appear. */
 export const SummaryTabEmpty: Story = {
   args: {
@@ -743,6 +809,24 @@ export const SummaryDismissFails: Story = {
   },
 };
 
+/** The result link rows on a phone: the whole row is the tap target, with the version under the title. */
+export const SummaryResultLinksPhone: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'summary' },
+    summaries: { dismiss: fn(async () => undefined) },
+  },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const link = await within(sheet).findByRole('link', {
+      name: /^タスク #552 の成果 v2 を開く: /,
+    });
+    await expect(link).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=552&result=2`);
+  },
+};
+
 /** The Summary tab on a phone: a tap on an item shows the trash tile on its right; tapping the tile dismisses. */
 export const SummaryTabPhone: Story = {
   args: {
@@ -760,5 +844,163 @@ export const SummaryTabPhone: Story = {
     await userEvent.click(tile);
     await waitFor(() => expect(within(sheet).getAllByText(TIME_WINDOW)).toHaveLength(3));
     await expect(args.summaries?.dismiss).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** A finger on `target`, as a touch event. The list watches touch events for the pull. */
+function touch(
+  type: 'touchstart' | 'touchmove' | 'touchend',
+  target: Element,
+  x: number,
+  y: number,
+) {
+  const point = new Touch({ identifier: 1, target, clientX: x, clientY: y });
+  target.dispatchEvent(
+    new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: type === 'touchend' ? [] : [point],
+      changedTouches: [point],
+    }),
+  );
+}
+
+/** Pulling the phone list down from its top: the hint reads "ひっぱって更新", as on the lanes. */
+export const PhonePullToRefresh: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, previewPull: 'pulling' },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-390' },
+  play: async () => {
+    await expect(await page().findByText('ひっぱって更新')).toBeVisible();
+  },
+};
+
+/** Pulled far enough: the arrow turns over and a release will refresh. */
+export const PhonePullReady: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, previewPull: 'ready' },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-390' },
+  play: async () => {
+    await expect(await page().findByText('指をはなして更新')).toBeVisible();
+  },
+};
+
+/** Refreshing: a spinner above the rows. */
+export const PhoneRefreshing: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, previewPull: 'refreshing' },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-390' },
+  play: async () => {
+    await expect(await page().findByText('更新中…')).toBeInTheDocument();
+  },
+};
+
+/** A long pull from the top of the phone list refreshes on release; a short one does not. */
+export const PhonePullGesture: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, onRefresh: fn() },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-390' },
+  play: async ({ args }) => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const row = (await within(sheet).findAllByRole('button', { name: /Q-/ }))[0] as HTMLElement;
+    const y = row.getBoundingClientRect().top + 10;
+    touch('touchstart', row, 100, y);
+    touch('touchmove', row, 100, y + 30);
+    touch('touchmove', row, 100, y + 50);
+    touch('touchend', row, 100, y + 50);
+    await expect(args.onRefresh).not.toHaveBeenCalled();
+    touch('touchstart', row, 100, y);
+    touch('touchmove', row, 100, y + 40);
+    touch('touchmove', row, 100, y + 120);
+    await expect(await within(sheet).findByText('指をはなして更新')).toBeVisible();
+    touch('touchend', row, 100, y + 120);
+    await expect(args.onRefresh).toHaveBeenCalledOnce();
+  },
+};
+
+/** A sideways drag is left to the tab swipe and never pulls. */
+export const PhoneSidewaysIsNotAPull: Story = {
+  args: { variant: 'phone', initial: { tab: 'fromAi' }, onRefresh: fn() },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-390' },
+  play: async ({ args }) => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const row = (await within(sheet).findAllByRole('button', { name: /Q-/ }))[0] as HTMLElement;
+    const y = row.getBoundingClientRect().top + 10;
+    touch('touchstart', row, 200, y);
+    touch('touchmove', row, 120, y + 10);
+    touch('touchmove', row, 40, y + 60);
+    touch('touchend', row, 40, y + 60);
+    await expect(args.onRefresh).not.toHaveBeenCalled();
+    await expect(sheet.querySelector('.monitor-pull')).toBeNull();
+  },
+};
+
+/** A pointer press that moves from `from` to `to`, one frame apart, as a finger on a card does. */
+async function pointerSwipe(
+  target: Element,
+  from: number,
+  to: number,
+  y: number,
+  /** Runs while the finger is still down. */
+  during?: () => Promise<void>,
+) {
+  let time = 1000;
+  const fire = (type: string, x: number, buttons: number) => {
+    const event = new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      isPrimary: true,
+      pointerId: 7,
+      pointerType: 'touch',
+      button: 0,
+      buttons,
+      clientX: x,
+      clientY: y,
+    });
+    time += 16;
+    Object.defineProperty(event, 'timeStamp', { value: time });
+    target.dispatchEvent(event);
+  };
+  fire('pointerdown', from, 1);
+  fire('pointermove', from + (to - from) / 2, 1);
+  fire('pointermove', to, 1);
+  await during?.();
+  fire('pointerup', to, 0);
+}
+
+/**
+ * The Summary tab on a phone: a swipe to the right on an item does not start the card's swipe (the
+ * tiles stay shut and no item slides), and a swipe to the left still shows the trash tile.
+ */
+export const SummaryCardSwipeLeftOnly: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'summary' },
+    summaries: { dismiss: fn(async () => undefined) },
+  },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const first = (await within(sheet).findAllByText(TIME_WINDOW))[0] as HTMLElement;
+    const card = first.closest('.swipe-card');
+    if (!card) throw new Error('The summary is not a swipe card.');
+    const rect = card.getBoundingClientRect();
+    const y = rect.top + 20;
+    // While the finger is down on a rightward swipe the card does not take the press.
+    await pointerSwipe(card, rect.left + 40, rect.left + 200, y, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await expect(card).not.toHaveAttribute('data-dragging');
+    });
+    await expect(card.closest('li')).not.toHaveAttribute('data-revealed');
+    // A leftward swipe does take it.
+    await pointerSwipe(card, rect.right - 20, rect.left + 40, y, async () => {
+      await waitFor(() => expect(card).toHaveAttribute('data-dragging', 'true'));
+    });
+    await waitFor(() => expect(card.closest('li')).toHaveAttribute('data-revealed', 'true'));
+    await expect(
+      await within(sheet).findByRole('button', { name: 'このサマリーを削除' }),
+    ).toBeVisible();
   },
 };

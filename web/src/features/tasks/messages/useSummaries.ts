@@ -6,6 +6,8 @@ import type { PeriodicSummary, SummariesApi } from './model/messages';
 export interface SummariesController {
   /** The summaries not dismissed, newest first; empty until the first read arrives. */
   summaries: readonly PeriodicSummary[];
+  /** The project the summaries belong to; a result link names it. */
+  projectId: ProjectId;
   /** The first read has not arrived yet. */
   loading: boolean;
   /** The last dismissal failed: its summary is back in the list. Cleared by the next one. */
@@ -78,5 +80,11 @@ export function useSummaries(
     () => (read ?? []).filter((summary) => !hidden.has(summary.id)),
     [read, hidden],
   );
-  return { summaries, loading: api !== undefined && read === null, dismissFailed, dismiss };
+  return {
+    projectId,
+    summaries,
+    loading: api !== undefined && read === null,
+    dismissFailed,
+    dismiss,
+  };
 }

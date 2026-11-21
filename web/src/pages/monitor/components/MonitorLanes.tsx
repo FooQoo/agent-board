@@ -7,12 +7,16 @@ import { useTranslation } from 'react-i18next';
 import type { MonitorTask as MonitorTaskModel, MonitorViewProps } from '../contracts';
 import { useLaneCarousel } from '../hooks/useLaneCarousel';
 import { useLaneOverscroll } from '../hooks/useLaneOverscroll';
-import { type PullState, REFRESHING_HEIGHT, usePullToRefresh } from '../hooks/usePullToRefresh';
+import {
+  type PullState,
+  REFRESHING_HEIGHT,
+  usePullToRefresh,
+} from '@/shared/lib/gesture/usePullToRefresh';
 import { LANES, type RevealSide } from '../model/lanes';
 import type { MonitorSection } from './MonitorSectionHeader';
 import { BulkArchiveTile } from './BulkArchiveTile';
 import { MonitorTask } from './MonitorTask';
-import { PullIndicator } from './PullIndicator';
+import { PullIndicator } from '@/shared/ui/pull/PullIndicator';
 import { SwipeableCard } from './SwipeableCard';
 import './monitor-lanes.css';
 
@@ -114,7 +118,13 @@ export function MonitorLanes({
   const doneRef = useRef<HTMLElement | null>(null);
   const bulk = useLaneOverscroll(doneRef, lane === last && canBulk, () => onBulkArchive?.());
   const bulkOffset = previewBulkDrag === undefined ? bulk.offset : -previewBulkDrag;
-  const pull = usePullToRefresh({ container: viewportRef, lane, onRefresh, refreshing });
+  const pull = usePullToRefresh({
+    container: viewportRef,
+    scroller: (root) =>
+      root.querySelector<HTMLElement>(`[data-lane="${lane}"] .monitor-lane__scroll`),
+    onRefresh,
+    refreshing,
+  });
   const shown =
     previewPull === undefined
       ? pull

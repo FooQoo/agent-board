@@ -9,7 +9,7 @@ import type {
   ColumnName,
 } from '../shared/api/contracts';
 import type { BoardView } from './data/assemble';
-import type { useArchive } from '../pages/archive/model/useArchive';
+import type { ArchivePages } from '../features/tasks/model/useArchivePages';
 import type { SessionAction, SessionState } from './model/projectSession';
 import type { OperationControls } from '../shared/lib/operations/operations';
 import type { ViewMode } from '../shared/ui/app-header/Header';
@@ -40,7 +40,7 @@ export interface AppControllerModel {
   operations: OperationControls;
   projects: UseProjectsResult;
   board: UseBoardResult;
-  archive: ReturnType<typeof useArchive>;
+  archive: ArchivePages;
   /** The list of messages and where it is open. */
   messages: MessagesController;
   tasks: TaskSummary[];

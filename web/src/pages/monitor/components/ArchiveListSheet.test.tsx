@@ -30,9 +30,9 @@ const task = (id: number, taskStatus: ArchivedTask['taskStatus']): ArchivedTask 
 const response = (tasks: ArchivedTask[]): ArchiveResponse => ({
   project: { id: 'p1' as never, name: 'p', createdAt: '2026-10-01T08:00:00.000Z' },
   version: 'v',
-  cursor: 'c',
   tasks,
   epics: [],
+  total: tasks.length,
 });
 
 const sheet = (props: Partial<Parameters<typeof ArchiveListSheet>[0]> = {}) =>
@@ -89,6 +89,30 @@ describe('ArchiveListSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore #3' }));
     expect((await screen.findByRole('alert')).textContent).toContain('Could not restore');
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+});
+
+describe('ArchiveListSheet paging', () => {
+  it('asks for the next page when the last row is in the rendered range', () => {
+    const loadMore = vi.fn();
+    sheet({ hasMore: true, loadMore });
+    expect(loadMore).toHaveBeenCalled();
+  });
+
+  it('shows the end of the list after the last page, and no request', () => {
+    const loadMore = vi.fn();
+    sheet({ hasMore: false, loadMore });
+    expect(screen.getByTestId('archive-end')).toBeTruthy();
+    expect(loadMore).not.toHaveBeenCalled();
+  });
+
+  it('shows a retry after a failed page, and asks again only when pressed', () => {
+    const loadMore = vi.fn();
+    const retryMore = vi.fn();
+    sheet({ hasMore: true, loadMoreFailed: true, loadMore, retryMore });
+    expect(loadMore).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(retryMore).toHaveBeenCalledOnce();
   });
 });
 

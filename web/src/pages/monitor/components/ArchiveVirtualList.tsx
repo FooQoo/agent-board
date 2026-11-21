@@ -1,14 +1,17 @@
-import { observeElementRect, useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ArchivedTask } from '../../../features/tasks/api/read';
 import type { ProjectId } from '../../../shared/api/contracts';
+import {
+  observeRectWithFallback,
+  useLoadMoreAtEnd,
+} from '../../../features/tasks/model/useLoadMoreAtEnd';
+import type { ArchivePages } from '../../../features/tasks/model/useArchivePages';
 import { ArchiveSwipeRow } from './ArchiveSwipeRow';
 
 /** A row's height before it is measured: a lane card plus the line under it, and the 10px gap. */
 const ESTIMATED_ROW = 150;
 const OVERSCAN = 4;
-/** What a scroller that reports no height (jsdom, a hidden box) is taken to be, so rows still draw. */
-const FALLBACK_HEIGHT = 800;
 
 export interface ArchiveVirtualListProps {
   tasks: readonly ArchivedTask[];
@@ -21,6 +24,8 @@ export interface ArchiveVirtualListProps {
   busy: number | null;
   onRevealChange: (id: number, revealed: boolean) => void;
   onRestore: (id: number) => void;
+  /** The next page: asked for when the last row is in the rendered range. */
+  pages: Pick<ArchivePages, 'hasMore' | 'loadingMore' | 'loadMoreFailed' | 'loadMore'>;
 }
 
 /**
@@ -38,6 +43,7 @@ export function ArchiveVirtualList({
   busy,
   onRevealChange,
   onRestore,
+  pages,
 }: ArchiveVirtualListProps) {
   const box = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -61,11 +67,10 @@ export function ArchiveVirtualList({
     overscan: OVERSCAN,
     getItemKey: (index) => tasks[index]?.id ?? index,
     scrollMargin,
-    observeElementRect: (instance, cb) =>
-      observeElementRect(instance, (rect) =>
-        cb(rect.height > 0 ? rect : { ...rect, height: FALLBACK_HEIGHT }),
-      ),
+    observeElementRect: observeRectWithFallback,
   });
+  const items = virtualizer.getVirtualItems();
+  useLoadMoreAtEnd(items.at(-1)?.index, tasks.length, pages);
 
   return (
     <div
@@ -75,7 +80,7 @@ export function ArchiveVirtualList({
       aria-label={label}
       style={{ height: virtualizer.getTotalSize() }}
     >
-      {virtualizer.getVirtualItems().map((item) => {
+      {items.map((item) => {
         const task = tasks[item.index] as ArchivedTask;
         return (
           <ArchiveSwipeRow

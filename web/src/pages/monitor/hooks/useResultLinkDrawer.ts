@@ -24,7 +24,11 @@ export function useResultLinkDrawer(
   const messages = question?.messages;
   const openQuestion = question?.open;
   useEffect(() => {
-    if (resultLink === null) return;
+    if (resultLink === null) {
+      // The link ended (the drawer was closed): the same link may open the task again.
+      opened.current = null;
+      return;
+    }
     const key = `${linked?.projectId ?? ''}:${linkKey(resultLink)}`;
     if (opened.current === key) return;
     if (resultLink.tab === 'question') {

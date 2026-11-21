@@ -17,15 +17,28 @@ use crate::error::AgboardError;
 pub(in crate::file_store::ops) struct StagedImages {
     /// The task's images once the change set is committed.
     pub attachments: Vec<Attachment>,
-    written: Vec<PathBuf>,
+    written: Vec<(String, PathBuf)>,
     removed: Vec<PathBuf>,
 }
 
 impl StagedImages {
     /// Take back the new files when the commit did not happen.
     pub fn discard(self) {
-        for path in &self.written {
+        for (_, path) in &self.written {
             let _ = fs::remove_file(path);
+        }
+    }
+
+    /// Take back the new files after a save that returned an error, except those the
+    /// stored task lists: such a save can be committed although it reported a failure
+    /// (the outcome is settled by recovery), and a listed image must stay. When the
+    /// stored task cannot be read, nothing is deleted: a stray file is harmless.
+    pub fn discard_unlisted(self, stored: Option<&[Attachment]>) {
+        let Some(stored) = stored else { return };
+        for (id, path) in &self.written {
+            if !stored.iter().any(|a| a.id == *id) {
+                let _ = fs::remove_file(path);
+            }
         }
     }
 
@@ -103,8 +116,8 @@ pub(in crate::file_store::ops) fn stage_images(
         };
         match outcome {
             Ok((metadata, path)) => {
+                staged.written.push((metadata.id.clone(), path));
                 staged.attachments.push(metadata);
-                staged.written.push(path);
             }
             Err(error) => {
                 staged.removed.clear();
@@ -114,4 +127,44 @@ pub(in crate::file_store::ops) fn stage_images(
         }
     }
     Ok(staged)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::StagedImages;
+    use crate::domain::Attachment;
+
+    fn staged_with(id: &str, path: &std::path::Path) -> StagedImages {
+        StagedImages {
+            attachments: Vec::new(),
+            written: vec![(id.to_owned(), path.to_owned())],
+            removed: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_failed_save_keeps_the_new_files_the_stored_task_lists() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("new.png");
+        fs::write(&path, b"x").unwrap();
+
+        // Unresolved outcome: the stored task could not be read, or already lists the image.
+        staged_with("a", &path).discard_unlisted(None);
+        assert!(path.exists());
+        let listed = Attachment {
+            id: "a".into(),
+            name: "new.png".into(),
+            media_type: "image/png".into(),
+            size: 1,
+            created_at: Default::default(),
+        };
+        staged_with("a", &path).discard_unlisted(Some(std::slice::from_ref(&listed)));
+        assert!(path.exists());
+
+        // Confirmed rollback: the stored task does not list it.
+        staged_with("a", &path).discard_unlisted(Some(&[]));
+        assert!(!path.exists());
+    }
 }

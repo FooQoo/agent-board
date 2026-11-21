@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
-/** What pulling down at the top of a lane shows above its cards. */
+/** What pulling down at the top of a scrolling list shows above its cards. */
 export type PullState = 'idle' | 'pulling' | 'ready' | 'refreshing';
 
 /** How far the cards follow the finger, in px, before a release refreshes. */
@@ -13,29 +13,25 @@ export const REFRESHING_HEIGHT = 48;
 const SETTLE_MS = 600;
 
 interface Options {
-  /** The element that holds the lanes; touches inside it are watched. */
+  /** The element that holds the list; touches inside it are watched. */
   container: RefObject<HTMLElement | null>;
-  /** The lane on screen: only its list can be pulled. */
-  lane: string;
+  /** Finds the scrolling list that can be pulled (the lane on screen, the sheet's body). */
+  scroller: (container: HTMLElement) => HTMLElement | null;
   onRefresh?: () => void;
   /** A refresh the person asked for is running. */
   refreshing?: boolean;
 }
 
-/** The scrolling list of the lane on screen. */
-const scrollerOf = (container: HTMLElement, lane: string) =>
-  container.querySelector<HTMLElement>(`[data-lane="${lane}"] .monitor-lane__scroll`);
-
 /**
- * Pull to refresh for the lane on screen: a downward drag that starts while the list is at its top
+ * Pull to refresh for the list on screen: a downward drag that starts while the list is at its top
  * moves the cards with the finger (damped), and a release past the threshold refreshes. A sideways
  * swipe, a drag up, or a list that is already scrolled is left to the scroll and the carousel.
  */
-export function usePullToRefresh({ container, lane, onRefresh, refreshing = false }: Options) {
+export function usePullToRefresh({ container, scroller, onRefresh, refreshing = false }: Options) {
   const [offset, setOffset] = useState(0);
   const [held, setHeld] = useState(false);
-  const latest = useRef({ onRefresh, refreshing, lane });
-  latest.current = { onRefresh, refreshing, lane };
+  const latest = useRef({ onRefresh, refreshing, scroller });
+  latest.current = { onRefresh, refreshing, scroller };
   const enabled = onRefresh !== undefined;
 
   // The spinner outlasts a quick refresh by a moment.
@@ -63,9 +59,9 @@ export function usePullToRefresh({ container, lane, onRefresh, refreshing = fals
       setOffset(0);
     };
     const onStart = (event: TouchEvent) => {
-      const scroller = scrollerOf(root, latest.current.lane);
+      const list = latest.current.scroller(root);
       const touch = event.touches[0];
-      const atTop = scroller?.contains(event.target as Node) && scroller.scrollTop <= 0;
+      const atTop = list?.contains(event.target as Node) && list.scrollTop <= 0;
       start =
         event.touches.length === 1 && touch && atTop && !latest.current.refreshing
           ? { x: touch.clientX, y: touch.clientY }
