@@ -47,6 +47,8 @@ export interface AppControllerModel {
   tasks: TaskSummary[];
   /** Shows a card in another lane at once, before a write has been answered; `unmoveCard` takes it back. */
   moveCard: (id: number, to: TaskSummary['taskStatus']) => void;
+  /** The write was accepted: the first newer read of the board wins over the moved card. */
+  settleCard: (id: number) => void;
   unmoveCard: (id: number) => void;
   selected: TaskSummary | null;
   archivedSelected: ArchivedTask | null;

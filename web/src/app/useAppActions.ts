@@ -34,27 +34,26 @@ export function useAppActions(model: AppControllerModel) {
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
   const dismissMoveNotice = useCallback(() => setMoveNotice(null), []);
   const sendProjectId = isProjectId(activeId) ? activeId : null;
-  const backlogSend = useBacklogSend(sendProjectId, tasks, () => {
+  const reloadBoard = () => {
     if (sendProjectId) refreshProject(sendProjectId);
-  });
+  };
+  const backlogSend = useBacklogSend(sendProjectId, tasks, reloadBoard);
 
   // One Backlog card moved by a plain drag or the details' button, apart from the batch send above.
   const backlogMove = useBacklogMove(sendProjectId, tasks, {
     apply: model.moveCard,
+    settle: model.settleCard,
     revert: model.unmoveCard,
-    onDone: () => {
-      if (sendProjectId) refreshProject(sendProjectId);
-    },
+    onDone: reloadBoard,
     refusal: (cause) => moveFailureNotice(cause, t),
   });
 
   const moveLane = useLaneMove({
     write: (id, to, from) => moveTask(sendProjectId as ProjectId, id, to, from),
     apply: model.moveCard,
+    settle: model.settleCard,
     revert: model.unmoveCard,
-    onDone: () => {
-      if (sendProjectId) refreshProject(sendProjectId);
-    },
+    onDone: reloadBoard,
     notify: setMoveNotice,
     refusal: (cause) => moveFailureNotice(cause, t),
   });

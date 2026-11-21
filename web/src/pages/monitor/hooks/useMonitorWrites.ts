@@ -18,6 +18,7 @@ export function useMonitorWrites(input: LaneWritesInput & { tasks: readonly Task
   const backlogSend = useBacklogSend(project, [...tasks], () => onWritten?.());
   const backlogMove = useBacklogMove(project, [...tasks], {
     apply: overlay.move,
+    settle: overlay.settle,
     revert: overlay.unmove,
     onDone: () => onWritten?.(),
     refusal: (cause) => moveFailureNotice(cause, t),

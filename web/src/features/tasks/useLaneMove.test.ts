@@ -11,6 +11,7 @@ function setup(write: (id: number, to: string, from: string) => Promise<unknown>
         return write(id, to, from);
       },
       apply: (id, to) => calls.push(`apply ${id} ${to}`),
+      settle: (id) => calls.push(`settle ${id}`),
       revert: (id) => calls.push(`revert ${id}`),
       onDone: () => calls.push('done'),
       notify: (message) => calls.push(`notify ${message}`),
@@ -33,7 +34,7 @@ describe('useLaneMove', () => {
       answer();
       await done;
     });
-    expect(calls).toEqual(['apply 7 doing', 'write 7 todo>doing', 'done']);
+    expect(calls).toEqual(['apply 7 doing', 'write 7 todo>doing', 'settle 7', 'done']);
   });
 
   it('puts the card back and says why when the server refuses', async () => {

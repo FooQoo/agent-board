@@ -8,8 +8,8 @@ import type { useLaneOverlay } from './useLaneOverlay';
 
 /**
  * What the lanes of the phone write: a move at once, an archive of one card, and the archive of the
- * whole Done lane. Each keeps the saved change on top of the lanes until a read shows it, and a
- * refused move says so in a notice.
+ * whole Done lane. A move stays on top of the lanes while its save is in flight and until a newer read
+ * shows the project, and an archive until a read shows the card gone. A refused move says so in a notice.
  */
 export function useLaneWrites({
   writes,
@@ -36,6 +36,7 @@ export function useLaneWrites({
       if (writes) await writes.move(projectId as ProjectId, id, target, from);
     },
     apply: overlay.move,
+    settle: overlay.settle,
     revert: overlay.unmove,
     onDone: () => onWritten?.(),
     notify: setNotice,
