@@ -13,6 +13,26 @@ export function keyboardInset(
   return Math.max(0, Math.round(layoutHeight - visual.height - visual.offsetTop));
 }
 
+/** The smallest shrink of the visual viewport that counts as a keyboard when the page is panned. */
+const MIN_PANNED_KEYBOARD_PX = 120;
+
+/**
+ * Whether the keyboard is open, given the layout height and the visual viewport. Normally that is a
+ * visual viewport whose bottom stands above the layout viewport's bottom (`keyboardInset` > 0). When
+ * iOS Safari pans the page up to a field low in a sheet, such as the answer note, the visual viewport
+ * ends at the layout bottom again and the inset reads 0 although the keyboard is still up; its height
+ * is then still short of the layout height by the keyboard's. A pinch zoom also shrinks the visual
+ * viewport, so a zoomed page (scale above 1) does not count.
+ */
+export function keyboardOpen(
+  layoutHeight: number,
+  visual: { height: number; offsetTop: number; scale?: number },
+): boolean {
+  if (keyboardInset(layoutHeight, visual) > 0) return true;
+  const zoomed = (visual.scale ?? 1) > 1.01;
+  return !zoomed && layoutHeight - visual.height >= MIN_PANNED_KEYBOARD_PX;
+}
+
 /**
  * Keeps `--keyboard-inset`, `--visual-vh` and `--visual-top` on the root up to date from the visual
  * viewport, for as long as it runs (the app starts it once), and marks the root with `data-visual-keyboard`
@@ -33,7 +53,7 @@ export function watchKeyboardInset(target: Window = window): () => void {
     const was = root.hasAttribute('data-visual-keyboard');
     const now = root.toggleAttribute(
       'data-visual-keyboard',
-      keyboardInset(root.clientHeight, viewport) > 0 && editingText(target.document.activeElement),
+      keyboardOpen(root.clientHeight, viewport) && editingText(target.document.activeElement),
     );
     if (now && !was) revealFocusedField(target);
   };
