@@ -76,6 +76,8 @@ To delete a summary from the list, press the trash button at the right end of th
 
 The notification for a periodic summary opens the messages on this tab.
 
+Each tab is as tall as its own content, so a long Summary tab does not stretch the other tabs. Sending an answer or going back to the list brings you to the top of the list, on the PC and on a phone.
+
 ## Answer on your phone
 
 On remote access, a Pending task shows the same **Answer the question** button, and there is no band: **Messages** in the bottom bar opens the list as a sheet that slides up from the bottom, with the same tabs. The number on its icon counts the open questions only, and it is hidden at 0. **Ask** in the middle of the bar opens the request form.

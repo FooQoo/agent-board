@@ -22,6 +22,7 @@ import {
 } from './model/messages';
 import type { MessagesPanelTarget } from './useMessagesPanel';
 import { useMessageDetail } from './useMessageDetail';
+import { useScrollToTop } from './useScrollToTop';
 import { useSummaries } from './useSummaries';
 import './messages.css';
 
@@ -86,6 +87,8 @@ export function MessagesSurface({
   useEffect(() => {
     if (openId !== null && listed === null && !busy) setOpenId(null);
   }, [openId, listed, busy]);
+
+  const bodyRef = useScrollToTop<HTMLDivElement>(openId);
 
   const summaries = useSummaries(api.summaries, projectId);
 
@@ -170,12 +173,8 @@ export function MessagesSurface({
   const resolveImage = opened
     ? (src: string) => resolveMessageImage(projectId, opened.id, src)
     : undefined;
-  const failureText =
-    failure === null
-      ? null
-      : failure === 'withdraw'
-        ? t('messages.detail.withdrawFailed')
-        : t(`messages.detail.${failure}`);
+  const failureName = failure === 'withdraw' ? 'withdrawFailed' : failure;
+  const failureText = failureName === null ? null : t(`messages.detail.${failureName}`);
 
   // On the PC a message opened from the list offers the way back at the top of its body; a phone
   // sheet puts it in the footer instead (below), so the body starts with the message itself.
@@ -316,6 +315,7 @@ export function MessagesSurface({
       title={t('messages.title')}
       closeLabel={t('messages.list.close')}
       onClose={onClose}
+      bodyRef={bodyRef}
       className={
         answering ? 'message-surface message-surface--answering decision-dialog' : 'message-surface'
       }
