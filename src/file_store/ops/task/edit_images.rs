@@ -4,11 +4,11 @@ use chrono::{DateTime, Utc};
 
 use crate::domain::{AttachmentInput, Changed, ProjectId, validate_title};
 use crate::error::AgboardError;
-use crate::file_store::model::{AttachmentOwner, TaskView};
+use crate::file_store::model::TaskView;
 use crate::file_store::reader;
 use crate::file_store::{DraftSave, FileStore};
 
-use super::super::attachment::locked::{add_image_locked, delete_image_locked};
+use super::super::attachment::staged::stage_images;
 use super::super::lock_project;
 use super::draft::refuse_legacy_release_in_todo;
 use super::normalize_description;
@@ -21,8 +21,10 @@ pub struct ImageChanges {
 
 impl FileStore {
     /// `edit_draft_task_to` plus image changes, all under one project lock. Every
-    /// refusal (archived, not a draft, a legacy release in Todo) is decided before
-    /// the first image changes, so a refused save leaves the images as they were.
+    /// refusal and every check on the image change set is decided before the
+    /// first write. New image files are written first, the image list and the
+    /// text are committed in one task save, and removed files are deleted only
+    /// after that save succeeds, so a failed save leaves the prior state intact.
     pub fn edit_draft_task_with_images(
         &self,
         project: &ProjectId,
@@ -44,31 +46,33 @@ impl FileStore {
             return Err(AgboardError::TaskNotDraft { id });
         }
         refuse_legacy_release_in_todo(&task, finalize.legacy_ai)?;
-        let owner = AttachmentOwner::Task(id);
         let touched = !images.removed.is_empty() || !images.added.is_empty();
-        for attachment_id in &images.removed {
-            delete_image_locked(
-                shared,
-                &project_dir,
-                project,
-                &owner,
-                attachment_id,
-                now,
-                false,
-            )?;
-        }
-        for input in images.added {
-            add_image_locked(shared, &project_dir, project, &owner, input, now, false)?;
-        }
-        let mut saved = self.edit_draft_locked(
+        let staged = stage_images(
+            shared,
+            &project_dir,
+            &task,
+            &images.removed,
+            images.added,
+            now,
+        )?;
+        let attachments = touched.then(|| staged.attachments.clone());
+        let saved = self.edit_draft_locked(
             &project_dir,
             project,
             id,
             (title, description),
-            finalize,
+            (finalize, attachments),
             now,
-        )?;
-        saved.changed |= touched;
-        Ok(saved)
+        );
+        match saved {
+            Ok(saved) => {
+                staged.finish();
+                Ok(saved)
+            }
+            Err(error) => {
+                staged.discard();
+                Err(error)
+            }
+        }
     }
 }

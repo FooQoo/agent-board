@@ -4,7 +4,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Actor, Changed, Draft, ProjectId, validate_title};
+use crate::domain::{Actor, Attachment, Changed, Draft, ProjectId, validate_title};
 use crate::error::AgboardError;
 use crate::file_store::history_language::HistoryLanguage;
 use crate::file_store::model::TaskView;
@@ -142,20 +142,20 @@ impl FileStore {
             project,
             id,
             (title, description),
-            finalize,
+            (finalize, None),
             now,
         )
     }
 
     /// `edit_draft_task_to` for a caller that holds the project lock, with the
-    /// title and description already validated.
+    /// title and description already validated; `images` replaces the image list.
     pub(super) fn edit_draft_locked(
         &self,
         project_dir: &Path,
         project: &ProjectId,
         id: i64,
         (title, description): (Option<String>, Option<String>),
-        finalize: DraftSave,
+        (finalize, images): (DraftSave, Option<Vec<Attachment>>),
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
         let shared = self.shared_dir();
@@ -171,15 +171,18 @@ impl FileStore {
         let target = resolve_finalize(finalize.target, owner);
         let (text_changed, markdown) =
             write_text(shared, project, project_dir, &mut task, title, description)?;
-        if !text_changed && target == current {
+        if !text_changed && target == current && images.is_none() {
             return Ok(Changed {
                 value: view(shared, project, id)?,
                 changed: false,
             });
         }
         let at = stamp(now);
-        if text_changed {
+        if text_changed || images.is_some() {
             task.updated_at = at;
+        }
+        if let Some(attachments) = images {
+            task.attachments = attachments;
         }
         if target != current {
             task.draft = target;
