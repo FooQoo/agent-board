@@ -212,6 +212,14 @@ export function BoardWorkspace({
                   ? model.resultLink.version
                   : null
               }
+              focusResults={
+                !archiveVisible &&
+                selected !== null &&
+                model.resultLink?.projectId === activeId &&
+                model.resultLink.taskId === selected.id &&
+                model.resultLink.tab === 'results' &&
+                model.resultLink.version === null
+              }
               focusHistory={
                 !archiveVisible &&
                 selected !== null &&

@@ -710,6 +710,27 @@ export const SummaryTabDesktop: Story = {
   },
 };
 
+/**
+ * Each result of a summary is a link row (card row, chevron, "成果 vN") to the task's Results tab:
+ * a real link the keyboard reaches, named by its task and version. A line without a version
+ * (task 549) opens the tab with no highlight and shows no version.
+ */
+export const SummaryResultLinks: Story = {
+  args: { initial: { tab: 'summary' }, summaries: { dismiss: fn(async () => undefined) } },
+  play: async () => {
+    const list = await page().findByRole('dialog', { name: 'メッセージ' });
+    const link = await within(list).findByRole('link', {
+      name: /^タスク #552 の成果 v2 を開く: /,
+    });
+    await expect(link).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=552&result=2`);
+    await expect(link).toHaveTextContent('成果 v2');
+    const old = within(list).getByRole('link', { name: /^タスク #549 の成果を開く: / });
+    await expect(old).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=549&tab=results`);
+    link.focus();
+    await expect(link).toHaveFocus();
+  },
+};
+
 /** No summaries yet: the tab counts 0 and says what will appear. */
 export const SummaryTabEmpty: Story = {
   args: {
@@ -740,6 +761,24 @@ export const SummaryDismissFails: Story = {
     await userEvent.click(trash[0] as HTMLElement);
     await expect(await within(list).findByRole('alert')).toHaveTextContent('削除できませんでした');
     await waitFor(() => expect(within(list).getAllByText(TIME_WINDOW)).toHaveLength(4));
+  },
+};
+
+/** The result link rows on a phone: the whole row is the tap target, with the version under the title. */
+export const SummaryResultLinksPhone: Story = {
+  args: {
+    variant: 'phone',
+    initial: { tab: 'summary' },
+    summaries: { dismiss: fn(async () => undefined) },
+  },
+  parameters: phone,
+  globals: { locale: 'ja', width: 'phone-375' },
+  play: async () => {
+    const sheet = await page().findByRole('dialog', { name: 'メッセージ' });
+    const link = await within(sheet).findByRole('link', {
+      name: /^タスク #552 の成果 v2 を開く: /,
+    });
+    await expect(link).toHaveAttribute('href', `?project=${SAMPLE_PROJECT}&task=552&result=2`);
   },
 };
 

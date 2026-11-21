@@ -22,6 +22,7 @@ fn summary(titles: &[&str]) -> Summary {
             .iter()
             .map(|t| SummaryResult {
                 task_id: 3,
+                version: Some(1),
                 title: (*t).into(),
                 at: at(10, 30),
             })
