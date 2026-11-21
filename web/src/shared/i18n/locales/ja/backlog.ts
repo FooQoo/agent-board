@@ -22,7 +22,8 @@ export const backlogJa = {
     sending: '送信中…',
     sentOne: '1 枚を未着手へ送りました。',
     sentMany: '{{count}} 枚を未着手へ送りました。',
-    counts: 'バックログ {{backlogBefore}} → {{backlogAfter}} ・ 未着手 {{todoBefore}} → {{todoAfter}}',
+    counts:
+      'バックログ {{backlogBefore}} → {{backlogAfter}} ・ 未着手 {{todoBefore}} → {{todoAfter}}',
     partial: '{{total}} 枚のうち {{sent}} 枚を送りました。{{failed}} 枚は送れませんでした。',
     failed: '未着手へ送れませんでした。何も変更していません。',
     move: {
