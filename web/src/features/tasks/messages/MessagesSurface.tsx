@@ -82,7 +82,10 @@ export function MessagesSurface({
   // position of whichever was shown before. Each switch starts at the top.
   const bodyRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    if (bodyRef.current) {
+      bodyRef.current.dataset.opened = openId ?? '';
+      bodyRef.current.scrollTop = 0;
+    }
   }, [openId]);
 
   const summaries = useSummaries(api.summaries, projectId);
