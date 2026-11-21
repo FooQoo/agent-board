@@ -80,6 +80,6 @@ Descriptions and drafts:
     Create it with `add --actor ai --backlog` only when a request asks for the
     plan only; a request to carry out the work gets ordinary Todo tasks. When it is
     unclear which one a request asks for, ask with `message ask` before you plan.
-    You can `edit` a Backlog task and add `history`; `mv`, `state`, `send`, and
-    `start` fail (task_in_backlog or human_only). Only a person sends it to Todo.
+    You can `edit` a Backlog task and add `history`; `mv`, `state`, and `send`
+    fail (task_in_backlog or human_only). Only a person sends it to Todo.
     `add`, `show`, `ls`, `snapshot`, and `wait` still work.";
