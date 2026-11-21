@@ -54,13 +54,13 @@ Size limits, `edit --desc-file`, and completion-condition rules: `agboard skills
 
 The epics whose IDs are exactly `BUG` and `ENHANCEMENT` are ongoing classification buckets with fixed bodies, exempt from epic planning and closure. Before you write to either one, run `agboard skills fixed-epic-bodies`.
 
-A person can send you a request from the board ("Ask AI"). Accept a request before you plan it (`message accept <Q-id> --actor ai`), and plan only requests you have accepted; do not ask the person what they meant before you have put a plan on the board. Reading and accepting requests and taking in answers: `agboard skills requests`.
+A person can send you a request from the board ("Ask AI"). Accept a request before you plan it (`message accept <Q-id> --actor ai`), and plan only requests you have accepted; decide whether it asks for the plan only (Backlog) or for the work to be carried out (Todo), and when that is unclear ask with `message ask` before you create anything. Reading and accepting requests and taking in answers: `agboard skills requests`.
 
 When a request needs more than one task, run `agboard skills planning` before you register anything. A request that spans several areas, or contains work that can be verified separately, needs more than one task: read the topic before you create the first card. "Register it on the board" says how far to go, not how many cards; judge the number from the content of the request.
 
 ## 5. Lanes and run states
 
-Lanes are `todo`, `doing`, and `done`. AI tasks may be Pending in Todo or Doing; only Doing supports Running:
+Lanes are `backlog`, `todo`, `doing`, and `done`. You never take work from `backlog`: only a person sends it to `todo`. AI tasks may be Pending in Todo or Doing; only Doing supports Running:
 
 | Owner | Lane | Allowed run state |
 | --- | --- | --- |

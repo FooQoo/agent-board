@@ -21,7 +21,7 @@ use super::{normalize_description, view};
 
 impl FileStore {
     /// Change the title and/or the body of a task that is neither archived nor
-    /// a person's draft. An AI draft can be edited. An unchanged value changes nothing and writes nothing.
+    /// a person's draft. A Backlog plan can be edited. An unchanged value changes nothing and writes nothing.
     pub fn edit_task(
         &self,
         project: &ProjectId,

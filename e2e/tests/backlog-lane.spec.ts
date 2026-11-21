@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "../helpers/fixtures";
 import { agboardOk, listTasks, mainProject, nextTaskId, resetBoard } from "../helpers/agboard";
 import { resetPreferences, setPreferences } from "../helpers/preferences";
@@ -86,6 +87,49 @@ test("the picked cards are grabbed together and dropped on the Todo lane", async
 	await page.mouse.move(target.x + target.width / 2, target.y + 200, { steps: 15 });
 	await page.mouse.up();
 	await expect.poll(() => [laneOf(a), laneOf(c)]).toEqual(["todo", "todo"]);
+});
+
+/** Drags the Backlog card named `name` onto the lane named `lane`, the way a person does with the mouse. */
+async function dragBacklogCardTo(page: Page, name: RegExp, lane: string) {
+	const source = await page.getByRole("region", { name: "Backlog" }).getByRole("button", { name }).boundingBox();
+	const target = await page.getByRole("region", { name: lane }).boundingBox();
+	if (!source || !target) throw new Error("The lanes are not laid out.");
+	await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(source.x + source.width / 2 + 20, source.y + source.height / 2 + 20, { steps: 5 });
+	await page.mouse.move(target.x + target.width / 2, target.y + 200, { steps: 15 });
+}
+
+test("the picked cards are dropped on the Doing lane, which names the lane in the result", async ({ page }) => {
+	const [a, b, c] = seedBacklog();
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await page.goto("/");
+	const backlog = page.getByRole("region", { name: "Backlog" });
+	await backlog.getByRole("button", { name: "Select cards to send to Todo" }).click();
+	await backlog.getByRole("checkbox", { name: `Select #${a}` }).click();
+	await backlog.getByRole("checkbox", { name: `Select #${c}` }).click();
+	await dragBacklogCardTo(page, /Backlog plan 1/, "Doing");
+	await expect(page.getByRole("region", { name: "Doing" })).toHaveAttribute("data-drop-target", "true");
+	await page.mouse.up();
+	await expect(page.getByRole("status").filter({ hasText: "Moved 2 cards to Doing." })).toBeVisible();
+	await expect(page.getByRole("status").filter({ hasText: /Backlog 3 → 1, Doing \d+ → \d+/ })).toBeVisible();
+	await expect.poll(() => [laneOf(a), laneOf(b), laneOf(c)]).toEqual(["doing", "backlog", "doing"]);
+});
+
+test("a single Backlog card with an open question is dropped on Done only after the warning is confirmed", async ({ page }) => {
+	const [, b] = seedBacklog();
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await page.goto("/");
+	await expect(page.getByRole("region", { name: "Backlog" }).getByText("Open question")).toBeVisible();
+	await dragBacklogCardTo(page, /Backlog plan 2/, "Done");
+	await page.mouse.up();
+	const dialog = page.getByRole("dialog", { name: "Move to Done" });
+	await expect(dialog.getByRole("alert")).toContainText(`#${b}`);
+	expect(laneOf(b)).toBe("backlog");
+	await dialog.getByRole("checkbox").check();
+	await dialog.getByRole("button", { name: "Move to Done" }).click();
+	await expect(page.getByRole("status").filter({ hasText: "Moved 1 card to Done." })).toBeVisible();
+	await expect.poll(() => laneOf(b)).toBe("done");
 });
 
 test("the card details say Backlog and send the plan to Todo", async ({ page }) => {

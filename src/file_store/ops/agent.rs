@@ -11,12 +11,23 @@ use super::super::frontmatter;
 use super::super::layout;
 use super::super::model::TaskView;
 use super::super::reader;
+use super::send::{check_sender, open_questions};
 use super::{
     HistoryKind, Transition, ensure_ai_task_not_done, lane_end, lock_project, save_task, stamp,
     task_waits, transition_event,
 };
-use crate::domain::{Actor, ChangeContext, Changed, Column, ProjectId, RunState, check_work_state};
+use crate::domain::{
+    Actor, ChangeContext, Changed, Column, Draft, ProjectId, RunState, check_work_state,
+};
 use crate::error::AgboardError;
+
+/// Who moves: an agent (drafts stay), a person, or a person who confirmed the open questions.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MoveMode {
+    Agent,
+    User,
+    UserConfirmed,
+}
 
 /// An agent may move a task to Done only when its frontmatter reads and every
 /// condition is done. A person's move is never checked here.
@@ -58,7 +69,7 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.move_task(project, id, to, None, ctx, now, true)
+        self.move_task(project, id, to, None, ctx, now, MoveMode::Agent)
     }
 
     /// The same move for a user in the Web UI: drafts can be moved.
@@ -70,7 +81,7 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.move_task(project, id, to, None, ctx, now, false)
+        self.move_task(project, id, to, None, ctx, now, MoveMode::User)
     }
 
     /// [`FileStore::move_work_task_for_user`] for a move that names the status it started from:
@@ -85,7 +96,28 @@ impl FileStore {
         ctx: ChangeContext,
         now: DateTime<Utc>,
     ) -> Result<Changed<TaskView>, AgboardError> {
-        self.move_task(project, id, to, Some(from), ctx, now, false)
+        self.move_task(project, id, to, Some(from), ctx, now, MoveMode::User)
+    }
+
+    /// [`FileStore::move_work_task_for_user_from`] after the person confirmed open questions.
+    pub fn move_work_task_for_user_confirmed(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        from: Column,
+        to: Column,
+        ctx: ChangeContext,
+        now: DateTime<Utc>,
+    ) -> Result<Changed<TaskView>, AgboardError> {
+        self.move_task(
+            project,
+            id,
+            to,
+            Some(from),
+            ctx,
+            now,
+            MoveMode::UserConfirmed,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -97,8 +129,10 @@ impl FileStore {
         from: Option<Column>,
         ctx: ChangeContext,
         now: DateTime<Utc>,
-        block_drafts: bool,
+        mode: MoveMode,
     ) -> Result<Changed<TaskView>, AgboardError> {
+        let block_drafts = mode == MoveMode::Agent;
+        let ack = mode == MoveMode::UserConfirmed;
         let shared = self.shared_dir();
         let (project_dir, _lock) = lock_project(shared, project)?;
         let mut task = reader::read_task_strict(shared, project, id)?;
@@ -118,19 +152,18 @@ impl FileStore {
             return Err(draft_refusal(id, draft));
         }
         if task.task_status == Column::Backlog && to != Column::Backlog {
-            // Leaving the Backlog is sending the plan to Todo: a person's move to
-            // Todo is the same operation as `send`; nothing else leaves it.
-            if ctx.actor == Actor::Human && to == Column::Todo {
-                return self.send_task_locked(
-                    project,
-                    &project_dir,
-                    task,
-                    Actor::Human,
-                    false,
-                    now,
-                );
+            // Only a person leaves the Backlog; Todo is `send`. Doing and Done follow the
+            // rules of a send (editing, open questions), then move like any card.
+            if ctx.actor != Actor::Human {
+                return Err(AgboardError::TaskInBacklog { id });
             }
-            return Err(AgboardError::TaskInBacklog { id });
+            if to == Column::Todo {
+                return self.send_task_locked(project, &project_dir, task, Actor::Human, ack, now);
+            }
+            if task.draft == Some(Draft::Human) {
+                return Err(AgboardError::TaskIsDraft { id });
+            }
+            check_sender(Actor::Human, ack, open_questions(shared, project, &[id])?)?;
         }
         if to == Column::Backlog && task.task_status != Column::Backlog {
             // Taking a card back to the Backlog is a person's decision, and only

@@ -12,7 +12,7 @@ For causes and fixes of the common ones, see [Troubleshooting](../troubleshootin
 | `task_archived` | A write targets an archived task. | 1 | 409 |
 | `task_not_archived` | A delete or restore targets a task that is not archived. | 1 | 409 |
 | `task_is_draft` | An AI `edit`, `history add`, `mv`, or `state` targets a person's draft (`human`); or a person's `send` targets one. The `reason` says to wait for the user to finalize it. | 1 | 409 |
-| `task_in_backlog` | An agent's `mv` or `state`, or a person's Web move to Doing or Done, targets a Backlog task. Send it to Todo first. | 1 | 409 |
+| `task_in_backlog` | An agent's `mv` or `state` targets a Backlog task. Only a person moves it out of the Backlog. | 1 | 409 |
 | `send_with_open_questions` | A person's `send`, `epic send`, or Web move to Todo targets a plan with open questions and no confirmation (`--force`, or `ack: true` in the API). Nothing is saved; the message lists the question IDs. After a confirmed send the question stays and the task is pending until it is answered. | 1 | 409 |
 | `epic_is_draft` | A CLI `epic edit`, or `epic edit --waves`, targets a person's draft epic; or a person sends an epic in a person's draft. | 1 | 409 |
 | `human_only` | An agent withdraws a request, or runs `send`, `epic send`, `start`, `epic start`, or `mv ... backlog`. Only a person can. | 1 | 403 |

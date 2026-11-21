@@ -134,6 +134,60 @@ describe('useBacklogSend', () => {
   });
 });
 
+describe('useBacklogSend to another lane', () => {
+  const tasks = [
+    card(1, 'backlog'),
+    card(2, 'backlog', ['Q-1']),
+    card(3, 'doing'),
+    card(4, 'doing'),
+    card(5, 'done'),
+  ];
+
+  it('moves cards to Doing with the move route and names the lane and its counts', async () => {
+    postTask.mockResolvedValue({});
+    const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, vi.fn()));
+    act(() => {
+      result.current.request([1], undefined, 'doing');
+    });
+    await waitFor(() => expect(result.current.notice).toContain('Moved 1 card to Doing.'));
+    expect(result.current.notice).toContain('Backlog 2 → 1, Doing 2 → 3');
+    expect(postTask.mock.calls[0]?.[0]).toBe(`/api/projects/${PROJECT}/tasks/1/move`);
+    expect(postTask.mock.calls[0]?.[1]).toEqual({
+      taskStatus: 'doing',
+      fromStatus: 'backlog',
+      ack: false,
+    });
+  });
+
+  it('confirms an open question for the target lane, then moves with the acknowledgement', async () => {
+    postTask.mockResolvedValue({});
+    const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, vi.fn()));
+    act(() => {
+      result.current.request([1, 2], undefined, 'done');
+    });
+    expect(result.current.confirming?.to).toBe('done');
+    expect(postTask).not.toHaveBeenCalled();
+    act(() => result.current.confirm());
+    await waitFor(() => expect(result.current.notice).toContain('Moved 2 cards to Done.'));
+    expect(result.current.notice).toContain('Backlog 2 → 0, Done 1 → 3');
+    expect(postTask.mock.calls.map((call) => call[1])).toEqual([
+      { taskStatus: 'done', fromStatus: 'backlog', ack: true },
+      { taskStatus: 'done', fromStatus: 'backlog', ack: true },
+    ]);
+  });
+
+  it('names the lane when nothing could be moved', async () => {
+    postTask.mockRejectedValueOnce(new Error('no'));
+    const { result } = renderHook(() => useBacklogSend(PROJECT, tasks, vi.fn()));
+    act(() => {
+      result.current.request([1], undefined, 'doing');
+    });
+    await waitFor(() =>
+      expect(result.current.notice).toBe('Could not move to Doing. Nothing was changed.'),
+    );
+  });
+});
+
 describe('useBacklogSelection', () => {
   it('picks cards, drops the ones that left the Backlog, and leaves the mode', () => {
     const { result, rerender } = renderHook(({ ids }) => useBacklogSelection(ids), {

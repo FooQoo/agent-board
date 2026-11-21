@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { useBacklogSelection } from '../../../features/backlog/useSelection';
 import { groupTasks } from '../../../features/tasks/model/board';
 import type { TaskSummary, ColumnName } from '../../../shared/api/contracts';
+import type { BacklogTarget } from '../../../features/backlog/send';
 import { BoardMessage, type BoardMessageKind } from './BoardMessage';
 import { Lane } from './Lane';
 import { DragDropProvider } from '@dnd-kit/react';
@@ -27,10 +28,10 @@ export interface BoardProps {
   onArchiveDone?: () => void;
   /**
    * Cards of the Backlog were sent to Todo: by the button of the selection bar, or by dropping
-   * them on the Todo lane. The screen confirms a warning and shows the result. Returns whether the
+   * them on the Todo lane. A drop on Doing or Done moves them there (`to`). The screen confirms a warning and shows the result. Returns whether the
    * send was started without a confirmation, which ends the selection mode.
    */
-  onSend?: (ids: number[]) => boolean;
+  onSend?: (ids: number[], to: BacklogTarget) => boolean;
   sendBusy?: boolean;
   /** The EPIC-ID label of a card was pressed. */
   onOpenEpic?: (epicId: string) => void;
@@ -69,9 +70,11 @@ function ProjectBoard({
   const groups = groupTasks(tasks);
   const selection = useBacklogSelection(groups.backlog.map((task) => task.id));
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  // The lane under the pointer, also when the pointer is over one of its cards.
+  const [overColumn, setOverColumn] = useState<string | null>(null);
   // A send that needs no confirmation ends the selection mode; a warning keeps it until answered.
-  const send = (ids: number[]) => {
-    if (onSend?.(ids)) selection.leave();
+  const send = (ids: number[], to: BacklogTarget = 'todo') => {
+    if (onSend?.(ids, to)) selection.leave();
   };
   if (message !== null) {
     return (
@@ -83,6 +86,7 @@ function ProjectBoard({
 
   // Reset the drag controller when cards change lanes so its retained source element cannot
   // remain beside the newly rendered card. Edits and same-lane reordering keep the controller.
+  const draggingFromBacklog = groups.backlog.some((task) => task.id === draggingId);
   const laneMembership = tasks
     .map((task) => `${task.id}:${task.taskStatus}`)
     .sort()
@@ -98,10 +102,13 @@ function ProjectBoard({
         // Cards sort only inside their own lane. Another lane is a move, which waits for its reason, so
         // the card must not be shown there before it is confirmed.
         const { source, target } = event.operation;
+        const group = dropPlacement(event.operation)?.group;
+        setOverColumn(typeof group === 'string' ? group : null);
         if (source && target && source.data.column !== target.data.column) event.preventDefault();
       }}
       onDragEnd={(event) => {
         setDraggingId(null);
+        setOverColumn(null);
         if (event.canceled) return;
         const taskId = event.operation.source?.data.taskId;
         const source = event.operation.source;
@@ -109,14 +116,15 @@ function ProjectBoard({
         const task = tasks.find((item) => item.id === taskId);
         const column = placement?.group;
         if (!task || !placement || !isColumn(column)) return;
-        if (task.taskStatus === 'backlog' && column === 'todo' && onSend) {
-          // The drag drops the focus from the card; the Backlog cards go to Todo as one send: the
-          // picked cards when the grabbed one is among them, else only this card.
+        if (task.taskStatus === 'backlog' && column !== 'backlog' && onSend) {
+          // The drag drops the focus from the card; the Backlog cards go to the lane as one send:
+          // the picked cards when the grabbed one is among them, else only this card.
           if (source?.element instanceof HTMLElement) source.element.focus();
           send(
             selection.selecting && selection.picked.includes(task.id)
               ? selection.picked
               : [task.id],
+            column,
           );
           return;
         }
@@ -133,11 +141,16 @@ function ProjectBoard({
     >
       <main className={band ? 'board board--with-band' : 'board'}>
         {band}
-        <div className="board__lanes" ref={layoutRef}>
+        <div
+          className="board__lanes"
+          ref={layoutRef}
+          data-backlog-drag={draggingFromBacklog ? 'true' : undefined}
+        >
           {COLUMNS.map((column) => (
             <Lane
               key={column}
               column={column}
+              hovered={draggingFromBacklog && overColumn === column}
               tasks={groups[column]}
               selectedId={selectedId}
               onSelect={onSelect}
