@@ -17,6 +17,7 @@ Before you change behavior, read the [developer reference](../index.md) for the 
 - Use repository-relative paths for project files and executables, `PATH` for installed commands, or environment variables resolved at runtime. Keep machine-specific overrides in ignored local files.
 - Before committing, inspect the staged diff for personal paths such as `/Users/` and `/home/`, and remove them. Check that changed hook commands work without depending on a particular user's directory layout.
 - When you add an `agboard` command or a top-level field of the progress table, decide whether it creates something an agent could forget. Add a nudge rule, or record `NoRule` with a reason, in `src/nudge/coverage.rs`; the tests fail until you do. See [When you add a feature](../concepts/agents.md#when-you-add-a-feature).
+- Define a text option of the `agboard` CLI so that it takes exactly one value and never takes the next flag as that value: do not use `allow_hyphen_values`, `trailing_var_arg`, or `last(true)`. Text that starts with `-` is passed as `--opt=- text`, from a file, or as `-` for standard input. An option or argument that takes several values (`num_args` above 1) or splits a value (`value_delimiter`) must be reviewed: list it with a reason in the allowlists of `tests/cli_invariants.rs`. That test checks the whole command tree, and `tests/docs_examples.rs` parses every `agboard` example in the documentation, the skill pages, the README, and the help text, so a stale example fails the build.
 
 ## UI changes
 
