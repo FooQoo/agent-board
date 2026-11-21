@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{Changed, Draft, ProjectId, RunState};
+use crate::domain::{Changed, Column, Draft, ProjectId, RunState};
 use crate::error::AgboardError;
 use crate::file_store::FileStore;
 use crate::file_store::history_language::HistoryLanguage;
@@ -13,6 +13,24 @@ use super::super::{HistoryKind, Transition, lock_project, save_task, stamp, tran
 use super::view;
 
 impl FileStore {
+    /// Check, before anything else is changed, that a save an older client made with
+    /// `draft: "ai"` is not refused by `refuse_legacy_release_in_todo`, so a rejected
+    /// save has no side effect (such as removed attachments). The save checks again.
+    pub fn ensure_legacy_release_allowed(
+        &self,
+        project: &ProjectId,
+        id: i64,
+        legacy_ai: bool,
+    ) -> Result<(), AgboardError> {
+        if !legacy_ai {
+            return Ok(());
+        }
+        let shared = self.shared_dir();
+        let (_project_dir, _lock) = lock_project(shared, project)?;
+        let task = reader::read_task_strict(shared, project, id)?;
+        refuse_legacy_release_in_todo(&task, true)
+    }
+
     /// Take or release the edit lock: `Some(Draft::Human)` makes the task a
     /// person's draft (a Backlog card too, while a person edits the plan), and
     /// `None` finalizes it. Finalizing keeps the lane: a Backlog card stays in
@@ -61,7 +79,7 @@ impl FileStore {
                 changed: false,
             });
         }
-        super::edit::refuse_legacy_release_in_todo(&task, legacy_ai)?;
+        refuse_legacy_release_in_todo(&task, legacy_ai)?;
         if draft == Some(Draft::Human) && task.agent_status == RunState::Running {
             return Err(AgboardError::InvalidStateForDraft {
                 id,
@@ -82,6 +100,27 @@ impl FileStore {
             changed: true,
         })
     }
+}
+
+/// An older client names `draft: "ai"` to hand a plan back to the AI. A plan is in the
+/// Backlog now, where that only releases the edit lock. In Todo it would leave an
+/// unsent card the agent can pick up, so the save is refused until a person takes the
+/// card back to the Backlog. Checked under the project lock, with the lane just read.
+pub(super) fn refuse_legacy_release_in_todo(
+    task: &TaskFile,
+    legacy_ai: bool,
+) -> Result<(), AgboardError> {
+    if legacy_ai && matches!(task.task_status, Column::Todo | Column::Doing) {
+        return Err(AgboardError::InvalidValue {
+            field: "draft".into(),
+            reason: format!(
+                "Task #{} is not in the Backlog, so handing it back to the AI would leave \
+                 it ready to start. Take it back to the Backlog first, then save.",
+                task.id
+            ),
+        });
+    }
+    Ok(())
 }
 
 /// A draft history event. The statuses are the task's current ones.
