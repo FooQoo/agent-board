@@ -10,8 +10,6 @@ This is the Agent Board v1.1.1 snapshot for Heroes League. [Development continue
 
 [Heroes League project on ProtoPedia](https://protopedia.net/prototype/10125)
 
-[![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
-
 **People and AI agents, working on one board.**
 
 See what your agent is doing and what it is waiting on. Tasks, questions, and acceptance conditions share one board, and you can answer from your PC or your phone.
@@ -121,6 +119,6 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
 - [Mobile monitor](https://fooqoo.github.io/agent-board/guide/operations/mobile-monitor) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
-- [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
+- [Releases](https://github.com/FooQoo/agent-project/releases) — what each published version changes.
 - [Claude Code and Codex integration](integrations/README.md) — what `connect` installs and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.
