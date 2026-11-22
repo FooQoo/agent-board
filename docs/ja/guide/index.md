@@ -6,13 +6,18 @@ title: はじめに
 import { withBase } from 'vitepress'
 </script>
 
+
+<script setup>
+import { withBase } from 'vitepress'
+</script>
+
 # はじめに
 
 <video class="demo-video" :src="withBase('/videos/demo.ja.mp4')" :poster="withBase('/videos/demo.ja.jpg')" autoplay muted loop playsinline></video>
 
 タスクへの着手から完了までの流れを紹介します。エージェントが質問すると、ユーザーはタスクの回答欄から返答します。エージェントは回答を受けて作業を再開し、すべての受入条件を満たすと、タスクが自動で完了の列へ移ります。
 
-実際に触ってみたい場合は、[デモを試す](https://fooqoo.github.io/agent-board/demo/)からブラウザで操作できます。インストールは不要です。サンプルデータで初回の案内が始まります。ブラウザの言語が日本語なら日本語で、それ以外なら英語で表示されます。ページを再読み込みすると最初からやり直せます。
+実際に触ってみたい場合は、<a :href="withBase(\'/demo/\')">デモを試す</a>からブラウザで操作できます。インストールは不要です。サンプルデータで初回の案内が始まります。ブラウザの言語が日本語なら日本語で、それ以外なら英語で表示されます。ページを再読み込みすると最初からやり直せます。
 
 ## Agent Boardとは
 

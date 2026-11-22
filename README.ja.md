@@ -4,6 +4,10 @@
 
 # Agent Board
 
+ヒーローズ・リーグ向けの Agent Board v1.1.1 保存版です。[開発の引き継ぎ先は Agent Project](https://github.com/FooQoo/agent-project) です。
+
+[元の v1.1.1 のソース](https://github.com/FooQoo/agent-board-draft/tree/396b35e1fcf0c87cd89275593f4624e0f4dbe9da)。
+
 [![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
 
 **人とAIが、同じボードで仕事を進める。**

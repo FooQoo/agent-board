@@ -4,6 +4,10 @@
 
 # Agent Board
 
+This is the Agent Board v1.1.1 snapshot for Heroes League. [Development continues in Agent Project](https://github.com/FooQoo/agent-project).
+
+[View the original v1.1.1 source](https://github.com/FooQoo/agent-board-draft/tree/396b35e1fcf0c87cd89275593f4624e0f4dbe9da).
+
 [![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board)
 
 **People and AI agents, working on one board.**
