@@ -12,7 +12,7 @@ import { withBase } from 'vitepress'
 
 From a request to Done: you ask for the work with **Ask AI**, the agent turns it into tasks on the board and asks what only you can decide, and you answer on the task. The agent then starts its plan, and when every acceptance condition of a task is checked, the task moves to Done on its own.
 
-Want to see it for yourself? [Try the demo](https://fooqoo.github.io/agent-board/demo/) in your browser, with nothing to install. It opens the first-run guide on sample data, in Japanese when your browser prefers Japanese and in English otherwise. Reloading the page starts it over.
+Want to see it for yourself? <a :href="withBase('/demo/')">Try the demo</a> in your browser, with nothing to install. It opens the first-run guide on sample data, in Japanese when your browser prefers Japanese and in English otherwise. Reloading the page starts it over.
 
 ## The problem: big work does not finish without you
 
