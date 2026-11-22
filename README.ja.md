@@ -4,7 +4,9 @@
 
 # Agent Board
 
-[![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board) [![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/FooQoo/agent-board?utm_source=oss&utm_medium=github&utm_campaign=FooQoo%2Fagent-board&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+ここは Agent Board のアーカイブで、Agent Board という名前での最後のリリースである v1.7.0 までを保存しています。[開発は Agent Project として続いています](https://github.com/FooQoo/agent-project)。
+
+ヒーローズ・リーグに応募した版は v1.1.1 です。[v1.1.1 のソースを見る](https://github.com/FooQoo/agent-board-draft/tree/v1.1.1)。[ヒーローズ・リーグの作品ページ](https://protopedia.net/prototype/10125)
 
 **頼むだけで、計画から完了までAIが進めてくれる。**
 
@@ -125,6 +127,6 @@ Agent Boardは、[MITライセンス](LICENSE)で公開しています。同梱�
 
 - [使い方ガイド](https://fooqoo.github.io/agent-board/ja/guide/) — ブラウザ操作、CLIの例、エージェントの作業手順、共有ファイル、バックアップ。
 - [リモートアクセス](https://fooqoo.github.io/agent-board/ja/guide/watch/remote-access) — ngrokと合言葉によるスマホの接続、モニターの表示内容、確認方法。
-- [リリース](https://github.com/FooQoo/agent-board/releases) — 公開した各版の変更点。
+- [リリース](https://github.com/FooQoo/agent-project/releases) — 公開した各版の変更点。
 - [Agent Boardプラグイン（英語）](plugins/agent-board/README.md) — `setup`がClaude CodeとCodexに導入するものと、Hookの仕組み。
 - [開発に参加する](CONTRIBUTING.ja.md) — 開発と検証。

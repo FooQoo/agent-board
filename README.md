@@ -4,7 +4,9 @@
 
 # Agent Board
 
-[![CI](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml/badge.svg)](https://github.com/FooQoo/agent-board/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/FooQoo/agent-board/graph/badge.svg)](https://codecov.io/gh/FooQoo/agent-board) [![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/FooQoo/agent-board?utm_source=oss&utm_medium=github&utm_campaign=FooQoo%2Fagent-board&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+This is the archive of Agent Board, kept up to v1.7.0, the last release under the name Agent Board. [Development continues as Agent Project](https://github.com/FooQoo/agent-project).
+
+The version submitted to Heroes League is v1.1.1: [view the v1.1.1 source](https://github.com/FooQoo/agent-board-draft/tree/v1.1.1). [Heroes League project on ProtoPedia](https://protopedia.net/prototype/10125)
 
 **Delegate big work. Stop babysitting it.**
 
@@ -127,6 +129,6 @@ see [Third-party notices](THIRD_PARTY_NOTICES.txt).
 
 - [Usage guide](https://fooqoo.github.io/agent-board/guide/) — browser operations, CLI examples, agent workflow, shared files, and backups.
 - [Remote access](https://fooqoo.github.io/agent-board/guide/watch/remote-access) — connect a phone with ngrok and a passcode, what the monitor shows, and how to check it.
-- [Releases](https://github.com/FooQoo/agent-board/releases) — what each published version changes.
+- [Releases](https://github.com/FooQoo/agent-project/releases) — what each published version changes.
 - [The Agent Board plugin](plugins/agent-board/README.md) — what `setup` installs for Claude Code and Codex, and how the hooks work.
 - [Contributing](CONTRIBUTING.md) — development and verification.
