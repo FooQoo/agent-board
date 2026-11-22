@@ -6,6 +6,9 @@ import { expect, test } from '@playwright/test';
 // the bottom of a line is never cut off. This suite runs with the demo suite because both
 // open the built site. Pages with only sequence diagrams have no label boxes and are left out.
 
+// The site base is the demo base without its trailing demo/ folder.
+const siteBase = (process.env.AGBOARD_DEMO_BASE ?? '/agent-board-draft/demo/').replace(/demo\/$/, '');
+
 const pages = [
   'guide/',
   'guide/delegate/agents',
@@ -19,7 +22,7 @@ const pages = [
 for (const width of [390, 1280]) {
   for (const locale of ['', 'ja/']) {
     for (const page of pages) {
-      const path = `/agent-board/${locale}${page}`;
+      const path = `${siteBase}${locale}${page}`;
       test(`Mermaid labels are not clipped at ${width}px: ${path}`, async ({ page: browserPage }) => {
         await browserPage.setViewportSize({ width, height: 900 });
         await browserPage.goto(path);
