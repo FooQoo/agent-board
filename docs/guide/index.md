@@ -2,10 +2,6 @@
 title: Introduction
 ---
 
-<script setup>
-import { withBase } from 'vitepress'
-</script>
-
 
 <script setup>
 import { withBase } from 'vitepress'
@@ -17,7 +13,7 @@ import { withBase } from 'vitepress'
 
 One task, start to finish: the agent starts the task and asks a question, you answer on the task, and the agent resumes. When every acceptance condition is checked, the task moves to Done on its own.
 
-Want to see it for yourself? <a :href="withBase(\'/demo/\')">Try the demo</a> in your browser, with nothing to install. It opens the first-run guide on sample data, in Japanese when your browser prefers Japanese and in English otherwise. Reloading the page starts it over.
+Want to see it for yourself? <a :href="withBase('/demo/')">Try the demo</a> in your browser, with nothing to install. It opens the first-run guide on sample data, in Japanese when your browser prefers Japanese and in English otherwise. Reloading the page starts it over.
 
 ## What Agent Board is
 
